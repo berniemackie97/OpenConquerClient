@@ -1,3 +1,5 @@
+using OpenConquer.Platform;
+
 namespace OpenConquer.Client;
 
 internal static class ClientApplication
@@ -6,7 +8,7 @@ internal static class ClientApplication
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        using ClientWindow window = new();
+        using DesktopWindow window = new();
         window.Run();
 
         return 0;

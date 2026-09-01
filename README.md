@@ -18,6 +18,7 @@ while rebuilding it on a clean modern foundation.
 flowchart TD
     Client["OpenConquer.Client"]
 
+    Client --> Platform["OpenConquer.Platform"]
     Client --> Gameplay["OpenConquer.Gameplay"]
     Client --> Rendering["OpenConquer.Rendering"]
     Client --> Content["OpenConquer.Content"]
@@ -26,11 +27,16 @@ flowchart TD
 
 The client is split into a small set of focused assemblies:
 
-- **OpenConquer.Client** — executable, application lifecycle, windowing, input, and composition
+- **OpenConquer.Client** — executable, composition, application lifecycle, and shutdown coordination
+- **OpenConquer.Platform** — desktop windowing and graphics-context ownership
 - **OpenConquer.Gameplay** — world state and game simulation
-- **OpenConquer.Rendering** — rendering and GPU resources
+- **OpenConquer.Rendering** — OpenGL rendering and GPU resources
 - **OpenConquer.Content** — original client formats and content loading
 - **OpenConquer.Networking** — transport, encryption, packets, and server protocol
+
+`OpenConquer.Platform` and `OpenConquer.Rendering` are separate sibling subsystems. Platform owns
+the native window and graphics context, while Rendering owns the OpenGL API binding and GPU
+resources. `OpenConquer.Client` composes the two and coordinates their lifetimes.
 
 The initial renderer uses **OpenGL through Silk.NET**.
 
@@ -57,6 +63,7 @@ src/
 ├── OpenConquer.Content/
 ├── OpenConquer.Gameplay/
 ├── OpenConquer.Networking/
+├── OpenConquer.Platform/
 └── OpenConquer.Rendering/
 
 tests/

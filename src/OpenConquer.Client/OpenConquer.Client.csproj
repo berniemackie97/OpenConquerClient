@@ -10,11 +10,7 @@
     <ProjectReference Include="..\OpenConquer.Rendering\OpenConquer.Rendering.csproj" />
     <ProjectReference Include="..\OpenConquer.Content\OpenConquer.Content.csproj" />
     <ProjectReference Include="..\OpenConquer.Networking\OpenConquer.Networking.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Silk.NET.Input" />
-    <PackageReference Include="Silk.NET.Windowing" />
+    <ProjectReference Include="..\OpenConquer.Platform\OpenConquer.Platform.csproj" />
   </ItemGroup>
 
 </Project>
