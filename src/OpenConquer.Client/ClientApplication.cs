@@ -6,6 +6,9 @@ internal static class ClientApplication
     {
         ArgumentNullException.ThrowIfNull(args);
 
+        using ClientWindow window = new();
+        window.Run();
+
         return 0;
     }
 }
