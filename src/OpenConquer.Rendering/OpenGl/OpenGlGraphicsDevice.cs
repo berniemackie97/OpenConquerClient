@@ -4,6 +4,9 @@ namespace OpenConquer.Rendering.OpenGl;
 
 public sealed class OpenGlGraphicsDevice : IDisposable
 {
+    private const int MinimumMajorVersion = 3;
+    private const int MinimumMinorVersion = 3;
+
     private readonly GL _gl;
     private bool _disposed;
 
@@ -11,7 +14,44 @@ public sealed class OpenGlGraphicsDevice : IDisposable
     {
         ArgumentNullException.ThrowIfNull(resolveProcAddress);
 
-        _gl = GL.GetApi(functionName => resolveProcAddress(functionName));
+        GL gl = GL.GetApi(functionName => resolveProcAddress(functionName));
+
+        try
+        {
+            ValidateContext(gl);
+
+            Version = GetRequiredString(gl, StringName.Version);
+            ShadingLanguageVersion = GetRequiredString(gl, StringName.ShadingLanguageVersion);
+            Vendor = GetRequiredString(gl, StringName.Vendor);
+            Renderer = GetRequiredString(gl, StringName.Renderer);
+
+            _gl = gl;
+        }
+        catch
+        {
+            gl.Dispose();
+            throw;
+        }
+    }
+
+    public string Version
+    {
+        get;
+    }
+
+    public string ShadingLanguageVersion
+    {
+        get;
+    }
+
+    public string Vendor
+    {
+        get;
+    }
+
+    public string Renderer
+    {
+        get;
     }
 
     public void Dispose()
@@ -23,5 +63,36 @@ public sealed class OpenGlGraphicsDevice : IDisposable
 
         _gl.Dispose();
         _disposed = true;
+    }
+
+    private static void ValidateContext(GL gl)
+    {
+        gl.GetInteger(GetPName.MajorVersion, out int majorVersion);
+        gl.GetInteger(GetPName.MinorVersion, out int minorVersion);
+
+        if (majorVersion < MinimumMajorVersion ||
+            majorVersion == MinimumMajorVersion && minorVersion < MinimumMinorVersion)
+        {
+            throw new NotSupportedException(
+                $"OpenGL {MinimumMajorVersion}.{MinimumMinorVersion} or later is required. " +
+                $"The current context provides OpenGL {majorVersion}.{minorVersion}.");
+        }
+
+        gl.GetInteger(GetPName.ContextProfileMask, out int profileMask);
+
+        const int coreProfileBit = 0x00000001;
+
+        if ((profileMask & coreProfileBit) == 0)
+        {
+            throw new NotSupportedException(
+                $"An OpenGL {MinimumMajorVersion}.{MinimumMinorVersion} Core profile is required.");
+        }
+    }
+
+    private static string GetRequiredString(GL gl, StringName name)
+    {
+        return gl.GetStringS(name)
+            ?? throw new InvalidOperationException(
+                $"OpenGL did not provide a value for {name}.");
     }
 }

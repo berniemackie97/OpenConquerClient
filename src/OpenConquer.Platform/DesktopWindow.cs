@@ -81,9 +81,16 @@ public sealed class DesktopWindow : IDisposable
         IGLContext context = _window.GLContext
             ?? throw new InvalidOperationException("The OpenGL context was not created.");
 
-        _openGlContext = new SilkOpenGlContext(context);
+        SilkOpenGlContext openGlContext = new(context);
 
-        OpenGlContextReady?.Invoke(_openGlContext);
+        if (!openGlContext.IsCurrent)
+        {
+            openGlContext.MakeCurrent();
+        }
+
+        _openGlContext = openGlContext;
+
+        OpenGlContextReady?.Invoke(openGlContext);
     }
 
     private void OnClosing()
