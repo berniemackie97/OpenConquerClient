@@ -1,6 +1,6 @@
 # Client Architecture
 
-This document describes the high level architecture of OpenConquer Client for contributors and
+This document describes the high-level architecture of OpenConquer Client for contributors and
 developers interested in the project.
 
 It is intentionally focused on subsystem boundaries, dependencies, and ownership. More detailed
@@ -76,12 +76,12 @@ state required to produce a frame.
 
 `OpenConquer.Platform` owns behavior whose semantics come from the desktop environment:
 
-- native window creation and destruction
-- OpenGL context creation and lifetime
-- framebuffer dimensions
-- presentation
-- focus and window state
-- desktop input when introduced
+* native window creation and destruction
+* OpenGL context creation and lifetime
+* framebuffer dimensions
+* presentation
+* focus and window state
+* desktop input when introduced
 
 Silk.NET windowing and input types must not leak into Gameplay, Rendering, Content, or Networking.
 
@@ -111,6 +111,41 @@ flowchart TD
 Platform owns the native window and OpenGL context. Rendering owns the OpenGL API binding and GPU
 resources. Client is responsible for composing those lifetimes without creating a direct dependency
 between Platform and Rendering.
+
+### OpenGL Bootstrap
+
+The native OpenGL context is owned by `OpenConquer.Platform`.
+
+Once the desktop window has initialized its graphics context, Platform exposes a narrow borrowed
+`IOpenGlContext` capability to `OpenConquer.Client`. Silk.NET window and context types remain
+internal to Platform.
+
+Client bridges the Platform-owned context into Rendering through an OpenGL procedure-address
+resolver:
+
+```text
+OpenConquer.Platform
+        │
+        │ IOpenGlContext.GetProcAddress
+        ▼
+OpenConquer.Client
+        │
+        │ OpenGlProcAddressResolver
+        ▼
+OpenConquer.Rendering
+        │
+        │ GL.GetApi(...)
+        ▼
+Silk.NET.OpenGL
+```
+
+`OpenConquer.Rendering` therefore does not depend on `OpenConquer.Platform`,
+`Silk.NET.Windowing`, or Silk.NET context types.
+
+`OpenGlGraphicsDevice` owns the OpenGL API binding but does not own the native OpenGL context.
+
+During shutdown, Platform ensures that the context remains valid and current while Client releases
+the graphics device and its GPU resources.
 
 The intended graphics lifetime is:
 
@@ -144,13 +179,13 @@ ownership.
 
 The current architecture follows these rules:
 
-- `OpenConquer.Client` is the sole composition root.
-- `OpenConquer.Platform` does not reference `OpenConquer.Rendering`.
-- `OpenConquer.Rendering` does not reference `OpenConquer.Platform`.
-- `OpenConquer.Rendering` does not depend on Silk.NET Windowing or Input.
-- `OpenConquer.Client` does not directly depend on Silk.NET.
-- `OpenConquer.Gameplay` remains independent of platform, graphics, and transport infrastructure.
-- `OpenConquer.Content` remains independent of graphics and gameplay behavior.
-- `OpenConquer.Networking` remains independent of platform and rendering concerns.
+* `OpenConquer.Client` is the sole composition root.
+* `OpenConquer.Platform` does not reference `OpenConquer.Rendering`.
+* `OpenConquer.Rendering` does not reference `OpenConquer.Platform`.
+* `OpenConquer.Rendering` does not depend on Silk.NET Windowing or Input.
+* `OpenConquer.Client` does not directly depend on Silk.NET.
+* `OpenConquer.Gameplay` remains independent of platform, graphics, and transport infrastructure.
+* `OpenConquer.Content` remains independent of graphics and gameplay behavior.
+* `OpenConquer.Networking` remains independent of platform and rendering concerns.
 
 A project is an ownership and dependency boundary, not a replacement for a folder.
