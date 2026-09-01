@@ -38,8 +38,6 @@ More detailed design documentation lives under [`docs/architecture`](docs/archit
 
 ## Build
 
-Requires the .NET SDK version specified in [`global.json`](global.json).
-
 ```bash
 dotnet restore
 dotnet build OpenConquer.Client.slnx
