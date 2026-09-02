@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="OpenConquer.Client.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OpenConquer.Gameplay\OpenConquer.Gameplay.csproj" />
     <ProjectReference Include="..\OpenConquer.Rendering\OpenConquer.Rendering.csproj" />
     <ProjectReference Include="..\OpenConquer.Content\OpenConquer.Content.csproj" />

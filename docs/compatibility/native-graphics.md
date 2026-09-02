@@ -20,10 +20,35 @@ Retail 5517 defines four screen modes:
 All four modes use a windowed Direct3D 8 device. Modes 1 and 3 change the desktop display mode and
 window placement rather than creating a Direct3D fullscreen swap chain.
 
-The modern client intentionally uses a resizable desktop host. Host resizing must not implicitly
+Retail obtains the selected mode from:
+
+```ini
+[ScreenModeRecord]
+ScreenMode=<value>
+```
+
+in:
+
+```text
+ini/GameSetup.Ini
+```
+
+OpenConquer Client now reads that configuration during startup and preserves the verified logical
+resolution mapping:
+
+```text
+0 or 1 → 800×600
+2 or 3 → 1024×768
+```
+
+The selected dimensions become the fixed logical rendering surface.
+
+The modern client intentionally uses a resizable desktop host. Host resizing does not implicitly
 change the game's logical rendering resolution.
 
-Screen-mode configuration is not implemented yet. The current client selects 1024×768 explicitly.
+The display-mode and fixed-shell behavior associated with retail modes 1 and 3 is not currently
+reproduced. That remains an intentional desktop-host difference rather than changing the verified
+logical resolution associated with those modes.
 
 ## Depth and Stencil
 
@@ -38,10 +63,10 @@ for every reachable 5517 startup and reset path.
 The C3 graphics library contains a dormant `D3DFMT_D24S8` branch controlled by bit 31 of the upper
 `HintGraphicDetail` flags. The retail client never sets that bit:
 
-* the only retail `HintGraphicDetail` calls pass `0`, `2`, and `0`
-* `HintGraphicDetail` is the sole writer of the upper-flags global
-* `Init3DEx` is the sole reader
-* reset and resolution-change paths preserve the established presentation parameters
+- the only retail `HintGraphicDetail` calls pass `0`, `2`, and `0`
+- `HintGraphicDetail` is the sole writer of the upper-flags global
+- `Init3DEx` is the sole reader
+- reset and resolution-change paths preserve the established presentation parameters
 
 The reachable retail renderer also does not use stencil render states or stencil clears.
 
@@ -56,30 +81,30 @@ Depth precision is compatibility-sensitive. Retail rendering actively uses depth
 writes, and depth clears, so replacing D16 with a higher-precision format is not treated as an
 implementation-neutral modernization.
 
-The ordinary retail frame clears both the color and depth buffers, using opaque black
-(`0xFF000000`) and a depth value of `1.0`.
+The ordinary retail frame clears both the color and depth buffers, using opaque black (`0xFF000000`)
+and a depth value of `1.0`.
 
 OpenGL frame initialization mirrors those values and establishes deterministic full-target clear
 state by:
 
-* disabling scissor testing
-* enabling writes to every color component
-* enabling depth writes
-* clearing color to opaque black
-* clearing depth to `1.0`
+- disabling scissor testing
+- enabling writes to every color component
+- enabling depth writes
+- clearing color to opaque black
+- clearing depth to `1.0`
 
 ## Presentation
 
 Retail `D3DPRESENT_PARAMETERS` are cleared before initialization. The effective presentation
 configuration includes:
 
-* `BackBufferCount = 1`
-* `SwapEffect = D3DSWAPEFFECT_DISCARD`
-* `Windowed = TRUE`
-* automatic depth/stencil enabled with `D3DFMT_D16`
-* `Flags = 0`
-* `FullScreen_RefreshRateInHz = 0`
-* `FullScreen_PresentationInterval = 0`
+- `BackBufferCount = 1`
+- `SwapEffect = D3DSWAPEFFECT_DISCARD`
+- `Windowed = TRUE`
+- automatic depth/stencil enabled with `D3DFMT_D16`
+- `Flags = 0`
+- `FullScreen_RefreshRateInHz = 0`
+- `FullScreen_PresentationInterval = 0`
 
 The presentation interval remains unchanged through device reset and resolution changes.
 
@@ -95,8 +120,8 @@ Presentation cadence is separate from gameplay simulation timing.
 
 `HintGraphicDetail` divides its argument into two independent controls:
 
-* bits 0–3 select a multisample quality tier
-* bits 4–31 are retained as upper graphics-detail flags
+- bits 0–3 select a multisample quality tier
+- bits 4–31 are retained as upper graphics-detail flags
 
 Retail callers use values whose upper bits are clear, so the multisample tier does not alter the
 verified D16 depth-format choice.
@@ -147,8 +172,8 @@ The logical render target attempts:
 1. `RGB565`, corresponding to retail `R5G6B5`
 2. `RGB5`, corresponding to the RGB precision of retail `X1R5G5B5`
 
-`RGB565` is used only when the active OpenGL implementation guarantees support through OpenGL 4.2
-or later, or through `GL_ARB_ES2_compatibility`.
+`RGB565` is used only when the active OpenGL implementation guarantees support through OpenGL 4.2 or
+later, or through `GL_ARB_ES2_compatibility`.
 
 The renderer does not assume that requesting a sized internal format guarantees the exact storage
 precision. After texture allocation it queries the actual component sizes reported by OpenGL.
@@ -243,9 +268,10 @@ composition is skipped in that state without changing or recreating the logical 
 
 The modern client intentionally differs from retail in desktop-window behavior.
 
-Retail uses fixed-size shell behavior associated with its four screen modes. OpenConquer Client
-uses a resizable host window while retaining a fixed logical rendering surface.
+Retail uses fixed-size shell behavior associated with its four screen modes. OpenConquer Client uses
+a resizable host window while retaining the fixed logical rendering surface selected by the retail
+screen-mode configuration.
 
-This difference must remain confined to the desktop presentation boundary. Logical game
-coordinates, content layout, simulation behavior, and protocol-visible behavior must not become
-dependent on the physical host framebuffer size.
+This difference must remain confined to the desktop presentation boundary. Logical game coordinates,
+content layout, simulation behavior, and protocol-visible behavior must not become dependent on the
+physical host framebuffer size.
