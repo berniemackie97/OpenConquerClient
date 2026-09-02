@@ -8,6 +8,8 @@ namespace OpenConquer.Client;
 
 internal sealed class ClientApplication : IDisposable
 {
+    private static readonly TimeSpan RetailFrameInterval = TimeSpan.FromMilliseconds(25);
+
     private readonly DesktopWindow _window;
     private readonly LogicalRenderSize _logicalRenderSize;
 
@@ -22,7 +24,7 @@ internal sealed class ClientApplication : IDisposable
 
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
 
-        _window = new DesktopWindow();
+        _window = new DesktopWindow(RetailFrameInterval);
 
         _window.FramebufferResized += OnFramebufferResized;
         _window.Rendering += OnRendering;

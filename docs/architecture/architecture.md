@@ -33,17 +33,20 @@ reference one another.
 
 ## Responsibilities
 
-| Project                  | Owns                                                                                                                                |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenConquer.Client`     | process entry point, startup-option validation, subsystem composition, application lifetime, and shutdown coordination              |
-| `OpenConquer.Platform`   | desktop windowing, native graphics-context lifetime, physical framebuffer state, native buffer swapping, and future desktop input   |
-| `OpenConquer.Gameplay`   | game state, entities, movement, combat, interactions, and gameplay rules                                                            |
-| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, logical-to-host framebuffer composition, cameras, shaders, GPU resources, and render targets |
-| `OpenConquer.Content`    | client-root filesystem semantics, legacy configuration and formats, decoding, loading, and content lookup                           |
-| `OpenConquer.Networking` | connections, transport, encryption, packet framing, protocol encoding, and decoding                                                 |
+| Project                  | Owns                                                                                                                                                                                     |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OpenConquer.Client`     | process entry point, startup-option validation, compatibility-derived runtime policy, subsystem composition, application lifetime, and shutdown coordination                             |
+| `OpenConquer.Platform`   | desktop windowing, native graphics-context lifetime, physical framebuffer state, desktop frame-loop orchestration and pacing mechanics, native buffer swapping, and future desktop input |
+| `OpenConquer.Gameplay`   | game state, entities, movement, combat, interactions, and gameplay rules                                                                                                                 |
+| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, logical-to-host framebuffer composition, cameras, shaders, GPU resources, and render targets                                                      |
+| `OpenConquer.Content`    | client-root filesystem semantics, legacy configuration and formats, decoding, loading, and content lookup                                                                                |
+| `OpenConquer.Networking` | connections, transport, encryption, packet framing, protocol encoding, and decoding                                                                                                      |
 
 Platform-specific window and context types remain inside `OpenConquer.Platform`. Rendering owns
 graphics behavior and GPU resources without depending on the windowing subsystem.
+
+Compatibility-derived application policy remains in `OpenConquer.Client`. Platform implements the
+desktop mechanism required to apply that policy without knowing why a particular value was chosen.
 
 ## Runtime Flow
 
@@ -123,17 +126,24 @@ legacy client files
 
 It:
 
-- requires an existing root directory
+- requires an existing, inspectable root directory
+- rejects a content root that is a symbolic link or reparse point
 - accepts legacy `/` and `\` separators
 - resolves path segments case-insensitively to preserve Windows-era client lookup semantics on
   case-sensitive filesystems
 - rejects rooted content paths
 - rejects `.` and `..` traversal segments
+- rejects symbolic links and reparse points at every resolved content-path segment
 - rejects ambiguous case-insensitive matches instead of selecting one nondeterministically
 - distinguishes optional lookup from required-file lookup
 
-Filesystem enumeration and I/O failures are not converted into false "not found" results. Unexpected
-filesystem failures remain visible to the caller.
+The content boundary does not permit filesystem indirection through symbolic links, junctions, or
+other reparse points. A resolved content path therefore cannot escape the configured client root
+through a linked child entry.
+
+Filesystem metadata, enumeration, and I/O failures are not converted into false "not found" results.
+In particular, inaccessible or otherwise unreadable content roots preserve their underlying
+filesystem failure instead of being misreported as missing directories.
 
 The first production consumer of this boundary is the retail screen-mode configuration.
 
@@ -176,6 +186,8 @@ dependency boundary between Content and Rendering.
 - native window creation and destruction
 - OpenGL context creation and lifetime
 - physical framebuffer dimensions
+- desktop frame-loop orchestration
+- frame-pacing mechanics
 - native host-buffer swapping
 - focus and window state
 - desktop input when introduced
@@ -188,6 +200,57 @@ platform behavior itself.
 Framebuffer dimensions are represented by `PixelSize`. Zero-sized dimensions are valid because a
 desktop framebuffer may temporarily have no drawable area while minimized. Negative dimensions are
 rejected at the type boundary.
+
+## Desktop Frame Cadence
+
+The outer client frame cadence is an application compatibility policy rather than an intrinsic
+Platform or Rendering constant.
+
+Verified retail behavior gates the outer client frame pipeline on a 25 ms interval. The modern
+client therefore defines that interval in `ClientApplication` and supplies it when constructing
+`DesktopWindow`.
+
+```text
+ClientApplication
+        │
+        │ retail frame interval: 25 ms
+        ▼
+DesktopWindow
+        │
+        │ frame-loop orchestration
+        ▼
+DesktopFramePacer
+        │
+        │ monotonic elapsed-time measurement
+        │ remaining-interval wait
+        ▼
+next desktop frame
+```
+
+`DesktopFramePacer` is an internal Platform mechanism. It has no Conquer-specific timing constant
+and operates only on the interval supplied by its caller.
+
+The pacer uses a monotonic `TimeProvider` timestamp source. A frame that completes early waits for
+the remainder of its interval. If work overruns the interval, the next frame proceeds without an
+additional wait.
+
+Missed intervals are not replayed. After an overrun, the actual next frame becomes the new cadence
+anchor instead of running multiple catch-up frames.
+
+Sleep completion is not assumed to be exact. The pacer rechecks elapsed monotonic time after every
+wait, allowing it to handle early wakeups and scheduler oversleep without relying on nominal sleep
+duration.
+
+Silk.NET's own render and update frequency limiters remain uncapped because OpenConquer owns the
+outer loop cadence explicitly through the lower-level custom view loop. Applying both pacing layers
+would create competing timing policies.
+
+Desktop events are processed before frame pacing so native window state is serviced before update
+and rendering work for the next frame.
+
+This cadence is not a gameplay simulation clock and must not become one implicitly. Future gameplay
+simulation, startup-host timers, networking deadlines, animation clocks, and other timing domains
+remain separate unless native behavior proves they share this contract.
 
 ## Rendering Boundary
 
@@ -308,7 +371,7 @@ The distinction is intentional:
   logical render target
 
 The original 5517 client supports four screen modes spanning 800×600 and 1024×768 logical
-resolutions. The modern client now preserves the verified logical-resolution selection while
+resolutions. The modern client preserves the verified logical-resolution selection while
 intentionally retaining its resizable desktop-host policy.
 
 The shell behavior associated with retail modes 1 and 3 is not inferred by Rendering from the mode
@@ -418,9 +481,15 @@ throws.
 
 ## Frame Lifecycle
 
-The current graphics frame flows through the client as follows:
+The current desktop frame flows through the client as follows:
 
 ```text
+Platform processes native events
+        ↓
+DesktopFramePacer enforces remaining frame interval
+        ↓
+Platform processes update callback
+        ↓
 Platform render callback
         ↓
 OpenConquer.Client
@@ -460,6 +529,9 @@ Desktop-host behavior is explicit rather than inherited accidentally from backen
 
 The desktop window currently uses:
 
+- a client-supplied 25 ms outer frame interval
+- Silk.NET render and update frequency limiters left uncapped because the custom outer loop owns
+  cadence
 - automatic native buffer swapping
 - VSync disabled
 - a resizable 1280×720 initial host window
@@ -471,8 +543,8 @@ The desktop window currently uses:
 The host framebuffer is explicitly single-sampled. Native multisampling behavior, when implemented,
 belongs to the logical rendering path rather than being inherited from a window-system default.
 
-The disabled-VSync policy preserves the verified retail 5517 presentation contract. Detailed native
-evidence and compatibility requirements are documented in
+The disabled-VSync and outer frame-cadence policies preserve verified retail 5517 behavior. Detailed
+native evidence and compatibility requirements are documented in
 [`docs/compatibility/native-graphics.md`](../compatibility/native-graphics.md).
 
 Presentation cadence does not define gameplay simulation timing. Display presentation and game
@@ -489,6 +561,10 @@ ownership.
 The current architecture follows these rules:
 
 - `OpenConquer.Client` is the sole composition root.
+- `OpenConquer.Client` owns compatibility-derived application policy such as the retail outer frame
+  interval.
+- `OpenConquer.Platform` implements frame-pacing mechanics without owning Conquer-specific cadence
+  values.
 - `OpenConquer.Platform` does not reference `OpenConquer.Rendering`.
 - `OpenConquer.Rendering` does not reference `OpenConquer.Platform`.
 - `OpenConquer.Rendering` does not depend on Silk.NET Windowing, Maths, or Input.

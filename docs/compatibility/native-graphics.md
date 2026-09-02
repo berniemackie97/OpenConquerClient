@@ -33,7 +33,7 @@ in:
 ini/GameSetup.Ini
 ```
 
-OpenConquer Client now reads that configuration during startup and preserves the verified logical
+OpenConquer Client reads that configuration during startup and preserves the verified logical
 resolution mapping:
 
 ```text
@@ -114,7 +114,46 @@ retrace.
 
 The modern desktop host therefore does not force VSync.
 
-Presentation cadence is separate from gameplay simulation timing.
+### Outer Client Frame Cadence
+
+The retail outer client loop uses a 25 ms gate around its frame pipeline.
+
+The effective maximum cadence is therefore:
+
+```text
+25 ms per frame
+= 40 frames per second
+```
+
+When less than 25 ms has elapsed since the previous frame boundary, retail waits for the remaining
+interval before allowing the next frame pipeline execution.
+
+OpenConquer Client preserves this as an explicit application policy.
+
+`ClientApplication` owns the verified 25 ms value and supplies it to `DesktopWindow`. Platform owns
+the pacing mechanism but does not contain a Conquer-specific frame-rate constant.
+
+The modern pacer follows these compatibility and runtime-safety rules:
+
+- elapsed time comes from a monotonic timestamp source
+- early frames wait only for the remaining portion of the 25 ms interval
+- elapsed time is rechecked after a wait rather than assuming the requested sleep duration was exact
+- an overrun does not incur an additional wait before the next frame
+- missed frame intervals are not replayed
+- an overrun establishes the actual next frame as the new cadence anchor instead of creating a
+  catch-up burst
+
+Silk.NET's independent render and update rate limiters remain uncapped. OpenConquer owns cadence in
+its custom outer desktop loop, so adding another Silk.NET limiter would create overlapping pacing
+policies.
+
+VSync remains disabled. The explicit outer cadence and the swap interval are separate controls.
+
+The 25 ms outer frame gate is not treated as a universal client clock. Gameplay simulation timing,
+startup-host timers, network deadlines, animation timing, and other domains remain separate unless
+additional native evidence establishes a shared contract.
+
+Presentation cadence is therefore separate from gameplay simulation timing.
 
 ## Multisampling
 

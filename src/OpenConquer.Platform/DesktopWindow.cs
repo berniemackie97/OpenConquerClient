@@ -10,13 +10,14 @@ public sealed class DesktopWindow : IDisposable
     private static readonly Vector2D<int> InitialHostSize = new(1280, 720);
 
     private readonly IWindow _window;
+    private readonly DesktopFramePacer _framePacer;
 
     private SilkOpenGlContext? _openGlContext;
     private bool _runStarted;
     private bool _openGlContextReleaseStarted;
     private bool _disposed;
 
-    public DesktopWindow()
+    public DesktopWindow(TimeSpan frameInterval)
     {
         WindowOptions options = WindowOptions.Default with
         {
@@ -24,14 +25,21 @@ public sealed class DesktopWindow : IDisposable
             Size = InitialHostSize,
             WindowState = WindowState.Normal,
             WindowBorder = WindowBorder.Resizable,
+
+            FramesPerSecond = 0,
+            UpdatesPerSecond = 0,
             VSync = false,
+
             Samples = 0,
             ShouldSwapAutomatically = true,
+
             API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, new APIVersion(3, minorVersion: 3)),
+
             PreferredDepthBufferBits = 0,
             PreferredStencilBufferBits = 0,
         };
 
+        _framePacer = new DesktopFramePacer(frameInterval);
         _window = Window.Create(options);
 
         _window.Load += OnLoad;
@@ -70,6 +78,9 @@ public sealed class DesktopWindow : IDisposable
         try
         {
             _window.Initialize();
+
+            _framePacer.Start();
+
             _window.Run(RunFrame);
             _window.DoEvents();
         }
@@ -122,6 +133,13 @@ public sealed class DesktopWindow : IDisposable
     private void RunFrame()
     {
         _window.DoEvents();
+
+        if (_window.IsClosing)
+        {
+            return;
+        }
+
+        _framePacer.WaitForNextFrame();
 
         if (_window.IsClosing)
         {

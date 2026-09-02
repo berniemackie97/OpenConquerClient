@@ -48,9 +48,9 @@ two and coordinates their lifetimes without creating a direct dependency between
 The current renderer uses **OpenGL 3.3 Core through Silk.NET**.
 
 Game rendering uses a fixed logical surface independent of the resizable desktop framebuffer. The
-current application selects the original client's 1024×768 logical resolution. Rendering copies that
-logical frame across the physical host framebuffer, after which Platform performs the native buffer
-swap.
+application reads the original client's screen-mode configuration and selects either the 800×600 or
+1024×768 logical resolution accordingly. Rendering copies that logical frame across the physical
+host framebuffer, after which Platform performs the native buffer swap.
 
 More detailed architecture and compatibility documentation lives under [`docs`](docs).
 
