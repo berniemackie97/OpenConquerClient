@@ -284,7 +284,7 @@ native buffer swap.
 The native OpenGL context is owned by `OpenConquer.Platform`.
 
 Once the desktop window has initialized its graphics context, Platform exposes a narrow borrowed
-`IOpenGlContext` capability to `OpenConquer.Client`. Silk.NET window and context types remain
+`IOpenGLContext` capability to `OpenConquer.Client`. Silk.NET window and context types remain
 internal to Platform.
 
 Client bridges the Platform-owned context into Rendering through an OpenGL procedure-address
@@ -293,11 +293,11 @@ resolver:
 ```text
 OpenConquer.Platform
         │
-        │ IOpenGlContext.GetProcAddress
+        │ IOpenGLContext.GetProcAddress
         ▼
 OpenConquer.Client
         │
-        │ OpenGlProcAddressResolver
+        │ OpenGLProcAddressResolver
         ▼
 OpenConquer.Rendering
         │
@@ -309,7 +309,7 @@ Silk.NET.OpenGL
 `OpenConquer.Rendering` therefore does not depend on `OpenConquer.Platform`, `Silk.NET.Windowing`,
 or Silk.NET context types.
 
-`OpenGlGraphicsDevice` owns the Silk.NET OpenGL API binding but does not own the native OpenGL
+`OpenGLGraphicsDevice` owns the Silk.NET OpenGL API binding but does not own the native OpenGL
 context.
 
 Graphics-device initialization verifies that the active context satisfies the renderer's OpenGL 3.3
@@ -347,13 +347,13 @@ GameSetupConfiguration
 LogicalRenderSize
         │
         ▼
-OpenGlRenderTarget
+OpenGLRenderTarget
         │
         │ render logical frame
         ▼
 fixed logical framebuffer
         │
-        │ OpenGlRenderer linear color blit
+        │ OpenGLRenderer linear color blit
         ▼
 physical host framebuffer
         │
@@ -381,12 +381,12 @@ rendering resolution.
 The desktop host is intentionally resizable. This is a modernization over the original fixed-window
 behavior while preserving the game's fixed logical rendering coordinate system.
 
-`OpenGlRenderer` blits the logical color buffer across the complete physical host framebuffer using
+`OpenGLRenderer` blits the logical color buffer across the complete physical host framebuffer using
 linear filtering.
 
 ## Logical Render Target
 
-`OpenGlRenderTarget` owns the logical framebuffer and its GPU attachments:
+`OpenGLRenderTarget` owns the logical framebuffer and its GPU attachments:
 
 ```text
 logical framebuffer
@@ -442,8 +442,8 @@ window
 GPU resources must be destroyed while the OpenGL context required to destroy them is still valid and
 current.
 
-`OpenGlRenderTarget` owns its framebuffer, color texture, and depth renderbuffer. `OpenGlRenderer`
-owns the render target. `OpenGlGraphicsDevice` owns the Silk.NET OpenGL API binding. `DesktopWindow`
+`OpenGLRenderTarget` owns its framebuffer, color texture, and depth renderbuffer. `OpenGLRenderer`
+owns the render target. `OpenGLGraphicsDevice` owns the Silk.NET OpenGL API binding. `DesktopWindow`
 owns the native window and native OpenGL context.
 
 `OpenConquer.Client` coordinates the ordering between Rendering and the Platform-owned context
@@ -460,11 +460,11 @@ desktop loop exits
         ↓
 Platform requests graphics release
         ↓
-Client disposes OpenGlRenderer
+Client disposes OpenGLRenderer
         ↓
-OpenGlRenderer disposes OpenGlRenderTarget
+OpenGLRenderer disposes OpenGLRenderTarget
         ↓
-Client disposes OpenGlGraphicsDevice
+Client disposes OpenGLGraphicsDevice
         ↓
 Platform disposes OpenGL context and window
 ```
@@ -494,9 +494,9 @@ Platform render callback
         ↓
 OpenConquer.Client
         ↓
-OpenGlRenderer.RenderFrame
+OpenGLRenderer.RenderFrame
         ↓
-OpenGlRenderTarget.BeginFrame
+OpenGLRenderTarget.BeginFrame
         ↓
 bind fixed logical framebuffer
         ↓
@@ -504,7 +504,7 @@ establish deterministic frame state
         ↓
 clear logical color + depth
         ↓
-OpenGlRenderer blits logical color
+OpenGLRenderer blits logical color
         ↓
 default host framebuffer
         ↓

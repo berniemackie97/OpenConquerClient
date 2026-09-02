@@ -4,12 +4,14 @@ namespace OpenConquer.Platform.Tests;
 
 public sealed class DesktopFramePacerTests
 {
-    private static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(25);
+    private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
+
+    private static readonly TimeSpan s_maximumSleepInterval = TimeSpan.FromMilliseconds(int.MaxValue);
 
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void ConstructorWhenFrameIntervalIsNotPositiveThrowsArgumentOutOfRangeException(
+    public void Constructor_ThrowsArgumentOutOfRangeExceptionWhenFrameIntervalIsNotPositive(
         int frameIntervalMilliseconds
     )
     {
@@ -19,15 +21,41 @@ public sealed class DesktopFramePacerTests
     }
 
     [Fact]
-    public void WaitForNextFrameBeforeStartThrowsInvalidOperationException()
+    public void Constructor_ThrowsArgumentOutOfRangeExceptionWhenFrameIntervalExceedsThreadSleepMaximum()
     {
-        DesktopFramePacer framePacer = new(FrameInterval);
+        TimeSpan frameInterval = s_maximumSleepInterval + TimeSpan.FromMilliseconds(1);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => new DesktopFramePacer(frameInterval));
+    }
+
+    [Fact]
+    public void Constructor_SucceedsWhenFrameIntervalEqualsThreadSleepMaximum()
+    {
+        Exception? exception = Record.Exception(() => new DesktopFramePacer(s_maximumSleepInterval));
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void Constructor_SucceedsWhenFrameIntervalCarriesAFractionAboveThreadSleepMaximum()
+    {
+        TimeSpan frameInterval = s_maximumSleepInterval + TimeSpan.FromTicks(1);
+
+        Exception? exception = Record.Exception(() => new DesktopFramePacer(frameInterval));
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void WaitForNextFrame_ThrowsInvalidOperationExceptionBeforeStart()
+    {
+        DesktopFramePacer framePacer = new(s_frameInterval);
 
         Assert.Throws<InvalidOperationException>(framePacer.WaitForNextFrame);
     }
 
     [Fact]
-    public void WaitForNextFrameImmediatelyAfterStartWaitsForFullInterval()
+    public void WaitForNextFrame_WaitsForTheFullIntervalImmediatelyAfterStart()
     {
         ManualTimeProvider timeProvider = new();
         List<TimeSpan> sleepDurations = [];
@@ -37,13 +65,13 @@ public sealed class DesktopFramePacerTests
         framePacer.Start();
         framePacer.WaitForNextFrame();
 
-        Assert.Equal([FrameInterval], sleepDurations);
+        Assert.Equal([s_frameInterval], sleepDurations);
 
-        Assert.Equal(FrameInterval, timeProvider.Elapsed);
+        Assert.Equal(s_frameInterval, timeProvider.Elapsed);
     }
 
     [Fact]
-    public void WaitForNextFrameWaitsOnlyForRemainingInterval()
+    public void WaitForNextFrame_WaitsOnlyForTheRemainingInterval()
     {
         ManualTimeProvider timeProvider = new();
         List<TimeSpan> sleepDurations = [];
@@ -58,11 +86,11 @@ public sealed class DesktopFramePacerTests
 
         Assert.Equal([TimeSpan.FromMilliseconds(15)], sleepDurations);
 
-        Assert.Equal(FrameInterval, timeProvider.Elapsed);
+        Assert.Equal(s_frameInterval, timeProvider.Elapsed);
     }
 
     [Fact]
-    public void WaitForNextFrameAfterOverrunDoesNotSleep()
+    public void WaitForNextFrame_DoesNotSleepAfterAnOverrun()
     {
         ManualTimeProvider timeProvider = new();
         List<TimeSpan> sleepDurations = [];
@@ -79,7 +107,7 @@ public sealed class DesktopFramePacerTests
     }
 
     [Fact]
-    public void WaitForNextFrameAfterOverrunDoesNotCatchUpMissedFrames()
+    public void WaitForNextFrame_DoesNotCatchUpMissedFramesAfterAnOverrun()
     {
         ManualTimeProvider timeProvider = new();
         List<TimeSpan> sleepDurations = [];
@@ -100,13 +128,13 @@ public sealed class DesktopFramePacerTests
     }
 
     [Fact]
-    public void WaitForNextFrameAnchorsNextFrameToActualWakeTime()
+    public void WaitForNextFrame_AnchorsTheNextFrameToTheActualWakeTime()
     {
         ManualTimeProvider timeProvider = new();
         List<TimeSpan> sleepDurations = [];
 
         DesktopFramePacer framePacer = new(
-            FrameInterval,
+            s_frameInterval,
             timeProvider,
             duration =>
             {
@@ -135,7 +163,7 @@ public sealed class DesktopFramePacerTests
     )
     {
         return new DesktopFramePacer(
-            FrameInterval,
+            s_frameInterval,
             timeProvider,
             duration =>
             {

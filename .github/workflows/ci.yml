@@ -35,8 +35,8 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Restore
-        run: dotnet restore OpenConquer.Client.slnx
+      - name: Restore locked dependencies
+        run: dotnet restore OpenConquer.Client.slnx --locked-mode
 
       - name: Verify formatting
         run: dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
@@ -45,26 +45,10 @@ jobs:
         run: dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
 
       - name: Test
-        shell: bash
-        run: |
-          if [[ ! -d tests ]]; then
-            echo "No test projects are currently present."
-            exit 0
-          fi
+        run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 
-          mapfile -t test_projects < <(find tests -type f -name '*.Tests.csproj' -print | sort)
-
-          if (( ${#test_projects[@]} == 0 )); then
-            echo "No test projects are currently present."
-            exit 0
-          fi
-
-          for project in "${test_projects[@]}"; do
-            dotnet test "$project" --configuration Release --no-build --no-restore
-          done
-
-  cross-platform-build:
-    name: Build (${{ matrix.name }})
+  cross-platform:
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
 
@@ -88,8 +72,13 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Restore
-        run: dotnet restore OpenConquer.Client.slnx
+      - name: Restore locked dependencies
+        run: dotnet restore OpenConquer.Client.slnx --locked-mode
 
       - name: Build
         run: dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
+
+      # The client is the platform-specific half of this system, so the suite runs on every
+      # target rather than only on the Linux quality job.
+      - name: Test
+        run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore

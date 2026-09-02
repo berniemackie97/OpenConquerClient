@@ -269,7 +269,7 @@ logical render target
 ├── RGB565 preferred / RGB5 fallback color texture
 └── exact D16 depth renderbuffer
         │
-        │ OpenGlRenderer linear color blit
+        │ OpenGLRenderer linear color blit
         ▼
 desktop framebuffer
 ├── color

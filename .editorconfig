@@ -54,3 +54,61 @@ csharp_style_prefer_readonly_struct = true:suggestion
 
 dotnet_diagnostic.IDE0055.severity = warning
 dotnet_diagnostic.IDE0161.severity = warning
+
+# Unused imports should not survive CI.
+dotnet_diagnostic.IDE0005.severity = warning
+
+# Naming
+#
+# These match OpenConquerServer so both repositories enforce one convention. Severity is
+# warning and the build treats warnings as errors, so a violation fails the build rather
+# than accumulating as advice.
+#
+# Rules are evaluated in file order and the first applicable rule wins, so the most
+# specific symbol group is declared first: a private const is also a private static field,
+# and a private static field is also a private field.
+#
+# IDE1006 carries every naming-rule violation. Without this line the rules below parse
+# and then report nothing on build, so the convention would be advisory only.
+dotnet_diagnostic.IDE1006.severity = warning
+
+# Private constants: PascalCase
+dotnet_naming_rule.private_constants_should_be_pascal_case.severity = warning
+dotnet_naming_rule.private_constants_should_be_pascal_case.symbols = private_constants
+dotnet_naming_rule.private_constants_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_symbols.private_constants.applicable_kinds = field
+dotnet_naming_symbols.private_constants.applicable_accessibilities = private
+dotnet_naming_symbols.private_constants.required_modifiers = const
+
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+# Private static fields: s_camelCase
+dotnet_naming_rule.private_static_fields_should_be_s_camel_case.severity = warning
+dotnet_naming_rule.private_static_fields_should_be_s_camel_case.symbols = private_static_fields
+dotnet_naming_rule.private_static_fields_should_be_s_camel_case.style = static_camel_case
+
+dotnet_naming_symbols.private_static_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_fields.required_modifiers = static
+
+dotnet_naming_style.static_camel_case.required_prefix = s_
+dotnet_naming_style.static_camel_case.capitalization = camel_case
+
+# Private instance fields: _camelCase
+dotnet_naming_rule.private_fields_should_be_underscore_camel_case.severity = warning
+dotnet_naming_rule.private_fields_should_be_underscore_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_underscore_camel_case.style = underscore_camel_case
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+[tests/**/*.cs]
+# Test methods are named Subject_ExpectedBehavior, matching OpenConquerServer. The
+# underscore separates the member under test from the behaviour being asserted and is
+# the convention here, so CA1707 is scoped off for test code only. Production code keeps
+# it, which is why this is a path-scoped override rather than a repository-wide one.
+dotnet_diagnostic.CA1707.severity = none

@@ -2,6 +2,18 @@ namespace OpenConquer.Platform.Internal;
 
 internal sealed class DesktopFramePacer
 {
+    /// <summary>
+    /// Largest whole-millisecond count <see cref="Thread.Sleep(TimeSpan)"/> accepts.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Thread.Sleep(TimeSpan)"/> truncates to whole milliseconds and rejects the result
+    /// only when it exceeds <see cref="int.MaxValue"/>, so an interval carrying a sub-millisecond
+    /// fraction above that boundary is still accepted. The guard below reproduces that comparison
+    /// exactly rather than approximating it with a <see cref="TimeSpan"/> bound, which would reject
+    /// intervals the sleep itself would have honoured.
+    /// </remarks>
+    private const long MaximumSleepWholeMilliseconds = int.MaxValue;
+
     private readonly TimeSpan _frameInterval;
     private readonly TimeProvider _timeProvider;
     private readonly Action<TimeSpan> _sleep;
@@ -16,6 +28,11 @@ internal sealed class DesktopFramePacer
         if (frameInterval <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(frameInterval), frameInterval, "Frame interval must be greater than zero.");
+        }
+
+        if ((long)frameInterval.TotalMilliseconds > MaximumSleepWholeMilliseconds)
+        {
+            throw new ArgumentOutOfRangeException(nameof(frameInterval), frameInterval, "Frame interval must not exceed Int32.MaxValue whole milliseconds.");
         }
 
         ArgumentNullException.ThrowIfNull(timeProvider);

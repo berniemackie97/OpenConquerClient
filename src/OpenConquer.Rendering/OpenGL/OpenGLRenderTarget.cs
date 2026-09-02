@@ -1,8 +1,8 @@
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGl;
+namespace OpenConquer.Rendering.OpenGL;
 
-internal sealed class OpenGlRenderTarget : IDisposable
+internal sealed class OpenGLRenderTarget : IDisposable
 {
     private static readonly ColorFormatCandidate[] s_colorFormatCandidates =
     [
@@ -19,7 +19,7 @@ internal sealed class OpenGlRenderTarget : IDisposable
     private uint _depthRenderbuffer;
     private bool _disposed;
 
-    public OpenGlRenderTarget(GL gl, int width, int height)
+    public OpenGLRenderTarget(GL gl, int width, int height)
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);

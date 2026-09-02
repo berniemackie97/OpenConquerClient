@@ -56,15 +56,26 @@ More detailed architecture and compatibility documentation lives under [`docs`](
 
 ## Build
 
+Dependencies are pinned by the committed NuGet lock files, so restore in locked mode:
+
 ```bash
-dotnet restore
-dotnet build OpenConquer.Client.slnx
+dotnet restore OpenConquer.Client.slnx --locked-mode
+```
+
+```bash
+dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
+```
+
+## Tests
+
+```bash
+dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 ```
 
 To verify formatting:
 
 ```bash
-dotnet format OpenConquer.Client.slnx --verify-no-changes
+dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
 ```
 
 ## Repository
@@ -79,6 +90,11 @@ src/
 └── OpenConquer.Rendering/
 
 tests/
+├── OpenConquer.Client.Tests/
+├── OpenConquer.Content.Tests/
+├── OpenConquer.Platform.Tests/
+└── OpenConquer.Rendering.Tests/
+
 docs/
 tools/
 ```

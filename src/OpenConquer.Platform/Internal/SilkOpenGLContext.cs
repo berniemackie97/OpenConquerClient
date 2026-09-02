@@ -2,11 +2,11 @@ using Silk.NET.Core.Contexts;
 
 namespace OpenConquer.Platform.Internal;
 
-internal sealed class SilkOpenGlContext : IOpenGlContext
+internal sealed class SilkOpenGLContext : IOpenGLContext
 {
     private readonly IGLContext _context;
 
-    public SilkOpenGlContext(IGLContext context)
+    public SilkOpenGLContext(IGLContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

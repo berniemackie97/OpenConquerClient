@@ -1,6 +1,6 @@
 namespace OpenConquer.Platform;
 
-public interface IOpenGlContext
+public interface IOpenGLContext
 {
     nint GetProcAddress(string functionName);
 }

@@ -2,19 +2,19 @@ using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Platform;
 using OpenConquer.Rendering;
-using OpenConquer.Rendering.OpenGl;
+using OpenConquer.Rendering.OpenGL;
 
 namespace OpenConquer.Client;
 
 internal sealed class ClientApplication : IDisposable
 {
-    private static readonly TimeSpan RetailFrameInterval = TimeSpan.FromMilliseconds(25);
+    private static readonly TimeSpan s_retailFrameInterval = TimeSpan.FromMilliseconds(25);
 
     private readonly DesktopWindow _window;
     private readonly LogicalRenderSize _logicalRenderSize;
 
-    private OpenGlGraphicsDevice? _graphicsDevice;
-    private OpenGlRenderer? _renderer;
+    private OpenGLGraphicsDevice? _graphicsDevice;
+    private OpenGLRenderer? _renderer;
     private bool _disposed;
 
     public ClientApplication(string clientContentRootPath)
@@ -24,12 +24,12 @@ internal sealed class ClientApplication : IDisposable
 
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
 
-        _window = new DesktopWindow(RetailFrameInterval);
+        _window = new DesktopWindow(s_retailFrameInterval);
 
         _window.FramebufferResized += OnFramebufferResized;
         _window.Rendering += OnRendering;
-        _window.OpenGlContextReady += OnOpenGlContextReady;
-        _window.OpenGlContextReleasing += OnOpenGlContextReleasing;
+        _window.OpenGLContextReady += OnOpenGLContextReady;
+        _window.OpenGLContextReleasing += OnOpenGLContextReleasing;
     }
 
     public int Run()
@@ -58,14 +58,14 @@ internal sealed class ClientApplication : IDisposable
         }
     }
 
-    private void OnOpenGlContextReady(IOpenGlContext context)
+    private void OnOpenGLContextReady(IOpenGLContext context)
     {
         if (_graphicsDevice is not null || _renderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
 
-        OpenGlGraphicsDevice graphicsDevice = new(context.GetProcAddress);
+        OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
 
         try
         {
@@ -92,7 +92,7 @@ internal sealed class ClientApplication : IDisposable
         _renderer?.RenderFrame();
     }
 
-    private void OnOpenGlContextReleasing()
+    private void OnOpenGLContextReleasing()
     {
         try
         {
