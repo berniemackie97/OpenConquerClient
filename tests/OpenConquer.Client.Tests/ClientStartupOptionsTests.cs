@@ -1,3 +1,5 @@
+using OpenConquer.Rendering;
+
 namespace OpenConquer.Client.Tests;
 
 public sealed class ClientStartupOptionsTests
@@ -213,6 +215,148 @@ public sealed class ClientStartupOptionsTests
                 out _
             )
         );
+    }
+
+    [Fact]
+    public void TryParse_DefaultsPresentationToFitSoTheFrameIsNeverDistorted()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            [],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.True(parsed);
+        Assert.NotNull(options);
+        Assert.Null(errorMessage);
+        Assert.Equal(PresentationPolicy.Fit, options.PresentationPolicy);
+    }
+
+    [Theory]
+    [InlineData("fit", PresentationPolicy.Fit)]
+    [InlineData("integer", PresentationPolicy.IntegerScale)]
+    [InlineData("stretch", PresentationPolicy.Stretch)]
+    [InlineData("Integer", PresentationPolicy.IntegerScale)]
+    [InlineData("STRETCH", PresentationPolicy.Stretch)]
+    public void TryParse_AcceptsEveryPresentationPolicyNameCaseInsensitively(string value, PresentationPolicy expected)
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--presentation", value],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.True(parsed);
+        Assert.NotNull(options);
+        Assert.Null(errorMessage);
+        Assert.Equal(expected, options.PresentationPolicy);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureForUnknownPresentationValue()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--presentation", "letterbox"],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+
+        // The message must name the accepted values, or the only way to discover them is the source.
+        Assert.Contains("fit", errorMessage, StringComparison.Ordinal);
+        Assert.Contains("integer", errorMessage, StringComparison.Ordinal);
+        Assert.Contains("stretch", errorMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureWhenPresentationValueIsMissing()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--presentation"],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureWhenAnOptionReplacesThePresentationValue()
+    {
+        // A forgotten value must not swallow the next option and leave it silently unapplied.
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--presentation", "--content-root", CreateAbsolutePath("content")],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureWhenPresentationIsDuplicated()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--presentation", "fit", "--presentation", "integer"],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Fact]
+    public void TryParse_AcceptsContentRootAndPresentationTogetherInEitherOrder()
+    {
+        string contentRoot = CreateAbsolutePath("content");
+
+        foreach (string[] args in new[]
+        {
+            new[] { "--content-root", contentRoot, "--presentation", "integer" },
+            new[] { "--presentation", "integer", "--content-root", contentRoot },
+        })
+        {
+            bool parsed = ClientStartupOptions.TryParse(
+                args,
+                CreateAbsolutePath("default-content"),
+                CreateAbsolutePath("working-directory"),
+                out ClientStartupOptions? options,
+                out string? errorMessage
+            );
+
+            Assert.True(parsed);
+            Assert.NotNull(options);
+            Assert.Null(errorMessage);
+            Assert.Equal(Path.TrimEndingDirectorySeparator(contentRoot), options.ContentRootPath);
+            Assert.Equal(PresentationPolicy.IntegerScale, options.PresentationPolicy);
+        }
+    }
+
+    [Fact]
+    public void PresentationPolicyNames_ListsEveryAcceptedValue()
+    {
+        Assert.Equal("fit|integer|stretch", ClientStartupOptions.PresentationPolicyNames);
     }
 
     private static string CreateAbsolutePath(string leafName)

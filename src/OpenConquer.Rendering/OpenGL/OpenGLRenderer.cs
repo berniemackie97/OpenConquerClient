@@ -7,13 +7,15 @@ public sealed class OpenGLRenderer : IDisposable
     private readonly GL _gl;
     private readonly LogicalRenderSize _logicalRenderSize;
     private readonly OpenGLRenderTarget _renderTarget;
+    private readonly PresentationPolicy _presentationPolicy;
 
     private int _framebufferWidth;
     private int _framebufferHeight;
+    private PresentationViewport _viewport;
     private bool _hostFramebufferValidated;
     private bool _disposed;
 
-    internal OpenGLRenderer(GL gl, LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight)
+    internal OpenGLRenderer(GL gl, LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy)
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentOutOfRangeException.ThrowIfNegative(framebufferWidth);
@@ -21,11 +23,22 @@ public sealed class OpenGLRenderer : IDisposable
 
         _gl = gl;
         _logicalRenderSize = logicalRenderSize;
+        _presentationPolicy = presentationPolicy;
         _renderTarget = new OpenGLRenderTarget(gl, logicalRenderSize.Width, logicalRenderSize.Height);
 
         _framebufferWidth = framebufferWidth;
         _framebufferHeight = framebufferHeight;
+        _viewport = PresentationViewport.Compute(logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy);
     }
+
+    /// <summary>
+    /// Where the logical frame is currently being presented inside the host framebuffer.
+    /// </summary>
+    /// <remarks>
+    /// Exposed so input can map pointer positions back to logical coordinates through the same
+    /// transform this renderer draws with. Nothing else should recompute it.
+    /// </remarks>
+    public PresentationViewport Viewport => _viewport;
 
     public void ResizeHostFramebuffer(int width, int height)
     {
@@ -36,6 +49,7 @@ public sealed class OpenGLRenderer : IDisposable
 
         _framebufferWidth = width;
         _framebufferHeight = height;
+        _viewport = PresentationViewport.Compute(_logicalRenderSize, width, height, _presentationPolicy);
     }
 
     public void RenderFrame()
@@ -67,7 +81,7 @@ public sealed class OpenGLRenderer : IDisposable
     {
         try
         {
-            if (_framebufferWidth == 0 || _framebufferHeight == 0)
+            if (_viewport.IsEmpty)
             {
                 return;
             }
@@ -75,19 +89,56 @@ public sealed class OpenGLRenderer : IDisposable
             _gl.Disable(EnableCap.ScissorTest);
             _gl.Disable(EnableCap.FramebufferSrgb);
 
-            _renderTarget.BindForRead();
             _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, framebuffer: 0);
 
             ValidateHostFramebuffer();
+            ClearLetterboxBars();
 
-            _gl.BlitFramebuffer(srcX0: 0, srcY0: 0, srcX1: _logicalRenderSize.Width, srcY1: _logicalRenderSize.Height, dstX0: 0, dstY0: 0,
-                dstX1: _framebufferWidth, dstY1: _framebufferHeight, (uint)ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Linear);
+            _renderTarget.BindForRead();
+
+            _gl.BlitFramebuffer(srcX0: 0, srcY0: 0, srcX1: _logicalRenderSize.Width, srcY1: _logicalRenderSize.Height,
+                dstX0: _viewport.OffsetX, dstY0: _viewport.OffsetY,
+                dstX1: _viewport.OffsetX + _viewport.Width, dstY1: _viewport.OffsetY + _viewport.Height,
+                (uint)ClearBufferMask.ColorBufferBit, ToBlitFilter(_viewport.Filter));
         }
         finally
         {
             _gl.BindFramebuffer(FramebufferTarget.Framebuffer, framebuffer: 0);
             _gl.Viewport(0, 0, (uint)_framebufferWidth, (uint)_framebufferHeight);
         }
+    }
+
+    /// <summary>
+    /// Clears the host framebuffer when the presented rectangle does not fill it.
+    /// </summary>
+    /// <remarks>
+    /// Preserving the aspect ratio leaves bars that the blit never writes. Without this they show
+    /// whatever the driver left in the back buffer, which flickers between frames because the swap
+    /// chain rotates through several. Skipped when the rectangle covers everything, so the common
+    /// full-coverage case costs nothing.
+    /// </remarks>
+    private void ClearLetterboxBars()
+    {
+        if (_viewport.CoversHostFramebuffer())
+        {
+            return;
+        }
+
+        _gl.Viewport(0, 0, (uint)_framebufferWidth, (uint)_framebufferHeight);
+        _gl.ColorMask(red: true, green: true, blue: true, alpha: true);
+        _gl.ClearColor(red: 0f, green: 0f, blue: 0f, alpha: 1f);
+        _gl.Clear(mask: (uint)ClearBufferMask.ColorBufferBit);
+    }
+
+    private static BlitFramebufferFilter ToBlitFilter(PresentationFilter filter)
+    {
+        return filter switch
+        {
+            PresentationFilter.Nearest => BlitFramebufferFilter.Nearest,
+            PresentationFilter.Linear => BlitFramebufferFilter.Linear,
+
+            _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "Unknown presentation filter."),
+        };
     }
 
     private void ValidateHostFramebuffer()

@@ -64,6 +64,32 @@ public sealed class DesktopWindow : IDisposable
         }
     }
 
+    /// <summary>
+    /// Converts a pointer position reported in window coordinates to host framebuffer pixels.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Window coordinates and framebuffer pixels are the same thing only at a scale factor of one.
+    /// On a scaled display they differ — commonly by two — so mapping a pointer position through a
+    /// transform built from <see cref="FramebufferSize"/> without converting first resolves clicks
+    /// at a fraction of their true position. The defect is invisible on an unscaled display, which
+    /// is where it usually gets tested.
+    /// </para>
+    /// <para>
+    /// The conversion is delegated to the windowing layer rather than derived from a size ratio,
+    /// because the platform knows its own scaling and a ratio computed here would round
+    /// independently of it.
+    /// </para>
+    /// </remarks>
+    public PixelPoint PointToFramebuffer(PixelPoint windowPoint)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, instance: this);
+
+        Vector2D<int> framebufferPoint = _window.PointToFramebuffer(new Vector2D<int>(windowPoint.X, windowPoint.Y));
+
+        return new PixelPoint(x: framebufferPoint.X, y: framebufferPoint.Y);
+    }
+
     public void Run()
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);

@@ -12,13 +12,16 @@ internal sealed class ClientApplication : IDisposable
 
     private readonly DesktopWindow _window;
     private readonly LogicalRenderSize _logicalRenderSize;
+    private readonly PresentationPolicy _presentationPolicy;
 
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private bool _disposed;
 
-    public ClientApplication(string clientContentRootPath)
+    public ClientApplication(string clientContentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit)
     {
+        _presentationPolicy = presentationPolicy;
+
         ClientContentRoot contentRoot = new(clientContentRootPath);
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentRoot);
 
@@ -71,7 +74,7 @@ internal sealed class ClientApplication : IDisposable
         {
             PixelSize framebufferSize = _window.FramebufferSize;
 
-            _renderer = graphicsDevice.CreateRenderer(_logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
+            _renderer = graphicsDevice.CreateRenderer(_logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
 
             _graphicsDevice = graphicsDevice;
         }
