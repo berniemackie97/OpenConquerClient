@@ -433,10 +433,32 @@ logical pixel (top-down), or unmapped
 ```
 
 `DesktopWindow.PointToFramebuffer` delegates to the windowing layer rather than deriving a size
-ratio. Window coordinates and framebuffer pixels are the same only at a scale factor of one; on a
-scaled display they commonly differ by two, and a transform built from `FramebufferSize` without
-this conversion resolves clicks at a fraction of their true position. That defect is invisible on an
-unscaled display.
+ratio. Window coordinates and framebuffer pixels are the same only at a scale factor of one, and a
+transform built from `FramebufferSize` without this conversion resolves clicks at a fraction of
+their true position. That defect is invisible on an unscaled display.
+
+The coordinate space the input layer reports was measured rather than assumed. On a 2x display, a
+640x480 window reports a 1280x960 framebuffer, and with the operating-system cursor at global
+position (965.2, 700.7):
+
+```text
+window.PointToClient(cursor)     = (915, 639)
+IMouse.Position                  = (915.2422, 638.7461)   <- matches, within rounding
+PointToFramebuffer(915, 639)     = (1830, 1278)           <- does not match
+```
+
+Pointer positions therefore arrive in window coordinates, and the conversion is required rather
+than optional. `PointToFramebuffer` was also confirmed to be exactly linear and origin-preserving
+on that display: `(0,0)` maps to `(0,0)`, `(1,1)` to `(2,2)`, and `(640,480)` to `(1280,960)`.
+
+Reproduce by creating a window, reading `Size` and `FramebufferSize`, then comparing `IMouse.Position`
+against `PointToClient` of the operating-system cursor position. A machine at a scale factor of one
+cannot distinguish the two spaces and will not detect a regression here.
+
+Pointer positions are fractional and the windowing conversion accepts whole window coordinates only,
+so `PointToFramebuffer` rounds to the nearest rather than truncating, which would bias every pointer
+up and to the left by half a window coordinate. Pointer precision is bounded at one window
+coordinate, finer than the logical pixels it maps to.
 
 `TryMapPointerToLogical` flips vertically at both ends: once to reach the bottom-up framebuffer row
 the destination rectangle is expressed in, and once to return a top-down logical row. Performing
