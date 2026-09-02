@@ -13,7 +13,7 @@ internal sealed class SilkOpenGlContext : IOpenGlContext
         _context = context;
     }
 
-    public bool IsCurrent => _context.IsCurrent;
+    internal bool IsCurrent => _context.IsCurrent;
 
     public nint GetProcAddress(string functionName)
     {
@@ -22,13 +22,8 @@ internal sealed class SilkOpenGlContext : IOpenGlContext
         return _context.GetProcAddress(functionName);
     }
 
-    public void MakeCurrent()
+    internal void MakeCurrent()
     {
         _context.MakeCurrent();
-    }
-
-    public void ClearCurrent()
-    {
-        _context.Clear();
     }
 }

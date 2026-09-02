@@ -48,6 +48,7 @@ OpenConquer.Client
 OpenConquer.Content
 OpenConquer.Gameplay
 OpenConquer.Networking
+OpenConquer.Platform
 OpenConquer.Rendering
 ```
 

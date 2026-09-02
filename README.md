@@ -1,16 +1,17 @@
 # OpenConquer Client
 
-A modern, cross platform client for **Conquer Online 5517**, written in C# on .NET 10.
+A modern, cross-platform client for **Conquer Online 5517**, written in C# on .NET 10.
 
-This project is a ground up reimplementation of the original Windows C++ client for use with my
+This project is a ground-up reimplementation of the original Windows C++ client for use with my
 **OpenConquer Server** project. OpenConquer Server is the recommended server for this client, but
-other 5517 servers should still work.
+other 5517-compatible servers should still work.
 
 The goal is to preserve the behavior, protocol, content formats, and feel of the original client
 while rebuilding it on a clean modern foundation.
 
-> **Status:** Early development. Core client architecture and runtime systems are currently being
-> built.
+> **Status:** Early development. The desktop platform and native-compatible logical rendering
+> foundation are in place, with gameplay, content, networking, and higher-level rendering systems
+> still being built.
 
 ## Architecture
 
@@ -27,20 +28,29 @@ flowchart TD
 
 The client is split into a small set of focused assemblies:
 
-- **OpenConquer.Client** — executable, composition, application lifecycle, and shutdown coordination
-- **OpenConquer.Platform** — desktop windowing and graphics-context ownership
-- **OpenConquer.Gameplay** — world state and game simulation
-- **OpenConquer.Rendering** — OpenGL rendering and GPU resources
-- **OpenConquer.Content** — original client formats and content loading
-- **OpenConquer.Networking** — transport, encryption, packets, and server protocol
+* **OpenConquer.Client** — executable, subsystem composition, application lifetime, and shutdown
+  coordination
+* **OpenConquer.Platform** — desktop windowing, native graphics-context lifetime, physical
+  framebuffer state, and native buffer swapping
+* **OpenConquer.Gameplay** — world state and game simulation
+* **OpenConquer.Rendering** — OpenGL integration, logical rendering, logical-to-host framebuffer
+  composition, and GPU resources
+* **OpenConquer.Content** — original client formats and content loading
+* **OpenConquer.Networking** — transport, encryption, packets, and server protocol
 
 `OpenConquer.Platform` and `OpenConquer.Rendering` are separate sibling subsystems. Platform owns
-the native window and graphics context, while Rendering owns the OpenGL API binding and GPU
-resources. `OpenConquer.Client` composes the two and coordinates their lifetimes.
+the native window and OpenGL context, while Rendering owns the OpenGL API binding, render targets,
+GPU resources, and construction of the completed host framebuffer. `OpenConquer.Client` composes
+the two and coordinates their lifetimes without creating a direct dependency between them.
 
-The initial renderer uses **OpenGL through Silk.NET**.
+The current renderer uses **OpenGL 3.3 Core through Silk.NET**.
 
-More detailed design documentation lives under [`docs/architecture`](docs/architecture).
+Game rendering uses a fixed logical surface independent of the resizable desktop framebuffer. The
+current application selects the original client's 1024×768 logical resolution. Rendering copies
+that logical frame across the physical host framebuffer, after which Platform performs the native
+buffer swap.
+
+More detailed architecture and compatibility documentation lives under [`docs`](docs).
 
 ## Build
 
@@ -75,13 +85,17 @@ tools/
 
 The original Conquer Online 5517 client is used as the behavioral reference during development.
 
-Reverse engineered native details are used to establish how the original client behaved, but this
-client is designed around clear game concepts rather than reproducing the original implementation.
+Reverse-engineered native details are used to establish how the original client behaved, but this
+client is designed around clear game concepts rather than reproducing the original implementation
+structure.
+
+Intentional modernizations, such as the resizable desktop host window, are kept outside the game's
+logical rendering coordinate system and other compatibility-sensitive behavior.
 
 ## Platforms
 
 OpenConquer Client is being developed for:
 
-- Windows
-- macOS
-- Linux
+* Windows
+* macOS
+* Linux

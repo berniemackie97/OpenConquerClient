@@ -7,45 +7,87 @@ namespace OpenConquer.Platform;
 
 public sealed class DesktopWindow : IDisposable
 {
-    private static readonly Vector2D<int> InitialSize = new(1280, 720);
+    private static readonly Vector2D<int> InitialHostSize = new(1280, 720);
 
     private readonly IWindow _window;
+
     private SilkOpenGlContext? _openGlContext;
-    private bool _openGlContextReleased;
+    private bool _runStarted;
+    private bool _openGlContextReleaseStarted;
     private bool _disposed;
 
     public DesktopWindow()
     {
         WindowOptions options = WindowOptions.Default with
         {
-            Title = "OpenConquer",
-            Size = InitialSize,
+            Title = "OpenConquer Client",
+            Size = InitialHostSize,
             WindowState = WindowState.Normal,
             WindowBorder = WindowBorder.Resizable,
-            API = new GraphicsAPI(
-                ContextAPI.OpenGL,
-                ContextProfile.Core,
-                ContextFlags.ForwardCompatible,
-                new APIVersion(3, 3)),
-            PreferredDepthBufferBits = 24,
-            PreferredStencilBufferBits = 8
+            VSync = false,
+            Samples = 0,
+            ShouldSwapAutomatically = true,
+            API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, new APIVersion(3, minorVersion: 3)),
+            PreferredDepthBufferBits = 0,
+            PreferredStencilBufferBits = 0,
         };
 
         _window = Window.Create(options);
 
         _window.Load += OnLoad;
-        _window.Closing += OnClosing;
+        _window.FramebufferResize += OnFramebufferResize;
+        _window.Render += OnRender;
     }
 
+    public event Action<PixelSize>? FramebufferResized;
+    public event Action<double>? Rendering;
     public event Action<IOpenGlContext>? OpenGlContextReady;
-
     public event Action? OpenGlContextReleasing;
+
+    public PixelSize FramebufferSize
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, instance: this);
+
+            Vector2D<int> size = _window.FramebufferSize;
+
+            return new PixelSize(width: size.X, height: size.Y);
+        }
+    }
 
     public void Run()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposed, instance: this);
 
-        _window.Run();
+        if (_runStarted)
+        {
+            throw new InvalidOperationException("The desktop window has already been run.");
+        }
+
+        _runStarted = true;
+
+        try
+        {
+            _window.Initialize();
+            _window.Run(RunFrame);
+            _window.DoEvents();
+        }
+        catch
+        {
+            try
+            {
+                ReleaseOpenGlContext();
+            }
+            catch
+            {
+                // Preserve the original window-loop failure.
+            }
+
+            throw;
+        }
+
+        ReleaseOpenGlContext();
     }
 
     public void Dispose()
@@ -62,13 +104,38 @@ public sealed class DesktopWindow : IDisposable
         finally
         {
             _window.Load -= OnLoad;
-            _window.Closing -= OnClosing;
+            _window.FramebufferResize -= OnFramebufferResize;
+            _window.Render -= OnRender;
 
-            _window.Dispose();
-
-            _openGlContext = null;
-            _disposed = true;
+            try
+            {
+                _window.Dispose();
+            }
+            finally
+            {
+                _openGlContext = null;
+                _disposed = true;
+            }
         }
+    }
+
+    private void RunFrame()
+    {
+        _window.DoEvents();
+
+        if (_window.IsClosing)
+        {
+            return;
+        }
+
+        _window.DoUpdate();
+
+        if (_window.IsClosing)
+        {
+            return;
+        }
+
+        _window.DoRender();
     }
 
     private void OnLoad()
@@ -78,8 +145,7 @@ public sealed class DesktopWindow : IDisposable
             throw new InvalidOperationException("The OpenGL context has already been initialized.");
         }
 
-        IGLContext context = _window.GLContext
-            ?? throw new InvalidOperationException("The OpenGL context was not created.");
+        IGLContext context = _window.GLContext ?? throw new InvalidOperationException("The OpenGL context was not created.");
 
         SilkOpenGlContext openGlContext = new(context);
 
@@ -93,25 +159,46 @@ public sealed class DesktopWindow : IDisposable
         OpenGlContextReady?.Invoke(openGlContext);
     }
 
-    private void OnClosing()
+    private void OnFramebufferResize(Vector2D<int> size)
     {
-        ReleaseOpenGlContext();
+        FramebufferResized?.Invoke(new PixelSize(width: size.X, height: size.Y));
+    }
+
+    private void OnRender(double deltaSeconds)
+    {
+        SilkOpenGlContext openGlContext = _openGlContext ?? throw new InvalidOperationException("Rendering cannot begin before the OpenGL context is initialized.");
+
+        if (!openGlContext.IsCurrent)
+        {
+            openGlContext.MakeCurrent();
+        }
+
+        Rendering?.Invoke(deltaSeconds);
     }
 
     private void ReleaseOpenGlContext()
     {
-        if (_openGlContext is null || _openGlContextReleased)
+        SilkOpenGlContext? openGlContext = _openGlContext;
+
+        if (openGlContext is null || _openGlContextReleaseStarted)
         {
             return;
         }
 
-        if (!_openGlContext.IsCurrent)
+        if (!openGlContext.IsCurrent)
         {
-            _openGlContext.MakeCurrent();
+            openGlContext.MakeCurrent();
         }
 
-        _openGlContextReleased = true;
+        _openGlContextReleaseStarted = true;
 
-        OpenGlContextReleasing?.Invoke();
+        try
+        {
+            OpenGlContextReleasing?.Invoke();
+        }
+        finally
+        {
+            _openGlContext = null;
+        }
     }
 }
