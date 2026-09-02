@@ -54,7 +54,7 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         get;
     }
 
-    public OpenGLRenderer CreateRenderer(LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight)
+    public OpenGLRenderer CreateRenderer(LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy = PresentationPolicy.Fit)
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);
 
@@ -63,7 +63,12 @@ public sealed class OpenGLGraphicsDevice : IDisposable
             throw new ArgumentOutOfRangeException(nameof(logicalRenderSize), logicalRenderSize, "Logical render size must have positive width and height.");
         }
 
-        return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight);
+        if (!Enum.IsDefined(presentationPolicy))
+        {
+            throw new ArgumentOutOfRangeException(nameof(presentationPolicy), presentationPolicy, "Unknown presentation policy.");
+        }
+
+        return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy);
     }
 
     public void Dispose()

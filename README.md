@@ -72,6 +72,20 @@ dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
 dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 ```
 
+## Running
+
+```bash
+dotnet run --project src/OpenConquer.Client -- --content-root <path> --presentation fit
+```
+
+`--presentation` selects how the fixed logical frame is fitted into the resizable window:
+
+| Value | Behaviour |
+|---|---|
+| `fit` (default) | largest distortion-free scale, centred with pillarbox or letterbox bars |
+| `integer` | largest whole-number scale, centred; sharpest, larger bars |
+| `stretch` | fills the window, distorting whenever the aspect ratios differ |
+
 To verify formatting:
 
 ```bash

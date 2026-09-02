@@ -353,7 +353,8 @@ OpenGLRenderTarget
         ▼
 fixed logical framebuffer
         │
-        │ OpenGLRenderer linear color blit
+        │ PresentationViewport places the frame
+        │ OpenGLRenderer color blit
         ▼
 physical host framebuffer
         │
@@ -381,8 +382,98 @@ rendering resolution.
 The desktop host is intentionally resizable. This is a modernization over the original fixed-window
 behavior while preserving the game's fixed logical rendering coordinate system.
 
-`OpenGLRenderer` blits the logical color buffer across the complete physical host framebuffer using
-linear filtering.
+### Presentation transform
+
+`PresentationViewport` is the single definition of where the logical frame lands inside the host
+framebuffer. `OpenGLRenderer` blits into the rectangle it describes, and input maps pointer
+positions back through `PresentationViewport.TryMapToLogical`. Deriving those two independently is
+how a client draws in one place and resolves clicks in another, so neither side computes its own.
+
+The transform holds no graphics-API type and is unit tested without a device.
+
+`PresentationPolicy` selects how the frame is fitted:
+
+| Policy | Placement | Filter |
+|---|---|---|
+| `Fit` (default) | largest uniform scale that fits, centred | point when the result is an exact whole multiple, otherwise bilinear |
+| `IntegerScale` | largest whole-number scale that fits, centred; falls back to `Fit` when the window is smaller than one logical frame | point |
+| `Stretch` | fills the host framebuffer | bilinear unless the result happens to be exact |
+
+`Fit` and `IntegerScale` preserve the logical aspect ratio and leave pillarbox or letterbox bars.
+`Stretch` is retained only as an explicit opt-in: a 4:3 logical frame across a 16:9 host is
+stretched about 1.33x horizontally, so it is never the default.
+
+Point sampling is chosen from the resulting rectangle rather than from the policy, so a `Fit` window
+that lands on an exact whole multiple gets the sharper result too.
+
+The policy is selected with the `--presentation fit|integer|stretch` startup option.
+
+Because an aspect-preserving rectangle does not cover the whole host framebuffer, `OpenGLRenderer`
+clears the host framebuffer before blitting whenever bars are present. The bars are never written by
+the blit and would otherwise show whatever the swap chain left behind.
+
+Positions inside a bar are not positions in the game world. `TryMapToLogical` reports them as
+unmapped rather than clamping them to the nearest edge.
+
+### Pointer mapping
+
+Two conversions sit between a pointer and a logical pixel, and both are owned rather than left to
+call sites.
+
+```text
+pointer position (window coordinates, top-down)
+        │
+        │ DesktopWindow.PointToFramebuffer
+        ▼
+host framebuffer pixels (top-down)
+        │
+        │ PresentationViewport.TryMapPointerToLogical
+        ▼
+logical pixel (top-down), or unmapped
+```
+
+`DesktopWindow.PointToFramebuffer` delegates to the windowing layer rather than deriving a size
+ratio. Window coordinates and framebuffer pixels are the same only at a scale factor of one, and a
+transform built from `FramebufferSize` without this conversion resolves clicks at a fraction of
+their true position. That defect is invisible on an unscaled display.
+
+The coordinate space the input layer reports was measured rather than assumed. On a 2x display, a
+640x480 window reports a 1280x960 framebuffer, and with the operating-system cursor at global
+position (965.2, 700.7):
+
+```text
+window.PointToClient(cursor)     = (915, 639)
+IMouse.Position                  = (915.2422, 638.7461)   <- matches, within rounding
+PointToFramebuffer(915, 639)     = (1830, 1278)           <- does not match
+```
+
+Pointer positions therefore arrive in window coordinates, and the conversion is required rather
+than optional. `PointToFramebuffer` was also confirmed to be exactly linear and origin-preserving
+on that display: `(0,0)` maps to `(0,0)`, `(1,1)` to `(2,2)`, and `(640,480)` to `(1280,960)`.
+
+Reproduce by creating a window, reading `Size` and `FramebufferSize`, then comparing `IMouse.Position`
+against `PointToClient` of the operating-system cursor position. A machine at a scale factor of one
+cannot distinguish the two spaces and will not detect a regression here.
+
+Pointer positions are fractional and the windowing conversion accepts whole window coordinates only,
+so `PointToFramebuffer` rounds to the nearest rather than truncating, which would bias every pointer
+up and to the left by half a window coordinate. Pointer precision is bounded at one window
+coordinate, finer than the logical pixels it maps to.
+
+`TryMapPointerToLogical` flips vertically at both ends: once to reach the bottom-up framebuffer row
+the destination rectangle is expressed in, and once to return a top-down logical row. Performing
+only the first mirrors every position about the horizontal centre — every position still maps
+successfully, so only an ordering check detects it.
+
+`TryMapFramebufferPointToLogical` is the bottom-up form, for framebuffer-space work. The two are
+named apart so neither origin can be assumed from a signature.
+
+A position inside a letterbox bar is not a position in the game world. Both methods report it as
+unmapped rather than clamping it to the nearest edge.
+
+Under minification some logical pixels have no pointer position that resolves to them: a window
+smaller than the logical frame has fewer destination pixels than logical ones. This is inherent to
+downscaling rather than an off-by-one, and it bounds pointer precision at small window sizes.
 
 ## Logical Render Target
 
