@@ -21,7 +21,7 @@ env:
 jobs:
   quality:
     name: Quality
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:
@@ -64,16 +64,18 @@ jobs:
           done
 
   cross-platform-build:
-    name: Build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
 
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - windows-latest
-          - macos-latest
+        include:
+          - name: Windows
+            runner: windows-2025
+          - name: macOS
+            runner: macos-15
 
     steps:
       - name: Checkout
