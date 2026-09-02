@@ -1,3 +1,5 @@
+using OpenConquer.Content;
+using OpenConquer.Content.Configuration;
 using OpenConquer.Platform;
 using OpenConquer.Rendering;
 using OpenConquer.Rendering.OpenGl;
@@ -6,16 +8,20 @@ namespace OpenConquer.Client;
 
 internal sealed class ClientApplication : IDisposable
 {
-    private static readonly LogicalRenderSize InitialLogicalRenderSize = new(width: 1024, height: 768);
-
     private readonly DesktopWindow _window;
+    private readonly LogicalRenderSize _logicalRenderSize;
 
     private OpenGlGraphicsDevice? _graphicsDevice;
     private OpenGlRenderer? _renderer;
     private bool _disposed;
 
-    public ClientApplication()
+    public ClientApplication(string clientContentRootPath)
     {
+        ClientContentRoot contentRoot = new(clientContentRootPath);
+        GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentRoot);
+
+        _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
+
         _window = new DesktopWindow();
 
         _window.FramebufferResized += OnFramebufferResized;
@@ -63,7 +69,8 @@ internal sealed class ClientApplication : IDisposable
         {
             PixelSize framebufferSize = _window.FramebufferSize;
 
-            _renderer = graphicsDevice.CreateRenderer(InitialLogicalRenderSize, framebufferSize.Width, framebufferSize.Height);
+            _renderer = graphicsDevice.CreateRenderer(_logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
+
             _graphicsDevice = graphicsDevice;
         }
         catch

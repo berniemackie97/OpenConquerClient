@@ -35,11 +35,11 @@ reference one another.
 
 | Project                  | Owns                                                                                                                                |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenConquer.Client`     | process entry point, subsystem composition, application lifetime, and shutdown coordination                                         |
+| `OpenConquer.Client`     | process entry point, startup-option validation, subsystem composition, application lifetime, and shutdown coordination              |
 | `OpenConquer.Platform`   | desktop windowing, native graphics-context lifetime, physical framebuffer state, native buffer swapping, and future desktop input   |
 | `OpenConquer.Gameplay`   | game state, entities, movement, combat, interactions, and gameplay rules                                                            |
 | `OpenConquer.Rendering`  | OpenGL integration, logical rendering, logical-to-host framebuffer composition, cameras, shaders, GPU resources, and render targets |
-| `OpenConquer.Content`    | client filesystem behavior, legacy formats, decoding, loading, and content lookup                                                   |
+| `OpenConquer.Content`    | client-root filesystem semantics, legacy configuration and formats, decoding, loading, and content lookup                           |
 | `OpenConquer.Networking` | connections, transport, encryption, packet framing, protocol encoding, and decoding                                                 |
 
 Platform-specific window and context types remain inside `OpenConquer.Platform`. Rendering owns
@@ -56,6 +56,8 @@ flowchart LR
     Client["Client"]
     Platform["Platform"]
     Gameplay["Gameplay"]
+    Content["Content"]
+    Files["Client Files"]
     Rendering["Rendering"]
     GPU["GPU"]
 
@@ -63,24 +65,120 @@ flowchart LR
     Networking <--> Client
     Platform <--> Client
     Client <--> Gameplay
+    Client --> Content
+    Content --> Files
     Client --> Rendering
     Rendering --> GPU
 ```
 
 The application begins and ends in `OpenConquer.Client`. Platform provides the desktop runtime,
-Networking communicates with the server, Gameplay owns simulation state, and Rendering consumes the
-state required to produce a frame.
+Content provides access to legacy client data, Networking communicates with the server, Gameplay
+owns simulation state, and Rendering consumes the state required to produce a frame.
+
+## Startup and Content Boundary
+
+Startup configuration belongs to the executable composition boundary rather than to Content,
+Platform, or Rendering.
+
+`ClientStartupOptions` interprets the currently supported process arguments before the application
+is created.
+
+The supported startup form is:
+
+```text
+OpenConquer.Client [--content-root <path>]
+```
+
+With no explicit content root, startup uses `AppContext.BaseDirectory`, making content discovery
+deterministic relative to the executable rather than dependent on the process working directory.
+
+An explicit `--content-root` may be absolute or relative. Relative overrides are resolved against
+the process working directory at startup and normalized to an absolute path.
+
+Malformed startup input is rejected before application construction. Unknown arguments, duplicate
+content-root declarations, and missing content-root values are not silently ignored.
+
+The resulting content-root path is passed into `ClientApplication`. The application then constructs
+`ClientContentRoot`; Content does not depend on or receive the executable's complete startup-options
+object.
+
+```text
+process arguments
+        │
+        ▼
+ClientStartupOptions
+        │
+        │ absolute ContentRootPath
+        ▼
+ClientApplication
+        │
+        ▼
+ClientContentRoot
+        │
+        ▼
+legacy client files
+```
+
+`ClientContentRoot` establishes the legacy client filesystem boundary.
+
+It:
+
+- requires an existing root directory
+- accepts legacy `/` and `\` separators
+- resolves path segments case-insensitively to preserve Windows-era client lookup semantics on
+  case-sensitive filesystems
+- rejects rooted content paths
+- rejects `.` and `..` traversal segments
+- rejects ambiguous case-insensitive matches instead of selecting one nondeterministically
+- distinguishes optional lookup from required-file lookup
+
+Filesystem enumeration and I/O failures are not converted into false "not found" results. Unexpected
+filesystem failures remain visible to the caller.
+
+The first production consumer of this boundary is the retail screen-mode configuration.
+
+At startup, `GameSetupConfiguration` resolves:
+
+```text
+ini/GameSetup.Ini
+```
+
+and reads:
+
+```ini
+[ScreenModeRecord]
+ScreenMode=<value>
+```
+
+Legacy section and key matching are case-insensitive. The file is read using Latin-1-compatible text
+decoding appropriate for the legacy client data.
+
+The verified retail screen-mode mapping is:
+
+| ScreenMode | Logical resolution |
+| ---------: | -----------------: |
+|          0 |            800×600 |
+|          1 |            800×600 |
+|          2 |           1024×768 |
+|          3 |           1024×768 |
+
+Missing configuration, a missing screen-mode value, or a value outside the verified range fails
+startup explicitly rather than inventing unsupported fallback behavior.
+
+The Content project interprets the legacy configuration. It does not construct Rendering types.
+`ClientApplication` bridges the resulting dimensions into `LogicalRenderSize`, preserving the
+dependency boundary between Content and Rendering.
 
 ## Platform Boundary
 
 `OpenConquer.Platform` owns behavior whose semantics come from the desktop environment:
 
-* native window creation and destruction
-* OpenGL context creation and lifetime
-* physical framebuffer dimensions
-* native host-buffer swapping
-* focus and window state
-* desktop input when introduced
+- native window creation and destruction
+- OpenGL context creation and lifetime
+- physical framebuffer dimensions
+- native host-buffer swapping
+- focus and window state
+- desktop input when introduced
 
 Silk.NET windowing and input types must not leak into Gameplay, Rendering, Content, or Networking.
 
@@ -112,8 +210,8 @@ flowchart TD
 ```
 
 Platform owns the native window and OpenGL context. Rendering owns the OpenGL API binding and GPU
-resources. Client composes those lifetimes without creating a direct dependency between Platform
-and Rendering.
+resources. Client composes those lifetimes without creating a direct dependency between Platform and
+Rendering.
 
 Rendering also owns the logical-to-host framebuffer composition step. Platform owns the subsequent
 native buffer swap.
@@ -145,15 +243,15 @@ OpenConquer.Rendering
 Silk.NET.OpenGL
 ```
 
-`OpenConquer.Rendering` therefore does not depend on `OpenConquer.Platform`,
-`Silk.NET.Windowing`, or Silk.NET context types.
+`OpenConquer.Rendering` therefore does not depend on `OpenConquer.Platform`, `Silk.NET.Windowing`,
+or Silk.NET context types.
 
 `OpenGlGraphicsDevice` owns the Silk.NET OpenGL API binding but does not own the native OpenGL
 context.
 
-Graphics-device initialization verifies that the active context satisfies the renderer's OpenGL
-3.3 Core requirement. The device also captures the runtime OpenGL, GLSL, vendor, and renderer
-identity for diagnostics and compatibility reporting.
+Graphics-device initialization verifies that the active context satisfies the renderer's OpenGL 3.3
+Core requirement. The device also captures the runtime OpenGL, GLSL, vendor, and renderer identity
+for diagnostics and compatibility reporting.
 
 Platform guarantees that the OpenGL context exists and is current when graphics initialization,
 frame rendering, and graphics shutdown callbacks execute.
@@ -165,15 +263,25 @@ The logical game surface is independent of the physical desktop framebuffer.
 `OpenConquer.Rendering` receives an explicit `LogicalRenderSize` selected by the application.
 Logical dimensions must be positive.
 
-The current client starts with a 1024×768 logical surface, matching the original client's higher
-resolution screen mode. Rendering does not derive this size from the desktop window.
+The application obtains the logical size from the verified retail `ScreenMode` value in
+`ini/GameSetup.Ini`. Modes 0 and 1 select 800×600; modes 2 and 3 select 1024×768.
+
+Rendering does not read legacy configuration and does not derive the logical size from the desktop
+window.
 
 `OpenConquer.Platform` separately reports the physical framebuffer through `PixelSize`. Its
 dimensions change as the resizable host window changes.
 
 ```text
+GameSetup.Ini
+        │
+        │ ScreenMode
+        ▼
+GameSetupConfiguration
+        │
+        │ 800×600 or 1024×768
+        ▼
 LogicalRenderSize
-    1024×768
         │
         ▼
 OpenGlRenderTarget
@@ -193,15 +301,19 @@ desktop window
 
 The distinction is intentional:
 
-* logical dimensions define the game rendering coordinate space
-* physical framebuffer dimensions define only the host composition destination
-* resizing the desktop window does not change the logical game resolution
-* minimizing the host may temporarily produce a zero-sized physical framebuffer without changing
-  the logical render target
+- logical dimensions define the game rendering coordinate space
+- physical framebuffer dimensions define only the host composition destination
+- resizing the desktop window does not change the logical game resolution
+- minimizing the host may temporarily produce a zero-sized physical framebuffer without changing the
+  logical render target
 
-The original 5517 client supports 800×600 and 1024×768 logical screen modes. Screen-mode
-configuration has not yet been implemented in the new client, so the application currently selects
-1024×768 explicitly rather than making that decision inside the OpenGL backend.
+The original 5517 client supports four screen modes spanning 800×600 and 1024×768 logical
+resolutions. The modern client now preserves the verified logical-resolution selection while
+intentionally retaining its resizable desktop-host policy.
+
+The shell behavior associated with retail modes 1 and 3 is not inferred by Rendering from the mode
+integer. Desktop-window behavior remains a Platform/application policy separate from logical
+rendering resolution.
 
 The desktop host is intentionally resizable. This is a modernization over the original fixed-window
 behavior while preserving the game's fixed logical rendering coordinate system.
@@ -222,9 +334,9 @@ logical framebuffer
 The logical target intentionally has no stencil attachment.
 
 The render target preserves the verified retail 5517 16-bit color and depth contracts. Rendering
-prefers an actual 5/6/5/0 color allocation and falls back to an actual 5/5/5/0 allocation.
-Requested color formats are accepted only after OpenGL reports the expected component sizes, and
-the depth renderbuffer is accepted only when OpenGL reports exactly 16 depth bits.
+prefers an actual 5/6/5/0 color allocation and falls back to an actual 5/5/5/0 allocation. Requested
+color formats are accepted only after OpenGL reports the expected component sizes, and the depth
+renderbuffer is accepted only when OpenGL reports exactly 16 depth bits.
 
 Frame initialization establishes deterministic full-target clear state. Scissoring is disabled,
 color and depth writes are enabled, the color buffer is cleared to opaque black, and the depth
@@ -264,12 +376,12 @@ OpenGL context
 window
 ```
 
-GPU resources must be destroyed while the OpenGL context required to destroy them is still valid
-and current.
+GPU resources must be destroyed while the OpenGL context required to destroy them is still valid and
+current.
 
-`OpenGlRenderTarget` owns its framebuffer, color texture, and depth renderbuffer.
-`OpenGlRenderer` owns the render target. `OpenGlGraphicsDevice` owns the Silk.NET OpenGL API
-binding. `DesktopWindow` owns the native window and native OpenGL context.
+`OpenGlRenderTarget` owns its framebuffer, color texture, and depth renderbuffer. `OpenGlRenderer`
+owns the render target. `OpenGlGraphicsDevice` owns the Silk.NET OpenGL API binding. `DesktopWindow`
+owns the native window and native OpenGL context.
 
 `OpenConquer.Client` coordinates the ordering between Rendering and the Platform-owned context
 without taking ownership of either subsystem's native resources.
@@ -348,13 +460,13 @@ Desktop-host behavior is explicit rather than inherited accidentally from backen
 
 The desktop window currently uses:
 
-* automatic native buffer swapping
-* VSync disabled
-* a resizable 1280×720 initial host window
-* an OpenGL 3.3 Core forward-compatible context
-* no host framebuffer multisampling
-* no requested depth buffer on the host framebuffer
-* no requested stencil buffer on the host framebuffer
+- automatic native buffer swapping
+- VSync disabled
+- a resizable 1280×720 initial host window
+- an OpenGL 3.3 Core forward-compatible context
+- no host framebuffer multisampling
+- no requested depth buffer on the host framebuffer
+- no requested stencil buffer on the host framebuffer
 
 The host framebuffer is explicitly single-sampled. Native multisampling behavior, when implemented,
 belongs to the logical rendering path rather than being inherited from a window-system default.
@@ -371,19 +483,19 @@ that framebuffer visible by swapping the host buffers.
 
 ## Dependency Rules
 
-Dependencies are introduced only when a subsystem genuinely requires another subsystem's behavior
-or ownership.
+Dependencies are introduced only when a subsystem genuinely requires another subsystem's behavior or
+ownership.
 
 The current architecture follows these rules:
 
-* `OpenConquer.Client` is the sole composition root.
-* `OpenConquer.Platform` does not reference `OpenConquer.Rendering`.
-* `OpenConquer.Rendering` does not reference `OpenConquer.Platform`.
-* `OpenConquer.Rendering` does not depend on Silk.NET Windowing, Maths, or Input.
-* `OpenConquer.Client` does not directly depend on Silk.NET.
-* `OpenConquer.Platform` directly declares the Silk.NET packages whose APIs it consumes.
-* `OpenConquer.Gameplay` remains independent of platform, graphics, and transport infrastructure.
-* `OpenConquer.Content` remains independent of graphics and gameplay behavior.
-* `OpenConquer.Networking` remains independent of platform and rendering concerns.
+- `OpenConquer.Client` is the sole composition root.
+- `OpenConquer.Platform` does not reference `OpenConquer.Rendering`.
+- `OpenConquer.Rendering` does not reference `OpenConquer.Platform`.
+- `OpenConquer.Rendering` does not depend on Silk.NET Windowing, Maths, or Input.
+- `OpenConquer.Client` does not directly depend on Silk.NET.
+- `OpenConquer.Platform` directly declares the Silk.NET packages whose APIs it consumes.
+- `OpenConquer.Gameplay` remains independent of platform, graphics, and transport infrastructure.
+- `OpenConquer.Content` remains independent of graphics and gameplay behavior.
+- `OpenConquer.Networking` remains independent of platform and rendering concerns.
 
 A project is an ownership and dependency boundary, not a replacement for a folder.
