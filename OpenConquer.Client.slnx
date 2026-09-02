@@ -7,7 +7,4 @@
     <Project Path="src/OpenConquer.Platform/OpenConquer.Platform.csproj" />
     <Project Path="src/OpenConquer.Rendering/OpenConquer.Rendering.csproj" />
   </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/OpenConquer.Gameplay.Tests/OpenConquer.Gameplay.Tests.csproj" />
-  </Folder>
 </Solution>

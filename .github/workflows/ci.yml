@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_NOLOGO: 'true'
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore OpenConquer.Client.slnx
+
+      - name: Verify formatting
+        run: dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
+
+      - name: Test
+        shell: bash
+        run: |
+          if [[ ! -d tests ]]; then
+            echo "No test projects are currently present."
+            exit 0
+          fi
+
+          mapfile -t test_projects < <(find tests -type f -name '*.Tests.csproj' -print | sort)
+
+          if (( ${#test_projects[@]} == 0 )); then
+            echo "No test projects are currently present."
+            exit 0
+          fi
+
+          for project in "${test_projects[@]}"; do
+            dotnet test "$project" --configuration Release --no-build --no-restore
+          done
+
+  cross-platform-build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore OpenConquer.Client.slnx
+
+      - name: Build
+        run: dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
