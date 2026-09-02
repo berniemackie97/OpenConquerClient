@@ -3,7 +3,7 @@ namespace OpenConquer.Client.Tests;
 public sealed class ClientStartupOptionsTests
 {
     [Fact]
-    public void TryParseWithNoArgumentsUsesDefaultContentRoot()
+    public void TryParse_UsesDefaultContentRootWhenNoArgumentsAreSupplied()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
@@ -26,7 +26,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithAbsoluteContentRootUsesConfiguredPath()
+    public void TryParse_UsesConfiguredPathWhenContentRootIsAbsolute()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
@@ -50,7 +50,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithRelativeContentRootResolvesAgainstWorkingDirectory()
+    public void TryParse_ResolvesRelativeContentRootAgainstWorkingDirectory()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
@@ -70,7 +70,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithDuplicateContentRootReturnsFailure()
+    public void TryParse_ReturnsFailureWhenContentRootIsDuplicated()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
@@ -89,7 +89,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithMissingContentRootValueReturnsFailure()
+    public void TryParse_ReturnsFailureWhenContentRootValueIsMissing()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
@@ -108,7 +108,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithOptionInPlaceOfContentRootValueReturnsFailure()
+    public void TryParse_ReturnsFailureWhenAnOptionReplacesTheContentRootValue()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
@@ -127,7 +127,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithWhitespaceContentRootValueReturnsFailure()
+    public void TryParse_ReturnsFailureWhenContentRootValueIsWhitespace()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
@@ -146,7 +146,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithUnknownOptionReturnsFailure()
+    public void TryParse_ReturnsFailureForUnknownOption()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
@@ -165,7 +165,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithPositionalArgumentReturnsFailure()
+    public void TryParse_ReturnsFailureForPositionalArgument()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
@@ -184,7 +184,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithRelativeDefaultContentRootThrowsArgumentException()
+    public void TryParse_ThrowsArgumentExceptionWhenDefaultContentRootIsRelative()
     {
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
 
@@ -200,7 +200,7 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParseWithRelativeWorkingDirectoryThrowsArgumentException()
+    public void TryParse_ThrowsArgumentExceptionWhenWorkingDirectoryIsRelative()
     {
         string defaultContentRootPath = CreateAbsolutePath("default-content");
 

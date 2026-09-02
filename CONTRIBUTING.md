@@ -13,8 +13,11 @@ to `main` are not part of the normal development workflow.
 Before opening or updating a pull request, restore dependencies once:
 
 ```bash
-dotnet restore OpenConquer.Client.slnx
+dotnet restore OpenConquer.Client.slnx --locked-mode
 ```
+
+Locked mode is what CI uses. A restore that changes a lock file fails there, so a dependency
+change must be committed along with the lock files it produces.
 
 Check formatting without restoring again:
 
@@ -28,8 +31,14 @@ Build the complete solution in the same configuration used by CI:
 dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
 ```
 
-Run every relevant test project. Test projects should contain real tests when they are introduced;
-empty test-project scaffolding is not kept in the repository.
+Run the whole suite the way CI does:
+
+```bash
+dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
+```
+
+Test projects should contain real tests when they are introduced; empty test-project scaffolding
+is not kept in the repository.
 
 Finally, verify that the diff contains no whitespace errors:
 

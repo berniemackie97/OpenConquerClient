@@ -10,5 +10,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/OpenConquer.Client.Tests/OpenConquer.Client.Tests.csproj" />
     <Project Path="tests/OpenConquer.Content.Tests/OpenConquer.Content.Tests.csproj" />
+    <Project Path="tests/OpenConquer.Platform.Tests/OpenConquer.Platform.Tests.csproj" />
+    <Project Path="tests/OpenConquer.Rendering.Tests/OpenConquer.Rendering.Tests.csproj" />
   </Folder>
 </Solution>

@@ -9,7 +9,7 @@ public sealed class GameSetupConfigurationTests
     [InlineData(1, 800, 600)]
     [InlineData(2, 1024, 768)]
     [InlineData(3, 1024, 768)]
-    public void LoadMapsVerifiedScreenModesToLogicalResolution(
+    public void Load_MapsVerifiedScreenModesToLogicalResolution(
         int screenMode,
         int expectedWidthPixels,
         int expectedHeightPixels)
@@ -29,7 +29,7 @@ public sealed class GameSetupConfigurationTests
     }
 
     [Fact]
-    public void LoadResolvesConfigurationPathSectionAndKeyCaseInsensitively()
+    public void Load_ResolvesConfigurationPathSectionAndKeyCaseInsensitively()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -46,7 +46,7 @@ public sealed class GameSetupConfigurationTests
     }
 
     [Fact]
-    public void LoadWhenGameSetupFileIsMissingThrowsFileNotFoundException()
+    public void Load_ThrowsFileNotFoundExceptionWhenGameSetupFileIsMissing()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -57,7 +57,7 @@ public sealed class GameSetupConfigurationTests
     }
 
     [Fact]
-    public void LoadWhenScreenModeIsMissingThrowsInvalidDataException()
+    public void Load_ThrowsInvalidDataExceptionWhenScreenModeIsMissing()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -75,7 +75,7 @@ public sealed class GameSetupConfigurationTests
     [InlineData("-1")]
     [InlineData("4")]
     [InlineData("invalid")]
-    public void LoadWhenScreenModeIsInvalidThrowsInvalidDataException(
+    public void Load_ThrowsInvalidDataExceptionWhenScreenModeIsInvalid(
         string configuredValue)
     {
         using TemporaryContentDirectory temporaryDirectory = new();

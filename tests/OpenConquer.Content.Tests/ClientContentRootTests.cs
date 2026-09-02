@@ -3,7 +3,7 @@ namespace OpenConquer.Content.Tests;
 public sealed class ClientContentRootTests
 {
     [Fact]
-    public void ConstructorWhenRootDoesNotExistThrowsDirectoryNotFoundException()
+    public void Constructor_ThrowsDirectoryNotFoundExceptionWhenRootDoesNotExist()
     {
         string missingPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 
@@ -11,7 +11,7 @@ public sealed class ClientContentRootTests
     }
 
     [Fact]
-    public void ConstructorWhenRootIsFileThrowsIOException()
+    public void Constructor_ThrowsIOExceptionWhenRootIsAFile()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -21,7 +21,7 @@ public sealed class ClientContentRootTests
     }
 
     [Fact]
-    public void ConstructorWhenRootIsSymbolicLinkThrowsIOException()
+    public void Constructor_ThrowsIOExceptionWhenRootIsASymbolicLink()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -37,7 +37,7 @@ public sealed class ClientContentRootTests
     }
 
     [Fact]
-    public void TryResolveFileUsesWindowsStyleCaseInsensitivePathResolution()
+    public void TryResolveFile_UsesWindowsStyleCaseInsensitivePathResolution()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -55,7 +55,7 @@ public sealed class ClientContentRootTests
     }
 
     [Fact]
-    public void TryResolveFileWhenFileDoesNotExistReturnsFalse()
+    public void TryResolveFile_ReturnsFalseWhenFileDoesNotExist()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -68,7 +68,7 @@ public sealed class ClientContentRootTests
     }
 
     [Fact]
-    public void TryResolveFileWhenIntermediateDirectoryIsSymbolicLinkThrowsIOException()
+    public void TryResolveFile_ThrowsIOExceptionWhenIntermediateDirectoryIsASymbolicLink()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -91,7 +91,7 @@ public sealed class ClientContentRootTests
     }
 
     [Fact]
-    public void TryResolveFileWhenTargetFileIsSymbolicLinkThrowsIOException()
+    public void TryResolveFile_ThrowsIOExceptionWhenTargetFileIsASymbolicLink()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -121,7 +121,7 @@ public sealed class ClientContentRootTests
     [InlineData("/ini/GameSetup.Ini")]
     [InlineData(@"\ini\GameSetup.Ini")]
     [InlineData(@"C:\ini\GameSetup.Ini")]
-    public void TryResolveFileWhenPathEscapesOrRootsOutsideContentThrowsArgumentException(
+    public void TryResolveFile_ThrowsArgumentExceptionWhenPathEscapesTheContentRoot(
         string relativePath
     )
     {

@@ -82,20 +82,26 @@ The current test projects are:
 ```text
 tests/OpenConquer.Client.Tests
 tests/OpenConquer.Content.Tests
+tests/OpenConquer.Platform.Tests
 ```
 
 `OpenConquer.Client.Tests` verifies executable startup policy, including content-root defaults,
 explicit overrides, path normalization, and malformed argument handling.
 
 `OpenConquer.Content.Tests` verifies legacy content-root lookup semantics and retail startup
-configuration behavior, including case-insensitive lookup, path rejection, missing-content behavior,
-and screen-mode mapping.
+configuration behavior, including case-insensitive lookup, path rejection, symlink/reparse-point
+rejection, missing-content behavior, and screen-mode mapping.
+
+`OpenConquer.Platform.Tests` verifies desktop frame-pacing mechanics independently of a native
+window. The tests cover interval validation, start-state enforcement, remaining-time waits,
+overruns, scheduler oversleep, and the no-catch-up invariant.
 
 Run an individual test project directly while working on its subsystem:
 
 ```bash
 dotnet test tests/OpenConquer.Client.Tests/OpenConquer.Client.Tests.csproj
 dotnet test tests/OpenConquer.Content.Tests/OpenConquer.Content.Tests.csproj
+dotnet test tests/OpenConquer.Platform.Tests/OpenConquer.Platform.Tests.csproj
 ```
 
 CI discovers projects matching `tests/**/*.Tests.csproj` and executes each discovered project.
@@ -231,6 +237,11 @@ dotnet test tests/OpenConquer.Client.Tests/OpenConquer.Client.Tests.csproj \
   --no-restore
 
 dotnet test tests/OpenConquer.Content.Tests/OpenConquer.Content.Tests.csproj \
+  --configuration Release \
+  --no-build \
+  --no-restore
+
+dotnet test tests/OpenConquer.Platform.Tests/OpenConquer.Platform.Tests.csproj \
   --configuration Release \
   --no-build \
   --no-restore

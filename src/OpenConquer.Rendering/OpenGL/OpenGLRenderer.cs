@@ -1,19 +1,19 @@
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGl;
+namespace OpenConquer.Rendering.OpenGL;
 
-public sealed class OpenGlRenderer : IDisposable
+public sealed class OpenGLRenderer : IDisposable
 {
     private readonly GL _gl;
     private readonly LogicalRenderSize _logicalRenderSize;
-    private readonly OpenGlRenderTarget _renderTarget;
+    private readonly OpenGLRenderTarget _renderTarget;
 
     private int _framebufferWidth;
     private int _framebufferHeight;
     private bool _hostFramebufferValidated;
     private bool _disposed;
 
-    internal OpenGlRenderer(GL gl, LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight)
+    internal OpenGLRenderer(GL gl, LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight)
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentOutOfRangeException.ThrowIfNegative(framebufferWidth);
@@ -21,7 +21,7 @@ public sealed class OpenGlRenderer : IDisposable
 
         _gl = gl;
         _logicalRenderSize = logicalRenderSize;
-        _renderTarget = new OpenGlRenderTarget(gl, logicalRenderSize.Width, logicalRenderSize.Height);
+        _renderTarget = new OpenGLRenderTarget(gl, logicalRenderSize.Width, logicalRenderSize.Height);
 
         _framebufferWidth = framebufferWidth;
         _framebufferHeight = framebufferHeight;

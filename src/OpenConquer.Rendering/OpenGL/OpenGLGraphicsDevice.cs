@@ -1,8 +1,8 @@
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGl;
+namespace OpenConquer.Rendering.OpenGL;
 
-public sealed class OpenGlGraphicsDevice : IDisposable
+public sealed class OpenGLGraphicsDevice : IDisposable
 {
     private const int MinimumMajorVersion = 3;
     private const int MinimumMinorVersion = 3;
@@ -10,7 +10,7 @@ public sealed class OpenGlGraphicsDevice : IDisposable
     private readonly GL _gl;
     private bool _disposed;
 
-    public OpenGlGraphicsDevice(OpenGlProcAddressResolver resolveProcAddress)
+    public OpenGLGraphicsDevice(OpenGLProcAddressResolver resolveProcAddress)
     {
         ArgumentNullException.ThrowIfNull(resolveProcAddress);
 
@@ -54,7 +54,7 @@ public sealed class OpenGlGraphicsDevice : IDisposable
         get;
     }
 
-    public OpenGlRenderer CreateRenderer(LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight)
+    public OpenGLRenderer CreateRenderer(LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight)
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);
 
@@ -63,7 +63,7 @@ public sealed class OpenGlGraphicsDevice : IDisposable
             throw new ArgumentOutOfRangeException(nameof(logicalRenderSize), logicalRenderSize, "Logical render size must have positive width and height.");
         }
 
-        return new OpenGlRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight);
+        return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight);
     }
 
     public void Dispose()

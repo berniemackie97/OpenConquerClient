@@ -48,23 +48,34 @@ two and coordinates their lifetimes without creating a direct dependency between
 The current renderer uses **OpenGL 3.3 Core through Silk.NET**.
 
 Game rendering uses a fixed logical surface independent of the resizable desktop framebuffer. The
-current application selects the original client's 1024×768 logical resolution. Rendering copies that
-logical frame across the physical host framebuffer, after which Platform performs the native buffer
-swap.
+application reads the original client's screen-mode configuration and selects either the 800×600 or
+1024×768 logical resolution accordingly. Rendering copies that logical frame across the physical
+host framebuffer, after which Platform performs the native buffer swap.
 
 More detailed architecture and compatibility documentation lives under [`docs`](docs).
 
 ## Build
 
+Dependencies are pinned by the committed NuGet lock files, so restore in locked mode:
+
 ```bash
-dotnet restore
-dotnet build OpenConquer.Client.slnx
+dotnet restore OpenConquer.Client.slnx --locked-mode
+```
+
+```bash
+dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
+```
+
+## Tests
+
+```bash
+dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 ```
 
 To verify formatting:
 
 ```bash
-dotnet format OpenConquer.Client.slnx --verify-no-changes
+dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
 ```
 
 ## Repository
@@ -79,6 +90,11 @@ src/
 └── OpenConquer.Rendering/
 
 tests/
+├── OpenConquer.Client.Tests/
+├── OpenConquer.Content.Tests/
+├── OpenConquer.Platform.Tests/
+└── OpenConquer.Rendering.Tests/
+
 docs/
 tools/
 ```
