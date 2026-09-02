@@ -10,14 +10,11 @@ public sealed class ClientContentRoot
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
 
-        string normalizedRootPath = Path.GetFullPath(rootPath);
+        string normalizedRootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(rootPath));
 
-        if (!Directory.Exists(normalizedRootPath))
-        {
-            throw new DirectoryNotFoundException($"Client content root '{normalizedRootPath}' does not exist.");
-        }
+        ValidateContentRoot(normalizedRootPath);
 
-        RootPath = Path.TrimEndingDirectorySeparator(normalizedRootPath);
+        RootPath = normalizedRootPath;
     }
 
     public string RootPath
@@ -35,8 +32,8 @@ public sealed class ClientContentRoot
             bool isFileSegment = index == segments.Length - 1;
 
             string? resolvedPath = isFileSegment
-                ? FindCaseInsensitiveFile(currentDirectoryPath, fileName: segments[index])
-                : FindCaseInsensitiveDirectory(currentDirectoryPath, directoryName: segments[index]);
+                ? FindCaseInsensitiveFile(currentDirectoryPath, segments[index])
+                : FindCaseInsensitiveDirectory(currentDirectoryPath, segments[index]);
 
             if (resolvedPath is null)
             {
@@ -64,7 +61,9 @@ public sealed class ClientContentRoot
             return absolutePath;
         }
 
-        throw new FileNotFoundException($"Client content file '{relativePath}' was not found under '{RootPath}'.");
+        throw new FileNotFoundException(
+            $"Client content file '{relativePath}' was not found under '{RootPath}'."
+        );
     }
 
     private static string[] ParseRelativePath(string relativePath)
@@ -75,21 +74,33 @@ public sealed class ClientContentRoot
 
         if (IsLegacyRootedPath(normalizedPath))
         {
-            throw new ArgumentException("Client content paths must be relative to the client content root.", nameof(relativePath));
+            throw new ArgumentException(
+                "Client content paths must be relative to the client content root.",
+                nameof(relativePath)
+            );
         }
 
-        string[] segments = normalizedPath.Split(s_pathSeparators, StringSplitOptions.RemoveEmptyEntries);
+        string[] segments = normalizedPath.Split(
+            s_pathSeparators,
+            StringSplitOptions.RemoveEmptyEntries
+        );
 
         if (segments.Length == 0)
         {
-            throw new ArgumentException("Client content path must contain at least one path segment.", nameof(relativePath));
+            throw new ArgumentException(
+                "Client content path must contain at least one path segment.",
+                nameof(relativePath)
+            );
         }
 
         foreach (string segment in segments)
         {
             if (segment is "." or ".." || segment.Contains(':', StringComparison.Ordinal))
             {
-                throw new ArgumentException($"Client content path '{relativePath}' is not a valid legacy relative path.", nameof(relativePath));
+                throw new ArgumentException(
+                    $"Client content path '{relativePath}' is not a valid legacy relative path.",
+                    nameof(relativePath)
+                );
             }
         }
 
@@ -106,19 +117,42 @@ public sealed class ClientContentRoot
         return path.Length >= 2 && char.IsAsciiLetter(path[0]) && path[1] == ':';
     }
 
-    private static string? FindCaseInsensitiveDirectory(string parentDirectoryPath, string directoryName)
+    private static string? FindCaseInsensitiveDirectory(
+        string parentDirectoryPath,
+        string directoryName
+    )
     {
-        return FindUniqueCaseInsensitiveMatch(candidatePaths: Directory.EnumerateDirectories(parentDirectoryPath),
-            directoryName, parentDirectoryPath, entryKind: "directory");
+        ValidateSearchDirectory(parentDirectoryPath);
+
+        return FindUniqueCaseInsensitiveMatch(
+            Directory.EnumerateDirectories(parentDirectoryPath),
+            directoryName,
+            parentDirectoryPath,
+            entryKind: "directory",
+            expectedDirectory: true
+        );
     }
 
     private static string? FindCaseInsensitiveFile(string parentDirectoryPath, string fileName)
     {
-        return FindUniqueCaseInsensitiveMatch(candidatePaths: Directory.EnumerateFiles(parentDirectoryPath),
-            fileName, parentDirectoryPath, entryKind: "file");
+        ValidateSearchDirectory(parentDirectoryPath);
+
+        return FindUniqueCaseInsensitiveMatch(
+            Directory.EnumerateFiles(parentDirectoryPath),
+            fileName,
+            parentDirectoryPath,
+            entryKind: "file",
+            expectedDirectory: false
+        );
     }
 
-    private static string? FindUniqueCaseInsensitiveMatch(IEnumerable<string> candidatePaths, string expectedName, string parentDirectoryPath, string entryKind)
+    private static string? FindUniqueCaseInsensitiveMatch(
+        IEnumerable<string> candidatePaths,
+        string expectedName,
+        string parentDirectoryPath,
+        string entryKind,
+        bool expectedDirectory
+    )
     {
         string? matchedPath = null;
 
@@ -131,14 +165,91 @@ public sealed class ClientContentRoot
                 continue;
             }
 
+            FileAttributes attributes = File.GetAttributes(candidatePath);
+
+            RejectLinkedEntry(candidatePath, attributes, entryKind);
+
+            bool isDirectory = (attributes & FileAttributes.Directory) != 0;
+
+            if (isDirectory != expectedDirectory)
+            {
+                throw new IOException(
+                    $"Client content {entryKind} '{candidatePath}' changed type during path resolution."
+                );
+            }
+
             if (matchedPath is not null)
             {
-                throw new IOException($"Client content directory '{parentDirectoryPath}' contains multiple {entryKind} entries matching '{expectedName}' case-insensitively.");
+                throw new IOException(
+                    $"Client content directory '{parentDirectoryPath}' contains multiple {entryKind} entries matching '{expectedName}' case-insensitively."
+                );
             }
 
             matchedPath = candidatePath;
         }
 
         return matchedPath;
+    }
+
+    private static void ValidateContentRoot(string rootPath)
+    {
+        FileAttributes attributes;
+
+        try
+        {
+            attributes = File.GetAttributes(rootPath);
+        }
+        catch (FileNotFoundException exception)
+        {
+            throw new DirectoryNotFoundException(
+                $"Client content root '{rootPath}' does not exist.",
+                exception
+            );
+        }
+
+        RejectLinkedEntry(rootPath, attributes, entryKind: "root");
+
+        if ((attributes & FileAttributes.Directory) == 0)
+        {
+            throw new IOException($"Client content root '{rootPath}' is not a directory.");
+        }
+
+        using IEnumerator<string> entries = Directory
+            .EnumerateFileSystemEntries(rootPath)
+            .GetEnumerator();
+
+        _ = entries.MoveNext();
+    }
+
+    private static void ValidateSearchDirectory(string directoryPath)
+    {
+        FileAttributes attributes = File.GetAttributes(directoryPath);
+
+        RejectLinkedEntry(directoryPath, attributes, entryKind: "directory");
+
+        if ((attributes & FileAttributes.Directory) == 0)
+        {
+            throw new IOException($"Client content path '{directoryPath}' is not a directory.");
+        }
+    }
+
+    private static void RejectLinkedEntry(string path, FileAttributes attributes, string entryKind)
+    {
+        bool isDirectory = (attributes & FileAttributes.Directory) != 0;
+
+        FileSystemInfo fileSystemInfo = isDirectory ? new DirectoryInfo(path) : new FileInfo(path);
+
+        bool isLinked =
+            (attributes & FileAttributes.ReparsePoint) != 0
+            || fileSystemInfo.LinkTarget is not null;
+
+        if (!isLinked)
+        {
+            return;
+        }
+
+        throw new IOException(
+            $"Client content {entryKind} '{path}' is a symbolic link or reparse point. Linked content entries are not permitted."
+        );
     }
 }
