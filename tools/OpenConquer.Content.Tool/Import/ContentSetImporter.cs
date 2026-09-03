@@ -35,15 +35,11 @@ internal static class ContentSetImporter
             throw new IOException($"Content-set destination '{destinationRoot}' already exists.");
         }
 
-        string destinationParent = Path.GetDirectoryName(destinationRoot)
-            ?? throw new ArgumentException("The content-set destination must have a parent directory.", nameof(destinationRootPath));
+        string destinationParent = Path.GetDirectoryName(destinationRoot) ?? throw new ArgumentException("The content-set destination must have a parent directory.", nameof(destinationRootPath));
 
         Directory.CreateDirectory(destinationParent);
 
-        string stagingRoot = Path.Combine(
-            destinationParent,
-            $".{Path.GetFileName(destinationRoot)}.import-{Guid.NewGuid():N}"
-        );
+        string stagingRoot = Path.Combine(destinationParent, $".{Path.GetFileName(destinationRoot)}.import-{Guid.NewGuid():N}");
 
         Directory.CreateDirectory(stagingRoot);
 
@@ -57,9 +53,16 @@ internal static class ContentSetImporter
         }
         catch
         {
-            if (Directory.Exists(stagingRoot))
+            try
             {
-                Directory.Delete(stagingRoot, recursive: true);
+                if (Directory.Exists(stagingRoot))
+                {
+                    Directory.Delete(stagingRoot, recursive: true);
+                }
+            }
+            catch
+            {
+                // Preserve the import failure that initiated staging cleanup.
             }
 
             throw;
@@ -89,9 +92,7 @@ internal static class ContentSetImporter
 
             if (entriesByPathKey.TryGetValue(pathKey, out ContentManifestEntry existing))
             {
-                throw new InvalidDataException(
-                    $"Closure paths '{existing.SourcePath}' and '{sourcePath}' collide case-insensitively."
-                );
+                throw new InvalidDataException($"Closure paths '{existing.SourcePath}' and '{sourcePath}' collide case-insensitively.");
             }
 
             long length = sourceFile.Length;
@@ -101,11 +102,7 @@ internal static class ContentSetImporter
             entriesByPathKey.Add(pathKey, new ContentManifestEntry(sourcePath, pathKey, length, sha256, signature));
         }
 
-        ContentManifest manifest = new(
-            sourceRoot.ClientVersion,
-            sourceRoot.VersionMarkerSha256,
-            [.. entriesByPathKey.Values.OrderBy(entry => entry.SourcePath, StringComparer.Ordinal)]
-        );
+        ContentManifest manifest = new(sourceRoot.ClientVersion, sourceRoot.VersionMarkerSha256, [.. entriesByPathKey.Values.OrderBy(entry => entry.SourcePath, StringComparer.Ordinal)]);
 
         WriteManifest(Path.Combine(stagingRoot, ManifestFileName), manifest);
 

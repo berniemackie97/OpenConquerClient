@@ -2,383 +2,329 @@
 
 ## Decision Status
 
-**Implemented foundation.** The complete `ini/`, loose `data/`, and directly indexing `ani/`
-families are now preserved under the versioned `content/retail-5517` set with a deterministic
-manifest. Runtime catalog expansion remains incremental.
+**Active and implemented incrementally.**
 
-The observed source inventory is recorded in
-[`retail-5517-inventory.md`](retail-5517-inventory.md).
+OpenConquer does not bulk-import retail directories.
+
+The checked-in content set is the exact dependency closure of implemented consumers:
+
+```text
+ClientContentClosure
+        ==
+manifest
+        ==
+payload
+```
+
+The closure expands only when a reviewed implementation slice introduces a real consumer.
+
+The full retail inventory remains documented in
+[`retail-5517-inventory.md`](retail-5517-inventory.md) as compatibility evidence and planning input.
+Inventory does not imply that every surveyed file belongs in the repository.
 
 ## Objective
 
-Reconstruct the 5517 client from verified retail behavior while giving OpenConquer a clean,
-cross-platform content architecture. The project must be able to consume an authorized retail
-snapshot during development, select the dependency closure required by implemented features, and
-produce deterministic runtime content without mixing large opaque assets into source projects.
+Reconstruct the 5517 client from verified retail behavior while maintaining a secure,
+cross-platform, production-grade content boundary.
+
+The system must:
+
+- preserve compatibility-sensitive retail path identities;
+- consume authorized retail sources without mutating them;
+- validate legacy data as untrusted input;
+- keep source-format behavior separate from modern architecture;
+- stage deterministic content for implemented consumers;
+- prevent unsupported assets from entering releases accidentally;
+- allow the checked-in closure to expand predictably as reconstruction proceeds.
 
 ## Governing Decisions
 
-### 1. Preserve source; organize through catalogs
+### Consumer-led migration
 
-The retail tree is immutable evidence. Import tooling reads it but never renames, repairs, converts,
-or writes back to it. Original case and relative path are recorded as source identity.
+Content enters the repository because executable code consumes it, not because it shares a directory
+with something already supported.
 
-Modern organization is represented by typed logical asset IDs and reviewed catalog metadata. It is
-not created by manually rearranging retail folders and hoping every embedded path is found and
-rewritten.
+Every expansion slice must establish:
 
-### 2. Keep three boundaries distinct
+1. the consumer;
+2. the native or retail behavior being preserved;
+3. the content lookup mode;
+4. the parser or decoder boundary;
+5. malformed-input behavior;
+6. tests;
+7. the resulting `ClientContentClosure` change;
+8. manifest and payload verification.
 
-```text
-authorized retail snapshot (read-only)
-              |
-              v
-inventory + semantic import catalog (reviewable, deterministic)
-              |
-              v
-generated runtime content set (immutable deployment artifact)
-```
+Directory-sized migration is explicitly rejected.
 
-- **Source** preserves native names, bytes, package membership, and precedence evidence.
-- **Catalog** assigns ownership, logical identity, decoder, dependencies, and import status.
-- **Runtime content** contains only the closure needed by supported features and is safe for the
-  modern client to load.
+### Retail paths are compatibility identities
 
-This separation lets local development continue using `--content-root` while the modern package
-provider is built incrementally.
+Retail paths remain meaningful compatibility identifiers.
 
-### 3. Keep retail payloads outside `src/` and ordinary build output
+The modern content boundary may validate and normalize paths for safe lookup, but consumers do not
+casually rename retail resources or reinterpret path structure.
 
-Source projects contain readers, validators, catalogs, and runtime interfaces. The source-preserved
-payload belongs in the versioned top-level `content/` product, never in assembly directories.
-Ordinary builds stage only the implemented bootstrap closure rather than wildcard-copying all 233 MB
-of source bytes into every output. Release packaging can later select reviewed entries by manifest
-disposition.
+Host filesystem containment is enforced separately from native virtual-path normalization.
 
-### 4. Prefer typed readers over a universal “INI loader”
+### Native evidence determines compatibility behavior
 
-Retail extensions do not define a single grammar or semantic model. Shared infrastructure may
-handle bounded byte reading, line splitting, section/key tokenization, duplicate policy, and source
-diagnostics. Each catalog owns its typed validation and native quirks.
+The legacy reconstruction is useful for locating concepts and understanding historical flows, but it
+is not authoritative architecture.
 
-### 5. Fail closed at import; load immutable results at runtime
+For parity-sensitive behavior, evidence priority is:
 
-Import is the place for expensive hashing, dependency analysis, decoding, and strict diagnostics.
-Runtime packages are immutable and versioned. Runtime does not silently search arbitrary host
-paths, reinterpret a malformed file, or fall back to an unrelated asset.
+1. verified native 5517 behavior and resources;
+2. retail payload evidence;
+3. legacy reconstruction as supporting reference.
 
-## Repository Layout
+Unsafe native undefined behavior does not need to be reproduced.
 
-The implemented content boundary is:
+### Legacy data is untrusted input
 
-```text
-content/
-├── README.md
-└── retail-5517/
-    ├── manifest.json                 # deterministic identity and integrity catalog
-    └── payload/
-        ├── ini/                      # complete source-preserved family
-        ├── data/                     # complete source-preserved loose family
-        └── ani/                      # complete catalogs indexing data assets
+Known hashes establish identity, not safety.
 
-src/OpenConquer.Content/
-├── Catalogs/                         # typed logical catalogs
-├── Formats/                          # bounded legacy decoders
-├── Sources/                          # directory, WDF, and modern package providers
-└── Validation/                       # path, signature, size, and dependency checks
+Readers and importers must still validate:
 
-tools/OpenConquer.Content.Tool/       # validated, deterministic retail-family import
+- lengths and counts before allocation;
+- checked offset arithmetic;
+- signatures and structural invariants;
+- filesystem containment;
+- symbolic links and reparse points;
+- case-insensitive ambiguity;
+- archive boundaries;
+- decoded dimensions and expansion;
+- malformed text and binary inputs.
 
-tests/OpenConquer.Content.Tests/
-├── Fixtures/                         # minimal synthetic or legally reviewable format fixtures
-└── Golden/                           # expected manifests and diagnostics, never full retail data
+## Current Implemented Closure
 
-artifacts/content/retail-5517/        # future generated runtime packages
-```
-
-## Logical Runtime Taxonomy
-
-The catalog presents stable domains to consumers:
+The checked-in `content/retail-5517` payload currently contains:
 
 ```text
-configuration/
-├── bootstrap/
-└── defaults/
-
-definitions/
-├── actions/
-├── effects/
-├── items/
-├── magic/
-├── roles/
-└── world/
-
-presentation/
-├── animations/
-├── cursors/
-├── effects/
-├── icons/
-├── layouts/
-├── localization/
-├── portraits/
-└── textures/
-
-world/
-├── maps/
-├── minimaps/
-├── scenery/
-└── terrain/
-
-models/
-├── equipment/
-├── objects/
-└── roles/
-
-audio/
-├── music/
-└── sound-effects/
+data/main/Logo1.bmp
+data/main/Logo2.bmp
+ini/GameSetUp.ini
+ini/info.ini
+ini/package.ini
 ```
 
-This is a logical namespace. A logical entry may point to a path-preserved source during
-compatibility development and to a content-addressed payload in a generated package. Consumers do
-not receive retail paths or know which provider supplied the bytes.
+These files support the implemented startup consumers:
 
-## Content Source Architecture
+- screen-mode configuration;
+- package declaration registration;
+- startup-logo path configuration;
+- the two verified retail startup-logo variants.
 
-`ClientContentRoot` is a useful secure directory boundary, but a complete source model needs stream
-access independent of physical storage.
+No `ani/`, map, C3, audio, login, or general UI families are checked in merely for future use.
 
-The target abstraction should support:
+## Current Runtime Content Boundary
 
-- existence checks and required opens by validated content key;
-- original path and provider provenance in diagnostics;
-- bounded sequential streams rather than exposing absolute host paths;
-- case-insensitive Windows-era lookup with ambiguity rejection;
-- cancellation for long inventory/import operations;
-- deterministic enumeration for tooling, without requiring runtime enumeration;
-- explicit empty-file versus missing-file behavior.
+`OpenConquer.Content` currently provides:
 
-Planned providers:
+```text
+ClientContentPath
+        │
+        ├── structural virtual-path validation
+        └── package-path normalization
 
-| Provider | Purpose | Status |
-| --- | --- | --- |
-| Legacy directory | Read loose files through current containment and link checks | Extend current boundary |
-| WDF package | Resolve and stream package entries without extraction | Format and precedence evidence required |
-| Composite retail source | Apply verified package/loose ordering and prefix rules | Blocked on native verification |
-| Modern content set | Read a validated generated manifest and payload store | Implement after catalog schema |
+ClientContentRoot
+        │
+        └── contained case-insensitive loose-file lookup
 
-Do not encode provider order in consumers. The composite source owns it, and tests pin the verified
-native result for collisions, missing packages, and loose overrides.
+WdfArchive
+        │
+        └── bounded package-entry lookup
 
-## Manifest Contract
+PackagedClientContentSource
+        │
+        ├── LooseOnly
+        ├── PackageOnly
+        └── LooseThenPackage
+```
 
-The generated source inventory and reviewed import catalog use versioned schemas. No manifest
-contains workstation-specific absolute paths.
+Typed startup consumers sit above that boundary:
 
-Minimum source-entry fields:
+```text
+GameSetupConfiguration
+StartupLogoConfiguration
+StartupLogo
+WindowsBitmapReader
+```
 
-| Field | Purpose |
-| --- | --- |
-| `sourcePath` | Original slash-normalized retail relative path with original case retained |
-| `pathKey` | Separately generated case-folded lookup key |
-| `provider` | Loose directory or named package |
-| `length` | Exact source byte count |
-| `sha256` | Source payload fingerprint |
-| `signature` | Observed magic/signature classification, independent of extension |
-| `encoding` | Verified text encoding or `binary`/`unknown` |
-| `sourceSet` | Immutable source-set identifier tied to `version.dat` and root fingerprints |
+The application composes the content source; consumers do not know whether bytes came from a host
+filesystem or WDF archive.
 
-Minimum reviewed catalog fields:
+## Current Tooling Boundary
 
-| Field | Purpose |
-| --- | --- |
-| `assetId` | Stable, typed logical identity used by code |
-| `kind` | Typed format/consumer classification |
-| `source` | One exact source inventory entry |
-| `decoder` | Versioned decoder/transform identifier |
-| `dependencies` | Logical asset IDs discovered by a semantic reader |
-| `feature` | Owning runtime feature or bootstrap slice |
-| `disposition` | `import`, `source-only`, `replace`, `defer`, or `exclude` |
-| `reason` | Reviewable rationale for non-import dispositions |
+`OpenConquer.Content.Tool` imports and verifies deterministic content sets.
 
-Minimum runtime-entry fields add the output hash, output length, media/format identity, and package
-location. Import fails if two entries claim the same logical ID or case-folded key.
+Import resolves `ClientContentClosure` against an authorized source tree and stages only those
+files.
 
-## First Work Slice: INI, Data, and Direct Dependencies
+Verification requires:
 
-### In scope
+```text
+resolved code closure
+        ==
+manifest path keys
+        ==
+observed payload path keys
+```
 
-- Complete, deterministic source-preserving migration for `ini/`, `data/`, and `ani/`.
-- Root source fingerprints and package declarations.
-- WDF header/index research sufficient to enumerate and open bounded entries.
-- Native evidence for package order, loose override precedence, and path prefix/hash rules.
-- Signature classification for the observed data formats.
-- Encoding profiles for text catalogs selected in the first vertical slice.
-- Typed parsing for retail startup configuration and one animation catalog.
-- DDS/TGA signature validation and DXT1/DXT3/DXT5 capability decision.
-- One end-to-end presentation asset: catalog ID -> descriptor -> texture -> decoded image -> renderer
-  resource.
-- A generated manifest and dependency-closure report for that vertical slice.
+It additionally verifies expected length, format signature, and SHA-256 identity.
 
-### Included only as dependency boundaries
+This makes both of the following invalid:
 
-- `map/`, because `GameMap.dat` and some animation catalogs refer into world content;
-- `c3/`, because rendering definition tables refer to models and textures;
-- `sound/`, because action and region catalogs bind audio;
-- `data.wdf` and `c3.wdf`, because loose files alone are incomplete.
+- adding a payload file and manifest entry that no implemented consumer requires;
+- removing a required file from both payload and manifest.
 
-Their bulk parsing, transformation, and rendering are later slices.
+## WDF Policy
 
-### Explicitly out of scope
+Native analysis has established the package-registration and routing model required for current
+compatibility:
 
-- Executables, DLLs, OCX files, anti-cheat, autopatcher behavior, and server endpoints;
-- `Help/` executable content;
-- Flash runtime embedding;
-- bulk C3 model conversion;
-- full map-scene composition;
-- audio playback;
-- committing or publishing retail payloads before provenance review.
+- `package.ini` is whitespace-token parsed;
+- missing declarations are non-fatal;
+- prefixes are derived from declarations and compared first-wins;
+- a missing first WDF still owns its prefix;
+- routing uses the first virtual-path segment as package key;
+- hashing uses the full normalized virtual path;
+- loose and packaged lookup modes remain explicit.
 
-## Delivery Sequence and Gates
+The next WDF-specific hardening slice must finish the untrusted-archive boundary without changing
+those verified compatibility semantics.
 
-### Phase 0 — Correct the current retail baseline
+That slice should cover, where supported by format/native evidence:
 
-1. Replace the inverted `GameSetupConfiguration` fixture with the observed
-   `[ScreenMode] ScreenModeRecord=<value>` shape.
-2. Update the typed reader and compatibility documentation together.
-3. Retain existing invalid/missing value coverage and add a test sourced from the retail byte shape.
+- practical entry-count bounds;
+- strict table validation;
+- reserved fields;
+- entry payload bounds relative to the index;
+- payload overlap;
+- deterministic malformed/truncated failure;
+- checked offset/length arithmetic;
+- existing-but-unopenable or malformed registered-package behavior.
 
-**Exit gate:** the current application can start against the supplied retail configuration without
-weakening content-root containment or inventing defaults.
+## Expansion Rule
 
-### Phase 1 — Deterministic inventory tool
+A future slice that needs another retail asset follows this sequence:
 
-Implement `inventory` as a cross-platform .NET command that:
+```text
+audit consumer behavior
+        ↓
+verify native/retail evidence
+        ↓
+implement typed reader/decoder/provider behavior
+        ↓
+add focused tests
+        ↓
+extend ClientContentClosure
+        ↓
+import exact new dependency
+        ↓
+verify manifest == payload == closure
+        ↓
+run full release gate
+```
 
-1. validates `version.dat` and the requested source set;
-2. enumerates deterministically with ordinal path ordering;
-3. rejects links, traversal, and case-fold collisions;
-4. records length, SHA-256, signature, and conservative text/binary classification;
-5. inventories WDF entries without extracting them;
-6. emits canonical, schema-versioned JSON through an atomic write;
-7. reports exclusions, empty files, extension/signature mismatches, and missing declared packages.
+The content set is never expanded speculatively.
 
-**Exit gate:** two runs against unchanged input are byte-identical, and CI can test the tool with a
-small synthetic tree and WDF fixture.
+## Planned Consumer-Led Expansion
 
-### Phase 2 — Retail source composition
+Likely future areas, subject to actual reconstruction order, include:
 
-Introduce stream-based directory, WDF, and composite providers. Establish package ordering and
-loose override behavior from native analysis, then lock it with collision fixtures.
+1. server-selection/bootstrap data;
+2. first-party login and core UI resources;
+3. fonts, localization, cursors, icons, and layout definitions;
+4. item and role definitions;
+5. map indexes, terrain, minimaps, and scenery;
+6. C3 models, textures, motion, and effects;
+7. sound effects and music.
 
-**Exit gate:** a reference set containing loose-only, package-only, override, empty, ambiguous-case,
-and missing entries resolves exactly as the verified native policy requires.
+Each is its own audited slice or sequence of coherent slices.
 
-### Phase 3 — Typed catalog foundation
+The existence of these families in retail does not authorize importing them early.
 
-Build bounded readers for:
+## Validation Requirements
 
-- startup/default configuration;
-- the selected top-level text `.ani` descriptor;
-- texture headers and validated payload dispatch.
+Every legacy format boundary should apply the requirements relevant to its structure:
 
-Readers return typed values and source-aware diagnostics. Embedded paths are parsed as format-level
-references and resolved through the owning catalog—not assumed to be root-relative filesystem
-paths.
+- bounded file size before reading;
+- bounded collection counts before allocating;
+- checked offset and length arithmetic;
+- signature validation;
+- structural range validation;
+- deterministic duplicate handling;
+- path containment and link rejection for host files;
+- no extraction to attacker-controlled paths;
+- bounded decoded image/data dimensions;
+- deterministic diagnostics;
+- no silent fallback outside verified compatibility behavior.
 
-**Exit gate:** import produces a dependency-closed catalog for the selected vertical slice with no
-unclassified required file.
-
-### Phase 4 — First runtime content set
-
-Package only the selected bootstrap/UI closure. Preserve each logical path while allowing identical
-payload bytes to share content-addressed storage. Add a modern provider and wire it alongside the
-retail development provider at the composition root.
-
-**Exit gate:** the same logical asset renders from both an authorized retail root and the generated
-content set, with matching decoded dimensions and pixel checksum.
-
-### Phase 5 — Expand by feature
-
-Add content in consumer-led slices rather than directory-sized batches:
-
-1. login and server selection presentation;
-2. core UI layouts, fonts, localization, cursors, and icons;
-3. item and role definition catalogs;
-4. map index, base terrain, minimaps, and scenery;
-5. C3 models, textures, motion, and effects;
-6. sound effects and music;
-7. optional legacy features only when their modern consumer exists.
-
-Every slice extends typed consumers and runtime staging from the complete source-family catalog;
-files are not discovered and copied ad hoc at the moment a consumer happens to need them.
-
-## Validation and Security Requirements
-
-- Treat every legacy file and package as untrusted input even when its hash is known.
-- Bound file length, entry count, string length, image dimensions, decoded bytes, dependency count,
-  recursion depth, and decompression expansion before allocating.
-- Use checked arithmetic for offsets, sizes, dimensions, and record counts.
-- Validate magic bytes before selecting a decoder; extensions remain identity hints only.
-- Reject package entry overlap, offset overflow, truncated tables, duplicate ambiguous keys, and
-  paths that escape the logical root.
-- Never extract archive/package entries to attacker-controlled paths.
-- Make import cancellation-safe and write outputs atomically after full validation.
-- Keep generated packages immutable; verify manifest and payload hashes before publication/use.
-- Exclude host artifacts such as `Thumbs.db`, logs, screenshots, and updater state by explicit rule
-  with an audit reason.
-- Sanitize diagnostics so malformed binary data cannot inject terminal control sequences.
+Cleanup failures must not replace an existing primary failure.
 
 ## Test Strategy
 
-### CI-safe tests
+Content tests should remain synthetic wherever practical.
 
-- Synthetic fixtures cover every structural branch, limit, and corruption case.
-- Small golden fixtures capture proven retail quirks without requiring the full proprietary corpus.
-- Manifest output is snapshot-tested for deterministic ordering and schema compatibility.
-- Provider contract tests run identically against directory, WDF, and modern package sources.
-- Property/fuzz tests target binary readers, path normalization, and image header parsing.
+They should cover:
 
-### Authorized retail validation
+- path validation;
+- case-insensitive loose lookup;
+- containment and symlink/reparse rejection;
+- package-prefix and duplicate semantics;
+- missing-package behavior;
+- WDF parsing and bounds;
+- configuration grammar;
+- bitmap decoding;
+- content-closure resolution;
+- import determinism;
+- manifest/payload/closure verification;
+- malformed and adversarial inputs.
 
-A separate opt-in command accepts an external source path and validates known fingerprints, observed
-counts, package declarations, catalog parse totals, dependency closure, and selected decoded output
-hashes. It is never a default CI prerequisite and never uploads source assets.
+Tests must not require redistribution of large retail payload families.
 
-## Operational and Review Policy
+## Commit and Release Gate
 
-- Source-set and schema versions advance independently.
-- A decoder change records its version and forces deterministic regeneration of affected outputs.
-- Catalog changes are code-reviewed because they alter feature behavior and redistribution scope.
-- Generated artifacts publish with their manifest, source-set ID, tool version, and checksums.
-- Runtime telemetry and errors refer to logical asset IDs plus safe provenance, not absolute local
-  paths.
-- No silent fallback is allowed for a required asset. Optional assets are explicitly marked optional
-  in the typed catalog.
+A content slice is not complete until:
 
-## Open Evidence Questions
+```bash
+dotnet restore OpenConquer.Client.slnx --locked-mode
 
-These block portions of implementation and must not be answered by convention:
+dotnet format OpenConquer.Client.slnx \
+  --verify-no-changes \
+  --no-restore
 
-1. What exact hash algorithm and normalization does WDF lookup use for this client build?
-2. What are the native order and failure rules for `data.wdf`, `c3.wdf`, and the absent
-   `data3.wdf`?
-3. Do loose files override packages globally, per package, or per loader?
-4. Which same-stem `.dbc`/`.ini` representation does each native subsystem prefer?
-5. Which Windows code page does each high-byte text family use, and are there field-level
-   exceptions?
-6. Which catalogs prepend implicit namespaces such as `data/`, rather than treating references as
-   root-relative paths?
-7. Which SWF-driven flows are required for a faithful 5517 experience and which are obsolete
-   web/launcher integrations?
-8. Which `data/main/*.dat` files are required by the game process versus the legacy login host?
+dotnet build OpenConquer.Client.slnx \
+  --configuration Release \
+  --no-restore
 
-## Definition of Done for This Planning Slice
+dotnet test OpenConquer.Client.slnx \
+  --configuration Release \
+  --no-build \
+  --no-restore
 
-- The supplied source is identified and quantified without modification.
-- `ini/`, `data/`, and direct `ani/`/WDF dependencies have an explicit classification.
-- Format traps, current compatibility drift, and unknown native precedence are visible.
-- Repository, source, catalog, and generated-artifact ownership are separated.
-- The first implementation slice has ordered phases and objective exit gates.
-- Deferred map, C3, audio, Flash, launcher, and help work cannot accidentally enter through a bulk
-  copy.
+dotnet run \
+  --project tools/OpenConquer.Content.Tool \
+  --configuration Release \
+  --no-build \
+  -- verify-content-set \
+  --content-set content/retail-5517
+
+git diff --check
+```
+
+Published client output must contain the same manifest-approved closure as the checked-in content
+set.
+
+## Non-Goals
+
+The content system is not:
+
+- a bulk retail-file mirror;
+- a general-purpose game-engine asset pipeline;
+- an excuse to pre-import unsupported content;
+- an architecture copied from the legacy reconstruction;
+- a compatibility layer that preserves unsafe native undefined behavior.
+
+Its job is to provide the smallest correct, deterministic, auditable content boundary required by
+the reconstructed 5517 client.

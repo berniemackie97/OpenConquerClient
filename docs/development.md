@@ -7,7 +7,7 @@ OpenConquer Client targets the .NET SDK pinned in [`global.json`](../global.json
 Restore dependencies:
 
 ```bash
-dotnet restore OpenConquer.Client.slnx
+dotnet restore OpenConquer.Client.slnx --locked-mode
 ```
 
 Build the complete solution:
@@ -39,8 +39,8 @@ dotnet run \
 Relative `--content-root` values are resolved against the working directory from which the process
 is launched.
 
-The content root must contain the legacy files required by the implemented startup path. The current
-startup requires:
+The content root must contain the legacy files required by implemented consumers. The current
+required startup configuration is:
 
 ```text
 ini/GameSetUp.ini
@@ -53,14 +53,22 @@ with a valid:
 ScreenModeRecord=<0-3>
 ```
 
-Startup also reads `ini/info.ini`, selects `data/main/Logo1.bmp` or `Logo2.bmp` with the verified
-retail tick rule, and decodes the uncompressed 24-bit bitmap. The bitmap is presented in a dedicated
-250×188 startup window. That startup window and its graphics resources are destroyed before the
-main resizable client window is constructed; the logo is not part of the main logical render
-surface. The screen-mode value remains independent of the physical desktop-host size.
+Startup also examines `ini/package.ini` when present to register WDF package prefixes and reads
+`ini/info.ini` to resolve the optional startup logo. Missing package declarations and verified
+non-fatal package-registration outcomes do not prevent startup.
 
-Unknown startup arguments, duplicate `--content-root` declarations, and missing option values are
-rejected rather than ignored.
+The startup logo is also non-fatal. When a usable logo bitmap is available, it is presented once in
+a dedicated borderless window at its natural logical size. The startup renderer, OpenGL context, and
+native window are destroyed before the main resizable client window is constructed. When the logo is
+unavailable, no startup window is created. There is no artificial minimum splash duration.
+
+The screen-mode value remains independent of the physical desktop-host size.
+
+`--presentation fit|integer|stretch` controls how that fixed logical frame is presented within the
+resizable host framebuffer.
+
+Unknown startup arguments, duplicate options, unsupported presentation values, and missing option
+values are rejected rather than ignored.
 
 ## Formatting
 
@@ -86,27 +94,35 @@ The current test projects are:
 ```text
 tests/OpenConquer.Client.Tests
 tests/OpenConquer.Content.Tests
+tests/OpenConquer.Content.Tool.Tests
 tests/OpenConquer.Platform.Tests
+tests/OpenConquer.Rendering.Tests
 ```
 
 `OpenConquer.Client.Tests` verifies executable startup policy, including content-root defaults,
-explicit overrides, path normalization, malformed argument handling, and the startup-window-before-
-main-window lifetime invariant.
+explicit overrides, path normalization, malformed argument handling, startup-presentation policy,
+and startup-window-before-main-window lifetime invariants.
 
-`OpenConquer.Content.Tests` verifies legacy content-root lookup semantics and retail startup
-configuration behavior, including case-insensitive lookup, path rejection, symlink/reparse-point
-rejection, missing-content behavior, and screen-mode mapping.
+`OpenConquer.Content.Tests` verifies legacy content-root lookup semantics, package registration and
+lookup behavior, shared content-path validation, native-compatible INI parsing, startup-logo
+configuration and decoding, and content-closure resolution.
 
-`OpenConquer.Platform.Tests` verifies desktop frame-pacing mechanics independently of a native
-window. The tests cover interval validation, start-state enforcement, remaining-time waits,
-overruns, scheduler oversleep, and the no-catch-up invariant.
+`OpenConquer.Content.Tool.Tests` verifies deterministic content import, manifest construction,
+physical-payload verification, implemented-closure enforcement, integrity validation, and
+filesystem-safety behavior.
 
-Run an individual test project directly while working on its subsystem:
+`OpenConquer.Platform.Tests` verifies desktop frame-pacing mechanics and startup-window policy
+independently of a live native window. The tests cover interval validation, start-state enforcement,
+remaining-time waits, overruns, scheduler oversleep, no-catch-up behavior, and startup-window
+configuration.
+
+`OpenConquer.Rendering.Tests` verifies logical presentation transforms, OpenGL capability policy,
+render-target behavior, and other rendering invariants that do not require a live desktop window.
+
+Run the complete test suite while validating a branch:
 
 ```bash
-dotnet test tests/OpenConquer.Client.Tests/OpenConquer.Client.Tests.csproj
-dotnet test tests/OpenConquer.Content.Tests/OpenConquer.Content.Tests.csproj
-dotnet test tests/OpenConquer.Platform.Tests/OpenConquer.Platform.Tests.csproj
+dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 ```
 
 CI discovers projects matching `tests/**/*.Tests.csproj` and executes each discovered project.
@@ -120,16 +136,18 @@ GitHub Actions runs CI for pushes to `main`, pull requests, and manual workflow 
 
 The Linux quality job runs on Ubuntu 24.04 and performs:
 
-1. dependency restore
-2. formatting verification
-3. Release build
-4. execution of every discovered test project
+1. locked dependency restore;
+2. formatting verification;
+3. Release build;
+4. the complete solution test suite;
+5. verification that the implemented content closure, manifest, and physical payload agree.
 
 The Release build runs with the repository's analyzers and warnings-as-errors configuration.
 
-Additional Windows 2025 and macOS 15 jobs restore and build the complete solution in Release
-configuration so cross-platform compilation remains continuously verified. Their check names are
-kept independent of runner labels so repository rules can require stable status-check identities.
+Additional Windows 2025 and macOS 15 jobs restore, build, and test the complete solution in Release
+configuration so cross-platform compilation and test behavior remain continuously verified. Their
+check names are kept independent of runner labels so repository rules can require stable
+status-check identities.
 
 CI obtains the .NET SDK selection from `global.json` rather than duplicating the SDK version in the
 workflow.
@@ -220,40 +238,30 @@ CRLF line endings.
 
 ## Before Committing
 
-Restore once:
+Run the repository quality gate from a clean working tree or a deliberate review state:
 
 ```bash
-dotnet restore OpenConquer.Client.slnx
-```
+dotnet restore OpenConquer.Client.slnx --locked-mode
 
-Then run the same core quality checks enforced by CI:
+dotnet format OpenConquer.Client.slnx \
+  --verify-no-changes \
+  --no-restore
 
-```bash
-dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
-dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
-```
+dotnet build OpenConquer.Client.slnx \
+  --configuration Release \
+  --no-restore
 
-Run every affected test project:
-
-```bash
-dotnet test tests/OpenConquer.Client.Tests/OpenConquer.Client.Tests.csproj \
+dotnet test OpenConquer.Client.slnx \
   --configuration Release \
   --no-build \
   --no-restore
 
-dotnet test tests/OpenConquer.Content.Tests/OpenConquer.Content.Tests.csproj \
+dotnet run \
+  --project tools/OpenConquer.Content.Tool \
   --configuration Release \
   --no-build \
-  --no-restore
+  -- verify-content-set \
+  --content-set content/retail-5517
 
-dotnet test tests/OpenConquer.Platform.Tests/OpenConquer.Platform.Tests.csproj \
-  --configuration Release \
-  --no-build \
-  --no-restore
-```
-
-Finally, verify that the diff contains no whitespace errors:
-
-```bash
 git diff --check
 ```

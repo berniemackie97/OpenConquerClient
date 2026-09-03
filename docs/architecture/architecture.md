@@ -89,7 +89,7 @@ is created.
 The supported startup form is:
 
 ```text
-OpenConquer.Client [--content-root <path>]
+OpenConquer.Client [--content-root <path>] [--presentation <fit|integer|stretch>]
 ```
 
 With no explicit content root, startup uses the versioned `content/retail-5517/payload` set staged
@@ -102,9 +102,9 @@ the process working directory at startup and normalized to an absolute path.
 Malformed startup input is rejected before application construction. Unknown arguments, duplicate
 content-root declarations, and missing content-root values are not silently ignored.
 
-The resulting content-root path is passed into `ClientApplication`. The application then constructs
-the composite `RetailClientContentSource`; Content does not depend on or receive the executable's
-complete startup-options object.
+The resulting content-root path and presentation policy are passed into `ClientApplication`. The
+application constructs the composite `PackagedClientContentSource`; Content does not depend on or
+receive the executable's complete startup-options object.
 
 ```text
 process arguments
@@ -112,12 +112,14 @@ process arguments
         ▼
 ClientStartupOptions
         │
-        │ absolute ContentRootPath
-        ▼
-ClientApplication
-        │
-        ▼
-RetailClientContentSource
+        ├── absolute ContentRootPath
+        └── PresentationPolicy
+                │
+                ▼
+        ClientApplication
+                │
+                ▼
+    PackagedClientContentSource
         │
         ├── loose files through ClientContentRoot
         └── package entries through WdfArchive
@@ -182,25 +184,37 @@ dependency boundary between Content and Rendering.
 
 ## Startup Logo Lifetime
 
-The retail logo is an initialization surface, not content in the main game framebuffer. Startup
-resolves `ini/info.ini[DlgLogo]BgFormat`, selects variant 1 or 2 from the monotonic tick parity, and
-decodes the selected 24-bit bitmap before any desktop client window exists.
+The retail logo is an optional initialization surface, not content in the main game framebuffer.
 
-`OpenConquer.Client` then composes a dedicated Platform window with a dedicated Rendering device and
-logo renderer. The startup window uses the verified retail dialog-template size of 250×188 window
-units. The image is kept at native bitmap resolution when the physical framebuffer permits and is
-contained proportionally on lower-density displays.
+Startup reads `ini/info.ini[DlgLogo]BgFormat` through the loose-filesystem path used by the native
+INI loader, selects variant 1 or 2 from the monotonic tick parity, and attempts to decode the
+selected 24-bit bitmap. Package lookup is not used for the startup logo.
+
+The logo boundary deliberately preserves the native non-fatal behavior. A missing configuration file
+falls back to the verified retail format, while an unusable format, unsafe resolved path, missing
+bitmap, inaccessible bitmap, or bitmap-decoding failure makes the visual splash unavailable without
+aborting client startup.
+
+When no image is available, `OpenGLStartupSplash` creates no native window or OpenGL context.
+
+When an image is available, `OpenConquer.Client` composes a dedicated borderless `StartupWindow`
+with a dedicated Rendering device and startup renderer. The window's logical dimensions are the
+bitmap's natural dimensions. On scaled displays the physical framebuffer may be larger, and the
+startup renderer accounts for that framebuffer scaling while preserving the image's natural logical
+size.
 
 The lifetime order is a tested invariant:
 
 ```text
-load startup configuration and bitmap
+load startup configuration and optional bitmap
         ↓
-create startup window and OpenGL context
+if no usable bitmap: continue without a startup window
         ↓
-render selected logo
+if usable: create borderless startup window and OpenGL context
         ↓
-initialize runtime configuration and keep the logo responsive
+present the selected logo once
+        ↓
+perform synchronous runtime initialization
         ↓
 destroy startup renderer, context, and window
         ↓
@@ -209,12 +223,14 @@ construct main DesktopWindow
 create the main logical renderer
 ```
 
-The main `OpenGLRenderer` has no startup-logo resource or draw path. This prevents the initialization
-bitmap from leaking into steady client frames and preserves the native separation between the
-one-shot startup dialog and the main client window. While the current initialization workload is
-still small, Client enforces a short 500 ms minimum presentation interval so the startup image
-actually reaches the desktop compositor instead of flashing in and out between refreshes. Real
-initialization work consumes that interval rather than extending it.
+There is no artificial minimum splash duration. Native evidence shows no sleep, wait, timer, or
+minimum-presentation interval between initialization and destruction of the startup logo. The modern
+client therefore presents the surface and lets real synchronous initialization determine its
+lifetime rather than introducing an invented delay.
+
+The main `OpenGLRenderer` has no startup-logo resource or draw path. This keeps startup resources
+out of steady-state rendering and preserves the native separation between the one-shot
+initialization surface and the main client window.
 
 ## Platform Boundary
 
@@ -430,11 +446,11 @@ The transform holds no graphics-API type and is unit tested without a device.
 
 `PresentationPolicy` selects how the frame is fitted:
 
-| Policy | Placement | Filter |
-|---|---|---|
-| `Fit` (default) | largest uniform scale that fits, centred | point when the result is an exact whole multiple, otherwise bilinear |
-| `IntegerScale` | largest whole-number scale that fits, centred; falls back to `Fit` when the window is smaller than one logical frame | point |
-| `Stretch` | fills the host framebuffer | bilinear unless the result happens to be exact |
+| Policy          | Placement                                                                                                            | Filter                                                               |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `Fit` (default) | largest uniform scale that fits, centred                                                                             | point when the result is an exact whole multiple, otherwise bilinear |
+| `IntegerScale`  | largest whole-number scale that fits, centred; falls back to `Fit` when the window is smaller than one logical frame | point                                                                |
+| `Stretch`       | fills the host framebuffer                                                                                           | bilinear unless the result happens to be exact                       |
 
 `Fit` and `IntegerScale` preserve the logical aspect ratio and leave pillarbox or letterbox bars.
 `Stretch` is retained only as an explicit opt-in: a 4:3 logical frame across a 16:9 host is
@@ -484,13 +500,13 @@ IMouse.Position                  = (915.2422, 638.7461)   <- matches, within rou
 PointToFramebuffer(915, 639)     = (1830, 1278)           <- does not match
 ```
 
-Pointer positions therefore arrive in window coordinates, and the conversion is required rather
-than optional. `PointToFramebuffer` was also confirmed to be exactly linear and origin-preserving
-on that display: `(0,0)` maps to `(0,0)`, `(1,1)` to `(2,2)`, and `(640,480)` to `(1280,960)`.
+Pointer positions therefore arrive in window coordinates, and the conversion is required rather than
+optional. `PointToFramebuffer` was also confirmed to be exactly linear and origin-preserving on that
+display: `(0,0)` maps to `(0,0)`, `(1,1)` to `(2,2)`, and `(640,480)` to `(1280,960)`.
 
-Reproduce by creating a window, reading `Size` and `FramebufferSize`, then comparing `IMouse.Position`
-against `PointToClient` of the operating-system cursor position. A machine at a scale factor of one
-cannot distinguish the two spaces and will not detect a regression here.
+Reproduce by creating a window, reading `Size` and `FramebufferSize`, then comparing
+`IMouse.Position` against `PointToClient` of the operating-system cursor position. A machine at a
+scale factor of one cannot distinguish the two spaces and will not detect a regression here.
 
 Pointer positions are fractional and the windowing conversion accepts whole window coordinates only,
 so `PointToFramebuffer` rounds to the nearest rather than truncating, which would bias every pointer
