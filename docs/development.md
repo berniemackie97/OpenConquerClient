@@ -24,7 +24,8 @@ dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
 
 ## Running
 
-By default, the client treats the executable directory as its client-content root.
+By default, the client uses the versioned retail content staged beneath the executable at
+`content/retail-5517/payload`.
 
 A different client tree can be supplied explicitly:
 
@@ -42,18 +43,21 @@ The content root must contain the legacy files required by the implemented start
 startup requires:
 
 ```text
-ini/GameSetup.Ini
+ini/GameSetUp.ini
 ```
 
 with a valid:
 
 ```ini
-[ScreenModeRecord]
-ScreenMode=<0-3>
+[ScreenMode]
+ScreenModeRecord=<0-3>
 ```
 
-The screen-mode value selects the logical game resolution while remaining independent of the
-physical resizable desktop-host size.
+Startup also reads `ini/info.ini`, selects `data/main/Logo1.bmp` or `Logo2.bmp` with the verified
+retail tick rule, and decodes the uncompressed 24-bit bitmap. The bitmap is presented in a dedicated
+250×188 startup window. That startup window and its graphics resources are destroyed before the
+main resizable client window is constructed; the logo is not part of the main logical render
+surface. The screen-mode value remains independent of the physical desktop-host size.
 
 Unknown startup arguments, duplicate `--content-root` declarations, and missing option values are
 rejected rather than ignored.
@@ -86,7 +90,8 @@ tests/OpenConquer.Platform.Tests
 ```
 
 `OpenConquer.Client.Tests` verifies executable startup policy, including content-root defaults,
-explicit overrides, path normalization, and malformed argument handling.
+explicit overrides, path normalization, malformed argument handling, and the startup-window-before-
+main-window lifetime invariant.
 
 `OpenConquer.Content.Tests` verifies legacy content-root lookup semantics and retail startup
 configuration behavior, including case-insensitive lookup, path rejection, symlink/reparse-point

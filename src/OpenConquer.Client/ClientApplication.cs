@@ -1,5 +1,6 @@
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
+using OpenConquer.Content.Startup;
 using OpenConquer.Platform;
 using OpenConquer.Rendering;
 using OpenConquer.Rendering.OpenGL;
@@ -9,37 +10,52 @@ namespace OpenConquer.Client;
 internal sealed class ClientApplication : IDisposable
 {
     private static readonly TimeSpan s_retailFrameInterval = TimeSpan.FromMilliseconds(25);
+    private static readonly TimeSpan s_minimumStartupLogoDuration = TimeSpan.FromMilliseconds(500);
 
-    private readonly DesktopWindow _window;
-    private readonly LogicalRenderSize _logicalRenderSize;
+    private readonly string _clientContentRootPath;
     private readonly PresentationPolicy _presentationPolicy;
 
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
+    private DesktopWindow? _window;
+    private LogicalRenderSize? _logicalRenderSize;
+    private bool _runStarted;
     private bool _disposed;
 
     public ClientApplication(string clientContentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientContentRootPath);
+
+        _clientContentRootPath = clientContentRootPath;
         _presentationPolicy = presentationPolicy;
-
-        ClientContentRoot contentRoot = new(clientContentRootPath);
-        GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentRoot);
-
-        _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
-
-        _window = new DesktopWindow(s_retailFrameInterval);
-
-        _window.FramebufferResized += OnFramebufferResized;
-        _window.Rendering += OnRendering;
-        _window.OpenGLContextReady += OnOpenGLContextReady;
-        _window.OpenGLContextReleasing += OnOpenGLContextReleasing;
     }
 
     public int Run()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        _window.Run();
+        if (_runStarted)
+        {
+            throw new InvalidOperationException("The client application has already been run.");
+        }
+
+        _runStarted = true;
+
+        RetailClientContentSource contentSource = RetailClientContentSource.Open(_clientContentRootPath);
+        StartupLogo startupLogo = StartupLogo.Load(contentSource, Environment.TickCount64);
+
+        DesktopWindow window = ClientWindowCreationSequence.CreateMainAfterStartup(
+            new OpenGLStartupSplash(startupLogo, s_minimumStartupLogoDuration),
+            () => InitializeRuntimeConfiguration(contentSource),
+            () => new DesktopWindow(s_retailFrameInterval)
+        );
+
+        _window = window;
+        window.FramebufferResized += OnFramebufferResized;
+        window.Rendering += OnRendering;
+        window.OpenGLContextReady += OnOpenGLContextReady;
+        window.OpenGLContextReleasing += OnOpenGLContextReleasing;
+        window.Run();
 
         return 0;
     }
@@ -53,7 +69,7 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            _window.Dispose();
+            _window?.Dispose();
         }
         finally
         {
@@ -69,18 +85,37 @@ internal sealed class ClientApplication : IDisposable
         }
 
         OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
+        OpenGLRenderer? renderer = null;
 
         try
         {
-            PixelSize framebufferSize = _window.FramebufferSize;
+            DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
+            LogicalRenderSize logicalRenderSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
+            PixelSize framebufferSize = window.FramebufferSize;
 
-            _renderer = graphicsDevice.CreateRenderer(_logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
+            renderer = graphicsDevice.CreateRenderer(
+                logicalRenderSize,
+                framebufferSize.Width,
+                framebufferSize.Height,
+                _presentationPolicy
+            );
 
+            _renderer = renderer;
             _graphicsDevice = graphicsDevice;
+
+            renderer = null;
         }
         catch
         {
-            graphicsDevice.Dispose();
+            try
+            {
+                renderer?.Dispose();
+            }
+            finally
+            {
+                graphicsDevice.Dispose();
+            }
+
             throw;
         }
     }
@@ -88,6 +123,14 @@ internal sealed class ClientApplication : IDisposable
     private void OnFramebufferResized(PixelSize size)
     {
         _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
+    }
+
+    private void InitializeRuntimeConfiguration(IClientContentSource contentSource)
+    {
+        ArgumentNullException.ThrowIfNull(contentSource);
+
+        GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
+        _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
     }
 
     private void OnRendering(double _)

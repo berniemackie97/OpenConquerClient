@@ -18,7 +18,7 @@ public sealed class GameSetupConfigurationTests
 
         temporaryDirectory.WriteFile(
             "ini/GameSetup.Ini",
-            $"[ScreenModeRecord]\nScreenMode={screenMode}\n");
+            $"[ScreenMode]\nScreenModeRecord={screenMode}\n");
 
         GameSetupConfiguration configuration = GameSetupConfiguration.Load(
             new ClientContentRoot(temporaryDirectory.RootPath));
@@ -35,7 +35,7 @@ public sealed class GameSetupConfigurationTests
 
         temporaryDirectory.WriteFile(
             "INI/gamesetup.ini",
-            "[screenmoderecord]\nscreenmode = 2\n");
+            "[screenmode]\nscreenmoderecord = 2\n");
 
         GameSetupConfiguration configuration = GameSetupConfiguration.Load(
             new ClientContentRoot(temporaryDirectory.RootPath));
@@ -63,7 +63,7 @@ public sealed class GameSetupConfigurationTests
 
         temporaryDirectory.WriteFile(
             "ini/GameSetup.Ini",
-            "[ScreenModeRecord]\nOtherValue=2\n");
+            "[ScreenMode]\nOtherValue=2\n");
 
         ClientContentRoot contentRoot = new(temporaryDirectory.RootPath);
 
@@ -82,7 +82,7 @@ public sealed class GameSetupConfigurationTests
 
         temporaryDirectory.WriteFile(
             "ini/GameSetup.Ini",
-            $"[ScreenModeRecord]\nScreenMode={configuredValue}\n");
+            $"[ScreenMode]\nScreenModeRecord={configuredValue}\n");
 
         ClientContentRoot contentRoot = new(temporaryDirectory.RootPath);
 

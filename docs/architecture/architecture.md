@@ -92,8 +92,9 @@ The supported startup form is:
 OpenConquer.Client [--content-root <path>]
 ```
 
-With no explicit content root, startup uses `AppContext.BaseDirectory`, making content discovery
-deterministic relative to the executable rather than dependent on the process working directory.
+With no explicit content root, startup uses the versioned `content/retail-5517/payload` set staged
+under `AppContext.BaseDirectory`, making content discovery deterministic relative to the executable
+rather than dependent on the process working directory.
 
 An explicit `--content-root` may be absolute or relative. Relative overrides are resolved against
 the process working directory at startup and normalized to an absolute path.
@@ -102,8 +103,8 @@ Malformed startup input is rejected before application construction. Unknown arg
 content-root declarations, and missing content-root values are not silently ignored.
 
 The resulting content-root path is passed into `ClientApplication`. The application then constructs
-`ClientContentRoot`; Content does not depend on or receive the executable's complete startup-options
-object.
+the composite `RetailClientContentSource`; Content does not depend on or receive the executable's
+complete startup-options object.
 
 ```text
 process arguments
@@ -116,10 +117,10 @@ ClientStartupOptions
 ClientApplication
         │
         ▼
-ClientContentRoot
+RetailClientContentSource
         │
-        ▼
-legacy client files
+        ├── loose files through ClientContentRoot
+        └── package entries through WdfArchive
 ```
 
 `ClientContentRoot` establishes the legacy client filesystem boundary.
@@ -150,14 +151,14 @@ The first production consumer of this boundary is the retail screen-mode configu
 At startup, `GameSetupConfiguration` resolves:
 
 ```text
-ini/GameSetup.Ini
+ini/GameSetUp.ini
 ```
 
 and reads:
 
 ```ini
-[ScreenModeRecord]
-ScreenMode=<value>
+[ScreenMode]
+ScreenModeRecord=<value>
 ```
 
 Legacy section and key matching are case-insensitive. The file is read using Latin-1-compatible text
@@ -179,11 +180,47 @@ The Content project interprets the legacy configuration. It does not construct R
 `ClientApplication` bridges the resulting dimensions into `LogicalRenderSize`, preserving the
 dependency boundary between Content and Rendering.
 
+## Startup Logo Lifetime
+
+The retail logo is an initialization surface, not content in the main game framebuffer. Startup
+resolves `ini/info.ini[DlgLogo]BgFormat`, selects variant 1 or 2 from the monotonic tick parity, and
+decodes the selected 24-bit bitmap before any desktop client window exists.
+
+`OpenConquer.Client` then composes a dedicated Platform window with a dedicated Rendering device and
+logo renderer. The startup window uses the verified retail dialog-template size of 250×188 window
+units. The image is kept at native bitmap resolution when the physical framebuffer permits and is
+contained proportionally on lower-density displays.
+
+The lifetime order is a tested invariant:
+
+```text
+load startup configuration and bitmap
+        ↓
+create startup window and OpenGL context
+        ↓
+render selected logo
+        ↓
+initialize runtime configuration and keep the logo responsive
+        ↓
+destroy startup renderer, context, and window
+        ↓
+construct main DesktopWindow
+        ↓
+create the main logical renderer
+```
+
+The main `OpenGLRenderer` has no startup-logo resource or draw path. This prevents the initialization
+bitmap from leaking into steady client frames and preserves the native separation between the
+one-shot startup dialog and the main client window. While the current initialization workload is
+still small, Client enforces a short 500 ms minimum presentation interval so the startup image
+actually reaches the desktop compositor instead of flashing in and out between refreshes. Real
+initialization work consumes that interval rather than extending it.
+
 ## Platform Boundary
 
 `OpenConquer.Platform` owns behavior whose semantics come from the desktop environment:
 
-- native window creation and destruction
+- native startup and main-window creation and destruction
 - OpenGL context creation and lifetime
 - physical framebuffer dimensions
 - desktop frame-loop orchestration
@@ -327,7 +364,7 @@ The logical game surface is independent of the physical desktop framebuffer.
 Logical dimensions must be positive.
 
 The application obtains the logical size from the verified retail `ScreenMode` value in
-`ini/GameSetup.Ini`. Modes 0 and 1 select 800×600; modes 2 and 3 select 1024×768.
+`ini/GameSetUp.ini`. Modes 0 and 1 select 800×600; modes 2 and 3 select 1024×768.
 
 Rendering does not read legacy configuration and does not derive the logical size from the desktop
 window.
@@ -336,7 +373,7 @@ window.
 dimensions change as the resizable host window changes.
 
 ```text
-GameSetup.Ini
+GameSetUp.ini
         │
         │ ScreenMode
         ▼

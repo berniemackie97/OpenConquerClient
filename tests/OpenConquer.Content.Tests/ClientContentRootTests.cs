@@ -43,7 +43,7 @@ public sealed class ClientContentRootTests
 
         string expectedPath = temporaryDirectory.WriteFile(
             "INI/GameSetup.InI",
-            "[ScreenModeRecord]\nScreenMode=2\n"
+            "[ScreenMode]\nScreenModeRecord=2\n"
         );
 
         ClientContentRoot contentRoot = new(temporaryDirectory.RootPath);
@@ -79,7 +79,7 @@ public sealed class ClientContentRootTests
         Directory.CreateDirectory(contentRootPath);
         Directory.CreateDirectory(outsideDirectoryPath);
 
-        temporaryDirectory.WriteFile("outside/GameSetup.Ini", "[ScreenModeRecord]\nScreenMode=2\n");
+        temporaryDirectory.WriteFile("outside/GameSetup.Ini", "[ScreenMode]\nScreenModeRecord=2\n");
 
         string linkedDirectoryPath = Path.Combine(contentRootPath, "ini");
 
@@ -103,7 +103,7 @@ public sealed class ClientContentRootTests
 
         string outsideFilePath = temporaryDirectory.WriteFile(
             "outside/GameSetup.Ini",
-            "[ScreenModeRecord]\nScreenMode=2\n"
+            "[ScreenMode]\nScreenModeRecord=2\n"
         );
 
         string linkedFilePath = Path.Combine(contentIniPath, "GameSetup.Ini");

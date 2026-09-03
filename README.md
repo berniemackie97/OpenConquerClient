@@ -54,6 +54,10 @@ host framebuffer, after which Platform performs the native buffer swap.
 
 More detailed architecture and compatibility documentation lives under [`docs`](docs).
 
+The retail-content survey and proposed ingestion architecture are documented in
+[`docs/content`](docs/content). They define how the original 5517 files will be inventoried,
+classified, and packaged without mixing raw retail payloads into source projects.
+
 ## Build
 
 Dependencies are pinned by the committed NuGet lock files, so restore in locked mode:
@@ -75,8 +79,11 @@ dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-rest
 ## Running
 
 ```bash
-dotnet run --project src/OpenConquer.Client -- --content-root <path> --presentation fit
+dotnet run --project src/OpenConquer.Client
 ```
+
+The default build stages the implemented bootstrap subset from the versioned retail content set.
+Pass `--content-root <path>` to validate or run directly against another authorized 5517 tree.
 
 `--presentation` selects how the fixed logical frame is fitted into the resizable window:
 

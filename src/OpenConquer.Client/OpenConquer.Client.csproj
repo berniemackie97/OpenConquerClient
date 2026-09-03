@@ -16,4 +16,36 @@
     <ProjectReference Include="../OpenConquer.Rendering/OpenConquer.Rendering.csproj" />
   </ItemGroup>
 
+  <!--
+    Keep ordinary builds fast by staging only the files consumed by the implemented bootstrap.
+    The complete source-preserving content family remains under content/retail-5517 and is expanded
+    into runtime packages by the content pipeline as consumers are implemented.
+  -->
+  <ItemGroup>
+    <Content Include="../../content/retail-5517/manifest.json"
+             Link="content/retail-5517/manifest.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../content/retail-5517/payload/ini/GameSetUp.ini"
+             Link="content/retail-5517/payload/ini/GameSetUp.ini"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../content/retail-5517/payload/ini/DefaultGameSetup.ini"
+             Link="content/retail-5517/payload/ini/DefaultGameSetup.ini"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../content/retail-5517/payload/ini/info.ini"
+             Link="content/retail-5517/payload/ini/info.ini"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../content/retail-5517/payload/data/main/Logo1.bmp"
+             Link="content/retail-5517/payload/data/main/Logo1.bmp"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../content/retail-5517/payload/data/main/Logo2.bmp"
+             Link="content/retail-5517/payload/data/main/Logo2.bmp"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
