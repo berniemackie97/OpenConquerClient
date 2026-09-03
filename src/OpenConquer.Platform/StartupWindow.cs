@@ -50,7 +50,7 @@ public sealed class StartupWindow : IDisposable
         _window.Render += OnRender;
     }
 
-    public event Action<PixelSize>? Rendering;
+    public event Action<StartupSurfaceMetrics>? Rendering;
     public event Action<IOpenGLContext>? OpenGLContextReady;
     public event Action? OpenGLContextReleasing;
 
@@ -73,7 +73,7 @@ public sealed class StartupWindow : IDisposable
             _window.Initialize();
             _window.IsVisible = true;
             CenterOnAvailableMonitor();
-            Redraw();
+            PresentOnce();
         }
         catch
         {
@@ -88,23 +88,6 @@ public sealed class StartupWindow : IDisposable
 
             throw;
         }
-    }
-
-    /// <summary>
-    /// Keeps the startup surface responsive while later initialization stages run.
-    /// </summary>
-    public void Redraw()
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-
-        if (!_window.IsInitialized)
-        {
-            throw new InvalidOperationException("The startup window must be initialized before it can be redrawn.");
-        }
-
-        _window.DoEvents();
-        _window.DoRender();
-        _window.DoEvents();
     }
 
     public void Dispose()
@@ -175,6 +158,24 @@ public sealed class StartupWindow : IDisposable
         }
     }
 
+    /// <summary>
+    /// Drains pending window messages, draws one frame, and drains again so the surface is on
+    /// screen before the caller continues.
+    /// </summary>
+    /// <remarks>
+    /// Retail shows the startup logo from inside <c>WM_INITDIALOG</c> and pumps no messages until
+    /// initialization finishes, so a single present matches the native lifetime. There is no
+    /// minimum display duration to honour: the <c>0x5AE8D8</c>-<c>0x5AF7B5</c> range contains no
+    /// sleep, wait, timer, or tick-count call, and the logo dialog's message map (<c>0x855220</c>)
+    /// handles only <c>WM_DESTROY</c> and <c>WM_CTLCOLOR</c>.
+    /// </remarks>
+    private void PresentOnce()
+    {
+        _window.DoEvents();
+        _window.DoRender();
+        _window.DoEvents();
+    }
+
     private void OnRender(double _)
     {
         SilkOpenGLContext openGLContext = _openGLContext ?? throw new InvalidOperationException("Startup rendering cannot begin before the OpenGL context is initialized.");
@@ -185,7 +186,12 @@ public sealed class StartupWindow : IDisposable
         }
 
         Vector2D<int> framebufferSize = _window.FramebufferSize;
-        Rendering?.Invoke(new PixelSize(framebufferSize.X, framebufferSize.Y));
+        Vector2D<int> logicalSize = _window.Size;
+
+        Rendering?.Invoke(new StartupSurfaceMetrics(
+            new PixelSize(framebufferSize.X, framebufferSize.Y),
+            new PixelSize(logicalSize.X, logicalSize.Y)
+        ));
     }
 
     private void ReleaseOpenGLContext()

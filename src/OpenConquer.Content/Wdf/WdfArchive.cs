@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace OpenConquer.Content.Wdf;
 
-public sealed class WdfArchive
+internal sealed class WdfArchive
 {
     public const uint Magic = 0x57444650;
     public const int HeaderLength = 12;

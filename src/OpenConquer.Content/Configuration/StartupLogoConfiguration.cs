@@ -5,7 +5,7 @@ namespace OpenConquer.Content.Configuration;
 public sealed class StartupLogoConfiguration
 {
     public const string RelativePath = "ini/info.ini";
-    public const string RetailDefaultBackgroundFormat = "Data/Main/Logo%d.bmp";
+    public const string DefaultBackgroundFormat = "Data/Main/Logo%d.bmp";
 
     private const int MaximumFileLength = 1024 * 1024;
     private const string SectionName = "DlgLogo";
@@ -21,23 +21,39 @@ public sealed class StartupLogoConfiguration
         get;
     }
 
+    /// <summary>
+    /// Reads <c>[DlgLogo] BgFormat</c>, falling back to the retail default.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every failure is non-fatal and yields <see cref="DefaultBackgroundFormat"/>, matching
+    /// <c>sub_66E514</c> (<c>0x66E514</c>): a missing store returns the caller's default at
+    /// <c>0x66E57D</c>, and a present store returns the stored value only when it is non-null and
+    /// non-empty (<c>0x76FA4C</c>), otherwise the default (<c>0x76FA4E</c>).
+    /// </para>
+    /// <para>
+    /// Read with <see cref="ContentLookupMode.LooseOnly"/> because retail parses INI files through
+    /// <c>IniStore_LoadFile</c> (<c>0x76EF13</c>), which opens them with <c>fopen(path, "r")</c> at
+    /// <c>0x76EF68</c> and never consults the package layer.
+    /// </para>
+    /// </remarks>
     public static StartupLogoConfiguration LoadOrDefault(IClientContentSource contentSource)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        if (!contentSource.TryOpenRead(RelativePath, out Stream? stream))
+        if (!contentSource.TryOpenRead(RelativePath, ContentLookupMode.LooseOnly, out Stream? stream))
         {
-            return new StartupLogoConfiguration(RetailDefaultBackgroundFormat);
+            return new StartupLogoConfiguration(DefaultBackgroundFormat);
         }
 
         using (stream)
         {
-            LegacyIniDocument document = LegacyIniDocument.Load(stream, RelativePath, MaximumFileLength);
+            IniDocument document = IniDocument.Load(stream, RelativePath, MaximumFileLength);
 
             if (!document.TryGetValue(SectionName, BackgroundFormatKeyName, out string? value)
                 || string.IsNullOrWhiteSpace(value))
             {
-                return new StartupLogoConfiguration(RetailDefaultBackgroundFormat);
+                return new StartupLogoConfiguration(DefaultBackgroundFormat);
             }
 
             return new StartupLogoConfiguration(value);

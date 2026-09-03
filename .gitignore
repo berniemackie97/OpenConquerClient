@@ -483,3 +483,22 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# ---------------------------------------------------------------------------
+# Source-preserved client content
+#
+# The build-output rules above are name-based, so a client directory that
+# happens to be called Log/, Logs/, obj/, bin/, Debug/, or Release/ would be
+# dropped from the content set without any visible error. The manifest would
+# then declare files a clean clone does not have.
+#
+# Directories are re-included before files because Git cannot re-include a
+# file whose parent directory is excluded.
+# ---------------------------------------------------------------------------
+!/content/**/
+!/content/**
+
+# Host artifacts must stay ignored even inside the content tree.
+/content/**/.DS_Store
+/content/**/Thumbs.db
+/content/**/desktop.ini

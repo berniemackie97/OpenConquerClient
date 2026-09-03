@@ -1,6 +1,7 @@
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Startup;
+using OpenConquer.Content.Wdf;
 using OpenConquer.Platform;
 using OpenConquer.Rendering;
 using OpenConquer.Rendering.OpenGL;
@@ -9,8 +10,7 @@ namespace OpenConquer.Client;
 
 internal sealed class ClientApplication : IDisposable
 {
-    private static readonly TimeSpan s_retailFrameInterval = TimeSpan.FromMilliseconds(25);
-    private static readonly TimeSpan s_minimumStartupLogoDuration = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
 
     private readonly string _clientContentRootPath;
     private readonly PresentationPolicy _presentationPolicy;
@@ -41,13 +41,23 @@ internal sealed class ClientApplication : IDisposable
 
         _runStarted = true;
 
-        RetailClientContentSource contentSource = RetailClientContentSource.Open(_clientContentRootPath);
+        PackagedClientContentSource contentSource = PackagedClientContentSource.Open(_clientContentRootPath);
+
+        ReportTolerableContentGaps(contentSource);
+
+        // (timeGetTime() & 1) + 1 selects the retail variant; any monotonic millisecond counter
+        // reproduces the parity, so the managed host uses its own tick source.
         StartupLogo startupLogo = StartupLogo.Load(contentSource, Environment.TickCount64);
 
+        if (startupLogo.UnavailableReason is { } unavailableReason)
+        {
+            Console.Error.WriteLine($"OpenConquer: startup logo unavailable; {unavailableReason}");
+        }
+
         DesktopWindow window = ClientWindowCreationSequence.CreateMainAfterStartup(
-            new OpenGLStartupSplash(startupLogo, s_minimumStartupLogoDuration),
+            new OpenGLStartupSplash(startupLogo),
             () => InitializeRuntimeConfiguration(contentSource),
-            () => new DesktopWindow(s_retailFrameInterval)
+            () => new DesktopWindow(s_frameInterval)
         );
 
         _window = window;
@@ -123,6 +133,29 @@ internal sealed class ClientApplication : IDisposable
     private void OnFramebufferResized(PixelSize size)
     {
         _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
+    }
+
+    /// <summary>
+    /// Reports the <c>ini/package.ini</c> declarations retail resolves without failing.
+    /// </summary>
+    /// <remarks>
+    /// A missing or duplicate declaration is not an error: the native reader returns
+    /// <see langword="void"/> and its caller discards <c>TqPackagesOpen</c>'s result at
+    /// <c>0x1001A406</c>. Reporting keeps an incomplete content set visible instead of silent.
+    /// </remarks>
+    private static void ReportTolerableContentGaps(PackagedClientContentSource contentSource)
+    {
+        foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
+        {
+            if (registration.Outcome == WdfPackageRegistrationOutcome.Registered)
+            {
+                continue;
+            }
+
+            Console.Error.WriteLine(
+                $"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') was not registered: {registration.Outcome}."
+            );
+        }
     }
 
     private void InitializeRuntimeConfiguration(IClientContentSource contentSource)

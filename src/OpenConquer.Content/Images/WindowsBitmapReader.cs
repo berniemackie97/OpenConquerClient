@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 
 namespace OpenConquer.Content.Images;
 
-public static class WindowsBitmapReader
+internal static class WindowsBitmapReader
 {
     private const int BitmapFileHeaderLength = 14;
     private const int MinimumInfoHeaderLength = 40;

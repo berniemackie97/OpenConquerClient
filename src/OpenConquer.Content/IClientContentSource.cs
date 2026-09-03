@@ -8,7 +8,19 @@ namespace OpenConquer.Content;
 /// </summary>
 public interface IClientContentSource
 {
-    bool TryOpenRead(string contentPath, [NotNullWhen(true)] out Stream? stream);
+    /// <summary>
+    /// Opens <paramref name="contentPath"/> under the requested <paramref name="mode"/>.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> when the mode could be satisfied. A source that owns no packages
+    /// reports <see langword="false"/> for <see cref="ContentLookupMode.PackageOnly"/> rather than
+    /// silently widening the request.
+    /// </returns>
+    bool TryOpenRead(string contentPath, ContentLookupMode mode, [NotNullWhen(true)] out Stream? stream);
 
-    Stream OpenRequiredRead(string contentPath);
+    /// <summary>
+    /// Opens <paramref name="contentPath"/> under the requested <paramref name="mode"/> or throws.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">The mode could not be satisfied.</exception>
+    Stream OpenRequiredRead(string contentPath, ContentLookupMode mode);
 }

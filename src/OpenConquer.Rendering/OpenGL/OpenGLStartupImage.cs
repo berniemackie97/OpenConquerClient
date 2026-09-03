@@ -48,25 +48,36 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
         }
     }
 
-    public void DrawContained(int viewportWidth, int viewportHeight)
+    /// <summary>
+    /// Draws the image into the top-left corner of the viewport at the requested device size.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Retail paints the logo through a <c>CreatePatternBrush</c> (<c>0x4B0AA2</c>) returned from
+    /// <c>WM_CTLCOLORDLG</c> (<c>0x4B0B26</c>). On Windows NT and later a pattern brush tiles the
+    /// bitmap at its <b>natural</b> size from the client origin, so there is no stretch, scale,
+    /// aspect fit, or letterbox.
+    /// </para>
+    /// <para>
+    /// <paramref name="destinationWidth"/> and <paramref name="destinationHeight"/> are the natural
+    /// size expressed in device pixels. On a display with a device pixel ratio of 1 they equal the
+    /// image dimensions; on a scaled display the caller multiplies by the ratio so the logo still
+    /// occupies its natural size in logical units.
+    /// </para>
+    /// </remarks>
+    public void DrawTopLeft(int viewportWidth, int viewportHeight, int destinationWidth, int destinationHeight)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(viewportWidth);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(viewportHeight);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(destinationWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(destinationHeight);
 
-        float scale = MathF.Min(
-            1f,
-            MathF.Min((float)viewportWidth / _width, (float)viewportHeight / _height)
-        );
-        int drawWidth = Math.Max(1, (int)MathF.Round(_width * scale));
-        int drawHeight = Math.Max(1, (int)MathF.Round(_height * scale));
-        int leftPixels = (viewportWidth - drawWidth) / 2;
-        int topPixels = (viewportHeight - drawHeight) / 2;
-        float left = ToNormalizedX(leftPixels, viewportWidth);
-        float right = ToNormalizedX(leftPixels + drawWidth, viewportWidth);
-        float top = ToNormalizedY(topPixels, viewportHeight);
-        float bottom = ToNormalizedY(topPixels + drawHeight, viewportHeight);
+        float left = ToNormalizedX(0, viewportWidth);
+        float right = ToNormalizedX(destinationWidth, viewportWidth);
+        float top = ToNormalizedY(0, viewportHeight);
+        float bottom = ToNormalizedY(destinationHeight, viewportHeight);
 
         Span<float> vertices =
         [

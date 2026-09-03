@@ -5,7 +5,7 @@ namespace OpenConquer.Content.Tests.Wdf;
 public sealed class WdfPathHashTests
 {
     [Fact]
-    public void Compute_MatchesKnownRetailVectorAndNormalizesPath()
+    public void Compute_MatchesVerifiedVectorAndNormalizesPath()
     {
         const uint expected = 0x048AEF45;
 

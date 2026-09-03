@@ -5,7 +5,7 @@ namespace OpenConquer.Content.Tests.Configuration;
 public sealed class StartupLogoConfigurationTests
 {
     [Fact]
-    public void LoadOrDefault_ReadsRetailBackgroundFormat()
+    public void LoadOrDefault_ReadsDeclaredBackgroundFormat()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -24,7 +24,7 @@ public sealed class StartupLogoConfigurationTests
     }
 
     [Fact]
-    public void LoadOrDefault_UsesVerifiedRetailDefaultWhenInfoIsMissing()
+    public void LoadOrDefault_UsesVerifiedDefaultWhenInfoIsMissing()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
@@ -32,7 +32,7 @@ public sealed class StartupLogoConfigurationTests
             new ClientContentRoot(temporaryDirectory.RootPath)
         );
 
-        Assert.Equal(StartupLogoConfiguration.RetailDefaultBackgroundFormat, configuration.BackgroundFormat);
+        Assert.Equal(StartupLogoConfiguration.DefaultBackgroundFormat, configuration.BackgroundFormat);
         Assert.Equal("Data/Main/Logo1.bmp", configuration.GetLogoPath(1));
     }
 

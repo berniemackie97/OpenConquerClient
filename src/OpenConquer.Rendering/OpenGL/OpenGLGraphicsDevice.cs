@@ -71,11 +71,25 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy);
     }
 
-    public OpenGLStartupLogoRenderer CreateStartupLogoRenderer(int width, int height, ReadOnlySpan<byte> rgbaPixels)
+    /// <summary>
+    /// Creates a startup surface that paints the supplied logo bitmap.
+    /// </summary>
+    public OpenGLStartupSurfaceRenderer CreateStartupSurfaceRenderer(int width, int height, ReadOnlySpan<byte> rgbaPixels)
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);
 
-        return new OpenGLStartupLogoRenderer(_gl, width, height, rgbaPixels);
+        return new OpenGLStartupSurfaceRenderer(_gl, width, height, rgbaPixels);
+    }
+
+    /// <summary>
+    /// Creates a startup surface with no logo bitmap, matching the native case where the bitmap
+    /// could not be loaded and the dialog is painted with its default background.
+    /// </summary>
+    public OpenGLStartupSurfaceRenderer CreateStartupSurfaceRenderer()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, instance: this);
+
+        return new OpenGLStartupSurfaceRenderer(_gl);
     }
 
     public void Dispose()

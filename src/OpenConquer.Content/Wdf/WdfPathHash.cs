@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace OpenConquer.Content.Wdf;
 
-public static class WdfPathHash
+internal static class WdfPathHash
 {
     private const int BufferDwordCount = 64;
     private const int BufferLength = BufferDwordCount * sizeof(uint);

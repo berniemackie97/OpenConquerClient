@@ -2,6 +2,11 @@ namespace OpenConquer.Client.Tests;
 
 public sealed class ClientWindowCreationSequenceTests
 {
+    /// <summary>
+    /// The splash is torn down as soon as initialization returns. Retail hides and destroys the
+    /// startup logo at <c>0x5AF4E7</c> and <c>0x5AF4F2</c> with no minimum display duration, so
+    /// there is no completion step between initialization and disposal.
+    /// </summary>
     [Fact]
     public void CreateMainAfterStartup_DestroysStartupSplashBeforeConstructingMainWindow()
     {
@@ -20,7 +25,7 @@ public sealed class ClientWindowCreationSequenceTests
 
         Assert.NotNull(mainWindow);
         Assert.Equal(
-            ["startup-shown", "runtime-initialized", "startup-completed", "startup-disposed", "main-created"],
+            ["startup-shown", "runtime-initialized", "startup-disposed", "main-created"],
             events
         );
     }
@@ -73,6 +78,24 @@ public sealed class ClientWindowCreationSequenceTests
         Assert.Equal(["startup-shown", "runtime-initialized", "startup-disposed"], events);
     }
 
+    [Fact]
+    public void CreateMainAfterStartup_RejectsNullArguments()
+    {
+        List<string> events = [];
+
+        Assert.Throws<ArgumentNullException>(
+            () => ClientWindowCreationSequence.CreateMainAfterStartup<object>(null!, () => { }, () => new object())
+        );
+
+        Assert.Throws<ArgumentNullException>(
+            () => ClientWindowCreationSequence.CreateMainAfterStartup(new RecordingStartupSplash(events), null!, () => new object())
+        );
+
+        Assert.Throws<ArgumentNullException>(
+            () => ClientWindowCreationSequence.CreateMainAfterStartup<object>(new RecordingStartupSplash(events), () => { }, null!)
+        );
+    }
+
     private sealed class RecordingStartupSplash : IStartupSplash
     {
         private readonly List<string> _events;
@@ -97,11 +120,6 @@ public sealed class ClientWindowCreationSequenceTests
         public void Dispose()
         {
             _events.Add("startup-disposed");
-        }
-
-        public void Complete()
-        {
-            _events.Add("startup-completed");
         }
     }
 }

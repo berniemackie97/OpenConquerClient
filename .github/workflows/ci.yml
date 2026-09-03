@@ -47,6 +47,13 @@ jobs:
       - name: Test
         run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 
+      # Proves the tracked content set is exactly what its manifest declares, from a clean clone.
+      # This is what catches a payload file silently dropped by an ignore rule.
+      - name: Verify content set
+        run: >
+          dotnet run --project tools/OpenConquer.Content.Tool --configuration Release --no-build --no-restore
+          -- verify-content-set --content-set content/retail-5517
+
   cross-platform:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
