@@ -9,12 +9,12 @@ namespace OpenConquer.Content;
 /// </summary>
 /// <remarks>
 /// Registration follows <c>GraphicData.dll!GraphicData_OpenPackagesFromPackageIni</c>
-/// (<c>0x1001A390</c>) and <c>TqPackageWdf.dll!TqPackagesOpen</c> (<c>0x10003D30</c>). The
-/// registration outcomes verified as non-fatal in retail are preserved here and surfaced through
-/// <see cref="PackageRegistrations"/>: an absent declaration file yields zero packages, an absent
-/// declared WDF retains its prefix without an available archive, and a duplicate prefix leaves the
-/// first registration authoritative. Behavior for an existing package whose archive itself cannot
-/// be opened or validated remains strict until native evidence establishes otherwise.
+/// (<c>0x1001A390</c>) and <c>TqPackageWdf.dll!TqPackagesOpen</c> (<c>0x10003D30</c>).
+/// Prefix ownership is established before the declared archive is opened. Missing, unreadable, or
+/// structurally invalid archives therefore retain their prefixes without an available
+/// <see cref="WdfArchive"/>, and later declarations with the same prefix remain duplicates. This
+/// preserves the verified native first-wins registration behavior while validating legacy archive
+/// bytes as untrusted modern input.
 /// </remarks>
 /// <remarks>
 /// This type holds no operating-system handles and is therefore not disposable: a
@@ -57,19 +57,13 @@ public sealed class PackagedClientContentSource : IClientContentSource
         ClientContentRoot looseFiles = new(rootPath);
 
         // Native registration identity is independent of whether the declared WDF file opens
-        // successfully. A missing package still owns its prefix and therefore blocks later
-        // declarations with the same prefix.
+        // successfully. A missing or unavailable package still owns its prefix and therefore
+        // blocks later declarations with the same prefix.
         HashSet<string> registeredPrefixes = new(StringComparer.Ordinal);
         Dictionary<string, WdfArchive> packagesByPrefix = new(StringComparer.Ordinal);
         List<WdfPackageRegistration> registrations = [];
 
-        if (
-            !looseFiles.TryOpenRead(
-                PackageConfigurationPath,
-                ContentLookupMode.LooseOnly,
-                out Stream? declarationStream
-            )
-        )
+        if (!looseFiles.TryOpenRead(PackageConfigurationPath, ContentLookupMode.LooseOnly, out Stream? declarationStream))
         {
             return new PackagedClientContentSource(looseFiles, packagesByPrefix, registrations);
         }
@@ -78,9 +72,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
         {
             foreach (string declaredName in ReadDeclaredPackageNames(declarationStream))
             {
-                registrations.Add(
-                    RegisterPackage(looseFiles, registeredPrefixes, packagesByPrefix, declaredName)
-                );
+                registrations.Add(RegisterPackage(looseFiles, registeredPrefixes, packagesByPrefix, declaredName));
             }
         }
 
@@ -88,11 +80,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
     }
 
     /// <inheritdoc />
-    public bool TryOpenRead(
-        string contentPath,
-        ContentLookupMode mode,
-        [NotNullWhen(true)] out Stream? stream
-    )
+    public bool TryOpenRead(string contentPath, ContentLookupMode mode, [NotNullWhen(true)] out Stream? stream)
     {
         if (!Enum.IsDefined(mode))
         {
@@ -110,12 +98,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
             return false;
         }
 
-        string normalizedPath = ClientContentPath.NormalizeVirtualPath(
-            contentPath,
-            nameof(contentPath),
-            MaximumVirtualPathLength
-        );
-
+        string normalizedPath = ClientContentPath.NormalizeVirtualPath(contentPath, nameof(contentPath), MaximumVirtualPathLength);
         string prefix = WdfPackagePrefix.FromVirtualPath(normalizedPath);
 
         if (_packagesByPrefix.TryGetValue(prefix, out WdfArchive? package))
@@ -150,30 +133,39 @@ public sealed class PackagedClientContentSource : IClientContentSource
         string prefix = WdfPackagePrefix.FromDeclaredPackageName(declaredName);
 
         // TqPackagesOpen looks the prefix up at 0x10003DE1 and returns at 0x10003DEF when it is
-        // already registered. Prefix ownership is established before the package file is opened,
-        // so even a missing first declaration prevents a later declaration from replacing it.
+        // already registered. Prefix ownership is established before the package file is opened.
         if (!registeredPrefixes.Add(prefix))
         {
-            return new WdfPackageRegistration(
-                declaredName,
-                prefix,
-                WdfPackageRegistrationOutcome.DuplicatePrefix
-            );
+            return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.DuplicatePrefix);
         }
 
-        // sub_100014F0 keeps the native package object registered even when
-        // WdfHandler_OpenFile fails. Represent that by retaining the prefix in
-        // registeredPrefixes while omitting an unavailable archive from packagesByPrefix.
+        // sub_100014F0 keeps the native package object registered even when WdfHandler_OpenFile
+        // fails. Represent that by retaining prefix ownership without an available archive.
         if (!looseFiles.TryResolveFile(declaredName, out string? packagePath))
         {
-            return new WdfPackageRegistration(
-                declaredName,
-                prefix,
-                WdfPackageRegistrationOutcome.FileNotFound
-            );
+            return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.FileNotFound);
         }
 
-        packagesByPrefix.Add(prefix, WdfArchive.Open(packagePath));
+        WdfArchive archive;
+
+        try
+        {
+            archive = WdfArchive.Open(packagePath);
+        }
+        catch (InvalidDataException)
+        {
+            return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.ArchiveUnavailable);
+        }
+        catch (IOException)
+        {
+            return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.ArchiveUnavailable);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.ArchiveUnavailable);
+        }
+
+        packagesByPrefix.Add(prefix, archive);
 
         return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.Registered);
     }

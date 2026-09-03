@@ -1,7 +1,6 @@
-using System.Buffers.Binary;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Tests.Images;
-using OpenConquer.Content.Wdf;
+using OpenConquer.Content.Tests.Wdf;
 
 namespace OpenConquer.Content.Tests.Startup;
 
@@ -118,7 +117,10 @@ public sealed class StartupLogoTests
         temporaryDirectory.WriteFile("ini/package.ini", "data.wdf\n");
         temporaryDirectory.WriteFile(
             "data.wdf",
-            CreateWdf("data/main/logo1.bmp", WindowsBitmapReaderTests.CreateTwoByTwoBitmap())
+            WdfTestArchiveBuilder.CreateSingleEntry(
+                "data/main/logo1.bmp",
+                WindowsBitmapReaderTests.CreateTwoByTwoBitmap()
+            )
         );
 
         PackagedClientContentSource source = PackagedClientContentSource.Open(
@@ -139,33 +141,5 @@ public sealed class StartupLogoTests
 
         Assert.Null(logo.Image);
         Assert.Contains("was not found as a loose file", logo.UnavailableReason);
-    }
-
-    private static byte[] CreateWdf(string contentPath, ReadOnlySpan<byte> payload)
-    {
-        int tableOffset = WdfArchive.HeaderLength + payload.Length;
-
-        byte[] archive = new byte[tableOffset + WdfArchive.EntryLength];
-
-        BinaryPrimitives.WriteUInt32LittleEndian(archive, WdfArchive.Magic);
-        BinaryPrimitives.WriteUInt32LittleEndian(archive.AsSpan(4), 1);
-        BinaryPrimitives.WriteUInt32LittleEndian(archive.AsSpan(8), (uint)tableOffset);
-
-        payload.CopyTo(archive.AsSpan(WdfArchive.HeaderLength));
-
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            archive.AsSpan(tableOffset),
-            WdfPathHash.Compute(contentPath)
-        );
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            archive.AsSpan(tableOffset + 4),
-            WdfArchive.HeaderLength
-        );
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            archive.AsSpan(tableOffset + 8),
-            (uint)payload.Length
-        );
-
-        return archive;
     }
 }
