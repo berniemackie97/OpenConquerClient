@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using Silk.NET.OpenGL;
 
 namespace OpenConquer.Rendering.OpenGL;
@@ -6,8 +7,20 @@ internal sealed class OpenGLRenderTarget : IDisposable
 {
     private static readonly ColorFormatCandidate[] s_colorFormatCandidates =
     [
-        new(InternalFormat.Rgb565, RedBits: 5, GreenBits: 6, BlueBits: 5, RequiresRgb565Support: true),
-        new(InternalFormat.Rgb5, RedBits: 5, GreenBits: 5, BlueBits: 5, RequiresRgb565Support: false)
+        new(
+            InternalFormat.Rgb565,
+            RedBits: 5,
+            GreenBits: 6,
+            BlueBits: 5,
+            RequiresRgb565Support: true
+        ),
+        new(
+            InternalFormat.Rgb5,
+            RedBits: 5,
+            GreenBits: 5,
+            BlueBits: 5,
+            RequiresRgb565Support: false
+        ),
     ];
 
     private readonly GL _gl;
@@ -108,76 +121,181 @@ internal sealed class OpenGLRenderTarget : IDisposable
             }
         }
 
-        throw new NotSupportedException("The OpenGL implementation cannot create a complete 16-bit RGB render target compatible with the retail 5517 color-buffer formats.");
+        throw new NotSupportedException(
+            "The OpenGL implementation cannot create a complete 16-bit RGB render target "
+                + "compatible with the retail 5517 color-buffer formats."
+        );
     }
 
     private void CreateDepthRenderbuffer()
     {
         _depthRenderbuffer = _gl.GenRenderbuffer();
-        _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _depthRenderbuffer);
+
+        ExceptionDispatchInfo? firstFailure = null;
 
         try
         {
-            _gl.RenderbufferStorage(RenderbufferTarget.Renderbuffer, InternalFormat.DepthComponent16, (uint)_width, (uint)_height);
+            _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _depthRenderbuffer);
 
-            _gl.GetRenderbufferParameter(RenderbufferTarget.Renderbuffer, pname: RenderbufferParameterName.DepthSize, out int depthBits);
+            _gl.RenderbufferStorage(
+                RenderbufferTarget.Renderbuffer,
+                InternalFormat.DepthComponent16,
+                (uint)_width,
+                (uint)_height
+            );
+
+            _gl.GetRenderbufferParameter(
+                RenderbufferTarget.Renderbuffer,
+                pname: RenderbufferParameterName.DepthSize,
+                out int depthBits
+            );
 
             if (depthBits != 16)
             {
-                throw new NotSupportedException($"The OpenGL implementation allocated a {depthBits}-bit depth renderbuffer; retail 5517 requires exactly 16-bit depth precision.");
+                throw new NotSupportedException(
+                    $"The OpenGL implementation allocated a {depthBits}-bit depth renderbuffer; "
+                        + "retail 5517 requires exactly 16-bit depth precision."
+                );
             }
         }
-        finally
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
         {
             _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, renderbuffer: 0);
         }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        firstFailure?.Throw();
     }
 
     private bool TryCreateColorFramebuffer(ColorFormatCandidate candidate)
     {
         bool created = false;
 
+        ExceptionDispatchInfo? firstFailure = null;
+
         try
         {
             _colorTexture = _gl.GenTexture();
+
             _gl.BindTexture(TextureTarget.Texture2D, _colorTexture);
 
-            _gl.TexImage2D(TextureTarget.Texture2D, level: 0, candidate.InternalFormat, (uint)_width, (uint)_height, border: 0, PixelFormat.Rgb, PixelType.UnsignedByte, ReadOnlySpan<byte>.Empty);
+            _gl.TexImage2D(
+                TextureTarget.Texture2D,
+                level: 0,
+                candidate.InternalFormat,
+                (uint)_width,
+                (uint)_height,
+                border: 0,
+                PixelFormat.Rgb,
+                PixelType.UnsignedByte,
+                ReadOnlySpan<byte>.Empty
+            );
 
-            if (!HasExpectedColorPrecision(candidate))
+            if (HasExpectedColorPrecision(candidate))
             {
-                return false;
+                _framebuffer = _gl.GenFramebuffer();
+
+                _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffer);
+
+                _gl.FramebufferTexture2D(
+                    FramebufferTarget.Framebuffer,
+                    FramebufferAttachment.ColorAttachment0,
+                    textarget: TextureTarget.Texture2D,
+                    _colorTexture,
+                    level: 0
+                );
+
+                _gl.FramebufferRenderbuffer(
+                    FramebufferTarget.Framebuffer,
+                    FramebufferAttachment.DepthAttachment,
+                    RenderbufferTarget.Renderbuffer,
+                    _depthRenderbuffer
+                );
+
+                created =
+                    _gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer)
+                    == GLEnum.FramebufferComplete;
             }
-
-            _framebuffer = _gl.GenFramebuffer();
-            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffer);
-            _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, textarget: TextureTarget.Texture2D, _colorTexture, level: 0);
-            _gl.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, _depthRenderbuffer);
-
-            created = _gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer) == GLEnum.FramebufferComplete;
-
-            return created;
         }
-        finally
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
         {
             _gl.BindFramebuffer(FramebufferTarget.Framebuffer, framebuffer: 0);
-            _gl.BindTexture(TextureTarget.Texture2D, texture: 0);
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
-            if (!created)
+        try
+        {
+            _gl.BindTexture(TextureTarget.Texture2D, texture: 0);
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        if (!created)
+        {
+            try
             {
                 DestroyColorResources();
             }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
+
+        firstFailure?.Throw();
+
+        return created;
     }
 
     private bool HasExpectedColorPrecision(ColorFormatCandidate candidate)
     {
-        _gl.GetTexLevelParameter(TextureTarget.Texture2D, level: 0, pname: GetTextureParameter.TextureRedSize, out int redBits);
-        _gl.GetTexLevelParameter(TextureTarget.Texture2D, level: 0, pname: GetTextureParameter.TextureGreenSize, out int greenBits);
-        _gl.GetTexLevelParameter(TextureTarget.Texture2D, level: 0, pname: GetTextureParameter.TextureBlueSize, out int blueBits);
-        _gl.GetTexLevelParameter(TextureTarget.Texture2D, level: 0, pname: GetTextureParameter.TextureAlphaSize, out int alphaBits);
+        _gl.GetTexLevelParameter(
+            TextureTarget.Texture2D,
+            level: 0,
+            pname: GetTextureParameter.TextureRedSize,
+            out int redBits
+        );
+        _gl.GetTexLevelParameter(
+            TextureTarget.Texture2D,
+            level: 0,
+            pname: GetTextureParameter.TextureGreenSize,
+            out int greenBits
+        );
+        _gl.GetTexLevelParameter(
+            TextureTarget.Texture2D,
+            level: 0,
+            pname: GetTextureParameter.TextureBlueSize,
+            out int blueBits
+        );
+        _gl.GetTexLevelParameter(
+            TextureTarget.Texture2D,
+            level: 0,
+            pname: GetTextureParameter.TextureAlphaSize,
+            out int alphaBits
+        );
 
-        return redBits == candidate.RedBits && greenBits == candidate.GreenBits && blueBits == candidate.BlueBits && alphaBits == 0;
+        return redBits == candidate.RedBits
+            && greenBits == candidate.GreenBits
+            && blueBits == candidate.BlueBits
+            && alphaBits == 0;
     }
 
     private bool SupportsRgb565()
@@ -192,29 +310,80 @@ internal sealed class OpenGLRenderTarget : IDisposable
 
     private void DestroyResources()
     {
-        DestroyColorResources();
+        ExceptionDispatchInfo? firstFailure = null;
 
-        if (_depthRenderbuffer != 0)
+        try
         {
-            _gl.DeleteRenderbuffer(_depthRenderbuffer);
-            _depthRenderbuffer = 0;
+            DestroyColorResources();
         }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        uint depthRenderbuffer = _depthRenderbuffer;
+
+        _depthRenderbuffer = 0;
+
+        if (depthRenderbuffer != 0)
+        {
+            try
+            {
+                _gl.DeleteRenderbuffer(depthRenderbuffer);
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
+        }
+
+        firstFailure?.Throw();
     }
 
     private void DestroyColorResources()
     {
-        if (_framebuffer != 0)
+        ExceptionDispatchInfo? firstFailure = null;
+
+        uint framebuffer = _framebuffer;
+
+        _framebuffer = 0;
+
+        if (framebuffer != 0)
         {
-            _gl.DeleteFramebuffer(_framebuffer);
-            _framebuffer = 0;
+            try
+            {
+                _gl.DeleteFramebuffer(framebuffer);
+            }
+            catch (Exception exception)
+            {
+                firstFailure = ExceptionDispatchInfo.Capture(exception);
+            }
         }
 
-        if (_colorTexture != 0)
+        uint colorTexture = _colorTexture;
+
+        _colorTexture = 0;
+
+        if (colorTexture != 0)
         {
-            _gl.DeleteTexture(_colorTexture);
-            _colorTexture = 0;
+            try
+            {
+                _gl.DeleteTexture(colorTexture);
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
+
+        firstFailure?.Throw();
     }
 
-    private readonly record struct ColorFormatCandidate(InternalFormat InternalFormat, int RedBits, int GreenBits, int BlueBits, bool RequiresRgb565Support);
+    private readonly record struct ColorFormatCandidate(
+        InternalFormat InternalFormat,
+        int RedBits,
+        int GreenBits,
+        int BlueBits,
+        bool RequiresRgb565Support
+    );
 }

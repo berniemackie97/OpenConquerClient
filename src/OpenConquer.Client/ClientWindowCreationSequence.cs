@@ -15,17 +15,33 @@ internal static class ClientWindowCreationSequence
     {
         ArgumentNullException.ThrowIfNull(startupSplash);
 
-        // The splash is adopted before the remaining arguments are validated so a null argument
-        // cannot strand a constructed window.
-        using (startupSplash)
+        try
         {
+            // The splash is adopted before the remaining arguments are validated so a null
+            // argument cannot strand an already-constructed startup surface.
             ArgumentNullException.ThrowIfNull(initialize);
             ArgumentNullException.ThrowIfNull(createMain);
 
             startupSplash.Show();
             initialize();
         }
+        catch
+        {
+            try
+            {
+                startupSplash.Dispose();
+            }
+            catch
+            {
+                // Preserve the startup or initialization failure that caused cleanup.
+            }
 
-        return createMain() ?? throw new InvalidOperationException("The main window factory returned null.");
+            throw;
+        }
+
+        startupSplash.Dispose();
+
+        return createMain()
+            ?? throw new InvalidOperationException("The main window factory returned null.");
     }
 }

@@ -121,14 +121,32 @@ public sealed class ClientContentRootTests
     [InlineData("/ini/GameSetup.Ini")]
     [InlineData(@"\ini\GameSetup.Ini")]
     [InlineData(@"C:\ini\GameSetup.Ini")]
-    public void TryResolveFile_ThrowsArgumentExceptionWhenPathEscapesTheContentRoot(
-        string relativePath
-    )
+    [InlineData("ini//GameSetup.Ini")]
+    [InlineData(@"ini\\GameSetup.Ini")]
+    [InlineData("ini/GameSetup.Ini/")]
+    [InlineData("ini/./GameSetup.Ini")]
+    [InlineData("ini/Game\0Setup.Ini")]
+    public void TryResolveFile_RejectsStructurallyInvalidPaths(string relativePath)
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
         ClientContentRoot contentRoot = new(temporaryDirectory.RootPath);
 
         Assert.Throws<ArgumentException>(() => contentRoot.TryResolveFile(relativePath, out _));
+    }
+
+    [Fact]
+    public void TryResolveFile_DoesNotTrimPathBeforeResolution()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        temporaryDirectory.WriteFile("ini/GameSetup.Ini", "content");
+
+        ClientContentRoot contentRoot = new(temporaryDirectory.RootPath);
+
+        bool resolved = contentRoot.TryResolveFile(" ini/GameSetup.Ini", out string? actualPath);
+
+        Assert.False(resolved);
+        Assert.Null(actualPath);
     }
 }

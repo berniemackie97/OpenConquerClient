@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using OpenConquer.Platform.Internal;
 using Silk.NET.Core.Contexts;
 using Silk.NET.Maths;
@@ -19,17 +20,29 @@ public sealed class StartupWindow : IDisposable
 
     public StartupWindow(PixelSize size)
     {
+        _window = Window.Create(CreateOptions(size));
+
+        _window.Load += OnLoad;
+        _window.Render += OnRender;
+    }
+
+    public event Action<StartupSurfaceMetrics>? Rendering;
+    public event Action<IOpenGLContext>? OpenGLContextReady;
+    public event Action? OpenGLContextReleasing;
+
+    internal static WindowOptions CreateOptions(PixelSize size)
+    {
         if (size.Width == 0 || size.Height == 0)
         {
             throw new ArgumentOutOfRangeException(nameof(size), size, "Startup window dimensions must be positive.");
         }
 
-        WindowOptions options = WindowOptions.Default with
+        return WindowOptions.Default with
         {
             Title = "OpenConquer Client",
             Size = new Vector2D<int>(size.Width, size.Height),
             WindowState = WindowState.Normal,
-            WindowBorder = WindowBorder.Fixed,
+            WindowBorder = WindowBorder.Hidden,
             IsVisible = false,
 
             FramesPerSecond = 0,
@@ -44,15 +57,7 @@ public sealed class StartupWindow : IDisposable
             PreferredDepthBufferBits = 0,
             PreferredStencilBufferBits = 0,
         };
-
-        _window = Window.Create(options);
-        _window.Load += OnLoad;
-        _window.Render += OnRender;
     }
-
-    public event Action<StartupSurfaceMetrics>? Rendering;
-    public event Action<IOpenGLContext>? OpenGLContextReady;
-    public event Action? OpenGLContextReleasing;
 
     /// <summary>
     /// Initializes, centers, shows, and presents the startup window once.
@@ -72,6 +77,7 @@ public sealed class StartupWindow : IDisposable
         {
             _window.Initialize();
             _window.IsVisible = true;
+
             CenterOnAvailableMonitor();
             PresentOnce();
         }
@@ -97,36 +103,48 @@ public sealed class StartupWindow : IDisposable
             return;
         }
 
+        ExceptionDispatchInfo? firstFailure = null;
+
         try
         {
             ReleaseOpenGLContext();
         }
-        finally
+        catch (Exception exception)
         {
-            _window.Load -= OnLoad;
-            _window.Render -= OnRender;
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
 
-            try
+        _window.Load -= OnLoad;
+        _window.Render -= OnRender;
+
+        try
+        {
+            if (_window.IsInitialized)
             {
-                if (_window.IsInitialized)
-                {
-                    _window.IsVisible = false;
-                    _window.DoEvents();
-                }
-            }
-            finally
-            {
-                try
-                {
-                    _window.Dispose();
-                }
-                finally
-                {
-                    _openGLContext = null;
-                    _disposed = true;
-                }
+                _window.IsVisible = false;
+                _window.DoEvents();
             }
         }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            _window.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+        finally
+        {
+            _openGLContext = null;
+            _disposed = true;
+        }
+
+        firstFailure?.Throw();
     }
 
     private void OnLoad()
@@ -164,10 +182,8 @@ public sealed class StartupWindow : IDisposable
     /// </summary>
     /// <remarks>
     /// Retail shows the startup logo from inside <c>WM_INITDIALOG</c> and pumps no messages until
-    /// initialization finishes, so a single present matches the native lifetime. There is no
-    /// minimum display duration to honour: the <c>0x5AE8D8</c>-<c>0x5AF7B5</c> range contains no
-    /// sleep, wait, timer, or tick-count call, and the logo dialog's message map (<c>0x855220</c>)
-    /// handles only <c>WM_DESTROY</c> and <c>WM_CTLCOLOR</c>.
+    /// initialization finishes, so a single present matches the verified lifetime. There is no
+    /// minimum display duration.
     /// </remarks>
     private void PresentOnce()
     {

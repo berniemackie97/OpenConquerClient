@@ -4,8 +4,6 @@ namespace OpenConquer.Content;
 
 public sealed class ClientContentRoot : IClientContentSource
 {
-    private static readonly char[] s_pathSeparators = ['/', '\\'];
-
     public ClientContentRoot(string rootPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
@@ -24,7 +22,7 @@ public sealed class ClientContentRoot : IClientContentSource
 
     public bool TryResolveFile(string relativePath, [NotNullWhen(true)] out string? absolutePath)
     {
-        string[] segments = ParseRelativePath(relativePath);
+        string[] segments = ClientContentPath.ParseSegments(relativePath, nameof(relativePath));
         string currentDirectoryPath = RootPath;
 
         for (int index = 0; index < segments.Length; index++)
@@ -71,14 +69,25 @@ public sealed class ClientContentRoot : IClientContentSource
     /// A directory root owns no packages, so <see cref="ContentLookupMode.PackageOnly"/> can never
     /// be satisfied here and is reported as a miss instead of being widened to a loose read.
     /// </remarks>
-    public bool TryOpenRead(string contentPath, ContentLookupMode mode, [NotNullWhen(true)] out Stream? stream)
+    public bool TryOpenRead(
+        string contentPath,
+        ContentLookupMode mode,
+        [NotNullWhen(true)] out Stream? stream
+    )
     {
         if (!Enum.IsDefined(mode))
         {
-            throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown content lookup mode.");
+            throw new ArgumentOutOfRangeException(
+                nameof(mode),
+                mode,
+                "Unknown content lookup mode."
+            );
         }
 
-        if (mode == ContentLookupMode.PackageOnly || !TryResolveFile(contentPath, out string? absolutePath))
+        if (
+            mode == ContentLookupMode.PackageOnly
+            || !TryResolveFile(contentPath, out string? absolutePath)
+        )
         {
             stream = null;
             return false;
@@ -98,45 +107,6 @@ public sealed class ClientContentRoot : IClientContentSource
         }
 
         throw new FileNotFoundException($"Client content file '{contentPath}' was not found under the configured content root using {mode} lookup.");
-    }
-
-    private static string[] ParseRelativePath(string relativePath)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
-
-        string normalizedPath = relativePath.Trim();
-
-        if (IsRootedPath(normalizedPath))
-        {
-            throw new ArgumentException("Client content paths must be relative to the client content root.", nameof(relativePath));
-        }
-
-        string[] segments = normalizedPath.Split(s_pathSeparators, StringSplitOptions.RemoveEmptyEntries);
-
-        if (segments.Length == 0)
-        {
-            throw new ArgumentException("Client content path must contain at least one path segment.", nameof(relativePath));
-        }
-
-        foreach (string segment in segments)
-        {
-            if (segment is "." or ".." || segment.Contains(':', StringComparison.Ordinal))
-            {
-                throw new ArgumentException($"Client content path '{relativePath}' is not a valid relative content path.", nameof(relativePath));
-            }
-        }
-
-        return segments;
-    }
-
-    private static bool IsRootedPath(string path)
-    {
-        if (path[0] is '/' or '\\')
-        {
-            return true;
-        }
-
-        return path.Length >= 2 && char.IsAsciiLetter(path[0]) && path[1] == ':';
     }
 
     private static string? FindCaseInsensitiveDirectory(string parentDirectoryPath, string directoryName)

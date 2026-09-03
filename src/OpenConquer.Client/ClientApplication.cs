@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Startup;
@@ -22,7 +23,10 @@ internal sealed class ClientApplication : IDisposable
     private bool _runStarted;
     private bool _disposed;
 
-    public ClientApplication(string clientContentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit)
+    public ClientApplication(
+        string clientContentRootPath,
+        PresentationPolicy presentationPolicy = PresentationPolicy.Fit
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientContentRootPath);
 
@@ -41,7 +45,9 @@ internal sealed class ClientApplication : IDisposable
 
         _runStarted = true;
 
-        PackagedClientContentSource contentSource = PackagedClientContentSource.Open(_clientContentRootPath);
+        PackagedClientContentSource contentSource = PackagedClientContentSource.Open(
+            _clientContentRootPath
+        );
 
         ReportTolerableContentGaps(contentSource);
 
@@ -59,10 +65,12 @@ internal sealed class ClientApplication : IDisposable
             () => new DesktopWindow(s_frameInterval));
 
         _window = window;
+
         window.FramebufferResized += OnFramebufferResized;
         window.Rendering += OnRendering;
         window.OpenGLContextReady += OnOpenGLContextReady;
         window.OpenGLContextReleasing += OnOpenGLContextReleasing;
+
         window.Run();
 
         return 0;
@@ -75,12 +83,21 @@ internal sealed class ClientApplication : IDisposable
             return;
         }
 
+        DesktopWindow? window = _window;
+
         try
         {
-            _window?.Dispose();
+            window?.Dispose();
         }
         finally
         {
+            // GL-owned resources normally clear through OpenGLContextReleasing while the context is
+            // current. If the platform cannot make the context current during a fatal teardown,
+            // they must not be deleted afterward against a dead context. The terminal application
+            // therefore releases its managed references without attempting an unsafe retry.
+            _window = null;
+            _renderer = null;
+            _graphicsDevice = null;
             _disposed = true;
         }
     }
@@ -93,30 +110,28 @@ internal sealed class ClientApplication : IDisposable
         }
 
         OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
-        OpenGLRenderer? renderer = null;
 
         try
         {
             DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
             LogicalRenderSize logicalRenderSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
+
             PixelSize framebufferSize = window.FramebufferSize;
 
-            renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
+            OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
 
             _renderer = renderer;
             _graphicsDevice = graphicsDevice;
-
-            renderer = null;
         }
         catch
         {
             try
             {
-                renderer?.Dispose();
-            }
-            finally
-            {
                 graphicsDevice.Dispose();
+            }
+            catch
+            {
+                // Preserve the renderer/context initialization failure.
             }
 
             throw;
@@ -154,7 +169,11 @@ internal sealed class ClientApplication : IDisposable
         ArgumentNullException.ThrowIfNull(contentSource);
 
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
-        _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
+
+        _logicalRenderSize = new LogicalRenderSize(
+            gameSetup.LogicalWidthPixels,
+            gameSetup.LogicalHeightPixels
+        );
     }
 
     private void OnRendering(double _)
@@ -164,22 +183,39 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnOpenGLContextReleasing()
     {
+        ReleaseRenderingResources();
+    }
+
+    private void ReleaseRenderingResources()
+    {
+        OpenGLRenderer? renderer = _renderer;
+        OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
+
+        // Clear ownership before invoking user/driver cleanup so re-entrant teardown cannot attempt
+        // the same OpenGL resources twice.
+        _renderer = null;
+        _graphicsDevice = null;
+
+        ExceptionDispatchInfo? firstFailure = null;
+
         try
         {
-            _renderer?.Dispose();
+            renderer?.Dispose();
         }
-        finally
+        catch (Exception exception)
         {
-            _renderer = null;
-
-            try
-            {
-                _graphicsDevice?.Dispose();
-            }
-            finally
-            {
-                _graphicsDevice = null;
-            }
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
         }
+
+        try
+        {
+            graphicsDevice?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        firstFailure?.Throw();
     }
 }

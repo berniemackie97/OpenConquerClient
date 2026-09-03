@@ -15,7 +15,13 @@ public sealed class OpenGLRenderer : IDisposable
     private bool _hostFramebufferValidated;
     private bool _disposed;
 
-    internal OpenGLRenderer(GL gl, LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy)
+    internal OpenGLRenderer(
+        GL gl,
+        LogicalRenderSize logicalRenderSize,
+        int framebufferWidth,
+        int framebufferHeight,
+        PresentationPolicy presentationPolicy
+    )
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentOutOfRangeException.ThrowIfNegative(framebufferWidth);
@@ -24,11 +30,20 @@ public sealed class OpenGLRenderer : IDisposable
         _gl = gl;
         _logicalRenderSize = logicalRenderSize;
         _presentationPolicy = presentationPolicy;
-        _renderTarget = new OpenGLRenderTarget(gl, logicalRenderSize.Width, logicalRenderSize.Height);
+        _renderTarget = new OpenGLRenderTarget(
+            gl,
+            logicalRenderSize.Width,
+            logicalRenderSize.Height
+        );
 
         _framebufferWidth = framebufferWidth;
         _framebufferHeight = framebufferHeight;
-        _viewport = PresentationViewport.Compute(logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy);
+        _viewport = PresentationViewport.Compute(
+            logicalRenderSize,
+            framebufferWidth,
+            framebufferHeight,
+            presentationPolicy
+        );
     }
 
     /// <summary>
@@ -49,7 +64,12 @@ public sealed class OpenGLRenderer : IDisposable
 
         _framebufferWidth = width;
         _framebufferHeight = height;
-        _viewport = PresentationViewport.Compute(_logicalRenderSize, width, height, _presentationPolicy);
+        _viewport = PresentationViewport.Compute(
+            _logicalRenderSize,
+            width,
+            height,
+            _presentationPolicy
+        );
     }
 
     public void RenderFrame()
@@ -67,8 +87,14 @@ public sealed class OpenGLRenderer : IDisposable
             return;
         }
 
-        _renderTarget.Dispose();
-        _disposed = true;
+        try
+        {
+            _renderTarget.Dispose();
+        }
+        finally
+        {
+            _disposed = true;
+        }
     }
 
     private void BlitToHostFramebuffer()
@@ -90,10 +116,18 @@ public sealed class OpenGLRenderer : IDisposable
 
             _renderTarget.BindForRead();
 
-            _gl.BlitFramebuffer(srcX0: 0, srcY0: 0, srcX1: _logicalRenderSize.Width, srcY1: _logicalRenderSize.Height,
-                dstX0: _viewport.OffsetX, dstY0: _viewport.OffsetY,
-                dstX1: _viewport.OffsetX + _viewport.Width, dstY1: _viewport.OffsetY + _viewport.Height,
-                (uint)ClearBufferMask.ColorBufferBit, ToBlitFilter(_viewport.Filter));
+            _gl.BlitFramebuffer(
+                srcX0: 0,
+                srcY0: 0,
+                srcX1: _logicalRenderSize.Width,
+                srcY1: _logicalRenderSize.Height,
+                dstX0: _viewport.OffsetX,
+                dstY0: _viewport.OffsetY,
+                dstX1: _viewport.OffsetX + _viewport.Width,
+                dstY1: _viewport.OffsetY + _viewport.Height,
+                (uint)ClearBufferMask.ColorBufferBit,
+                ToBlitFilter(_viewport.Filter)
+            );
         }
         finally
         {
@@ -131,7 +165,11 @@ public sealed class OpenGLRenderer : IDisposable
             PresentationFilter.Nearest => BlitFramebufferFilter.Nearest,
             PresentationFilter.Linear => BlitFramebufferFilter.Linear,
 
-            _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "Unknown presentation filter."),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(filter),
+                filter,
+                "Unknown presentation filter."
+            ),
         };
     }
 
@@ -146,7 +184,9 @@ public sealed class OpenGLRenderer : IDisposable
 
         if (sampleBufferCount != 0)
         {
-            throw new NotSupportedException($"The current presentation path requires a single-sampled desktop framebuffer, but OpenGL reports {sampleBufferCount} sample buffer(s).");
+            throw new NotSupportedException(
+                $"The current presentation path requires a single-sampled desktop framebuffer, but OpenGL reports {sampleBufferCount} sample buffer(s)."
+            );
         }
 
         _hostFramebufferValidated = true;

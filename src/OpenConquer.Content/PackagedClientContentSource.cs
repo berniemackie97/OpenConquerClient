@@ -9,11 +9,12 @@ namespace OpenConquer.Content;
 /// </summary>
 /// <remarks>
 /// Registration follows <c>GraphicData.dll!GraphicData_OpenPackagesFromPackageIni</c>
-/// (<c>0x1001A390</c>) and <c>TqPackageWdf.dll!TqPackagesOpen</c> (<c>0x10003D30</c>). Every
-/// declaration outcome retail tolerates is tolerated here and surfaced through
-/// <see cref="PackageRegistrations"/>; none of them is fatal, because the native reader returns
-/// <see langword="void"/> and its caller discards <c>TqPackagesOpen</c>'s result at
-/// <c>0x1001A406</c>.
+/// (<c>0x1001A390</c>) and <c>TqPackageWdf.dll!TqPackagesOpen</c> (<c>0x10003D30</c>). The
+/// registration outcomes verified as non-fatal in retail are preserved here and surfaced through
+/// <see cref="PackageRegistrations"/>: an absent declaration file yields zero packages, an absent
+/// declared WDF retains its prefix without an available archive, and a duplicate prefix leaves the
+/// first registration authoritative. Behavior for an existing package whose archive itself cannot
+/// be opened or validated remains strict until native evidence establishes otherwise.
 /// </remarks>
 /// <remarks>
 /// This type holds no operating-system handles and is therefore not disposable: a
@@ -27,6 +28,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
     public const string PackageConfigurationPath = "ini/package.ini";
 
     private const int MaximumPackageConfigurationLength = 64 * 1024;
+    private const int MaximumVirtualPathLength = 255;
 
     private readonly ClientContentRoot _looseFiles;
     private readonly Dictionary<string, WdfArchive> _packagesByPrefix;
@@ -50,16 +52,24 @@ public sealed class PackagedClientContentSource : IClientContentSource
         get;
     }
 
-    /// <summary>
-    /// Opens a retail content root and registers the packages it declares.
-    /// </summary>
     public static PackagedClientContentSource Open(string rootPath)
     {
         ClientContentRoot looseFiles = new(rootPath);
+
+        // Native registration identity is independent of whether the declared WDF file opens
+        // successfully. A missing package still owns its prefix and therefore blocks later
+        // declarations with the same prefix.
+        HashSet<string> registeredPrefixes = new(StringComparer.Ordinal);
         Dictionary<string, WdfArchive> packagesByPrefix = new(StringComparer.Ordinal);
         List<WdfPackageRegistration> registrations = [];
 
-        if (!looseFiles.TryOpenRead(PackageConfigurationPath, ContentLookupMode.LooseOnly, out Stream? declarationStream))
+        if (
+            !looseFiles.TryOpenRead(
+                PackageConfigurationPath,
+                ContentLookupMode.LooseOnly,
+                out Stream? declarationStream
+            )
+        )
         {
             return new PackagedClientContentSource(looseFiles, packagesByPrefix, registrations);
         }
@@ -68,7 +78,9 @@ public sealed class PackagedClientContentSource : IClientContentSource
         {
             foreach (string declaredName in ReadDeclaredPackageNames(declarationStream))
             {
-                registrations.Add(RegisterPackage(looseFiles, packagesByPrefix, declaredName));
+                registrations.Add(
+                    RegisterPackage(looseFiles, registeredPrefixes, packagesByPrefix, declaredName)
+                );
             }
         }
 
@@ -76,7 +88,11 @@ public sealed class PackagedClientContentSource : IClientContentSource
     }
 
     /// <inheritdoc />
-    public bool TryOpenRead(string contentPath, ContentLookupMode mode, [NotNullWhen(true)] out Stream? stream)
+    public bool TryOpenRead(
+        string contentPath,
+        ContentLookupMode mode,
+        [NotNullWhen(true)] out Stream? stream
+    )
     {
         if (!Enum.IsDefined(mode))
         {
@@ -94,7 +110,12 @@ public sealed class PackagedClientContentSource : IClientContentSource
             return false;
         }
 
-        string normalizedPath = NormalizeVirtualPath(contentPath);
+        string normalizedPath = ClientContentPath.NormalizeVirtualPath(
+            contentPath,
+            nameof(contentPath),
+            MaximumVirtualPathLength
+        );
+
         string prefix = WdfPackagePrefix.FromVirtualPath(normalizedPath);
 
         if (_packagesByPrefix.TryGetValue(prefix, out WdfArchive? package))
@@ -117,14 +138,6 @@ public sealed class PackagedClientContentSource : IClientContentSource
         throw new FileNotFoundException($"Client content file '{contentPath}' was not found in the packaged content source using {mode} lookup.");
     }
 
-    /// <summary>
-    /// Reads <c>ini/package.ini</c> the way retail does.
-    /// </summary>
-    /// <remarks>
-    /// Native parses with <c>fscanf(stream, "%s\n", buffer)</c> at <c>0x1001A3F7</c>, so the file
-    /// is a stream of whitespace-delimited tokens rather than lines or INI sections. Two names on
-    /// one line declare two packages.
-    /// </remarks>
     private static string[] ReadDeclaredPackageNames(Stream declarationStream)
     {
         byte[] bytes = ContentRead.ReadBytes(declarationStream, PackageConfigurationPath, MaximumPackageConfigurationLength);
@@ -132,54 +145,36 @@ public sealed class PackagedClientContentSource : IClientContentSource
         return Encoding.Latin1.GetString(bytes).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
-    private static WdfPackageRegistration RegisterPackage(ClientContentRoot looseFiles, Dictionary<string, WdfArchive> packagesByPrefix, string declaredName)
+    private static WdfPackageRegistration RegisterPackage(ClientContentRoot looseFiles, HashSet<string> registeredPrefixes, Dictionary<string, WdfArchive> packagesByPrefix, string declaredName)
     {
         string prefix = WdfPackagePrefix.FromDeclaredPackageName(declaredName);
 
         // TqPackagesOpen looks the prefix up at 0x10003DE1 and returns at 0x10003DEF when it is
-        // already registered. The first declaration wins; the duplicate is discarded silently.
-        if (packagesByPrefix.ContainsKey(prefix))
+        // already registered. Prefix ownership is established before the package file is opened,
+        // so even a missing first declaration prevents a later declaration from replacing it.
+        if (!registeredPrefixes.Add(prefix))
         {
-            return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.DuplicatePrefix);
+            return new WdfPackageRegistration(
+                declaredName,
+                prefix,
+                WdfPackageRegistrationOutcome.DuplicatePrefix
+            );
         }
 
+        // sub_100014F0 keeps the native package object registered even when
+        // WdfHandler_OpenFile fails. Represent that by retaining the prefix in
+        // registeredPrefixes while omitting an unavailable archive from packagesByPrefix.
         if (!looseFiles.TryResolveFile(declaredName, out string? packagePath))
         {
-            return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.FileNotFound);
+            return new WdfPackageRegistration(
+                declaredName,
+                prefix,
+                WdfPackageRegistrationOutcome.FileNotFound
+            );
         }
 
         packagesByPrefix.Add(prefix, WdfArchive.Open(packagePath));
 
         return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.Registered);
-    }
-
-    /// <summary>
-    /// Validates and normalizes a virtual path before it is hashed or routed.
-    /// </summary>
-    /// <remarks>
-    /// Retail normalization (<c>0x10009890</c>) only folds ASCII case and maps <c>'\'</c> to
-    /// <c>'/'</c>; it performs no structural validation. The additional rejections here are a
-    /// deliberate containment guard. They only ever reject inputs, so no path retail would have
-    /// resolved is silently rerouted.
-    /// </remarks>
-    private static string NormalizeVirtualPath(string contentPath)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
-
-        string path = contentPath.Trim().Replace('\\', '/');
-
-        if (path.Length > 255 || path[0] == '/' || Path.IsPathFullyQualified(path))
-        {
-            throw new ArgumentException("Client content paths must be relative.", nameof(contentPath));
-        }
-
-        string[] segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-        if (segments.Length == 0 || segments.Any(segment => segment is "." or ".." || segment.Contains(':', StringComparison.Ordinal) || segment.Contains('\0', StringComparison.Ordinal)))
-        {
-            throw new ArgumentException($"Client content path '{contentPath}' is invalid.", nameof(contentPath));
-        }
-
-        return string.Join('/', segments);
     }
 }

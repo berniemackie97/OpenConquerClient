@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using Silk.NET.OpenGL;
 
 namespace OpenConquer.Rendering.OpenGL;
@@ -30,7 +31,10 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
         if (rgbaPixels.Length != expectedLength)
         {
-            throw new ArgumentException($"Expected {expectedLength} RGBA bytes, but received {rgbaPixels.Length}.", nameof(rgbaPixels));
+            throw new ArgumentException(
+                $"Expected {expectedLength} RGBA bytes, but received {rgbaPixels.Length}.",
+                nameof(rgbaPixels)
+            );
         }
 
         _gl = gl;
@@ -43,7 +47,15 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
         }
         catch
         {
-            DestroyResources();
+            try
+            {
+                DestroyResources();
+            }
+            catch
+            {
+                // Preserve the original pipeline-creation failure.
+            }
+
             throw;
         }
     }
@@ -65,7 +77,12 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
     /// occupies its natural size in logical units.
     /// </para>
     /// </remarks>
-    public void DrawTopLeft(int viewportWidth, int viewportHeight, int destinationWidth, int destinationHeight)
+    public void DrawTopLeft(
+        int viewportWidth,
+        int viewportHeight,
+        int destinationWidth,
+        int destinationHeight
+    )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -81,10 +98,22 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
         Span<float> vertices =
         [
-            left, top, 0f, 0f,
-            right, top, 1f, 0f,
-            right, bottom, 1f, 1f,
-            left, bottom, 0f, 1f,
+            left,
+            top,
+            0f,
+            0f,
+            right,
+            top,
+            1f,
+            0f,
+            right,
+            bottom,
+            1f,
+            1f,
+            left,
+            bottom,
+            0f,
+            1f,
         ];
 
         _gl.Disable(EnableCap.DepthTest);
@@ -103,7 +132,13 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
         _gl.ActiveTexture(TextureUnit.Texture0);
         _gl.BindTexture(TextureTarget.Texture2D, _texture);
         _gl.Uniform1(_textureUniform, 0);
-        _gl.DrawElements(PrimitiveType.Triangles, (uint)s_indices.Length, DrawElementsType.UnsignedInt, null);
+        _gl.DrawElements(
+            PrimitiveType.Triangles,
+            (uint)s_indices.Length,
+            DrawElementsType.UnsignedInt,
+            null
+        );
+
         _gl.BindVertexArray(0);
         _gl.DepthMask(true);
     }
@@ -115,18 +150,27 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
             return;
         }
 
-        DestroyResources();
-        _disposed = true;
+        try
+        {
+            DestroyResources();
+        }
+        finally
+        {
+            _disposed = true;
+        }
     }
 
     private void CreatePipeline(ReadOnlySpan<byte> rgbaPixels)
     {
         _program = CreateProgram(VertexShaderSource, FragmentShaderSource);
+
         _textureUniform = _gl.GetUniformLocation(_program, "uTexture");
 
         if (_textureUniform < 0)
         {
-            throw new InvalidOperationException("The startup image shader does not expose its texture uniform.");
+            throw new InvalidOperationException(
+                "The startup image shader does not expose its texture uniform."
+            );
         }
 
         _vertexArray = _gl.GenVertexArray();
@@ -145,17 +189,50 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
         }
 
         _gl.EnableVertexAttribArray(0);
-        _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)0);
+        _gl.VertexAttribPointer(
+            0,
+            2,
+            VertexAttribPointerType.Float,
+            false,
+            FloatsPerVertex * sizeof(float),
+            (void*)0
+        );
+
         _gl.EnableVertexAttribArray(1);
-        _gl.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)(2 * sizeof(float)));
+        _gl.VertexAttribPointer(
+            1,
+            2,
+            VertexAttribPointerType.Float,
+            false,
+            FloatsPerVertex * sizeof(float),
+            (void*)(2 * sizeof(float))
+        );
+
         _gl.BindVertexArray(0);
 
         _texture = _gl.GenTexture();
+
         _gl.BindTexture(TextureTarget.Texture2D, _texture);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
+        _gl.TexParameter(
+            TextureTarget.Texture2D,
+            TextureParameterName.TextureMinFilter,
+            (int)GLEnum.Nearest
+        );
+        _gl.TexParameter(
+            TextureTarget.Texture2D,
+            TextureParameterName.TextureMagFilter,
+            (int)GLEnum.Nearest
+        );
+        _gl.TexParameter(
+            TextureTarget.Texture2D,
+            TextureParameterName.TextureWrapS,
+            (int)GLEnum.ClampToEdge
+        );
+        _gl.TexParameter(
+            TextureTarget.Texture2D,
+            TextureParameterName.TextureWrapT,
+            (int)GLEnum.ClampToEdge
+        );
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBaseLevel, 0);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, 0);
 
@@ -169,101 +246,204 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
     private uint CreateProgram(string vertexSource, string fragmentSource)
     {
-        uint vertexShader = CompileShader(ShaderType.VertexShader, vertexSource);
+        uint vertexShader = 0;
         uint fragmentShader = 0;
         uint program = 0;
 
+        ExceptionDispatchInfo? firstFailure = null;
+
         try
         {
+            vertexShader = CompileShader(ShaderType.VertexShader, vertexSource);
+
             fragmentShader = CompileShader(ShaderType.FragmentShader, fragmentSource);
+
             program = _gl.CreateProgram();
+
             _gl.AttachShader(program, vertexShader);
             _gl.AttachShader(program, fragmentShader);
             _gl.LinkProgram(program);
+
             _gl.GetProgram(program, ProgramPropertyARB.LinkStatus, out int status);
 
             if (status == 0)
             {
-                throw new InvalidOperationException($"Failed to link the startup image shader: {_gl.GetProgramInfoLog(program)}");
+                throw new InvalidOperationException(
+                    $"Failed to link the startup image shader: {_gl.GetProgramInfoLog(program)}"
+                );
             }
-
-            return program;
         }
-        catch
+        catch (Exception exception)
         {
-            if (program != 0)
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        if (vertexShader != 0)
+        {
+            try
             {
-                _gl.DeleteProgram(program);
+                _gl.DeleteShader(vertexShader);
             }
-
-            throw;
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
-        finally
-        {
-            _gl.DeleteShader(vertexShader);
 
-            if (fragmentShader != 0)
+        if (fragmentShader != 0)
+        {
+            try
             {
                 _gl.DeleteShader(fragmentShader);
             }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
+
+        if (firstFailure is not null)
+        {
+            if (program != 0)
+            {
+                try
+                {
+                    _gl.DeleteProgram(program);
+                }
+                catch
+                {
+                    // Preserve the earlier compile, link, or shader-cleanup failure.
+                }
+            }
+
+            firstFailure.Throw();
+        }
+
+        return program;
     }
 
     private uint CompileShader(ShaderType type, string source)
     {
         uint shader = _gl.CreateShader(type);
 
+        ExceptionDispatchInfo? firstFailure = null;
+
         try
         {
             _gl.ShaderSource(shader, source);
             _gl.CompileShader(shader);
+
             _gl.GetShader(shader, ShaderParameterName.CompileStatus, out int status);
 
             if (status == 0)
             {
-                throw new InvalidOperationException($"Failed to compile the startup image shader: {_gl.GetShaderInfoLog(shader)}");
+                throw new InvalidOperationException(
+                    $"Failed to compile the startup image shader: {_gl.GetShaderInfoLog(shader)}"
+                );
+            }
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        if (firstFailure is not null)
+        {
+            try
+            {
+                _gl.DeleteShader(shader);
+            }
+            catch
+            {
+                // Preserve the shader-creation or compilation failure.
             }
 
-            return shader;
+            firstFailure.Throw();
         }
-        catch
-        {
-            _gl.DeleteShader(shader);
-            throw;
-        }
+
+        return shader;
     }
 
     private void DestroyResources()
     {
-        if (_texture != 0)
+        ExceptionDispatchInfo? firstFailure = null;
+
+        uint texture = _texture;
+        _texture = 0;
+
+        if (texture != 0)
         {
-            _gl.DeleteTexture(_texture);
-            _texture = 0;
+            try
+            {
+                _gl.DeleteTexture(texture);
+            }
+            catch (Exception exception)
+            {
+                firstFailure = ExceptionDispatchInfo.Capture(exception);
+            }
         }
 
-        if (_indexBuffer != 0)
+        uint indexBuffer = _indexBuffer;
+        _indexBuffer = 0;
+
+        if (indexBuffer != 0)
         {
-            _gl.DeleteBuffer(_indexBuffer);
-            _indexBuffer = 0;
+            try
+            {
+                _gl.DeleteBuffer(indexBuffer);
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
 
-        if (_vertexBuffer != 0)
+        uint vertexBuffer = _vertexBuffer;
+        _vertexBuffer = 0;
+
+        if (vertexBuffer != 0)
         {
-            _gl.DeleteBuffer(_vertexBuffer);
-            _vertexBuffer = 0;
+            try
+            {
+                _gl.DeleteBuffer(vertexBuffer);
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
 
-        if (_vertexArray != 0)
+        uint vertexArray = _vertexArray;
+        _vertexArray = 0;
+
+        if (vertexArray != 0)
         {
-            _gl.DeleteVertexArray(_vertexArray);
-            _vertexArray = 0;
+            try
+            {
+                _gl.DeleteVertexArray(vertexArray);
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
 
-        if (_program != 0)
+        uint program = _program;
+        _program = 0;
+
+        if (program != 0)
         {
-            _gl.DeleteProgram(_program);
-            _program = 0;
+            try
+            {
+                _gl.DeleteProgram(program);
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
+
+        firstFailure?.Throw();
     }
 
     private static float ToNormalizedX(int pixelX, int viewportWidth)
