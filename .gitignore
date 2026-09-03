@@ -487,18 +487,18 @@ $RECYCLE.BIN/
 # ---------------------------------------------------------------------------
 # Source-preserved client content
 #
-# The build-output rules above are name-based, so a client directory that
-# happens to be called Log/, Logs/, obj/, bin/, Debug/, or Release/ would be
-# dropped from the content set without any visible error. The manifest would
-# then declare files a clean clone does not have.
+# The build-output rules above are name-based, so a retail payload directory
+# that happens to be called Log/, Logs/, obj/, bin/, Debug/, or Release/ must
+# remain trackable. Limit that exception strictly to the integrity-managed
+# retail payload tree.
 #
 # Directories are re-included before files because Git cannot re-include a
 # file whose parent directory is excluded.
 # ---------------------------------------------------------------------------
-!/content/**/
-!/content/**
+!/content/retail-5517/payload/**/
+!/content/retail-5517/payload/**
 
-# Host artifacts must stay ignored even inside the content tree.
-/content/**/.DS_Store
-/content/**/Thumbs.db
-/content/**/desktop.ini
+# Host artifacts must stay ignored even inside the integrity-managed payload tree.
+/content/retail-5517/payload/**/.DS_Store
+/content/retail-5517/payload/**/Thumbs.db
+/content/retail-5517/payload/**/desktop.ini

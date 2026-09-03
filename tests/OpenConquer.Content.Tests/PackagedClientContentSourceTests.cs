@@ -12,9 +12,14 @@ public sealed class PackagedClientContentSourceTests
         temporaryDirectory.WriteFile("ini/package.ini", "data.wdf\n");
         temporaryDirectory.WriteFile("data.wdf", CreateWdf("data/example.bin", [1, 2, 3]));
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
-        Assert.Equal([1, 2, 3], ReadAll(source, "DATA/EXAMPLE.BIN", ContentLookupMode.LooseThenPackage));
+        Assert.Equal(
+            [1, 2, 3],
+            ReadAll(source, "DATA/EXAMPLE.BIN", ContentLookupMode.LooseThenPackage)
+        );
     }
 
     [Fact]
@@ -25,9 +30,14 @@ public sealed class PackagedClientContentSourceTests
         temporaryDirectory.WriteFile("data.wdf", CreateWdf("data/example.bin", [1, 2, 3]));
         temporaryDirectory.WriteFile("data/example.bin", [9, 8, 7]);
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
-        Assert.Equal([9, 8, 7], ReadAll(source, "data/example.bin", ContentLookupMode.LooseThenPackage));
+        Assert.Equal(
+            [9, 8, 7],
+            ReadAll(source, "data/example.bin", ContentLookupMode.LooseThenPackage)
+        );
     }
 
     /// <summary>
@@ -42,7 +52,9 @@ public sealed class PackagedClientContentSourceTests
         temporaryDirectory.WriteFile("data.wdf", CreateWdf("data/example.bin", [1, 2, 3]));
         temporaryDirectory.WriteFile("data/example.bin", [9, 8, 7]);
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
         Assert.Equal([1, 2, 3], ReadAll(source, "data/example.bin", ContentLookupMode.PackageOnly));
     }
@@ -57,9 +69,13 @@ public sealed class PackagedClientContentSourceTests
         temporaryDirectory.WriteFile("ini/package.ini", "data.wdf\n");
         temporaryDirectory.WriteFile("data.wdf", CreateWdf("data/example.bin", [1, 2, 3]));
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
-        Assert.False(source.TryOpenRead("data/example.bin", ContentLookupMode.LooseOnly, out Stream? stream));
+        Assert.False(
+            source.TryOpenRead("data/example.bin", ContentLookupMode.LooseOnly, out Stream? stream)
+        );
         Assert.Null(stream);
     }
 
@@ -69,10 +85,12 @@ public sealed class PackagedClientContentSourceTests
         using TemporaryContentDirectory temporaryDirectory = new();
         temporaryDirectory.WriteFile("data/example.bin", [1]);
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
-        Assert.Throws<ArgumentOutOfRangeException>(
-            () => source.TryOpenRead("data/example.bin", (ContentLookupMode)42, out _)
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            source.TryOpenRead("data/example.bin", (ContentLookupMode)42, out _)
         );
     }
 
@@ -87,15 +105,67 @@ public sealed class PackagedClientContentSourceTests
         temporaryDirectory.WriteFile("ini/package.ini", "data.wdf c3.wdf\n");
         temporaryDirectory.WriteFile("data.wdf", CreateWdf("data/example.bin", [1]));
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
         Assert.Equal(
             [
-                new WdfPackageRegistration("data.wdf", "data", WdfPackageRegistrationOutcome.Registered),
-                new WdfPackageRegistration("c3.wdf", "c3", WdfPackageRegistrationOutcome.FileNotFound),
+                new WdfPackageRegistration(
+                    "data.wdf",
+                    "data",
+                    WdfPackageRegistrationOutcome.Registered
+                ),
+                new WdfPackageRegistration(
+                    "c3.wdf",
+                    "c3",
+                    WdfPackageRegistrationOutcome.FileNotFound
+                ),
             ],
             source.PackageRegistrations
         );
+    }
+
+    /// <summary>
+    /// Native creates and registers the package object before opening its WDF. Therefore an absent
+    /// first declaration still owns its prefix, and a later declaration with the same prefix is a
+    /// duplicate even when that later package exists.
+    /// </summary>
+    [Fact]
+    public void Open_WhenMissingFirstDeclarationOwnsPrefix_RejectsLaterDuplicate()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+        temporaryDirectory.WriteFile("ini/package.ini", "data.wdf\ndata.dat\n");
+        temporaryDirectory.WriteFile("data.dat", CreateWdf("data/example.bin", [9]));
+
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
+
+        Assert.Equal(
+            [
+                new WdfPackageRegistration(
+                    "data.wdf",
+                    "data",
+                    WdfPackageRegistrationOutcome.FileNotFound
+                ),
+                new WdfPackageRegistration(
+                    "data.dat",
+                    "data",
+                    WdfPackageRegistrationOutcome.DuplicatePrefix
+                ),
+            ],
+            source.PackageRegistrations
+        );
+
+        Assert.False(
+            source.TryOpenRead(
+                "data/example.bin",
+                ContentLookupMode.PackageOnly,
+                out Stream? stream
+            )
+        );
+        Assert.Null(stream);
     }
 
     /// <summary>
@@ -110,12 +180,22 @@ public sealed class PackagedClientContentSourceTests
         temporaryDirectory.WriteFile("data.wdf", CreateWdf("data/example.bin", [1, 2, 3]));
         temporaryDirectory.WriteFile("data.dat", CreateWdf("data/example.bin", [9]));
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
         Assert.Equal(
             [
-                new WdfPackageRegistration("data.wdf", "data", WdfPackageRegistrationOutcome.Registered),
-                new WdfPackageRegistration("data.dat", "data", WdfPackageRegistrationOutcome.DuplicatePrefix),
+                new WdfPackageRegistration(
+                    "data.wdf",
+                    "data",
+                    WdfPackageRegistrationOutcome.Registered
+                ),
+                new WdfPackageRegistration(
+                    "data.dat",
+                    "data",
+                    WdfPackageRegistrationOutcome.DuplicatePrefix
+                ),
             ],
             source.PackageRegistrations
         );
@@ -134,10 +214,18 @@ public sealed class PackagedClientContentSourceTests
         temporaryDirectory.WriteFile("ini/package.ini", "data.v2.wdf\n");
         temporaryDirectory.WriteFile("data.v2.wdf", CreateWdf("data/example.bin", [1]));
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
         Assert.Equal(
-            [new WdfPackageRegistration("data.v2.wdf", "data.v2", WdfPackageRegistrationOutcome.Registered)],
+            [
+                new WdfPackageRegistration(
+                    "data.v2.wdf",
+                    "data.v2",
+                    WdfPackageRegistrationOutcome.Registered
+                ),
+            ],
             source.PackageRegistrations
         );
 
@@ -154,10 +242,60 @@ public sealed class PackagedClientContentSourceTests
         using TemporaryContentDirectory temporaryDirectory = new();
         temporaryDirectory.WriteFile("data/example.bin", [4, 5]);
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
         Assert.Empty(source.PackageRegistrations);
-        Assert.Equal([4, 5], ReadAll(source, "data/example.bin", ContentLookupMode.LooseThenPackage));
+        Assert.Equal(
+            [4, 5],
+            ReadAll(source, "data/example.bin", ContentLookupMode.LooseThenPackage)
+        );
+    }
+
+    [Theory]
+    [InlineData("data//example.bin")]
+    [InlineData(@"data\\example.bin")]
+    [InlineData("data/example.bin/")]
+    [InlineData("data/./example.bin")]
+    [InlineData("data/example\0.bin")]
+    public void TryOpenRead_PackageOnly_RejectsStructurallyInvalidVirtualPaths(string contentPath)
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        temporaryDirectory.WriteFile("ini/package.ini", "data.wdf\n");
+        temporaryDirectory.WriteFile("data.wdf", CreateWdf("data/example.bin", [1]));
+
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
+
+        Assert.Throws<ArgumentException>(() =>
+            source.TryOpenRead(contentPath, ContentLookupMode.PackageOnly, out _)
+        );
+    }
+
+    [Fact]
+    public void TryOpenRead_PackageOnly_DoesNotTrimVirtualPath()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        temporaryDirectory.WriteFile("ini/package.ini", "data.wdf\n");
+        temporaryDirectory.WriteFile("data.wdf", CreateWdf("data/example.bin", [1]));
+
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
+
+        Assert.False(
+            source.TryOpenRead(
+                " data/example.bin",
+                ContentLookupMode.PackageOnly,
+                out Stream? stream
+            )
+        );
+
+        Assert.Null(stream);
     }
 
     [Fact]
@@ -166,10 +304,12 @@ public sealed class PackagedClientContentSourceTests
         using TemporaryContentDirectory temporaryDirectory = new();
         temporaryDirectory.WriteFile("data/example.bin", [1]);
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
-        Assert.Throws<FileNotFoundException>(
-            () => source.OpenRequiredRead("data/example.bin", ContentLookupMode.PackageOnly)
+        Assert.Throws<FileNotFoundException>(() =>
+            source.OpenRequiredRead("data/example.bin", ContentLookupMode.PackageOnly)
         );
     }
 
@@ -183,14 +323,20 @@ public sealed class PackagedClientContentSourceTests
         temporaryDirectory.WriteFile("ini/package.ini", "data.wdf\n");
         temporaryDirectory.WriteFile("data.wdf", CreateWdf("data/example.bin", [1]));
 
-        PackagedClientContentSource source = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(
+            temporaryDirectory.RootPath
+        );
 
-        Assert.Throws<ArgumentException>(
-            () => source.TryOpenRead(contentPath, ContentLookupMode.PackageOnly, out _)
+        Assert.Throws<ArgumentException>(() =>
+            source.TryOpenRead(contentPath, ContentLookupMode.PackageOnly, out _)
         );
     }
 
-    private static byte[] ReadAll(PackagedClientContentSource source, string contentPath, ContentLookupMode mode)
+    private static byte[] ReadAll(
+        PackagedClientContentSource source,
+        string contentPath,
+        ContentLookupMode mode
+    )
     {
         using Stream stream = source.OpenRequiredRead(contentPath, mode);
         using MemoryStream destination = new();
@@ -208,10 +354,21 @@ public sealed class PackagedClientContentSourceTests
         BinaryPrimitives.WriteUInt32LittleEndian(archive, WdfArchive.Magic);
         BinaryPrimitives.WriteUInt32LittleEndian(archive.AsSpan(4), 1);
         BinaryPrimitives.WriteUInt32LittleEndian(archive.AsSpan(8), (uint)tableOffset);
+
         payload.CopyTo(archive.AsSpan(WdfArchive.HeaderLength));
-        BinaryPrimitives.WriteUInt32LittleEndian(archive.AsSpan(tableOffset), WdfPathHash.Compute(contentPath));
-        BinaryPrimitives.WriteUInt32LittleEndian(archive.AsSpan(tableOffset + 4), WdfArchive.HeaderLength);
-        BinaryPrimitives.WriteUInt32LittleEndian(archive.AsSpan(tableOffset + 8), (uint)payload.Length);
+
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            archive.AsSpan(tableOffset),
+            WdfPathHash.Compute(contentPath)
+        );
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            archive.AsSpan(tableOffset + 4),
+            WdfArchive.HeaderLength
+        );
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            archive.AsSpan(tableOffset + 8),
+            (uint)payload.Length
+        );
 
         return archive;
     }
