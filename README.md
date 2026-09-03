@@ -54,9 +54,9 @@ host framebuffer, after which Platform performs the native buffer swap.
 
 More detailed architecture and compatibility documentation lives under [`docs`](docs).
 
-The retail-content survey and proposed ingestion architecture are documented in
-[`docs/content`](docs/content). They define how the original 5517 files will be inventoried,
-classified, and packaged without mixing raw retail payloads into source projects.
+The retail-content evidence inventory and consumer-led ingestion policy are documented in
+[`docs/content`](docs/content). Checked-in retail content is limited to the exact dependency closure
+of implemented consumers and expands only through reviewed feature slices.
 
 ## Build
 
@@ -87,11 +87,11 @@ Pass `--content-root <path>` to validate or run directly against another authori
 
 `--presentation` selects how the fixed logical frame is fitted into the resizable window:
 
-| Value | Behaviour |
-|---|---|
+| Value           | Behaviour                                                               |
+| --------------- | ----------------------------------------------------------------------- |
 | `fit` (default) | largest distortion-free scale, centred with pillarbox or letterbox bars |
-| `integer` | largest whole-number scale, centred; sharpest, larger bars |
-| `stretch` | fills the window, distorting whenever the aspect ratios differ |
+| `integer`       | largest whole-number scale, centred; sharpest, larger bars              |
+| `stretch`       | fills the window, distorting whenever the aspect ratios differ          |
 
 To verify formatting:
 
@@ -113,6 +113,7 @@ src/
 tests/
 ├── OpenConquer.Client.Tests/
 ├── OpenConquer.Content.Tests/
+├── OpenConquer.Content.Tool.Tests/
 ├── OpenConquer.Platform.Tests/
 └── OpenConquer.Rendering.Tests/
 

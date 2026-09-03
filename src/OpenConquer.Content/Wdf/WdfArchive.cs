@@ -111,7 +111,15 @@ internal sealed class WdfArchive
         }
         catch
         {
-            archiveStream.Dispose();
+            try
+            {
+                archiveStream.Dispose();
+            }
+            catch
+            {
+                // Preserve the stream-opening failure that initiated cleanup.
+            }
+
             throw;
         }
     }
@@ -128,17 +136,10 @@ internal sealed class WdfArchive
         }
     }
 
-    private sealed class WdfEntryStream : Stream
+    private sealed class WdfEntryStream(FileStream archiveStream, uint length) : Stream
     {
-        private readonly FileStream _archiveStream;
-        private readonly long _length;
+        private readonly long _length = length;
         private long _position;
-
-        public WdfEntryStream(FileStream archiveStream, uint length)
-        {
-            _archiveStream = archiveStream;
-            _length = length;
-        }
 
         public override bool CanRead => true;
         public override bool CanSeek => true;
@@ -165,7 +166,7 @@ internal sealed class WdfArchive
                 return 0;
             }
 
-            int bytesRead = _archiveStream.Read(buffer[..requestedLength]);
+            int bytesRead = archiveStream.Read(buffer[..requestedLength]);
 
             if (bytesRead == 0)
             {
@@ -183,6 +184,7 @@ internal sealed class WdfArchive
                 SeekOrigin.Begin => offset,
                 SeekOrigin.Current => checked(_position + offset),
                 SeekOrigin.End => checked(_length + offset),
+
                 _ => throw new ArgumentOutOfRangeException(nameof(origin), origin, "Unknown seek origin."),
             };
 
@@ -191,7 +193,8 @@ internal sealed class WdfArchive
                 throw new IOException("Cannot seek outside a WDF entry.");
             }
 
-            _archiveStream.Seek(position - _position, SeekOrigin.Current);
+            archiveStream.Seek(position - _position, SeekOrigin.Current);
+
             _position = position;
             return position;
         }
@@ -214,7 +217,7 @@ internal sealed class WdfArchive
         {
             if (disposing)
             {
-                _archiveStream.Dispose();
+                archiveStream.Dispose();
             }
 
             base.Dispose(disposing);
