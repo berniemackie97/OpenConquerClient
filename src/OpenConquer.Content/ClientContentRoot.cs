@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace OpenConquer.Content;
 
-public sealed class ClientContentRoot
+public sealed class ClientContentRoot : IClientContentSource
 {
     private static readonly char[] s_pathSeparators = ['/', '\\'];
 
@@ -63,6 +63,38 @@ public sealed class ClientContentRoot
 
         throw new FileNotFoundException(
             $"Client content file '{relativePath}' was not found under '{RootPath}'."
+        );
+    }
+
+    public bool TryOpenRead(string contentPath, [NotNullWhen(true)] out Stream? stream)
+    {
+        if (!TryResolveFile(contentPath, out string? absolutePath))
+        {
+            stream = null;
+            return false;
+        }
+
+        stream = new FileStream(
+            absolutePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 4096,
+            FileOptions.SequentialScan
+        );
+
+        return true;
+    }
+
+    public Stream OpenRequiredRead(string contentPath)
+    {
+        if (TryOpenRead(contentPath, out Stream? stream))
+        {
+            return stream;
+        }
+
+        throw new FileNotFoundException(
+            $"Client content file '{contentPath}' was not found under the configured content root."
         );
     }
 

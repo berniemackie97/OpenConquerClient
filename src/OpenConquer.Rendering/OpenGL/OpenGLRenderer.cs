@@ -67,14 +67,8 @@ public sealed class OpenGLRenderer : IDisposable
             return;
         }
 
-        try
-        {
-            _renderTarget.Dispose();
-        }
-        finally
-        {
-            _disposed = true;
-        }
+        _renderTarget.Dispose();
+        _disposed = true;
     }
 
     private void BlitToHostFramebuffer()

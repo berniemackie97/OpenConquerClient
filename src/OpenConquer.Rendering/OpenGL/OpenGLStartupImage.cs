@@ -1,0 +1,317 @@
+using Silk.NET.OpenGL;
+
+namespace OpenConquer.Rendering.OpenGL;
+
+internal sealed unsafe class OpenGLStartupImage : IDisposable
+{
+    private const int FloatsPerVertex = 4;
+
+    private static readonly uint[] s_indices = [0, 1, 2, 0, 2, 3];
+
+    private readonly GL _gl;
+    private readonly int _width;
+    private readonly int _height;
+
+    private uint _program;
+    private uint _vertexArray;
+    private uint _vertexBuffer;
+    private uint _indexBuffer;
+    private uint _texture;
+    private int _textureUniform;
+    private bool _disposed;
+
+    public OpenGLStartupImage(GL gl, int width, int height, ReadOnlySpan<byte> rgbaPixels)
+    {
+        ArgumentNullException.ThrowIfNull(gl);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+
+        int expectedLength = checked(width * height * 4);
+
+        if (rgbaPixels.Length != expectedLength)
+        {
+            throw new ArgumentException($"Expected {expectedLength} RGBA bytes, but received {rgbaPixels.Length}.", nameof(rgbaPixels));
+        }
+
+        _gl = gl;
+        _width = width;
+        _height = height;
+
+        try
+        {
+            CreatePipeline(rgbaPixels);
+        }
+        catch
+        {
+            DestroyResources();
+            throw;
+        }
+    }
+
+    public void DrawContained(int viewportWidth, int viewportHeight)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(viewportWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(viewportHeight);
+
+        float scale = MathF.Min(
+            1f,
+            MathF.Min((float)viewportWidth / _width, (float)viewportHeight / _height)
+        );
+        int drawWidth = Math.Max(1, (int)MathF.Round(_width * scale));
+        int drawHeight = Math.Max(1, (int)MathF.Round(_height * scale));
+        int leftPixels = (viewportWidth - drawWidth) / 2;
+        int topPixels = (viewportHeight - drawHeight) / 2;
+        float left = ToNormalizedX(leftPixels, viewportWidth);
+        float right = ToNormalizedX(leftPixels + drawWidth, viewportWidth);
+        float top = ToNormalizedY(topPixels, viewportHeight);
+        float bottom = ToNormalizedY(topPixels + drawHeight, viewportHeight);
+
+        Span<float> vertices =
+        [
+            left, top, 0f, 0f,
+            right, top, 1f, 0f,
+            right, bottom, 1f, 1f,
+            left, bottom, 0f, 1f,
+        ];
+
+        _gl.Disable(EnableCap.DepthTest);
+        _gl.DepthMask(false);
+        _gl.Disable(EnableCap.CullFace);
+        _gl.Disable(EnableCap.Blend);
+        _gl.UseProgram(_program);
+        _gl.BindVertexArray(_vertexArray);
+        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
+
+        fixed (float* vertexPointer = vertices)
+        {
+            _gl.BufferSubData(
+                BufferTargetARB.ArrayBuffer,
+                offset: 0,
+                (nuint)(vertices.Length * sizeof(float)),
+                vertexPointer
+            );
+        }
+
+        _gl.ActiveTexture(TextureUnit.Texture0);
+        _gl.BindTexture(TextureTarget.Texture2D, _texture);
+        _gl.Uniform1(_textureUniform, 0);
+        _gl.DrawElements(PrimitiveType.Triangles, (uint)s_indices.Length, DrawElementsType.UnsignedInt, null);
+        _gl.BindVertexArray(0);
+        _gl.DepthMask(true);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        DestroyResources();
+        _disposed = true;
+    }
+
+    private void CreatePipeline(ReadOnlySpan<byte> rgbaPixels)
+    {
+        _program = CreateProgram(VertexShaderSource, FragmentShaderSource);
+        _textureUniform = _gl.GetUniformLocation(_program, "uTexture");
+
+        if (_textureUniform < 0)
+        {
+            throw new InvalidOperationException("The startup image shader does not expose its texture uniform.");
+        }
+
+        _vertexArray = _gl.GenVertexArray();
+        _vertexBuffer = _gl.GenBuffer();
+        _indexBuffer = _gl.GenBuffer();
+
+        _gl.BindVertexArray(_vertexArray);
+        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
+        _gl.BufferData(
+            BufferTargetARB.ArrayBuffer,
+            (nuint)(4 * FloatsPerVertex * sizeof(float)),
+            null,
+            BufferUsageARB.DynamicDraw
+        );
+
+        _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _indexBuffer);
+
+        fixed (uint* indexPointer = s_indices)
+        {
+            _gl.BufferData(
+                BufferTargetARB.ElementArrayBuffer,
+                (nuint)(s_indices.Length * sizeof(uint)),
+                indexPointer,
+                BufferUsageARB.StaticDraw
+            );
+        }
+
+        _gl.EnableVertexAttribArray(0);
+        _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)0);
+        _gl.EnableVertexAttribArray(1);
+        _gl.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)(2 * sizeof(float)));
+        _gl.BindVertexArray(0);
+
+        _texture = _gl.GenTexture();
+        _gl.BindTexture(TextureTarget.Texture2D, _texture);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBaseLevel, 0);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, 0);
+
+        fixed (byte* pixelPointer = rgbaPixels)
+        {
+            _gl.TexImage2D(
+                TextureTarget.Texture2D,
+                level: 0,
+                InternalFormat.Rgba8,
+                (uint)_width,
+                (uint)_height,
+                border: 0,
+                PixelFormat.Rgba,
+                PixelType.UnsignedByte,
+                pixelPointer
+            );
+        }
+
+        _gl.BindTexture(TextureTarget.Texture2D, 0);
+    }
+
+    private uint CreateProgram(string vertexSource, string fragmentSource)
+    {
+        uint vertexShader = CompileShader(ShaderType.VertexShader, vertexSource);
+        uint fragmentShader = 0;
+        uint program = 0;
+
+        try
+        {
+            fragmentShader = CompileShader(ShaderType.FragmentShader, fragmentSource);
+            program = _gl.CreateProgram();
+            _gl.AttachShader(program, vertexShader);
+            _gl.AttachShader(program, fragmentShader);
+            _gl.LinkProgram(program);
+            _gl.GetProgram(program, ProgramPropertyARB.LinkStatus, out int status);
+
+            if (status == 0)
+            {
+                throw new InvalidOperationException($"Failed to link the startup image shader: {_gl.GetProgramInfoLog(program)}");
+            }
+
+            return program;
+        }
+        catch
+        {
+            if (program != 0)
+            {
+                _gl.DeleteProgram(program);
+            }
+
+            throw;
+        }
+        finally
+        {
+            _gl.DeleteShader(vertexShader);
+
+            if (fragmentShader != 0)
+            {
+                _gl.DeleteShader(fragmentShader);
+            }
+        }
+    }
+
+    private uint CompileShader(ShaderType type, string source)
+    {
+        uint shader = _gl.CreateShader(type);
+
+        try
+        {
+            _gl.ShaderSource(shader, source);
+            _gl.CompileShader(shader);
+            _gl.GetShader(shader, ShaderParameterName.CompileStatus, out int status);
+
+            if (status == 0)
+            {
+                throw new InvalidOperationException($"Failed to compile the startup image shader: {_gl.GetShaderInfoLog(shader)}");
+            }
+
+            return shader;
+        }
+        catch
+        {
+            _gl.DeleteShader(shader);
+            throw;
+        }
+    }
+
+    private void DestroyResources()
+    {
+        if (_texture != 0)
+        {
+            _gl.DeleteTexture(_texture);
+            _texture = 0;
+        }
+
+        if (_indexBuffer != 0)
+        {
+            _gl.DeleteBuffer(_indexBuffer);
+            _indexBuffer = 0;
+        }
+
+        if (_vertexBuffer != 0)
+        {
+            _gl.DeleteBuffer(_vertexBuffer);
+            _vertexBuffer = 0;
+        }
+
+        if (_vertexArray != 0)
+        {
+            _gl.DeleteVertexArray(_vertexArray);
+            _vertexArray = 0;
+        }
+
+        if (_program != 0)
+        {
+            _gl.DeleteProgram(_program);
+            _program = 0;
+        }
+    }
+
+    private static float ToNormalizedX(int pixelX, int viewportWidth)
+    {
+        return 2f * pixelX / viewportWidth - 1f;
+    }
+
+    private static float ToNormalizedY(int pixelY, int viewportHeight)
+    {
+        return 1f - 2f * pixelY / viewportHeight;
+    }
+
+    private const string VertexShaderSource = """
+        #version 330 core
+        layout (location = 0) in vec2 aPosition;
+        layout (location = 1) in vec2 aTextureCoordinate;
+        out vec2 textureCoordinate;
+
+        void main()
+        {
+            textureCoordinate = aTextureCoordinate;
+            gl_Position = vec4(aPosition, 0.0, 1.0);
+        }
+        """;
+
+    private const string FragmentShaderSource = """
+        #version 330 core
+        in vec2 textureCoordinate;
+        out vec4 outputColor;
+        uniform sampler2D uTexture;
+
+        void main()
+        {
+            outputColor = texture(uTexture, textureCoordinate);
+        }
+        """;
+}

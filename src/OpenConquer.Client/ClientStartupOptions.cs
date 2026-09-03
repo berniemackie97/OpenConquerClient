@@ -49,7 +49,14 @@ internal sealed class ClientStartupOptions
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        return TryParse(args, AppContext.BaseDirectory, Environment.CurrentDirectory, out options, out errorMessage);
+        string packagedContentRoot = Path.Combine(
+            AppContext.BaseDirectory,
+            "content",
+            "retail-5517",
+            "payload"
+        );
+
+        return TryParse(args, packagedContentRoot, Environment.CurrentDirectory, out options, out errorMessage);
     }
 
     internal static bool TryParse(IReadOnlyList<string> args, string defaultContentRootPath, string workingDirectoryPath, [NotNullWhen(true)] out ClientStartupOptions? options, [NotNullWhen(false)] out string? errorMessage)

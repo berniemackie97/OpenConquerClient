@@ -23,14 +23,14 @@ window placement rather than creating a Direct3D fullscreen swap chain.
 Retail obtains the selected mode from:
 
 ```ini
-[ScreenModeRecord]
-ScreenMode=<value>
+[ScreenMode]
+ScreenModeRecord=<value>
 ```
 
 in:
 
 ```text
-ini/GameSetup.Ini
+ini/GameSetUp.ini
 ```
 
 OpenConquer Client reads that configuration during startup and preserves the verified logical

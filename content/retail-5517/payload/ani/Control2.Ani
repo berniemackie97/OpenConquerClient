@@ -1,0 +1,1950 @@
+// 用户登陆窗口 
+[Dialog1]
+FrameAmount=2
+Frame0=Data/Main1/DialogLogin.dds
+Frame1=Data/Main1/DialogLogin1024.dds
+
+// 新建人物选择窗口
+[Dialog2]
+FrameAmount=2
+Frame0=Data/Main1/DialogRoleChoose.dds
+Frame1=Data/Main1/DialogRoleChoose1024.dds
+
+// 新建人物创建窗口
+[Dialog3]
+FrameAmount=2
+Frame0=Data/Main1/DialogRoleCreate.dds
+Frame1=Data/Main1/DialogRoleCreate1024.dds
+
+// 主界面窗口
+[Dialog4]
+FrameAmount=4
+Frame0=Data/Main1/MainDialog1.dds
+Frame1=Data/Main1/MainDialog2.dds
+Frame2=Data/Main1/MainDialog3.dds
+Frame3=Data/Main1/MainDialog4.dds
+
+// 聊天窗口
+[Dialog5]
+FrameAmount=4
+Frame0=Data/Main1/DialogTalk1.dds
+Frame1=Data/Main1/DialogTalk2.dds
+Frame2=Data/Main1/DialogTalk3.dds
+Frame3=Data/Main1/DialogTalk4.dds
+
+// 资料查询父窗口
+[Dialog6]
+FrameAmount=1
+Frame0=Data/Main1/DialogQuery.dds
+
+// 人物资料查询子窗口
+[Dialog7]
+FrameAmount=1
+Frame0=Data/Main1/DialogQuery_Role.dds
+
+// 帮派资料查询子窗口
+[Dialog8]
+FrameAmount=1
+Frame0=Data/Main1/DialogQuery_Faction.dds
+
+// 武器资料查询子窗口
+[Dialog9]
+FrameAmount=1
+Frame0=Data/Main1/DialogQuery_Weapon.dds
+
+// 设定界面窗口
+[Dialog10]
+FrameAmount=1
+Frame0=Data/Main1/DialogSetup.dds
+
+// Npc交易窗口
+[Dialog11]
+FrameAmount=1
+Frame0=Data/Main1/DialogNpcBuy.dds
+
+// Mpc物品窗口
+[Dialog12]
+FrameAmount=1
+Frame0=Data/Main1/DialogMpcGoods.dds
+
+// 技能窗口
+[Dialog13]
+FrameAmount=1
+Frame0=Data/Main1/DialogSkill.dds
+
+// Mpc交易界面
+[Dialog14]
+FrameAmount=1
+Frame0=Data/Main1/DialogTrade.dds
+
+// 确认界面
+[Dialog15]
+FrameAmount=1
+Frame0=Data/Main1/DialogConfirm.dds
+
+// 武器资料查询子窗口
+[Dialog16]
+FrameAmount=1
+Frame0=Data/Main1/DialogQuery_Mission.dds
+
+// 朋友窗口
+[Dialog17]
+FrameAmount=1
+Frame0=Data/Main1/DialogFriend.dds
+
+// 仓库界面
+[Dialog18]
+FrameAmount=1
+Frame0=Data/Main1/DialogDepot.dds
+
+// 组队界面
+[Dialog19]
+FrameAmount=1
+Frame0=Data/Main1/DialogGroup.dds
+
+// 技能查询界面
+[Dialog20]
+FrameAmount=1
+Frame0=Data/Main1/DialogQuery_Skill.dds
+
+// 物品介绍界面
+[Dialog21]
+FrameAmount=1
+Frame0=Data/Main1/MsgDlg.dds
+
+// 动作界面
+[Dialog22]
+FrameAmount=1
+Frame0=Data/Main1/DialogAct.dds
+
+// NPC任务界面
+[Dialog23]
+FrameAmount=1
+Frame0=Data/Main1/DialogTask.dds
+
+// 聊天好友列表框界面
+[Dialog24]
+FrameAmount=1
+Frame0=Data/Main1/DialogListBox.dds
+
+// 朋友属性窗口
+[Dialog25]
+FrameAmount=1
+Frame0=Data/Main1/DialogFrdState.dds
+
+// 武器改良界面
+[Dialog26]
+FrameAmount=1
+Frame0=Data/Main1/DialogImprove.dds
+
+// 更改头像界面
+[Dialog27]
+FrameAmount=1
+Frame0=Data/Main1/DialogNpcFace.dds
+
+// 帮派基本属性界面
+[Dialog28]
+FrameAmount=1
+Frame0=Data/Main1/DialogFaction_State.dds
+
+// 镶嵌界面
+[Dialog29]
+FrameAmount=1
+Frame0=Data/Main1/DialogEmbed.dds
+
+// 宝石框背景
+[Dialog30]
+FrameAmount=1
+Frame0=Data/Main1/DialogGemBk.dds
+
+// 人物资料
+[Dialog31]
+FrameAmount=1
+Frame0=Data/Main1/DialogQuery_Role_More.dds
+
+// 热键界面
+[Dialog32]
+FrameAmount=1
+Frame0=Data/Main1/DialogHotkey.dds
+
+// 消息发送界面
+[Dialog33]
+FrameAmount=1
+Frame0=Data/Main1/DialogMsgSend.dds
+
+// MPC摆摊界面
+[Dialog34]
+FrameAmount=1
+Frame0=Data/Main1/DialogMpcBooth.dds
+
+// 叫卖输入界面
+[Dialog35]
+FrameAmount=1
+Frame0=Data/Main1/DialogHawk.dds
+
+// 聊天设置界面
+[Dialog36]
+FrameAmount=1
+Frame0=Data/Main1/DialogChat.dds
+
+// 留言板界面
+[Dialog37]
+FrameAmount=1
+Frame0=Data/Main1/DialogLevWord.dds
+
+// 雕像界面
+[Dialog38]
+FrameAmount=1
+Frame0=Data/Main1/DialogEffigy.dds
+
+// 消息接受界面
+[Dialog39]
+FrameAmount=1
+Frame0=Data/Main1/DialogMsgReceive.dds
+
+// 其他功能界面
+[Dialog40]
+FrameAmount=1
+Frame0=Data/Main1/DialogOther.dds
+
+// 帮众属性界面
+[Dialog41]
+FrameAmount=1
+Frame0=Data/Main1/DialogFacState.dds
+
+// 查看别人装备界面
+[Dialog42]
+FrameAmount=1
+Frame0=Data/Main1/DialogNpcEquip.dds
+
+// 赌场
+[Dialog43]
+FrameAmount=1
+Frame0=Data/Main1/DialogDice.dds
+
+// 赌场列表
+[Dialog44]
+FrameAmount=1
+Frame0=Data/Main1/DialogDiceList.dds
+
+// 求婚确认框
+[Dialog45]
+FrameAmount=1
+Frame0=Data/Main1/DialogConfirmMarry.dds
+
+// 仇人界面
+[Dialog46]
+FrameAmount=1
+Frame0=Data/Main1/DialogEnemy.dds
+
+// 仇人属性界面
+[Dialog47]
+FrameAmount=1
+Frame0=Data/Main1/DialogEnmState.dds
+
+// 职业介绍界面
+[Dialog48]
+FrameAmount=1
+Frame0=Data/Main1/DialogProIntro.dds
+
+// 即时帮助截面
+[Dialog49]
+FrameAmount=1
+Frame0=Data/Main1/DialogInsHelp.dds
+
+// 聊天动作界面
+[Dialog50]
+FrameAmount=1
+Frame0=Data/Main/DialogTalkAct.dds
+
+// 小地图加按钮
+[Button00]
+FrameAmount=2
+Frame0=Data/Main/MiniBtn1.dds
+Frame1=Data/Main/MiniBtn1Click.dds
+
+// 小地图减按钮
+[Button01]
+FrameAmount=2
+Frame0=Data/Main/MiniBtn2.dds
+Frame1=Data/Main/MiniBtn2Click.dds
+
+// 小地图放大按钮
+[Button02]
+FrameAmount=2
+Frame0=Data/Main/FullBtn.dds
+Frame1=Data/Main/FullBtnClick.dds
+
+// 确定按钮（公共）
+[Button0]
+FrameAmount=2
+Frame0=Data/Main1/OkBtn.dds
+Frame1=Data/Main1/OkBtnClick.dds
+		
+// 退出按钮（公共）
+[Button1]
+FrameAmount=2
+Frame0=Data/Main1/ExitBtn.dds
+Frame1=Data/Main1/ExitBtnClick.dds
+
+// 返回按钮（公共）
+[Button2]
+FrameAmount=2
+Frame0=Data/Main1/ReturnBtn.dds
+Frame1=Data/Main1/ReturnBtnClick.dds
+
+// 关闭按钮（公共）
+[Button3]
+FrameAmount=2
+Frame0=Data/Main1/CloseBtn.dds
+Frame1=Data/Main1/CloseBtnClick.dds
+
+// 帮组小按钮（公共）
+[Button4]
+FrameAmount=2
+Frame0=Data/Main1/HelpBtn.dds
+Frame1=Data/Main1/HelpBtnClick.dds
+
+// 关闭小按钮（公共）
+[Button5]
+FrameAmount=2
+Frame0=Data/Main1/CloseBtnS.dds
+Frame1=Data/Main1/CloseBtnSClick.dds
+
+// 完成按钮（公共）
+[Button6]
+FrameAmount=2
+Frame0=Data/Main1/FinishBtn.dds
+Frame1=Data/Main1/FinishBtnClick.dds
+
+// 取消按钮（公共）
+[Button7]
+FrameAmount=2
+Frame0=Data/Main1/CancelBtn.dds
+Frame1=Data/Main1/CancelBtnClick.dds
+
+// 同意按钮（公共）
+[Button8]
+FrameAmount=2
+Frame0=Data/Main1/AgreeBtn.dds
+Frame1=Data/Main1/AgreeBtnClick.dds
+
+// 清空按钮（公共）
+[Button9]
+FrameAmount=2
+Frame0=Data/Main1/ClearBtn.dds
+Frame1=Data/Main1/ClearBtnClick.dds
+
+// 新建人物按钮(Dialog1)
+[Button10]
+FrameAmount=2
+Frame0=Data/Main1/LoginNewBtn.dds
+Frame1=Data/Main1/LoginNewBtnClick.dds
+
+// 网站联接按钮(Dialog1)
+[Button11]
+FrameAmount=2
+Frame0=Data/Main1/LoginNetBtn.dds
+Frame1=Data/Main1/LoginNetBtnClick.dds
+
+// 记住账号(Dialog1)
+[Button12]
+FrameAmount=2
+Frame0=Data/Main1/LoginRecordBtn.dds
+Frame1=Data/Main1/LoginRecordBtnClick.dds
+
+// 进入游戏(Dialog1)
+[Button13]
+FrameAmount=2
+Frame0=Data/Main1/LoginEnterBtn.dds
+Frame1=Data/Main1/LoginEnterBtnClick.dds
+
+// 退出游戏(Dialog1)
+[Button14]
+FrameAmount=2
+Frame0=Data/Main1/LoginExitBtn.dds
+Frame1=Data/Main1/LoginExitBtnClick.dds
+
+// 帮助(Dialog1)
+[Button15]
+FrameAmount=2
+Frame0=Data/Main1/LoginHelpBtn.dds
+Frame1=Data/Main1/LoginHelpBtnClick.dds
+
+// 充值(Dialog1)
+[Button16]
+FrameAmount=2
+Frame0=Data/Main1/LoginAddBtn.dds
+Frame1=Data/Main1/LoginAddBtnClick.dds
+
+// 确定(Dialog2)
+[Button20]
+FrameAmount=2
+Frame0=Data/Main1/RoleChooseOkBtn.dds
+Frame1=Data/Main1/RoleChooseOkBtnClick.dds
+
+// 返回(Dialog3)
+[Button30]
+FrameAmount=2
+Frame0=Data/Main1/RoleCreateReturnBtn.dds
+Frame1=Data/Main1/RoleCreateReturnBtnClick.dds
+
+// 资料查询按钮(Dialog4)
+[Button40]
+FrameAmount=2
+Frame0=Data/Main1/QueryBtn.dds
+Frame1=Data/Main1/QueryBtnClick.dds
+
+// 技能按钮(Dialog4)
+[Button41]
+FrameAmount=3
+Frame0=Data/Main1/SkillBtn.dds
+Frame1=Data/Main1/SkillBtnClick.dds
+Frame2=Data/Main1/SkillBtnL.dds
+
+// 物品按钮(Dialog4)
+[Button42]
+FrameAmount=2
+Frame0=Data/Main1/GoodBtn.dds
+Frame1=Data/Main1/GoodBtnClick.dds
+
+// 设置按钮(Dialog4)
+[Button43]
+FrameAmount=2
+Frame0=Data/Main1/SetBtn.dds
+Frame1=Data/Main1/SetBtnClick.dds
+
+// 动作按钮(Dialog4)
+[Button44]
+FrameAmount=2
+Frame0=Data/Main1/FaceBtn.dds
+Frame1=Data/Main1/FaceBtnClick.dds
+
+// 聊天按钮(Dialog4)
+[Button45]
+FrameAmount=2
+Frame0=Data/Main1/ChatBtn.dds
+Frame1=Data/Main1/ChatBtnClick.dds
+
+// 组队按钮(Dialog4)
+[Button46]
+FrameAmount=2
+Frame0=Data/Main1/GroupBtn.dds
+Frame1=Data/Main1/GroupBtnClick.dds
+
+// PK(PK) (Dialog4)
+[Button47]
+FrameAmount=2
+Frame0=Data/Main1/PkFree.dds
+Frame1=Data/Main1/PkFreeClick.dds
+
+// PK(组队) (Dialog4)
+[Button48]
+FrameAmount=2
+Frame0=Data/Main1/PkGroup.dds
+Frame1=Data/Main1/PkGroupClick.dds
+
+// PK(安全) (Dialog4)
+[Button49]
+FrameAmount=2
+Frame0=Data/Main1/PkSafe.dds
+Frame1=Data/Main1/PkSafeClick.dds
+
+// 留言按钮(Dialog4)
+[Button410]
+FrameAmount=2
+Frame0=Data/Main1/LevWordBtn.dds
+Frame1=Data/Main1/LevWordBtnClick.dds
+
+// 查看对方装备界面(Dialog4)
+[Button411]
+FrameAmount=2
+Frame0=Data/Main1/NpcEquip.dds
+Frame1=Data/Main1/NpcEquipClick.dds
+
+// PK(捕杀)(Dialog4)
+[Button412]
+FrameAmount=2
+Frame0=Data/Main1/PkArre.dds
+Frame1=Data/Main1/PkArreClick.dds
+
+// 公聊按钮(Dialog5)
+[Button50]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnG.dds
+Frame1=Data/Main1/TalkBtnGClick.dds
+
+// 私聊按钮(Dialog5)
+[Button51]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnS.dds
+Frame1=Data/Main1/TalkBtnSClick.dds
+
+// 队伍按钮(Dialog5)
+[Button52]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnD.dds
+Frame1=Data/Main1/TalkBtnDClick.dds
+
+// 帮派按钮(Dialog5)
+[Button53]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnB.dds
+Frame1=Data/Main1/TalkBtnBClick.dds
+
+// 好友按钮(Dialog5)
+[Button54]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnH.dds
+Frame1=Data/Main1/TalkBtnHClick.dds
+
+// 清屏按钮(Dialog5)
+[Button55]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnClear.dds
+Frame1=Data/Main1/TalkBtnClearClick.dds
+
+// 选取好友(Dialog5)
+[Button56]
+FrameAmount=3
+Frame0=Data/Main1/TalkBtnTalk.dds
+Frame1=Data/Main1/TalkBtnTalkClick.dds
+Frame2=Data/Main1/TalkBtnTalkFalse.dds
+
+// 添加好友1(Dialog5)
+[Button57]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnAdd1.dds
+Frame1=Data/Main1/TalkBtnAdd1Click.dds
+
+// 添加好友2(Dialog5)
+[Button58]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnAdd2.dds
+Frame1=Data/Main1/TalkBtnAdd2Click.dds
+
+// 添加好友3(Dialog5)
+[Button59]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnAdd3.dds
+Frame1=Data/Main1/TalkBtnAdd3Click.dds
+
+// 打开聊天列表(Dialog5)
+[Button510]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnList.dds
+Frame1=Data/Main1/TalkBtnListClick.dds
+
+// 聊天发送(Dialog5)
+[Button511]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnSend.dds
+Frame1=Data/Main1/TalkBtnSendClick.dds
+
+// 聊天纪录(Dialog5)
+[Button512]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnLog.dds
+Frame1=Data/Main1/TalkBtnLogClick.dds
+
+// 聊天动作按钮(Dialog5)
+[Button513]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnAct.dds
+Frame1=Data/Main1/TalkBtnActClick.dds
+
+// 清屏按钮(Dialog5)
+[Button514]
+FrameAmount=2
+Frame0=Data/Main1/TalkBtnClear.dds
+Frame1=Data/Main1/TalkBtnClearClick.dds
+
+// 关闭(Dialog6)
+[Button60]
+FrameAmount=2
+Frame0=Data/Main1/QueryCloseBtn.jpg
+Frame1=Data/Main1/QueryCloseBtnClick.jpg
+
+// 增加(Dialog7)
+[Button70]
+FrameAmount=2
+Frame0=Data/Main1/RoleBtnI.dds
+Frame1=Data/Main1/RoleBtnIClick.dds
+
+// 基本属性(Dialog7)
+[Button71]
+FrameAmount=2
+Frame0=Data/Main1/RoleBtnBase.dds
+Frame1=Data/Main1/RoleBtnBaseClick.dds
+
+// 具体属性(Dialog7)
+[Button72]
+FrameAmount=2
+Frame0=Data/Main1/RoleBtnMore.dds
+Frame1=Data/Main1/RoleBtnMoreClick.dds
+
+// 捐献(Dialog8)
+[Button80]
+FrameAmount=3
+Frame0=Data/Main1/FactionBtnSub.dds
+Frame1=Data/Main1/FactionBtnSubClick.dds
+Frame2=Data/Main1/FactionBtnSubH.dds
+
+// 脱离(Dialog8)
+[Button81]
+FrameAmount=2
+Frame0=Data/Main1/FactionBtnOut.dds
+Frame1=Data/Main1/FactionBtnOutClick.dds
+
+// 加入(Dialog8)
+[Button82]
+FrameAmount=2
+Frame0=Data/Main1/FactionBtnJoin.dds
+Frame1=Data/Main1/FactionBtnJoinClick.dds
+
+// 属性(Dialog8)
+[Button83]
+FrameAmount=3
+Frame0=Data/Main1/FactionBtnState.dds
+Frame1=Data/Main1/FactionBtnStateClick.dds
+Frame2=Data/Main1/FactionBtnStateH.dds
+
+// 公告(Dialog8)
+[Button84]
+FrameAmount=3
+Frame0=Data/Main1/FactionBtnWord.dds
+Frame1=Data/Main1/FactionBtnWordClick.dds
+Frame2=Data/Main1/FactionBtnWordH.dds
+
+// 同盟(Dialog8)
+[Button85]
+FrameAmount=3
+Frame0=Data/Main1/FactionBtnFriend.dds
+Frame1=Data/Main1/FactionBtnFriendClick.dds
+Frame2=Data/Main1/FactionBtnFriendH.dds
+
+// 敌对(Dialog8)
+[Button86]
+FrameAmount=3
+Frame0=Data/Main1/FactionBtnEnemy.dds
+Frame1=Data/Main1/FactionBtnEnemyClick.dds
+Frame2=Data/Main1/FactionBtnEnemyH.dds
+
+// 开除(Dialog8)
+[Button87]
+FrameAmount=2
+Frame0=Data/Main1/FactionBtnKick.dds
+Frame1=Data/Main1/FactionBtnKickClick.dds
+
+// 发布公告(Dialog8)
+[Button88]
+FrameAmount=2
+Frame0=Data/Main1/FactionBtnSend.dds
+Frame1=Data/Main1/FactionBtnSendClick.dds
+
+// 察看帮众(Dialog8)
+[Button89]
+FrameAmount=2
+Frame0=Data/Main1/FactionBtnList.dds
+Frame1=Data/Main1/FactionBtnListClick.dds
+
+// 删除(Dialog8)
+[Button810]
+FrameAmount=2
+Frame0=Data/Main1/FactionDel.dds
+Frame1=Data/Main1/FactionDelClick.dds
+
+// 单手(Dialog9)
+[Button90]
+FrameAmount=2
+Frame0=Data/Main1/WeaponBtnS.dds
+Frame1=Data/Main1/WeaponBtnSClick.dds
+
+// 双手(Dialog9)
+[Button91]
+FrameAmount=2
+Frame0=Data/Main1/WeaponBtnD.dds
+Frame1=Data/Main1/WeaponBtnDClick.dds
+
+// 其它(Dialog9)
+[Button92]
+FrameAmount=2
+Frame0=Data/Main1/WeaponBtnO.dds
+Frame1=Data/Main1/WeaponBtnOClick.dds
+
+// 窗口(Dialog10)
+[Button100]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnWin.dds
+Frame1=Data/Main1/SetupBtnWinClick.dds
+
+// 全屏(Dialog10)
+[Button101]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnFull.dds
+Frame1=Data/Main1/SetupBtnFullClick.dds
+
+// 删除人物(Dialog10)
+[Button102]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnDelete.dds
+Frame1=Data/Main1/SetupBtnDeleteClick.dds
+
+// 退出游戏(Dialog10)
+[Button103]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnExit.dds
+Frame1=Data/Main1/SetupBtnExitClick.dds
+
+// 复杂阴影(Dialog10)
+[Button104]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnReal.dds
+Frame1=Data/Main1/SetupBtnRealClick.dds
+
+// 简单阴影(Dialog10)
+[Button105]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnSimple.dds
+Frame1=Data/Main1/SetupBtnSimpleClick.dds
+
+// 关闭阴影(Dialog10)
+[Button106]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnShadowClose.dds
+Frame1=Data/Main1/SetupBtnShadowCloseClick.dds
+
+// 热键设定(Dialog10)
+[Button107]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnHotkey.dds
+Frame1=Data/Main1/SetupBtnHotkeyClick.dds
+
+// 其他功能(Dialog10)
+[Button108]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnOther.dds
+Frame1=Data/Main1/SetupBtnOtherClick.dds
+
+// 左按钮(Dialog10)
+[Button109]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnLeft.dds
+Frame1=Data/Main1/SetupBtnLeftClick.dds
+
+// 右按钮(Dialog10)
+[Button1010]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnRight.dds
+Frame1=Data/Main1/SetupBtnRightClick.dds
+
+// 木忆界面(Dialog10)
+[Button1011]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnMY.dds
+Frame1=Data/Main1/SetupBtnMYClick.dds
+
+// 古意界面(Dialog10)
+[Button1012]
+FrameAmount=2
+Frame0=Data/Main1/SetupBtnGY.dds
+Frame1=Data/Main1/SetupBtnGYClick.dds
+
+// 修理按钮(Dialog11)
+[Button110]
+FrameAmount=2
+Frame0=Data/Main1/NpcBuyBtnFix.dds
+Frame1=Data/Main1/NpcBuyBtnFixClick.dds
+
+// 丢钱小按钮(Dialog12)
+[Button120]
+FrameAmount=2
+Frame0=Data/Main1/MpcGoodsMoneyBtn.dds
+Frame1=Data/Main1/MpcGoodsMoneyBtnClick.dds
+
+// 物品栏关闭按钮(Dialog12)
+[Button121]
+FrameAmount=2
+Frame0=Data/Main1/MpcGoodsCloseBtn.dds
+Frame1=Data/Main1/MpcGoodsCloseBtnClick.dds
+
+// 技能1(Dialog13)
+[Button130]
+FrameAmount=2
+Frame0=Data/Main1/Skill1Btn.dds
+Frame1=Data/Main1/Skill1BtnClick.dds
+
+// 添加好友(Dialog17)
+[Button170]
+FrameAmount=2
+Frame0=Data/Main1/FriendBtnAdd.dds
+Frame1=Data/Main1/FriendBtnAddClick.dds
+
+// 删除好友(Dialog17)
+[Button171]
+FrameAmount=2
+Frame0=Data/Main1/FriendBtnDel.dds
+Frame1=Data/Main1/FriendBtnDelClick.dds
+
+// 帮助(Dialog17)
+[Button172]
+FrameAmount=2
+Frame0=Data/Main1/FriendBtnHelp.dds
+Frame1=Data/Main1/FriendBtnHelpClick.dds
+
+// 上翻按钮(Dialog17)
+[Button173]
+FrameAmount=2
+Frame0=Data/Main1/FriendBtnUp.dds
+Frame1=Data/Main1/FriendBtnUpClick.dds
+
+// 下翻按钮(Dialog17)
+[Button174]
+FrameAmount=2
+Frame0=Data/Main1/FriendBtnDown.dds
+Frame1=Data/Main1/FriendBtnDownClick.dds
+
+// 切换仇人名单(Dialog17)
+[Button175]
+FrameAmount=2
+Frame0=Data/Main1/FriendResume.dds
+Frame1=Data/Main1/FriendResumeClick.dds
+
+// 存钱(Dialog18)
+[Button180]
+FrameAmount=2
+Frame0=Data/Main1/DepotBtnAdd.dds
+Frame1=Data/Main1/DepotBtnAddClick.dds
+
+// 取钱(Dialog18)
+[Button181]
+FrameAmount=2
+Frame0=Data/Main1/DepotBtnGet.dds
+Frame1=Data/Main1/DepotBtnGetClick.dds
+
+// 创建(Dialog19)
+[Button190]
+FrameAmount=2
+Frame0=Data/Main1/GroupBtnCreate.dds
+Frame1=Data/Main1/GroupBtnCreateClick.dds
+
+// 加入(Dialog19)
+[Button191]
+FrameAmount=2
+Frame0=Data/Main1/GroupBtnJoin.dds
+Frame1=Data/Main1/GroupBtnJoinClick.dds
+
+// 邀请(Dialog19)
+[Button192]
+FrameAmount=2
+Frame0=Data/Main1/GroupBtnInvite.dds
+Frame1=Data/Main1/GroupBtnInviteClick.dds
+
+// 离开(Dialog19)
+[Button193]
+FrameAmount=2
+Frame0=Data/Main1/GroupBtnOut.dds
+Frame1=Data/Main1/GroupBtnOutClick.dds
+
+// 解散(Dialog19)
+[Button194]
+FrameAmount=2
+Frame0=Data/Main1/GroupBtnUnlay.dds
+Frame1=Data/Main1/GroupBtnUnlayClick.dds
+
+// 开除(Dialog19)
+[Button195]
+FrameAmount=3
+Frame0=Data/Main1/GroupBtnKickout.dds
+Frame1=Data/Main1/GroupBtnKickoutClick.dds
+Frame2=Data/Main1/GroupBtnKickoutFalse.dds
+
+// 跟随(Dialog19)
+[Button196]
+FrameAmount=2
+Frame0=Data/Main1/GroupBtnFollow.dds
+Frame1=Data/Main1/GroupBtnFollowClick.dds
+
+// 设定(Dialog19)
+[Button197]
+FrameAmount=2
+Frame0=Data/Main1/GroupBtnSetup.dds
+Frame1=Data/Main1/GroupBtnSetupClick.dds
+
+// 招式按钮(Dialog20)
+[Button200]
+FrameAmount=2
+Frame0=Data/Main1/QuerySkillBtnZ.dds
+Frame1=Data/Main1/QuerySkillBtnZClick.dds
+
+// 魔法按钮(Dialog20)
+[Button201]
+FrameAmount=2
+Frame0=Data/Main1/QuerySkillBtnM.dds
+Frame1=Data/Main1/QuerySkillBtnMClick.dds
+
+// 技能按钮(Dialog20)
+[Button202]
+FrameAmount=2
+Frame0=Data/Main1/QuerySkillBtnJ.dds
+Frame1=Data/Main1/QuerySkillBtnJClick.dds
+
+// 上按钮(Dialog20)
+[Button203]
+FrameAmount=2
+Frame0=Data/Main1/QuerySkillBtnU.dds
+Frame1=Data/Main1/QuerySkillBtnUClick.dds
+
+// 下按钮(Dialog20)
+[Button204]
+FrameAmount=3
+Frame0=Data/Main1/QuerySkillBtnD.dds
+Frame1=Data/Main1/QuerySkillBtnDClick.dds
+Frame2=Data/Main1/QuerySkillBtnL.dds
+
+// 动作0(Dialog22)
+[ButtonA230]
+FrameAmount=2
+Frame0=Data/Main1/Act0.dds
+Frame1=Data/Main1/Act0Click.dds
+
+// 动作1(Dialog22)
+[ButtonA210]
+FrameAmount=2
+Frame0=Data/Main1/Act1.dds
+Frame1=Data/Main1/Act1Click.dds
+
+// 动作2(Dialog22)
+[ButtonA170]
+FrameAmount=2
+Frame0=Data/Main1/Act2.dds
+Frame1=Data/Main1/Act2Click.dds
+
+// 动作3(Dialog22)
+[ButtonA150]
+FrameAmount=2
+Frame0=Data/Main1/Act3.dds
+Frame1=Data/Main1/Act3Click.dds
+
+// 动作4(Dialog22)
+[ButtonA160]
+FrameAmount=2
+Frame0=Data/Main1/Act4.dds
+Frame1=Data/Main1/Act4Click.dds
+
+// 动作5(Dialog22)
+[ButtonA270]
+FrameAmount=2
+Frame0=Data/Main1/Act5.dds
+Frame1=Data/Main1/Act5Click.dds
+
+// 动作6(Dialog22)
+[ButtonA1]
+FrameAmount=2
+Frame0=Data/Main1/Act6.dds
+Frame1=Data/Main1/Act6Click.dds
+
+// 动作7(Dialog22)
+[ButtonA190]
+FrameAmount=2
+Frame0=Data/Main1/Act7.dds
+Frame1=Data/Main1/Act7Click.dds
+
+// 动作8(Dialog22)
+[ButtonA200]
+FrameAmount=2
+Frame0=Data/Main1/Act8.dds
+Frame1=Data/Main1/Act8Click.dds
+
+// 动作9(Dialog22)
+[ButtonA250]
+FrameAmount=2
+Frame0=Data/Main1/Act9.dds
+Frame1=Data/Main1/Act9Click.dds
+
+// 提交按钮(Dialog23)
+[Button230]
+FrameAmount=2
+Frame0=Data/Main1/TaskAnswerBtn.dds
+Frame1=Data/Main1/TaskAnswerBtnClick.dds
+
+// 删除按钮(Dialog25)
+[Button250]
+FrameAmount=2
+Frame0=Data/Main1/FrdStateBtnDel.dds
+Frame1=Data/Main1/FrdStateBtnDelClick.dds
+
+// 改良按钮(Dialog26)
+[Button260]
+FrameAmount=2
+Frame0=Data/Main1/ImproveBtnImp.dds
+Frame1=Data/Main1/ImproveBtnImpClick.dds
+
+// 确定按钮(Dialog27)
+[Button270]
+FrameAmount=2
+Frame0=Data/Main1/NpcFaceBtnAgree.dds
+Frame1=Data/Main1/NpcFaceBtnAgreeClick.dds
+
+// 上翻按钮(Dialog27)
+[Button271]
+FrameAmount=2
+Frame0=Data/Main1/NpcFaceBtnUp.dds
+Frame1=Data/Main1/NpcFaceBtnUpClick.dds
+
+// 下翻按钮(Dialog27)
+[Button272]
+FrameAmount=2
+Frame0=Data/Main1/NpcFaceBtnDown.dds
+Frame1=Data/Main1/NpcFaceBtnDownClick.dds
+
+// 镶嵌按钮(Dialog29)
+[Button290]
+FrameAmount=2
+Frame0=Data/Main1/EmbedBtnEmbed.dds
+Frame1=Data/Main1/EmbedBtnEmbedClick.dds
+
+// 去除按钮(Dialog29)
+[Button291]
+FrameAmount=2
+Frame0=Data/Main1/EmbedBtnTackOff.dds
+Frame1=Data/Main1/EmbedBtnTackOffClick.dds
+
+// 保存按钮(Dialog32)
+[Button320]
+FrameAmount=2
+Frame0=Data/Main1/HotkeySave.dds
+Frame1=Data/Main1/HotkeySaveClick.dds
+
+// 还原按钮(Dialog32)
+[Button321]
+FrameAmount=2
+Frame0=Data/Main1/HotkeyRevert.dds
+Frame1=Data/Main1/HotkeyRevertClick.dds
+
+// 更改按钮(Dialog32)
+[Button322]
+FrameAmount=2
+Frame0=Data/Main1/HotkeyChange.dds
+Frame1=Data/Main1/HotkeyChangeClick.dds
+
+// 删除按钮(Dialog32)
+[Button323]
+FrameAmount=2
+Frame0=Data/Main1/HotkeyDel.dds
+Frame1=Data/Main1/HotkeyDelClick.dds
+
+// 所有消息按钮(Dialog33,Dialog35)
+[Button330]
+FrameAmount=3
+Frame0=Data/Main1/MsgSendAllMsg.dds
+Frame1=Data/Main1/MsgSendAllMsgClick.dds
+Frame2=Data/Main1/MsgSendAllMsgH.dds
+
+// 发送消息按钮(Dialog33)
+[Button331]
+FrameAmount=2
+Frame0=Data/Main1/MsgSendSend.dds
+Frame1=Data/Main1/MsgSendSendClick.dds
+
+// 回复消息按钮(Dialog33)
+[Button332]
+FrameAmount=3
+Frame0=Data/Main1/MsgReceiveRevert.dds
+Frame1=Data/Main1/MsgReceiveRevertClick.dds
+Frame2=Data/Main1/MsgReceiveRevertH.dds
+
+// 下一条按钮(Dialog33)
+[Button333]
+FrameAmount=3
+Frame0=Data/Main1/MsgReceiveNext.dds
+Frame1=Data/Main1/MsgReceiveNextClick.dds
+Frame2=Data/Main1/MsgReceiveNextH.dds
+
+// 上一条按钮(Dialog33)
+[Button334]
+FrameAmount=3
+Frame0=Data/Main1/MsgReceivePre.dds
+Frame1=Data/Main1/MsgReceivePreClick.dds
+Frame2=Data/Main1/MsgReceivePreH.dds
+
+// 修改按钮(Dialog34)
+[Button340]
+FrameAmount=2
+Frame0=Data/Main1/MpcBoothBtnChange.dds
+Frame1=Data/Main1/MpcBoothBtnChangeClick.dds
+
+// 取回按钮(Dialog34)
+[Button341]
+FrameAmount=2
+Frame0=Data/Main1/MpcBoothBtnGetBack.dds
+Frame1=Data/Main1/MpcBoothBtnGetBackClick.dds
+
+// 撤销摊位(Dialog34)
+[Button342]
+FrameAmount=2
+Frame0=Data/Main1/MpcBoothBtnRecall.dds
+Frame1=Data/Main1/MpcBoothBtnRecallClick.dds
+
+// 设置叫卖(Dialog34)
+[Button343]
+FrameAmount=2
+Frame0=Data/Main1/MpcBoothBtnHawk.dds
+Frame1=Data/Main1/MpcBoothBtnHawkClick.dds
+
+// 购买按钮(Dialog35)
+[Button350]
+FrameAmount=2
+Frame0=Data/Main1/NpcBoothBtnBuy.dds
+Frame1=Data/Main1/NpcBoothBtnBuyClick.dds
+
+//  聊天纪录按钮(Dialog36)
+[Button360]
+FrameAmount=2
+Frame0=Data/Main1/ChatRecord.dds
+Frame1=Data/Main1/ChatRecordClick.dds
+
+// 聊天过滤按钮(Dialog36)
+[Button361]
+FrameAmount=2
+Frame0=Data/Main1/ChatSift.dds
+Frame1=Data/Main1/ChatSiftClick.dds
+
+// 察看留言按钮(Dialog36)
+[Button364]
+FrameAmount=2
+Frame0=Data/Main1/ChatLevWord.dds
+Frame1=Data/Main1/ChatLevWordClick.dds
+
+// 添加(Dialog36)
+[Button362]
+FrameAmount=2
+Frame0=Data/Main1/BlackAdd.dds
+Frame1=Data/Main1/BlackAddClick.dds
+
+// 删除(Dialog36)
+[Button363]
+FrameAmount=2
+Frame0=Data/Main1/BlackDel.dds
+Frame1=Data/Main1/BlackDelClick.dds
+
+// 发布(Dialog37)
+[Button370]
+FrameAmount=2
+Frame0=Data/Main1/LevWordSend.dds
+Frame1=Data/Main1/LevWordSendClick.dds
+
+// 察看(Dialog37)
+[Button371]
+FrameAmount=2
+Frame0=Data/Main1/LevWordWatch.dds
+Frame1=Data/Main1/LevWordWatchClick.dds
+
+// 修改(Dialog37)
+[Button372]
+FrameAmount=2
+Frame0=Data/Main1/LevWordChange.dds
+Frame1=Data/Main1/LevWordChangeClick.dds
+
+// 删除(Dialog37)
+[Button373]
+FrameAmount=2
+Frame0=Data/Main1/LevWordDel.dds
+Frame1=Data/Main1/LevWordDelClick.dds
+
+// 刷新(Dialog37)
+[Button374]
+FrameAmount=2
+Frame0=Data/Main1/LevWordFlash.dds
+Frame1=Data/Main1/LevWordFlashClick.dds
+
+// 交易(Dialog37)
+[Button375]
+FrameAmount=3
+Frame0=Data/Main1/LevWordTrade.dds
+Frame1=Data/Main1/LevWordTradeClick.dds
+Frame2=Data/Main1/LevWordTradeL.dds
+
+// 交友(Dialog37)
+[Button376]
+FrameAmount=3
+Frame0=Data/Main1/LevWordFriend.dds
+Frame1=Data/Main1/LevWordFriendClick.dds
+Frame2=Data/Main1/LevWordFriendL.dds
+
+// 组队(Dialog37)
+[Button377]
+FrameAmount=3
+Frame0=Data/Main1/LevWordGroup.dds
+Frame1=Data/Main1/LevWordGroupClick.dds
+Frame2=Data/Main1/LevWordGroupL.dds
+
+// 帮派(Dialog37)
+[Button378]
+FrameAmount=3
+Frame0=Data/Main1/LevWordFaction.dds
+Frame1=Data/Main1/LevWordFactionClick.dds
+Frame2=Data/Main1/LevWordFactionL.dds
+
+// 其他(Dialog37)
+[Button379]
+FrameAmount=3
+Frame0=Data/Main1/LevWordOther.dds
+Frame1=Data/Main1/LevWordOtherClick.dds
+Frame2=Data/Main1/LevWordOtherL.dds
+
+// 播放(Dialog38)
+[Button380]
+FrameAmount=2
+Frame0=Data/Main1/EffigyPlay.dds
+Frame1=Data/Main1/EffigyPlayClick.dds
+
+// 暂停(Dialog38)
+[Button381]
+FrameAmount=2
+Frame0=Data/Main1/EffigyPause.dds
+Frame1=Data/Main1/EffigyPauseClick.dds
+
+// 左转(Dialog38)
+[Button382]
+FrameAmount=2
+Frame0=Data/Main1/EffigyLeft.dds
+Frame1=Data/Main1/EffigyLeftClick.dds
+
+// 右转(Dialog38)
+[Button383]
+FrameAmount=2
+Frame0=Data/Main1/EffigyRight.dds
+Frame1=Data/Main1/EffigyRightClick.dds
+
+// 放置物品(Dialog40)
+[Button401]
+FrameAmount=2
+Frame0=Data/Main1/OtherLay.dds
+Frame1=Data/Main1/OtherLayClick.dds
+
+// 删除物品(Dialog40)
+[Button402]
+FrameAmount=3
+Frame0=Data/Main1/OtherDel.dds
+Frame1=Data/Main1/OtherDelClick.dds
+Frame2=Data/Main1/OtherDelH.dds
+
+// 下注(Dialog43)
+[Button430]
+FrameAmount=2
+Frame0=Data/Main1/DiceChipin.dds
+Frame1=Data/Main1/DiceChipinClick.dds
+
+// 隐藏(Dialog43)
+[Button431]
+FrameAmount=2
+Frame0=Data/Main1/DiceHide.dds
+Frame1=Data/Main1/DiceHideClick.dds
+
+// 退出(Dialog43)
+[Button432]
+FrameAmount=2
+Frame0=Data/Main1/DiceExit.dds
+Frame1=Data/Main1/DiceExitClick.dds
+
+// 100元(Dialog43)
+[Button433]
+FrameAmount=2
+Frame0=Data/Main1/DiceChip100.dds
+Frame1=Data/Main1/DiceChip100.dds
+
+// 1000元(Dialog43)
+[Button434]
+FrameAmount=2
+Frame0=Data/Main1/DiceChip1000.dds
+Frame1=Data/Main1/DiceChip1000.dds
+
+// 10000元(Dialog43)
+[Button435]
+FrameAmount=2
+Frame0=Data/Main1/DiceChip10000.dds
+Frame1=Data/Main1/DiceChip10000.dds
+
+//  恢复(Dialog43)
+[Button436]
+FrameAmount=2
+Frame0=Data/Main1/DiceResume.dds
+Frame1=Data/Main1/DiceResumeClick.dds
+
+// 切换仇人名单(Dialog46)
+[Button460]
+FrameAmount=2
+Frame0=Data/Main1/EnemyResume.dds
+Frame1=Data/Main1/EnemyResumeClick.dds
+
+// 帮助(Dialog48)
+[Button490]
+FrameAmount=3
+Frame0=Data/Main1/InsHelpBtnHelp.dds
+Frame1=Data/Main1/InsHelpBtnHelpClick.dds
+Frame2=Data/Main1/InsHelpBtnHelpL.dds
+
+// 更多帮助(Dialog48)
+[Button491]
+FrameAmount=2
+Frame0=Data/Main1/InsHelpBtnMore.dds
+Frame1=Data/Main1/InsHelpBtnMoreClick.dds
+
+// 技巧(Dialog49)
+[Button492]
+FrameAmount=2
+Frame0=Data/Main1/InsHelpBtnTip.dds
+Frame1=Data/Main1/InsHelpBtnTipClick.dds
+
+// 上翻(Dialog50)
+[Button500]
+FrameAmount=2
+Frame0=Data/Main1/TalkActBtnPageUp.dds
+Frame1=Data/Main1/TalkActBtnPageUpClick.dds
+
+// 下翻(Dialog50)
+[Button501]
+FrameAmount=2
+Frame0=Data/Main1/TalkActBtnPageDown.dds
+Frame1=Data/Main1/TalkActBtnPageDownClick.dds
+
+// 职业选择按钮1(Dialog3)
+[Check30]
+FrameAmount=2
+Frame0=Data/Main1/RoleCreateHuntChk2.dds
+Frame1=Data/Main1/RoleCreateHuntChk1.dds
+
+// 职业选择按钮2(Dialog3)
+[Check31]
+FrameAmount=2
+Frame0=Data/Main1/RoleCreateFightChk2.dds
+Frame1=Data/Main1/RoleCreateFightChk1.dds
+
+// 职业选择按钮3(Dialog3)
+[Check32]
+FrameAmount=2
+Frame0=Data/Main1/RoleCreateBraveChk2.dds
+Frame1=Data/Main1/RoleCreateBraveChk1.dds
+
+// 职业选择按钮4(Dialog3)
+[Check33]
+FrameAmount=2
+Frame0=Data/Main1/RoleCreateTaoistChk2.dds
+Frame1=Data/Main1/RoleCreateTaoistChk1.dds
+
+// 职业选择按钮5(Dialog3)
+[Check34]
+FrameAmount=2
+Frame0=Data/Main1/RoleCreateKnightChk2.dds
+Frame1=Data/Main1/RoleCreateKnightChk1.dds
+
+// 跑/走(Dialog4)
+[Check40]
+FrameAmount=2
+Frame0=Data/Main1/RunChk1.dds
+Frame1=Data/Main1/RunChk2.dds
+
+// 战/聊(Dialog4)
+[Check42]
+FrameAmount=2
+Frame0=Data/Main1/TalkChk1.dds
+Frame1=Data/Main1/TalkChk2.dds
+
+// 地图开/关(Dialog4)
+[Check43]
+FrameAmount=2
+Frame0=Data/Main1/MapChk2.dds
+Frame1=Data/Main1/MapChk1.dds
+
+// 站/躺(Dialog4)
+[Check44]
+FrameAmount=2
+Frame0=Data/Main1/StandChk1.dds
+Frame1=Data/Main1/StandChk2.dds
+
+// 刀/剑(Dialog4)
+[Check45]
+FrameAmount=2
+Frame0=Data/Main1/WeaponChk1.dds
+Frame1=Data/Main1/WeaponChk2.dds
+
+// 移屏(Dialog4)
+[Check46]
+FrameAmount=2
+Frame0=Data/Main1/ScreenMoveChk1.dds
+Frame1=Data/Main1/ScreenMoveChk2.dds
+
+// 人物(Dialog6)
+[Check61]
+FrameAmount=2
+Frame0=Data/Main1/QueryRoleBtn.dds
+Frame1=Data/Main1/QueryRoleBtnClick.dds
+
+// 帮派(Dialog6)
+[Check62]
+FrameAmount=3
+Frame0=Data/Main1/QueryFactionBtn.dds
+Frame1=Data/Main1/QueryFactionBtnClick.dds
+Frame2=Data/Main1/QueryFactionBtnL.dds
+
+// 武器(Dialog6)
+[Check63]
+FrameAmount=2
+Frame0=Data/Main1/QueryWeaponBtn.dds
+Frame1=Data/Main1/QueryWeaponBtnClick.dds
+
+// 任务(Dialog6)
+[Check64]
+FrameAmount=2
+Frame0=Data/Main1/QueryMissionBtn.dds
+Frame1=Data/Main1/QueryMissionBtnClick.dds
+
+// 技能(Dialog6)
+[Check65]
+FrameAmount=2
+Frame0=Data/Main1/QuerySkillBtn.dds
+Frame1=Data/Main1/QuerySkillBtnClick.dds
+
+// 打勾(Dialog10)
+[Check100]
+FrameAmount=2
+Frame0=Data/Main1/SetupDisable.dds
+Frame1=Data/Main1/SetupEnable.dds
+
+// 禁组(Dialog19)
+[Check190]
+FrameAmount=2
+Frame0=Data/Main1/GroupChkStop1.dds
+Frame1=Data/Main1/GroupChkStop2.dds
+
+// 金钱(Dialog19)
+[Check191]
+FrameAmount=2
+Frame0=Data/Main1/GroupChkMoney1.dds
+Frame1=Data/Main1/GroupChkMoney2.dds
+
+// 物品(Dialog19)
+[Check192]
+FrameAmount=2
+Frame0=Data/Main1/GroupChkItem1.dds
+Frame1=Data/Main1/GroupChkItem2.dds
+
+// 公聊(Dialog36)
+[Check360]
+FrameAmount=2
+Frame0=Data/Main1/ChatChkG1.dds
+Frame1=Data/Main1/ChatChkG2.dds
+
+// 帮派(Dialog36)
+[Check361]
+FrameAmount=2
+Frame0=Data/Main1/ChatChkB1.dds
+Frame1=Data/Main1/ChatChkB2.dds
+
+// 队伍(Dialog36)
+[Check362]
+FrameAmount=2
+Frame0=Data/Main1/ChatChkD1.dds
+Frame1=Data/Main1/ChatChkD2.dds
+
+// 好友(Dialog36)
+[Check363]
+FrameAmount=2
+Frame0=Data/Main1/ChatChkH1.dds
+Frame1=Data/Main1/ChatChkH2.dds
+
+// 私聊(Dialog36)
+[Check364]
+FrameAmount=2
+Frame0=Data/Main1/ChatChkS1.dds
+Frame1=Data/Main1/ChatChkS2.dds
+
+// 过滤(Dialog36)
+[Check365]
+FrameAmount=2
+Frame0=Data/Main1/ChatChkSF1.dds
+Frame1=Data/Main1/ChatChkSF2.dds
+
+// 动作(Dialog36)
+[Check366]
+FrameAmount=2
+Frame0=Data/Main1/ChatChkZ1.dds
+Frame1=Data/Main1/ChatChkZ2.dds
+
+// 用户名输入框（公共）
+[Edit0]
+FrameAmount=1
+Frame0=Data/Main1/AccountEdt.jpg
+
+// 密码输入框（公共）
+[Edit1]
+FrameAmount=1
+Frame0=Data/Main1/PasswordEdt.jpg
+
+// 姓名输入框(Dialog3)
+[Edit30]
+FrameAmount=1
+Frame0=Data/Main1/RoleCreateNameEdt.jpg
+
+// 确认输入框(Dialog15)
+[Edit150]
+FrameAmount=1
+Frame0=Data/Main1/ConfirmEdt.dds
+
+// 任务输入框(Dialog23)
+[Edit230]
+FrameAmount=1
+Frame0=Data/Main1/TaskEdt.dds
+
+// 灰化
+[Image0]
+FrameAmount=1
+Frame0=Data/Main1/ImageDisable.dds
+
+// 区1(Dialog1)
+[Image101]
+FrameAmount=1
+Frame0=Data/Main1/LoginG1Img.bmp
+
+// 服务器1(Dialog1)
+[Image111]
+FrameAmount=1
+Frame0=Data/Main1/LoginS1Img.bmp
+
+// 服务器2(Dialog1)
+[Image112]
+FrameAmount=1
+Frame0=Data/Main1/LoginS2Img.bmp
+
+// 服务器3(Dialog1)
+[Image113]
+FrameAmount=1
+Frame0=Data/Main1/LoginS3Img.bmp
+
+// 人物选择1(Dailog2)
+[Image20]
+FrameAmount=1
+Frame0=Data/Main1/RoleChooseImg1.dds
+
+// 人物选择2(Dailog2)
+[Image21]
+FrameAmount=1
+Frame0=Data/Main1/RoleChooseImg2.dds
+
+// 人物选择3(Dailog2)
+[Image22]
+FrameAmount=1
+Frame0=Data/Main1/RoleChooseImg3.dds
+
+// 人物选择4(Dailog2)
+[Image23]
+FrameAmount=1
+Frame0=Data/Main1/RoleChooseImg4.dds
+
+// 帮派输入背景(Dialog8)
+[Image80]
+FrameAmount=1
+Frame0=Data/Main1/FactionImg.dds
+
+// 帮众列表背景(Dialog8)
+[Image81]
+FrameAmount=1
+Frame0=Data/Main1/FactionImgList.dds
+
+// 左手武器(Dialog16)
+[Image160]
+FrameAmount=1
+Frame0=Data/Main1/DialogQuery_Mission1.dds
+
+// 聊天功能图表(Dialog36)
+[Image36]
+FrameAmount=1
+Frame0=Data/Main1/ChatImg.dds
+
+// 颜色1(Dialog36)
+[Image360]
+FrameAmount=1
+Frame0=Data/Main/Color1.bmp
+
+// 颜色2(Dialog36)
+[Image361]
+FrameAmount=1
+Frame0=Data/Main/Color2.bmp
+
+// 颜色3(Dialog36)
+[Image362]
+FrameAmount=1
+Frame0=Data/Main/Color5.bmp
+
+// 颜色4(Dialog36)
+[Image363]
+FrameAmount=1
+Frame0=Data/Main/Color4.bmp
+
+// 颜色5(Dialog36)
+[Image364]
+FrameAmount=1
+Frame0=Data/Main/Color3.bmp
+
+// 颜色6(Dialog36)
+[Image365]
+FrameAmount=1
+Frame0=Data/Main/Color6.bmp
+
+// 颜色7(Dialog36)
+[Image366]
+FrameAmount=1
+Frame0=Data/Main/Color7.bmp
+
+// 颜色8(Dialog36)
+[Image367]
+FrameAmount=1
+Frame0=Data/Main/Color8.bmp
+
+// 黑名单功能图表(Dialog37)
+[Image37]
+FrameAmount=1
+Frame0=Data/Main1/BlackImg.dds
+
+// 流言榜输入框(Dialog37)
+[Image370]
+FrameAmount=1
+Frame0=Data/Main1/LevWordImage.dds
+
+// 流言标题(Dialog370)
+[Image371]
+FrameAmount=1
+Frame0=Data/Main1/LevWordImage1.dds
+
+// 发布标题(Dialog370)
+[Image372]
+FrameAmount=1
+Frame0=Data/Main1/LevWordImage2.dds
+
+// 察看标题(Dialog370)
+[Image373]
+FrameAmount=1
+Frame0=Data/Main1/LevWordImage3.dds
+
+// 
+[Picture40]
+FrameAmount=2
+Frame0=Data/Main1/SkillBox.dds
+Frame1=Data/Main1/SkillImage.dds
+
+// 设定窗口灯(Dialog10)
+[Picture100]
+FrameAmount=2
+Frame0=Data/Main1/SetupLight1.dds
+Frame1=Data/Main1/SetupLight2.dds
+
+// HP槽(Dialog4)
+[Progress40]
+FrameAmount=3
+Frame0=Data/Main1/ProgressHP.dds
+Frame1=Data/Main1/ProgressHPA.dds
+Frame2=Data/Main1/ProgressHPH.dds
+
+// MP槽(Dialog4)
+[Progress41]
+FrameAmount=3
+Frame0=Data/Main1/ProgressMP.dds
+Frame1=Data/Main1/ProgressMPA.dds
+Frame2=Data/Main1/ProgressMPH.dds
+
+// 技能槽(Dialog4)
+[Progress42]
+FrameAmount=3
+Frame0=Data/Main1/ProgressPower.dds
+Frame1=Data/Main1/ProgressPower.dds
+Frame2=Data/Main1/ProgressPowerH.dds
+
+// 经验槽(Dialog4)
+[Progress43]
+FrameAmount=1
+Frame0=Data/Main1/ProgressHeavy.dds
+
+// 负重槽(Dialog4)
+[Progress44]
+FrameAmount=1
+Frame0=Data/Main1/ProgressExp.dds
+
+// 背景(Dialog4)
+[Progress45]
+FrameAmount=1
+Frame0=Data/Main1/ProgressBk.dds
+
+// 体力(Dialog4)
+[Progress46]
+FrameAmount=2
+Frame0=Data/Main1/ProgressForce.dds
+Frame1=Data/Main1/ProgressForceA.dds
+
+// 行数滚动按钮(Dialog0)
+[Slider0]
+FrameAmount=2
+Frame0=Data/Main1/SliderLine.dds
+Frame1=Data/Main1/SliderLine.dds
+
+// 滚动按钮(Dialog10)
+[Slider100]
+FrameAmount=2
+Frame0=Data/Main1/SetupSliPic.dds
+Frame1=Data/Main1/SetupSliPicClick.dds
+
+// 上按钮（公共）
+[ScrButton0]
+FrameAmount=2
+Frame0=Data/Main1/ScrollButtonUp.dds
+Frame1=Data/Main1/ScrollButtonUpClick.dds
+
+// 下按钮（公共）
+[ScrButton1]
+FrameAmount=2
+Frame0=Data/Main1/ScrollButtonDown.dds
+Frame1=Data/Main1/ScrollButtonDownClick.dds
+
+// 焦点图片框
+[ImageFocus]
+FrameAmount=1
+Frame0=Data/Main/ImageFocus.dds
+
+//Weaponlevel20
+[Weaponlevel20]
+FrameAmount=1
+Frame0=Data/Main/LevelGold.dds
+
+//Weaponlevel5
+[Weaponlevel5]
+FrameAmount=1
+Frame0=Data/Main/LevelSiller.dds
+
+//Weaponlevel1
+[Weaponlevel1]
+FrameAmount=1
+Frame0=Data/Main/LevelCopper.dds
+
+
+//Weaponlevel10
+[Weaponlevel10]
+FrameAmount=1
+Frame0=Data/Main/Weaponlevel10.dds
+
+//Weaponlevel11
+[Weaponlevel11]
+FrameAmount=1
+Frame0=Data/Main/Weaponlevel11.dds
+
+//Weaponlevel12
+[Weaponlevel12]
+FrameAmount=1
+Frame0=Data/Main/Weaponlevel12.dds
+
+//Weapon0
+[Weapon0]
+FrameAmount=1
+Frame0=Data/Main/100000.dds
+
+//Weapon410
+[Weapon410]
+FrameAmount=1
+Frame0=Data/Main/410000.dds
+
+//Weapon420
+[Weapon420]
+FrameAmount=1
+Frame0=Data/Main/420000.dds
+
+//Weapon421
+[Weapon421]
+FrameAmount=1
+Frame0=Data/Main/421000.dds
+
+//Weapon430
+[Weapon430]
+FrameAmount=1
+Frame0=Data/ItemMinIcon/430025.dds
+
+//Weapon440
+[Weapon440]
+FrameAmount=1
+Frame0=Data/ItemMinIcon/440025.dds
+
+//Weapon450
+[Weapon450]
+FrameAmount=1
+Frame0=Data/Main/450000.dds
+
+//Weapon460
+[Weapon460]
+FrameAmount=1
+Frame0=Data/Main/460000.dds
+
+//Weapon480
+[Weapon480]
+FrameAmount=1
+Frame0=Data/Main/480000.dds
+
+//Weapon481
+[Weapon481]
+FrameAmount=1
+Frame0=Data/Main/481000.dds
+
+//Weapon490
+[Weapon490]
+FrameAmount=1
+Frame0=Data/Main/490000.dds
+
+//Weapon510
+[Weapon510]
+FrameAmount=1
+Frame0=Data/ItemMinIcon/510025.dds
+
+//Weapon530
+[Weapon530]
+FrameAmount=1
+Frame0=Data/ItemMinIcon/530025.dds
+
+//Weapon540
+[Weapon540]
+FrameAmount=1
+Frame0=Data/ItemMinIcon/540025.dds
+
+//Weapon560
+[Weapon560]
+FrameAmount=1
+Frame0=Data/Main/560000.dds
+
+//Weapon561
+[Weapon561]
+FrameAmount=1
+Frame0=Data/Main/561000.dds
+
+//Weapon562
+[Weapon562]
+FrameAmount=1
+Frame0=Data/Main/561000.dds
+
+//Weapon580
+[Weapon580]
+FrameAmount=1
+Frame0=Data/Main/580000.dds
+
+//Weapon900
+[Weapon900]
+FrameAmount=1
+Frame0=Data/main/900000.dds
+
+[Image120]
+FrameAmount=1
+Frame0=Data/Main1/LoginEdtImg.dds
+
+[Image130]
+FrameAmount=1
+Frame0=Data/Main/Char1.dds
+
+[Image131]
+FrameAmount=1
+Frame0=Data/Main/Char2.dds
+
+[Image132]
+FrameAmount=1
+Frame0=Data/Main/Char3.dds
+
+[Image133]
+FrameAmount=1
+Frame0=Data/Main/Char4.dds
+
+[Image134]
+FrameAmount=1
+Frame0=Data/Main/Char5.dds
+
+
+[Dialog101]
+FrameAmount=1
+Frame0=Data/Main/bg1.dds
+
+[Dialog102]
+FrameAmount=1
+Frame0=Data/Main/bg2.dds
+
+[Dialog103]
+FrameAmount=1
+Frame0=Data/Main/bg3.dds
+
+[Dialog104]
+FrameAmount=1
+Frame0=Data/Main/bg4.dds
+
+[Dialog105]
+FrameAmount=1
+Frame0=Data/Main/bg5.dds
+
+[Dialog106]
+FrameAmount=1
+Frame0=Data/Main/bg6.dds
+
+[Dialog107]
+FrameAmount=1
+Frame0=Data/Main/bg7.dds
+
+[Dialog108]
+FrameAmount=1
+Frame0=Data/Main/bg8.dds
+
+[Dialog109]
+FrameAmount=1
+Frame0=Data/Main/bg9.dds
+
+[Button150]
+FrameAmount=2
+Frame0=Data/Main1/ConfirmOkBtn.dds
+Frame1=Data/Main1/ConfirmOkBtnClick.dds
+
+[Button151]
+FrameAmount=2
+Frame0=Data/Main1/ConfirmCancelBtn.dds
+Frame1=Data/Main1/ConfirmCancelBtnClick.dds
+
+// purple light
+[Light0]
+FrameAmount=2
+Frame0=Data/Main/Light00.dds
+Frame1=Data/Main/Light01.dds
+
+// red light
+[Light1]
+FrameAmount=2
+Frame0=Data/Main/Light10.dds
+Frame1=Data/Main/Light11.dds
+
+// Yellow light
+[Light2]
+FrameAmount=2
+Frame0=Data/Main/Light30.dds
+Frame1=Data/Main/Light31.dds
+
+// Green light
+[Light3]
+FrameAmount=2
+Frame0=Data/Main/Light20.dds
+Frame1=Data/Main/Light21.dds
+
+// 小地图加按钮
+[Button00]
+FrameAmount=2
+Frame0=Data/Main/MiniBtn1.dds
+Frame1=Data/Main/MiniBtn1Click.dds
+
+// 小地图减按钮
+[Button01]
+FrameAmount=2
+Frame0=Data/Main/MiniBtn2.dds
+Frame1=Data/Main/MiniBtn2Click.dds
+
+// 小地图放大按钮
+[Button02]
+FrameAmount=2
+Frame0=Data/Main/FullBtn.dds
+Frame1=Data/Main/FullBtnClick.dds

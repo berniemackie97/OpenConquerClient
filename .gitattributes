@@ -2,3 +2,6 @@
 
 *.bat text eol=crlf
 *.cmd text eol=crlf
+
+# Retail bytes are integrity-addressed by manifest. Never normalize text-looking payloads.
+/content/retail-5517/payload/** -text

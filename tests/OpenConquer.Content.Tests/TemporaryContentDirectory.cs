@@ -42,6 +42,25 @@ internal sealed class TemporaryContentDirectory : IDisposable
         return filePath;
     }
 
+    public string WriteFile(string relativePath, ReadOnlySpan<byte> contents)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+
+        string normalizedRelativePath = relativePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
+
+        string filePath = Path.Combine(RootPath, normalizedRelativePath);
+        string? directoryPath = Path.GetDirectoryName(filePath);
+
+        if (directoryPath is not null)
+        {
+            Directory.CreateDirectory(directoryPath);
+        }
+
+        File.WriteAllBytes(filePath, contents);
+
+        return filePath;
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(RootPath))

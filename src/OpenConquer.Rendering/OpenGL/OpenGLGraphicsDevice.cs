@@ -71,6 +71,13 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy);
     }
 
+    public OpenGLStartupLogoRenderer CreateStartupLogoRenderer(int width, int height, ReadOnlySpan<byte> rgbaPixels)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, instance: this);
+
+        return new OpenGLStartupLogoRenderer(_gl, width, height, rgbaPixels);
+    }
+
     public void Dispose()
     {
         if (_disposed)
