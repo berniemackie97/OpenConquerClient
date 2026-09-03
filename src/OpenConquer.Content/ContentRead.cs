@@ -26,9 +26,7 @@ internal static class ContentRead
 
         if (stream.CanSeek && stream.Length > maximumLength)
         {
-            throw new InvalidDataException(
-                $"Client content file '{contentPath}' is {stream.Length} bytes; the limit is {maximumLength} bytes."
-            );
+            throw new InvalidDataException($"Client content file '{contentPath}' is {stream.Length} bytes; the limit is {maximumLength} bytes.");
         }
 
         using MemoryStream destination = new(capacity: stream.CanSeek ? checked((int)stream.Length) : 0);
@@ -48,9 +46,7 @@ internal static class ContentRead
 
             if (totalLength > maximumLength)
             {
-                throw new InvalidDataException(
-                    $"Client content file '{contentPath}' exceeds the {maximumLength}-byte limit."
-                );
+                throw new InvalidDataException($"Client content file '{contentPath}' exceeds the {maximumLength}-byte limit.");
             }
 
             destination.Write(buffer, 0, bytesRead);

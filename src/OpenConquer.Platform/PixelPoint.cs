@@ -8,23 +8,11 @@ namespace OpenConquer.Platform;
 /// and because negative values are meaningful here: a pointer can sit outside the window while a
 /// drag is in progress.
 /// </remarks>
-public readonly record struct PixelPoint
+public readonly record struct PixelPoint(int X, int Y)
 {
-    public PixelPoint(int x, int y)
-    {
-        X = x;
-        Y = y;
-    }
-
     /// <summary>Distance from the left edge of the framebuffer, in pixels.</summary>
-    public int X
-    {
-        get;
-    }
+    public int X { get; } = X;
 
     /// <summary>Distance from the top edge of the framebuffer, in pixels.</summary>
-    public int Y
-    {
-        get;
-    }
+    public int Y { get; } = Y;
 }

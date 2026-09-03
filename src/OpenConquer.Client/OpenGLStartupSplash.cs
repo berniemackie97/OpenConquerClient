@@ -120,12 +120,7 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
 
     private void OnRendering(StartupSurfaceMetrics metrics)
     {
-        _renderer?.Render(
-            metrics.FramebufferSize.Width,
-            metrics.FramebufferSize.Height,
-            metrics.LogicalSize.Width,
-            metrics.LogicalSize.Height
-        );
+        _renderer?.Render(metrics.FramebufferSize.Width, metrics.FramebufferSize.Height, metrics.LogicalSize.Width, metrics.LogicalSize.Height);
     }
 
     private void OnOpenGLContextReleasing()

@@ -97,12 +97,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
         fixed (float* vertexPointer = vertices)
         {
-            _gl.BufferSubData(
-                BufferTargetARB.ArrayBuffer,
-                offset: 0,
-                (nuint)(vertices.Length * sizeof(float)),
-                vertexPointer
-            );
+            _gl.BufferSubData(BufferTargetARB.ArrayBuffer, offset: 0, (nuint)(vertices.Length * sizeof(float)), vertexPointer);
         }
 
         _gl.ActiveTexture(TextureUnit.Texture0);
@@ -140,23 +135,13 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
         _gl.BindVertexArray(_vertexArray);
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
-        _gl.BufferData(
-            BufferTargetARB.ArrayBuffer,
-            (nuint)(4 * FloatsPerVertex * sizeof(float)),
-            null,
-            BufferUsageARB.DynamicDraw
-        );
+        _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(4 * FloatsPerVertex * sizeof(float)), null, BufferUsageARB.DynamicDraw);
 
         _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _indexBuffer);
 
         fixed (uint* indexPointer = s_indices)
         {
-            _gl.BufferData(
-                BufferTargetARB.ElementArrayBuffer,
-                (nuint)(s_indices.Length * sizeof(uint)),
-                indexPointer,
-                BufferUsageARB.StaticDraw
-            );
+            _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(s_indices.Length * sizeof(uint)), indexPointer, BufferUsageARB.StaticDraw);
         }
 
         _gl.EnableVertexAttribArray(0);
@@ -176,17 +161,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
         fixed (byte* pixelPointer = rgbaPixels)
         {
-            _gl.TexImage2D(
-                TextureTarget.Texture2D,
-                level: 0,
-                InternalFormat.Rgba8,
-                (uint)_width,
-                (uint)_height,
-                border: 0,
-                PixelFormat.Rgba,
-                PixelType.UnsignedByte,
-                pixelPointer
-            );
+            _gl.TexImage2D(TextureTarget.Texture2D, level: 0, InternalFormat.Rgba8, (uint)_width, (uint)_height, border: 0, PixelFormat.Rgba, PixelType.UnsignedByte, pixelPointer);
         }
 
         _gl.BindTexture(TextureTarget.Texture2D, 0);

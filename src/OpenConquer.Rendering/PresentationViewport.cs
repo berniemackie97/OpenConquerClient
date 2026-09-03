@@ -327,8 +327,6 @@ public readonly record struct PresentationViewport
         int horizontalScale = width / logicalWidth;
         int verticalScale = height / logicalHeight;
 
-        return horizontalScale == verticalScale && horizontalScale >= 1
-            ? PresentationFilter.Nearest
-            : PresentationFilter.Linear;
+        return horizontalScale == verticalScale && horizontalScale >= 1 ? PresentationFilter.Nearest : PresentationFilter.Linear;
     }
 }

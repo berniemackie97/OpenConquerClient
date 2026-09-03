@@ -51,9 +51,6 @@ public static class StartupLogoDialogTemplate
     /// </remarks>
     public static (int Width, int Height) DeriveReferenceClientSize()
     {
-        return (
-            WidthInDialogUnits * ReferenceFontAverageCharacterWidthPixels / 4,
-            HeightInDialogUnits * ReferenceFontHeightPixels / 8
-        );
+        return (WidthInDialogUnits * ReferenceFontAverageCharacterWidthPixels / 4, HeightInDialogUnits * ReferenceFontHeightPixels / 8);
     }
 }

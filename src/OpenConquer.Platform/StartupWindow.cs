@@ -188,10 +188,7 @@ public sealed class StartupWindow : IDisposable
         Vector2D<int> framebufferSize = _window.FramebufferSize;
         Vector2D<int> logicalSize = _window.Size;
 
-        Rendering?.Invoke(new StartupSurfaceMetrics(
-            new PixelSize(framebufferSize.X, framebufferSize.Y),
-            new PixelSize(logicalSize.X, logicalSize.Y)
-        ));
+        Rendering?.Invoke(new StartupSurfaceMetrics(new PixelSize(framebufferSize.X, framebufferSize.Y), new PixelSize(logicalSize.X, logicalSize.Y)));
     }
 
     private void ReleaseOpenGLContext()

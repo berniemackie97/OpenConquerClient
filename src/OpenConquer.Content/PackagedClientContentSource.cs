@@ -31,10 +31,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
     private readonly ClientContentRoot _looseFiles;
     private readonly Dictionary<string, WdfArchive> _packagesByPrefix;
 
-    private PackagedClientContentSource(
-        ClientContentRoot looseFiles,
-        Dictionary<string, WdfArchive> packagesByPrefix,
-        IReadOnlyList<WdfPackageRegistration> packageRegistrations)
+    private PackagedClientContentSource(ClientContentRoot looseFiles, Dictionary<string, WdfArchive> packagesByPrefix, IReadOnlyList<WdfPackageRegistration> packageRegistrations)
     {
         _looseFiles = looseFiles;
         _packagesByPrefix = packagesByPrefix;
@@ -86,8 +83,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
             throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown content lookup mode.");
         }
 
-        if (mode != ContentLookupMode.PackageOnly
-            && _looseFiles.TryOpenRead(contentPath, ContentLookupMode.LooseOnly, out stream))
+        if (mode != ContentLookupMode.PackageOnly && _looseFiles.TryOpenRead(contentPath, ContentLookupMode.LooseOnly, out stream))
         {
             return true;
         }
@@ -118,9 +114,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
             return stream;
         }
 
-        throw new FileNotFoundException(
-            $"Client content file '{contentPath}' was not found in the packaged content source using {mode} lookup."
-        );
+        throw new FileNotFoundException($"Client content file '{contentPath}' was not found in the packaged content source using {mode} lookup.");
     }
 
     /// <summary>
@@ -133,21 +127,12 @@ public sealed class PackagedClientContentSource : IClientContentSource
     /// </remarks>
     private static string[] ReadDeclaredPackageNames(Stream declarationStream)
     {
-        byte[] bytes = ContentRead.ReadBytes(
-            declarationStream,
-            PackageConfigurationPath,
-            MaximumPackageConfigurationLength
-        );
+        byte[] bytes = ContentRead.ReadBytes(declarationStream, PackageConfigurationPath, MaximumPackageConfigurationLength);
 
-        return Encoding.Latin1
-            .GetString(bytes)
-            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return Encoding.Latin1.GetString(bytes).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
-    private static WdfPackageRegistration RegisterPackage(
-        ClientContentRoot looseFiles,
-        Dictionary<string, WdfArchive> packagesByPrefix,
-        string declaredName)
+    private static WdfPackageRegistration RegisterPackage(ClientContentRoot looseFiles, Dictionary<string, WdfArchive> packagesByPrefix, string declaredName)
     {
         string prefix = WdfPackagePrefix.FromDeclaredPackageName(declaredName);
 
@@ -190,11 +175,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
 
         string[] segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
-        if (segments.Length == 0
-            || segments.Any(segment =>
-                segment is "." or ".."
-                || segment.Contains(':', StringComparison.Ordinal)
-                || segment.Contains('\0', StringComparison.Ordinal)))
+        if (segments.Length == 0 || segments.Any(segment => segment is "." or ".." || segment.Contains(':', StringComparison.Ordinal) || segment.Contains('\0', StringComparison.Ordinal)))
         {
             throw new ArgumentException($"Client content path '{contentPath}' is invalid.", nameof(contentPath));
         }

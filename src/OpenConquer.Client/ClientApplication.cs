@@ -54,11 +54,9 @@ internal sealed class ClientApplication : IDisposable
             Console.Error.WriteLine($"OpenConquer: startup logo unavailable; {unavailableReason}");
         }
 
-        DesktopWindow window = ClientWindowCreationSequence.CreateMainAfterStartup(
-            new OpenGLStartupSplash(startupLogo),
+        DesktopWindow window = ClientWindowCreationSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
             () => InitializeRuntimeConfiguration(contentSource),
-            () => new DesktopWindow(s_frameInterval)
-        );
+            () => new DesktopWindow(s_frameInterval));
 
         _window = window;
         window.FramebufferResized += OnFramebufferResized;
@@ -103,12 +101,7 @@ internal sealed class ClientApplication : IDisposable
             LogicalRenderSize logicalRenderSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
-            renderer = graphicsDevice.CreateRenderer(
-                logicalRenderSize,
-                framebufferSize.Width,
-                framebufferSize.Height,
-                _presentationPolicy
-            );
+            renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
 
             _renderer = renderer;
             _graphicsDevice = graphicsDevice;
@@ -152,9 +145,7 @@ internal sealed class ClientApplication : IDisposable
                 continue;
             }
 
-            Console.Error.WriteLine(
-                $"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') was not registered: {registration.Outcome}."
-            );
+            Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') was not registered: {registration.Outcome}.");
         }
     }
 

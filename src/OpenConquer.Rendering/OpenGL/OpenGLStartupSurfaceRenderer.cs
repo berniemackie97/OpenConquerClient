@@ -83,14 +83,7 @@ public sealed class OpenGLStartupSurfaceRenderer : IDisposable
             return;
         }
 
-        StartupSurfacePlacement placement = StartupSurfacePlacement.Compute(
-            framebufferWidth,
-            framebufferHeight,
-            logicalWidth,
-            logicalHeight,
-            _imageWidth,
-            _imageHeight
-        );
+        StartupSurfacePlacement placement = StartupSurfacePlacement.Compute(framebufferWidth, framebufferHeight, logicalWidth, logicalHeight, _imageWidth, _imageHeight);
 
         _image.DrawTopLeft(framebufferWidth, framebufferHeight, placement.Width, placement.Height);
     }

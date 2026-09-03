@@ -34,13 +34,7 @@ public readonly record struct StartupSurfacePlacement(int Width, int Height)
     /// Sizes round to the nearest whole pixel away from zero and clamp to at least one pixel, so a
     /// degenerate ratio still produces a drawable quad rather than an empty one.
     /// </remarks>
-    public static StartupSurfacePlacement Compute(
-        int framebufferWidth,
-        int framebufferHeight,
-        int logicalWidth,
-        int logicalHeight,
-        int imageWidth,
-        int imageHeight)
+    public static StartupSurfacePlacement Compute(int framebufferWidth, int framebufferHeight, int logicalWidth, int logicalHeight, int imageWidth, int imageHeight)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(framebufferWidth);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(framebufferHeight);
@@ -52,10 +46,7 @@ public readonly record struct StartupSurfacePlacement(int Width, int Height)
         double horizontalScale = (double)framebufferWidth / logicalWidth;
         double verticalScale = (double)framebufferHeight / logicalHeight;
 
-        return new StartupSurfacePlacement(
-            Scale(imageWidth, horizontalScale),
-            Scale(imageHeight, verticalScale)
-        );
+        return new StartupSurfacePlacement(Scale(imageWidth, horizontalScale), Scale(imageHeight, verticalScale));
     }
 
     private static int Scale(int lengthInLogicalUnits, double scale)
