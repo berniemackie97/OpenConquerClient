@@ -3,22 +3,47 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace OpenConquer.Content.Wdf;
 
+/// <summary>
+/// Reads and indexes one retail WDF archive.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The verified retail format contains a 12-byte header, a packed payload region, and a sorted
+/// array of 16-byte index records. The native reader binary-searches that sorted UID table.
+/// </para>
+/// <para>
+/// Legacy archive data is treated as untrusted input. Structural validation is therefore stricter
+/// than the native implementation where doing so does not change behavior for valid retail 5517
+/// archives.
+/// </para>
+/// </remarks>
 internal sealed class WdfArchive
 {
     public const uint Magic = 0x57444650;
     public const int HeaderLength = 12;
     public const int EntryLength = 16;
 
-    private readonly string _archivePath;
-    private readonly Dictionary<uint, WdfEntry> _entries;
+    /// <summary>
+    /// Modern resource-safety ceiling for a single WDF index.
+    /// </summary>
+    /// <remarks>
+    /// This is not a native-format limit. The surveyed retail 5517 archives contain 10,274
+    /// entries in <c>c3.wdf</c> and 14,739 entries in <c>data.wdf</c>. The ceiling leaves
+    /// substantial compatibility headroom while preventing an untrusted header from driving an
+    /// unbounded index allocation.
+    /// </remarks>
+    internal const int MaximumEntryCount = 100_000;
 
-    private WdfArchive(string archivePath, Dictionary<uint, WdfEntry> entries)
+    private readonly string _archivePath;
+    private readonly WdfEntry[] _entries;
+
+    private WdfArchive(string archivePath, WdfEntry[] entries)
     {
         _archivePath = archivePath;
         _entries = entries;
     }
 
-    public int EntryCount => _entries.Count;
+    public int EntryCount => _entries.Length;
 
     public static WdfArchive Open(string archivePath)
     {
@@ -50,8 +75,17 @@ internal sealed class WdfArchive
         }
 
         uint declaredCount = BinaryPrimitives.ReadUInt32LittleEndian(header[4..]);
+
+        if (declaredCount > MaximumEntryCount)
+        {
+            throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' declares {declaredCount} entries, which exceeds the supported safety limit of {MaximumEntryCount}.");
+        }
+
+        int entryCount = checked((int)declaredCount);
+
         uint tableOffset = BinaryPrimitives.ReadUInt32LittleEndian(header[8..]);
-        long tableLength = checked((long)declaredCount * EntryLength);
+
+        long tableLength = checked((long)entryCount * EntryLength);
         long tableEnd = checked((long)tableOffset + tableLength);
 
         if (tableOffset < HeaderLength || tableEnd > stream.Length)
@@ -59,33 +93,52 @@ internal sealed class WdfArchive
             throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' has an out-of-range entry table.");
         }
 
-        if (declaredCount > int.MaxValue)
-        {
-            throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' declares too many entries.");
-        }
-
         stream.Position = tableOffset;
-        Dictionary<uint, WdfEntry> entries = new(checked((int)declaredCount));
+
+        WdfEntry[] entries = new WdfEntry[entryCount];
+
         Span<byte> encodedEntry = stackalloc byte[EntryLength];
 
-        for (int index = 0; index < declaredCount; index++)
+        uint previousId = 0;
+
+        for (int index = 0; index < entryCount; index++)
         {
             ReadExactly(stream, encodedEntry, $"WDF entry {index}");
 
             uint id = BinaryPrimitives.ReadUInt32LittleEndian(encodedEntry);
             uint offset = BinaryPrimitives.ReadUInt32LittleEndian(encodedEntry[4..]);
             uint length = BinaryPrimitives.ReadUInt32LittleEndian(encodedEntry[8..]);
-            long end = checked((long)offset + length);
 
-            if (end > stream.Length)
+            uint reserved = BinaryPrimitives.ReadUInt32LittleEndian(encodedEntry[12..]);
+
+            if (reserved != 0)
             {
-                throw new InvalidDataException($"WDF entry {index} (0x{id:X8}) extends beyond the archive.");
+                throw new InvalidDataException($"WDF entry {index} (0x{id:X8}) has non-zero reserved data 0x{reserved:X8}.");
             }
 
-            if (!entries.TryAdd(id, new WdfEntry(id, offset, length)))
+            if (index != 0)
             {
-                throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' contains duplicate entry id 0x{id:X8}.");
+                if (id == previousId)
+                {
+                    throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' contains duplicate entry id 0x{id:X8}.");
+                }
+
+                if (id < previousId)
+                {
+                    throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' entry ids are not strictly ascending.");
+                }
             }
+
+            long payloadEnd = checked((long)offset + length);
+
+            if (offset < HeaderLength || payloadEnd > tableOffset)
+            {
+                throw new InvalidDataException($"WDF entry {index} (0x{id:X8}) points outside the archive payload region.");
+            }
+
+            entries[index] = new WdfEntry(id, offset, length);
+
+            previousId = id;
         }
 
         return new WdfArchive(normalizedPath, entries);
@@ -95,7 +148,7 @@ internal sealed class WdfArchive
     {
         uint id = WdfPathHash.Compute(contentPath);
 
-        if (!_entries.TryGetValue(id, out WdfEntry entry))
+        if (!TryFindEntry(id, out WdfEntry entry))
         {
             stream = null;
             return false;
@@ -105,8 +158,7 @@ internal sealed class WdfArchive
 
         try
         {
-            archiveStream.Position = entry.Offset;
-            stream = new WdfEntryStream(archiveStream, entry.Length);
+            stream = new WdfEntryStream(archiveStream, entry.Offset, entry.Length);
             return true;
         }
         catch
@@ -117,11 +169,42 @@ internal sealed class WdfArchive
             }
             catch
             {
-                // Preserve the stream-opening failure that initiated cleanup.
+                // Preserve the entry-stream creation failure that initiated cleanup.
             }
 
             throw;
         }
+    }
+
+    private bool TryFindEntry(uint id, out WdfEntry entry)
+    {
+        int lowerBound = 0;
+        int upperBound = _entries.Length - 1;
+
+        while (lowerBound <= upperBound)
+        {
+            int index = lowerBound + ((upperBound - lowerBound) >> 1);
+
+            WdfEntry candidate = _entries[index];
+
+            if (candidate.Id == id)
+            {
+                entry = candidate;
+                return true;
+            }
+
+            if (id < candidate.Id)
+            {
+                upperBound = index - 1;
+            }
+            else
+            {
+                lowerBound = index + 1;
+            }
+        }
+
+        entry = default;
+        return false;
     }
 
     private static void ReadExactly(Stream stream, Span<byte> destination, string fieldName)
@@ -133,94 +216,6 @@ internal sealed class WdfArchive
         catch (EndOfStreamException exception)
         {
             throw new InvalidDataException($"The {fieldName} is truncated.", exception);
-        }
-    }
-
-    private sealed class WdfEntryStream(FileStream archiveStream, uint length) : Stream
-    {
-        private readonly long _length = length;
-        private long _position;
-
-        public override bool CanRead => true;
-        public override bool CanSeek => true;
-        public override bool CanWrite => false;
-        public override long Length => _length;
-
-        public override long Position
-        {
-            get => _position;
-            set => Seek(value, SeekOrigin.Begin);
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            return Read(buffer.AsSpan(offset, count));
-        }
-
-        public override int Read(Span<byte> buffer)
-        {
-            int requestedLength = (int)Math.Min(buffer.Length, _length - _position);
-
-            if (requestedLength <= 0)
-            {
-                return 0;
-            }
-
-            int bytesRead = archiveStream.Read(buffer[..requestedLength]);
-
-            if (bytesRead == 0)
-            {
-                throw new EndOfStreamException("The WDF archive ended before the selected entry was fully read.");
-            }
-
-            _position += bytesRead;
-            return bytesRead;
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            long position = origin switch
-            {
-                SeekOrigin.Begin => offset,
-                SeekOrigin.Current => checked(_position + offset),
-                SeekOrigin.End => checked(_length + offset),
-
-                _ => throw new ArgumentOutOfRangeException(nameof(origin), origin, "Unknown seek origin."),
-            };
-
-            if (position < 0 || position > _length)
-            {
-                throw new IOException("Cannot seek outside a WDF entry.");
-            }
-
-            archiveStream.Seek(position - _position, SeekOrigin.Current);
-
-            _position = position;
-            return position;
-        }
-
-        public override void Flush()
-        {
-        }
-
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotSupportedException();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                archiveStream.Dispose();
-            }
-
-            base.Dispose(disposing);
         }
     }
 }

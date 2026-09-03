@@ -5,27 +5,34 @@ namespace OpenConquer.Content.Wdf;
 /// </summary>
 /// <remarks>
 /// Native <c>GraphicData.dll!GraphicData_OpenPackagesFromPackageIni</c> (<c>0x1001A390</c>)
-/// discards <c>TqPackagesOpen</c>'s result at <c>0x1001A406</c>, so no declaration outcome is fatal.
-/// Recording them keeps the tolerated cases reviewable instead of invisible.
+/// discards <c>TqPackagesOpen</c>'s result at <c>0x1001A406</c>. Expected package-availability
+/// failures are therefore represented as observable registration outcomes instead of becoming
+/// client-startup failures.
 /// </remarks>
 public enum WdfPackageRegistrationOutcome
 {
-    /// <summary>The package file was opened and its prefix registered.</summary>
-    Registered,
+    /// <summary>The package file was opened, indexed, and registered.</summary>
+    Registered = 0,
 
     /// <summary>
     /// The declared file is absent. Native still creates the package object and registers the
-    /// prefix with an empty index, because <c>sub_100014F0</c> discards
-    /// <c>WdfHandler_OpenFile</c>'s failure at <c>0x10001620</c>; every lookup under the prefix
-    /// misses either way.
+    /// prefix with an empty index because <c>sub_100014F0</c> discards
+    /// <c>WdfHandler_OpenFile</c>'s failure at <c>0x10001620</c>.
     /// </summary>
-    FileNotFound,
+    FileNotFound = 1,
 
     /// <summary>
-    /// Another declaration already registered this prefix. Native returns early at
-    /// <c>0x10003DEF</c> without replacing the first registration and without raising an error.
+    /// Another declaration already owns this prefix. Native returns early at
+    /// <c>0x10003DEF</c> without replacing the first registration.
     /// </summary>
-    DuplicatePrefix,
+    DuplicatePrefix = 2,
+
+    /// <summary>
+    /// The declared file exists but its archive could not be opened or structurally validated.
+    /// Native retains the already-registered package object with an empty index, so lookups under
+    /// the prefix miss while client initialization continues.
+    /// </summary>
+    ArchiveUnavailable = 3,
 }
 
 /// <summary>

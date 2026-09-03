@@ -147,9 +147,9 @@ internal sealed class ClientApplication : IDisposable
     /// Reports the <c>ini/package.ini</c> declarations retail resolves without failing.
     /// </summary>
     /// <remarks>
-    /// A missing or duplicate declaration is not an error: the native reader returns
-    /// <see langword="void"/> and its caller discards <c>TqPackagesOpen</c>'s result at
-    /// <c>0x1001A406</c>. Reporting keeps an incomplete content set visible instead of silent.
+    /// Missing, unavailable, and duplicate package declarations are verified non-fatal native
+    /// states. Reporting keeps incomplete package availability visible without misrepresenting
+    /// prefix registration or turning a tolerated retail condition into startup failure.
     /// </remarks>
     private static void ReportTolerableContentGaps(PackagedClientContentSource contentSource)
     {
@@ -160,7 +160,7 @@ internal sealed class ClientApplication : IDisposable
                 continue;
             }
 
-            Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') was not registered: {registration.Outcome}.");
+            Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') resolved as {registration.Outcome}.");
         }
     }
 
@@ -170,10 +170,7 @@ internal sealed class ClientApplication : IDisposable
 
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
 
-        _logicalRenderSize = new LogicalRenderSize(
-            gameSetup.LogicalWidthPixels,
-            gameSetup.LogicalHeightPixels
-        );
+        _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
     }
 
     private void OnRendering(double _)
