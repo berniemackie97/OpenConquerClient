@@ -58,7 +58,7 @@ public sealed class ClientStartupOptionsTests
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
 
         bool parsed = ClientStartupOptions.TryParse(
-            ["--content-root", "legacy-client"],
+            ["--content-root", "custom-content"],
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
@@ -68,7 +68,7 @@ public sealed class ClientStartupOptionsTests
         Assert.True(parsed);
         Assert.NotNull(options);
         Assert.Null(errorMessage);
-        Assert.Equal(Path.Combine(workingDirectoryPath, "legacy-client"), options.ContentRootPath);
+        Assert.Equal(Path.Combine(workingDirectoryPath, "custom-content"), options.ContentRootPath);
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public sealed class ClientStartupOptionsTests
         string workingDirectoryPath = CreateAbsolutePath("working-directory");
 
         bool parsed = ClientStartupOptions.TryParse(
-            ["legacy-client"],
+            ["custom-content"],
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
@@ -182,7 +182,7 @@ public sealed class ClientStartupOptionsTests
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.Equal("Unknown startup argument 'legacy-client'.", errorMessage);
+        Assert.Equal("Unknown startup argument 'custom-content'.", errorMessage);
     }
 
     [Fact]

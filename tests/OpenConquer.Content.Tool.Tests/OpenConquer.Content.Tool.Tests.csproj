@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../../tools/OpenConquer.Content.Tool/OpenConquer.Content.Tool.csproj" />
+  </ItemGroup>
+
+</Project>

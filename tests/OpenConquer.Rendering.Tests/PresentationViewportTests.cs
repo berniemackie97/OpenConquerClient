@@ -10,8 +10,8 @@ namespace OpenConquer.Rendering.Tests;
 /// </remarks>
 public sealed class PresentationViewportTests
 {
-    private static readonly LogicalRenderSize s_retail1024 = new(width: 1024, height: 768);
-    private static readonly LogicalRenderSize s_retail800 = new(width: 800, height: 600);
+    private static readonly LogicalRenderSize s_logical1024 = new(width: 1024, height: 768);
+    private static readonly LogicalRenderSize s_logical800 = new(width: 800, height: 600);
 
     [Theory]
     // 4:3 logical inside 16:9 hosts: the regression this type exists to prevent.
@@ -46,7 +46,7 @@ public sealed class PresentationViewportTests
     [InlineData(800, 1200, 800, 600, 0, 300)]
     public void Compute_Fit_CentresTheLargestFittingRectangle(int hostWidth, int hostHeight, int expectedWidth, int expectedHeight, int expectedOffsetX, int expectedOffsetY)
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostWidth, hostHeight, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight, PresentationPolicy.Fit);
 
         Assert.Equal(expectedWidth, viewport.Width);
         Assert.Equal(expectedHeight, viewport.Height);
@@ -60,7 +60,7 @@ public sealed class PresentationViewportTests
     [InlineData(800, 1200)]
     public void Compute_Fit_NeverExceedsTheHostFramebuffer(int hostWidth, int hostHeight)
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostWidth, hostHeight, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight, PresentationPolicy.Fit);
 
         Assert.True(viewport.OffsetX >= 0 && viewport.OffsetY >= 0);
         Assert.True(viewport.OffsetX + viewport.Width <= hostWidth);
@@ -73,7 +73,7 @@ public sealed class PresentationViewportTests
     [InlineData(3200, 2400, 3072, 2304, 64, 48)]
     public void Compute_IntegerScale_UsesWholeMultiplesAndCentres(int hostWidth, int hostHeight, int expectedWidth, int expectedHeight, int expectedOffsetX, int expectedOffsetY)
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostWidth, hostHeight, PresentationPolicy.IntegerScale);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight, PresentationPolicy.IntegerScale);
 
         Assert.Equal(expectedWidth, viewport.Width);
         Assert.Equal(expectedHeight, viewport.Height);
@@ -87,7 +87,7 @@ public sealed class PresentationViewportTests
     {
         // A window smaller than one logical frame has no whole-number scale. Clipping the frame
         // would hide part of the game, so the whole frame is fitted instead.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostFramebufferWidth: 800, hostFramebufferHeight: 600, PresentationPolicy.IntegerScale);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostFramebufferWidth: 800, hostFramebufferHeight: 600, PresentationPolicy.IntegerScale);
 
         Assert.Equal(800, viewport.Width);
         Assert.Equal(600, viewport.Height);
@@ -97,7 +97,7 @@ public sealed class PresentationViewportTests
     [Fact]
     public void Compute_Stretch_FillsTheHostAndIsTheOnlyPolicyThatDistorts()
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostFramebufferWidth: 1280, hostFramebufferHeight: 720, PresentationPolicy.Stretch);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostFramebufferWidth: 1280, hostFramebufferHeight: 720, PresentationPolicy.Stretch);
 
         Assert.Equal(0, viewport.OffsetX);
         Assert.Equal(0, viewport.OffsetY);
@@ -116,7 +116,7 @@ public sealed class PresentationViewportTests
     [InlineData(2048, 768, PresentationFilter.Linear)]    // whole but unequal per axis
     public void Compute_SelectsPointSamplingOnlyWhenTheCopyIsExact(int hostWidth, int hostHeight, PresentationFilter expected)
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostWidth, hostHeight, PresentationPolicy.Stretch);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight, PresentationPolicy.Stretch);
 
         Assert.Equal(expected, viewport.Filter);
     }
@@ -128,7 +128,7 @@ public sealed class PresentationViewportTests
     public void Compute_TreatsAZeroSizedHostAsEmptyRatherThanFailing(int hostWidth, int hostHeight)
     {
         // A minimised window reports a zero framebuffer every frame; it is not an error.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostWidth, hostHeight);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight);
 
         Assert.True(viewport.IsEmpty);
         Assert.Equal(0d, viewport.ScaleX);
@@ -150,14 +150,14 @@ public sealed class PresentationViewportTests
     public void Compute_RejectsNegativeHostDimensions(int hostWidth, int hostHeight)
     {
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => PresentationViewport.Compute(s_retail1024, hostWidth, hostHeight));
+            () => PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight));
     }
 
     [Fact]
     public void Compute_RejectsAnUndefinedPolicy()
     {
         ArgumentOutOfRangeException exception = Assert.Throws<ArgumentOutOfRangeException>(
-            () => PresentationViewport.Compute(s_retail1024, 1280, 720, (PresentationPolicy)99));
+            () => PresentationViewport.Compute(s_logical1024, 1280, 720, (PresentationPolicy)99));
 
         Assert.Equal("policy", exception.ParamName);
     }
@@ -167,7 +167,7 @@ public sealed class PresentationViewportTests
     {
         // The renderer uses this to decide whether the host framebuffer needs clearing. Getting it
         // wrong leaves uninitialised bars flickering around the frame.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1280, 720, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1280, 720, PresentationPolicy.Fit);
 
         Assert.False(viewport.CoversHostFramebuffer());
     }
@@ -178,7 +178,7 @@ public sealed class PresentationViewportTests
     [InlineData(2560, 1440, PresentationPolicy.Stretch)]
     public void TryMapToLogical_MapsTheDestinationOriginToTheLogicalOrigin(int hostWidth, int hostHeight, PresentationPolicy policy)
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostWidth, hostHeight, policy);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight, policy);
 
         Assert.True(viewport.TryMapFramebufferPointToLogical(viewport.OffsetX, viewport.OffsetY, out int originX, out int originY));
         Assert.Equal(0, originX);
@@ -190,7 +190,7 @@ public sealed class PresentationViewportTests
     {
         // 1024x768 at 1:1 inside a 1920x1080 host. Every logical pixel has a destination pixel, so
         // the far corner must reach the last one exactly rather than stopping short.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1920, 1080, PresentationPolicy.IntegerScale);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1920, 1080, PresentationPolicy.IntegerScale);
 
         int lastX = viewport.OffsetX + viewport.Width - 1;
         int lastY = viewport.OffsetY + viewport.Height - 1;
@@ -208,7 +208,7 @@ public sealed class PresentationViewportTests
         // inherent to downscaling, not an off-by-one: 960 destination columns cannot address 1024
         // logical columns. Pinned so the pointer-precision loss is a known property rather than a
         // surprise once input lands.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1280, 720, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1280, 720, PresentationPolicy.Fit);
 
         Assert.Equal(960, viewport.Width);
         Assert.True(viewport.ScaleX < 1d);
@@ -224,7 +224,7 @@ public sealed class PresentationViewportTests
     {
         // 1024x768 in 1280x720 pillarboxes with 160px bars either side. A click on a bar is not a
         // click in the world and must not resolve to one.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1280, 720, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1280, 720, PresentationPolicy.Fit);
 
         Assert.False(viewport.TryMapFramebufferPointToLogical(0, 360, out _, out _));
         Assert.False(viewport.TryMapFramebufferPointToLogical(159, 360, out _, out _));
@@ -237,7 +237,7 @@ public sealed class PresentationViewportTests
     [Fact]
     public void TryMapToLogical_RejectsPositionsOutsideTheWindow()
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1280, 720, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1280, 720, PresentationPolicy.Fit);
 
         Assert.False(viewport.TryMapFramebufferPointToLogical(-1, 360, out _, out _));
         Assert.False(viewport.TryMapFramebufferPointToLogical(640, -1, out _, out _));
@@ -255,7 +255,7 @@ public sealed class PresentationViewportTests
     {
         // The guarantee input relies on: anything the renderer drew maps back to a real logical
         // pixel, with no clamping and no off-by-one at the far edge.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostWidth, hostHeight, policy);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight, policy);
 
         for (int y = 0; y < viewport.Height; y++)
         {
@@ -274,7 +274,7 @@ public sealed class PresentationViewportTests
     {
         // Neighbouring host pixels must never map to decreasing logical pixels, or a drag would
         // jitter backwards partway across the window.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1920, 1080, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1920, 1080, PresentationPolicy.Fit);
 
         int previous = -1;
 
@@ -292,7 +292,7 @@ public sealed class PresentationViewportTests
     {
         // At a magnifying scale no logical column should be unreachable, or parts of the UI could
         // never be clicked.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail800, 1600, 1200, PresentationPolicy.IntegerScale);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical800, 1600, 1200, PresentationPolicy.IntegerScale);
 
         HashSet<int> reached = [];
 
@@ -313,7 +313,7 @@ public sealed class PresentationViewportTests
     {
         // The flip is the whole point: a pointer row counted from the top must not resolve to a
         // logical row counted from the bottom.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, hostWidth, hostHeight, policy);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight, policy);
 
         int topPointerY = hostHeight - 1 - (viewport.OffsetY + viewport.Height - 1);
 
@@ -331,7 +331,7 @@ public sealed class PresentationViewportTests
     [Fact]
     public void TryMapPointerToLogical_IsTheVerticalMirrorOfTheFramebufferMapping()
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1920, 1080, PresentationPolicy.IntegerScale);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1920, 1080, PresentationPolicy.IntegerScale);
 
         for (int pointerY = 0; pointerY < viewport.HostHeight; pointerY++)
         {
@@ -354,7 +354,7 @@ public sealed class PresentationViewportTests
     {
         // Moving the pointer down the window must move down the logical frame. Getting the flip
         // backwards still maps every position successfully, so only ordering catches it.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1920, 1080, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1920, 1080, PresentationPolicy.Fit);
 
         int topPointerY = hostTop(viewport);
         int bottomPointerY = viewport.HostHeight - 1 - viewport.OffsetY;
@@ -374,7 +374,7 @@ public sealed class PresentationViewportTests
     public void TryMapPointerToLogical_RejectsPositionsAboveAndBelowTheLetterboxBars()
     {
         // 1024x768 in a 1024x1200 host letterboxes with 216px bars top and bottom.
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1024, 1200, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1024, 1200, PresentationPolicy.Fit);
 
         Assert.Equal(768, viewport.Height);
         Assert.Equal(216, viewport.OffsetY);
@@ -390,7 +390,7 @@ public sealed class PresentationViewportTests
     [Fact]
     public void TryMapPointerToLogical_RejectsPositionsOutsideTheWindow()
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 1280, 720, PresentationPolicy.Fit);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1280, 720, PresentationPolicy.Fit);
 
         Assert.False(viewport.TryMapPointerToLogical(640, -1, out _, out _));
         Assert.False(viewport.TryMapPointerToLogical(-1, 360, out _, out _));
@@ -401,7 +401,7 @@ public sealed class PresentationViewportTests
     [Fact]
     public void TryMapPointerToLogical_ReturnsFalseForAnEmptyViewport()
     {
-        PresentationViewport viewport = PresentationViewport.Compute(s_retail1024, 0, 0);
+        PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 0, 0);
 
         Assert.False(viewport.TryMapPointerToLogical(0, 0, out _, out _));
     }

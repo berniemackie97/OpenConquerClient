@@ -28,7 +28,7 @@ public sealed class GameSetupConfiguration
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        LegacyIniDocument document = LegacyIniDocument.LoadRequired(
+        IniDocument document = IniDocument.LoadRequired(
             contentSource,
             RelativePath,
             MaximumFileLength

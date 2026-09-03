@@ -66,9 +66,21 @@ public sealed class ClientContentRoot : IClientContentSource
         );
     }
 
-    public bool TryOpenRead(string contentPath, [NotNullWhen(true)] out Stream? stream)
+    /// <summary>
+    /// Opens a loose file under the content root.
+    /// </summary>
+    /// <remarks>
+    /// A directory root owns no packages, so <see cref="ContentLookupMode.PackageOnly"/> can never
+    /// be satisfied here and is reported as a miss instead of being widened to a loose read.
+    /// </remarks>
+    public bool TryOpenRead(string contentPath, ContentLookupMode mode, [NotNullWhen(true)] out Stream? stream)
     {
-        if (!TryResolveFile(contentPath, out string? absolutePath))
+        if (!Enum.IsDefined(mode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown content lookup mode.");
+        }
+
+        if (mode == ContentLookupMode.PackageOnly || !TryResolveFile(contentPath, out string? absolutePath))
         {
             stream = null;
             return false;
@@ -86,15 +98,16 @@ public sealed class ClientContentRoot : IClientContentSource
         return true;
     }
 
-    public Stream OpenRequiredRead(string contentPath)
+    /// <inheritdoc />
+    public Stream OpenRequiredRead(string contentPath, ContentLookupMode mode)
     {
-        if (TryOpenRead(contentPath, out Stream? stream))
+        if (TryOpenRead(contentPath, mode, out Stream? stream))
         {
             return stream;
         }
 
         throw new FileNotFoundException(
-            $"Client content file '{contentPath}' was not found under the configured content root."
+            $"Client content file '{contentPath}' was not found under the configured content root using {mode} lookup."
         );
     }
 
@@ -104,7 +117,7 @@ public sealed class ClientContentRoot : IClientContentSource
 
         string normalizedPath = relativePath.Trim();
 
-        if (IsLegacyRootedPath(normalizedPath))
+        if (IsRootedPath(normalizedPath))
         {
             throw new ArgumentException(
                 "Client content paths must be relative to the client content root.",
@@ -130,7 +143,7 @@ public sealed class ClientContentRoot : IClientContentSource
             if (segment is "." or ".." || segment.Contains(':', StringComparison.Ordinal))
             {
                 throw new ArgumentException(
-                    $"Client content path '{relativePath}' is not a valid legacy relative path.",
+                    $"Client content path '{relativePath}' is not a valid relative content path.",
                     nameof(relativePath)
                 );
             }
@@ -139,7 +152,7 @@ public sealed class ClientContentRoot : IClientContentSource
         return segments;
     }
 
-    private static bool IsLegacyRootedPath(string path)
+    private static bool IsRootedPath(string path)
     {
         if (path[0] is '/' or '\\')
         {

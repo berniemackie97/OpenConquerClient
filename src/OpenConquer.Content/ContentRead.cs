@@ -2,13 +2,13 @@ namespace OpenConquer.Content;
 
 internal static class ContentRead
 {
-    public static byte[] ReadRequiredBytes(IClientContentSource source, string contentPath, int maximumLength)
+    public static byte[] ReadRequiredBytes(IClientContentSource source, string contentPath, ContentLookupMode mode, int maximumLength)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumLength);
 
-        using Stream stream = source.OpenRequiredRead(contentPath);
+        using Stream stream = source.OpenRequiredRead(contentPath, mode);
 
         return ReadBytes(stream, contentPath, maximumLength);
     }

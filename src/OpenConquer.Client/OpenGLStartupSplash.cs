@@ -4,32 +4,29 @@ using OpenConquer.Rendering.OpenGL;
 
 namespace OpenConquer.Client;
 
+/// <summary>
+/// Presents the retail startup logo on a short-lived OpenGL window.
+/// </summary>
+/// <remarks>
+/// The window is sized to the logo bitmap so the image occupies its natural logical size, matching
+/// the native pattern-brush presentation. When no bitmap could be loaded the window still appears,
+/// sized from the dialog template, because retail also shows an empty dialog in that case.
+/// </remarks>
 internal sealed class OpenGLStartupSplash : IStartupSplash
 {
-    private static readonly TimeSpan s_maximumRefreshWait = TimeSpan.FromMilliseconds(16);
-    private static readonly PixelSize s_verifiedRetailDialogSize = new(width: 250, height: 188);
-
     private readonly StartupLogo _logo;
-    private readonly TimeSpan _minimumVisibleDuration;
     private readonly StartupWindow _window;
 
     private OpenGLGraphicsDevice? _graphicsDevice;
-    private OpenGLStartupLogoRenderer? _renderer;
-    private long? _shownTimestamp;
+    private OpenGLStartupSurfaceRenderer? _renderer;
     private bool _disposed;
 
-    public OpenGLStartupSplash(StartupLogo logo, TimeSpan minimumVisibleDuration)
+    public OpenGLStartupSplash(StartupLogo logo)
     {
         ArgumentNullException.ThrowIfNull(logo);
 
-        if (minimumVisibleDuration < TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(minimumVisibleDuration), minimumVisibleDuration, "The minimum visible duration cannot be negative.");
-        }
-
         _logo = logo;
-        _minimumVisibleDuration = minimumVisibleDuration;
-        _window = new StartupWindow(s_verifiedRetailDialogSize);
+        _window = new StartupWindow(ResolveSurfaceSize(logo));
         _window.Rendering += OnRendering;
         _window.OpenGLContextReady += OnOpenGLContextReady;
         _window.OpenGLContextReleasing += OnOpenGLContextReleasing;
@@ -39,29 +36,7 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        _shownTimestamp = TimeProvider.System.GetTimestamp();
         _window.ShowAndRender();
-    }
-
-    public void Complete()
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-
-        long shownTimestamp = _shownTimestamp ?? throw new InvalidOperationException("The startup splash must be shown before it can be completed.");
-
-        while (true)
-        {
-            _window.Redraw();
-
-            TimeSpan remaining = _minimumVisibleDuration - TimeProvider.System.GetElapsedTime(shownTimestamp);
-
-            if (remaining <= TimeSpan.Zero)
-            {
-                return;
-            }
-
-            Thread.Sleep(remaining < s_maximumRefreshWait ? remaining : s_maximumRefreshWait);
-        }
     }
 
     public void Dispose()
@@ -71,17 +46,41 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
             return;
         }
 
+        // Unsubscribe first so a callback raised during teardown cannot reach a released renderer.
+        _window.Rendering -= OnRendering;
+        _window.OpenGLContextReady -= OnOpenGLContextReady;
+
         try
         {
             _window.Dispose();
         }
         finally
         {
-            _window.Rendering -= OnRendering;
-            _window.OpenGLContextReady -= OnOpenGLContextReady;
             _window.OpenGLContextReleasing -= OnOpenGLContextReleasing;
+            ReleaseRenderingResources();
             _disposed = true;
         }
+    }
+
+    /// <summary>
+    /// Chooses the startup window's logical size.
+    /// </summary>
+    /// <remarks>
+    /// The bitmap's own dimensions are authoritative whenever it loaded, because retail paints it
+    /// unscaled into a dialog whose client area the retail artwork was authored against. Only the
+    /// no-bitmap case falls back to the dialog template's derived size, which is documented on
+    /// <see cref="StartupLogoDialogTemplate"/> as inferred from font metrics rather than proven.
+    /// </remarks>
+    private static PixelSize ResolveSurfaceSize(StartupLogo logo)
+    {
+        if (logo.Image is not null)
+        {
+            return new PixelSize(logo.Image.Width, logo.Image.Height);
+        }
+
+        (int width, int height) = StartupLogoDialogTemplate.DeriveReferenceClientSize();
+
+        return new PixelSize(width, height);
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
@@ -92,15 +91,13 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
         }
 
         OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
-        OpenGLStartupLogoRenderer? renderer = null;
+        OpenGLStartupSurfaceRenderer? renderer = null;
 
         try
         {
-            renderer = graphicsDevice.CreateStartupLogoRenderer(
-                _logo.Image.Width,
-                _logo.Image.Height,
-                _logo.Image.Pixels.Span
-            );
+            renderer = _logo.Image is { } image
+                ? graphicsDevice.CreateStartupSurfaceRenderer(image.Width, image.Height, image.Pixels.Span)
+                : graphicsDevice.CreateStartupSurfaceRenderer();
 
             _renderer = renderer;
             _graphicsDevice = graphicsDevice;
@@ -121,13 +118,22 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
         }
     }
 
-    private void OnRendering(PixelSize framebufferSize)
+    private void OnRendering(StartupSurfaceMetrics metrics)
     {
-        OpenGLStartupLogoRenderer renderer = _renderer ?? throw new InvalidOperationException("The startup logo renderer is not initialized.");
-        renderer.Render(framebufferSize.Width, framebufferSize.Height);
+        _renderer?.Render(
+            metrics.FramebufferSize.Width,
+            metrics.FramebufferSize.Height,
+            metrics.LogicalSize.Width,
+            metrics.LogicalSize.Height
+        );
     }
 
     private void OnOpenGLContextReleasing()
+    {
+        ReleaseRenderingResources();
+    }
+
+    private void ReleaseRenderingResources()
     {
         try
         {

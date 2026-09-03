@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="OpenConquer.Content.Tool.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../src/OpenConquer.Content/OpenConquer.Content.csproj" />
   </ItemGroup>
 
