@@ -133,18 +133,9 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
 
     private void OnRendering(StartupSurfaceMetrics metrics)
     {
-        OpenGLStartupSurfaceRenderer renderer =
-            _renderer
-            ?? throw new InvalidOperationException(
-                "Startup rendering cannot begin before the renderer is initialized."
-            );
+        OpenGLStartupSurfaceRenderer renderer = _renderer ?? throw new InvalidOperationException("Startup rendering cannot begin before the renderer is initialized.");
 
-        renderer.Render(
-            metrics.FramebufferSize.Width,
-            metrics.FramebufferSize.Height,
-            metrics.LogicalSize.Width,
-            metrics.LogicalSize.Height
-        );
+        renderer.Render(metrics.FramebufferSize.Width, metrics.FramebufferSize.Height, metrics.LogicalSize.Width, metrics.LogicalSize.Height);
     }
 
     private void OnOpenGLContextReleasing()

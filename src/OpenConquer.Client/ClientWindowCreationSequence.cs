@@ -11,12 +11,7 @@ internal static class ClientWindowCreationSequence
     /// <c>0x5AF4F2</c> immediately after its synchronous initialization block, and that block
     /// contains no sleep, wait, timer, or tick-count call.
     /// </remarks>
-    public static TMain CreateMainAfterStartup<TMain>(
-        IStartupSplash startupSplash,
-        Action initialize,
-        Func<TMain> createMain
-    )
-        where TMain : class
+    public static TMain CreateMainAfterStartup<TMain>(IStartupSplash startupSplash, Action initialize, Func<TMain> createMain) where TMain : class
     {
         ArgumentNullException.ThrowIfNull(startupSplash);
 

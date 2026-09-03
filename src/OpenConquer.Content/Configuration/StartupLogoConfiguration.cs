@@ -61,10 +61,7 @@ public sealed class StartupLogoConfiguration
         {
             IniDocument document = IniDocument.Load(stream, RelativePath, MaximumFileLength);
 
-            if (
-                !document.TryGetValue(SectionName, BackgroundFormatKeyName, out string? value)
-                || string.IsNullOrEmpty(value)
-            )
+            if (!document.TryGetValue(SectionName, BackgroundFormatKeyName, out string? value) || string.IsNullOrEmpty(value))
             {
                 return new StartupLogoConfiguration(DefaultBackgroundFormat);
             }
@@ -134,18 +131,11 @@ public sealed class StartupLogoConfiguration
             replacement = replacement.PadLeft(width, zeroPadded ? '0' : ' ');
         }
 
-        return string.Concat(
-            format.AsSpan(0, tokenIndex),
-            replacement,
-            format.AsSpan(specifierIndex + 1)
-        );
+        return string.Concat(format.AsSpan(0, tokenIndex), replacement, format.AsSpan(specifierIndex + 1));
     }
 
     private static InvalidDataException InvalidFormat(string format)
     {
-        return new InvalidDataException(
-            $"'{RelativePath}' contains unsupported [{SectionName}] "
-                + $"{BackgroundFormatKeyName} format '{format}'."
-        );
+        return new InvalidDataException($"'{RelativePath}' contains unsupported [{SectionName}] {BackgroundFormatKeyName} format '{format}'.");
     }
 }

@@ -28,11 +28,7 @@ public sealed class GameSetupConfiguration
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        IniDocument document = IniDocument.LoadRequired(
-            contentSource,
-            RelativePath,
-            MaximumFileLength
-        );
+        IniDocument document = IniDocument.LoadRequired(contentSource, RelativePath, MaximumFileLength);
 
         if (!document.TryGetValue(ScreenModeSectionName, ScreenModeKeyName, out string? value))
         {

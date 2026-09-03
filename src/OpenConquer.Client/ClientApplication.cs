@@ -60,11 +60,9 @@ internal sealed class ClientApplication : IDisposable
             Console.Error.WriteLine($"OpenConquer: startup logo unavailable; {unavailableReason}");
         }
 
-        DesktopWindow window = ClientWindowCreationSequence.CreateMainAfterStartup(
-            new OpenGLStartupSplash(startupLogo),
+        DesktopWindow window = ClientWindowCreationSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
             () => InitializeRuntimeConfiguration(contentSource),
-            () => new DesktopWindow(s_frameInterval)
-        );
+            () => new DesktopWindow(s_frameInterval));
 
         _window = window;
 
@@ -115,24 +113,12 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            DesktopWindow window =
-                _window
-                ?? throw new InvalidOperationException("The desktop window has not been created.");
-
-            LogicalRenderSize logicalRenderSize =
-                _logicalRenderSize
-                ?? throw new InvalidOperationException(
-                    "The logical render size has not been initialized."
-                );
+            DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
+            LogicalRenderSize logicalRenderSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
 
             PixelSize framebufferSize = window.FramebufferSize;
 
-            OpenGLRenderer renderer = graphicsDevice.CreateRenderer(
-                logicalRenderSize,
-                framebufferSize.Width,
-                framebufferSize.Height,
-                _presentationPolicy
-            );
+            OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
 
             _renderer = renderer;
             _graphicsDevice = graphicsDevice;
@@ -174,11 +160,7 @@ internal sealed class ClientApplication : IDisposable
                 continue;
             }
 
-            Console.Error.WriteLine(
-                $"OpenConquer: declared package '{registration.DeclaredName}' "
-                    + $"(prefix '{registration.Prefix}') was not registered: "
-                    + $"{registration.Outcome}."
-            );
+            Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') was not registered: {registration.Outcome}.");
         }
     }
 

@@ -27,18 +27,9 @@ internal sealed class IniDocument
     /// Retail parses INI files through <c>IniStore_LoadFile</c> (<c>0x76EF0E</c>), which opens them
     /// with <c>fopen(path, "r")</c> at <c>0x76EF68</c>; the package layer is never consulted.
     /// </remarks>
-    public static IniDocument LoadRequired(
-        IClientContentSource source,
-        string contentPath,
-        int maximumLength
-    )
+    public static IniDocument LoadRequired(IClientContentSource source, string contentPath, int maximumLength)
     {
-        byte[] bytes = ContentRead.ReadRequiredBytes(
-            source,
-            contentPath,
-            ContentLookupMode.LooseOnly,
-            maximumLength
-        );
+        byte[] bytes = ContentRead.ReadRequiredBytes(source, contentPath, ContentLookupMode.LooseOnly, maximumLength);
 
         return Parse(bytes);
     }
@@ -55,10 +46,7 @@ internal sealed class IniDocument
         ArgumentException.ThrowIfNullOrWhiteSpace(sectionName);
         ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
 
-        if (
-            _sections.TryGetValue(sectionName, out Dictionary<string, string>? section)
-            && section.TryGetValue(keyName, out string? foundValue)
-        )
+        if (_sections.TryGetValue(sectionName, out Dictionary<string, string>? section) && section.TryGetValue(keyName, out string? foundValue))
         {
             value = foundValue;
             return true;

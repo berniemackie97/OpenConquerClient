@@ -62,14 +62,7 @@ public sealed class OpenGLStartupSurfaceRenderer : IDisposable
         _gl.ClearColor(red: 0f, green: 0f, blue: 0f, alpha: 1f);
         _gl.Clear(mask: (uint)ClearBufferMask.ColorBufferBit);
 
-        StartupSurfacePlacement placement = StartupSurfacePlacement.Compute(
-            framebufferWidth,
-            framebufferHeight,
-            logicalWidth,
-            logicalHeight,
-            _imageWidth,
-            _imageHeight
-        );
+        StartupSurfacePlacement placement = StartupSurfacePlacement.Compute(framebufferWidth, framebufferHeight, logicalWidth, logicalHeight, _imageWidth, _imageHeight);
 
         _image.DrawTopLeft(framebufferWidth, framebufferHeight, placement.Width, placement.Height);
     }

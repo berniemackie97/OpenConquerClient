@@ -59,9 +59,7 @@ public sealed class ClientContentRoot : IClientContentSource
             return absolutePath;
         }
 
-        throw new FileNotFoundException(
-            $"Client content file '{relativePath}' was not found under '{RootPath}'."
-        );
+        throw new FileNotFoundException($"Client content file '{relativePath}' was not found under '{RootPath}'.");
     }
 
     /// <summary>
@@ -95,14 +93,7 @@ public sealed class ClientContentRoot : IClientContentSource
             return false;
         }
 
-        stream = new FileStream(
-            absolutePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            bufferSize: 4096,
-            FileOptions.SequentialScan
-        );
+        stream = new FileStream(absolutePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, FileOptions.SequentialScan);
 
         return true;
     }
@@ -115,47 +106,24 @@ public sealed class ClientContentRoot : IClientContentSource
             return stream;
         }
 
-        throw new FileNotFoundException(
-            $"Client content file '{contentPath}' was not found under the configured content root using {mode} lookup."
-        );
+        throw new FileNotFoundException($"Client content file '{contentPath}' was not found under the configured content root using {mode} lookup.");
     }
 
-    private static string? FindCaseInsensitiveDirectory(
-        string parentDirectoryPath,
-        string directoryName
-    )
+    private static string? FindCaseInsensitiveDirectory(string parentDirectoryPath, string directoryName)
     {
         ValidateSearchDirectory(parentDirectoryPath);
 
-        return FindUniqueCaseInsensitiveMatch(
-            Directory.EnumerateDirectories(parentDirectoryPath),
-            directoryName,
-            parentDirectoryPath,
-            entryKind: "directory",
-            expectedDirectory: true
-        );
+        return FindUniqueCaseInsensitiveMatch(Directory.EnumerateDirectories(parentDirectoryPath), directoryName, parentDirectoryPath, entryKind: "directory", expectedDirectory: true);
     }
 
     private static string? FindCaseInsensitiveFile(string parentDirectoryPath, string fileName)
     {
         ValidateSearchDirectory(parentDirectoryPath);
 
-        return FindUniqueCaseInsensitiveMatch(
-            Directory.EnumerateFiles(parentDirectoryPath),
-            fileName,
-            parentDirectoryPath,
-            entryKind: "file",
-            expectedDirectory: false
-        );
+        return FindUniqueCaseInsensitiveMatch(Directory.EnumerateFiles(parentDirectoryPath), fileName, parentDirectoryPath, entryKind: "file", expectedDirectory: false);
     }
 
-    private static string? FindUniqueCaseInsensitiveMatch(
-        IEnumerable<string> candidatePaths,
-        string expectedName,
-        string parentDirectoryPath,
-        string entryKind,
-        bool expectedDirectory
-    )
+    private static string? FindUniqueCaseInsensitiveMatch(IEnumerable<string> candidatePaths, string expectedName, string parentDirectoryPath, string entryKind, bool expectedDirectory)
     {
         string? matchedPath = null;
 
@@ -176,16 +144,12 @@ public sealed class ClientContentRoot : IClientContentSource
 
             if (isDirectory != expectedDirectory)
             {
-                throw new IOException(
-                    $"Client content {entryKind} '{candidatePath}' changed type during path resolution."
-                );
+                throw new IOException($"Client content {entryKind} '{candidatePath}' changed type during path resolution.");
             }
 
             if (matchedPath is not null)
             {
-                throw new IOException(
-                    $"Client content directory '{parentDirectoryPath}' contains multiple {entryKind} entries matching '{expectedName}' case-insensitively."
-                );
+                throw new IOException($"Client content directory '{parentDirectoryPath}' contains multiple {entryKind} entries matching '{expectedName}' case-insensitively.");
             }
 
             matchedPath = candidatePath;
@@ -204,10 +168,7 @@ public sealed class ClientContentRoot : IClientContentSource
         }
         catch (FileNotFoundException exception)
         {
-            throw new DirectoryNotFoundException(
-                $"Client content root '{rootPath}' does not exist.",
-                exception
-            );
+            throw new DirectoryNotFoundException($"Client content root '{rootPath}' does not exist.", exception);
         }
 
         RejectLinkedEntry(rootPath, attributes, entryKind: "root");
@@ -217,9 +178,7 @@ public sealed class ClientContentRoot : IClientContentSource
             throw new IOException($"Client content root '{rootPath}' is not a directory.");
         }
 
-        using IEnumerator<string> entries = Directory
-            .EnumerateFileSystemEntries(rootPath)
-            .GetEnumerator();
+        using IEnumerator<string> entries = Directory.EnumerateFileSystemEntries(rootPath).GetEnumerator();
 
         _ = entries.MoveNext();
     }
@@ -242,17 +201,13 @@ public sealed class ClientContentRoot : IClientContentSource
 
         FileSystemInfo fileSystemInfo = isDirectory ? new DirectoryInfo(path) : new FileInfo(path);
 
-        bool isLinked =
-            (attributes & FileAttributes.ReparsePoint) != 0
-            || fileSystemInfo.LinkTarget is not null;
+        bool isLinked = (attributes & FileAttributes.ReparsePoint) != 0 || fileSystemInfo.LinkTarget is not null;
 
         if (!isLinked)
         {
             return;
         }
 
-        throw new IOException(
-            $"Client content {entryKind} '{path}' is a symbolic link or reparse point. Linked content entries are not permitted."
-        );
+        throw new IOException($"Client content {entryKind} '{path}' is a symbolic link or reparse point. Linked content entries are not permitted.");
     }
 }

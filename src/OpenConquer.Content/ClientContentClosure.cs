@@ -51,9 +51,6 @@ public static class ClientContentClosure
             contentPaths.Add(startupLogo.GetLogoPath(variantIndex));
         }
 
-        return contentPaths
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        return contentPaths.Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToArray();
     }
 }

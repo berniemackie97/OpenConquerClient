@@ -112,7 +112,7 @@ public sealed class DesktopWindow : IDisposable
 
         Vector2D<int> framebufferPoint = _window.PointToFramebuffer(roundedWindowPoint);
 
-        return new PixelPoint(x: framebufferPoint.X, y: framebufferPoint.Y);
+        return new PixelPoint(X: framebufferPoint.X, Y: framebufferPoint.Y);
     }
 
     public void Run()

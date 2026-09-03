@@ -49,12 +49,7 @@ internal sealed class ClientStartupOptions
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        string packagedContentRoot = Path.Combine(
-            AppContext.BaseDirectory,
-            "content",
-            "retail-5517",
-            "payload"
-        );
+        string packagedContentRoot = Path.Combine(AppContext.BaseDirectory, "content", "retail-5517", "payload");
 
         return TryParse(args, packagedContentRoot, Environment.CurrentDirectory, out options, out errorMessage);
     }
