@@ -24,6 +24,7 @@ public sealed class ClientWindowCreationSequenceTests
         );
 
         Assert.NotNull(mainWindow);
+
         Assert.Equal(
             ["startup-shown", "runtime-initialized", "startup-disposed", "main-created"],
             events
@@ -34,6 +35,7 @@ public sealed class ClientWindowCreationSequenceTests
     public void CreateMainAfterStartup_DestroysStartupSplashWhenPresentationFails()
     {
         List<string> events = [];
+
         RecordingStartupSplash startupSplash = new(events, throwWhenShown: true);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
@@ -49,6 +51,7 @@ public sealed class ClientWindowCreationSequenceTests
         );
 
         Assert.Equal("Startup presentation failed.", exception.Message);
+
         Assert.Equal(["startup-shown", "startup-disposed"], events);
     }
 
@@ -64,6 +67,7 @@ public sealed class ClientWindowCreationSequenceTests
                 () =>
                 {
                     events.Add("runtime-initialized");
+
                     throw new InvalidOperationException("Runtime initialization failed.");
                 },
                 () =>
@@ -75,6 +79,88 @@ public sealed class ClientWindowCreationSequenceTests
         );
 
         Assert.Equal("Runtime initialization failed.", exception.Message);
+
+        Assert.Equal(["startup-shown", "runtime-initialized", "startup-disposed"], events);
+    }
+
+    [Fact]
+    public void CreateMainAfterStartup_PreservesPresentationFailureWhenSplashDisposalAlsoFails()
+    {
+        List<string> events = [];
+
+        RecordingStartupSplash startupSplash = new(
+            events,
+            throwWhenShown: true,
+            throwWhenDisposed: true
+        );
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            ClientWindowCreationSequence.CreateMainAfterStartup(
+                startupSplash,
+                () => events.Add("runtime-initialized"),
+                () =>
+                {
+                    events.Add("main-created");
+                    return new object();
+                }
+            )
+        );
+
+        Assert.Equal("Startup presentation failed.", exception.Message);
+
+        Assert.Equal(["startup-shown", "startup-disposed"], events);
+    }
+
+    [Fact]
+    public void CreateMainAfterStartup_PreservesInitializationFailureWhenSplashDisposalAlsoFails()
+    {
+        List<string> events = [];
+
+        RecordingStartupSplash startupSplash = new(events, throwWhenDisposed: true);
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            ClientWindowCreationSequence.CreateMainAfterStartup(
+                startupSplash,
+                () =>
+                {
+                    events.Add("runtime-initialized");
+
+                    throw new InvalidOperationException("Runtime initialization failed.");
+                },
+                () =>
+                {
+                    events.Add("main-created");
+                    return new object();
+                }
+            )
+        );
+
+        Assert.Equal("Runtime initialization failed.", exception.Message);
+
+        Assert.Equal(["startup-shown", "runtime-initialized", "startup-disposed"], events);
+    }
+
+    [Fact]
+    public void CreateMainAfterStartup_PropagatesSplashDisposalFailureAfterSuccessfulInitialization()
+    {
+        List<string> events = [];
+
+        RecordingStartupSplash startupSplash = new(events, throwWhenDisposed: true);
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            ClientWindowCreationSequence.CreateMainAfterStartup(
+                startupSplash,
+                () => events.Add("runtime-initialized"),
+                () =>
+                {
+                    events.Add("main-created");
+                    return new object();
+                }
+            )
+        );
+
+        Assert.Equal("Startup disposal failed.", exception.Message);
+
         Assert.Equal(["startup-shown", "runtime-initialized", "startup-disposed"], events);
     }
 
@@ -83,16 +169,28 @@ public sealed class ClientWindowCreationSequenceTests
     {
         List<string> events = [];
 
-        Assert.Throws<ArgumentNullException>(
-            () => ClientWindowCreationSequence.CreateMainAfterStartup<object>(null!, () => { }, () => new object())
+        Assert.Throws<ArgumentNullException>(() =>
+            ClientWindowCreationSequence.CreateMainAfterStartup<object>(
+                null!,
+                () => { },
+                () => new object()
+            )
         );
 
-        Assert.Throws<ArgumentNullException>(
-            () => ClientWindowCreationSequence.CreateMainAfterStartup(new RecordingStartupSplash(events), null!, () => new object())
+        Assert.Throws<ArgumentNullException>(() =>
+            ClientWindowCreationSequence.CreateMainAfterStartup(
+                new RecordingStartupSplash(events),
+                null!,
+                () => new object()
+            )
         );
 
-        Assert.Throws<ArgumentNullException>(
-            () => ClientWindowCreationSequence.CreateMainAfterStartup<object>(new RecordingStartupSplash(events), () => { }, null!)
+        Assert.Throws<ArgumentNullException>(() =>
+            ClientWindowCreationSequence.CreateMainAfterStartup<object>(
+                new RecordingStartupSplash(events),
+                () => { },
+                null!
+            )
         );
     }
 
@@ -100,11 +198,17 @@ public sealed class ClientWindowCreationSequenceTests
     {
         private readonly List<string> _events;
         private readonly bool _throwWhenShown;
+        private readonly bool _throwWhenDisposed;
 
-        public RecordingStartupSplash(List<string> events, bool throwWhenShown = false)
+        public RecordingStartupSplash(
+            List<string> events,
+            bool throwWhenShown = false,
+            bool throwWhenDisposed = false
+        )
         {
             _events = events;
             _throwWhenShown = throwWhenShown;
+            _throwWhenDisposed = throwWhenDisposed;
         }
 
         public void Show()
@@ -120,6 +224,11 @@ public sealed class ClientWindowCreationSequenceTests
         public void Dispose()
         {
             _events.Add("startup-disposed");
+
+            if (_throwWhenDisposed)
+            {
+                throw new InvalidOperationException("Startup disposal failed.");
+            }
         }
     }
 }

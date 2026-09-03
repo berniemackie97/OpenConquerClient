@@ -6,16 +6,47 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        if (!ClientStartupOptions.TryParse(args, out ClientStartupOptions? options, out string? errorMessage))
+        if (
+            !ClientStartupOptions.TryParse(
+                args,
+                out ClientStartupOptions? options,
+                out string? errorMessage
+            )
+        )
         {
             Console.Error.WriteLine($"OpenConquer: {errorMessage}");
-            Console.Error.WriteLine($"Usage: OpenConquer.Client [--content-root <path>] [--presentation <{ClientStartupOptions.PresentationPolicyNames}>]");
+            Console.Error.WriteLine(
+                $"Usage: OpenConquer.Client [--content-root <path>] "
+                    + $"[--presentation <{ClientStartupOptions.PresentationPolicyNames}>]"
+            );
 
             return InvalidStartupArgumentsExitCode;
         }
 
-        using ClientApplication application = new(options.ContentRootPath, options.PresentationPolicy);
+        ClientApplication application = new(options.ContentRootPath, options.PresentationPolicy);
 
-        return application.Run();
+        int exitCode;
+
+        try
+        {
+            exitCode = application.Run();
+        }
+        catch
+        {
+            try
+            {
+                application.Dispose();
+            }
+            catch
+            {
+                // Preserve the application failure that initiated cleanup.
+            }
+
+            throw;
+        }
+
+        application.Dispose();
+
+        return exitCode;
     }
 }

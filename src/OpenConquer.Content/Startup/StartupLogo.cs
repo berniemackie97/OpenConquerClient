@@ -7,17 +7,21 @@ namespace OpenConquer.Content.Startup;
 /// The one-shot retail startup logo selected for this launch.
 /// </summary>
 /// <remarks>
-/// Mirrors <c>CStartupLogoDialog_OnInitDialogLoadLogoBrush</c> (<c>0x4B08B9</c>). The bitmap may be
-/// absent: retail stores a null <c>HBITMAP</c> at <c>0x4B0A8E</c> without checking it,
-/// <c>CreatePatternBrush(NULL)</c> yields a null brush at <c>0x4B0AA2</c>, and the handler still
-/// returns <c>TRUE</c> at <c>0x4B0AAB</c>. The dialog is created, shown, centered, and destroyed on
-/// exactly the same schedule; only the background paint is missing.
+/// Mirrors <c>CStartupLogoDialog_OnInitDialogLoadLogoBrush</c> (<c>0x4B08B9</c>). Failure to
+/// obtain a usable bitmap is non-fatal. The modern client preserves that behavioral contract while
+/// safely rejecting malformed configuration instead of reproducing native printf undefined
+/// behavior.
 /// </remarks>
 public sealed class StartupLogo
 {
     private const int MaximumEncodedLength = 16 * 1024 * 1024;
 
-    private StartupLogo(int variantIndex, string contentPath, RgbaImage? image, string? unavailableReason)
+    private StartupLogo(
+        int variantIndex,
+        string? contentPath,
+        RgbaImage? image,
+        string? unavailableReason
+    )
     {
         VariantIndex = variantIndex;
         ContentPath = contentPath;
@@ -31,14 +35,17 @@ public sealed class StartupLogo
         get;
     }
 
-    /// <summary>The resolved bitmap path, whether or not it could be loaded.</summary>
-    public string ContentPath
+    /// <summary>
+    /// The resolved bitmap path, or <see langword="null"/> when configuration could not safely
+    /// produce one.
+    /// </summary>
+    public string? ContentPath
     {
         get;
     }
 
     /// <summary>
-    /// The decoded bitmap, or <see langword="null"/> when it could not be loaded.
+    /// The decoded bitmap, or <see langword="null"/> when no usable startup image is available.
     /// </summary>
     public RgbaImage? Image
     {
@@ -46,8 +53,7 @@ public sealed class StartupLogo
     }
 
     /// <summary>
-    /// Why <see cref="Image"/> is <see langword="null"/>, or <see langword="null"/> when the bitmap
-    /// loaded. Non-fatal, but reported so a broken content set is visible rather than silent.
+    /// Why <see cref="Image"/> is unavailable, or <see langword="null"/> when the bitmap loaded.
     /// </summary>
     public string? UnavailableReason
     {
@@ -55,30 +61,56 @@ public sealed class StartupLogo
     }
 
     /// <summary>
-    /// Resolves and loads the startup logo for the supplied monotonic tick.
+    /// Resolves and loads the optional startup logo for the supplied monotonic tick.
     /// </summary>
-    /// <remarks>
-    /// The bitmap is read with <see cref="ContentLookupMode.LooseOnly"/> because retail loads it
-    /// through <c>LoadImageA(..., LR_LOADFROMFILE)</c> at <c>0x4B0A88</c>, which is raw Win32 file
-    /// I/O and never consults the package layer.
-    /// </remarks>
-    public static StartupLogo Load(IClientContentSource contentSource, long monotonicTickMilliseconds)
+    public static StartupLogo Load(
+        IClientContentSource contentSource,
+        long monotonicTickMilliseconds
+    )
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        StartupLogoConfiguration configuration = StartupLogoConfiguration.LoadOrDefault(contentSource);
-
         // (timeGetTime() & 1) + 1 at 0x4B0A4F..0x4B0A68.
         int variantIndex = (int)((monotonicTickMilliseconds & 1L) + 1L);
-        string contentPath = configuration.GetLogoPath(variantIndex);
 
-        if (!contentSource.TryOpenRead(contentPath, ContentLookupMode.LooseOnly, out Stream? stream))
+        string contentPath;
+
+        try
         {
-            return new StartupLogo(variantIndex, contentPath, image: null, $"'{contentPath}' was not found as a loose file.");
+            StartupLogoConfiguration configuration = StartupLogoConfiguration.LoadOrDefault(
+                contentSource
+            );
+
+            contentPath = configuration.GetLogoPath(variantIndex);
+        }
+        catch (Exception exception) when (IsNonFatalLogoFailure(exception))
+        {
+            return new StartupLogo(
+                variantIndex,
+                contentPath: null,
+                image: null,
+                unavailableReason: $"Startup logo configuration could not be used: {exception.Message}"
+            );
         }
 
         try
         {
+            if (
+                !contentSource.TryOpenRead(
+                    contentPath,
+                    ContentLookupMode.LooseOnly,
+                    out Stream? stream
+                )
+            )
+            {
+                return new StartupLogo(
+                    variantIndex,
+                    contentPath,
+                    image: null,
+                    unavailableReason: $"'{contentPath}' was not found as a loose file."
+                );
+            }
+
             byte[] encodedImage;
 
             using (stream)
@@ -86,11 +118,30 @@ public sealed class StartupLogo
                 encodedImage = ContentRead.ReadBytes(stream, contentPath, MaximumEncodedLength);
             }
 
-            return new StartupLogo(variantIndex, contentPath, WindowsBitmapReader.Decode24Bit(encodedImage), unavailableReason: null);
+            return new StartupLogo(
+                variantIndex,
+                contentPath,
+                WindowsBitmapReader.Decode24Bit(encodedImage),
+                unavailableReason: null
+            );
         }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (IsNonFatalLogoFailure(exception))
         {
-            return new StartupLogo(variantIndex, contentPath, image: null, $"'{contentPath}' could not be loaded: {exception.Message}");
+            return new StartupLogo(
+                variantIndex,
+                contentPath,
+                image: null,
+                unavailableReason: $"'{contentPath}' could not be loaded: {exception.Message}"
+            );
         }
+    }
+
+    private static bool IsNonFatalLogoFailure(Exception exception)
+    {
+        return exception
+            is ArgumentException
+                or InvalidDataException
+                or IOException
+                or UnauthorizedAccessException;
     }
 }

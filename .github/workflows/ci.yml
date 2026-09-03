@@ -47,8 +47,8 @@ jobs:
       - name: Test
         run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 
-      # Proves the tracked content set is exactly what its manifest declares, from a clean clone.
-      # This is what catches a payload file silently dropped by an ignore rule.
+      # Proves the implemented content closure, tracked manifest, and physical payload are identical
+      # from a clean clone. This catches both ignored/dropped payload and content-slice drift.
       - name: Verify content set
         run: >
           dotnet run --project tools/OpenConquer.Content.Tool --configuration Release --no-build --no-restore

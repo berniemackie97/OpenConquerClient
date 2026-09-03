@@ -29,7 +29,15 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         }
         catch
         {
-            gl.Dispose();
+            try
+            {
+                gl.Dispose();
+            }
+            catch
+            {
+                // Preserve the context-validation or capability-query failure.
+            }
+
             throw;
         }
     }
@@ -54,42 +62,51 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         get;
     }
 
-    public OpenGLRenderer CreateRenderer(LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy = PresentationPolicy.Fit)
+    public OpenGLRenderer CreateRenderer(
+        LogicalRenderSize logicalRenderSize,
+        int framebufferWidth,
+        int framebufferHeight,
+        PresentationPolicy presentationPolicy = PresentationPolicy.Fit
+    )
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);
 
         if (logicalRenderSize.Width <= 0 || logicalRenderSize.Height <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(logicalRenderSize), logicalRenderSize, "Logical render size must have positive width and height.");
+            throw new ArgumentOutOfRangeException(
+                nameof(logicalRenderSize),
+                logicalRenderSize,
+                "Logical render size must have positive width and height."
+            );
         }
 
         if (!Enum.IsDefined(presentationPolicy))
         {
-            throw new ArgumentOutOfRangeException(nameof(presentationPolicy), presentationPolicy, "Unknown presentation policy.");
+            throw new ArgumentOutOfRangeException(
+                nameof(presentationPolicy),
+                presentationPolicy,
+                "Unknown presentation policy."
+            );
         }
 
-        return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy);
+        return new OpenGLRenderer(
+            _gl,
+            logicalRenderSize,
+            framebufferWidth,
+            framebufferHeight,
+            presentationPolicy
+        );
     }
 
-    /// <summary>
-    /// Creates a startup surface that paints the supplied logo bitmap.
-    /// </summary>
-    public OpenGLStartupSurfaceRenderer CreateStartupSurfaceRenderer(int width, int height, ReadOnlySpan<byte> rgbaPixels)
+    public OpenGLStartupSurfaceRenderer CreateStartupSurfaceRenderer(
+        int width,
+        int height,
+        ReadOnlySpan<byte> rgbaPixels
+    )
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);
 
         return new OpenGLStartupSurfaceRenderer(_gl, width, height, rgbaPixels);
-    }
-
-    /// <summary>
-    /// Creates a startup surface with no logo bitmap, matching the native case where the bitmap
-    /// could not be loaded and the dialog is painted with its default background.
-    /// </summary>
-    public OpenGLStartupSurfaceRenderer CreateStartupSurfaceRenderer()
-    {
-        ObjectDisposedException.ThrowIf(_disposed, instance: this);
-
-        return new OpenGLStartupSurfaceRenderer(_gl);
     }
 
     public void Dispose()
@@ -114,21 +131,30 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         gl.GetInteger(pname: GetPName.MajorVersion, out int majorVersion);
         gl.GetInteger(pname: GetPName.MinorVersion, out int minorVersion);
 
-        if (majorVersion < MinimumMajorVersion || majorVersion == MinimumMajorVersion && minorVersion < MinimumMinorVersion)
+        if (
+            majorVersion < MinimumMajorVersion
+            || majorVersion == MinimumMajorVersion && minorVersion < MinimumMinorVersion
+        )
         {
-            throw new NotSupportedException($"OpenGL {MinimumMajorVersion}.{MinimumMinorVersion} or later is required. The current context provides OpenGL {majorVersion}.{minorVersion}.");
+            throw new NotSupportedException(
+                $"OpenGL {MinimumMajorVersion}.{MinimumMinorVersion} or later is required. "
+                    + $"The current context provides OpenGL {majorVersion}.{minorVersion}."
+            );
         }
 
         gl.GetInteger(pname: GetPName.ContextProfileMask, out int profileMask);
 
         if ((profileMask & (int)GLEnum.ContextCoreProfileBit) == 0)
         {
-            throw new NotSupportedException($"An OpenGL {MinimumMajorVersion}.{MinimumMinorVersion} Core profile is required.");
+            throw new NotSupportedException(
+                $"An OpenGL {MinimumMajorVersion}.{MinimumMinorVersion} Core profile is required."
+            );
         }
     }
 
     private static string GetRequiredString(GL gl, StringName name)
     {
-        return gl.GetStringS(name) ?? throw new InvalidOperationException($"OpenGL did not provide a value for {name}.");
+        return gl.GetStringS(name)
+            ?? throw new InvalidOperationException($"OpenGL did not provide a value for {name}.");
     }
 }

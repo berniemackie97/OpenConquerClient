@@ -1,3 +1,5 @@
+using System.Runtime.ExceptionServices;
+using OpenConquer.Content.Images;
 using OpenConquer.Content.Startup;
 using OpenConquer.Platform;
 using OpenConquer.Rendering.OpenGL;
@@ -5,17 +7,19 @@ using OpenConquer.Rendering.OpenGL;
 namespace OpenConquer.Client;
 
 /// <summary>
-/// Presents the retail startup logo on a short-lived OpenGL window.
+/// Presents the retail startup logo on a short-lived OpenGL window when the selected bitmap is
+/// available.
 /// </summary>
 /// <remarks>
-/// The window is sized to the logo bitmap so the image occupies its natural logical size, matching
-/// the native pattern-brush presentation. When no bitmap could be loaded the window still appears,
-/// sized from the dialog template, because retail also shows an empty dialog in that case.
+/// Retail tolerates a missing bitmap and continues initialization. The original Win32 client still
+/// creates an empty dialog in that state, but its pixel dimensions depend on runtime dialog-font
+/// metrics that are not statically verified. The modern client therefore treats the visual splash
+/// as optional rather than inventing an unverified cross-platform pixel size.
 /// </remarks>
 internal sealed class OpenGLStartupSplash : IStartupSplash
 {
-    private readonly StartupLogo _logo;
-    private readonly StartupWindow _window;
+    private readonly RgbaImage? _image;
+    private readonly StartupWindow? _window;
 
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLStartupSurfaceRenderer? _renderer;
@@ -25,18 +29,27 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
     {
         ArgumentNullException.ThrowIfNull(logo);
 
-        _logo = logo;
-        _window = new StartupWindow(ResolveSurfaceSize(logo));
-        _window.Rendering += OnRendering;
-        _window.OpenGLContextReady += OnOpenGLContextReady;
-        _window.OpenGLContextReleasing += OnOpenGLContextReleasing;
+        if (logo.Image is not { } image)
+        {
+            return;
+        }
+
+        _image = image;
+
+        StartupWindow window = new(new PixelSize(image.Width, image.Height));
+
+        _window = window;
+
+        window.Rendering += OnRendering;
+        window.OpenGLContextReady += OnOpenGLContextReady;
+        window.OpenGLContextReleasing += OnOpenGLContextReleasing;
     }
 
     public void Show()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        _window.ShowAndRender();
+        _window?.ShowAndRender();
     }
 
     public void Dispose()
@@ -46,72 +59,72 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
             return;
         }
 
-        // Unsubscribe first so a callback raised during teardown cannot reach a released renderer.
-        _window.Rendering -= OnRendering;
-        _window.OpenGLContextReady -= OnOpenGLContextReady;
+        StartupWindow? window = _window;
+
+        if (window is null)
+        {
+            _disposed = true;
+            return;
+        }
+
+        window.Rendering -= OnRendering;
+        window.OpenGLContextReady -= OnOpenGLContextReady;
 
         try
         {
-            _window.Dispose();
+            // StartupWindow raises OpenGLContextReleasing while its context is current. That event
+            // is the only safe place to destroy the renderer's GL objects.
+            window.Dispose();
         }
         finally
         {
-            _window.OpenGLContextReleasing -= OnOpenGLContextReleasing;
-            ReleaseRenderingResources();
+            window.OpenGLContextReleasing -= OnOpenGLContextReleasing;
+
+            // If the platform could not make the context current, the release event may never have
+            // run. Never retry GL deletion after the native window/context teardown.
+            _renderer = null;
+            _graphicsDevice = null;
             _disposed = true;
         }
-    }
-
-    /// <summary>
-    /// Chooses the startup window's logical size.
-    /// </summary>
-    /// <remarks>
-    /// The bitmap's own dimensions are authoritative whenever it loaded, because retail paints it
-    /// unscaled into a dialog whose client area the retail artwork was authored against. Only the
-    /// no-bitmap case falls back to the dialog template's derived size, which is documented on
-    /// <see cref="StartupLogoDialogTemplate"/> as inferred from font metrics rather than proven.
-    /// </remarks>
-    private static PixelSize ResolveSurfaceSize(StartupLogo logo)
-    {
-        if (logo.Image is not null)
-        {
-            return new PixelSize(logo.Image.Width, logo.Image.Height);
-        }
-
-        (int width, int height) = StartupLogoDialogTemplate.DeriveReferenceClientSize();
-
-        return new PixelSize(width, height);
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
     {
         if (_graphicsDevice is not null || _renderer is not null)
         {
-            throw new InvalidOperationException("Startup logo rendering has already been initialized.");
+            throw new InvalidOperationException(
+                "Startup logo rendering has already been initialized."
+            );
         }
 
+        RgbaImage image =
+            _image
+            ?? throw new InvalidOperationException(
+                "Startup rendering cannot initialize without a logo image."
+            );
+
         OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
-        OpenGLStartupSurfaceRenderer? renderer = null;
 
         try
         {
-            renderer = _logo.Image is { } image
-                ? graphicsDevice.CreateStartupSurfaceRenderer(image.Width, image.Height, image.Pixels.Span)
-                : graphicsDevice.CreateStartupSurfaceRenderer();
+            OpenGLStartupSurfaceRenderer renderer = graphicsDevice.CreateStartupSurfaceRenderer(
+                image.Width,
+                image.Height,
+                image.Pixels.Span
+            );
 
             _renderer = renderer;
             _graphicsDevice = graphicsDevice;
-            renderer = null;
         }
         catch
         {
             try
             {
-                renderer?.Dispose();
-            }
-            finally
-            {
                 graphicsDevice.Dispose();
+            }
+            catch
+            {
+                // Preserve the startup-renderer creation failure.
             }
 
             throw;
@@ -120,7 +133,13 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
 
     private void OnRendering(StartupSurfaceMetrics metrics)
     {
-        _renderer?.Render(
+        OpenGLStartupSurfaceRenderer renderer =
+            _renderer
+            ?? throw new InvalidOperationException(
+                "Startup rendering cannot begin before the renderer is initialized."
+            );
+
+        renderer.Render(
             metrics.FramebufferSize.Width,
             metrics.FramebufferSize.Height,
             metrics.LogicalSize.Width,
@@ -135,22 +154,32 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
 
     private void ReleaseRenderingResources()
     {
+        OpenGLStartupSurfaceRenderer? renderer = _renderer;
+        OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
+
+        _renderer = null;
+        _graphicsDevice = null;
+
+        ExceptionDispatchInfo? firstFailure = null;
+
         try
         {
-            _renderer?.Dispose();
+            renderer?.Dispose();
         }
-        finally
+        catch (Exception exception)
         {
-            _renderer = null;
-
-            try
-            {
-                _graphicsDevice?.Dispose();
-            }
-            finally
-            {
-                _graphicsDevice = null;
-            }
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
         }
+
+        try
+        {
+            graphicsDevice?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        firstFailure?.Throw();
     }
 }
