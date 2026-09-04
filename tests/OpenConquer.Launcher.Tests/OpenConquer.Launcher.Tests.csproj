@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/OpenConquer.Launcher/OpenConquer.Launcher.csproj" />
+  </ItemGroup>
+
+</Project>

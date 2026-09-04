@@ -3,16 +3,27 @@
 This document describes the high-level architecture of OpenConquer Client for contributors and
 developers interested in the project.
 
-It is intentionally focused on subsystem boundaries, dependencies, ownership, and lifetime.
+It is intentionally focused on product boundaries, subsystem boundaries, dependencies, ownership,
+and lifetime.
 
 Compatibility-specific native graphics requirements are documented separately. Historical
 `Server.dat` evidence is documented separately because that format is retained by offline tooling,
 not by the modern client runtime.
 
-## Projects
+## Products and Projects
+
+The repository now contains two independent executable products:
+
+- `OpenConquer.Launcher`
+- `OpenConquer.Client`
+
+They are separate process and composition boundaries. The launcher is not a wrapper assembly around
+the game client, and the game client is not a reusable library for the launcher.
 
 ```mermaid
 flowchart TD
+    Launcher["OpenConquer.Launcher"]
+
     Client["OpenConquer.Client"]
 
     Platform["OpenConquer.Platform"]
@@ -28,37 +39,168 @@ flowchart TD
     Client --> Networking
 ```
 
-`OpenConquer.Client` is the composition root. Subsystem projects remain independent unless a real
-ownership or behavioral requirement justifies a dependency between them.
+`OpenConquer.Launcher` is its own executable composition root.
 
-In particular, `OpenConquer.Platform` and `OpenConquer.Rendering` are sibling subsystems and do not
-reference one another.
+`OpenConquer.Client` is the sole game-runtime composition root. Game subsystem projects remain
+independent unless a real ownership or behavioral requirement justifies a dependency between them.
 
-Offline development and compatibility tooling is not part of this runtime dependency graph.
+There is deliberately no project-reference edge from `OpenConquer.Launcher` to `OpenConquer.Client`,
+`OpenConquer.Platform`, `OpenConquer.Rendering`, `OpenConquer.Content`, `OpenConquer.Gameplay`, or
+`OpenConquer.Networking`.
+
+In particular, `OpenConquer.Platform` and `OpenConquer.Rendering` are sibling game-runtime
+subsystems and do not reference one another.
+
+Offline development and compatibility tooling is not part of either product's runtime dependency
+graph.
 
 ## Responsibilities
 
 | Project                  | Owns                                                                                                                                                                                     |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenConquer.Client`     | process entry point, startup-option validation, compatibility-derived runtime policy, subsystem composition, application lifetime, and shutdown coordination                             |
+| `OpenConquer.Launcher`   | launcher process entry point, Avalonia application lifetime, launcher-window shell, future account/update/repair composition, and future authorized game-start orchestration             |
+| `OpenConquer.Client`     | game process entry point, startup-option validation, compatibility-derived runtime policy, game-subsystem composition, application lifetime, and shutdown coordination                   |
 | `OpenConquer.Platform`   | desktop windowing, native graphics-context lifetime, physical framebuffer state, desktop frame-loop orchestration and pacing mechanics, native buffer swapping, and future desktop input |
 | `OpenConquer.Gameplay`   | game state, entities, movement, combat, interactions, and gameplay rules                                                                                                                 |
 | `OpenConquer.Rendering`  | OpenGL integration, logical rendering, logical-to-host framebuffer composition, cameras, shaders, GPU resources, and render targets                                                      |
 | `OpenConquer.Content`    | runtime client-root filesystem semantics, required legacy configuration and formats, decoding, loading, and content lookup                                                               |
-| `OpenConquer.Networking` | connections, transport, encryption, packet framing, protocol encoding, and decoding                                                                                                      |
+| `OpenConquer.Networking` | game connections, transport, encryption, packet framing, protocol encoding, and decoding                                                                                                 |
 
 Platform-specific window and context types remain inside `OpenConquer.Platform`. Rendering owns
 graphics behavior and GPU resources without depending on the windowing subsystem.
 
-Compatibility-derived application policy remains in `OpenConquer.Client`. Platform implements the
-desktop mechanism required to apply that policy without knowing why a particular value was chosen.
+Compatibility-derived game policy remains in `OpenConquer.Client`. Platform implements the desktop
+mechanism required to apply that policy without knowing why a particular value was chosen.
+
+Launcher UI and launcher process lifetime belong to `OpenConquer.Launcher`. They do not move into
+the game's Platform project merely because both products have desktop windows.
 
 Historical formats that have no production runtime consumer do not remain in runtime assemblies
 merely because they are useful reconstruction evidence.
 
-## Runtime Flow
+## Launcher Product Boundary
 
-The runtime flow is directional, with `OpenConquer.Client` coordinating independent subsystems.
+`OpenConquer.Launcher` is a .NET 10 desktop executable using Avalonia.
+
+The current launcher foundation contains only the product shell:
+
+```text
+Program
+    │
+    ▼
+Avalonia AppBuilder
+    │
+    ▼
+App
+    │
+    ▼
+MainWindow
+```
+
+`Program` owns process startup and explicitly uses `ShutdownMode.OnMainWindowClose`.
+
+The main-window lifetime is therefore the current launcher-process lifetime. Closing the primary
+launcher window terminates the launcher rather than allowing an unrelated auxiliary window to keep
+the process alive accidentally.
+
+If a future product requirement introduces tray behavior, background patching, or another
+long-running launcher mode, that lifetime policy must change explicitly rather than emerging from
+additional windows.
+
+The launcher currently uses:
+
+```text
+Avalonia
+Avalonia.Desktop
+Avalonia.Themes.Fluent
+```
+
+It deliberately does not currently depend on:
+
+```text
+Silk.NET
+OpenConquer.Client
+OpenConquer.Platform
+OpenConquer.Rendering
+OpenConquer.Content
+OpenConquer.Gameplay
+OpenConquer.Networking
+```
+
+The launcher foundation also deliberately introduces no speculative:
+
+- account-authentication implementation;
+- OAuth/OIDC client;
+- registration or recovery UI;
+- token cache;
+- credential store;
+- HTTP service layer;
+- updater;
+- repair system;
+- launcher-to-game IPC;
+- game-process launcher;
+- launch grant;
+- realm model;
+- realm discovery;
+- realm routing;
+- legacy server connection profile.
+
+Those concerns require separately audited boundaries when their actual contracts are introduced.
+
+The launcher currently has a minimal presentation shell rather than placeholder feature screens.
+Feature UI should follow implemented product state and service contracts rather than inventing fake
+login, update, or realm workflows ahead of their architecture.
+
+## Product Publish Boundary
+
+Building an executable and publishing an executable are treated as different product guarantees.
+
+CI publishes both executable products independently.
+
+The game-client publish must contain the exact verified retail runtime content closure:
+
+```text
+data/main/Logo1.bmp
+data/main/Logo2.bmp
+ini/GameSetUp.ini
+ini/info.ini
+ini/package.ini
+```
+
+The published client is additionally checked for any `Server.dat` anywhere beneath the publish root.
+
+The launcher publish is separately checked to ensure it does not acquire:
+
+```text
+content/retail-5517
+```
+
+The intended product relationship is therefore not:
+
+```text
+launcher package
+└── game runtime internals and retail content
+```
+
+Instead each executable has its own publish boundary:
+
+```text
+OpenConquer.Launcher publish
+        │
+        └── launcher runtime only
+
+OpenConquer.Client publish
+        │
+        └── exact game runtime content closure
+```
+
+Runtime-identifier-specific packages, installers, code signing, notarization, self-contained
+deployment, and operating-system-native bundles remain future release-engineering concerns.
+
+## Game Runtime Flow
+
+The game runtime flow is directional, with `OpenConquer.Client` coordinating independent game
+subsystems.
 
 ```mermaid
 flowchart LR
@@ -82,20 +224,26 @@ flowchart LR
     Rendering --> GPU
 ```
 
-The application begins and ends in `OpenConquer.Client`. Platform provides the desktop runtime,
-Content provides access to required legacy client data, Networking communicates with servers,
-Gameplay owns simulation state, and Rendering consumes the state required to produce a frame.
+The game process begins and ends in `OpenConquer.Client`. Platform provides the game desktop
+runtime, Content provides access to required legacy client data, Networking communicates with game
+servers, Gameplay owns simulation state, and Rendering consumes the state required to produce a
+frame.
+
+`OpenConquer.Launcher` is not part of this steady-state game-subsystem graph.
+
+The future launcher-to-game authorization transition will cross a process boundary. It must not be
+implemented as a direct launcher reference to game runtime internals.
 
 A historical retail file is not automatically part of this runtime flow. Compatibility evidence may
 instead terminate at an offline tool or parity test.
 
 ## Startup and Content Boundary
 
-Startup configuration belongs to the executable composition boundary rather than to Content,
-Platform, or Rendering.
+Game startup configuration belongs to the game executable composition boundary rather than to
+Content, Platform, or Rendering.
 
-`ClientStartupOptions` interprets the currently supported process arguments before the application
-is created.
+`ClientStartupOptions` interprets the currently supported game-process arguments before the
+application is created.
 
 The supported startup form is:
 
@@ -135,6 +283,12 @@ ClientStartupOptions
         ├── loose files through ClientContentRoot
         └── package entries through WdfArchive
 ```
+
+Direct game-process startup remains available for development and reconstruction work.
+
+It is not the intended final production account-authentication mechanism. Future production startup
+will introduce an explicit authorized launcher-to-game transition without using ordinary process
+arguments as a bearer-token transport.
 
 `ClientContentRoot` establishes the legacy client filesystem boundary.
 
@@ -293,8 +447,22 @@ Detailed evidence and security interpretation are documented in
 The modern production architecture does not use a locally shipped server list as its trust or
 routing boundary.
 
-The intended high-level lifecycle is launcher-first authentication followed by authenticated game
-startup and authenticated realm discovery:
+The first process boundary required for that architecture now exists:
+
+```text
+OpenConquer.Launcher
+        │
+        │ future authorized transition
+        ▼
+OpenConquer.Client
+```
+
+Only the executable/product boundary is implemented in the current launcher foundation.
+
+Account authentication, launch authorization, launcher-to-game handoff, authenticated realm
+discovery, realm selection, and realm routing have not yet been implemented.
+
+The intended high-level lifecycle remains:
 
 ```text
 launcher authentication
@@ -312,20 +480,32 @@ server-authoritative route and short-lived connection authorization
 realm ingress
 ```
 
-This is an architectural direction, not an assertion that those services or launcher boundaries have
-already been implemented in the current repository.
+The future authorization protocol, launcher-to-game handoff mechanism, service contracts,
+credential/session-storage policy, and realm-domain types remain implementation-slice decisions and
+must be audited when introduced.
 
-The concrete launcher project, authorization protocol, launcher-to-game handoff mechanism, service
-contracts, and realm-domain types remain implementation-slice decisions and must be audited when
-introduced.
+The launcher foundation must not be mistaken for an authorization implementation merely because the
+launcher executable now exists.
 
-The important boundary established now is narrower:
+The important boundaries established so far are:
 
+- launcher and game are separate executable products;
+- the launcher does not reference game runtime subsystem assemblies;
+- the launcher does not ship the game's retail runtime content closure;
 - the game runtime does not trust or consume retail `Server.dat`;
 - player-facing realm identity is not an IP address and port;
 - historical `ServerName` semantics remain at compatibility/protocol boundaries rather than becoming
   the modern realm-domain identity;
 - account-aware realm discovery and routing belong to authenticated server-controlled boundaries.
+
+Future launcher account authentication should use an appropriate native-application authorization
+flow rather than collecting account passwords into an invented local protocol.
+
+Long-lived account credentials or launcher bearer tokens must not be passed into
+`OpenConquer.Client` through command-line arguments, environment variables, or temporary plaintext
+files.
+
+The precise secure handoff mechanism is intentionally not selected by this foundation slice.
 
 ## Startup Logo Lifetime
 
@@ -379,7 +559,7 @@ initialization surface and the main client window.
 
 ## Platform Boundary
 
-`OpenConquer.Platform` owns behavior whose semantics come from the desktop environment:
+`OpenConquer.Platform` owns behavior whose semantics come from the game desktop environment:
 
 - native startup and main-window creation and destruction
 - OpenGL context creation and lifetime
@@ -392,8 +572,11 @@ initialization surface and the main client window.
 
 Silk.NET windowing and input types must not leak into Gameplay, Rendering, Content, or Networking.
 
-`OpenConquer.Client` depends on Platform as a consumer and composition root rather than implementing
-platform behavior itself.
+`OpenConquer.Client` depends on Platform as a consumer and game composition root rather than
+implementing platform behavior itself.
+
+`OpenConquer.Launcher` does not depend on this game Platform project. Avalonia owns the launcher's
+desktop UI mechanism.
 
 Framebuffer dimensions are represented by `PixelSize`. Zero-sized dimensions are valid because a
 desktop framebuffer may temporarily have no drawable area while minimized. Negative dimensions are
@@ -844,12 +1027,18 @@ that framebuffer visible by swapping the host buffers.
 
 ## Dependency Rules
 
-Dependencies are introduced only when a subsystem genuinely requires another subsystem's behavior or
-ownership.
+Dependencies are introduced only when a product or subsystem genuinely requires another boundary's
+behavior or ownership.
 
 The current architecture follows these rules:
 
-- `OpenConquer.Client` is the sole runtime composition root.
+- `OpenConquer.Launcher` and `OpenConquer.Client` are separate executable product composition roots.
+- `OpenConquer.Launcher` does not reference `OpenConquer.Client`.
+- `OpenConquer.Launcher` does not reference `OpenConquer.Platform`, `OpenConquer.Rendering`,
+  `OpenConquer.Content`, `OpenConquer.Gameplay`, or `OpenConquer.Networking`.
+- `OpenConquer.Launcher` does not depend on Silk.NET.
+- the launcher publish does not contain the game retail runtime content closure.
+- `OpenConquer.Client` is the sole game-runtime composition root.
 - `OpenConquer.Client` owns compatibility-derived application policy such as the retail outer frame
   interval.
 - `OpenConquer.Platform` implements frame-pacing mechanics without owning Conquer-specific cadence
@@ -866,5 +1055,8 @@ The current architecture follows these rules:
   native format behavior.
 - historical `Server.dat` support remains outside `src/` and outside the production runtime content
   closure.
+- the published game client must contain no `Server.dat`.
+- future launcher-to-game authorization crosses an explicit process/security boundary rather than a
+  direct project-reference boundary.
 
 A project is an ownership and dependency boundary, not a replacement for a folder.
