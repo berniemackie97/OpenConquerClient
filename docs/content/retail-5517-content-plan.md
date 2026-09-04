@@ -95,6 +95,9 @@ Readers and importers must still validate:
 - decoded dimensions and expansion;
 - malformed text and binary inputs.
 
+Modern safety limits may be stricter than the native implementation when they do not reject valid
+retail 5517 data or change verified compatibility behavior.
+
 ## Current Implemented Closure
 
 The checked-in `content/retail-5517` payload currently contains:
@@ -128,11 +131,14 @@ ClientContentPath
 
 ClientContentRoot
         │
-        └── contained case-insensitive loose-file lookup
+        ├── contained case-insensitive loose-file lookup
+        └── host link/reparse rejection
 
 WdfArchive
         │
-        └── bounded package-entry lookup
+        ├── bounded header/index validation
+        ├── sorted UID lookup
+        └── bounded WdfEntryStream creation
 
 PackagedClientContentSource
         │
@@ -179,30 +185,157 @@ This makes both of the following invalid:
 
 ## WDF Policy
 
-Native analysis has established the package-registration and routing model required for current
-compatibility:
+The WDF boundary now implements the verified retail registration, routing, index, and lookup
+contracts required by current consumers.
 
-- `package.ini` is whitespace-token parsed;
-- missing declarations are non-fatal;
-- prefixes are derived from declarations and compared first-wins;
-- a missing first WDF still owns its prefix;
-- routing uses the first virtual-path segment as package key;
-- hashing uses the full normalized virtual path;
-- loose and packaged lookup modes remain explicit.
+### Package declaration registration
 
-The next WDF-specific hardening slice must finish the untrusted-archive boundary without changing
-those verified compatibility semantics.
+Native `GraphicData.dll` consumes `ini/package.ini` as whitespace-delimited package-name tokens, not
+as an INI section/key document.
 
-That slice should cover, where supported by format/native evidence:
+The modern boundary preserves the verified non-gating behavior:
 
-- practical entry-count bounds;
-- strict table validation;
-- reserved fields;
-- entry payload bounds relative to the index;
-- payload overlap;
-- deterministic malformed/truncated failure;
-- checked offset/length arithmetic;
-- existing-but-unopenable or malformed registered-package behavior.
+- a missing declaration file registers zero packages and startup continues;
+- an unavailable declaration file registers zero packages and startup continues;
+- a declaration file rejected by the modern bounded-read safety policy registers zero packages and
+  startup continues;
+- an individual missing package does not abort registration;
+- an individual unavailable or structurally invalid WDF does not abort registration;
+- later independent package declarations continue to be processed.
+
+The declaration file is bounded to 64 KiB by modern policy. This is not a native format limit; it
+prevents an untrusted optional startup file from driving unbounded allocation while preserving the
+native non-fatal package-registration boundary.
+
+### Prefix derivation and package identity
+
+For each declared package:
+
+1. ASCII `A-Z` is folded to lowercase;
+2. `\` is converted to `/`;
+3. everything from the final `.` onward is removed;
+4. no basename extraction occurs.
+
+For example:
+
+```text
+data.wdf        -> data
+folder/data.wdf -> folder/data
+data.v2.wdf     -> data.v2
+```
+
+The normalized prefix string is useful for diagnostics, but it is **not** the actual native routing
+identity.
+
+Native `TqPackagesOpen` hashes the prefix with `WdfHash_Core` and compares only that 32-bit hash
+against registered package objects.
+
+Therefore:
+
+- package registration is first-wins by **prefix hash**;
+- the first declaration owns that hash before its WDF is opened;
+- a missing or unavailable first WDF still owns the hash;
+- a later declaration with the same prefix is a duplicate;
+- two different prefix strings whose 32-bit hashes collide are also duplicates;
+- the first registration wins in either case.
+
+`WdfPackageRegistration` retains the human-readable prefix and the observable registration outcome,
+while the runtime routing table is keyed by the native 32-bit prefix hash.
+
+### Virtual-path routing
+
+Package lookup:
+
+1. validates the modern virtual-path structure;
+2. normalizes separators;
+3. derives the first normalized virtual-path segment;
+4. hashes that segment with the native WDF hash;
+5. selects the first registered package with the matching prefix hash;
+6. hashes the complete normalized virtual path to obtain the WDF entry UID.
+
+The native hash implementation uses a 256-byte zero-padded buffer and silently truncates longer
+inputs. `WdfPathHash` preserves that verified behavior.
+
+The lookup modes remain explicit:
+
+- `LooseOnly`;
+- `PackageOnly`;
+- `LooseThenPackage`.
+
+There is no universal loose/package precedence outside the entry point that requested the lookup.
+
+### Archive validation
+
+A WDF archive is treated as untrusted binary data.
+
+The implemented reader validates:
+
+- the `PFDW` magic;
+- the 12-byte archive header;
+- a modern maximum of 100,000 entries before index allocation;
+- checked index-table size and end arithmetic;
+- an index offset at or after the header;
+- an index table fully contained by the physical archive;
+- complete 16-byte index records;
+- a zero reserved DWORD in every index record;
+- strictly ascending entry UIDs;
+- duplicate UID rejection;
+- payload offsets at or after the header;
+- payload ends at or before the index-table offset;
+- deterministic rejection of malformed or truncated structures.
+
+The 100,000-entry ceiling is a modern resource-safety policy, not a native format limit. The
+surveyed retail archives contain:
+
+```text
+c3.wdf    10,274 entries
+data.wdf  14,739 entries
+```
+
+so the limit leaves substantial compatibility headroom while preventing an attacker-controlled
+header from requesting effectively unbounded index allocation.
+
+The sorted on-disk UID table is retained in memory and queried with binary search rather than being
+flattened into an unordered dictionary. That preserves the verified format invariant and native
+lookup model.
+
+`WdfEntryStream` owns one physical archive stream and exposes only the selected entry range. Reads
+and seeks cannot escape the entry's declared payload bounds.
+
+### Unavailable archives
+
+Package routing ownership is established before archive resolution/opening.
+
+The modern registration outcomes are therefore:
+
+- `Registered` — the archive was opened and indexed;
+- `FileNotFound` — the declared package does not exist;
+- `ArchiveUnavailable` — package resolution, file access, or structural archive validation failed;
+- `DuplicatePrefix` — the native prefix hash was already owned by an earlier declaration.
+
+`FileNotFound` and `ArchiveUnavailable` retain their routing hash exactly as the native package
+object remains registered after `WdfHandler_OpenFile` failure. Lookups route to that unavailable
+package identity and miss rather than falling through to a later colliding declaration.
+
+Expected filesystem and archive-validation failures are contained at this boundary. Catastrophic CLR
+failures and programming errors are not hidden by a blanket `catch (Exception)`.
+
+### Payload overlap policy
+
+The current reader does **not** reject overlap between two individually valid entry payload ranges.
+
+Retail evidence shows packed contiguous payloads, but native evidence has not established that an
+overlapping range is structurally rejected by the native reader.
+
+Each individual entry is already constrained to the archive payload region and exposed through a
+bounded entry stream, so overlap does not allow a read to escape the validated archive payload
+boundary.
+
+Overlap rejection will be added only if later native or format evidence establishes it as part of
+the accepted WDF contract, or if a concrete safety requirement arises that cannot be satisfied by
+the existing containment model.
+
+It is therefore an explicit compatibility decision, not deferred cleanup.
 
 ## Expansion Rule
 
@@ -271,9 +404,12 @@ They should cover:
 - path validation;
 - case-insensitive loose lookup;
 - containment and symlink/reparse rejection;
-- package-prefix and duplicate semantics;
-- missing-package behavior;
-- WDF parsing and bounds;
+- package prefix-hash registration and duplicate/collision semantics;
+- missing and unavailable package behavior;
+- optional package-declaration failure behavior;
+- verified WDF hash vectors;
+- WDF header/index parsing and bounds;
+- WDF entry-stream read and seek containment;
 - configuration grammar;
 - bitmap decoding;
 - content-closure resolution;

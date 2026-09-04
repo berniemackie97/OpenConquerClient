@@ -15,22 +15,23 @@ public enum WdfPackageRegistrationOutcome
     Registered = 0,
 
     /// <summary>
-    /// The declared file is absent. Native still creates the package object and registers the
-    /// prefix with an empty index because <c>sub_100014F0</c> discards
+    /// The declared file is absent. Native still creates the package object and registers its
+    /// prefix hash with an empty index because <c>sub_100014F0</c> discards
     /// <c>WdfHandler_OpenFile</c>'s failure at <c>0x10001620</c>.
     /// </summary>
     FileNotFound = 1,
 
     /// <summary>
-    /// Another declaration already owns this prefix. Native returns early at
+    /// Another declaration already owns the same native prefix hash. Native compares the
+    /// 32-bit routing hash rather than the source prefix string and returns at
     /// <c>0x10003DEF</c> without replacing the first registration.
     /// </summary>
     DuplicatePrefix = 2,
 
     /// <summary>
-    /// The declared file exists but its archive could not be opened or structurally validated.
-    /// Native retains the already-registered package object with an empty index, so lookups under
-    /// the prefix miss while client initialization continues.
+    /// The declared file exists but its archive could not be resolved, opened, or structurally
+    /// validated. Native retains the already-registered package object with an empty index, so
+    /// lookups under the routing hash miss while client initialization continues.
     /// </summary>
     ArchiveUnavailable = 3,
 }
@@ -39,6 +40,9 @@ public enum WdfPackageRegistrationOutcome
 /// One <c>ini/package.ini</c> declaration and how it was resolved.
 /// </summary>
 /// <param name="DeclaredName">The token exactly as it appeared in <c>ini/package.ini</c>.</param>
-/// <param name="Prefix">The routing prefix derived from <paramref name="DeclaredName"/>.</param>
+/// <param name="Prefix">
+/// The normalized human-readable prefix derived from <paramref name="DeclaredName"/>. Native
+/// registration and routing use this prefix's 32-bit WDF hash as the actual package identity.
+/// </param>
 /// <param name="Outcome">How the declaration was resolved.</param>
 public readonly record struct WdfPackageRegistration(string DeclaredName, string Prefix, WdfPackageRegistrationOutcome Outcome);

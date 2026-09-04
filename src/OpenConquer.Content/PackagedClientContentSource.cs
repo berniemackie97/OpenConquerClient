@@ -10,11 +10,12 @@ namespace OpenConquer.Content;
 /// <remarks>
 /// Registration follows <c>GraphicData.dll!GraphicData_OpenPackagesFromPackageIni</c>
 /// (<c>0x1001A390</c>) and <c>TqPackageWdf.dll!TqPackagesOpen</c> (<c>0x10003D30</c>).
-/// Prefix ownership is established before the declared archive is opened. Missing, unreadable, or
-/// structurally invalid archives therefore retain their prefixes without an available
-/// <see cref="WdfArchive"/>, and later declarations with the same prefix remain duplicates. This
-/// preserves the verified native first-wins registration behavior while validating legacy archive
-/// bytes as untrusted modern input.
+/// Native package identity is the 32-bit hash of the derived prefix, not the prefix string itself.
+/// Hash ownership is established before the declared archive is opened. Missing, unreadable, or
+/// structurally invalid archives therefore retain their routing hashes without an available
+/// <see cref="WdfArchive"/>, and later declarations whose prefixes hash to the same value are
+/// duplicates. This preserves the verified native first-wins registration behavior while
+/// validating legacy archive bytes as untrusted modern input.
 /// </remarks>
 /// <remarks>
 /// This type holds no operating-system handles and is therefore not disposable: a
@@ -31,21 +32,23 @@ public sealed class PackagedClientContentSource : IClientContentSource
     private const int MaximumVirtualPathLength = 255;
 
     private readonly ClientContentRoot _looseFiles;
-    private readonly Dictionary<string, WdfArchive> _packagesByPrefix;
+    private readonly Dictionary<uint, WdfArchive> _packagesByPrefixHash;
 
-    private PackagedClientContentSource(ClientContentRoot looseFiles, Dictionary<string, WdfArchive> packagesByPrefix, IReadOnlyList<WdfPackageRegistration> packageRegistrations)
+    private PackagedClientContentSource(ClientContentRoot looseFiles, Dictionary<uint, WdfArchive> packagesByPrefixHash, List<WdfPackageRegistration> packageRegistrations)
     {
         _looseFiles = looseFiles;
-        _packagesByPrefix = packagesByPrefix;
-        PackageRegistrations = packageRegistrations;
+        _packagesByPrefixHash = packagesByPrefixHash;
+        PackageRegistrations = Array.AsReadOnly(packageRegistrations.ToArray());
     }
 
     /// <summary>
     /// Every <c>ini/package.ini</c> declaration in file order with its resolved outcome.
     /// </summary>
     /// <remarks>
-    /// Empty when the declaration file is absent. Native logs and continues with zero packages in
-    /// that case (<c>0x1001A3B0</c>).
+    /// Empty when the declaration file is absent, unavailable through the safe host-filesystem
+    /// boundary, or rejected by the modern bounded-read policy. Native treats failure to open the
+    /// declaration file as non-fatal and continues with zero registered packages
+    /// (<c>0x1001A3B0</c>).
     /// </remarks>
     public IReadOnlyList<WdfPackageRegistration> PackageRegistrations
     {
@@ -56,27 +59,47 @@ public sealed class PackagedClientContentSource : IClientContentSource
     {
         ClientContentRoot looseFiles = new(rootPath);
 
-        // Native registration identity is independent of whether the declared WDF file opens
-        // successfully. A missing or unavailable package still owns its prefix and therefore
-        // blocks later declarations with the same prefix.
-        HashSet<string> registeredPrefixes = new(StringComparer.Ordinal);
-        Dictionary<string, WdfArchive> packagesByPrefix = new(StringComparer.Ordinal);
+        // TqPackagesOpen stores and compares only WdfHash_Core(prefix). The source string remains
+        // useful for diagnostics, but routing ownership must follow the native 32-bit identity.
+        HashSet<uint> registeredPrefixHashes = [];
+        Dictionary<uint, WdfArchive> packagesByPrefixHash = [];
         List<WdfPackageRegistration> registrations = [];
 
-        if (!looseFiles.TryOpenRead(PackageConfigurationPath, ContentLookupMode.LooseOnly, out Stream? declarationStream))
-        {
-            return new PackagedClientContentSource(looseFiles, packagesByPrefix, registrations);
-        }
+        string[] declaredPackageNames;
 
-        using (declarationStream)
+        try
         {
-            foreach (string declaredName in ReadDeclaredPackageNames(declarationStream))
+            if (!looseFiles.TryOpenRead(PackageConfigurationPath, ContentLookupMode.LooseOnly, out Stream? declarationStream))
             {
-                registrations.Add(RegisterPackage(looseFiles, registeredPrefixes, packagesByPrefix, declaredName));
+                return new PackagedClientContentSource(looseFiles, packagesByPrefixHash, registrations);
+            }
+
+            using (declarationStream)
+            {
+                declaredPackageNames = ReadDeclaredPackageNames(declarationStream);
             }
         }
+        catch (InvalidDataException)
+        {
+            // The native registration routine does not gate client initialization. Our bounded
+            // read replaces unsafe legacy behavior with a safe zero-package result.
+            return new PackagedClientContentSource(looseFiles, packagesByPrefixHash, registrations);
+        }
+        catch (IOException)
+        {
+            return new PackagedClientContentSource(looseFiles, packagesByPrefixHash, registrations);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return new PackagedClientContentSource(looseFiles, packagesByPrefixHash, registrations);
+        }
 
-        return new PackagedClientContentSource(looseFiles, packagesByPrefix, registrations);
+        foreach (string declaredName in declaredPackageNames)
+        {
+            registrations.Add(RegisterPackage(looseFiles, registeredPrefixHashes, packagesByPrefixHash, declaredName));
+        }
+
+        return new PackagedClientContentSource(looseFiles, packagesByPrefixHash, registrations);
     }
 
     /// <inheritdoc />
@@ -100,8 +123,9 @@ public sealed class PackagedClientContentSource : IClientContentSource
 
         string normalizedPath = ClientContentPath.NormalizeVirtualPath(contentPath, nameof(contentPath), MaximumVirtualPathLength);
         string prefix = WdfPackagePrefix.FromVirtualPath(normalizedPath);
+        uint prefixHash = WdfPathHash.Compute(prefix);
 
-        if (_packagesByPrefix.TryGetValue(prefix, out WdfArchive? package))
+        if (_packagesByPrefixHash.TryGetValue(prefixHash, out WdfArchive? package))
         {
             return package.TryOpenRead(normalizedPath, out stream);
         }
@@ -128,28 +152,31 @@ public sealed class PackagedClientContentSource : IClientContentSource
         return Encoding.Latin1.GetString(bytes).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
-    private static WdfPackageRegistration RegisterPackage(ClientContentRoot looseFiles, HashSet<string> registeredPrefixes, Dictionary<string, WdfArchive> packagesByPrefix, string declaredName)
+    private static WdfPackageRegistration RegisterPackage(ClientContentRoot looseFiles, HashSet<uint> registeredPrefixHashes, Dictionary<uint, WdfArchive> packagesByPrefixHash, string declaredName)
     {
         string prefix = WdfPackagePrefix.FromDeclaredPackageName(declaredName);
+        uint prefixHash = WdfPathHash.Compute(prefix);
 
-        // TqPackagesOpen looks the prefix up at 0x10003DE1 and returns at 0x10003DEF when it is
-        // already registered. Prefix ownership is established before the package file is opened.
-        if (!registeredPrefixes.Add(prefix))
+        // TqPackagesOpen computes WdfHash_Core(prefix) at 0x10003DE1 and searches the registered
+        // package vector by that hash. Distinct prefix strings with the same hash are therefore
+        // duplicates, and the first registration wins.
+        if (!registeredPrefixHashes.Add(prefixHash))
         {
             return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.DuplicatePrefix);
-        }
-
-        // sub_100014F0 keeps the native package object registered even when WdfHandler_OpenFile
-        // fails. Represent that by retaining prefix ownership without an available archive.
-        if (!looseFiles.TryResolveFile(declaredName, out string? packagePath))
-        {
-            return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.FileNotFound);
         }
 
         WdfArchive archive;
 
         try
         {
+            // sub_100014F0 keeps the native package object registered even when
+            // WdfHandler_OpenFile fails. Resolution and archive opening therefore share the same
+            // expected availability boundary after routing-hash ownership has been established.
+            if (!looseFiles.TryResolveFile(declaredName, out string? packagePath))
+            {
+                return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.FileNotFound);
+            }
+
             archive = WdfArchive.Open(packagePath);
         }
         catch (InvalidDataException)
@@ -165,7 +192,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
             return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.ArchiveUnavailable);
         }
 
-        packagesByPrefix.Add(prefix, archive);
+        packagesByPrefixHash.Add(prefixHash, archive);
 
         return new WdfPackageRegistration(declaredName, prefix, WdfPackageRegistrationOutcome.Registered);
     }
