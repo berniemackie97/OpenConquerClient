@@ -9,6 +9,10 @@ belongs in the modern runtime.
 The source tree was inspected read-only. Counts and byte totals below describe loose files only;
 entries stored inside WDF packages are not included.
 
+Historical artifacts may be retained independently as compatibility fixtures when their exact bytes
+are needed for parity testing or offline inspection. That does not make them part of the production
+runtime content set.
+
 ## Evidence Labels
 
 - **Observed** means the value came directly from the supplied retail files.
@@ -35,9 +39,12 @@ Selected source fingerprints:
 | `c3.wdf`                   | 359,069,116 | `ab68f57cc24ae10052031583ce7aa4676247fe8dde5a7bdd98e572adcf7b7243` |
 
 These fingerprints identify the surveyed inputs without embedding a workstation-specific absolute
-path in project metadata. The checked-in content manifest intentionally covers only the current
-consumer-led dependency closure; this inventory remains the evidence record for surveyed retail
-families that have not yet entered that closure.
+path in project metadata.
+
+The checked-in runtime content manifest intentionally covers only the current consumer-led runtime
+dependency closure. `Server.dat` remains listed here because this document records the surveyed
+retail source, but its exact fixture is now retained separately as compatibility evidence rather
+than as runtime content.
 
 ## Scope Summary
 
@@ -60,9 +67,34 @@ same invariants for every source.
 
 ### `Server.dat`
 
-`Server.dat` is now part of the checked-in consumer-led closure because the typed startup server
-catalog boundary is implemented and verified. Native analysis establishes that it is read directly
-from the client root rather than through WDF package routing.
+Retail `Server.dat` is verified compatibility evidence for the native 5517 login/server bootstrap
+flow.
+
+It is **not** part of the modern OpenConquer client runtime content closure.
+
+The production ownership is now:
+
+```text
+retail Server.dat
+        │
+        ├── exact preserved fixture
+        ├── compatibility tests
+        └── offline inspect-server-dat tooling
+
+OpenConquer.Client runtime
+        │
+        └── no Server.dat dependency
+```
+
+The exact audited fixture is retained at:
+
+```text
+tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
+```
+
+Native analysis establishes that retail 5517 reads the file directly from the client root rather
+than through WDF package routing. That remains historical compatibility evidence, but there is no
+modern runtime `LooseOnly` consumer because the production client no longer reads the file.
 
 Verified retail identity:
 
@@ -73,13 +105,14 @@ RSA blocks: 11 × 256 bytes
 ```
 
 Native `CConfigDataTableQueryProvider` constructs a 2048-bit RSA public key with exponent `65537`.
+
 The independently recovered unsigned big-endian modulus has raw-byte SHA-256:
 
 ```text
 76acb04b08190b129985f8dee2b466efcd686eb1662cb598bd1a8154cb9196f1
 ```
 
-The native decode path is:
+The verified native decode path is:
 
 ```text
 11 × 256-byte RSA blocks
@@ -101,15 +134,60 @@ The inflated XML SHA-256 is:
 5d6b00ff722a8b37aa2981affecd478aee73bdc22cdc498a25b700242b55c35a
 ```
 
-The verified schema exposes `id`, `Child`, `FlashName`, `FlashIcon`, `FlashHint`, `ServerName`,
-`ServerIP`, and `ServerPort`. Root row `id=0` declares 14 groups. Group rows use IDs `1..14`; server
-rows begin at `0x65 + (groupIndex - 1) * 0x64`, with `Child` on the group row defining that group's
-server count. The 100-row stride is therefore structural evidence and the modern decoder rejects a
+The verified schema exposes:
+
+```text
+id
+Child
+FlashName
+FlashIcon
+FlashHint
+ServerName
+ServerIP
+ServerPort
+```
+
+Root row `id=0` declares 14 groups.
+
+Group rows use IDs `1..14`; server rows begin at:
+
+```text
+0x65 + (groupIndex - 1) * 0x64
+```
+
+with `Child` on the group row defining that group's server count.
+
+The 100-row stride is therefore structural evidence and the preserved tooling decoder rejects a
 per-group count above 100.
 
-OpenConquer preserves host and port fields as source text in Content. Presentation interpretation,
-endpoint validation, selection state, and actual network connection belong to later layers. Flash
-metadata remains opaque source metadata; the client will not recreate the retail Flash runtime.
+The exact fixture currently decodes to:
+
+```text
+groups: 14
+servers: 94
+```
+
+The tooling model intentionally preserves historical field semantics rather than normalizing them
+into a modern runtime server or realm model.
+
+That distinction is observable in the retail data itself. Multiple rows have different `FlashName`
+and `ServerName` values, including:
+
+```text
+FlashName="Water"       ServerName="Fire"
+FlashName="Cerberus"    ServerName="Gryphon"
+FlashName="Pegasus"     ServerName="Basilisk"
+FlashName="Cinderella"  ServerName="SnowWhite"
+```
+
+`ServerName` also has separate verified protocol significance in the native login boundary, so it
+must not be conflated with presentation metadata.
+
+Historical `ServerIP` and `ServerPort` are preserved as source text in tooling only. They are not
+converted into modern runtime endpoints, and the inspection command never initiates a connection.
+
+Detailed cryptographic, parser, protocol, and modern-ownership rationale is maintained in
+[`../compatibility/server-dat.md`](../compatibility/server-dat.md).
 
 ## `ini/` Inventory
 
@@ -216,8 +294,8 @@ shape.
 | `data/AutoPatch_pic/` |     5 |    550,545 | Patcher/launcher, excluded from game runtime by default       |
 
 The destination names are planning domains only. They are not instructions to bulk-migrate those
-families, rename retail files in place, or rewrite references by hand. Actual checked-in content
-remains consumer-led.
+families, rename retail files in place, or rewrite references by hand. Actual checked-in runtime
+content remains consumer-led.
 
 ### Texture evidence
 
@@ -245,6 +323,7 @@ identity, and record extension/signature mismatches as diagnostics.
 
 The loose `data/` tree contains 397 SHA-256 duplicate groups: 447 redundant file copies totaling
 5,845,326 bytes. Some duplicates have different semantic identities, such as item and world icons.
+
 Any future consumer/catalog layer must preserve every required logical path even if a later
 content-addressed payload store deduplicates identical bytes internally.
 
@@ -361,6 +440,7 @@ The 100,000-entry ceiling is a modern resource-safety limit rather than a retail
 well above both surveyed retail archive counts.
 
 The implementation intentionally does not reject overlap between two otherwise valid payload ranges.
+
 Retail files are observed to be packed contiguously, but native evidence has not established that
 overlap itself is an invalid format condition. Individual entry containment already prevents reads
 from escaping the validated payload region, so overlap rejection remains an explicit compatibility
@@ -374,25 +454,26 @@ decision rather than deferred cleanup.
 - `c3/` holds models and textures selected through the INI/DBC binding tables.
 - `sound/` holds WAV effects and MP3 music selected through INI audio catalogs.
 
-These areas remain deferred dependencies. Files from them enter the checked-in content closure only
-when an implemented client consumer requires them and the corresponding slice has established the
-relevant compatibility and validation behavior.
+These areas remain deferred dependencies. Files from them enter the checked-in runtime content
+closure only when an implemented client consumer requires them and the corresponding slice has
+established the relevant compatibility and validation behavior.
 
 ## Inventory Conclusions
 
 1. Retail directories are storage history, not suitable modern subsystem boundaries.
 2. Original relative paths remain compatibility identities and must never be casually normalized.
-3. Logical organization belongs in typed consumers and reviewed catalogs; physical payload migration
-   remains consumer-led.
+3. Logical organization belongs in typed consumers and reviewed catalogs; physical runtime payload
+   migration remains consumer-led.
 4. Extension alone is not a safe format discriminator.
-5. WDF routing and archive validation are now explicit boundaries: native evidence determines
+5. WDF routing and archive validation are explicit runtime boundaries: native evidence determines
    registration, hashing, routing, and lookup compatibility, while modern validation constrains
    legacy archives and host files as untrusted input.
-6. `Server.dat` is now an explicit loose-root bootstrap boundary with independently verified native
-   RSA key material, bounded PKCS#1/gzip decoding, and typed `outenserver` projection.
-7. Mutable preferences, immutable game definitions, presentation resources, and obsolete launcher
-   content need different ownership and distribution policies.
-8. The **inventory** of the surveyed retail families is complete, but checked-in migration is
-   intentionally consumer-led. The repository currently preserves only the exact files required by
-   implemented consumers; additional retail files enter the content set only with the feature slice
-   that consumes them.
+6. `Server.dat` is explicit compatibility evidence, with independently verified native RSA material,
+   bounded PKCS#1/gzip/XML decoding, typed historical projection, and exact parity tests, but it is
+   intentionally owned by offline tooling rather than by the production client runtime.
+7. Mutable preferences, immutable game definitions, presentation resources, historical compatibility
+   fixtures, and obsolete launcher content require different ownership and distribution policies.
+8. The **inventory** of the surveyed retail families is complete, while checked-in runtime migration
+   remains intentionally consumer-led. The repository may additionally preserve small exact
+   compatibility fixtures outside the runtime closure when required to permanently lock
+   parity-sensitive behavior.

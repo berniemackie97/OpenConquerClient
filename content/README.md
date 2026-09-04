@@ -5,7 +5,7 @@ Retail assets live outside the source assemblies and are grouped by immutable so
 The checked-in `retail-5517/` set is intentionally **consumer-led**, not a bulk preservation of the
 retail tree.
 
-Its current contract is:
+Its contract is:
 
 ```text
 implemented ClientContentClosure
@@ -15,14 +15,13 @@ manifest path set
 physical payload path set
 ```
 
-A file enters the repository content set only when an implemented client consumer requires it and
-the corresponding slice has established its behavior, validation, and tests.
+A file enters the runtime content set only when an implemented client consumer requires it and the
+corresponding slice has established its behavior, validation, and tests.
 
-The current retail-5517 closure contains exactly:
+The current retail-5517 runtime closure contains exactly:
 
 ```text
 payload/
-├── Server.dat
 ├── data/
 │   └── main/
 │       ├── Logo1.bmp
@@ -33,16 +32,35 @@ payload/
     └── package.ini
 ```
 
-`manifest.json` records the deterministic identity and integrity metadata for those six files.
+`manifest.json` records deterministic identity and integrity metadata for those five files.
 
-The current consumers cover screen-mode configuration, startup-logo selection/decoding, WDF package
-registration, and the typed retail `Server.dat` catalog boundary. `Server.dat` remains a loose-root
-input exactly as verified in the native client; the content layer does not fall back to WDF for it.
-The resulting typed server catalog is not yet wired into first-party server-selection UI or
-networking.
+The current runtime consumers cover:
 
-This policy prevents unsupported retail families from entering the product simply because their
-bytes are available. Content expansion follows real consumers rather than directory-sized imports.
+- screen-mode configuration;
+- startup-logo path selection and bitmap decoding;
+- WDF package declaration and routing behavior.
+
+Historical retail files retained only for compatibility research or offline tooling are not part of
+this runtime closure.
+
+In particular, retail `Server.dat` is intentionally excluded from:
+
+- `ClientContentClosure`;
+- `content/retail-5517/payload`;
+- the runtime content manifest;
+- published client runtime content.
+
+Its exact audited retail fixture is instead preserved under:
+
+```text
+tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
+```
+
+and is consumed only by the offline legacy tooling boundary in `OpenConquer.Content.Tool`.
+
+This policy prevents unsupported or historical retail files from entering the product simply because
+their bytes are available. Content expansion follows real runtime consumers rather than
+directory-sized imports.
 
 ## Reproducing an Import
 
@@ -62,18 +80,19 @@ The importer:
 - validates the expected retail source identity;
 - resolves the exact `ClientContentClosure`;
 - rejects links and case-insensitive path collisions;
-- copies only required files through a staging directory;
+- copies only required runtime files through a staging directory;
 - verifies copied lengths;
 - hashes payload bytes during import;
 - writes the manifest deterministically;
 - publishes the completed set only after the closure succeeds.
 
-It does **not** bulk-copy `ini/`, `data/`, `ani/`, or any other retail directory.
+It does **not** bulk-copy `ini/`, `data/`, `ani/`, historical compatibility fixtures, or any other
+retail directory.
 
 ## Startup Validation
 
-Validate the currently implemented startup consumers against either an authorized retail root or an
-imported payload:
+Validate the currently implemented runtime startup consumers against either an authorized retail
+root or an imported payload:
 
 ```bash
 dotnet run --project tools/OpenConquer.Content.Tool -- \
@@ -81,13 +100,40 @@ dotnet run --project tools/OpenConquer.Content.Tool -- \
   --content-root content/retail-5517/payload
 ```
 
-`validate-startup` covers the startup consumers currently owned by that command. The standalone
-`Server.dat` catalog boundary is additionally locked by content tests against the exact tracked
-retail fixture.
+`validate-startup` covers only runtime startup consumers represented by the current content closure.
+
+Historical `Server.dat` decoding is deliberately separate from startup validation.
+
+## Legacy Server.dat Inspection
+
+Inspect an explicit retail `Server.dat` file with:
+
+```bash
+dotnet run --project tools/OpenConquer.Content.Tool -- \
+  inspect-server-dat \
+  --file /path/to/Server.dat
+```
+
+The command:
+
+- reads only the explicit filesystem path supplied by the operator;
+- applies the audited bounded RSA/PKCS#1/gzip decoder;
+- parses the verified `outenserver` XML structure;
+- preserves historical `FlashName`, `FlashIcon`, `FlashHint`, `ServerName`, `ServerIP`, and
+  `ServerPort` semantics;
+- emits deterministic, escaped diagnostic output.
+
+It does not use runtime `IClientContentSource` lookup, WDF fallback, or the modern realm/networking
+model.
+
+The exact retail 5517 fixture is parity-tested independently of the runtime content set.
+
+See [`../docs/compatibility/server-dat.md`](../docs/compatibility/server-dat.md) for the native
+evidence, security interpretation, and preservation policy.
 
 ## Content-Set Verification
 
-Verify the checked-in set with:
+Verify the checked-in runtime set with:
 
 ```bash
 dotnet run --project tools/OpenConquer.Content.Tool -- \
@@ -95,7 +141,7 @@ dotnet run --project tools/OpenConquer.Content.Tool -- \
   --content-set content/retail-5517
 ```
 
-Verification requires all three views of the content set to agree:
+Verification requires all three runtime views to agree:
 
 1. the paths required by `ClientContentClosure`;
 2. the paths declared by `manifest.json`;
@@ -105,3 +151,6 @@ Manifest length, signature, and SHA-256 identities are then verified against the
 
 Extra payload files, missing required files, undeclared files, and content-integrity changes all
 fail verification.
+
+A compatibility fixture such as `Server.dat` is intentionally outside this equality because it is
+test/tooling evidence rather than shipped runtime content.

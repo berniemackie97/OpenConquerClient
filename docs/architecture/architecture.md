@@ -4,7 +4,10 @@ This document describes the high-level architecture of OpenConquer Client for co
 developers interested in the project.
 
 It is intentionally focused on subsystem boundaries, dependencies, ownership, and lifetime.
-Compatibility-specific native graphics requirements are documented separately.
+
+Compatibility-specific native graphics requirements are documented separately. Historical
+`Server.dat` evidence is documented separately because that format is retained by offline tooling,
+not by the modern client runtime.
 
 ## Projects
 
@@ -31,6 +34,8 @@ ownership or behavioral requirement justifies a dependency between them.
 In particular, `OpenConquer.Platform` and `OpenConquer.Rendering` are sibling subsystems and do not
 reference one another.
 
+Offline development and compatibility tooling is not part of this runtime dependency graph.
+
 ## Responsibilities
 
 | Project                  | Owns                                                                                                                                                                                     |
@@ -39,7 +44,7 @@ reference one another.
 | `OpenConquer.Platform`   | desktop windowing, native graphics-context lifetime, physical framebuffer state, desktop frame-loop orchestration and pacing mechanics, native buffer swapping, and future desktop input |
 | `OpenConquer.Gameplay`   | game state, entities, movement, combat, interactions, and gameplay rules                                                                                                                 |
 | `OpenConquer.Rendering`  | OpenGL integration, logical rendering, logical-to-host framebuffer composition, cameras, shaders, GPU resources, and render targets                                                      |
-| `OpenConquer.Content`    | client-root filesystem semantics, legacy configuration and formats, decoding, loading, and content lookup                                                                                |
+| `OpenConquer.Content`    | runtime client-root filesystem semantics, required legacy configuration and formats, decoding, loading, and content lookup                                                               |
 | `OpenConquer.Networking` | connections, transport, encryption, packet framing, protocol encoding, and decoding                                                                                                      |
 
 Platform-specific window and context types remain inside `OpenConquer.Platform`. Rendering owns
@@ -47,6 +52,9 @@ graphics behavior and GPU resources without depending on the windowing subsystem
 
 Compatibility-derived application policy remains in `OpenConquer.Client`. Platform implements the
 desktop mechanism required to apply that policy without knowing why a particular value was chosen.
+
+Historical formats that have no production runtime consumer do not remain in runtime assemblies
+merely because they are useful reconstruction evidence.
 
 ## Runtime Flow
 
@@ -60,7 +68,7 @@ flowchart LR
     Platform["Platform"]
     Gameplay["Gameplay"]
     Content["Content"]
-    Files["Client Files"]
+    Files["Runtime Client Files"]
     Rendering["Rendering"]
     GPU["GPU"]
 
@@ -75,8 +83,11 @@ flowchart LR
 ```
 
 The application begins and ends in `OpenConquer.Client`. Platform provides the desktop runtime,
-Content provides access to legacy client data, Networking communicates with the server, Gameplay
-owns simulation state, and Rendering consumes the state required to produce a frame.
+Content provides access to required legacy client data, Networking communicates with servers,
+Gameplay owns simulation state, and Rendering consumes the state required to produce a frame.
+
+A historical retail file is not automatically part of this runtime flow. Compatibility evidence may
+instead terminate at an offline tool or parity test.
 
 ## Startup and Content Boundary
 
@@ -184,15 +195,15 @@ dependency boundary between Content and Rendering.
 
 ### Retail Content Closure
 
-The versioned retail payload is consumer-led rather than a bulk client-tree mirror.
-`ClientContentClosure` defines the exact paths required by implemented consumers, and the import and
-verification tooling requires that code closure, manifest path set, and physical payload path set
-remain identical.
+The versioned retail runtime payload is consumer-led rather than a bulk client-tree mirror.
 
-The current retail-5517 closure contains exactly:
+`ClientContentClosure` defines the exact paths required by implemented runtime consumers, and the
+import and verification tooling requires that code closure, manifest path set, and physical payload
+path set remain identical.
+
+The current retail-5517 runtime closure contains exactly:
 
 ```text
-Server.dat
 data/main/Logo1.bmp
 data/main/Logo2.bmp
 ini/GameSetUp.ini
@@ -200,52 +211,121 @@ ini/info.ini
 ini/package.ini
 ```
 
-A retail file enters that closure only with an implemented, reviewed consumer. Large WDF archives
-remain outside it because no implemented consumer requires an archive entry. `ini/package.ini`
-remains inside the closure because package declaration and routing behavior are implemented and
-observable even when the declared archives themselves are absent.
+A retail file enters that closure only with an implemented, reviewed runtime consumer.
 
-### Server.dat Catalog Boundary
+Large WDF archives remain outside it because no implemented runtime consumer requires an archive
+entry. `ini/package.ini` remains inside the closure because package declaration and routing behavior
+are implemented and observable even when the declared archives themselves are absent.
 
-`Server.dat` is a Content-owned bootstrap input. Native 5517 reads it directly from the client root,
-so `ServerDatCatalogLoader` deliberately requests `ContentLookupMode.LooseOnly`; package fallback is
-not permitted.
+Historical compatibility fixtures are separate from this equality.
 
-The implemented flow is:
+Retail `Server.dat`, for example, is preserved under the content-tool test tree but is deliberately
+absent from:
 
 ```text
-loose Server.dat
-        ↓
-bounded encrypted read
-        ↓
-verified retail 5517 RSA public key
-        ↓
-PKCS#1 type-1 extraction
-        ↓
-bounded gzip inflate
-        ↓
-ServerDatXmlCatalogReader
-        ↓
-immutable ServerCatalog
+ClientContentClosure
+content/retail-5517/payload
+content/retail-5517/manifest.json
+published OpenConquer.Client runtime content
 ```
 
-The verified retail fixture is 2,816 bytes: eleven 256-byte RSA blocks. The native constructor
-builds a 2048-bit public modulus and sets exponent 65537. OpenConquer stores the independently
-verified final modulus directly rather than reproducing native BIGNUM construction at runtime;
-parity tests retain the native seed/schedule derivation as evidence.
+### Legacy Server.dat Tooling Boundary
 
-`ServerDatEnvelopeDecoder` owns only the encrypted transport envelope. It validates whole RSA
-blocks, rejects representatives outside the modulus, requires PKCS#1 type-1 padding with at least
-eight `0xFF` bytes, requires a non-empty extracted chunk, verifies gzip, and bounds inflated output.
+Native 5517 used a loose-root `Server.dat` file for the historical login/server-selection bootstrap.
 
-`ServerDatXmlCatalogReader` owns only the verified `table_data[name=outenserver]` schema. It
-prohibits DTDs, rejects duplicate table/row/field identities, bounds group and server counts, and
-projects the retail row layout into `ServerGroup` and `ServerDefinition`. Host and port remain
-source text because network endpoint validation belongs to `OpenConquer.Networking`, not Content.
+That format remains valuable reconstruction and protocol evidence, but it is not the production
+configuration model for the modern client.
 
-The exact tracked retail fixture is exercised by parity tests through the production native key and
-loader. It resolves to 14 groups. This slice stops at the typed Content boundary: there is no
-server-selection UI, endpoint selection state, or network connection behavior here.
+The retained ownership is:
+
+```text
+tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
+        │
+        ▼
+OpenConquer.Content.Tool.Legacy.ServerDat
+        │
+        ├── ServerDatFileReader
+        ├── ServerDatEnvelopeDecoder
+        ├── ServerDatNativePublicKey
+        └── ServerDatXmlCatalogReader
+                │
+                ▼
+        historical ServerDatCatalog
+```
+
+This boundary is intentionally outside `OpenConquer.Content`.
+
+The file reader accepts one explicit filesystem path. It does not use:
+
+- `IClientContentSource`;
+- `ContentLookupMode`;
+- loose/package runtime fallback;
+- WDF routing;
+- a runtime server directory abstraction.
+
+The hardened decoder preserves the verified native RSA/PKCS#1/gzip envelope and the verified
+`outenserver` XML structure while applying explicit modern resource-safety limits.
+
+The historical model preserves source semantics including:
+
+```text
+FlashName
+FlashIcon
+FlashHint
+ServerName
+ServerIP
+ServerPort
+```
+
+It deliberately does not normalize those fields into modern concepts such as `Realm`, `Host`, or
+`Endpoint`.
+
+The exact retail data proves that this distinction matters: multiple rows have different `FlashName`
+and `ServerName` values.
+
+The retained exact fixture resolves to 14 groups and 94 server rows.
+
+Detailed evidence and security interpretation are documented in
+[`docs/compatibility/server-dat.md`](../compatibility/server-dat.md).
+
+### Authentication and Realm Direction
+
+The modern production architecture does not use a locally shipped server list as its trust or
+routing boundary.
+
+The intended high-level lifecycle is launcher-first authentication followed by authenticated game
+startup and authenticated realm discovery:
+
+```text
+launcher authentication
+        ↓
+one-time game launch authorization
+        ↓
+authenticated game session
+        ↓
+realm discovery
+        ↓
+select stable RealmId
+        ↓
+server-authoritative route and short-lived connection authorization
+        ↓
+realm ingress
+```
+
+This is an architectural direction, not an assertion that those services or launcher boundaries have
+already been implemented in the current repository.
+
+The concrete launcher project, authorization protocol, launcher-to-game handoff mechanism, service
+contracts, and realm-domain types remain implementation-slice decisions and must be audited when
+introduced.
+
+The important boundary established now is narrower:
+
+- the game runtime does not trust or consume retail `Server.dat`;
+- player-facing realm identity is not an IP address and port;
+- historical `ServerName` semantics remain at compatibility/protocol boundaries rather than becoming
+  the modern realm-domain identity;
+- account-aware realm discovery and routing belong to authenticated server-controlled boundaries.
 
 ## Startup Logo Lifetime
 
@@ -769,7 +849,7 @@ ownership.
 
 The current architecture follows these rules:
 
-- `OpenConquer.Client` is the sole composition root.
+- `OpenConquer.Client` is the sole runtime composition root.
 - `OpenConquer.Client` owns compatibility-derived application policy such as the retail outer frame
   interval.
 - `OpenConquer.Platform` implements frame-pacing mechanics without owning Conquer-specific cadence
@@ -782,5 +862,9 @@ The current architecture follows these rules:
 - `OpenConquer.Gameplay` remains independent of platform, graphics, and transport infrastructure.
 - `OpenConquer.Content` remains independent of graphics and gameplay behavior.
 - `OpenConquer.Networking` remains independent of platform and rendering concerns.
+- offline compatibility tooling does not become a runtime dependency merely because it preserves
+  native format behavior.
+- historical `Server.dat` support remains outside `src/` and outside the production runtime content
+  closure.
 
 A project is an ownership and dependency boundary, not a replacement for a folder.

@@ -1,4 +1,4 @@
-namespace OpenConquer.Content.Startup.ServerSelection;
+namespace OpenConquer.Content.Tool.Legacy.ServerDat;
 
 /// <summary>
 /// Verified retail 5517 RSA public key used to decode <c>Server.dat</c>.

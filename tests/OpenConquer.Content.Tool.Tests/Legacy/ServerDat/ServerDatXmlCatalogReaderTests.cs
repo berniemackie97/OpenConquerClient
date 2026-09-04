@@ -1,14 +1,14 @@
 using System.Text;
-using OpenConquer.Content.Startup.ServerSelection;
+using OpenConquer.Content.Tool.Legacy.ServerDat;
 
-namespace OpenConquer.Content.Tests.Startup.ServerSelection;
+namespace OpenConquer.Content.Tool.Tests.Legacy.ServerDat;
 
 public sealed class ServerDatXmlCatalogReaderTests
 {
     [Fact]
     public void Read_ValidOutenserverTable_ReturnsTypedCatalog()
     {
-        ServerCatalog catalog = Read(
+        ServerDatCatalog catalog = Read(
             """
             <mysqldump>
               <database name="conquer">
@@ -46,27 +46,27 @@ public sealed class ServerDatXmlCatalogReaderTests
 
         Assert.Equal(2, catalog.Groups.Count);
 
-        ServerGroup firstGroup = catalog.Groups[0];
+        ServerDatGroup firstGroup = catalog.Groups[0];
 
         Assert.Equal(1, firstGroup.Id);
-        Assert.Equal("GroupAlpha", firstGroup.DisplayName);
-        Assert.Equal("GroupAlpha.swf", firstGroup.IconToken);
+        Assert.Equal("GroupAlpha", firstGroup.FlashName);
+        Assert.Equal("GroupAlpha.swf", firstGroup.FlashIcon);
 
-        ServerDefinition server = Assert.Single(firstGroup.Servers);
+        ServerDatServer server = Assert.Single(firstGroup.Servers);
 
         Assert.Equal(101, server.Id);
-        Assert.Equal("ServerOne", server.DisplayName);
-        Assert.Null(server.IconToken);
-        Assert.Equal("Stable", server.Hint);
+        Assert.Equal("ServerOne", server.FlashName);
+        Assert.Null(server.FlashIcon);
+        Assert.Equal("Stable", server.FlashHint);
         Assert.Equal("ServerOne", server.ServerName);
-        Assert.Equal("127.0.0.1", server.Host);
-        Assert.Equal("9958", server.Port);
+        Assert.Equal("127.0.0.1", server.ServerIp);
+        Assert.Equal("9958", server.ServerPort);
 
-        ServerGroup secondGroup = catalog.Groups[1];
+        ServerDatGroup secondGroup = catalog.Groups[1];
 
         Assert.Equal(2, secondGroup.Id);
-        Assert.Equal("GroupBeta", secondGroup.DisplayName);
-        Assert.Null(secondGroup.IconToken);
+        Assert.Equal("GroupBeta", secondGroup.FlashName);
+        Assert.Null(secondGroup.FlashIcon);
         Assert.Empty(secondGroup.Servers);
     }
 
@@ -276,7 +276,7 @@ public sealed class ServerDatXmlCatalogReaderTests
         );
     }
 
-    private static ServerCatalog Read(string xml)
+    private static ServerDatCatalog Read(string xml)
     {
         return ServerDatXmlCatalogReader.Read(Encoding.UTF8.GetBytes(xml));
     }

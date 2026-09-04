@@ -1,5 +1,6 @@
 using OpenConquer.Content.Tool.CommandLine;
 using OpenConquer.Content.Tool.Import;
+using OpenConquer.Content.Tool.Legacy.ServerDat;
 using OpenConquer.Content.Tool.Manifest;
 using OpenConquer.Content.Tool.Startup;
 using OpenConquer.Content.Tool.Verify;
@@ -73,6 +74,18 @@ internal static class Program
                     ContentManifest manifest = ContentSetVerifier.Verify(verify.ContentSetRootPath);
 
                     Console.WriteLine($"Verified {manifest.FileCount} file(s) ({manifest.Length} bytes) for {ContentManifest.SourceSetName}.");
+
+                    break;
+                }
+
+            case InspectServerDatCommand inspect:
+                {
+                    ServerDatInspectionReport report = ServerDatInspectionReport.Create(inspect.FilePath);
+
+                    foreach (string line in report.ToReportLines())
+                    {
+                        Console.WriteLine(line);
+                    }
 
                     break;
                 }

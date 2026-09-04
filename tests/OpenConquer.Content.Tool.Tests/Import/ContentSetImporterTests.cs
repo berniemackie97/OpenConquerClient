@@ -17,11 +17,11 @@ public sealed class ContentSetImporterTests
         source.WriteBytes("data/main/UnrelatedTexture.bmp", TestBitmap.CreateTwoByTwo());
 
         string destination = destinationParent.ChildPath("set");
+
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destination);
 
         Assert.Equal(
             [
-                "Server.dat",
                 "data/main/Logo1.bmp",
                 "data/main/Logo2.bmp",
                 "ini/GameSetUp.ini",
@@ -29,6 +29,12 @@ public sealed class ContentSetImporterTests
                 "ini/package.ini",
             ],
             manifest.Entries.Select(entry => entry.SourcePath)
+        );
+
+        Assert.DoesNotContain(
+            manifest.Entries,
+            static entry =>
+                string.Equals(entry.SourcePath, "Server.dat", StringComparison.OrdinalIgnoreCase)
         );
 
         string[] payloadFiles = Directory
@@ -49,7 +55,9 @@ public sealed class ContentSetImporterTests
         using TemporarySourceTree destinationParent = new();
 
         source.WriteStartupSnapshot(backgroundFormat: "data/main/Splash%02d.bmp");
+
         source.WriteBytes("data/main/Splash01.bmp", TestBitmap.CreateTwoByTwo());
+
         source.WriteBytes("data/main/Splash02.bmp", TestBitmap.CreateTwoByTwo());
 
         ContentManifest manifest = ContentSetImporter.Import(
@@ -61,10 +69,12 @@ public sealed class ContentSetImporterTests
             "data/main/Splash01.bmp",
             manifest.Entries.Select(entry => entry.SourcePath)
         );
+
         Assert.Contains(
             "data/main/Splash02.bmp",
             manifest.Entries.Select(entry => entry.SourcePath)
         );
+
         Assert.DoesNotContain(
             "data/main/Logo1.bmp",
             manifest.Entries.Select(entry => entry.SourcePath)
@@ -80,6 +90,7 @@ public sealed class ContentSetImporterTests
         source.WriteStartupSnapshot();
 
         ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("first"));
+
         ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("second"));
 
         Assert.Equal(
@@ -107,6 +118,7 @@ public sealed class ContentSetImporterTests
 
         Assert.DoesNotContain((byte)'\r', manifestBytes);
         Assert.Equal((byte)'\n', manifestBytes[^1]);
+
         Assert.StartsWith(
             "{\n  \"schemaVersion\": 2,",
             Encoding.UTF8.GetString(manifestBytes),
@@ -126,6 +138,7 @@ public sealed class ContentSetImporterTests
             source.RootPath,
             destinationParent.ChildPath("set")
         );
+
         ContentManifestEntry logo = manifest.Entries.Single(entry =>
             entry.SourcePath == "data/main/Logo1.bmp"
         );
@@ -134,6 +147,7 @@ public sealed class ContentSetImporterTests
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
         Assert.Equal(64, logo.Sha256.Length);
         Assert.Equal("data/main/logo1.bmp", logo.PathKey);
+
         Assert.Equal(manifest.Entries.Sum(entry => entry.Length), manifest.Length);
     }
 
@@ -171,6 +185,7 @@ public sealed class ContentSetImporterTests
         using TemporarySourceTree destinationParent = new();
 
         source.WriteStartupSnapshot();
+
         File.Delete(source.ChildPath("data/main/Logo2.bmp"));
 
         Assert.Throws<FileNotFoundException>(() =>
@@ -188,6 +203,7 @@ public sealed class ContentSetImporterTests
         using TemporarySourceTree destinationParent = new();
 
         source.WriteStartupSnapshot();
+
         File.Delete(source.ChildPath("ini/package.ini"));
 
         Assert.Throws<FileNotFoundException>(() =>
@@ -204,6 +220,7 @@ public sealed class ContentSetImporterTests
         using TemporarySourceTree destinationParent = new();
 
         source.WriteStartupSnapshot();
+
         Directory.CreateDirectory(destinationParent.ChildPath("set"));
 
         Assert.Throws<IOException>(() =>
