@@ -226,29 +226,89 @@ c3.wdf
 data3.wdf
 ```
 
-The first two packages exist in the surveyed snapshot; `data3.wdf` does not. Existing WDF packages
-begin with the `PFDW` signature.
+The first two packages exist in the surveyed snapshot; `data3.wdf` does not.
 
-Subsequent native analysis established the package-routing behavior required by the modern content
-boundary:
+Observed retail archive identities:
 
+| Package     |     Entries |       Bytes | SHA-256                                                            |
+| ----------- | ----------: | ----------: | ------------------------------------------------------------------ |
+| `data.wdf`  |      14,739 | 392,245,257 | `fc628e4adeb7de48b0b7cde3c7793c7177a289a6defe9b90a33a1f683dcdb132` |
+| `c3.wdf`    |      10,274 | 359,069,116 | `ab68f57cc24ae10052031583ce7aa4676247fe8dde5a7bdd98e572adcf7b7243` |
+| `data3.wdf` | unavailable |           — | declared by retail but not present                                 |
+
+Existing WDF packages begin with the `PFDW` signature.
+
+Native analysis has established the package-registration and routing behavior required by the modern
+content boundary:
+
+- `GraphicData.dll`, not `conquer.exe`, reads `ini/package.ini`;
 - `package.ini` is consumed as whitespace-delimited package-name tokens rather than as an INI file;
-- a missing `package.ini` produces zero registered packages and is non-fatal;
-- the package prefix is derived from the normalized declaration by removing everything from its
-  final `.` onward;
-- registration is first-wins by prefix;
-- a missing declared WDF still reserves its prefix, so a later duplicate cannot replace it;
-- the first normalized virtual-path segment selects the package prefix;
-- the full normalized virtual path is hashed for WDF lookup;
-- native normalization lowercases ASCII and converts `\` to `/`;
+- failure to open `package.ini` is non-fatal and produces zero registered packages;
+- `TqPackagesOpen` return values are discarded by the startup registration driver;
+- package names are normalized by lowercasing ASCII and converting `\` to `/`;
+- the registration prefix is the whole normalized declaration with everything from the final `.`
+  onward removed;
+- there is no basename extraction;
+- the actual registered package identity is the 32-bit WDF hash of that prefix;
+- package registration is first-wins by prefix hash;
+- distinct prefix strings whose hashes collide therefore share one routing identity;
+- prefix-hash ownership is established before the declared WDF is opened;
+- a missing or unusable first package consequently blocks later declarations with the same routing
+  hash;
+- the missing retail `data3.wdf` still registers an empty `data3` package identity and is non-fatal;
+- virtual-path routing hashes the first normalized path segment and selects the first registered
+  package with the same prefix hash;
+- the full normalized virtual path is hashed separately to obtain the WDF entry UID;
+- a virtual path without `/` routes using its entire normalized string;
+- native WDF hashing uses a 256-byte zero-padded buffer and silently truncates longer inputs;
 - loose-only, package-only, and loose-then-package lookup modes are distinct native behaviors.
 
-The current implementation preserves those verified boundaries for valid retail inputs while
-rejecting unsafe modern host paths.
+The WDF archive format is also verified:
 
-A later hardening slice remains responsible for the full untrusted-WDF validation boundary,
-including strict index and payload-range validation. Existing-but-malformed archive behavior must
-remain tied to native evidence rather than inferred from filesystem behavior.
+```text
+12-byte header
+├── uint32 magic = PFDW
+├── uint32 entry count
+└── uint32 entry-table offset
+
+payload region
+
+entry table
+└── 16 bytes per entry
+    ├── uint32 UID
+    ├── uint32 absolute payload offset
+    ├── uint32 payload size
+    └── uint32 reserved = 0
+```
+
+The entry table is sorted by UID ascending and native lookup uses binary search.
+
+The current implementation preserves those verified behaviors while applying explicit modern safety
+boundaries:
+
+- WDF archive paths are rejected when host resolution encounters symbolic links or reparse points;
+- expected package resolution/open/validation failures become non-fatal unavailable registrations;
+- package-registration results are published as an immutable completed snapshot;
+- archives are limited to 100,000 entries before allocation;
+- header and index arithmetic is checked;
+- the complete index must fit within the archive;
+- every 16-byte index record must be present;
+- the reserved DWORD must be zero;
+- UIDs must be strictly ascending;
+- duplicate UIDs are rejected;
+- each entry payload must begin at or after the 12-byte header;
+- each entry payload must end at or before the index table;
+- malformed and truncated archives fail deterministically;
+- opened entry streams are bounded to their selected payload range.
+
+The 100,000-entry ceiling is a modern resource-safety limit rather than a retail format claim. It is
+well above both surveyed retail archive counts.
+
+The implementation intentionally does not reject overlap between two otherwise valid payload ranges.
+Retail files are observed to be packed contiguously, but native evidence has not established that
+overlap itself is an invalid format condition. Individual entry containment already prevents reads
+from escaping the validated payload region, so overlap rejection remains an explicit compatibility
+decision rather than deferred cleanup.
 
 ### Deferred areas
 
@@ -269,9 +329,9 @@ relevant compatibility and validation behavior.
 3. Logical organization belongs in typed consumers and reviewed catalogs; physical payload migration
    remains consumer-led.
 4. Extension alone is not a safe format discriminator.
-5. WDF routing semantics and archive validation are separate concerns: native evidence determines
-   compatibility behavior, while modern readers must still validate legacy archives as untrusted
-   input.
+5. WDF routing and archive validation are now explicit boundaries: native evidence determines
+   registration, hashing, routing, and lookup compatibility, while modern validation constrains
+   legacy archives and host files as untrusted input.
 6. Mutable preferences, immutable game definitions, presentation resources, and obsolete launcher
    content need different ownership and distribution policies.
 7. The **inventory** of the surveyed retail families is complete, but checked-in migration is

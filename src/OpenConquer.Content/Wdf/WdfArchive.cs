@@ -99,33 +99,32 @@ internal sealed class WdfArchive
 
         Span<byte> encodedEntry = stackalloc byte[EntryLength];
 
-        uint previousId = 0;
+        uint previousUid = 0;
 
         for (int index = 0; index < entryCount; index++)
         {
             ReadExactly(stream, encodedEntry, $"WDF entry {index}");
 
-            uint id = BinaryPrimitives.ReadUInt32LittleEndian(encodedEntry);
+            uint uid = BinaryPrimitives.ReadUInt32LittleEndian(encodedEntry);
             uint offset = BinaryPrimitives.ReadUInt32LittleEndian(encodedEntry[4..]);
             uint length = BinaryPrimitives.ReadUInt32LittleEndian(encodedEntry[8..]);
-
             uint reserved = BinaryPrimitives.ReadUInt32LittleEndian(encodedEntry[12..]);
 
             if (reserved != 0)
             {
-                throw new InvalidDataException($"WDF entry {index} (0x{id:X8}) has non-zero reserved data 0x{reserved:X8}.");
+                throw new InvalidDataException($"WDF entry {index} (0x{uid:X8}) has non-zero reserved data 0x{reserved:X8}.");
             }
 
             if (index != 0)
             {
-                if (id == previousId)
+                if (uid == previousUid)
                 {
-                    throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' contains duplicate entry id 0x{id:X8}.");
+                    throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' contains duplicate entry UID 0x{uid:X8}.");
                 }
 
-                if (id < previousId)
+                if (uid < previousUid)
                 {
-                    throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' entry ids are not strictly ascending.");
+                    throw new InvalidDataException($"WDF archive '{Path.GetFileName(normalizedPath)}' entry UIDs are not strictly ascending.");
                 }
             }
 
@@ -133,12 +132,12 @@ internal sealed class WdfArchive
 
             if (offset < HeaderLength || payloadEnd > tableOffset)
             {
-                throw new InvalidDataException($"WDF entry {index} (0x{id:X8}) points outside the archive payload region.");
+                throw new InvalidDataException($"WDF entry {index} (0x{uid:X8}) points outside the archive payload region.");
             }
 
-            entries[index] = new WdfEntry(id, offset, length);
+            entries[index] = new WdfEntry(uid, offset, length);
 
-            previousId = id;
+            previousUid = uid;
         }
 
         return new WdfArchive(normalizedPath, entries);
@@ -146,9 +145,9 @@ internal sealed class WdfArchive
 
     public bool TryOpenRead(string contentPath, [NotNullWhen(true)] out Stream? stream)
     {
-        uint id = WdfPathHash.Compute(contentPath);
+        uint uid = WdfPathHash.Compute(contentPath);
 
-        if (!TryFindEntry(id, out WdfEntry entry))
+        if (!TryFindEntry(uid, out WdfEntry entry))
         {
             stream = null;
             return false;
@@ -176,7 +175,7 @@ internal sealed class WdfArchive
         }
     }
 
-    private bool TryFindEntry(uint id, out WdfEntry entry)
+    private bool TryFindEntry(uint uid, out WdfEntry entry)
     {
         int lowerBound = 0;
         int upperBound = _entries.Length - 1;
@@ -187,13 +186,13 @@ internal sealed class WdfArchive
 
             WdfEntry candidate = _entries[index];
 
-            if (candidate.Id == id)
+            if (candidate.Uid == uid)
             {
                 entry = candidate;
                 return true;
             }
 
-            if (id < candidate.Id)
+            if (uid < candidate.Uid)
             {
                 upperBound = index - 1;
             }
