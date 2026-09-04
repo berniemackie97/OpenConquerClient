@@ -65,29 +65,14 @@ public sealed class ClientContentRoot : IClientContentSource
     /// <summary>
     /// Opens a loose file under the content root.
     /// </summary>
-    /// <remarks>
-    /// A directory root owns no packages, so <see cref="ContentLookupMode.PackageOnly"/> can never
-    /// be satisfied here and is reported as a miss instead of being widened to a loose read.
-    /// </remarks>
-    public bool TryOpenRead(
-        string contentPath,
-        ContentLookupMode mode,
-        [NotNullWhen(true)] out Stream? stream
-    )
+    public bool TryOpenRead(string contentPath, ContentLookupMode mode, [NotNullWhen(true)] out Stream? stream)
     {
         if (!Enum.IsDefined(mode))
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(mode),
-                mode,
-                "Unknown content lookup mode."
-            );
+            throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown content lookup mode.");
         }
 
-        if (
-            mode == ContentLookupMode.PackageOnly
-            || !TryResolveFile(contentPath, out string? absolutePath)
-        )
+        if (mode == ContentLookupMode.PackageOnly || !TryResolveFile(contentPath, out string? absolutePath))
         {
             stream = null;
             return false;

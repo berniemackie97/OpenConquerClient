@@ -1,12 +1,5 @@
 namespace OpenConquer.Content.Tool;
 
-/// <summary>
-/// Rejects host filesystem entries the tool refuses to read or write through.
-/// </summary>
-/// <remarks>
-/// Links are refused everywhere rather than resolved: following one would let a retail snapshot or a
-/// content set redirect reads and writes outside the root the operator named.
-/// </remarks>
 internal static class HostFileSystemGuard
 {
     public static DirectoryInfo RequireDirectory(string path, string description)

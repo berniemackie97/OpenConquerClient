@@ -23,10 +23,7 @@ internal sealed class ClientApplication : IDisposable
     private bool _runStarted;
     private bool _disposed;
 
-    public ClientApplication(
-        string clientContentRootPath,
-        PresentationPolicy presentationPolicy = PresentationPolicy.Fit
-    )
+    public ClientApplication(string clientContentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientContentRootPath);
 
@@ -45,14 +42,10 @@ internal sealed class ClientApplication : IDisposable
 
         _runStarted = true;
 
-        PackagedClientContentSource contentSource = PackagedClientContentSource.Open(
-            _clientContentRootPath
-        );
+        PackagedClientContentSource contentSource = PackagedClientContentSource.Open(_clientContentRootPath);
 
         ReportTolerableContentGaps(contentSource);
 
-        // (timeGetTime() & 1) + 1 selects the retail variant; any monotonic millisecond counter
-        // reproduces the parity, so the managed host uses its own tick source.
         StartupLogo startupLogo = StartupLogo.Load(contentSource, Environment.TickCount64);
 
         if (startupLogo.UnavailableReason is { } unavailableReason)
@@ -91,10 +84,6 @@ internal sealed class ClientApplication : IDisposable
         }
         finally
         {
-            // GL-owned resources normally clear through OpenGLContextReleasing while the context is
-            // current. If the platform cannot make the context current during a fatal teardown,
-            // they must not be deleted afterward against a dead context. The terminal application
-            // therefore releases its managed references without attempting an unsafe retry.
             _window = null;
             _renderer = null;
             _graphicsDevice = null;
@@ -146,11 +135,6 @@ internal sealed class ClientApplication : IDisposable
     /// <summary>
     /// Reports the <c>ini/package.ini</c> declarations retail resolves without failing.
     /// </summary>
-    /// <remarks>
-    /// Missing, unavailable, and duplicate package declarations are verified non-fatal native
-    /// states. Reporting keeps incomplete package availability visible without misrepresenting
-    /// prefix registration or turning a tolerated retail condition into startup failure.
-    /// </remarks>
     private static void ReportTolerableContentGaps(PackagedClientContentSource contentSource)
     {
         foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
@@ -188,8 +172,6 @@ internal sealed class ClientApplication : IDisposable
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
-        // Clear ownership before invoking user/driver cleanup so re-entrant teardown cannot attempt
-        // the same OpenGL resources twice.
         _renderer = null;
         _graphicsDevice = null;
 

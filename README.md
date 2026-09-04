@@ -18,10 +18,10 @@ The original Windows C++ client is a behavioral and compatibility reference, not
 template. Obsolete deployment, security, UI, and platform mechanisms are replaced with explicit
 modern boundaries when reproducing them would weaken the resulting product.
 
-> **Status:** Early development. The desktop game-host, native-compatible logical rendering
-> foundation, retail-content boundary, legacy content tooling, and initial launcher product shell
-> are in place. Gameplay, networking, launcher authentication, secure game launch, realm discovery,
-> and higher-level rendering systems are still being built.
+> **Status:** Early development. The desktop game host, native-compatible logical rendering
+> foundation, retail-content boundary, legacy content tooling, and hardened launcher process
+> foundation are in place. Gameplay, networking, launcher authentication, secure game launch, realm
+> discovery, and higher-level rendering systems are still being built.
 
 ## Products and Architecture
 
@@ -44,14 +44,22 @@ The launcher and game client are separate executable products.
 
 `OpenConquer.Launcher` is a .NET 10 desktop application using Avalonia.
 
-Its current foundation owns:
+Its current host boundary owns:
 
-- launcher process startup;
+- launcher process startup and shutdown;
 - Avalonia application lifetime;
 - the primary launcher-window shell;
+- explicit standard-user process policy on Windows;
+- bounded per-user structured diagnostics;
+- fatal host-exception observation and nonzero terminal failure semantics;
 - an independent package/publish boundary.
 
-It deliberately does **not** reference the game client's runtime subsystem projects or Silk.NET.
+Diagnostic persistence is best-effort and must not become a launcher availability dependency.
+Unhandled host faults are recorded through a deliberately redacted diagnostic projection rather than
+serializing raw exceptions or arbitrary application state.
+
+The launcher deliberately does **not** reference the game client's runtime subsystem projects or
+Silk.NET.
 
 Account authentication, secure launcher-to-game authorization, updating, repair, and realm-facing
 launcher workflows have not yet been implemented. Those capabilities are introduced only through
@@ -118,8 +126,8 @@ server-authoritative route + short-lived connection authorization
 realm ingress
 ```
 
-Only the launcher and game executable boundaries currently exist. Authentication, launch-grant
-handoff, authenticated realm discovery, and realm routing remain future audited slices.
+Only the hardened launcher and game executable boundaries currently exist. Authentication,
+launch-grant handoff, authenticated realm discovery, and realm routing remain future audited slices.
 
 Player-facing realm identity will not be represented by infrastructure IP addresses and ports.
 
@@ -215,8 +223,9 @@ OpenConquer.Platform.Tests
 OpenConquer.Rendering.Tests
 ```
 
-The launcher tests currently protect product and dependency boundaries without requiring a native
-desktop session.
+The launcher tests protect product/dependency boundaries, Windows process policy, diagnostic path
+and redaction invariants, and host exception-observation behavior without requiring a native desktop
+session.
 
 ## Running
 
@@ -226,8 +235,8 @@ desktop session.
 dotnet run --project src/OpenConquer.Launcher/OpenConquer.Launcher.csproj
 ```
 
-The current launcher is intentionally only the product shell. Authentication, patching, repair, and
-game-start orchestration have not yet been implemented.
+The current launcher establishes the hardened product/process host. Authentication, patching,
+repair, and game-start orchestration have not yet been implemented.
 
 ### Game Client
 

@@ -5,18 +5,6 @@ namespace OpenConquer.Content.Tool.Import;
 /// <summary>
 /// Builds a content set holding exactly the retail files the implemented slices read.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The imported set is the closure resolved by <see cref="ClientContentClosure"/>, not a directory
-/// batch. Scope therefore follows the code that consumes it: a slice cannot silently ship assets it
-/// does not read, and cannot silently omit assets it does.
-/// </para>
-/// <para>
-/// The set is staged in a sibling directory and moved into place only after every file is copied,
-/// verified for length, and catalogued, so an interrupted run never leaves a half-written set that
-/// looks complete.
-/// </para>
-/// </remarks>
 internal static class ContentSetImporter
 {
     private const string ManifestFileName = "manifest.json";

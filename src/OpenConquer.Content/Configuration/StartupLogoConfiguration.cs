@@ -22,37 +22,13 @@ public sealed class StartupLogoConfiguration
     }
 
     /// <summary>
-    /// Reads <c>[DlgLogo] BgFormat</c>, falling back to the retail default when the native
-    /// configuration lookup would do so.
+    /// Reads <c>[DlgLogo] BgFormat</c>, falling back to the retail default
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// A missing store returns the caller's default at <c>0x66E57D</c>. A present store returns
-    /// the stored value only when it is non-null and non-empty at <c>0x76FA4C</c>; otherwise it
-    /// returns the default at <c>0x76FA4E</c>.
-    /// </para>
-    /// <para>
-    /// The configuration is read with <see cref="ContentLookupMode.LooseOnly"/> because retail
-    /// parses INI files through <c>IniStore_LoadFile</c> (<c>0x76EF0E</c>), which opens them with
-    /// <c>fopen(path, "r")</c> at <c>0x76EF68</c> and never consults the package layer.
-    /// </para>
-    /// <para>
-    /// This type remains strict for malformed or unsafe source data so importer and verification
-    /// tooling can detect it. The runtime startup-logo boundary deliberately converts such
-    /// logo-specific failures into an unavailable optional splash.
-    /// </para>
-    /// </remarks>
     public static StartupLogoConfiguration LoadOrDefault(IClientContentSource contentSource)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        if (
-            !contentSource.TryOpenRead(
-                RelativePath,
-                ContentLookupMode.LooseOnly,
-                out Stream? stream
-            )
-        )
+        if (!contentSource.TryOpenRead(RelativePath, ContentLookupMode.LooseOnly, out Stream? stream))
         {
             return new StartupLogoConfiguration(DefaultBackgroundFormat);
         }
@@ -74,11 +50,7 @@ public sealed class StartupLogoConfiguration
     {
         if (variantIndex is not (1 or 2))
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(variantIndex),
-                variantIndex,
-                "Retail startup logo variants are 1 and 2."
-            );
+            throw new ArgumentOutOfRangeException(nameof(variantIndex), variantIndex, "Retail startup logo variants are 1 and 2.");
         }
 
         string format = BackgroundFormat;

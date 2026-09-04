@@ -177,14 +177,8 @@ public sealed class StartupWindow : IDisposable
     }
 
     /// <summary>
-    /// Drains pending window messages, draws one frame, and drains again so the surface is on
-    /// screen before the caller continues.
+    /// Drains pending window messages, draws one frame, and drains again so the surface is on screen before the caller continues.
     /// </summary>
-    /// <remarks>
-    /// Retail shows the startup logo from inside <c>WM_INITDIALOG</c> and pumps no messages until
-    /// initialization finishes, so a single present matches the verified lifetime. There is no
-    /// minimum display duration.
-    /// </remarks>
     private void PresentOnce()
     {
         _window.DoEvents();

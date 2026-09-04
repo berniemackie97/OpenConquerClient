@@ -103,16 +103,26 @@ values are rejected rather than ignored.
 
 `OpenConquer.Launcher` is a separate .NET 10 desktop product using Avalonia.
 
-Run the current launcher shell with:
+Run it with:
 
 ```bash
 dotnet run --project src/OpenConquer.Launcher/OpenConquer.Launcher.csproj
 ```
 
-The current launcher slice establishes only the product process, Avalonia application lifetime, main
-window shell, dependency boundary, and publish boundary.
+The current launcher boundary establishes:
 
-It intentionally does not yet implement:
+- the launcher executable and process composition root;
+- Avalonia application and primary-window lifetime;
+- explicit `ShutdownMode.OnMainWindowClose` process policy;
+- an independent dependency and publish boundary;
+- explicit standard-user process policy on Windows;
+- per-user structured diagnostics;
+- redacted unhandled-exception diagnostics;
+- observation of UI-dispatcher, AppDomain, and unobserved-task exception boundaries;
+- deterministic diagnostics and exception-observer teardown;
+- nonzero process termination for managed faults escaping the launcher host boundary.
+
+The launcher intentionally does not yet implement:
 
 - account authentication;
 - registration or account recovery;
@@ -130,6 +140,150 @@ or speculative abstractions.
 
 The launcher does not reference the game client's runtime subsystem projects and does not consume
 the retail game-content payload.
+
+#### Windows Process Policy
+
+`OpenConquer.Launcher` uses an explicit Windows application manifest.
+
+The launcher requests:
+
+```text
+requestedExecutionLevel = asInvoker
+uiAccess = false
+```
+
+The account-bearing launcher is therefore designed to execute with the privileges of the user who
+started it rather than requiring administrative elevation.
+
+Future functionality that genuinely requires elevation must use a separately designed and audited
+privilege boundary rather than elevating the launcher process itself.
+
+The manifest also declares Windows 10-or-later compatibility through the documented Windows
+compatibility identifier.
+
+Avalonia remains responsible for the launcher's DPI behavior; the launcher manifest does not
+override Avalonia with an independent DPI-awareness declaration.
+
+#### Launcher Diagnostics
+
+Launcher diagnostics are local, bounded, structured, and deliberately non-authoritative.
+
+Diagnostic persistence is **best-effort**. Failure to resolve, create, open, write, or dispose the
+persistent log sink must not become an application-availability dependency.
+
+The launcher uses platform-native per-user log locations:
+
+```text
+Windows
+%LOCALAPPDATA%\OpenConquer\Launcher\Logs
+
+macOS
+~/Library/Logs/OpenConquer/Launcher
+
+Linux
+$XDG_STATE_HOME/OpenConquer/Launcher/Logs
+```
+
+When Linux does not provide a usable absolute `XDG_STATE_HOME`, the launcher uses:
+
+```text
+~/.local/state/OpenConquer/Launcher/Logs
+```
+
+If no supported per-user diagnostic location can be resolved, or if the expected storage boundary
+cannot be established because of an I/O or access failure, diagnostics degrade to a no-sink logger
+rather than preventing launcher startup.
+
+Programming and configuration defects are not intentionally converted into persistence fallback.
+Only expected operational storage failures are treated as unavailable diagnostics.
+
+Persistent launcher events are newline-delimited JSON written to:
+
+```text
+launcher-*.jsonl
+```
+
+The file sink uses:
+
+- daily rolling;
+- a 5 MiB per-file size limit;
+- rolling when the current file reaches that limit;
+- retention of at most 14 log files;
+- unbuffered writes;
+- exclusive process ownership of the file sink.
+
+The sink is intentionally bounded so ordinary launcher diagnostics cannot grow without limit.
+
+Launcher lifecycle records currently include:
+
+- host startup;
+- host shutdown and exit code;
+- redacted exception diagnostics.
+
+The launcher does **not** pass raw `Exception` objects to Serilog.
+
+Unhandled exceptions are first projected into a deliberately restricted representation containing:
+
+- exception type;
+- HRESULT;
+- stack trace without source-file information;
+- bounded inner-exception structure;
+- an explicit indication when inner-exception traversal was truncated.
+
+The projection deliberately excludes:
+
+- `Exception.Message`;
+- `Exception.Data`;
+- `Exception.Source`;
+- `Exception.TargetSite`;
+- source-file paths;
+- arbitrary application parameters;
+- request URLs;
+- authorization headers;
+- cookies;
+- account passwords;
+- authorization codes;
+- access tokens;
+- refresh tokens;
+- session tokens.
+
+This establishes the default security posture before account authentication or network-facing
+launcher services exist.
+
+The exception projection is bounded to prevent pathological nested or aggregate exceptions from
+turning diagnostics into an unbounded allocation path.
+
+#### Launcher Fatal-Fault Policy
+
+The launcher observes the relevant unmanaged-host boundaries without treating unknown failures as
+recoverable application state.
+
+The process-level observer covers:
+
+```text
+Avalonia Dispatcher.UnhandledException
+AppDomain.CurrentDomain.UnhandledException
+TaskScheduler.UnobservedTaskException
+```
+
+An unknown unhandled Avalonia UI exception is not marked handled. The dispatcher callback remains
+lightweight, records the exception reference for classification, and allows the fault to escape to
+the top-level launcher boundary.
+
+The top-level process boundary records the resulting redacted fatal diagnostic and returns a nonzero
+launcher exit code.
+
+AppDomain unhandled exceptions are recorded with the runtime-provided terminating state.
+
+Unobserved task exceptions are recorded as non-terminating diagnostics and marked observed after the
+diagnostic attempt.
+
+Failure of diagnostics while an unhandled exception is already being processed is itself best-effort
+and must not replace or obscure the original process failure.
+
+`Program.Main` remains the explicit process composition root. Launcher diagnostics and exception
+observation own their detailed mechanisms rather than expanding `Program` into a logging,
+filesystem, or exception-handling framework.
 
 ## Formatting
 
@@ -176,9 +330,26 @@ filesystem-safety behavior, and the offline legacy `Server.dat` compatibility bo
 includes the verified retail RSA key, hardened RSA/PKCS#1/gzip envelope validation, typed
 `outenserver` projection, exact retail-fixture parity, and deterministic inspection reporting.
 
-`OpenConquer.Launcher.Tests` verifies launcher product-boundary invariants without requiring a
-native desktop session. In particular, the launcher assembly must retain its dedicated product
-identity and must not acquire dependencies on game runtime subsystem assemblies or Silk.NET.
+`OpenConquer.Launcher.Tests` verifies launcher host and product-boundary invariants without
+requiring a native desktop session.
+
+The launcher tests cover:
+
+- dedicated launcher assembly identity;
+- absence of game-runtime subsystem and Silk.NET dependencies;
+- project-to-manifest linkage;
+- Windows `asInvoker` and `uiAccess=false` process policy;
+- Windows compatibility-manifest policy;
+- platform-native diagnostic path selection;
+- invalid and unavailable diagnostic path behavior;
+- Linux XDG state-directory behavior and fallback;
+- diagnostic directory and JSONL lifecycle output;
+- bounded persistence fallback;
+- diagnostic disposal semantics;
+- exception redaction;
+- bounded aggregate and nested exception projection;
+- exception-observer lifecycle;
+- UI-dispatcher exception classification.
 
 Avalonia's headless UI test harness is not currently part of the repository test infrastructure.
 Launcher UI behavior that eventually requires process-level desktop verification should use a
@@ -330,10 +501,18 @@ The launcher currently uses:
 Avalonia
 Avalonia.Desktop
 Avalonia.Themes.Fluent
+Serilog
+Serilog.Sinks.File
 ```
 
 The launcher intentionally does not currently depend on an MVVM framework, authentication library,
-HTTP client package, updater framework, embedded browser package, or game runtime subsystem.
+HTTP client package, updater framework, embedded browser package, Generic Host integration, or game
+runtime subsystem.
+
+Serilog is currently used directly at the launcher host boundary rather than through
+`Microsoft.Extensions.Logging`. The launcher does not yet have a Generic Host or dependency-
+injection composition model that would justify introducing another logging abstraction and adapter
+layer.
 
 ## Project Settings
 

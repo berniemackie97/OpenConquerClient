@@ -5,11 +5,6 @@ namespace OpenConquer.Content.Tool.CommandLine;
 /// <summary>
 /// Parses the content tool's command line into a typed command.
 /// </summary>
-/// <remarks>
-/// Every verb takes named options with exactly one value each, and an unknown or repeated option is
-/// an error rather than a silently ignored argument. Paths are resolved against the working
-/// directory here so no later stage has to guess what a relative argument meant.
-/// </remarks>
 internal static class ContentToolCommandLine
 {
     private const string ImportVerb = "import-retail-5517";
@@ -104,9 +99,6 @@ internal static class ContentToolCommandLine
         }
     }
 
-    /// <summary>
-    /// Reads one path value per expected option, in any order, rejecting anything else.
-    /// </summary>
     private static bool TryParseOptions(IReadOnlyList<string> args, IReadOnlyList<string> expectedOptions, string workingDirectoryPath, [NotNullWhen(true)] out IReadOnlyList<string>? values, [NotNullWhen(false)] out string? errorMessage)
     {
         values = null;

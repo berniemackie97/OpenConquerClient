@@ -6,32 +6,13 @@ namespace OpenConquer.Content.Wdf;
 /// <summary>
 /// Reads and indexes one retail WDF archive.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The verified retail format contains a 12-byte header, a packed payload region, and a sorted
-/// array of 16-byte index records. The native reader binary-searches that sorted UID table.
-/// </para>
-/// <para>
-/// Legacy archive data is treated as untrusted input. Structural validation is therefore stricter
-/// than the native implementation where doing so does not change behavior for valid retail 5517
-/// archives.
-/// </para>
-/// </remarks>
 internal sealed class WdfArchive
 {
     public const uint Magic = 0x57444650;
     public const int HeaderLength = 12;
     public const int EntryLength = 16;
 
-    /// <summary>
-    /// Modern resource-safety ceiling for a single WDF index.
-    /// </summary>
-    /// <remarks>
-    /// This is not a native-format limit. The surveyed retail 5517 archives contain 10,274
-    /// entries in <c>c3.wdf</c> and 14,739 entries in <c>data.wdf</c>. The ceiling leaves
-    /// substantial compatibility headroom while preventing an untrusted header from driving an
-    /// unbounded index allocation.
-    /// </remarks>
+
     internal const int MaximumEntryCount = 100_000;
 
     private readonly string _archivePath;

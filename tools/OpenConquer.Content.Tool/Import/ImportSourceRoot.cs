@@ -6,10 +6,6 @@ namespace OpenConquer.Content.Tool.Import;
 /// <summary>
 /// An authorized retail snapshot, validated as a 5517 source before anything is read from it.
 /// </summary>
-/// <remarks>
-/// The snapshot is immutable evidence. This type only reads: it never renames, repairs, converts,
-/// or writes back.
-/// </remarks>
 internal sealed class ImportSourceRoot
 {
     private const string ExpectedClientVersion = "5517";
@@ -55,9 +51,7 @@ internal sealed class ImportSourceRoot
 
         if (versionMarker.Length != ExpectedClientVersion.Length)
         {
-            throw new InvalidDataException(
-                $"The retail version marker is {versionMarker.Length} bytes; expected the {ExpectedClientVersion.Length}-byte '{ExpectedClientVersion}' value."
-            );
+            throw new InvalidDataException($"The retail version marker is {versionMarker.Length} bytes; expected the {ExpectedClientVersion.Length}-byte '{ExpectedClientVersion}' value.");
         }
 
         byte[] versionBytes = File.ReadAllBytes(versionMarkerPath);
@@ -68,20 +62,12 @@ internal sealed class ImportSourceRoot
             throw new InvalidDataException($"Expected retail version {ExpectedClientVersion}, but the source declares '{clientVersion}'.");
         }
 
-        return new ImportSourceRoot(
-            new ClientContentRoot(normalizedRootPath),
-            clientVersion,
-            Convert.ToHexStringLower(SHA256.HashData(versionBytes))
-        );
+        return new ImportSourceRoot(new ClientContentRoot(normalizedRootPath), clientVersion, Convert.ToHexStringLower(SHA256.HashData(versionBytes)));
     }
 
     /// <summary>
     /// Resolves a closure content path to a validated absolute source file.
     /// </summary>
-    /// <remarks>
-    /// Resolution is case-insensitive with ambiguity rejection, because retail paths were authored
-    /// on a case-insensitive filesystem and the import must run on case-sensitive hosts too.
-    /// </remarks>
     public FileInfo ResolveRequiredFile(string contentPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
@@ -92,10 +78,6 @@ internal sealed class ImportSourceRoot
     /// <summary>
     /// Returns the retail path with the case the source actually uses.
     /// </summary>
-    /// <remarks>
-    /// The closure names paths with the case the readers use, which is not always the case on disk.
-    /// Recording the on-disk case keeps the payload a faithful copy of the source.
-    /// </remarks>
     public string GetSourceRelativePath(FileInfo file)
     {
         ArgumentNullException.ThrowIfNull(file);

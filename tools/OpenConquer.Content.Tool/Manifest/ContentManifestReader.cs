@@ -2,18 +2,9 @@ using System.Text.Json;
 
 namespace OpenConquer.Content.Tool.Manifest;
 
-/// <summary>
-/// Parses and structurally validates a content-set manifest.
-/// </summary>
-/// <remarks>
-/// A manifest is untrusted input: it is read before its payload is trusted, so every field is
-/// checked here rather than at the point of use.
-/// </remarks>
 internal static class ContentManifestReader
 {
-    /// <summary>Upper bound on manifest size, applied before parsing.</summary>
     public const int MaximumLength = 8 * 1024 * 1024;
-
     private const int Sha256HexLength = 64;
 
     public static ContentManifest Read(Stream source)
@@ -32,9 +23,7 @@ internal static class ContentManifestReader
 
         if (schemaVersion != ContentManifest.SupportedSchemaVersion)
         {
-            throw new InvalidDataException(
-                $"The content-set manifest declares schema version {schemaVersion}; this tool supports {ContentManifest.SupportedSchemaVersion}."
-            );
+            throw new InvalidDataException($"The content-set manifest declares schema version {schemaVersion}; this tool supports {ContentManifest.SupportedSchemaVersion}.");
         }
 
         if (!string.Equals(ReadString(root, "sourceSet"), ContentManifest.SourceSetName, StringComparison.Ordinal))
@@ -42,11 +31,7 @@ internal static class ContentManifestReader
             throw new InvalidDataException("The content-set manifest declares an unsupported source set.");
         }
 
-        ContentManifest manifest = new(
-            ReadString(root, "clientVersion"),
-            ReadSha256(root, "versionMarkerSha256"),
-            ReadEntries(root)
-        );
+        ContentManifest manifest = new(ReadString(root, "clientVersion"), ReadSha256(root, "versionMarkerSha256"), ReadEntries(root));
 
         int declaredFileCount = ReadInt32(root, "fileCount");
         long declaredLength = ReadInt64(root, "length");
@@ -97,9 +82,7 @@ internal static class ContentManifestReader
 
             if (previousSourcePath is not null && string.CompareOrdinal(previousSourcePath, sourcePath) >= 0)
             {
-                throw new InvalidDataException(
-                    $"Manifest entries must be ordered ordinally by source path; '{sourcePath}' follows '{previousSourcePath}'."
-                );
+                throw new InvalidDataException($"Manifest entries must be ordered ordinally by source path; '{sourcePath}' follows '{previousSourcePath}'.");
             }
 
             if (!sourcePaths.Add(sourcePath))
@@ -112,13 +95,7 @@ internal static class ContentManifestReader
                 throw new InvalidDataException($"Manifest contains a case-insensitive path collision on '{sourcePath}'.");
             }
 
-            entries.Add(new ContentManifestEntry(
-                sourcePath,
-                pathKey,
-                length,
-                ReadSha256(encodedEntry, "sha256"),
-                ReadString(encodedEntry, "signature")
-            ));
+            entries.Add(new ContentManifestEntry(sourcePath, pathKey, length, ReadSha256(encodedEntry, "sha256"), ReadString(encodedEntry, "signature")));
 
             previousSourcePath = sourcePath;
         }
@@ -150,9 +127,7 @@ internal static class ContentManifestReader
 
     private static int ReadInt32(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out JsonElement value)
-            || value.ValueKind != JsonValueKind.Number
-            || !value.TryGetInt32(out int parsed))
+        if (!element.TryGetProperty(propertyName, out JsonElement value) || value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out int parsed))
         {
             throw new InvalidDataException($"The content-set manifest has no 32-bit integer property '{propertyName}'.");
         }
@@ -162,9 +137,7 @@ internal static class ContentManifestReader
 
     private static long ReadInt64(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out JsonElement value)
-            || value.ValueKind != JsonValueKind.Number
-            || !value.TryGetInt64(out long parsed))
+        if (!element.TryGetProperty(propertyName, out JsonElement value) || value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out long parsed))
         {
             throw new InvalidDataException($"The content-set manifest has no 64-bit integer property '{propertyName}'.");
         }

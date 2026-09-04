@@ -6,11 +6,6 @@ namespace OpenConquer.Content.Tool.Legacy.ServerDat;
 /// <summary>
 /// Decodes the verified RSA/PKCS#1/gzip envelope used by retail <c>Server.dat</c>.
 /// </summary>
-/// <remarks>
-/// Native 5517 reads RSA blocks at the public modulus width, performs the public-key operation with
-/// exponent 65537 and PKCS#1 type-1 padding, concatenates each extracted payload, verifies the gzip
-/// signature, and inflates the result before XML parsing.
-/// </remarks>
 internal static class ServerDatEnvelopeDecoder
 {
     internal const int EncryptedBlockSize = 256;
@@ -22,7 +17,7 @@ internal static class ServerDatEnvelopeDecoder
     private const byte GzipMagicByte1 = 0x8B;
 
     /// <summary>
-    /// Decodes retail <c>Server.dat</c> using the independently verified native 5517 public key.
+    /// Decodes retail <c>Server.dat</c> using the independently native 5517 public key.
     /// </summary>
     public static byte[] DecodeToXml(ReadOnlySpan<byte> encryptedServerDat)
     {
@@ -30,12 +25,8 @@ internal static class ServerDatEnvelopeDecoder
     }
 
     /// <summary>
-    /// Decodes a Server.dat-compatible envelope using a supplied 2048-bit modulus.
+    /// Decodes a Server.dat compatible envelope using a supplied 2048-bit modulus.
     /// </summary>
-    /// <remarks>
-    /// This overload exists so parity tests can generate independent RSA keypairs while exercising
-    /// the exact production envelope implementation.
-    /// </remarks>
     internal static byte[] DecodeToXml(ReadOnlySpan<byte> encryptedServerDat, ReadOnlySpan<byte> publicModulus)
     {
         ValidatePublicModulus(publicModulus);

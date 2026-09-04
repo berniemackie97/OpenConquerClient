@@ -3,14 +3,8 @@ using Silk.NET.OpenGL;
 namespace OpenConquer.Rendering.OpenGL;
 
 /// <summary>
-/// Renders the one-shot retail startup logo directly to a startup window's framebuffer.
+/// Renders the one shot retail startup logo directly to a startup window's framebuffer.
 /// </summary>
-/// <remarks>
-/// Retail paints the startup bitmap at its natural size from the client origin through a
-/// <c>CreatePatternBrush</c>. There is no centering, aspect-fit, letterboxing, or independent
-/// content scaling. Device-pixel scaling here exists only to preserve that natural logical size on
-/// high-DPI displays.
-/// </remarks>
 public sealed class OpenGLStartupSurfaceRenderer : IDisposable
 {
     private readonly GL _gl;
@@ -20,12 +14,7 @@ public sealed class OpenGLStartupSurfaceRenderer : IDisposable
 
     private bool _disposed;
 
-    internal OpenGLStartupSurfaceRenderer(
-        GL gl,
-        int width,
-        int height,
-        ReadOnlySpan<byte> rgbaPixels
-    )
+    internal OpenGLStartupSurfaceRenderer(GL gl, int width, int height, ReadOnlySpan<byte> rgbaPixels)
     {
         ArgumentNullException.ThrowIfNull(gl);
 
@@ -35,12 +24,7 @@ public sealed class OpenGLStartupSurfaceRenderer : IDisposable
         _image = new OpenGLStartupImage(gl, width, height, rgbaPixels);
     }
 
-    public void Render(
-        int framebufferWidth,
-        int framebufferHeight,
-        int logicalWidth,
-        int logicalHeight
-    )
+    public void Render(int framebufferWidth, int framebufferHeight, int logicalWidth, int logicalHeight)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 

@@ -7,15 +7,8 @@ using OpenConquer.Rendering.OpenGL;
 namespace OpenConquer.Client;
 
 /// <summary>
-/// Presents the retail startup logo on a short-lived OpenGL window when the selected bitmap is
-/// available.
+/// Presents the retail startup logo on a short-lived OpenGL window when the selected bitmap is available.
 /// </summary>
-/// <remarks>
-/// Retail tolerates a missing bitmap and continues initialization. The original Win32 client still
-/// creates an empty dialog in that state, but its pixel dimensions depend on runtime dialog-font
-/// metrics that are not statically verified. The modern client therefore treats the visual splash
-/// as optional rather than inventing an unverified cross-platform pixel size.
-/// </remarks>
 internal sealed class OpenGLStartupSplash : IStartupSplash
 {
     private readonly RgbaImage? _image;
@@ -72,16 +65,12 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
 
         try
         {
-            // StartupWindow raises OpenGLContextReleasing while its context is current. That event
-            // is the only safe place to destroy the renderer's GL objects.
             window.Dispose();
         }
         finally
         {
             window.OpenGLContextReleasing -= OnOpenGLContextReleasing;
 
-            // If the platform could not make the context current, the release event may never have
-            // run. Never retry GL deletion after the native window/context teardown.
             _renderer = null;
             _graphicsDevice = null;
             _disposed = true;
@@ -92,26 +81,16 @@ internal sealed class OpenGLStartupSplash : IStartupSplash
     {
         if (_graphicsDevice is not null || _renderer is not null)
         {
-            throw new InvalidOperationException(
-                "Startup logo rendering has already been initialized."
-            );
+            throw new InvalidOperationException("Startup logo rendering has already been initialized.");
         }
 
-        RgbaImage image =
-            _image
-            ?? throw new InvalidOperationException(
-                "Startup rendering cannot initialize without a logo image."
-            );
+        RgbaImage image = _image ?? throw new InvalidOperationException("Startup rendering cannot initialize without a logo image.");
 
         OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
 
         try
         {
-            OpenGLStartupSurfaceRenderer renderer = graphicsDevice.CreateStartupSurfaceRenderer(
-                image.Width,
-                image.Height,
-                image.Pixels.Span
-            );
+            OpenGLStartupSurfaceRenderer renderer = graphicsDevice.CreateStartupSurfaceRenderer(image.Width, image.Height, image.Pixels.Span);
 
             _renderer = renderer;
             _graphicsDevice = graphicsDevice;
