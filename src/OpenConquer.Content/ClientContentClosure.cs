@@ -1,4 +1,5 @@
 using OpenConquer.Content.Configuration;
+using OpenConquer.Content.Startup.ServerSelection;
 
 namespace OpenConquer.Content;
 
@@ -44,6 +45,7 @@ public static class ClientContentClosure
             GameSetupConfiguration.RelativePath,
             StartupLogoConfiguration.RelativePath,
             PackagedClientContentSource.PackageConfigurationPath,
+            ServerDatCatalogLoader.ContentPath,
         ];
 
         foreach (int variantIndex in s_startupLogoVariantIndexes)

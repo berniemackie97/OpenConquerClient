@@ -21,6 +21,7 @@ public sealed class ContentSetImporterTests
 
         Assert.Equal(
             [
+                "Server.dat",
                 "data/main/Logo1.bmp",
                 "data/main/Logo2.bmp",
                 "ini/GameSetUp.ini",
@@ -32,7 +33,9 @@ public sealed class ContentSetImporterTests
 
         string[] payloadFiles = Directory
             .EnumerateFiles(Path.Combine(destination, "payload"), "*", SearchOption.AllDirectories)
-            .Select(path => Path.GetRelativePath(Path.Combine(destination, "payload"), path).Replace('\\', '/'))
+            .Select(path =>
+                Path.GetRelativePath(Path.Combine(destination, "payload"), path).Replace('\\', '/')
+            )
             .Order(StringComparer.Ordinal)
             .ToArray();
 
@@ -49,11 +52,23 @@ public sealed class ContentSetImporterTests
         source.WriteBytes("data/main/Splash01.bmp", TestBitmap.CreateTwoByTwo());
         source.WriteBytes("data/main/Splash02.bmp", TestBitmap.CreateTwoByTwo());
 
-        ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"));
+        ContentManifest manifest = ContentSetImporter.Import(
+            source.RootPath,
+            destinationParent.ChildPath("set")
+        );
 
-        Assert.Contains("data/main/Splash01.bmp", manifest.Entries.Select(entry => entry.SourcePath));
-        Assert.Contains("data/main/Splash02.bmp", manifest.Entries.Select(entry => entry.SourcePath));
-        Assert.DoesNotContain("data/main/Logo1.bmp", manifest.Entries.Select(entry => entry.SourcePath));
+        Assert.Contains(
+            "data/main/Splash01.bmp",
+            manifest.Entries.Select(entry => entry.SourcePath)
+        );
+        Assert.Contains(
+            "data/main/Splash02.bmp",
+            manifest.Entries.Select(entry => entry.SourcePath)
+        );
+        Assert.DoesNotContain(
+            "data/main/Logo1.bmp",
+            manifest.Entries.Select(entry => entry.SourcePath)
+        );
     }
 
     [Fact]
@@ -86,11 +101,17 @@ public sealed class ContentSetImporterTests
 
         ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"));
 
-        byte[] manifestBytes = File.ReadAllBytes(Path.Combine(destinationParent.ChildPath("set"), "manifest.json"));
+        byte[] manifestBytes = File.ReadAllBytes(
+            Path.Combine(destinationParent.ChildPath("set"), "manifest.json")
+        );
 
         Assert.DoesNotContain((byte)'\r', manifestBytes);
         Assert.Equal((byte)'\n', manifestBytes[^1]);
-        Assert.StartsWith("{\n  \"schemaVersion\": 2,", Encoding.UTF8.GetString(manifestBytes), StringComparison.Ordinal);
+        Assert.StartsWith(
+            "{\n  \"schemaVersion\": 2,",
+            Encoding.UTF8.GetString(manifestBytes),
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
@@ -101,8 +122,13 @@ public sealed class ContentSetImporterTests
 
         source.WriteStartupSnapshot();
 
-        ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"));
-        ContentManifestEntry logo = manifest.Entries.Single(entry => entry.SourcePath == "data/main/Logo1.bmp");
+        ContentManifest manifest = ContentSetImporter.Import(
+            source.RootPath,
+            destinationParent.ChildPath("set")
+        );
+        ContentManifestEntry logo = manifest.Entries.Single(entry =>
+            entry.SourcePath == "data/main/Logo1.bmp"
+        );
 
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
@@ -120,8 +146,8 @@ public sealed class ContentSetImporterTests
         source.WriteStartupSnapshot();
         source.WriteText("version.dat", "9999");
 
-        Assert.Throws<InvalidDataException>(
-            () => ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
+        Assert.Throws<InvalidDataException>(() =>
+            ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
         );
     }
 
@@ -133,8 +159,8 @@ public sealed class ContentSetImporterTests
 
         source.WriteText("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=2\n");
 
-        Assert.Throws<FileNotFoundException>(
-            () => ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
+        Assert.Throws<FileNotFoundException>(() =>
+            ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
         );
     }
 
@@ -147,8 +173,8 @@ public sealed class ContentSetImporterTests
         source.WriteStartupSnapshot();
         File.Delete(source.ChildPath("data/main/Logo2.bmp"));
 
-        Assert.Throws<FileNotFoundException>(
-            () => ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
+        Assert.Throws<FileNotFoundException>(() =>
+            ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
         );
     }
 
@@ -164,8 +190,8 @@ public sealed class ContentSetImporterTests
         source.WriteStartupSnapshot();
         File.Delete(source.ChildPath("ini/package.ini"));
 
-        Assert.Throws<FileNotFoundException>(
-            () => ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
+        Assert.Throws<FileNotFoundException>(() =>
+            ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
         );
 
         Assert.Empty(Directory.EnumerateFileSystemEntries(destinationParent.RootPath));
@@ -180,8 +206,8 @@ public sealed class ContentSetImporterTests
         source.WriteStartupSnapshot();
         Directory.CreateDirectory(destinationParent.ChildPath("set"));
 
-        Assert.Throws<IOException>(
-            () => ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
+        Assert.Throws<IOException>(() =>
+            ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"))
         );
     }
 }

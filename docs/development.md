@@ -40,13 +40,18 @@ Relative `--content-root` values are resolved against the working directory from
 is launched.
 
 The content root must contain the legacy files required by implemented consumers. The current
-required startup configuration is:
+consumer-led retail closure is:
 
 ```text
+Server.dat
+data/main/Logo1.bmp
+data/main/Logo2.bmp
 ini/GameSetUp.ini
+ini/info.ini
+ini/package.ini
 ```
 
-with a valid:
+`ini/GameSetUp.ini` must contain a valid:
 
 ```ini
 [ScreenMode]
@@ -56,6 +61,14 @@ ScreenModeRecord=<0-3>
 Startup also examines `ini/package.ini` when present to register WDF package prefixes and reads
 `ini/info.ini` to resolve the optional startup logo. Missing package declarations and verified
 non-fatal package-registration outcomes do not prevent startup.
+
+`Server.dat` is the implemented typed server-catalog source. It is read from the loose client root
+only, decoded with the independently verified retail 5517 RSA public key, unwrapped through strict
+PKCS#1 type-1 and bounded gzip processing, and projected into an immutable `ServerCatalog`. The
+tracked retail fixture is parity-tested end-to-end.
+
+The server catalog is currently a Content boundary only. First-party server-selection UI, endpoint
+validation, selected-endpoint state, and network connection behavior are not part of this slice.
 
 The startup logo is also non-fatal. When a usable logo bitmap is available, it is presented once in
 a dedicated borderless window at its natural logical size. The startup renderer, OpenGL context, and
@@ -105,7 +118,9 @@ and startup-window-before-main-window lifetime invariants.
 
 `OpenConquer.Content.Tests` verifies legacy content-root lookup semantics, package registration and
 lookup behavior, shared content-path validation, native-compatible INI parsing, startup-logo
-configuration and decoding, and content-closure resolution.
+configuration and decoding, content-closure resolution, the verified `Server.dat` RSA key
+derivation, RSA/PKCS#1/gzip envelope validation, typed `outenserver` projection, and end-to-end
+parity against the tracked retail `Server.dat` fixture.
 
 `OpenConquer.Content.Tool.Tests` verifies deterministic content import, manifest construction,
 physical-payload verification, implemented-closure enforcement, integrity validation, and

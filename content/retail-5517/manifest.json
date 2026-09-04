@@ -3,9 +3,16 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 5,
-  "length": 1142443,
+  "fileCount": 6,
+  "length": 1145259,
   "entries": [
+    {
+      "sourcePath": "Server.dat",
+      "pathKey": "server.dat",
+      "length": 2816,
+      "sha256": "0b4d366786aa4498c7e470f10fd8bca716bc1d6cbda1eb3894666183f8327a90",
+      "signature": "unknown"
+    },
     {
       "sourcePath": "data/main/Logo1.bmp",
       "pathKey": "data/main/logo1.bmp",
