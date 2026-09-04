@@ -4,4 +4,10 @@
     <ProjectReference Include="../../src/OpenConquer.Content/OpenConquer.Content.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="../../content/retail-5517/payload/Server.dat"
+             Link="TestData/retail-5517/Server.dat"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -22,6 +22,7 @@ The current retail-5517 closure contains exactly:
 
 ```text
 payload/
+├── Server.dat
 ├── data/
 │   └── main/
 │       ├── Logo1.bmp
@@ -32,7 +33,13 @@ payload/
     └── package.ini
 ```
 
-`manifest.json` records the deterministic identity and integrity metadata for those five files.
+`manifest.json` records the deterministic identity and integrity metadata for those six files.
+
+The current consumers cover screen-mode configuration, startup-logo selection/decoding, WDF package
+registration, and the typed retail `Server.dat` catalog boundary. `Server.dat` remains a loose-root
+input exactly as verified in the native client; the content layer does not fall back to WDF for it.
+The resulting typed server catalog is not yet wired into first-party server-selection UI or
+networking.
 
 This policy prevents unsupported retail families from entering the product simply because their
 bytes are available. Content expansion follows real consumers rather than directory-sized imports.
@@ -73,6 +80,10 @@ dotnet run --project tools/OpenConquer.Content.Tool -- \
   validate-startup \
   --content-root content/retail-5517/payload
 ```
+
+`validate-startup` covers the startup consumers currently owned by that command. The standalone
+`Server.dat` catalog boundary is additionally locked by content tests against the exact tracked
+retail fixture.
 
 ## Content-Set Verification
 

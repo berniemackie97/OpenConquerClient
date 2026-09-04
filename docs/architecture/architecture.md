@@ -182,6 +182,71 @@ The Content project interprets the legacy configuration. It does not construct R
 `ClientApplication` bridges the resulting dimensions into `LogicalRenderSize`, preserving the
 dependency boundary between Content and Rendering.
 
+### Retail Content Closure
+
+The versioned retail payload is consumer-led rather than a bulk client-tree mirror.
+`ClientContentClosure` defines the exact paths required by implemented consumers, and the import and
+verification tooling requires that code closure, manifest path set, and physical payload path set
+remain identical.
+
+The current retail-5517 closure contains exactly:
+
+```text
+Server.dat
+data/main/Logo1.bmp
+data/main/Logo2.bmp
+ini/GameSetUp.ini
+ini/info.ini
+ini/package.ini
+```
+
+A retail file enters that closure only with an implemented, reviewed consumer. Large WDF archives
+remain outside it because no implemented consumer requires an archive entry. `ini/package.ini`
+remains inside the closure because package declaration and routing behavior are implemented and
+observable even when the declared archives themselves are absent.
+
+### Server.dat Catalog Boundary
+
+`Server.dat` is a Content-owned bootstrap input. Native 5517 reads it directly from the client root,
+so `ServerDatCatalogLoader` deliberately requests `ContentLookupMode.LooseOnly`; package fallback is
+not permitted.
+
+The implemented flow is:
+
+```text
+loose Server.dat
+        ↓
+bounded encrypted read
+        ↓
+verified retail 5517 RSA public key
+        ↓
+PKCS#1 type-1 extraction
+        ↓
+bounded gzip inflate
+        ↓
+ServerDatXmlCatalogReader
+        ↓
+immutable ServerCatalog
+```
+
+The verified retail fixture is 2,816 bytes: eleven 256-byte RSA blocks. The native constructor
+builds a 2048-bit public modulus and sets exponent 65537. OpenConquer stores the independently
+verified final modulus directly rather than reproducing native BIGNUM construction at runtime;
+parity tests retain the native seed/schedule derivation as evidence.
+
+`ServerDatEnvelopeDecoder` owns only the encrypted transport envelope. It validates whole RSA
+blocks, rejects representatives outside the modulus, requires PKCS#1 type-1 padding with at least
+eight `0xFF` bytes, requires a non-empty extracted chunk, verifies gzip, and bounds inflated output.
+
+`ServerDatXmlCatalogReader` owns only the verified `table_data[name=outenserver]` schema. It
+prohibits DTDs, rejects duplicate table/row/field identities, bounds group and server counts, and
+projects the retail row layout into `ServerGroup` and `ServerDefinition`. Host and port remain
+source text because network endpoint validation belongs to `OpenConquer.Networking`, not Content.
+
+The exact tracked retail fixture is exercised by parity tests through the production native key and
+loader. It resolves to 14 groups. This slice stops at the typed Content boundary: there is no
+server-selection UI, endpoint selection state, or network connection behavior here.
+
 ## Startup Logo Lifetime
 
 The retail logo is an optional initialization surface, not content in the main game framebuffer.

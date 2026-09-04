@@ -27,6 +27,7 @@ Selected source fingerprints:
 | -------------------------- | ----------: | ------------------------------------------------------------------ |
 | `version.dat`              |           4 | `5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8` |
 | `ini/GameSetUp.ini`        |         157 | `d32d919e831a52fb8942ca51492df34add95ea64530307f1fddd3ef07cfcd492` |
+| `Server.dat`               |       2,816 | `0b4d366786aa4498c7e470f10fd8bca716bc1d6cbda1eb3894666183f8327a90` |
 | `ini/DefaultGameSetup.ini` |          50 | `ac8263fb13bc46319fe75736ddb1892108c093101b5f098c3fcba6b447c1d986` |
 | `ini/package.ini`          |          29 | `511028e125d43635d90f777806b0f0fee65895b5b1a604cf278001fee536a8f2` |
 | `ini/GameMap.dat`          |      10,876 | `0676b7d6969dd8277438704a289b1f57e8debb89fe5d3f912819c3a7880686a0` |
@@ -54,6 +55,61 @@ The inspected `ini/`, `data/`, `ani/`, and `map/` paths contain no symbolic link
 non-ASCII path characters, or case-folded path collisions. The longest relative path in that set is
 67 characters. Those observations describe this snapshot; import validation must still enforce the
 same invariants for every source.
+
+## Root Bootstrap Data
+
+### `Server.dat`
+
+`Server.dat` is now part of the checked-in consumer-led closure because the typed startup server
+catalog boundary is implemented and verified. Native analysis establishes that it is read directly
+from the client root rather than through WDF package routing.
+
+Verified retail identity:
+
+```text
+length: 2816 bytes
+SHA-256: 0b4d366786aa4498c7e470f10fd8bca716bc1d6cbda1eb3894666183f8327a90
+RSA blocks: 11 × 256 bytes
+```
+
+Native `CConfigDataTableQueryProvider` constructs a 2048-bit RSA public key with exponent `65537`.
+The independently recovered unsigned big-endian modulus has raw-byte SHA-256:
+
+```text
+76acb04b08190b129985f8dee2b466efcd686eb1662cb598bd1a8154cb9196f1
+```
+
+The native decode path is:
+
+```text
+11 × 256-byte RSA blocks
+        ↓
+public RSA operation
+        ↓
+PKCS#1 type-1 extraction
+        ↓
+2495-byte concatenated gzip payload
+        ↓
+38819-byte XML
+        ↓
+table_data[name=outenserver]
+```
+
+The inflated XML SHA-256 is:
+
+```text
+5d6b00ff722a8b37aa2981affecd478aee73bdc22cdc498a25b700242b55c35a
+```
+
+The verified schema exposes `id`, `Child`, `FlashName`, `FlashIcon`, `FlashHint`, `ServerName`,
+`ServerIP`, and `ServerPort`. Root row `id=0` declares 14 groups. Group rows use IDs `1..14`; server
+rows begin at `0x65 + (groupIndex - 1) * 0x64`, with `Child` on the group row defining that group's
+server count. The 100-row stride is therefore structural evidence and the modern decoder rejects a
+per-group count above 100.
+
+OpenConquer preserves host and port fields as source text in Content. Presentation interpretation,
+endpoint validation, selection state, and actual network connection belong to later layers. Flash
+metadata remains opaque source metadata; the client will not recreate the retail Flash runtime.
 
 ## `ini/` Inventory
 
@@ -332,9 +388,11 @@ relevant compatibility and validation behavior.
 5. WDF routing and archive validation are now explicit boundaries: native evidence determines
    registration, hashing, routing, and lookup compatibility, while modern validation constrains
    legacy archives and host files as untrusted input.
-6. Mutable preferences, immutable game definitions, presentation resources, and obsolete launcher
+6. `Server.dat` is now an explicit loose-root bootstrap boundary with independently verified native
+   RSA key material, bounded PKCS#1/gzip decoding, and typed `outenserver` projection.
+7. Mutable preferences, immutable game definitions, presentation resources, and obsolete launcher
    content need different ownership and distribution policies.
-7. The **inventory** of the surveyed retail families is complete, but checked-in migration is
+8. The **inventory** of the surveyed retail families is complete, but checked-in migration is
    intentionally consumer-led. The repository currently preserves only the exact files required by
    implemented consumers; additional retail files enter the content set only with the feature slice
    that consumes them.

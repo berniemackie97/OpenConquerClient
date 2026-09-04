@@ -9,11 +9,11 @@ OpenConquer does not bulk-import retail directories.
 The checked-in content set is the exact dependency closure of implemented consumers:
 
 ```text
-ClientContentClosure
+ClientContentClosure.Resolve(payload)
         ==
-manifest
+manifest path keys
         ==
-payload
+observed payload path keys
 ```
 
 The closure expands only when a reviewed implementation slice introduces a real consumer.
@@ -103,6 +103,7 @@ retail 5517 data or change verified compatibility behavior.
 The checked-in `content/retail-5517` payload currently contains:
 
 ```text
+Server.dat
 data/main/Logo1.bmp
 data/main/Logo2.bmp
 ini/GameSetUp.ini
@@ -115,7 +116,8 @@ These files support the implemented startup consumers:
 - screen-mode configuration;
 - package declaration registration;
 - startup-logo path configuration;
-- the two verified retail startup-logo variants.
+- the two verified retail startup-logo variants;
+- the typed retail `Server.dat` server-catalog boundary.
 
 No `ani/`, map, C3, audio, login, or general UI families are checked in merely for future use.
 
@@ -154,10 +156,21 @@ GameSetupConfiguration
 StartupLogoConfiguration
 StartupLogo
 WindowsBitmapReader
+ServerDatCatalogLoader
+        │
+        ├── ServerDatEnvelopeDecoder
+        ├── ServerDatNativePublicKey
+        └── ServerDatXmlCatalogReader
+                │
+                ▼
+            ServerCatalog
 ```
 
 The application composes the content source; consumers do not know whether bytes came from a host
-filesystem or WDF archive.
+filesystem or WDF archive. `ServerDatCatalogLoader` deliberately requests `LooseOnly`, preserving
+the verified native rule that `Server.dat` is read directly from the client root and never falls
+back to a package. The typed catalog is implemented and parity-tested but is not yet consumed by
+first-party server-selection UI or networking.
 
 ## Current Tooling Boundary
 
@@ -182,6 +195,71 @@ This makes both of the following invalid:
 
 - adding a payload file and manifest entry that no implemented consumer requires;
 - removing a required file from both payload and manifest.
+
+## Server.dat Policy
+
+The retail `Server.dat` boundary is implemented as a narrow startup-content pipeline:
+
+```text
+loose Server.dat
+        ↓
+bounded encrypted read
+        ↓
+verified 5517 RSA public key
+        ↓
+PKCS#1 type-1 extraction
+        ↓
+bounded gzip inflate
+        ↓
+outenserver XML
+        ↓
+typed immutable ServerCatalog
+```
+
+Verified retail identity:
+
+```text
+length: 2816 bytes
+RSA blocks: 11 × 256 bytes
+SHA-256: 0b4d366786aa4498c7e470f10fd8bca716bc1d6cbda1eb3894666183f8327a90
+```
+
+The independently recovered native public key uses exponent `65537` and a 2048-bit modulus whose raw
+256-byte SHA-256 is:
+
+```text
+76acb04b08190b129985f8dee2b466efcd686eb1662cb598bd1a8154cb9196f1
+```
+
+The modern implementation stores the final verified modulus directly rather than reproducing the
+native constructor's seed/schedule/BIGNUM assembly. The native derivation remains locked by parity
+tests.
+
+Envelope validation includes:
+
+- whole 256-byte RSA blocks;
+- a modern maximum of 64 encrypted blocks;
+- RSA representatives strictly below the modulus;
+- PKCS#1 type-1 prefix `00 01`;
+- at least eight `FF` padding bytes;
+- a required zero separator and non-empty extracted chunk;
+- gzip signature validation;
+- a 1 MiB modern inflate ceiling;
+- deterministic malformed-data failures.
+
+The exact retail fixture decodes through the production key to 38,819 XML bytes with SHA-256:
+
+```text
+5d6b00ff722a8b37aa2981affecd478aee73bdc22cdc498a25b700242b55c35a
+```
+
+The XML reader prohibits DTDs, requires exactly one `table_data[name=outenserver]` table, rejects
+duplicate row IDs and duplicate field names, bounds group/server counts, and projects the verified
+row scheme into immutable `ServerGroup` and `ServerDefinition` objects. Host and port values remain
+source text at the Content boundary; endpoint validation belongs to the future networking handoff.
+
+The current retail root row declares 14 server groups. The content tests lock the authentic retail
+file, encrypted and inflated hashes, 11-block shape, and 14-group catalog result.
 
 ## WDF Policy
 
@@ -365,7 +443,7 @@ The content set is never expanded speculatively.
 
 Likely future areas, subject to actual reconstruction order, include:
 
-1. server-selection/bootstrap data;
+1. first-party server-selection UI and the networking endpoint handoff;
 2. first-party login and core UI resources;
 3. fonts, localization, cursors, icons, and layout definitions;
 4. item and role definitions;
@@ -406,6 +484,9 @@ They should cover:
 - containment and symlink/reparse rejection;
 - package prefix-hash registration and duplicate/collision semantics;
 - missing and unavailable package behavior;
+- native `Server.dat` key derivation and retail fixture identity;
+- RSA/PKCS#1/gzip envelope validation;
+- typed `outenserver` XML projection and row-index semantics;
 - optional package-declaration failure behavior;
 - verified WDF hash vectors;
 - WDF header/index parsing and bounds;
@@ -417,7 +498,9 @@ They should cover:
 - manifest/payload/closure verification;
 - malformed and adversarial inputs.
 
-Tests must not require redistribution of large retail payload families.
+Tests must not require redistribution of large retail payload families. Small retail fixtures may be
+tracked when they are necessary to permanently lock a parity-sensitive decoder and are already part
+of the reviewed runtime content closure.
 
 ## Commit and Release Gate
 
