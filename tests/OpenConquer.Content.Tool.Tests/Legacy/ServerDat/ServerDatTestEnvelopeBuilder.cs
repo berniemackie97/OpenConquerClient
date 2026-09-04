@@ -1,9 +1,9 @@
 using System.IO.Compression;
 using System.Numerics;
 using System.Security.Cryptography;
-using OpenConquer.Content.Startup.ServerSelection;
+using OpenConquer.Content.Tool.Legacy.ServerDat;
 
-namespace OpenConquer.Content.Tests.Startup.ServerSelection;
+namespace OpenConquer.Content.Tool.Tests.Legacy.ServerDat;
 
 /// <summary>
 /// Generates test-only RSA material and Server.dat-compatible PKCS#1 type-1 blocks.

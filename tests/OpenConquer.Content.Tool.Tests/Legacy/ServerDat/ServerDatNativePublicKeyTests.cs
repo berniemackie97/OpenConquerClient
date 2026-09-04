@@ -1,8 +1,8 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
-using OpenConquer.Content.Startup.ServerSelection;
+using OpenConquer.Content.Tool.Legacy.ServerDat;
 
-namespace OpenConquer.Content.Tests.Startup.ServerSelection;
+namespace OpenConquer.Content.Tool.Tests.Legacy.ServerDat;
 
 public sealed class ServerDatNativePublicKeyTests
 {

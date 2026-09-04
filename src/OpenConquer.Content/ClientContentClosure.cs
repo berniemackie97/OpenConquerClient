@@ -1,10 +1,9 @@
 using OpenConquer.Content.Configuration;
-using OpenConquer.Content.Startup.ServerSelection;
 
 namespace OpenConquer.Content;
 
 /// <summary>
-/// The exact set of retail content paths the implemented slices read.
+/// The exact set of retail content paths the implemented runtime slices read.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -18,6 +17,10 @@ namespace OpenConquer.Content;
 /// non-fatal in retail: the declaration reader returns <see langword="void"/> and its caller
 /// discards <c>TqPackagesOpen</c>'s result at <c>0x1001A406</c>. The declaration file itself is
 /// inside the closure, so the omission stays visible to a reviewer.
+/// </para>
+/// <para>
+/// Historical artifacts retained only for compatibility research, parity testing, or offline
+/// tooling are not part of this runtime closure and are not shipped as client runtime content.
 /// </para>
 /// </remarks>
 public static class ClientContentClosure
@@ -45,7 +48,6 @@ public static class ClientContentClosure
             GameSetupConfiguration.RelativePath,
             StartupLogoConfiguration.RelativePath,
             PackagedClientContentSource.PackageConfigurationPath,
-            ServerDatCatalogLoader.ContentPath,
         ];
 
         foreach (int variantIndex in s_startupLogoVariantIndexes)

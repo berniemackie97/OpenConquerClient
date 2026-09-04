@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace OpenConquer.Content.Startup.ServerSelection;
+namespace OpenConquer.Content.Tool.Legacy.ServerDat;
 
 /// <summary>
 /// Reads the verified <c>outenserver</c> table from inflated retail <c>Server.dat</c> XML.
@@ -34,7 +34,7 @@ internal static class ServerDatXmlCatalogReader
     private const string ServerIpFieldName = "ServerIP";
     private const string ServerPortFieldName = "ServerPort";
 
-    public static ServerCatalog Read(ReadOnlySpan<byte> xmlPayload)
+    public static ServerDatCatalog Read(ReadOnlySpan<byte> xmlPayload)
     {
         if (xmlPayload.IsEmpty)
         {
@@ -68,7 +68,7 @@ internal static class ServerDatXmlCatalogReader
         XElement root = document.Root ?? throw new InvalidDataException("Server.dat XML does not contain a document root.");
 
         XElement[] matchingTables = root.DescendantsAndSelf().Where(static element => element.Name == TableDataElementName
-            && string.Equals((string?)element.Attribute(TableNameAttributeName), OutenserverTableName, StringComparison.Ordinal)).Take(2).ToArray();
+                && string.Equals((string?)element.Attribute(TableNameAttributeName), OutenserverTableName, StringComparison.Ordinal)).Take(2).ToArray();
 
         if (matchingTables.Length == 0)
         {
@@ -86,7 +86,7 @@ internal static class ServerDatXmlCatalogReader
 
         int groupCount = ParseCount(rootRow, ChildFieldName, MaximumGroupCount, "root group");
 
-        List<ServerGroup> groups = [];
+        List<ServerDatGroup> groups = new(groupCount);
 
         for (int groupIndex = 1; groupIndex <= groupCount; groupIndex++)
         {
@@ -96,7 +96,7 @@ internal static class ServerDatXmlCatalogReader
 
             int firstServerId = checked(FirstServerRowId + (groupIndex - 1) * ServerRowStride);
 
-            List<ServerDefinition> servers = [];
+            List<ServerDatServer> servers = new(serverCount);
 
             for (int serverOffset = 0; serverOffset < serverCount; serverOffset++)
             {
@@ -104,17 +104,17 @@ internal static class ServerDatXmlCatalogReader
 
                 Dictionary<string, string> serverRow = GetRequiredRow(rowsById, serverId, $"server {serverId}");
 
-                servers.Add(new ServerDefinition(serverId, GetRequiredField(serverRow, FlashNameFieldName, $"server {serverId}"),
-                        NormalizeIconToken(GetOptionalField(serverRow, FlashIconFieldName)), GetOptionalField(serverRow, FlashHintFieldName) ?? string.Empty,
-                        GetRequiredField(serverRow, ServerNameFieldName, $"server {serverId}"), GetRequiredField(serverRow, ServerIpFieldName, $"server {serverId}"),
-                        GetRequiredField(serverRow, ServerPortFieldName, $"server {serverId}")));
+                servers.Add(new ServerDatServer(serverId, GetRequiredField(serverRow, FlashNameFieldName, $"server {serverId}"),
+                    NormalizeFlashIcon(GetOptionalField(serverRow, FlashIconFieldName)), GetOptionalField(serverRow, FlashHintFieldName) ?? string.Empty,
+                    GetRequiredField(serverRow, ServerNameFieldName, $"server {serverId}"), GetRequiredField(serverRow, ServerIpFieldName, $"server {serverId}"),
+                    GetRequiredField(serverRow, ServerPortFieldName, $"server {serverId}")));
             }
 
-            groups.Add(new ServerGroup(groupIndex, GetRequiredField(groupRow, FlashNameFieldName, $"group {groupIndex}"),
-                    NormalizeIconToken(GetOptionalField(groupRow, FlashIconFieldName)), servers));
+            groups.Add(new ServerDatGroup(groupIndex, GetRequiredField(groupRow, FlashNameFieldName, $"group {groupIndex}"),
+                NormalizeFlashIcon(GetOptionalField(groupRow, FlashIconFieldName)), servers));
         }
 
-        return new ServerCatalog(groups);
+        return new ServerDatCatalog(groups);
     }
 
     private static Dictionary<int, Dictionary<string, string>> ReadRows(XElement table)
@@ -187,13 +187,13 @@ internal static class ServerDatXmlCatalogReader
 
         if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count) || count < 0 || count > maximum)
         {
-            throw new InvalidDataException($"Server.dat {description} count '{value}' is outside the supported range 0 through {maximum}.");
+            throw new InvalidDataException($"Server.dat {description} count '{value}' is outside the supported range " + $"0 through {maximum}.");
         }
 
         return count;
     }
 
-    private static string? NormalizeIconToken(string? value)
+    private static string? NormalizeFlashIcon(string? value)
     {
         if (value is null)
         {

@@ -4,4 +4,9 @@
     <ProjectReference Include="../../tools/OpenConquer.Content.Tool/OpenConquer.Content.Tool.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="TestData/retail-5517/Server.dat"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

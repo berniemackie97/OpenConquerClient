@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Numerics;
 
-namespace OpenConquer.Content.Startup.ServerSelection;
+namespace OpenConquer.Content.Tool.Legacy.ServerDat;
 
 /// <summary>
 /// Decodes the verified RSA/PKCS#1/gzip envelope used by retail <c>Server.dat</c>.

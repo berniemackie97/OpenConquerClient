@@ -1,42 +1,40 @@
 using System.Text;
-using OpenConquer.Content.Startup.ServerSelection;
+using OpenConquer.Content.Tool.Legacy.ServerDat;
 
-namespace OpenConquer.Content.Tests.Startup.ServerSelection;
+namespace OpenConquer.Content.Tool.Tests.Legacy.ServerDat;
 
 public sealed class ServerDatEnvelopeDecoderTests
 {
     [Fact]
     public void DecodeToXml_ValidEnvelope_InflatesAndParsesCatalog()
     {
-        byte[] xmlPayload = Encoding.UTF8.GetBytes(
-            """
-            <mysqldump>
-              <database>
-                <table_data name="outenserver">
-                  <row>
-                    <field name="id">0</field>
-                    <field name="Child">1</field>
-                  </row>
-                  <row>
-                    <field name="id">1</field>
-                    <field name="Child">1</field>
-                    <field name="FlashName">GroupAlpha</field>
-                    <field name="FlashIcon">NULL</field>
-                  </row>
-                  <row>
-                    <field name="id">101</field>
-                    <field name="FlashName">ServerOne</field>
-                    <field name="FlashIcon">NULL</field>
-                    <field name="FlashHint">Stable</field>
-                    <field name="ServerName">ServerOne</field>
-                    <field name="ServerIP">127.0.0.1</field>
-                    <field name="ServerPort">9958</field>
-                  </row>
-                </table_data>
-              </database>
-            </mysqldump>
-            """
-        );
+        byte[] xmlPayload = """
+                            <mysqldump>
+                              <database>
+                                <table_data name="outenserver">
+                                  <row>
+                                    <field name="id">0</field>
+                                    <field name="Child">1</field>
+                                  </row>
+                                  <row>
+                                    <field name="id">1</field>
+                                    <field name="Child">1</field>
+                                    <field name="FlashName">GroupAlpha</field>
+                                    <field name="FlashIcon">NULL</field>
+                                  </row>
+                                  <row>
+                                    <field name="id">101</field>
+                                    <field name="FlashName">ServerOne</field>
+                                    <field name="FlashIcon">NULL</field>
+                                    <field name="FlashHint">Stable</field>
+                                    <field name="ServerName">ServerOne</field>
+                                    <field name="ServerIP">127.0.0.1</field>
+                                    <field name="ServerPort">9958</field>
+                                  </row>
+                                </table_data>
+                              </database>
+                            </mysqldump>
+                            """u8.ToArray();
 
         byte[] encrypted = ServerDatTestEnvelopeBuilder.EncodeXml(xmlPayload);
 
@@ -45,19 +43,14 @@ public sealed class ServerDatEnvelopeDecoderTests
             ServerDatTestEnvelopeBuilder.PublicModulus
         );
 
-        ServerCatalog catalog = ServerDatXmlCatalogReader.Read(decoded);
+        ServerDatCatalog catalog = ServerDatXmlCatalogReader.Read(decoded);
+        ServerDatGroup group = Assert.Single(catalog.Groups);
+        ServerDatServer server = Assert.Single(group.Servers);
 
-        ServerGroup group = Assert.Single(catalog.Groups);
-
-        ServerDefinition server = Assert.Single(group.Servers);
-
-        Assert.Equal("GroupAlpha", group.DisplayName);
-
+        Assert.Equal("GroupAlpha", group.FlashName);
         Assert.Equal("ServerOne", server.ServerName);
-
-        Assert.Equal("127.0.0.1", server.Host);
-
-        Assert.Equal("9958", server.Port);
+        Assert.Equal("127.0.0.1", server.ServerIp);
+        Assert.Equal("9958", server.ServerPort);
     }
 
     [Fact]

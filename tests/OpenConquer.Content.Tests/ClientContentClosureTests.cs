@@ -17,7 +17,6 @@ public sealed class ClientContentClosureTests
             [
                 "Data/Main/Logo1.bmp",
                 "Data/Main/Logo2.bmp",
-                "Server.dat",
                 "ini/GameSetUp.ini",
                 "ini/info.ini",
                 "ini/package.ini",
@@ -45,10 +44,13 @@ public sealed class ClientContentClosureTests
         );
 
         Assert.Contains("data/main/Splash01.bmp", closure);
-
         Assert.Contains("data/main/Splash02.bmp", closure);
 
-        Assert.Contains("Server.dat", closure);
+        Assert.DoesNotContain(
+            closure,
+            static contentPath =>
+                string.Equals(contentPath, "Server.dat", StringComparison.OrdinalIgnoreCase)
+        );
     }
 
     [Fact]
@@ -63,9 +65,12 @@ public sealed class ClientContentClosureTests
         );
 
         Assert.Contains("Data/Main/Logo1.bmp", closure);
-
         Assert.Contains("Data/Main/Logo2.bmp", closure);
 
-        Assert.Contains("Server.dat", closure);
+        Assert.DoesNotContain(
+            closure,
+            static contentPath =>
+                string.Equals(contentPath, "Server.dat", StringComparison.OrdinalIgnoreCase)
+        );
     }
 }

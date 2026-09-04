@@ -23,7 +23,9 @@ internal sealed class TemporarySourceTree : IDisposable
         get;
     }
 
-    /// <summary>A path under this tree that has deliberately not been created.</summary>
+    /// <summary>
+    /// A path under this tree that has deliberately not been created.
+    /// </summary>
     public string ChildPath(string relativePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
@@ -47,16 +49,17 @@ internal sealed class TemporarySourceTree : IDisposable
             ?? throw new InvalidOperationException($"'{relativePath}' has no parent directory.");
 
         Directory.CreateDirectory(directoryPath);
+
         File.WriteAllBytes(filePath, contents);
     }
 
     /// <summary>
     /// Writes a synthetic source snapshot containing every path required by the implemented
-    /// content closure.
+    /// runtime content closure.
     /// </summary>
     /// <remarks>
-    /// Binary payloads that are not parsed by the content-tool tests only need deterministic bytes.
-    /// Semantic Server.dat decoding is covered independently by OpenConquer.Content.Tests.
+    /// Historical <c>Server.dat</c> is deliberately absent because it is no longer runtime content.
+    /// Legacy Server.dat tests create their own explicit tooling fixtures instead.
     /// </remarks>
     public void WriteStartupSnapshot(string backgroundFormat = "Data/Main/Logo%d.bmp")
     {
@@ -67,8 +70,6 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteText("ini/info.ini", $"[DlgLogo]\nBgFormat={backgroundFormat}\n");
 
         WriteText("ini/package.ini", "data.wdf\nc3.wdf\ndata3.wdf\n");
-
-        WriteBytes("Server.dat", [0x53, 0x44, 0x41, 0x54]);
 
         WriteBytes("data/main/Logo1.bmp", TestBitmap.CreateTwoByTwo());
 

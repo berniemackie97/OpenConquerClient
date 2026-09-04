@@ -17,7 +17,7 @@ public sealed class ContentSetVerifierTests
 
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(6, manifest.FileCount);
+        Assert.Equal(5, manifest.FileCount);
     }
 
     [Fact]
@@ -233,7 +233,7 @@ public sealed class ContentSetVerifierTests
         File.WriteAllText(
             manifestPath,
             File.ReadAllText(manifestPath, Encoding.UTF8)
-                .Replace("\"fileCount\": 6", "\"fileCount\": 5", StringComparison.Ordinal),
+                .Replace("\"fileCount\": 5", "\"fileCount\": 4", StringComparison.Ordinal),
             Encoding.UTF8
         );
 

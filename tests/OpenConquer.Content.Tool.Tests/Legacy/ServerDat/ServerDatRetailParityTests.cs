@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
-using OpenConquer.Content.Startup.ServerSelection;
+using OpenConquer.Content.Tool.Legacy.ServerDat;
 
-namespace OpenConquer.Content.Tests.Startup.ServerSelection;
+namespace OpenConquer.Content.Tool.Tests.Legacy.ServerDat;
 
 /// <summary>
-/// Locks the production Server.dat pipeline to the exact audited retail 5517 fixture.
+/// Locks the preserved Server.dat tooling pipeline to the exact audited retail 5517 fixture.
 /// </summary>
 public sealed class ServerDatRetailParityTests
 {
@@ -40,17 +40,9 @@ public sealed class ServerDatRetailParityTests
     }
 
     [Fact]
-    public void RetailFixture_LoadsTheVerifiedStartupGroupCatalog()
+    public void RetailFixture_LoadsTheVerifiedServerDatCatalog()
     {
-        string fixturePath = GetFixturePath();
-
-        string contentRoot =
-            Path.GetDirectoryName(fixturePath)
-            ?? throw new InvalidOperationException(
-                "Retail Server.dat fixture does not have a parent directory."
-            );
-
-        ServerCatalog catalog = ServerDatCatalogLoader.Load(new ClientContentRoot(contentRoot));
+        ServerDatCatalog catalog = ServerDatFileReader.Read(GetFixturePath());
 
         Assert.Equal(ExpectedGroupCount, catalog.Groups.Count);
 
@@ -62,11 +54,6 @@ public sealed class ServerDatRetailParityTests
 
     private static string GetFixturePath()
     {
-        return Path.Combine(
-            AppContext.BaseDirectory,
-            "TestData",
-            "retail-5517",
-            ServerDatCatalogLoader.ContentPath
-        );
+        return Path.Combine(AppContext.BaseDirectory, "TestData", "retail-5517", "Server.dat");
     }
 }

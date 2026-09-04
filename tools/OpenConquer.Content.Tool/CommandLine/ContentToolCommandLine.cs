@@ -15,6 +15,8 @@ internal static class ContentToolCommandLine
     private const string ImportVerb = "import-retail-5517";
     private const string ValidateStartupVerb = "validate-startup";
     private const string VerifyContentSetVerb = "verify-content-set";
+    private const string InspectServerDatVerb = "inspect-server-dat";
+    private const string FileOption = "--file";
 
     private const string SourceOption = "--source";
     private const string DestinationOption = "--destination";
@@ -31,13 +33,10 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <retail-root> {DestinationOption} <content-set-root>",
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
         $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root>",
+        $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
     ];
 
-    public static bool TryParse(
-        IReadOnlyList<string> args,
-        string workingDirectoryPath,
-        [NotNullWhen(true)] out ContentToolCommand? command,
-        [NotNullWhen(false)] out string? errorMessage)
+    public static bool TryParse(IReadOnlyList<string> args, string workingDirectoryPath, [NotNullWhen(true)] out ContentToolCommand? command, [NotNullWhen(false)] out string? errorMessage)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectoryPath);
@@ -88,6 +87,17 @@ internal static class ContentToolCommandLine
                     return true;
                 }
 
+            case InspectServerDatVerb:
+                {
+                    if (!TryParseOptions(remainingArgs, [FileOption], workingDirectoryPath, out IReadOnlyList<string>? values, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    command = new InspectServerDatCommand(values[0]);
+                    return true;
+                }
+
             default:
                 errorMessage = $"Unknown command '{verb}'.";
                 return false;
@@ -97,12 +107,7 @@ internal static class ContentToolCommandLine
     /// <summary>
     /// Reads one path value per expected option, in any order, rejecting anything else.
     /// </summary>
-    private static bool TryParseOptions(
-        IReadOnlyList<string> args,
-        IReadOnlyList<string> expectedOptions,
-        string workingDirectoryPath,
-        [NotNullWhen(true)] out IReadOnlyList<string>? values,
-        [NotNullWhen(false)] out string? errorMessage)
+    private static bool TryParseOptions(IReadOnlyList<string> args, IReadOnlyList<string> expectedOptions, string workingDirectoryPath, [NotNullWhen(true)] out IReadOnlyList<string>? values, [NotNullWhen(false)] out string? errorMessage)
     {
         values = null;
         string?[] parsedValues = new string?[expectedOptions.Count];
