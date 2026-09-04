@@ -24,10 +24,18 @@ dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
 
 ## Running
 
-By default, the client uses the versioned retail content staged beneath the executable at
+### Game Client
+
+By default, the game client uses the versioned retail content staged beneath the executable at
 `content/retail-5517/payload`.
 
-A different client tree can be supplied explicitly:
+Run it with:
+
+```bash
+dotnet run --project src/OpenConquer.Client/OpenConquer.Client.csproj
+```
+
+A different authorized client tree can be supplied explicitly:
 
 ```bash
 dotnet run \
@@ -39,11 +47,10 @@ dotnet run \
 Relative `--content-root` values are resolved against the working directory from which the process
 is launched.
 
-The content root must contain the legacy files required by implemented consumers. The current
-consumer-led retail closure is:
+The runtime content root must contain the legacy files required by implemented consumers. The
+current consumer-led retail runtime closure is exactly:
 
 ```text
-Server.dat
 data/main/Logo1.bmp
 data/main/Logo2.bmp
 ini/GameSetUp.ini
@@ -62,16 +69,25 @@ Startup also examines `ini/package.ini` when present to register WDF package pre
 `ini/info.ini` to resolve the optional startup logo. Missing package declarations and verified
 non-fatal package-registration outcomes do not prevent startup.
 
-`Server.dat` is the implemented typed server-catalog source. It is read from the loose client root
-only, decoded with the independently verified retail 5517 RSA public key, unwrapped through strict
-PKCS#1 type-1 and bounded gzip processing, and projected into an immutable `ServerCatalog`. The
-tracked retail fixture is parity-tested end-to-end.
+Retail `Server.dat` is deliberately not part of the runtime content closure. It is preserved only as
+historical compatibility evidence under the content-tool test tree and consumed by offline
+`OpenConquer.Content.Tool.Legacy.ServerDat` tooling.
 
-The server catalog is currently a Content boundary only. First-party server-selection UI, endpoint
-validation, selected-endpoint state, and network connection behavior are not part of this slice.
+Inspect an explicit historical `Server.dat` file with:
 
-The startup logo is also non-fatal. When a usable logo bitmap is available, it is presented once in
-a dedicated borderless window at its natural logical size. The startup renderer, OpenGL context, and
+```bash
+dotnet run \
+  --project tools/OpenConquer.Content.Tool \
+  -- \
+  inspect-server-dat \
+  --file /path/to/Server.dat
+```
+
+The inspection command does not provide runtime realm discovery, endpoint configuration, WDF
+fallback, or a production server catalog.
+
+The startup logo is non-fatal. When a usable logo bitmap is available, it is presented once in a
+dedicated borderless window at its natural logical size. The startup renderer, OpenGL context, and
 native window are destroyed before the main resizable client window is constructed. When the logo is
 unavailable, no startup window is created. There is no artificial minimum splash duration.
 
@@ -82,6 +98,38 @@ resizable host framebuffer.
 
 Unknown startup arguments, duplicate options, unsupported presentation values, and missing option
 values are rejected rather than ignored.
+
+### Launcher
+
+`OpenConquer.Launcher` is a separate .NET 10 desktop product using Avalonia.
+
+Run the current launcher shell with:
+
+```bash
+dotnet run --project src/OpenConquer.Launcher/OpenConquer.Launcher.csproj
+```
+
+The current launcher slice establishes only the product process, Avalonia application lifetime, main
+window shell, dependency boundary, and publish boundary.
+
+It intentionally does not yet implement:
+
+- account authentication;
+- registration or account recovery;
+- token storage;
+- launcher-to-game authorization;
+- launcher-to-game IPC;
+- game-process launching;
+- updating or repair;
+- realm discovery;
+- realm selection;
+- legacy third-party connection profiles.
+
+Those capabilities require their own audited implementation slices rather than placeholder services
+or speculative abstractions.
+
+The launcher does not reference the game client's runtime subsystem projects and does not consume
+the retail game-content payload.
 
 ## Formatting
 
@@ -108,6 +156,7 @@ The current test projects are:
 tests/OpenConquer.Client.Tests
 tests/OpenConquer.Content.Tests
 tests/OpenConquer.Content.Tool.Tests
+tests/OpenConquer.Launcher.Tests
 tests/OpenConquer.Platform.Tests
 tests/OpenConquer.Rendering.Tests
 ```
@@ -116,15 +165,25 @@ tests/OpenConquer.Rendering.Tests
 explicit overrides, path normalization, malformed argument handling, startup-presentation policy,
 and startup-window-before-main-window lifetime invariants.
 
-`OpenConquer.Content.Tests` verifies legacy content-root lookup semantics, package registration and
+`OpenConquer.Content.Tests` verifies runtime content-root lookup semantics, package registration and
 lookup behavior, shared content-path validation, native-compatible INI parsing, startup-logo
-configuration and decoding, content-closure resolution, the verified `Server.dat` RSA key
-derivation, RSA/PKCS#1/gzip envelope validation, typed `outenserver` projection, and end-to-end
-parity against the tracked retail `Server.dat` fixture.
+configuration and decoding, content-closure resolution, WDF archive behavior, and filesystem-safety
+invariants.
 
 `OpenConquer.Content.Tool.Tests` verifies deterministic content import, manifest construction,
-physical-payload verification, implemented-closure enforcement, integrity validation, and
-filesystem-safety behavior.
+physical-payload verification, implemented-closure enforcement, integrity validation,
+filesystem-safety behavior, and the offline legacy `Server.dat` compatibility boundary. The latter
+includes the verified retail RSA key, hardened RSA/PKCS#1/gzip envelope validation, typed
+`outenserver` projection, exact retail-fixture parity, and deterministic inspection reporting.
+
+`OpenConquer.Launcher.Tests` verifies launcher product-boundary invariants without requiring a
+native desktop session. In particular, the launcher assembly must retain its dedicated product
+identity and must not acquire dependencies on game runtime subsystem assemblies or Silk.NET.
+
+Avalonia's headless UI test harness is not currently part of the repository test infrastructure.
+Launcher UI behavior that eventually requires process-level desktop verification should use a
+reliable dedicated end-to-end test boundary rather than weakening the repository's existing xUnit
+baseline or introducing a flaky test host.
 
 `OpenConquer.Platform.Tests` verifies desktop frame-pacing mechanics and startup-window policy
 independently of a live native window. The tests cover interval validation, start-state enforcement,
@@ -140,10 +199,11 @@ Run the complete test suite while validating a branch:
 dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 ```
 
-CI discovers projects matching `tests/**/*.Tests.csproj` and executes each discovered project.
+Every test project is part of `OpenConquer.Client.slnx`, and CI executes the complete solution test
+suite.
 
-A test project must contain real tests. A zero-test test assembly is considered a failed test run
-rather than a successful placeholder.
+A test project must contain real tests. A zero-test test assembly is not retained as placeholder
+scaffolding.
 
 ## Continuous Integration
 
@@ -155,14 +215,45 @@ The Linux quality job runs on Ubuntu 24.04 and performs:
 2. formatting verification;
 3. Release build;
 4. the complete solution test suite;
-5. verification that the implemented content closure, manifest, and physical payload agree.
+5. verification that the implemented runtime content closure, manifest, and physical payload agree;
+6. framework-dependent publication of `OpenConquer.Client`;
+7. verification that the published client contains the exact five-file runtime content set;
+8. explicit rejection of any published `Server.dat`;
+9. framework-dependent publication of `OpenConquer.Launcher`;
+10. verification that the launcher publish does not contain the game's retail runtime content set.
+
+Publishing is treated as a separate product boundary from compilation. A project that builds
+successfully but cannot produce its expected publish layout does not satisfy the repository quality
+gate.
+
+The published client content check verifies:
+
+```text
+ClientContentClosure
+        ==
+tracked manifest
+        ==
+tracked payload
+        ==
+published client content set
+```
+
+An additional explicit `Server.dat` search protects the wider publish directory so a future
+project-file change cannot accidentally stage that historical file outside the verified content-set
+subtree.
+
+The launcher publish is independently checked to prevent the game's retail content payload from
+becoming an implicit launcher dependency merely because both executables live in the same
+repository.
 
 The Release build runs with the repository's analyzers and warnings-as-errors configuration.
 
 Additional Windows 2025 and macOS 15 jobs restore, build, and test the complete solution in Release
-configuration so cross-platform compilation and test behavior remain continuously verified. Their
-check names are kept independent of runner labels so repository rules can require stable
-status-check identities.
+configuration so cross-platform compilation and test behavior remain continuously verified.
+
+Runtime-identifier-specific packaging, installers, signing, notarization, self-contained deployment,
+and platform-native application bundles are intentionally outside the current CI publish check. They
+belong to a future audited packaging and release-engineering slice.
 
 CI obtains the .NET SDK selection from `global.json` rather than duplicating the SDK version in the
 workflow.
@@ -176,8 +267,11 @@ Pull requests targeting `main` run a dependency-review workflow. The workflow fa
 dependency change introduces a package with a known vulnerability according to GitHub's dependency
 review.
 
-NuGet dependencies are also checked weekly by Dependabot. The centrally managed Silk.NET packages
-are grouped into a single update pull request when compatible updates are available.
+NuGet dependencies are also checked weekly by Dependabot.
+
+Package versions are centrally managed. Runtime framework families such as Silk.NET and Avalonia
+should be advanced deliberately and audited as coherent dependency groups rather than changed
+independently without reviewing their transitive closure.
 
 GitHub dependency graph and automatic dependency submission are enabled for the repository. For
 .NET, automatic dependency submission resolves build-time and transitive dependencies and submits
@@ -196,22 +290,17 @@ healthy and stable enough to act as a merge gate.
 
 `main` is protected by the repository's active `Main protection` ruleset.
 
-Changes to `main` require a pull request and the following status checks:
-
-- `Quality`
-- `Build (Windows)`
-- `Build (macOS)`
-- `Dependency Review`
+Changes to `main` require a pull request and the repository's configured required status checks.
 
 Required checks use strict branch-update enforcement so the candidate branch must be current with
 `main` before merge.
 
 The ruleset also:
 
-- requires linear history
-- restricts deletion of `main`
-- blocks force pushes
-- has no bypass actors
+- requires linear history;
+- restricts deletion of `main`;
+- blocks force pushes;
+- has no bypass actors.
 
 Repository policy is configured in GitHub rather than duplicated as source-controlled workflow
 logic.
@@ -232,6 +321,19 @@ Project files should reference packages without specifying their version:
 ```xml
 <PackageReference Include="Silk.NET.OpenGL" />
 ```
+
+The game runtime currently uses Silk.NET for its platform and OpenGL boundaries.
+
+The launcher currently uses:
+
+```text
+Avalonia
+Avalonia.Desktop
+Avalonia.Themes.Fluent
+```
+
+The launcher intentionally does not currently depend on an MVVM framework, authentication library,
+HTTP client package, updater framework, embedded browser package, or game runtime subsystem.
 
 ## Project Settings
 
@@ -275,8 +377,46 @@ dotnet run \
   --project tools/OpenConquer.Content.Tool \
   --configuration Release \
   --no-build \
+  --no-restore \
   -- verify-content-set \
   --content-set content/retail-5517
 
+rm -rf \
+  /tmp/openconquer-client-publish \
+  /tmp/openconquer-launcher-publish
+
+dotnet publish \
+  src/OpenConquer.Client/OpenConquer.Client.csproj \
+  --configuration Release \
+  --no-restore \
+  --output /tmp/openconquer-client-publish
+
+dotnet run \
+  --project tools/OpenConquer.Content.Tool \
+  --configuration Release \
+  --no-build \
+  --no-restore \
+  -- verify-content-set \
+  --content-set /tmp/openconquer-client-publish/content/retail-5517
+
+find \
+  /tmp/openconquer-client-publish \
+  -type f \
+  -iname 'Server.dat' \
+  -print
+
+dotnet publish \
+  src/OpenConquer.Launcher/OpenConquer.Launcher.csproj \
+  --configuration Release \
+  --no-restore \
+  --output /tmp/openconquer-launcher-publish
+
+find \
+  /tmp/openconquer-launcher-publish \
+  -path '*/content/retail-5517*' \
+  -print
+
 git diff --check
 ```
+
+The two final `find` commands must print nothing.

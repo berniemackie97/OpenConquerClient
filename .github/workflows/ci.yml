@@ -54,6 +54,57 @@ jobs:
           dotnet run --project tools/OpenConquer.Content.Tool --configuration Release --no-build --no-restore
           -- verify-content-set --content-set content/retail-5517
 
+      # Publishing is a separate product boundary from building. Both executable products must
+      # remain publishable from a clean clone before a change can merge.
+      - name: Publish client
+        run: >
+          dotnet publish src/OpenConquer.Client/OpenConquer.Client.csproj
+          --configuration Release
+          --no-restore
+          --output "${{ runner.temp }}/openconquer-client"
+
+      - name: Verify published client content
+        run: >
+          dotnet run --project tools/OpenConquer.Content.Tool --configuration Release --no-build --no-restore
+          -- verify-content-set
+          --content-set "${{ runner.temp }}/openconquer-client/content/retail-5517"
+
+      # Server.dat is intentionally offline compatibility evidence. Even if future project-file
+      # changes accidentally stage it outside the verified content-set subtree, publishing must
+      # still reject the legacy file anywhere in the production client.
+      - name: Reject legacy Server.dat from client publish
+        shell: bash
+        run: |
+          match="$(
+            find "${{ runner.temp }}/openconquer-client" \
+              -type f \
+              -iname 'Server.dat' \
+              -print \
+              -quit
+          )"
+
+          if [[ -n "$match" ]]; then
+            echo "Legacy Server.dat must not be present in the published client: $match" >&2
+            exit 1
+          fi
+
+      - name: Publish launcher
+        run: >
+          dotnet publish src/OpenConquer.Launcher/OpenConquer.Launcher.csproj
+          --configuration Release
+          --no-restore
+          --output "${{ runner.temp }}/openconquer-launcher"
+
+      # The launcher is a separate product and must not acquire the game's retail runtime payload
+      # merely because both executables live in the same repository.
+      - name: Reject game runtime content from launcher publish
+        shell: bash
+        run: |
+          if [[ -e "${{ runner.temp }}/openconquer-launcher/content/retail-5517" ]]; then
+            echo "Game runtime content must not be present in the published launcher." >&2
+            exit 1
+          fi
+
   cross-platform:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
@@ -85,7 +136,7 @@ jobs:
       - name: Build
         run: dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
 
-      # The client is the platform-specific half of this system, so the suite runs on every
-      # target rather than only on the Linux quality job.
+      # Both desktop products are platform-specific parts of this repository, so the complete suite
+      # runs on every target rather than only on the Linux quality job.
       - name: Test
         run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
