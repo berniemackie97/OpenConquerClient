@@ -35,10 +35,6 @@ public sealed class OpenGLRenderer : IDisposable
     /// <summary>
     /// Where the logical frame is currently being presented inside the host framebuffer.
     /// </summary>
-    /// <remarks>
-    /// Exposed so input can map pointer positions back to logical coordinates through the same
-    /// transform this renderer draws with. Nothing else should recompute it.
-    /// </remarks>
     public PresentationViewport Viewport => _viewport;
 
     public void ResizeHostFramebuffer(int width, int height)
@@ -131,12 +127,6 @@ public sealed class OpenGLRenderer : IDisposable
     /// <summary>
     /// Clears the host framebuffer when the presented rectangle does not fill it.
     /// </summary>
-    /// <remarks>
-    /// Preserving the aspect ratio leaves bars that the blit never writes. Without this they show
-    /// whatever the driver left in the back buffer, which flickers between frames because the swap
-    /// chain rotates through several. Skipped when the rectangle covers everything, so the common
-    /// full-coverage case costs nothing.
-    /// </remarks>
     private void ClearLetterboxBars()
     {
         if (_viewport.CoversHostFramebuffer())

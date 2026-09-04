@@ -1,17 +1,40 @@
+using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
+using OpenConquer.Launcher.Diagnostics;
 
 namespace OpenConquer.Launcher;
 
 internal static class Program
 {
+    private const int FatalHostFailureExitCode = 1;
+
     [STAThread]
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "The executable entry point is the final process boundary and must convert an otherwise-unhandled launcher failure into a diagnostic event and nonzero exit code.")]
     public static int Main(string[] args)
     {
-        ArgumentNullException.ThrowIfNull(args);
+        using LauncherDiagnostics diagnostics = LauncherDiagnostics.Create();
+        using LauncherHostExceptionObserver exceptionObserver = new(diagnostics);
 
-        return BuildAvaloniaApp()
-            .StartWithClassicDesktopLifetime(args, ShutdownMode.OnMainWindowClose);
+        try
+        {
+            exceptionObserver.Start();
+            diagnostics.RecordHostStarted();
+
+            int exitCode = BuildRuntimeAvaloniaApp(exceptionObserver).StartWithClassicDesktopLifetime(args, ShutdownMode.OnMainWindowClose);
+
+            diagnostics.RecordHostStopped(exitCode);
+
+            return exitCode;
+        }
+        catch (Exception exception)
+        {
+            LauncherExceptionDomain domain = exceptionObserver.ClassifyTopLevelException(exception);
+            diagnostics.RecordException(domain, isTerminating: true, exception);
+
+            return FatalHostFailureExitCode;
+        }
     }
 
     /// <summary>
@@ -19,11 +42,18 @@ internal static class Program
     /// </summary>
     /// <remarks>
     /// This method intentionally remains separate from <see cref="Main"/> because Avalonia tooling
-    /// and future host-level tests may need to construct the application without entering the
-    /// native desktop event loop.
+    /// and host-level tests may need to construct the application without entering the native
+    /// desktop event loop.
     /// </remarks>
     public static AppBuilder BuildAvaloniaApp()
     {
         return AppBuilder.Configure<App>().UsePlatformDetect();
+    }
+
+    private static AppBuilder BuildRuntimeAvaloniaApp(LauncherHostExceptionObserver exceptionObserver)
+    {
+        ArgumentNullException.ThrowIfNull(exceptionObserver);
+
+        return BuildAvaloniaApp().AfterSetup(_ => exceptionObserver.AttachUiDispatcher(Dispatcher.UIThread));
     }
 }

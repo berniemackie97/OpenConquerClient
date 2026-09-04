@@ -10,23 +10,12 @@
     WindowStartupLocation="CenterScreen">
 
   <Grid Margin="32">
-    <StackPanel
+    <TextBlock
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
-        Spacing="12">
-
-      <TextBlock
-          HorizontalAlignment="Center"
-          FontSize="32"
-          FontWeight="SemiBold"
-          Text="OpenConquer" />
-
-      <TextBlock
-          HorizontalAlignment="Center"
-          Opacity="0.7"
-          Text="Launcher foundation" />
-
-    </StackPanel>
+        FontSize="32"
+        FontWeight="SemiBold"
+        Text="OpenConquer" />
   </Grid>
 
 </Window>

@@ -31,10 +31,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
         if (rgbaPixels.Length != expectedLength)
         {
-            throw new ArgumentException(
-                $"Expected {expectedLength} RGBA bytes, but received {rgbaPixels.Length}.",
-                nameof(rgbaPixels)
-            );
+            throw new ArgumentException($"Expected {expectedLength} RGBA bytes, but received {rgbaPixels.Length}.", nameof(rgbaPixels));
         }
 
         _gl = gl;
@@ -61,28 +58,9 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
     }
 
     /// <summary>
-    /// Draws the image into the top-left corner of the viewport at the requested device size.
+    /// Draws the image into the top left corner of the viewport at the requested device size.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Retail paints the logo through a <c>CreatePatternBrush</c> (<c>0x4B0AA2</c>) returned from
-    /// <c>WM_CTLCOLORDLG</c> (<c>0x4B0B26</c>). On Windows NT and later a pattern brush tiles the
-    /// bitmap at its <b>natural</b> size from the client origin, so there is no stretch, scale,
-    /// aspect fit, or letterbox.
-    /// </para>
-    /// <para>
-    /// <paramref name="destinationWidth"/> and <paramref name="destinationHeight"/> are the natural
-    /// size expressed in device pixels. On a display with a device pixel ratio of 1 they equal the
-    /// image dimensions; on a scaled display the caller multiplies by the ratio so the logo still
-    /// occupies its natural size in logical units.
-    /// </para>
-    /// </remarks>
-    public void DrawTopLeft(
-        int viewportWidth,
-        int viewportHeight,
-        int destinationWidth,
-        int destinationHeight
-    )
+    public void DrawTopLeft(int viewportWidth, int viewportHeight, int destinationWidth, int destinationHeight)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -132,12 +110,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
         _gl.ActiveTexture(TextureUnit.Texture0);
         _gl.BindTexture(TextureTarget.Texture2D, _texture);
         _gl.Uniform1(_textureUniform, 0);
-        _gl.DrawElements(
-            PrimitiveType.Triangles,
-            (uint)s_indices.Length,
-            DrawElementsType.UnsignedInt,
-            null
-        );
+        _gl.DrawElements(PrimitiveType.Triangles, (uint)s_indices.Length, DrawElementsType.UnsignedInt, null);
 
         _gl.BindVertexArray(0);
         _gl.DepthMask(true);
@@ -168,9 +141,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
         if (_textureUniform < 0)
         {
-            throw new InvalidOperationException(
-                "The startup image shader does not expose its texture uniform."
-            );
+            throw new InvalidOperationException("The startup image shader does not expose its texture uniform.");
         }
 
         _vertexArray = _gl.GenVertexArray();
@@ -189,50 +160,20 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
         }
 
         _gl.EnableVertexAttribArray(0);
-        _gl.VertexAttribPointer(
-            0,
-            2,
-            VertexAttribPointerType.Float,
-            false,
-            FloatsPerVertex * sizeof(float),
-            (void*)0
-        );
+        _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)0);
 
         _gl.EnableVertexAttribArray(1);
-        _gl.VertexAttribPointer(
-            1,
-            2,
-            VertexAttribPointerType.Float,
-            false,
-            FloatsPerVertex * sizeof(float),
-            (void*)(2 * sizeof(float))
-        );
+        _gl.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)(2 * sizeof(float)));
 
         _gl.BindVertexArray(0);
 
         _texture = _gl.GenTexture();
 
         _gl.BindTexture(TextureTarget.Texture2D, _texture);
-        _gl.TexParameter(
-            TextureTarget.Texture2D,
-            TextureParameterName.TextureMinFilter,
-            (int)GLEnum.Nearest
-        );
-        _gl.TexParameter(
-            TextureTarget.Texture2D,
-            TextureParameterName.TextureMagFilter,
-            (int)GLEnum.Nearest
-        );
-        _gl.TexParameter(
-            TextureTarget.Texture2D,
-            TextureParameterName.TextureWrapS,
-            (int)GLEnum.ClampToEdge
-        );
-        _gl.TexParameter(
-            TextureTarget.Texture2D,
-            TextureParameterName.TextureWrapT,
-            (int)GLEnum.ClampToEdge
-        );
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBaseLevel, 0);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, 0);
 
@@ -268,9 +209,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
             if (status == 0)
             {
-                throw new InvalidOperationException(
-                    $"Failed to link the startup image shader: {_gl.GetProgramInfoLog(program)}"
-                );
+                throw new InvalidOperationException($"Failed to link the startup image shader: {_gl.GetProgramInfoLog(program)}");
             }
         }
         catch (Exception exception)
@@ -337,9 +276,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
             if (status == 0)
             {
-                throw new InvalidOperationException(
-                    $"Failed to compile the startup image shader: {_gl.GetShaderInfoLog(shader)}"
-                );
+                throw new InvalidOperationException($"Failed to compile the startup image shader: {_gl.GetShaderInfoLog(shader)}");
             }
         }
         catch (Exception exception)

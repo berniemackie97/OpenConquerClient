@@ -66,7 +66,6 @@ internal static class ServerDatXmlCatalogReader
         }
 
         XElement root = document.Root ?? throw new InvalidDataException("Server.dat XML does not contain a document root.");
-
         XElement[] matchingTables = root.DescendantsAndSelf().Where(static element => element.Name == TableDataElementName
                 && string.Equals((string?)element.Attribute(TableNameAttributeName), OutenserverTableName, StringComparison.Ordinal)).Take(2).ToArray();
 
@@ -81,7 +80,6 @@ internal static class ServerDatXmlCatalogReader
         }
 
         Dictionary<int, Dictionary<string, string>> rowsById = ReadRows(matchingTables[0]);
-
         Dictionary<string, string> rootRow = GetRequiredRow(rowsById, RootRowId, "root");
 
         int groupCount = ParseCount(rootRow, ChildFieldName, MaximumGroupCount, "root group");

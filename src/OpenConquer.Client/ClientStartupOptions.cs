@@ -8,10 +8,6 @@ internal sealed class ClientStartupOptions
     private const string ContentRootOptionName = "--content-root";
     private const string PresentationOptionName = "--presentation";
 
-    /// <summary>
-    /// Accepted <see cref="PresentationOptionName"/> values, in the order they are listed to the
-    /// user when the supplied value is not one of them.
-    /// </summary>
     private static readonly (string Name, PresentationPolicy Policy)[] s_presentationPolicies =
     [
         ("fit", PresentationPolicy.Fit),
@@ -33,16 +29,11 @@ internal sealed class ClientStartupOptions
     /// <summary>
     /// How the fixed logical frame is fitted into the resizable host window.
     /// </summary>
-    /// <remarks>
-    /// Defaults to <see cref="PresentationPolicy.Fit"/>, which fills as much of the window as a
-    /// distortion-free scale allows.
-    /// </remarks>
     public PresentationPolicy PresentationPolicy
     {
         get;
     }
 
-    /// <summary>The <c>--presentation</c> values accepted on the command line.</summary>
     public static string PresentationPolicyNames => string.Join('|', s_presentationPolicies.Select(entry => entry.Name));
 
     public static bool TryParse(string[] args, [NotNullWhen(true)] out ClientStartupOptions? options, [NotNullWhen(false)] out string? errorMessage)
@@ -59,10 +50,9 @@ internal sealed class ClientStartupOptions
         ArgumentNullException.ThrowIfNull(args);
 
         string normalizedDefaultContentRootPath = NormalizeRequiredAbsolutePath(defaultContentRootPath, nameof(defaultContentRootPath));
-
         string normalizedWorkingDirectoryPath = NormalizeRequiredAbsolutePath(workingDirectoryPath, nameof(workingDirectoryPath));
-
         string contentRootPath = normalizedDefaultContentRootPath;
+
         bool contentRootSpecified = false;
 
         PresentationPolicy presentationPolicy = PresentationPolicy.Fit;
@@ -133,10 +123,6 @@ internal sealed class ClientStartupOptions
     /// <summary>
     /// Consumes the value following an option, advancing <paramref name="index"/> past it.
     /// </summary>
-    /// <remarks>
-    /// A value beginning with <c>--</c> is refused so a forgotten value cannot silently swallow the
-    /// next option and leave it unapplied.
-    /// </remarks>
     private static bool TryReadOptionValue(IReadOnlyList<string> args, ref int index, string optionName, string expectation, [NotNullWhen(true)] out string? value, out string? errorMessage)
     {
         if (index + 1 >= args.Count)

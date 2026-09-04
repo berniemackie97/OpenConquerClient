@@ -1,14 +1,5 @@
 namespace OpenConquer.Content.Tool.Legacy.ServerDat;
 
-/// <summary>
-/// Verified retail 5517 RSA public key used to decode <c>Server.dat</c>.
-/// </summary>
-/// <remarks>
-/// Recovered independently from <c>CConfigDataTableQueryProvider_ctor</c> at
-/// <c>0x765232</c> in retail Conquer.exe. Native constructs this modulus from a
-/// 64-DWORD seed/schedule and sets exponent 65537. The modern client stores the resulting
-/// public key directly because reproducing native BIGNUM construction has no runtime value.
-/// </remarks>
 internal static class ServerDatNativePublicKey
 {
     internal const int PublicExponent = 0x1_0001;
@@ -273,8 +264,5 @@ internal static class ServerDatNativePublicKey
         0x09,
     ];
 
-    /// <summary>
-    /// Unsigned big-endian 2048-bit RSA modulus.
-    /// </summary>
     internal static ReadOnlySpan<byte> Modulus => s_modulus;
 }

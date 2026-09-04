@@ -56,15 +56,15 @@ graph.
 
 ## Responsibilities
 
-| Project                  | Owns                                                                                                                                                                                     |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenConquer.Launcher`   | launcher process entry point, Avalonia application lifetime, launcher-window shell, future account/update/repair composition, and future authorized game-start orchestration             |
-| `OpenConquer.Client`     | game process entry point, startup-option validation, compatibility-derived runtime policy, game-subsystem composition, application lifetime, and shutdown coordination                   |
-| `OpenConquer.Platform`   | desktop windowing, native graphics-context lifetime, physical framebuffer state, desktop frame-loop orchestration and pacing mechanics, native buffer swapping, and future desktop input |
-| `OpenConquer.Gameplay`   | game state, entities, movement, combat, interactions, and gameplay rules                                                                                                                 |
-| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, logical-to-host framebuffer composition, cameras, shaders, GPU resources, and render targets                                                      |
-| `OpenConquer.Content`    | runtime client-root filesystem semantics, required legacy configuration and formats, decoding, loading, and content lookup                                                               |
-| `OpenConquer.Networking` | game connections, transport, encryption, packet framing, protocol encoding, and decoding                                                                                                 |
+| Project                  | Owns                                                                                                                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OpenConquer.Launcher`   | launcher process entry point, Avalonia application lifetime, launcher-window shell, process failure policy, bounded diagnostics, future account/update/repair composition, and future authorized game-start orchestration |
+| `OpenConquer.Client`     | game process entry point, startup-option validation, compatibility-derived runtime policy, game-subsystem composition, application lifetime, and shutdown coordination                                                    |
+| `OpenConquer.Platform`   | desktop windowing, native graphics-context lifetime, physical framebuffer state, desktop frame-loop orchestration and pacing mechanics, native buffer swapping, and future desktop input                                  |
+| `OpenConquer.Gameplay`   | game state, entities, movement, combat, interactions, and gameplay rules                                                                                                                                                  |
+| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, logical-to-host framebuffer composition, cameras, shaders, GPU resources, and render targets                                                                                       |
+| `OpenConquer.Content`    | runtime client-root filesystem semantics, required legacy configuration and formats, decoding, loading, and content lookup                                                                                                |
+| `OpenConquer.Networking` | game connections, transport, encryption, packet framing, protocol encoding, and decoding                                                                                                                                  |
 
 Platform-specific window and context types remain inside `OpenConquer.Platform`. Rendering owns
 graphics behavior and GPU resources without depending on the windowing subsystem.
@@ -82,22 +82,37 @@ merely because they are useful reconstruction evidence.
 
 `OpenConquer.Launcher` is a .NET 10 desktop executable using Avalonia.
 
-The current launcher foundation contains only the product shell:
+The launcher is an independent executable composition and security boundary:
 
 ```text
 Program
     │
-    ▼
-Avalonia AppBuilder
+    ├── LauncherDiagnostics
     │
-    ▼
-App
+    ├── LauncherHostExceptionObserver
     │
-    ▼
-MainWindow
+    └── Avalonia AppBuilder
+            │
+            ▼
+           App
+            │
+            ▼
+        MainWindow
 ```
 
-`Program` owns process startup and explicitly uses `ShutdownMode.OnMainWindowClose`.
+`Program` owns only executable-host composition and process lifetime policy.
+
+It:
+
+- creates the process-owned diagnostics boundary;
+- creates and starts process-wide exception observation;
+- configures the runtime Avalonia application;
+- explicitly uses `ShutdownMode.OnMainWindowClose`;
+- translates managed faults escaping the launcher host into a nonzero process exit code;
+- disposes exception observation before diagnostics through deterministic scope ownership.
+
+Filesystem policy, log formatting, exception projection, redaction, and global-event implementation
+details remain outside `Program`.
 
 The main-window lifetime is therefore the current launcher-process lifetime. Closing the primary
 launcher window terminates the launcher rather than allowing an unrelated auxiliary window to keep
@@ -107,12 +122,285 @@ If a future product requirement introduces tray behavior, background patching, o
 long-running launcher mode, that lifetime policy must change explicitly rather than emerging from
 additional windows.
 
+### Launcher Process Privilege Policy
+
+The Windows launcher has an explicit application manifest connected through the launcher project
+file.
+
+The launcher requests:
+
+```text
+requestedExecutionLevel = asInvoker
+uiAccess = false
+```
+
+The account-bearing launcher therefore runs with the privileges of the process that invoked it
+rather than requesting administrative elevation.
+
+Administrative privilege must not become an implicit launcher-wide capability merely because a
+future updater, repair operation, or installation action may require privileged work.
+
+If future functionality genuinely requires elevation, that capability belongs behind a separately
+designed and audited privilege boundary rather than changing the primary launcher process to
+`requireAdministrator`.
+
+The application manifest also declares the supported modern Windows compatibility identifier.
+
+Avalonia remains responsible for DPI behavior. The launcher manifest deliberately does not introduce
+a second independent DPI-awareness policy.
+
+### Launcher Diagnostics Boundary
+
+Launcher diagnostics are a process-host concern owned entirely by `OpenConquer.Launcher`.
+
+The boundary is deliberately local, bounded, structured, and best-effort.
+
+```text
+launcher host event
+        │
+        ▼
+LauncherDiagnostics
+        │
+        ├── lifecycle event
+        │
+        └── redacted exception diagnostic
+                │
+                ▼
+        Serilog file sink
+                │
+                ▼
+        bounded per-user JSONL
+```
+
+Persistent diagnostics are not an availability dependency.
+
+Failure to establish the expected diagnostic storage boundary because of an ordinary I/O or access
+failure causes diagnostics to degrade to a no-sink logger rather than preventing launcher startup.
+
+The expected-storage fallback is intentionally narrow. Programming and logging-configuration defects
+are not converted broadly into silent persistence fallback.
+
+Diagnostic writes and diagnostic disposal are likewise best-effort. Failure of the diagnostic sink
+must not:
+
+- convert a successful launcher run into a launcher failure;
+- replace an application exception with a logging exception;
+- obscure the original terminal failure;
+- prevent normal process teardown.
+
+The launcher uses platform-native per-user diagnostic locations:
+
+```text
+Windows
+%LOCALAPPDATA%\OpenConquer\Launcher\Logs
+
+macOS
+~/Library/Logs/OpenConquer/Launcher
+
+Linux
+$XDG_STATE_HOME/OpenConquer/Launcher/Logs
+```
+
+When Linux does not provide a usable absolute `XDG_STATE_HOME`, the fallback is:
+
+```text
+~/.local/state/OpenConquer/Launcher/Logs
+```
+
+Relative XDG base-directory values are not treated as valid state roots.
+
+Persistent launcher logs are newline-delimited JSON:
+
+```text
+launcher-*.jsonl
+```
+
+The current sink policy is:
+
+- daily rolling;
+- 5 MiB maximum per file;
+- rolling on the size boundary;
+- at most 14 retained log files;
+- unbuffered writes;
+- exclusive ownership rather than shared file writing.
+
+The retention and size policy keeps normal diagnostic storage bounded rather than allowing launcher
+logs to grow indefinitely.
+
+The launcher currently records:
+
+- launcher host start;
+- launcher host stop and exit code;
+- redacted unhandled-exception diagnostics.
+
+Serilog is used directly at this host boundary. The launcher does not currently have a Generic Host
+or dependency-injection composition model that would justify adding `Microsoft.Extensions.Logging`
+plus an adapter solely to wrap this one logging boundary.
+
+### Exception Diagnostic Projection
+
+Raw exceptions are never supplied to the persistent logging sink.
+
+Before an exception reaches Serilog it is projected into `LauncherExceptionDiagnostic`.
+
+The projection contains only:
+
+```text
+ExceptionType
+HResult
+StackTrace
+InnerExceptions
+InnerExceptionsTruncated
+```
+
+The stack trace is captured without source-file information.
+
+The diagnostic projection deliberately excludes potentially secret-bearing or unnecessary exception
+state such as:
+
+```text
+Exception.Message
+Exception.Data
+Exception.Source
+Exception.TargetSite
+source-file paths
+arbitrary application parameters
+request URLs
+authorization headers
+cookies
+passwords
+authorization codes
+access tokens
+refresh tokens
+session tokens
+```
+
+This is particularly important because authentication and network-facing launcher services have not
+yet been implemented. The security default is established before those future systems introduce
+credential-bearing values.
+
+Nested exception traversal is bounded.
+
+The projection permits at most:
+
+- eight nested exception levels;
+- sixteen exception objects in total.
+
+`AggregateException` children are traversed directly rather than flattened into an unbounded
+intermediate representation.
+
+When the diagnostic limit is reached, the representation records that inner exceptions were
+truncated.
+
+### Launcher Host Exception Policy
+
+The launcher distinguishes handled application failures from faults escaping normal application
+error handling.
+
+The host observer covers:
+
+```text
+Avalonia Dispatcher.UnhandledException
+AppDomain.CurrentDomain.UnhandledException
+TaskScheduler.UnobservedTaskException
+```
+
+The top-level `Program.Main` catch remains a separate process boundary rather than another global
+event subscription.
+
+The high-level terminal path is:
+
+```text
+managed exception escapes launcher operation
+        │
+        ▼
+host exception boundary
+        │
+        ├── classify source
+        │
+        ▼
+redacted diagnostic projection
+        │
+        ▼
+best-effort durable fatal event
+        │
+        ▼
+nonzero launcher exit
+```
+
+Unknown UI-thread failures are not globally treated as recoverable.
+
+The Avalonia dispatcher callback intentionally does not set `Handled = true`.
+
+It performs only lightweight classification bookkeeping and lets the unknown fault escape toward the
+top-level executable boundary. Durable projection and logging occur after the fault leaves the
+dispatcher callback.
+
+This avoids turning a global UI-exception hook into an implicit recovery mechanism and avoids doing
+resource-intensive diagnostic work in the dispatcher exception event itself.
+
+When the same UI exception reaches the top-level boundary, the observer classifies the failure as
+`UiDispatcher`. Otherwise an exception escaping directly through the executable lifetime is
+classified as `TopLevel`.
+
+UI classification is consumed once so a stale prior dispatcher exception cannot classify a later
+unrelated top-level failure.
+
+`AppDomain.CurrentDomain.UnhandledException` records the runtime-provided terminating state.
+
+`TaskScheduler.UnobservedTaskException` is treated as a non-terminating diagnostic boundary. The
+exception is recorded through the same redacted projection and then marked observed.
+
+Global exception callbacks must not throw secondary diagnostic failures. A diagnostics failure while
+an unhandled exception is already being processed is therefore swallowed at that boundary so the
+original failure remains primary.
+
+`LauncherHostExceptionObserver` owns global event subscription and deterministic unsubscription.
+
+Its lifecycle is explicit:
+
+```text
+construct observer
+        │
+        ▼
+Start
+        │
+        ├── AppDomain subscription
+        └── TaskScheduler subscription
+        │
+        ▼
+Avalonia setup completes
+        │
+        ▼
+attach UI Dispatcher subscription
+        │
+        ▼
+desktop lifetime
+        │
+        ▼
+Dispose
+        │
+        ├── remove Dispatcher subscription
+        ├── remove AppDomain subscription
+        └── remove TaskScheduler subscription
+```
+
+Subscription state is not published internally until the corresponding subscription operation has
+succeeded.
+
+The observer is not reusable after disposal, and duplicate start or duplicate dispatcher attachment
+is rejected explicitly.
+
+### Launcher Package Boundary
+
 The launcher currently uses:
 
 ```text
 Avalonia
 Avalonia.Desktop
 Avalonia.Themes.Fluent
+Serilog
+Serilog.Sinks.File
 ```
 
 It deliberately does not currently depend on:
@@ -125,9 +413,11 @@ OpenConquer.Rendering
 OpenConquer.Content
 OpenConquer.Gameplay
 OpenConquer.Networking
+Microsoft.Extensions.Hosting
+Microsoft.Extensions.Logging
 ```
 
-The launcher foundation also deliberately introduces no speculative:
+The launcher also deliberately introduces no speculative:
 
 - account-authentication implementation;
 - OAuth/OIDC client;
@@ -447,7 +737,7 @@ Detailed evidence and security interpretation are documented in
 The modern production architecture does not use a locally shipped server list as its trust or
 routing boundary.
 
-The first process boundary required for that architecture now exists:
+The hardened launcher process boundary required for that future architecture now exists:
 
 ```text
 OpenConquer.Launcher
@@ -457,10 +747,11 @@ OpenConquer.Launcher
 OpenConquer.Client
 ```
 
-Only the executable/product boundary is implemented in the current launcher foundation.
+The current launcher implements the executable/product boundary, least-privilege host policy,
+bounded diagnostics, and terminal host-fault handling.
 
-Account authentication, launch authorization, launcher-to-game handoff, authenticated realm
-discovery, realm selection, and realm routing have not yet been implemented.
+It does **not** yet implement account authentication, launch authorization, launcher-to-game
+handoff, authenticated realm discovery, realm selection, or realm routing.
 
 The intended high-level lifecycle remains:
 
@@ -484,12 +775,15 @@ The future authorization protocol, launcher-to-game handoff mechanism, service c
 credential/session-storage policy, and realm-domain types remain implementation-slice decisions and
 must be audited when introduced.
 
-The launcher foundation must not be mistaken for an authorization implementation merely because the
-launcher executable now exists.
+The hardened launcher host must not be mistaken for an authorization implementation merely because
+the executable and its security/failure boundaries now exist.
 
 The important boundaries established so far are:
 
 - launcher and game are separate executable products;
+- the launcher process has an explicit standard-user privilege policy;
+- launcher diagnostics are bounded and do not become an availability dependency;
+- unhandled launcher faults are projected through a message-free diagnostic boundary;
 - the launcher does not reference game runtime subsystem assemblies;
 - the launcher does not ship the game's retail runtime content closure;
 - the game runtime does not trust or consume retail `Server.dat`;
@@ -505,7 +799,8 @@ Long-lived account credentials or launcher bearer tokens must not be passed into
 `OpenConquer.Client` through command-line arguments, environment variables, or temporary plaintext
 files.
 
-The precise secure handoff mechanism is intentionally not selected by this foundation slice.
+The precise secure handoff mechanism is intentionally not selected by the launcher-host-hardening
+slice.
 
 ## Startup Logo Lifetime
 
@@ -1033,6 +1328,12 @@ behavior or ownership.
 The current architecture follows these rules:
 
 - `OpenConquer.Launcher` and `OpenConquer.Client` are separate executable product composition roots.
+- `OpenConquer.Launcher` owns its own process-failure and diagnostics policy.
+- `OpenConquer.Launcher` runs as a standard-user process rather than requiring launcher-wide
+  elevation.
+- launcher diagnostic persistence is bounded and best-effort rather than a process-availability
+  dependency.
+- raw launcher exceptions are not persisted directly.
 - `OpenConquer.Launcher` does not reference `OpenConquer.Client`.
 - `OpenConquer.Launcher` does not reference `OpenConquer.Platform`, `OpenConquer.Rendering`,
   `OpenConquer.Content`, `OpenConquer.Gameplay`, or `OpenConquer.Networking`.

@@ -1,16 +1,14 @@
 namespace OpenConquer.Content;
 
 /// <summary>
-/// Defines the structural contract for retail client-content paths before they reach a filesystem
-/// or package lookup boundary.
+/// Defines the structural contract for retail client content paths before they reach a filesystem or package lookup boundary.
 /// </summary>
 internal static class ClientContentPath
 {
     private static readonly char[] s_pathSeparators = ['/', '\\'];
 
     /// <summary>
-    /// Parses a retail-relative content path into validated path segments without silently
-    /// canonicalizing structurally different input.
+    /// Parses a retail relative content path into validated path segments without silently canonicalizing structurally different input.
     /// </summary>
     public static string[] ParseSegments(string contentPath, string parameterName)
     {
@@ -18,27 +16,16 @@ internal static class ClientContentPath
 
         if (IsRootedPath(contentPath))
         {
-            throw new ArgumentException(
-                "Client content paths must be relative to the client content root.",
-                parameterName
-            );
+            throw new ArgumentException("Client content paths must be relative to the client content root.", parameterName);
         }
 
         string[] segments = contentPath.Split(s_pathSeparators, StringSplitOptions.None);
 
         foreach (string segment in segments)
         {
-            if (
-                segment.Length == 0
-                || segment is "." or ".."
-                || segment.Contains(':', StringComparison.Ordinal)
-                || segment.Contains('\0', StringComparison.Ordinal)
-            )
+            if (segment.Length == 0 || segment is "." or ".." || segment.Contains(':', StringComparison.Ordinal) || segment.Contains('\0', StringComparison.Ordinal))
             {
-                throw new ArgumentException(
-                    $"Client content path '{contentPath}' is not a valid relative content path.",
-                    parameterName
-                );
+                throw new ArgumentException($"Client content path '{contentPath}' is not a valid relative content path.", parameterName);
             }
         }
 
@@ -46,24 +33,16 @@ internal static class ClientContentPath
     }
 
     /// <summary>
-    /// Produces the slash-normalized virtual path expected by the retail package layer after
-    /// structural validation.
+    /// Produces the slash-normalized virtual path expected by the retail package layer after structural validation.
     /// </summary>
-    public static string NormalizeVirtualPath(
-        string contentPath,
-        string parameterName,
-        int maximumLength
-    )
+    public static string NormalizeVirtualPath(string contentPath, string parameterName, int maximumLength)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath, parameterName);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumLength);
 
         if (contentPath.Length > maximumLength)
         {
-            throw new ArgumentException(
-                $"Client content paths must not exceed {maximumLength} characters.",
-                parameterName
-            );
+            throw new ArgumentException($"Client content paths must not exceed {maximumLength} characters.", parameterName);
         }
 
         string[] segments = ParseSegments(contentPath, parameterName);

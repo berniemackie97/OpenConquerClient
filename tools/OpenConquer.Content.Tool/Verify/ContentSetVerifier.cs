@@ -5,19 +5,8 @@ using OpenConquer.Content.Tool.Manifest;
 namespace OpenConquer.Content.Tool.Verify;
 
 /// <summary>
-/// Verifies that a content set on disk exactly matches both its manifest and the content closure
-/// declared by the currently implemented client.
+/// Verifies that a content set on disk exactly matches both its manifest and the content closure declared by the currently implemented client.
 /// </summary>
-/// <remarks>
-/// Verification is three-way:
-/// <list type="bullet">
-/// <item>every manifest entry must exist with the declared length, signature, and SHA-256;</item>
-/// <item>every payload file must be declared by the manifest;</item>
-/// <item>the manifest must contain exactly the paths resolved by <see cref="ClientContentClosure"/>.</item>
-/// </list>
-/// This prevents a self-consistent manifest and payload from silently drifting away from the code
-/// that defines the current controlled content slice.
-/// </remarks>
 internal static class ContentSetVerifier
 {
     private const string ManifestFileName = "manifest.json";
@@ -37,24 +26,17 @@ internal static class ContentSetVerifier
 
         HostFileSystemGuard.RequireDirectory(payloadRoot, "content-set payload directory");
 
-        Dictionary<string, ContentManifestEntry> expectedBySourcePath =
-            manifest.Entries.ToDictionary(entry => entry.SourcePath, StringComparer.Ordinal);
+        Dictionary<string, ContentManifestEntry> expectedBySourcePath = manifest.Entries.ToDictionary(entry => entry.SourcePath, StringComparer.Ordinal);
 
         HashSet<string> observedSourcePaths = new(StringComparer.Ordinal);
 
         VerifyPayloadDirectory(payloadRoot, payloadRoot, expectedBySourcePath, observedSourcePaths);
 
-        string[] missingSourcePaths = expectedBySourcePath
-            .Keys.Where(sourcePath => !observedSourcePaths.Contains(sourcePath))
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        string[] missingSourcePaths = expectedBySourcePath.Keys.Where(sourcePath => !observedSourcePaths.Contains(sourcePath)).Order(StringComparer.Ordinal).ToArray();
 
         if (missingSourcePaths.Length > 0)
         {
-            throw new InvalidDataException(
-                $"The content set is missing {missingSourcePaths.Length} declared payload file(s): "
-                    + $"{string.Join(", ", missingSourcePaths)}."
-            );
+            throw new InvalidDataException($"The content set is missing {missingSourcePaths.Length} declared payload file(s): {string.Join(", ", missingSourcePaths)}.");
         }
 
         VerifyImplementedClosure(payloadRoot, manifest);
@@ -64,68 +46,34 @@ internal static class ContentSetVerifier
 
     private static ContentManifest ReadManifest(string manifestPath)
     {
-        FileInfo manifestFile = HostFileSystemGuard.RequireFile(
-            manifestPath,
-            "content-set manifest"
-        );
+        FileInfo manifestFile = HostFileSystemGuard.RequireFile(manifestPath, "content-set manifest");
 
         if (manifestFile.Length > ContentManifestReader.MaximumLength)
         {
-            throw new InvalidDataException(
-                $"The content-set manifest is {manifestFile.Length} bytes; "
-                    + $"the limit is {ContentManifestReader.MaximumLength} bytes."
-            );
+            throw new InvalidDataException($"The content-set manifest is {manifestFile.Length} bytes; the limit is {ContentManifestReader.MaximumLength} bytes.");
         }
 
-        using FileStream stream = new(
-            manifestPath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            bufferSize: 81920,
-            FileOptions.SequentialScan
-        );
+        using FileStream stream = new(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, FileOptions.SequentialScan);
 
         return ContentManifestReader.Read(stream);
     }
 
-    private static void VerifyPayloadDirectory(
-        string payloadRoot,
-        string directoryPath,
-        IReadOnlyDictionary<string, ContentManifestEntry> expectedBySourcePath,
-        HashSet<string> observedSourcePaths
-    )
+    private static void VerifyPayloadDirectory(string payloadRoot, string directoryPath, IReadOnlyDictionary<string, ContentManifestEntry> expectedBySourcePath, HashSet<string> observedSourcePaths)
     {
         HostFileSystemGuard.RequireDirectory(directoryPath, "content-set payload directory");
 
-        foreach (
-            string childDirectoryPath in Directory
-                .EnumerateDirectories(directoryPath)
-                .Order(StringComparer.Ordinal)
-        )
+        foreach (string childDirectoryPath in Directory.EnumerateDirectories(directoryPath).Order(StringComparer.Ordinal))
         {
-            VerifyPayloadDirectory(
-                payloadRoot,
-                childDirectoryPath,
-                expectedBySourcePath,
-                observedSourcePaths
-            );
+            VerifyPayloadDirectory(payloadRoot, childDirectoryPath, expectedBySourcePath, observedSourcePaths);
         }
 
-        foreach (
-            string filePath in Directory.EnumerateFiles(directoryPath).Order(StringComparer.Ordinal)
-        )
+        foreach (string filePath in Directory.EnumerateFiles(directoryPath).Order(StringComparer.Ordinal))
         {
             VerifyPayloadFile(payloadRoot, filePath, expectedBySourcePath, observedSourcePaths);
         }
     }
 
-    private static void VerifyPayloadFile(
-        string payloadRoot,
-        string filePath,
-        IReadOnlyDictionary<string, ContentManifestEntry> expectedBySourcePath,
-        HashSet<string> observedSourcePaths
-    )
+    private static void VerifyPayloadFile(string payloadRoot, string filePath, IReadOnlyDictionary<string, ContentManifestEntry> expectedBySourcePath, HashSet<string> observedSourcePaths)
     {
         FileInfo file = new(filePath);
 
@@ -137,47 +85,28 @@ internal static class ContentSetVerifier
 
         if (!expectedBySourcePath.TryGetValue(sourcePath, out ContentManifestEntry expected))
         {
-            throw new InvalidDataException(
-                $"Content-set payload '{sourcePath}' is not declared in the manifest."
-            );
+            throw new InvalidDataException($"Content-set payload '{sourcePath}' is not declared in the manifest.");
         }
 
         if (file.Length != expected.Length)
         {
-            throw new InvalidDataException(
-                $"Content-set payload '{sourcePath}' is {file.Length} bytes; "
-                    + $"the manifest declares {expected.Length}."
-            );
+            throw new InvalidDataException($"Content-set payload '{sourcePath}' is {file.Length} bytes; the manifest declares {expected.Length}.");
         }
 
         string observedSignature = ContentSignature.ClassifyFile(filePath);
 
         if (!string.Equals(observedSignature, expected.Signature, StringComparison.Ordinal))
         {
-            throw new InvalidDataException(
-                $"Content-set payload '{sourcePath}' has signature "
-                    + $"'{observedSignature}'; the manifest declares '{expected.Signature}'."
-            );
+            throw new InvalidDataException($"Content-set payload '{sourcePath}' has signature '{observedSignature}'; the manifest declares '{expected.Signature}'.");
         }
 
-        using (
-            FileStream stream = new(
-                filePath,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                bufferSize: 81920,
-                FileOptions.SequentialScan
-            )
-        )
+        using (FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, FileOptions.SequentialScan))
         {
             string observedSha256 = Convert.ToHexStringLower(SHA256.HashData(stream));
 
             if (!string.Equals(observedSha256, expected.Sha256, StringComparison.Ordinal))
             {
-                throw new InvalidDataException(
-                    $"Content-set payload '{sourcePath}' failed SHA-256 verification."
-                );
+                throw new InvalidDataException($"Content-set payload '{sourcePath}' failed SHA-256 verification.");
             }
         }
 
@@ -200,17 +129,12 @@ internal static class ContentSetVerifier
                         or UnauthorizedAccessException
             )
         {
-            throw new InvalidDataException(
-                "The content-set payload cannot resolve the implemented client content closure.",
-                exception
-            );
+            throw new InvalidDataException("The content-set payload cannot resolve the implemented client content closure.", exception);
         }
 
         if (closure.Count == 0)
         {
-            throw new InvalidDataException(
-                "The implemented client content closure resolved to no files."
-            );
+            throw new InvalidDataException("The implemented client content closure resolved to no files.");
         }
 
         Dictionary<string, string> closurePathsByKey = new(StringComparer.Ordinal);
@@ -225,30 +149,17 @@ internal static class ContentSetVerifier
 
             if (!closurePathsByKey.TryAdd(pathKey, normalizedPath))
             {
-                throw new InvalidDataException(
-                    $"The implemented client content closure contains a "
-                        + $"case-insensitive collision on '{normalizedPath}'."
-                );
+                throw new InvalidDataException($"The implemented client content closure contains a case-insensitive collision on '{normalizedPath}'.");
             }
         }
 
-        Dictionary<string, string> manifestPathsByKey = manifest.Entries.ToDictionary(
-            entry => entry.PathKey,
-            entry => entry.SourcePath,
-            StringComparer.Ordinal
-        );
+        Dictionary<string, string> manifestPathsByKey = manifest.Entries.ToDictionary(entry => entry.PathKey, entry => entry.SourcePath, StringComparer.Ordinal);
 
-        string[] missingFromManifest = closurePathsByKey
-            .Where(entry => !manifestPathsByKey.ContainsKey(entry.Key))
-            .Select(entry => entry.Value)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        string[] missingFromManifest = closurePathsByKey.Where(entry => !manifestPathsByKey.ContainsKey(entry.Key))
+            .Select(entry => entry.Value).Order(StringComparer.Ordinal).ToArray();
 
-        string[] outsideImplementedClosure = manifestPathsByKey
-            .Where(entry => !closurePathsByKey.ContainsKey(entry.Key))
-            .Select(entry => entry.Value)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        string[] outsideImplementedClosure = manifestPathsByKey.Where(entry => !closurePathsByKey.ContainsKey(entry.Key))
+            .Select(entry => entry.Value).Order(StringComparer.Ordinal).ToArray();
 
         if (missingFromManifest.Length == 0 && outsideImplementedClosure.Length == 0)
         {
@@ -264,14 +175,10 @@ internal static class ContentSetVerifier
 
         if (outsideImplementedClosure.Length > 0)
         {
-            differences.Add(
-                $"outside implemented closure: {string.Join(", ", outsideImplementedClosure)}"
-            );
+            differences.Add($"outside implemented closure: {string.Join(", ", outsideImplementedClosure)}");
         }
 
-        throw new InvalidDataException(
-            "The content-set manifest does not exactly match the implemented client content "
-                + $"closure ({string.Join("; ", differences)})."
-        );
+        throw new InvalidDataException("The content-set manifest does not exactly match the implemented client content "
+                                       + $"closure ({string.Join("; ", differences)}).");
     }
 }

@@ -3,12 +3,8 @@ using System.Text.Json;
 namespace OpenConquer.Content.Tool.Legacy.ServerDat;
 
 /// <summary>
-/// Human-readable inspection report for one decoded retail 5517 <c>Server.dat</c> file.
+/// Readable inspection report for one decoded retail 5517 <c>Server.dat</c> file.
 /// </summary>
-/// <remarks>
-/// Source strings are JSON-escaped before rendering so malformed or adversarial legacy values cannot
-/// inject additional terminal report lines.
-/// </remarks>
 internal sealed class ServerDatInspectionReport
 {
     private ServerDatInspectionReport(string filePath, ServerDatCatalog catalog)
@@ -27,27 +23,12 @@ internal sealed class ServerDatInspectionReport
         get;
     }
 
-    /// <summary>
-    /// Reads <paramref name="filePath"/> with the verified retail key and constructs its inspection
-    /// report.
-    /// </summary>
     public static ServerDatInspectionReport Create(string filePath)
     {
         return Create(filePath, ServerDatNativePublicKey.Modulus);
     }
 
-    /// <summary>
-    /// Reads <paramref name="filePath"/> with an explicitly supplied public modulus and constructs
-    /// its inspection report.
-    /// </summary>
-    /// <remarks>
-    /// The modulus override exists for tests that exercise the complete inspection pipeline with
-    /// independently generated RSA fixtures.
-    /// </remarks>
-    internal static ServerDatInspectionReport Create(
-        string filePath,
-        ReadOnlySpan<byte> publicModulus
-    )
+    internal static ServerDatInspectionReport Create(string filePath, ReadOnlySpan<byte> publicModulus)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 

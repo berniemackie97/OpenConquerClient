@@ -5,11 +5,6 @@ namespace OpenConquer.Content.Tool.Manifest;
 /// <summary>
 /// Serializes a <see cref="ContentManifest"/> to canonical JSON.
 /// </summary>
-/// <remarks>
-/// Every formatting knob is pinned so two runs on different operating systems produce byte-identical
-/// output. <see cref="JsonWriterOptions.NewLine"/> in particular defaults to
-/// <see cref="Environment.NewLine"/>, which would otherwise make the manifest platform-dependent.
-/// </remarks>
 internal static class ContentManifestWriter
 {
     private static readonly JsonWriterOptions s_writerOptions = new()

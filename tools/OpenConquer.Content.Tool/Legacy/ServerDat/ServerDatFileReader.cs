@@ -3,30 +3,15 @@ namespace OpenConquer.Content.Tool.Legacy.ServerDat;
 /// <summary>
 /// Reads and decodes a retail 5517 <c>Server.dat</c> file from an explicit filesystem path.
 /// </summary>
-/// <remarks>
-/// This is an offline compatibility-tooling boundary. It does not use the client's runtime content
-/// lookup system and does not search WDF packages or other fallback locations.
-/// </remarks>
 internal static class ServerDatFileReader
 {
     internal const int MaximumEncryptedFileLength = ServerDatEnvelopeDecoder.EncryptedBlockSize * ServerDatEnvelopeDecoder.MaximumEncryptedBlockCount;
 
-    /// <summary>
-    /// Reads and decodes a retail 5517 <c>Server.dat</c> file using the verified native public key.
-    /// </summary>
     public static ServerDatCatalog Read(string filePath)
     {
         return Read(filePath, ServerDatNativePublicKey.Modulus);
     }
 
-    /// <summary>
-    /// Reads and decodes a <c>Server.dat</c>-compatible file with an explicitly supplied public
-    /// modulus.
-    /// </summary>
-    /// <remarks>
-    /// The modulus override exists for tests that generate independent RSA fixtures while exercising
-    /// the complete file-read, envelope, and XML composition boundary.
-    /// </remarks>
     internal static ServerDatCatalog Read(string filePath, ReadOnlySpan<byte> publicModulus)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);

@@ -34,12 +34,7 @@ public sealed class DesktopWindow : IDisposable
             Samples = 0,
             ShouldSwapAutomatically = true,
 
-            API = new GraphicsAPI(
-                ContextAPI.OpenGL,
-                ContextProfile.Core,
-                ContextFlags.ForwardCompatible,
-                new APIVersion(3, minorVersion: 3)
-            ),
+            API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, new APIVersion(3, minorVersion: 3)),
 
             PreferredDepthBufferBits = 0,
             PreferredStencilBufferBits = 0,
@@ -74,42 +69,11 @@ public sealed class DesktopWindow : IDisposable
     /// <summary>
     /// Converts a pointer position reported in window coordinates to host framebuffer pixels.
     /// </summary>
-    /// <param name="windowX">Pointer X in window coordinates, as the input layer reports it.</param>
-    /// <param name="windowY">Pointer Y in window coordinates, as the input layer reports it.</param>
-    /// <remarks>
-    /// <para>
-    /// Window coordinates and framebuffer pixels are the same thing only at a scale factor of one.
-    /// Measured on a 2x display: a 640x480 window reports a 1280x960 framebuffer, and a pointer the
-    /// operating system placed at window position (915.2, 638.7) is reported by the input layer at
-    /// that same window position, not at the framebuffer position (1830, 1278). Mapping a pointer
-    /// through a transform built from <see cref="FramebufferSize"/> without converting first
-    /// therefore resolves clicks at a fraction of their true position. The defect is invisible on an
-    /// unscaled display, which is where it usually gets tested.
-    /// </para>
-    /// <para>
-    /// The conversion is delegated to the windowing layer rather than derived from a size ratio,
-    /// because the platform knows its own scaling and a ratio computed here would round
-    /// independently of it.
-    /// </para>
-    /// <para>
-    /// Pointer positions arrive fractional, and the windowing conversion accepts whole window
-    /// coordinates only, so the position is rounded to the nearest one first. Rounding rather than
-    /// truncating keeps the error centred on the reported position instead of biasing every pointer
-    /// up and to the left by half a window coordinate. The sub-window-coordinate part is discarded
-    /// either way: at a scale factor above one the framebuffer could express it, but the windowing
-    /// layer offers no fractional conversion to carry it through. That bounds pointer precision at
-    /// one window coordinate, which is finer than the logical pixels this eventually maps to.
-    /// </para>
-    /// </remarks>
     public PixelPoint PointToFramebuffer(float windowX, float windowY)
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);
 
-        Vector2D<int> roundedWindowPoint = new(
-            (int)MathF.Round(windowX),
-            (int)MathF.Round(windowY)
-        );
-
+        Vector2D<int> roundedWindowPoint = new((int)MathF.Round(windowX), (int)MathF.Round(windowY));
         Vector2D<int> framebufferPoint = _window.PointToFramebuffer(roundedWindowPoint);
 
         return new PixelPoint(X: framebufferPoint.X, Y: framebufferPoint.Y);
@@ -129,11 +93,8 @@ public sealed class DesktopWindow : IDisposable
         try
         {
             _window.Initialize();
-
             _framePacer.Start();
-
             _window.Run(RunFrame);
-
             _window.DoEvents();
         }
         catch
@@ -225,9 +186,7 @@ public sealed class DesktopWindow : IDisposable
             throw new InvalidOperationException("The OpenGL context has already been initialized.");
         }
 
-        IGLContext context =
-            _window.GLContext
-            ?? throw new InvalidOperationException("The OpenGL context was not created.");
+        IGLContext context = _window.GLContext ?? throw new InvalidOperationException("The OpenGL context was not created.");
 
         SilkOpenGLContext openGLContext = new(context);
 
@@ -248,11 +207,7 @@ public sealed class DesktopWindow : IDisposable
 
     private void OnRender(double deltaSeconds)
     {
-        SilkOpenGLContext openGLContext =
-            _openGLContext
-            ?? throw new InvalidOperationException(
-                "Rendering cannot begin before the OpenGL context is initialized."
-            );
+        SilkOpenGLContext openGLContext = _openGLContext ?? throw new InvalidOperationException("Rendering cannot begin before the OpenGL context is initialized.");
 
         if (!openGLContext.IsCurrent)
         {

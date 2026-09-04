@@ -3,10 +3,6 @@ namespace OpenConquer.Content.Wdf;
 /// <summary>
 /// Presents one bounded WDF payload entry as an independent readable stream.
 /// </summary>
-/// <remarks>
-/// The stream owns the underlying archive <see cref="FileStream"/>. Seeking is always resolved from
-/// the entry's absolute archive offset so callers cannot escape the selected payload.
-/// </remarks>
 internal sealed class WdfEntryStream : Stream
 {
     private readonly FileStream _archiveStream;
@@ -89,9 +85,7 @@ internal sealed class WdfEntryStream : Stream
         long position = origin switch
         {
             SeekOrigin.Begin => offset,
-
             SeekOrigin.Current => checked(_position + offset),
-
             SeekOrigin.End => checked(_length + offset),
 
             _ => throw new ArgumentOutOfRangeException(nameof(origin), origin, "Unknown seek origin."),

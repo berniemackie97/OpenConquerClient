@@ -3,13 +3,8 @@ namespace OpenConquer.Content.Tool.Import;
 /// <summary>
 /// Classifies a payload file by its leading magic bytes.
 /// </summary>
-/// <remarks>
-/// Extensions are identity hints only. Recording the observed signature lets verification detect a
-/// payload that was replaced with different content under the same name and length.
-/// </remarks>
 internal static class ContentSignature
 {
-    /// <summary>Reported when no known magic matches. Not an error: retail ships many bespoke formats.</summary>
     public const string Unknown = "unknown";
 
     private const int HeaderLength = 12;
