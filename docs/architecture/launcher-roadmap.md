@@ -2,8 +2,9 @@
 
 ## Current boundary
 
-The launcher implements the desktop host and diagnostic foundation only. Installation, product
-state, settings, login, server discovery, secure client handoff, and final UI are not complete.
+The launcher implements the desktop host, diagnostics, and local installation selection/inspection
+with application-owned state. Trusted installation readiness, updates/repair, settings, login, server
+discovery, secure client handoff, and final UI are not complete.
 Passing the host tests is not evidence that those responsibilities exist.
 
 The next implementation must start from the current code and relevant evidence, then select a
@@ -63,15 +64,39 @@ locally; existing cross-platform CI remains required when the user submits the c
 behavior changed, and no Avalonia headless test dependency was added. The launcher as a whole is
 still incomplete according to the responsibilities below.
 
+## Installation inspection slice
+
+Branch: `bernie/launcher_installation_readiness`.
+Baseline: `a6d9c32` (the user's formatting follow-up after the diagnostic repair merge).
+
+Implemented explicit native-folder/manual-path selection, bounded identity/layout inspection,
+application-owned immutable states, overlap rejection, cancellation/retry, stale-result invalidation,
+and window-close draining. The UI exposes real inspection behavior without claiming launch readiness.
+The local assembly version is identity evidence, not trusted release versioning. No production root
+or release endpoint is guessed, and no new runtime dependency or protocol is introduced.
+
+The audit additionally fixed picker focus after re-enabling controls and made XAML/MSBuild warnings
+fatal for the launcher. Details, evidence, limitations, and test coverage are in
+[installation inspection](launcher-installation-inspection.md).
+
+Validation on macOS arm64 / .NET 10.0.400: locked restore, formatting verification, zero-warning
+Release build, all 408 solution tests (78 launcher tests; no skips), tracked/published content
+verification, separate game/launcher publishes, bidirectional dependency/content isolation,
+`Server.dat` rejection, security searches, and whitespace/diff review passed. A synthetic MSBuild
+task-warning probe failed as expected under the new warning policy. Native desktop inspection
+covered both successful and failed selection/check flows, small-window layout, keyboard submission,
+picker focus/cancellation, and a normal zero-exit shutdown. Cancellation races and handle release
+are covered by the application/filesystem tests. Native Windows/Linux and screen-reader checks were
+not run locally. No known finding remains in this inspection slice; trusted readiness remains the
+next explicit responsibility.
+
 ## Remaining implementation sequence
 
 Each item may need more than one reviewable slice. Audit dependencies before fixing slice size.
 
-1. **Installation discovery and readiness with application-owned state.** Establish installation
-   identity, root, validation results, and actionable UI state from real installed files. Specify
-   ownership and cancellation before adding asynchronous operations. Do not represent mere file
-   presence as authenticated launch eligibility. Suggested next branch:
-   `bernie/launcher_installation_readiness`.
+1. **Local installation discovery/inspection — implemented.** The remaining readiness transition
+   requires trusted release integrity and runtime/launch preconditions, not merely a recognized
+   directory. Suggested next branch: `bernie/launcher_release_integrity`.
 2. **Trusted installation/update/repair lifecycle.** Establish release-manifest trust, version and
    integrity contracts, staging, interrupted-operation recovery, atomic activation, rollback policy,
    disk-space handling, process/file ownership, and cancellation. Release endpoints and signing

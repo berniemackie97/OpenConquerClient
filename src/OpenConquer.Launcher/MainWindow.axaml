@@ -5,17 +5,49 @@
     Title="OpenConquer"
     Width="1100"
     Height="700"
-    MinWidth="800"
-    MinHeight="500"
+    MinWidth="640"
+    MinHeight="480"
+    Background="#111820"
     WindowStartupLocation="CenterScreen">
 
-  <Grid Margin="32">
-    <TextBlock
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center"
-        FontSize="32"
-        FontWeight="SemiBold"
-        Text="OpenConquer" />
-  </Grid>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="40" MaxWidth="900" Spacing="24">
+      <StackPanel Spacing="12">
+        <TextBlock Text="OPENCONQUER" Foreground="#87D8CE" FontSize="16" FontWeight="SemiBold" />
+        <TextBlock Text="Find your game" Foreground="#F1F4F7" FontSize="36" FontWeight="SemiBold" />
+        <TextBlock Text="Start with the folder where your OpenConquer game files are installed."
+                   Foreground="#BCC9D5" FontSize="16" TextWrapping="Wrap" />
+      </StackPanel>
 
+      <Border Background="#1D2935" CornerRadius="12" Padding="28">
+        <StackPanel Spacing="18">
+          <TextBlock x:Name="StatusTitle" Foreground="#F1F4F7" FontSize="23" FontWeight="SemiBold"
+                     TextWrapping="Wrap" />
+          <TextBlock x:Name="StatusDetail" Foreground="#CCD6DF" FontSize="15" TextWrapping="Wrap"
+                     AutomationProperties.LiveSetting="Polite" />
+          <ProgressBar x:Name="InspectionProgress" Height="4" IsIndeterminate="True" IsVisible="False"
+                       AutomationProperties.Name="Checking installation" />
+          <TextBlock Text="Game installation folder" Foreground="#F1F4F7" FontWeight="SemiBold" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <TextBox x:Name="InstallationPath" PlaceholderText="Enter the full folder path"
+                     AutomationProperties.Name="Game installation folder" />
+            <Button x:Name="BrowseButton" Grid.Column="1" Content="Browse…" Click="OnBrowseClicked" />
+          </Grid>
+          <TextBlock x:Name="PickerError" Foreground="#FFD49B" IsVisible="False" TextWrapping="Wrap"
+                     AutomationProperties.LiveSetting="Polite" />
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button x:Name="CheckButton" Content="Check folder" IsDefault="True" Click="OnCheckClicked"
+                    Background="#87D8CE" Foreground="#111820" Padding="22,12" FontWeight="SemiBold" />
+            <Button x:Name="CancelButton" Content="Cancel check" IsCancel="True" Click="OnCancelClicked" IsVisible="False" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <StackPanel Spacing="8">
+        <TextBlock Text="Before you play" Foreground="#F1F4F7" FontWeight="SemiBold" FontSize="16" />
+        <TextBlock Foreground="#BCC9D5" FontSize="14" TextWrapping="Wrap"
+                   Text="This check identifies local game files. It does not yet establish a complete, playable installation. Downloading, repair and account sign-in are not available in this release." />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
 </Window>
