@@ -4,6 +4,8 @@
     <OutputType>WinExe</OutputType>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- XAML and other MSBuild task warnings must fail the build as well as C# warnings. -->
+    <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

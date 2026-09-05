@@ -40,11 +40,6 @@ internal static class Program
     /// <summary>
     /// Configures the Avalonia application without starting its desktop lifetime.
     /// </summary>
-    /// <remarks>
-    /// This method intentionally remains separate from <see cref="Main"/> because Avalonia tooling
-    /// and host-level tests may need to construct the application without entering the native
-    /// desktop event loop.
-    /// </remarks>
     public static AppBuilder BuildAvaloniaApp()
     {
         return AppBuilder.Configure<App>().UsePlatformDetect();

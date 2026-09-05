@@ -4,9 +4,6 @@ using System.Text;
 
 namespace OpenConquer.Launcher.Diagnostics;
 
-/// <summary>
-/// Projects exceptions into the bounded diagnostic representation safe for launcher host logging.
-/// </summary>
 internal static class LauncherExceptionDiagnosticProjector
 {
     private const int MaximumDepth = 8;
@@ -63,20 +60,11 @@ internal static class LauncherExceptionDiagnosticProjector
             ? []
             : projectedInnerExceptions.AsReadOnly();
 
-        return new LauncherExceptionDiagnostic(
-            ExceptionType: exceptionType,
-            ExceptionTypeTruncated: exceptionTypeTruncated,
-            HResult: exception.HResult,
-            StackTrace: stackTrace,
-            StackTraceTruncated: stackTraceTruncated,
-            InnerExceptions: children,
-            InnerExceptionsTruncated: innerExceptionsTruncated);
+        return new LauncherExceptionDiagnostic(exceptionType, exceptionTypeTruncated, exception.HResult, stackTrace, stackTraceTruncated, children, innerExceptionsTruncated);
     }
 
     private static string? ProjectStackTrace(Exception exception, out bool truncated)
     {
-        // The runtime still materializes the captured stack. Do not additionally format the entire
-        // trace or consult virtual exception properties: they may contain arbitrary application data.
         StackTrace trace = new(exception, fNeedFileInfo: false);
         int frameCount = Math.Min(trace.FrameCount, MaximumStackFrameCount);
         truncated = trace.FrameCount > frameCount;
