@@ -58,7 +58,7 @@ graph.
 
 | Project                  | Owns                                                                                                                                                                                                                      |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenConquer.Launcher`   | launcher process entry point, Avalonia application lifetime, launcher-window shell, process failure policy, bounded diagnostics, future account/update/repair composition, and future authorized game-start orchestration |
+| `OpenConquer.Launcher`   | launcher process entry point, Avalonia application lifetime, launcher-window shell, managed installation resolution and application state, process failure policy, bounded diagnostics, future account/update/repair composition, and future authorized game-start orchestration |
 | `OpenConquer.Client`     | game process entry point, startup-option validation, compatibility-derived runtime policy, game-subsystem composition, application lifetime, and shutdown coordination                                                    |
 | `OpenConquer.Platform`   | desktop windowing, native graphics-context lifetime, physical framebuffer state, desktop frame-loop orchestration and pacing mechanics, native buffer swapping, and future desktop input                                  |
 | `OpenConquer.Gameplay`   | game state, entities, movement, combat, interactions, and gameplay rules                                                                                                                                                  |
@@ -98,6 +98,12 @@ Program
             │
             ▼
         MainWindow
+            │
+            ▼
+   LauncherApplication
+            │
+            ▼
+ ManagedInstallationResolver
 ```
 
 `Program` owns only executable-host composition and process lifetime policy.
@@ -113,6 +119,11 @@ It:
 
 Filesystem policy, log formatting, exception projection, redaction, and global-event implementation
 details remain outside `Program`.
+
+`LauncherApplication` owns startup evaluation, cancellation, state transitions, and shutdown
+draining. `ManagedInstallationResolver` resolves only the installer-owned package context beginning
+at `AppContext.BaseDirectory`; it does not accept a player-selected path or search the machine.
+`MainWindow` renders the resulting immutable state and remains a presentation adapter.
 
 The main-window lifetime is therefore the current launcher-process lifetime. Closing the primary
 launcher window terminates the launcher rather than allowing an unrelated auxiliary window to keep
@@ -460,6 +471,12 @@ The launcher currently has a minimal presentation shell rather than placeholder 
 Feature UI should follow implemented product state and service contracts rather than inventing fake
 login, update, or realm workflows ahead of their architecture.
 
+The managed installation boundary is documented in
+[launcher-managed-installation](launcher-managed-installation.md). The launcher expects the
+installer/package stage to place `openconquer.installation.json` beside the launcher and the managed
+client component under the descriptor's relative `clientRoot`. The descriptor is a layout contract,
+not a release-integrity or launch-readiness authority.
+
 ## Product Publish Boundary
 
 Building an executable and publishing an executable are treated as different product guarantees.
@@ -491,7 +508,8 @@ launcher package
 └── game runtime internals and retail content
 ```
 
-Instead each executable has its own publish boundary:
+Instead each executable has its own publish boundary, followed by an installer-owned composition
+boundary:
 
 ```text
 OpenConquer.Launcher publish
@@ -501,10 +519,24 @@ OpenConquer.Launcher publish
 OpenConquer.Client publish
         │
         └── exact game runtime content closure
+
+Managed OpenConquer installation
+        ├── launcher publish output
+        ├── openconquer.installation.json
+        └── client publish output under the managed client root
 ```
 
 Runtime-identifier-specific packages, installers, code signing, notarization, self-contained
-deployment, and operating-system-native bundles remain future release-engineering concerns.
+deployment, and operating-system-native bundles remain future release-engineering concerns. The
+managed package descriptor deliberately does not encode a .NET assembly version or publish-file
+heuristic, so those packaging choices can evolve without changing launcher resolution.
+
+`OpenConquer.Product.Tool` provides the deterministic development and CI composition step for this
+boundary. It copies the two independent publish roots into a new managed product root, rejects
+linked filesystem entries, preserves Unix executable modes, stages in a sibling temporary root,
+and activates by directory rename without replacing an existing output. The production installer
+remains the owner of final installation, activation, and deployment policy; the tool does not
+pretend to be that installer.
 
 ## Game Runtime Flow
 
@@ -557,7 +589,7 @@ application is created.
 The supported startup form is:
 
 ```text
-OpenConquer.Client [--content-root <path>] [--presentation <fit|integer|stretch>]
+OpenConquer.Client [--content-root <path>] [--window-size <WIDTHxHEIGHT>] [--window-mode <resizable|fixed|fullscreen>] [--presentation <fit|integer|stretch>]
 ```
 
 With no explicit content root, startup uses the versioned `content/retail-5517/payload` set staged
@@ -570,9 +602,15 @@ the process working directory at startup and normalized to an absolute path.
 Malformed startup input is rejected before application construction. Unknown arguments, duplicate
 content-root declarations, and missing content-root values are not silently ignored.
 
-The resulting content-root path and presentation policy are passed into `ClientApplication`. The
-application constructs the composite `PackagedClientContentSource`; Content does not depend on or
-receive the executable's complete startup-options object.
+The resulting content-root path, requested window size, presentation policy, and desktop window mode
+are passed into `ClientApplication`. The application constructs the composite
+`PackagedClientContentSource`; Content does not depend on or receive the executable's complete
+startup-options object.
+
+Window size, window mode, and presentation policy are non-sensitive display settings, so the
+development bypass may carry them as ordinary process arguments. Account state, session tokens, and
+launch authorization must not use this transport; the controlled launcher handoff remains a future
+private IPC boundary.
 
 ```text
 process arguments
@@ -581,7 +619,9 @@ process arguments
 ClientStartupOptions
         │
         ├── absolute ContentRootPath
-        └── PresentationPolicy
+        ├── WindowSize
+        ├── PresentationPolicy
+        └── DesktopWindowMode
                 │
                 ▼
         ClientApplication
@@ -757,11 +797,11 @@ Detailed evidence and security interpretation are documented in
 supported production entry-point target, with its own composition root and standard-user process
 policy. No second user-facing `Play.exe` is introduced in front of it.
 
-The current implementation provides the host, diagnostics, and window shell only. The remaining
-production lifecycle is:
+The current implementation provides the host, diagnostics, managed package resolution, and a thin
+installation-status window. The remaining production lifecycle is:
 
 ```text
-installation discovery and readiness
+trusted installation readiness
         ↓
 update / repair as required
         ↓
@@ -1011,7 +1051,8 @@ Rendering does not read legacy configuration and does not derive the logical siz
 window.
 
 `OpenConquer.Platform` separately reports the physical framebuffer through `PixelSize`. Its
-dimensions change as the resizable host window changes.
+dimensions are controlled by the requested window size and selected desktop window mode and may
+change while the logical render size remains fixed.
 
 ```text
 GameSetUp.ini
@@ -1030,10 +1071,10 @@ OpenGLRenderTarget
         │ render logical frame
         ▼
 fixed logical framebuffer
-        │
-        │ PresentationViewport places the frame
-        │ OpenGLRenderer color blit
-        ▼
+    │
+    │ PresentationViewport places the frame
+    │ OpenGLRenderer color blit
+    ▼
 physical host framebuffer
         │
         │ Platform native buffer swap
@@ -1045,20 +1086,21 @@ The distinction is intentional:
 
 - logical dimensions define the game rendering coordinate space
 - physical framebuffer dimensions define only the host composition destination
-- resizing the desktop window does not change the logical game resolution
+- the selected desktop window mode does not change the logical game resolution
 - minimizing the host may temporarily produce a zero-sized physical framebuffer without changing the
   logical render target
 
 The original 5517 client supports four screen modes spanning 800×600 and 1024×768 logical
-resolutions. The modern client preserves the verified logical-resolution selection while
-intentionally retaining its resizable desktop-host policy.
+resolutions. The modern client preserves that verified logical-resolution selection and keeps the
+desktop window mode independent: resizable, fixed, or fullscreen.
 
 The shell behavior associated with retail modes 1 and 3 is not inferred by Rendering from the mode
 integer. Desktop-window behavior remains a Platform/application policy separate from logical
 rendering resolution.
 
-The desktop host is intentionally resizable. This is a modernization over the original fixed-window
-behavior while preserving the game's fixed logical rendering coordinate system.
+The desktop host policy is explicit. The launcher supplies a requested host size; resizable mode
+starts at that size, fixed mode enforces it, and fullscreen mode requests it as a backend hint while
+delegating the physical host framebuffer to the display.
 
 ### Presentation transform
 
@@ -1289,8 +1331,9 @@ operation, including scissor testing and framebuffer sRGB conversion.
 The renderer restores the default framebuffer after host composition, including when composition is
 skipped because the host framebuffer has zero area while minimized.
 
-Host framebuffer resizing changes only the destination dimensions. It does not recreate or resize
-the logical render target.
+If the platform reports a host framebuffer change (for example while a surface is being minimized
+or moved between scaling environments), it changes only the destination dimensions. It does not
+recreate or resize the logical render target.
 
 ## Host Presentation Policy
 
@@ -1303,7 +1346,9 @@ The desktop window currently uses:
   cadence
 - automatic native buffer swapping
 - VSync disabled
-- a resizable 1280×720 initial host window
+- an explicit resizable, fixed, or fullscreen host mode
+- a launcher-supplied requested host size
+- a fixed 800×600 or 1024×768 logical game surface selected from `GameSetUp.ini`
 - an OpenGL 3.3 Core forward-compatible context
 - no host framebuffer multisampling
 - no requested depth buffer on the host framebuffer

@@ -58,7 +58,8 @@ ini/info.ini
 ini/package.ini
 ```
 
-`ini/GameSetUp.ini` must contain a valid:
+`ini/GameSetUp.ini` must contain a valid compatibility value for the logical render surface used by
+the implemented native-compatible bootstrap:
 
 ```ini
 [ScreenMode]
@@ -88,30 +89,59 @@ fallback, or a production server catalog.
 
 The startup logo is non-fatal. When a usable logo bitmap is available, it is presented once in a
 dedicated borderless window at its natural logical size. The startup renderer, OpenGL context, and
-native window are destroyed before the main resizable client window is constructed. When the logo is
-unavailable, no startup window is created. There is no artificial minimum splash duration.
+native window are destroyed before the client window is constructed. When the logo is unavailable,
+no startup window is created. There is no artificial minimum splash duration.
 
-The screen-mode value remains independent of the physical desktop-host size.
+The screen-mode value defines the compatibility logical render surface, not the physical desktop
+host size. The launcher-owned launch contract supplies the requested desktop size and window mode.
 
-`--presentation fit|integer|stretch` controls how that fixed logical frame is presented within the
-resizable host framebuffer.
+`--window-size WIDTHxHEIGHT` controls the requested physical desktop size. It defaults to
+`1280x720`; the value is bounded and rejected when malformed or unreasonably large.
 
-Unknown startup arguments, duplicate options, unsupported presentation values, and missing option
-values are rejected rather than ignored.
+`--window-mode resizable|fixed|fullscreen` controls the desktop game-window mode. It defaults to
+`resizable`; `fixed` uses the requested window size and `fullscreen` requests that size as a display
+mode hint. The screen-mode resolution remains the fixed logical render size in every mode.
+
+`--presentation fit|integer|stretch` controls how that fixed logical frame is presented by the
+selected native game window.
+
+Unknown startup arguments, duplicate options, unsupported presentation or window-mode values, and
+missing option values are rejected rather than ignored.
 
 ### Launcher
 
 `OpenConquer.Launcher` is a separate .NET 10 desktop product using Avalonia.
 
-Run it with:
+Run it from a staged managed product root. The staging command mirrors the installer-owned package
+boundary used by CI:
 
 ```bash
-dotnet run --project src/OpenConquer.Launcher/OpenConquer.Launcher.csproj
+dotnet publish src/OpenConquer.Client/OpenConquer.Client.csproj \
+  --configuration Release \
+  --output /tmp/openconquer-client-publish
+
+dotnet publish src/OpenConquer.Launcher/OpenConquer.Launcher.csproj \
+  --configuration Release \
+  --output /tmp/openconquer-launcher-publish
+
+dotnet run \
+  --project tools/OpenConquer.Product.Tool \
+  -- \
+  stage-managed-product \
+  --launcher-publish /tmp/openconquer-launcher-publish \
+  --client-publish /tmp/openconquer-client-publish \
+  --output /tmp/openconquer-managed
+
+/tmp/openconquer-managed/OpenConquer.Launcher
 ```
 
 The current launcher boundary establishes:
 
 - the launcher executable and process composition root;
+- automatic managed-installation resolution from the launcher package context;
+- installer-owned layout descriptor validation and client-component discovery;
+- application-owned startup evaluation and shutdown cancellation;
+- deterministic managed-product composition for local and CI verification;
 - Avalonia application and primary-window lifetime;
 - explicit `ShutdownMode.OnMainWindowClose` process policy;
 - an independent dependency and publish boundary;
@@ -135,13 +165,22 @@ The launcher intentionally does not yet implement:
 - realm selection;
 - supported pre-launch settings.
 
+It also does not provide a folder picker or manual installation-path entry. A normal launcher start
+uses `AppContext.BaseDirectory` and the installer-owned `openconquer.installation.json` descriptor.
+The descriptor identifies the managed client component directory without asserting release integrity
+or trusting .NET assembly metadata. Running the launcher directly from a source build without a
+staged `client/` component reports an unavailable installation; use the product staging command
+above to test the launcher as an installed product.
+
 Those capabilities require their own audited implementation slices rather than placeholder services
 or speculative abstractions. Account login must use the original 5517 AccountServer protocol and
 native login-to-game semantics. Moving the login UI does not authorize a replacement identity
 protocol. See the [launcher roadmap](architecture/launcher-roadmap.md) for the remaining work.
 
 The launcher does not reference the game client's runtime subsystem projects and does not consume
-the retail game-content payload.
+the retail game-content payload. Independent project publishes remain a CI/build guarantee; an
+installer or package assembler composes them into the managed product layout documented in
+[`launcher-managed-installation.md`](architecture/launcher-managed-installation.md).
 
 #### Windows Process Policy
 
@@ -319,12 +358,13 @@ tests/OpenConquer.Content.Tests
 tests/OpenConquer.Content.Tool.Tests
 tests/OpenConquer.Launcher.Tests
 tests/OpenConquer.Platform.Tests
+tests/OpenConquer.Product.Tool.Tests
 tests/OpenConquer.Rendering.Tests
 ```
 
 `OpenConquer.Client.Tests` verifies executable startup policy, including content-root defaults,
-explicit overrides, path normalization, malformed argument handling, startup-presentation policy,
-and startup-window-before-main-window lifetime invariants.
+explicit overrides, path normalization, malformed argument handling, startup presentation and
+window-mode policies, and startup-window-before-main-window lifetime invariants.
 
 `OpenConquer.Content.Tests` verifies runtime content-root lookup semantics, package registration and
 lookup behavior, shared content-path validation, native-compatible INI parsing, startup-logo
@@ -339,6 +379,9 @@ includes the verified retail RSA key, hardened RSA/PKCS#1/gzip envelope validati
 
 `OpenConquer.Launcher.Tests` verifies launcher host and product-boundary invariants without
 requiring a native desktop session.
+
+`OpenConquer.Product.Tool.Tests` verifies managed-product composition, non-destructive output
+handling, and rejection of linked filesystem entries.
 
 The launcher tests cover:
 
@@ -398,7 +441,10 @@ The Linux quality job runs on Ubuntu 24.04 and performs:
 7. verification that the published client contains the exact five-file runtime content set;
 8. explicit rejection of any published `Server.dat`;
 9. framework-dependent publication of `OpenConquer.Launcher`;
-10. verification that the launcher publish does not contain the game's retail runtime content set.
+10. verification that the launcher publish contains the root-managed installation descriptor and
+    does not contain the game's retail runtime content set;
+11. composition of the independent publishes under the managed product root and verification of
+    the descriptor's client component layout.
 
 Publishing is treated as a separate product boundary from compilation. A project that builds
 successfully but cannot produce its expected publish layout does not satisfy the repository quality
@@ -421,8 +467,10 @@ project-file change cannot accidentally stage that historical file outside the v
 subtree.
 
 The launcher publish is independently checked to prevent the game's retail content payload from
-becoming an implicit launcher dependency merely because both executables live in the same
-repository.
+becoming an implicit launcher dependency merely because both executables live in the same repository.
+The managed composition check then places those independent outputs under the installer-owned
+layout consumed by the launcher resolver; it does not make the launcher project reference the game
+client.
 
 The Release build runs with the repository's analyzers and warnings-as-errors configuration.
 
@@ -569,7 +617,8 @@ dotnet run \
 
 rm -rf \
   /tmp/openconquer-client-publish \
-  /tmp/openconquer-launcher-publish
+  /tmp/openconquer-launcher-publish \
+  /tmp/openconquer-managed
 
 dotnet publish \
   src/OpenConquer.Client/OpenConquer.Client.csproj \
@@ -597,6 +646,19 @@ dotnet publish \
   --no-restore \
   --output /tmp/openconquer-launcher-publish
 
+dotnet run \
+  --project tools/OpenConquer.Product.Tool \
+  --configuration Release \
+  --no-build \
+  --no-restore \
+  -- stage-managed-product \
+  --launcher-publish /tmp/openconquer-launcher-publish \
+  --client-publish /tmp/openconquer-client-publish \
+  --output /tmp/openconquer-managed
+
+test -f /tmp/openconquer-managed/openconquer.installation.json
+test -f /tmp/openconquer-managed/client/content/retail-5517/manifest.json
+
 find \
   /tmp/openconquer-launcher-publish \
   -path '*/content/retail-5517*' \
@@ -605,4 +667,5 @@ find \
 git diff --check
 ```
 
-The two final `find` commands must print nothing.
+The `find` commands must print nothing; the staged managed product must contain the descriptor and
+the client content manifest at the paths shown above.

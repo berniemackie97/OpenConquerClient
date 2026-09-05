@@ -1,7 +1,7 @@
 namespace OpenConquer.Rendering;
 
 /// <summary>
-/// Where the fixed logical frame lands inside the resizable host framebuffer, and how to get back again.
+/// Where the fixed logical frame lands inside the desktop game framebuffer, and how to get back again.
 /// </summary>
 public readonly record struct PresentationViewport
 {

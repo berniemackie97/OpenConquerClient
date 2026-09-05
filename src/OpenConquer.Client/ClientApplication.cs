@@ -15,6 +15,8 @@ internal sealed class ClientApplication : IDisposable
 
     private readonly string _clientContentRootPath;
     private readonly PresentationPolicy _presentationPolicy;
+    private readonly DesktopWindowMode _windowMode;
+    private readonly PixelSize _windowSize;
 
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
@@ -23,12 +25,27 @@ internal sealed class ClientApplication : IDisposable
     private bool _runStarted;
     private bool _disposed;
 
-    public ClientApplication(string clientContentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit)
+    public ClientApplication(
+        string clientContentRootPath,
+        PresentationPolicy presentationPolicy = PresentationPolicy.Fit,
+        DesktopWindowMode windowMode = DesktopWindowMode.Resizable,
+        PixelSize? windowSize = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientContentRootPath);
 
+        if (!Enum.IsDefined(windowMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(windowMode), windowMode, "Unsupported desktop window mode.");
+        }
+
         _clientContentRootPath = clientContentRootPath;
         _presentationPolicy = presentationPolicy;
+        _windowMode = windowMode;
+
+        PixelSize configuredWindowSize = windowSize ?? DesktopWindow.DefaultWindowSize;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(configuredWindowSize.Width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(configuredWindowSize.Height);
+        _windowSize = configuredWindowSize;
     }
 
     public int Run()
@@ -55,7 +72,7 @@ internal sealed class ClientApplication : IDisposable
 
         DesktopWindow window = ClientWindowCreationSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
             () => InitializeRuntimeConfiguration(contentSource),
-            () => new DesktopWindow(s_frameInterval));
+            () => new DesktopWindow(_windowSize, _windowMode, s_frameInterval));
 
         _window = window;
 

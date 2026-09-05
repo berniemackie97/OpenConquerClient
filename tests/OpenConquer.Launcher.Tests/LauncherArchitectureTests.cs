@@ -84,6 +84,85 @@ public sealed class LauncherArchitectureTests
         Assert.Equal("OpenConquer.Launcher", typeof(Program).Assembly.GetName().Name);
     }
 
+    [Fact]
+    public void LauncherWindowDoesNotExposeArbitraryInstallationSelection()
+    {
+        string repositoryRoot = GetRepositoryRoot();
+        string windowPath = Path.Combine(
+            repositoryRoot,
+            "src",
+            "OpenConquer.Launcher",
+            "MainWindow.axaml"
+        );
+
+        string windowMarkup = File.ReadAllText(windowPath);
+
+        Assert.DoesNotContain("Browse", windowMarkup, StringComparison.Ordinal);
+        Assert.DoesNotContain("folder path", windowMarkup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Find your game", windowMarkup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LauncherWindowUsesAStableNonResizableStatusSurface()
+    {
+        string repositoryRoot = GetRepositoryRoot();
+        string windowPath = Path.Combine(
+            repositoryRoot,
+            "src",
+            "OpenConquer.Launcher",
+            "MainWindow.axaml"
+        );
+
+        XElement window = XDocument.Load(windowPath).Root
+            ?? throw new InvalidOperationException("The launcher window markup has no root element.");
+
+        Assert.Equal("760", window.Attribute("Width")?.Value);
+        Assert.Equal("460", window.Attribute("Height")?.Value);
+        Assert.Equal("False", window.Attribute("CanResize")?.Value);
+    }
+
+    [Fact]
+    public void LauncherApplicationResolvesFromItsPackageContext()
+    {
+        string repositoryRoot = GetRepositoryRoot();
+        string appPath = Path.Combine(
+            repositoryRoot,
+            "src",
+            "OpenConquer.Launcher",
+            "App.axaml.cs"
+        );
+
+        string appSource = File.ReadAllText(appPath);
+
+        Assert.Contains("AppContext.BaseDirectory", appSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("OpenConquer.Client.csproj", appSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LauncherPublishCarriesTheManagedInstallationDescriptor()
+    {
+        string repositoryRoot = GetRepositoryRoot();
+        string launcherProjectPath = Path.Combine(
+            repositoryRoot,
+            "src",
+            "OpenConquer.Launcher",
+            "OpenConquer.Launcher.csproj"
+        );
+
+        XDocument launcherProject = XDocument.Load(launcherProjectPath);
+        XElement descriptor = Assert.Single(
+            launcherProject.Descendants("None"),
+            static element => element.Attribute("Include")?.Value ==
+                "Installation/openconquer.installation.json"
+        );
+
+        Assert.Equal(
+            "PreserveNewest",
+            descriptor.Attribute("CopyToPublishDirectory")?.Value
+        );
+        Assert.Equal("openconquer.installation.json", descriptor.Attribute("Link")?.Value);
+    }
+
     private static string GetRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);

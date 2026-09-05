@@ -2,20 +2,40 @@
     x:Class="OpenConquer.Launcher.MainWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="OpenConquer"
-    Width="1100"
-    Height="700"
-    MinWidth="800"
-    MinHeight="500"
+    Title="OpenConquer Launcher"
+    Width="760"
+    Height="460"
+    CanResize="False"
     WindowStartupLocation="CenterScreen">
 
   <Grid Margin="32">
-    <TextBlock
+    <StackPanel
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
-        FontSize="32"
-        FontWeight="SemiBold"
-        Text="OpenConquer" />
+        MaxWidth="620"
+        Spacing="16">
+      <TextBlock
+          x:Name="ProductName"
+          HorizontalAlignment="Center"
+          FontSize="16"
+          FontWeight="SemiBold" />
+      <TextBlock
+          x:Name="InstallationHeading"
+          HorizontalAlignment="Center"
+          FontSize="20"
+          FontWeight="SemiBold" />
+      <TextBlock
+          x:Name="StatusTitle"
+          HorizontalAlignment="Center"
+          FontSize="32"
+          FontWeight="SemiBold"
+          TextWrapping="Wrap" />
+      <TextBlock
+          x:Name="StatusDetail"
+          HorizontalAlignment="Center"
+          TextAlignment="Center"
+          TextWrapping="Wrap" />
+    </StackPanel>
   </Grid>
 
 </Window>

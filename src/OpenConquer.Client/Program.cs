@@ -9,12 +9,12 @@ internal static class Program
         if (!ClientStartupOptions.TryParse(args, out ClientStartupOptions? options, out string? errorMessage))
         {
             Console.Error.WriteLine($"OpenConquer: {errorMessage}");
-            Console.Error.WriteLine($"Usage: OpenConquer.Client [--content-root <path>] [--presentation <{ClientStartupOptions.PresentationPolicyNames}>]");
+            Console.Error.WriteLine($"Usage: OpenConquer.Client [--content-root <path>] [--window-size <WIDTHxHEIGHT>] [--window-mode <{ClientStartupOptions.WindowModeNames}>] [--presentation <{ClientStartupOptions.PresentationPolicyNames}>]");
 
             return InvalidStartupArgumentsExitCode;
         }
 
-        ClientApplication application = new(options.ContentRootPath, options.PresentationPolicy);
+        ClientApplication application = new(options.ContentRootPath, options.PresentationPolicy, options.WindowMode, options.WindowSize);
 
         int exitCode;
 

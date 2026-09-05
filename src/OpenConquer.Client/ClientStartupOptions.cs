@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using OpenConquer.Platform;
 using OpenConquer.Rendering;
 
 namespace OpenConquer.Client;
@@ -7,6 +9,11 @@ internal sealed class ClientStartupOptions
 {
     private const string ContentRootOptionName = "--content-root";
     private const string PresentationOptionName = "--presentation";
+    private const string WindowModeOptionName = "--window-mode";
+    private const string WindowSizeOptionName = "--window-size";
+
+    private const int MaximumWindowDimension = 16_384;
+    private const long MaximumWindowArea = 7_680L * 4_320L;
 
     private static readonly (string Name, PresentationPolicy Policy)[] s_presentationPolicies =
     [
@@ -15,10 +22,23 @@ internal sealed class ClientStartupOptions
         ("stretch", PresentationPolicy.Stretch),
     ];
 
-    private ClientStartupOptions(string contentRootPath, PresentationPolicy presentationPolicy)
+    private static readonly (string Name, DesktopWindowMode Mode)[] s_windowModes =
+    [
+        ("resizable", DesktopWindowMode.Resizable),
+        ("fixed", DesktopWindowMode.Fixed),
+        ("fullscreen", DesktopWindowMode.Fullscreen),
+    ];
+
+    private ClientStartupOptions(
+        string contentRootPath,
+        PresentationPolicy presentationPolicy,
+        DesktopWindowMode windowMode,
+        PixelSize windowSize)
     {
         ContentRootPath = contentRootPath;
         PresentationPolicy = presentationPolicy;
+        WindowMode = windowMode;
+        WindowSize = windowSize;
     }
 
     public string ContentRootPath
@@ -27,14 +47,32 @@ internal sealed class ClientStartupOptions
     }
 
     /// <summary>
-    /// How the fixed logical frame is fitted into the resizable host window.
+    /// How the fixed logical frame is presented by the native game window.
     /// </summary>
     public PresentationPolicy PresentationPolicy
     {
         get;
     }
 
+    /// <summary>
+    /// How the native game window is presented independently of the logical render size.
+    /// </summary>
+    public DesktopWindowMode WindowMode
+    {
+        get;
+    }
+
+    /// <summary>
+    /// The requested physical desktop size. The active display may determine the final fullscreen framebuffer.
+    /// </summary>
+    public PixelSize WindowSize
+    {
+        get;
+    }
+
     public static string PresentationPolicyNames => string.Join('|', s_presentationPolicies.Select(entry => entry.Name));
+
+    public static string WindowModeNames => string.Join('|', s_windowModes.Select(entry => entry.Name));
 
     public static bool TryParse(string[] args, [NotNullWhen(true)] out ClientStartupOptions? options, [NotNullWhen(false)] out string? errorMessage)
     {
@@ -57,6 +95,12 @@ internal sealed class ClientStartupOptions
 
         PresentationPolicy presentationPolicy = PresentationPolicy.Fit;
         bool presentationSpecified = false;
+
+        DesktopWindowMode windowMode = DesktopWindowMode.Resizable;
+        bool windowModeSpecified = false;
+
+        PixelSize windowSize = DesktopWindow.DefaultWindowSize;
+        bool windowSizeSpecified = false;
 
         for (int index = 0; index < args.Count; index++)
         {
@@ -109,12 +153,56 @@ internal sealed class ClientStartupOptions
                         break;
                     }
 
+                case WindowModeOptionName:
+                    {
+                        if (windowModeSpecified)
+                        {
+                            return Fail($"Startup option '{WindowModeOptionName}' may only be specified once.", out options, out errorMessage);
+                        }
+
+                        if (!TryReadOptionValue(args, ref index, WindowModeOptionName, $"one of {WindowModeNames}", out string? configuredMode, out errorMessage))
+                        {
+                            return Fail(errorMessage, out options, out errorMessage);
+                        }
+
+                        if (!TryParseWindowMode(configuredMode, out windowMode))
+                        {
+                            return Fail($"Startup option '{WindowModeOptionName}' value '{configuredMode}' is not recognized. Expected one of {WindowModeNames}.", out options, out errorMessage);
+                        }
+
+                        windowModeSpecified = true;
+
+                        break;
+                    }
+
+                case WindowSizeOptionName:
+                    {
+                        if (windowSizeSpecified)
+                        {
+                            return Fail($"Startup option '{WindowSizeOptionName}' may only be specified once.", out options, out errorMessage);
+                        }
+
+                        if (!TryReadOptionValue(args, ref index, WindowSizeOptionName, "a WIDTHxHEIGHT value", out string? configuredSize, out errorMessage))
+                        {
+                            return Fail(errorMessage, out options, out errorMessage);
+                        }
+
+                        if (!TryParseWindowSize(configuredSize, out windowSize))
+                        {
+                            return Fail($"Startup option '{WindowSizeOptionName}' value '{configuredSize}' is not a supported WIDTHxHEIGHT value.", out options, out errorMessage);
+                        }
+
+                        windowSizeSpecified = true;
+
+                        break;
+                    }
+
                 default:
                     return Fail($"Unknown startup argument '{argument}'.", out options, out errorMessage);
             }
         }
 
-        options = new ClientStartupOptions(contentRootPath, presentationPolicy);
+        options = new ClientStartupOptions(contentRootPath, presentationPolicy, windowMode, windowSize);
         errorMessage = null;
 
         return true;
@@ -164,6 +252,55 @@ internal sealed class ClientStartupOptions
 
         policy = PresentationPolicy.Fit;
         return false;
+    }
+
+    private static bool TryParseWindowMode(string value, out DesktopWindowMode mode)
+    {
+        foreach ((string name, DesktopWindowMode candidate) in s_windowModes)
+        {
+            if (string.Equals(value, name, StringComparison.OrdinalIgnoreCase))
+            {
+                mode = candidate;
+                return true;
+            }
+        }
+
+        mode = DesktopWindowMode.Resizable;
+        return false;
+    }
+
+    private static bool TryParseWindowSize(string value, out PixelSize size)
+    {
+        int separatorIndex = value.IndexOf('x');
+
+        if (separatorIndex < 0)
+        {
+            separatorIndex = value.IndexOf('X');
+        }
+
+        if (separatorIndex <= 0 || separatorIndex == value.Length - 1 || value.IndexOf('x', separatorIndex + 1) >= 0 || value.IndexOf('X', separatorIndex + 1) >= 0)
+        {
+            size = default;
+            return false;
+        }
+
+        ReadOnlySpan<char> widthText = value.AsSpan(0, separatorIndex);
+        ReadOnlySpan<char> heightText = value.AsSpan(separatorIndex + 1);
+
+        if (!int.TryParse(widthText, NumberStyles.None, CultureInfo.InvariantCulture, out int width) ||
+            !int.TryParse(heightText, NumberStyles.None, CultureInfo.InvariantCulture, out int height) ||
+            width <= 0 ||
+            height <= 0 ||
+            width > MaximumWindowDimension ||
+            height > MaximumWindowDimension ||
+            (long)width * height > MaximumWindowArea)
+        {
+            size = default;
+            return false;
+        }
+
+        size = new PixelSize(width, height);
+        return true;
     }
 
     private static string NormalizeRequiredAbsolutePath(string path, string parameterName)
