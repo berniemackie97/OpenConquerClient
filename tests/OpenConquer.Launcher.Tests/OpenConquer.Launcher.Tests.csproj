@@ -4,4 +4,13 @@
     <ProjectReference Include="../../src/OpenConquer.Launcher/OpenConquer.Launcher.csproj" />
   </ItemGroup>
 
+  <!-- Integration fixtures use the real built game assembly without a runtime reference. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/OpenConquer.Client/OpenConquer.Client.csproj"
+                      ReferenceOutputAssembly="false" OutputItemType="ClientInspectionFixture" />
+  </ItemGroup>
+
+  <Target Name="CopyClientInspectionFixture" AfterTargets="Build">
+    <Copy SourceFiles="@(ClientInspectionFixture)" DestinationFolder="$(OutDir)TestData/installation" />
+  </Target>
 </Project>

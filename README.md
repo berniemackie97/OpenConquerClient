@@ -48,7 +48,8 @@ Its current host boundary owns:
 
 - launcher process startup and shutdown;
 - Avalonia application lifetime;
-- the primary launcher-window shell;
+- installation folder selection and asynchronous product/layout inspection;
+- application-owned inspection state, cancellation, retry, and safe window-close behavior;
 - explicit standard-user process policy on Windows;
 - bounded per-user structured diagnostics;
 - fatal host-exception observation and nonzero terminal failure semantics;
@@ -110,8 +111,8 @@ launcher → installation/readiness → update/repair as required → pre-launch
          → controlled OpenConquer.Client startup → native-compatible game bootstrap
 ```
 
-Only the launcher host and game executable boundaries currently exist. This lifecycle is a target,
-not a description of implemented login, installation, or launch functionality.
+The launcher host, local installation inspection, and game executable boundaries currently exist.
+This lifecycle is a target, not a description of implemented updating, login, or game launching.
 
 Account authentication must preserve the original 5517 packets, credential transformations,
 AccountServer results, and login-to-game handoff semantics. Moving the login UI into the launcher
@@ -219,8 +220,13 @@ without requiring a native desktop session.
 dotnet run --project src/OpenConquer.Launcher/OpenConquer.Launcher.csproj
 ```
 
-The current launcher establishes the hardened product/process host. Authentication, patching,
-repair, and game-start orchestration have not yet been implemented.
+Use Browse or enter an absolute game-folder path, then choose Check folder. The launcher inspects
+product identity and the expected unpacked layout without changing files or executing game code.
+A successful check reports **Game files located**; integrity, runtime compatibility, authentication,
+patching, repair, and game-start orchestration are not established by this inspection.
+
+See [installation inspection](docs/architecture/launcher-installation-inspection.md) for the exact
+contract, cancellation/close behavior, and trust limits.
 
 ### Game Client
 

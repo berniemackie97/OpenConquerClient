@@ -58,7 +58,7 @@ graph.
 
 | Project                  | Owns                                                                                                                                                                                                                      |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenConquer.Launcher`   | launcher process entry point, Avalonia application lifetime, launcher-window shell, process failure policy, bounded diagnostics, future account/update/repair composition, and future authorized game-start orchestration |
+| `OpenConquer.Launcher`   | launcher process entry point, Avalonia application lifetime, installation-selection UI and inspection state, process failure policy, bounded diagnostics, future account/update/repair composition, and future authorized game-start orchestration |
 | `OpenConquer.Client`     | game process entry point, startup-option validation, compatibility-derived runtime policy, game-subsystem composition, application lifetime, and shutdown coordination                                                    |
 | `OpenConquer.Platform`   | desktop windowing, native graphics-context lifetime, physical framebuffer state, desktop frame-loop orchestration and pacing mechanics, native buffer swapping, and future desktop input                                  |
 | `OpenConquer.Gameplay`   | game state, entities, movement, combat, interactions, and gameplay rules                                                                                                                                                  |
@@ -114,7 +114,8 @@ It:
 Filesystem policy, log formatting, exception projection, redaction, and global-event implementation
 details remain outside `Program`.
 
-The main-window lifetime is therefore the current launcher-process lifetime. Closing the primary
+The main-window lifetime is therefore the current launcher-process lifetime. Ordinary close first
+cancels/drains installation inspection or waits for a native picker to settle. Closing the primary
 launcher window terminates the launcher rather than allowing an unrelated auxiliary window to keep
 the process alive accidentally.
 
@@ -456,9 +457,16 @@ The launcher also deliberately introduces no speculative:
 
 Those concerns require separately audited boundaries when their actual contracts are introduced.
 
-The launcher currently has a minimal presentation shell rather than placeholder feature screens.
-Feature UI should follow implemented product state and service contracts rather than inventing fake
-login, update, or realm workflows ahead of their architecture.
+The launcher currently presents a real installation-selection and inspection workflow.
+`App` composes `InstallationInspector` → `InstallationSession` → `MainWindow`. The session owns
+immutable checking/result/failure states and rejects overlapping operations; the window owns native
+picker interaction, rendering, cancellation lifetime, and close/drain behavior. The inspector reads
+bounded local metadata without executing the game. A Located result provides identity/layout
+evidence only and grants no launch eligibility. The selected root is explicit and session-local.
+
+See [installation inspection](launcher-installation-inspection.md) for the supported layout,
+filesystem/cancellation limits, tests, and the separation from trusted release readiness.
+Login, updating, repair, and Play controls require their real product contracts before introduction.
 
 ## Product Publish Boundary
 
@@ -757,7 +765,7 @@ Detailed evidence and security interpretation are documented in
 supported production entry-point target, with its own composition root and standard-user process
 policy. No second user-facing `Play.exe` is introduced in front of it.
 
-The current implementation provides the host, diagnostics, and window shell only. The remaining
+The current implementation provides the host, diagnostics, and installation inspection. The remaining
 production lifecycle is:
 
 ```text
@@ -783,7 +791,8 @@ The previous proposed authenticated realm-routing architecture is superseded by 
 
 Native/deob evidence is authoritative, followed by retail artifacts, legacy reconstruction, and the
 current rewrite. Before implementation, authentication must be checked against both native evidence
-and the current server contract. No protocol details are established by this host-only slice.
+and the current server contract. No protocol details are established by host or installation-
+inspection work.
 
 Removing `Server.dat` from runtime remains intentional. A replacement source for server selection
 must preserve the native login contract, including any protocol server-name field, while keeping
@@ -797,9 +806,9 @@ Local launcher-to-client IPC is a separate process-lifecycle concern from the na
 wire. Its implementation must transfer the required native state without creating another game
 login system.
 
-Product state, installation integrity, settings, authentication, and launch eligibility will be
-application-owned responsibilities consumed by thin UI code. They are not yet implemented. Direct
-game execution currently remains a development path; a future audited handoff slice must enforce
+Installation inspection has application-owned state consumed by the UI. Installation integrity,
+settings, authentication, and launch eligibility remain unimplemented application responsibilities.
+Direct game execution currently remains a development path; a future audited handoff slice must enforce
 the supported production boundary without expanding into gameplay.
 
 See [the launcher roadmap](launcher-roadmap.md) for slice ordering and completion criteria.

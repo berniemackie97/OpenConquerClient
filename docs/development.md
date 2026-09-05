@@ -112,6 +112,7 @@ dotnet run --project src/OpenConquer.Launcher/OpenConquer.Launcher.csproj
 The current launcher boundary establishes:
 
 - the launcher executable and process composition root;
+- explicit installation selection, bounded metadata inspection, and application-owned result state;
 - Avalonia application and primary-window lifetime;
 - explicit `ShutdownMode.OnMainWindowClose` process policy;
 - an independent dependency and publish boundary;
@@ -142,6 +143,17 @@ protocol. See the [launcher roadmap](architecture/launcher-roadmap.md) for the r
 
 The launcher does not reference the game client's runtime subsystem projects and does not consume
 the retail game-content payload.
+
+For installation inspection, use Browse or enter an absolute path to the directory produced by
+`dotnet publish src/OpenConquer.Client`. Choose Check folder or press Enter. Escape cancels an active
+check. The selection is session-local, and editing it clears the previous result. Closing the window
+cancels and drains inspection before host teardown. **Game files located** establishes local
+identity/layout only; it does not authorize Play. See the
+[inspection contract](architecture/launcher-installation-inspection.md).
+
+The launcher's MSBuild warning policy includes Avalonia/XAML task warnings as errors in addition to
+compiler/analyzer warnings. Launcher integration tests build the client as an isolated fixture and
+read its metadata without loading game code or adding a launcher runtime dependency.
 
 #### Windows Process Policy
 
