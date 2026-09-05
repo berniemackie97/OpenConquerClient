@@ -6,10 +6,6 @@ using Serilog.Formatting.Json;
 
 namespace OpenConquer.Launcher.Diagnostics;
 
-/// <summary>
-/// Owns the launcher diagnostic logger and isolates diagnostic persistence failures
-/// from launcher availability.
-/// </summary>
 internal sealed class LauncherDiagnostics : IDisposable
 {
     private const long FileSizeLimitBytes = 5 * 1024 * 1024;
@@ -25,21 +21,9 @@ internal sealed class LauncherDiagnostics : IDisposable
         _logger = logger;
     }
 
-    /// <summary>
-    /// Creates launcher diagnostics for the current user.
-    /// </summary>
-    /// <remarks>
-    /// Failure to resolve or establish persistent diagnostic storage must not prevent the launcher
-    /// from starting. Expected storage failures therefore degrade to a no-sink logger.
-    /// </remarks>
     public static LauncherDiagnostics Create()
     {
-        if (!LauncherDiagnosticPaths.TryGetLogDirectory(out string? logDirectory))
-        {
-            return CreateFallback();
-        }
-
-        return Create(logDirectory);
+        return !LauncherDiagnosticPaths.TryGetLogDirectory(out string? logDirectory) ? CreateFallback() : Create(logDirectory);
     }
 
     internal static LauncherDiagnostics Create(string logDirectory)
@@ -139,8 +123,6 @@ internal sealed class LauncherDiagnostics : IDisposable
         string applicationVersion = typeof(LauncherDiagnostics).Assembly.GetName().Version?.ToString() ?? "unknown";
 
         return new LoggerConfiguration().MinimumLevel.Is(LogEventLevel.Information)
-            // Each exception level includes both an object and a child collection. Preserve all
-            // eight permitted nested levels; the projector already bounds the complete payload.
             .Destructure.ToMaximumDepth(32)
             .Enrich.WithProperty("Application", "OpenConquer.Launcher")
             .Enrich.WithProperty("ApplicationVersion", applicationVersion)
@@ -180,8 +162,7 @@ internal sealed class LauncherDiagnostics : IDisposable
         }
         catch (Exception)
         {
-            // Best-effort shutdown only. A diagnostics failure during process teardown must not
-            // change the launcher's process result.
+            // Best effort shutdown only.
         }
     }
 

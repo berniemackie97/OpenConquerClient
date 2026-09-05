@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace OpenConquer.Launcher.Diagnostics;
 
 /// <summary>
-/// Defines the platform-native per-user filesystem locations owned by launcher diagnostics.
+/// Defines the per user filesystem locations owned by launcher diagnostics.
 /// </summary>
 internal static class LauncherDiagnosticPaths
 {
@@ -12,8 +12,7 @@ internal static class LauncherDiagnosticPaths
     private const string LogsDirectoryName = "Logs";
 
     /// <summary>
-    /// Attempts to resolve the platform-native directory in which launcher diagnostic logs
-    /// are stored for the current user.
+    /// Attempts to resolve the directory in which launcher diagnostic logs are stored for the current user.
     /// </summary>
     public static bool TryGetLogDirectory([NotNullWhen(true)] out string? logDirectory)
     {
@@ -101,7 +100,6 @@ internal static class LauncherDiagnosticPaths
 
     private static bool IsUsableBasePath([NotNullWhen(true)] string? path)
     {
-        return !string.IsNullOrWhiteSpace(path) && Path.IsPathFullyQualified(path) &&
-            !path.AsSpan().ContainsAny(Path.GetInvalidPathChars());
+        return !string.IsNullOrWhiteSpace(path) && Path.IsPathFullyQualified(path) && !path.AsSpan().ContainsAny(Path.GetInvalidPathChars());
     }
 }
