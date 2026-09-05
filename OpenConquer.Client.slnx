@@ -14,9 +14,11 @@
     <Project Path="tests/OpenConquer.Content.Tool.Tests/OpenConquer.Content.Tool.Tests.csproj" />
     <Project Path="tests/OpenConquer.Launcher.Tests/OpenConquer.Launcher.Tests.csproj" />
     <Project Path="tests/OpenConquer.Platform.Tests/OpenConquer.Platform.Tests.csproj" />
+    <Project Path="tests/OpenConquer.Product.Tool.Tests/OpenConquer.Product.Tool.Tests.csproj" />
     <Project Path="tests/OpenConquer.Rendering.Tests/OpenConquer.Rendering.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/OpenConquer.Content.Tool/OpenConquer.Content.Tool.csproj" />
+    <Project Path="tools/OpenConquer.Product.Tool/OpenConquer.Product.Tool.csproj" />
   </Folder>
 </Solution>

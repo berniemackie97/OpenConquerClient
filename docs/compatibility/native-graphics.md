@@ -41,10 +41,11 @@ resolution mapping:
 2 or 3 → 1024×768
 ```
 
-The selected dimensions become the fixed logical rendering surface.
-
-The modern client intentionally uses a resizable desktop host. Host resizing does not implicitly
-change the game's logical rendering resolution.
+The selected dimensions become the fixed logical rendering surface. The desktop host is a separate
+policy: the client can run in resizable, fixed, or fullscreen mode without changing that logical
+resolution. The launcher-owned launch configuration supplies the requested physical host size; in
+fixed mode that size is enforced, while resizable and fullscreen modes allow the platform to report
+the resulting physical framebuffer.
 
 The display-mode and fixed-shell behavior associated with retail modes 1 and 3 is not currently
 reproduced. That remains an intentional desktop-host difference rather than changing the verified
@@ -298,7 +299,8 @@ rendering code leaves that state enabled.
 The renderer validates that the host framebuffer is single-sampled before using the current scaled
 blit path.
 
-Physical host resizing does not recreate the logical render target or alter its coordinate system.
+Transient physical host framebuffer changes do not recreate the logical render target or alter its
+coordinate system.
 
 A zero-width or zero-height physical framebuffer is valid while the host is minimized. Host
 composition is skipped in that state without changing or recreating the logical render target.
@@ -307,9 +309,9 @@ composition is skipped in that state without changing or recreating the logical 
 
 The modern client intentionally differs from retail in desktop-window behavior.
 
-Retail uses fixed-size shell behavior associated with its four screen modes. OpenConquer Client uses
-a resizable host window while retaining the fixed logical rendering surface selected by the retail
-screen-mode configuration.
+Retail uses fixed-size shell behavior associated with its four screen modes. OpenConquer Client
+retains the fixed logical rendering surface selected by the retail screen-mode configuration while
+exposing an explicit resizable, fixed, or fullscreen desktop host policy.
 
 This difference must remain confined to the desktop presentation boundary. Logical game coordinates,
 content layout, simulation behavior, and protocol-visible behavior must not become dependent on the

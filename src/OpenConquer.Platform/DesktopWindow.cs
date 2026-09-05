@@ -8,7 +8,7 @@ namespace OpenConquer.Platform;
 
 public sealed class DesktopWindow : IDisposable
 {
-    private static readonly Vector2D<int> s_initialHostSize = new(1280, 720);
+    private static readonly Vector2D<int> s_defaultWindowSize = new(1280, 720);
 
     private readonly IWindow _window;
     private readonly DesktopFramePacer _framePacer;
@@ -18,14 +18,56 @@ public sealed class DesktopWindow : IDisposable
     private bool _openGLContextReleaseStarted;
     private bool _disposed;
 
+    /// <summary>
+    /// The initial desktop size used when no launcher window-size preference is supplied.
+    /// </summary>
+    public static PixelSize DefaultWindowSize => new(s_defaultWindowSize.X, s_defaultWindowSize.Y);
+
+    /// <summary>
+    /// Creates the default resizable desktop host.
+    /// </summary>
     public DesktopWindow(TimeSpan frameInterval)
+        : this(DefaultWindowSize, DesktopWindowMode.Resizable, frameInterval)
     {
-        WindowOptions options = WindowOptions.Default with
+    }
+
+    /// <summary>
+    /// Creates a desktop host using the requested window size and selected window mode.
+    /// </summary>
+    public DesktopWindow(PixelSize windowSize, DesktopWindowMode windowMode, TimeSpan frameInterval)
+    {
+        WindowOptions options = CreateOptions(windowSize, windowMode);
+
+        _framePacer = new DesktopFramePacer(frameInterval);
+
+        _window = Window.Create(options);
+
+        _window.Load += OnLoad;
+        _window.FramebufferResize += OnFramebufferResize;
+        _window.Render += OnRender;
+    }
+
+    internal static WindowOptions CreateOptions(PixelSize windowSize, DesktopWindowMode windowMode)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(windowSize.Width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(windowSize.Height);
+
+        (WindowState windowState, WindowBorder windowBorder) = windowMode switch
+        {
+            DesktopWindowMode.Resizable => (WindowState.Normal, WindowBorder.Resizable),
+            DesktopWindowMode.Fixed => (WindowState.Normal, WindowBorder.Fixed),
+            DesktopWindowMode.Fullscreen => (WindowState.Fullscreen, WindowBorder.Hidden),
+            _ => throw new ArgumentOutOfRangeException(nameof(windowMode), windowMode, "Unsupported desktop window mode."),
+        };
+
+        Vector2D<int> hostSize = new(windowSize.Width, windowSize.Height);
+
+        return WindowOptions.Default with
         {
             Title = "OpenConquer Client",
-            Size = s_initialHostSize,
-            WindowState = WindowState.Normal,
-            WindowBorder = WindowBorder.Resizable,
+            Size = hostSize,
+            WindowState = windowState,
+            WindowBorder = windowBorder,
 
             FramesPerSecond = 0,
             UpdatesPerSecond = 0,
@@ -39,14 +81,6 @@ public sealed class DesktopWindow : IDisposable
             PreferredDepthBufferBits = 0,
             PreferredStencilBufferBits = 0,
         };
-
-        _framePacer = new DesktopFramePacer(frameInterval);
-
-        _window = Window.Create(options);
-
-        _window.Load += OnLoad;
-        _window.FramebufferResize += OnFramebufferResize;
-        _window.Render += OnRender;
     }
 
     public event Action<PixelSize>? FramebufferResized;

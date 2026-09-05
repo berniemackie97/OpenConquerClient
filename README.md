@@ -48,11 +48,12 @@ Its current host boundary owns:
 
 - launcher process startup and shutdown;
 - Avalonia application lifetime;
-- installation folder selection and asynchronous product/layout inspection;
-- application-owned inspection state, cancellation, retry, and safe window-close behavior;
+- the primary launcher-window shell;
 - explicit standard-user process policy on Windows;
 - bounded per-user structured diagnostics;
 - fatal host-exception observation and nonzero terminal failure semantics;
+- managed product-root resolution from the installed launcher package;
+- automatic installation-boundary evaluation owned by the application lifecycle;
 - an independent package/publish boundary.
 
 Diagnostic persistence is best-effort and must not become a launcher availability dependency.
@@ -91,10 +92,11 @@ Rendering → Platform dependency.
 
 The current renderer uses **OpenGL 3.3 Core through Silk.NET**.
 
-Game rendering uses a fixed logical surface independent of the resizable desktop framebuffer. The
-application reads the original client's screen-mode configuration and selects either an 800×600 or
-1024×768 logical resolution. Rendering then presents that logical frame inside the physical host
-framebuffer according to an explicit presentation policy.
+Game rendering keeps the original client's fixed logical coordinate surface independently of the
+desktop host. The compatibility `ini/GameSetUp.ini` screen mode currently supplies either an 800×600
+or 1024×768 logical render size; that is an internal game coordinate surface, not the player's
+desktop resolution. The launcher-owned launch contract supplies the requested desktop size, window
+mode, and presentation policy.
 
 Detailed architecture and compatibility documentation lives under [`docs`](docs).
 
@@ -111,8 +113,13 @@ launcher → installation/readiness → update/repair as required → pre-launch
          → controlled OpenConquer.Client startup → native-compatible game bootstrap
 ```
 
-The launcher host, local installation inspection, and game executable boundaries currently exist.
-This lifecycle is a target, not a description of implemented updating, login, or game launching.
+The launcher now resolves its managed product context automatically from the installed package. It
+does not ask a player to browse for or manually enter a game directory. This establishes the
+installation boundary only; trusted release integrity, update/repair, login, and game launch remain
+future responsibilities.
+
+The managed package layout and startup states are documented in
+[`launcher-managed-installation.md`](docs/architecture/launcher-managed-installation.md).
 
 Account authentication must preserve the original 5517 packets, credential transformations,
 AccountServer results, and login-to-game handoff semantics. Moving the login UI into the launcher
@@ -146,6 +153,11 @@ ini/GameSetUp.ini
 ini/info.ini
 ini/package.ini
 ```
+
+`ini/GameSetUp.ini` remains part of the compatibility content set because the native-compatible
+bootstrap uses its screen-mode value for the internal logical render surface. Launcher display
+preferences are per-user launch settings and are supplied separately; the installed retail payload
+is not rewritten for an individual player's window choice.
 
 The following must remain equal:
 
@@ -205,6 +217,7 @@ OpenConquer.Content.Tests
 OpenConquer.Content.Tool.Tests
 OpenConquer.Launcher.Tests
 OpenConquer.Platform.Tests
+OpenConquer.Product.Tool.Tests
 OpenConquer.Rendering.Tests
 ```
 
@@ -217,16 +230,28 @@ without requiring a native desktop session.
 ### Launcher
 
 ```bash
-dotnet run --project src/OpenConquer.Launcher/OpenConquer.Launcher.csproj
+dotnet publish src/OpenConquer.Client/OpenConquer.Client.csproj \
+  --configuration Release \
+  --output /tmp/openconquer-client-publish
+
+dotnet publish src/OpenConquer.Launcher/OpenConquer.Launcher.csproj \
+  --configuration Release \
+  --output /tmp/openconquer-launcher-publish
+
+dotnet run \
+  --project tools/OpenConquer.Product.Tool \
+  -- \
+  stage-managed-product \
+  --launcher-publish /tmp/openconquer-launcher-publish \
+  --client-publish /tmp/openconquer-client-publish \
+  --output /tmp/openconquer-managed
+
+/tmp/openconquer-managed/OpenConquer.Launcher
 ```
 
-Use Browse or enter an absolute game-folder path, then choose Check folder. The launcher inspects
-product identity and the expected unpacked layout without changing files or executing game code.
-A successful check reports **Game files located**; integrity, runtime compatibility, authentication,
-patching, repair, and game-start orchestration are not established by this inspection.
-
-See [installation inspection](docs/architecture/launcher-installation-inspection.md) for the exact
-contract, cancellation/close behavior, and trust limits.
+The launcher must run from the staged managed product root. A raw launcher project output is not an
+installed OpenConquer product and correctly reports that its client component is unavailable.
+Authentication, patching, repair, and game-start orchestration have not yet been implemented.
 
 ### Game Client
 
@@ -246,7 +271,25 @@ dotnet run \
   --content-root /path/to/client
 ```
 
-`--presentation` selects how the fixed logical frame is fitted into the resizable game window:
+`--window-size` selects the requested desktop size. It is independent of the compatibility logical
+render size:
+
+```text
+--window-size WIDTHxHEIGHT
+```
+
+The direct-client default is `1280x720`. A launcher launch request should provide this value from
+the user's saved display preference rather than editing installed retail content.
+
+`--window-mode` selects the desktop game-window mode independently of both resolutions:
+
+| Value                 | Behaviour                                      |
+| --------------------- | --------------------------------------------- |
+| `resizable` (default) | player can resize the game window              |
+| `fixed`               | game window uses the requested window size     |
+| `fullscreen`          | game window is presented fullscreen            |
+
+`--presentation` selects how the fixed logical frame is presented by the selected game window:
 
 | Value           | Behaviour                                                               |
 | --------------- | ----------------------------------------------------------------------- |
@@ -329,11 +372,14 @@ tests/
 ├── OpenConquer.Content.Tool.Tests/
 ├── OpenConquer.Launcher.Tests/
 ├── OpenConquer.Platform.Tests/
+├── OpenConquer.Product.Tool.Tests/
 └── OpenConquer.Rendering.Tests/
 
 content/
 docs/
 tools/
+├── OpenConquer.Content.Tool/
+└── OpenConquer.Product.Tool/
 ```
 
 ## Compatibility

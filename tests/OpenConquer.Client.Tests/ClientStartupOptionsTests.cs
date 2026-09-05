@@ -1,3 +1,4 @@
+using OpenConquer.Platform;
 using OpenConquer.Rendering;
 
 namespace OpenConquer.Client.Tests;
@@ -25,6 +26,9 @@ public sealed class ClientStartupOptionsTests
             Path.TrimEndingDirectorySeparator(defaultContentRootPath),
             options.ContentRootPath
         );
+        Assert.Equal(DesktopWindowMode.Resizable, options.WindowMode);
+        Assert.Equal(1280, options.WindowSize.Width);
+        Assert.Equal(720, options.WindowSize.Height);
     }
 
     [Fact]
@@ -235,6 +239,171 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Theory]
+    [InlineData("resizable", DesktopWindowMode.Resizable)]
+    [InlineData("fixed", DesktopWindowMode.Fixed)]
+    [InlineData("fullscreen", DesktopWindowMode.Fullscreen)]
+    [InlineData("Fixed", DesktopWindowMode.Fixed)]
+    [InlineData("FULLSCREEN", DesktopWindowMode.Fullscreen)]
+    public void TryParse_AcceptsEveryWindowModeNameCaseInsensitively(string value, DesktopWindowMode expected)
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--window-mode", value],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.True(parsed);
+        Assert.NotNull(options);
+        Assert.Null(errorMessage);
+        Assert.Equal(expected, options.WindowMode);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureForUnknownWindowModeValue()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--window-mode", "borderless"],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+        Assert.Contains("resizable", errorMessage, StringComparison.Ordinal);
+        Assert.Contains("fixed", errorMessage, StringComparison.Ordinal);
+        Assert.Contains("fullscreen", errorMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureWhenWindowModeValueIsMissing()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--window-mode"],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureWhenAnOptionReplacesTheWindowModeValue()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--window-mode", "--presentation", "fit"],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureWhenWindowModeIsDuplicated()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--window-mode", "fixed", "--window-mode", "fullscreen"],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Theory]
+    [InlineData("1280x720", 1280, 720)]
+    [InlineData("1024X768", 1024, 768)]
+    public void TryParse_AcceptsSupportedWindowSize(string value, int expectedWidth, int expectedHeight)
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--window-size", value],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.True(parsed);
+        Assert.NotNull(options);
+        Assert.Null(errorMessage);
+        Assert.Equal(expectedWidth, options.WindowSize.Width);
+        Assert.Equal(expectedHeight, options.WindowSize.Height);
+    }
+
+    [Theory]
+    [InlineData("1280")]
+    [InlineData("1280x")]
+    [InlineData("x720")]
+    [InlineData("0x720")]
+    [InlineData("1280x0")]
+    [InlineData("16385x720")]
+    [InlineData("7680x4321")]
+    [InlineData("1280x720x60")]
+    public void TryParse_ReturnsFailureForUnsupportedWindowSize(string value)
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--window-size", value],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureWhenWindowSizeIsMissing()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--window-size"],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsFailureWhenWindowSizeIsDuplicated()
+    {
+        bool parsed = ClientStartupOptions.TryParse(
+            ["--window-size", "1280x720", "--window-size", "1024x768"],
+            CreateAbsolutePath("default-content"),
+            CreateAbsolutePath("working-directory"),
+            out ClientStartupOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Theory]
     [InlineData("fit", PresentationPolicy.Fit)]
     [InlineData("integer", PresentationPolicy.IntegerScale)]
     [InlineData("stretch", PresentationPolicy.Stretch)]
@@ -327,14 +496,14 @@ public sealed class ClientStartupOptionsTests
     }
 
     [Fact]
-    public void TryParse_AcceptsContentRootAndPresentationTogetherInEitherOrder()
+    public void TryParse_AcceptsContentRootPresentationAndWindowModeTogetherInEitherOrder()
     {
         string contentRoot = CreateAbsolutePath("content");
 
         foreach (string[] args in new[]
         {
-            new[] { "--content-root", contentRoot, "--presentation", "integer" },
-            new[] { "--presentation", "integer", "--content-root", contentRoot },
+            new[] { "--content-root", contentRoot, "--window-size", "1280x720", "--presentation", "integer", "--window-mode", "fixed" },
+            new[] { "--window-mode", "fixed", "--window-size", "1280x720", "--presentation", "integer", "--content-root", contentRoot },
         })
         {
             bool parsed = ClientStartupOptions.TryParse(
@@ -350,6 +519,8 @@ public sealed class ClientStartupOptionsTests
             Assert.Null(errorMessage);
             Assert.Equal(Path.TrimEndingDirectorySeparator(contentRoot), options.ContentRootPath);
             Assert.Equal(PresentationPolicy.IntegerScale, options.PresentationPolicy);
+            Assert.Equal(DesktopWindowMode.Fixed, options.WindowMode);
+            Assert.Equal(new PixelSize(1280, 720), options.WindowSize);
         }
     }
 
@@ -357,6 +528,12 @@ public sealed class ClientStartupOptionsTests
     public void PresentationPolicyNames_ListsEveryAcceptedValue()
     {
         Assert.Equal("fit|integer|stretch", ClientStartupOptions.PresentationPolicyNames);
+    }
+
+    [Fact]
+    public void WindowModeNames_ListsEveryAcceptedValue()
+    {
+        Assert.Equal("resizable|fixed|fullscreen", ClientStartupOptions.WindowModeNames);
     }
 
     private static string CreateAbsolutePath(string leafName)

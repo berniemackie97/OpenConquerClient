@@ -2,9 +2,9 @@
 
 ## Current boundary
 
-The launcher implements the desktop host, diagnostics, and local installation selection/inspection
-with application-owned state. Trusted installation readiness, updates/repair, settings, login, server
-discovery, secure client handoff, and final UI are not complete.
+The launcher implements the desktop host, diagnostic foundation, and managed installation boundary.
+Trusted release readiness, settings, login, server discovery, secure client handoff, and final UI are
+not complete.
 Passing the host tests is not evidence that those responsibilities exist.
 
 The next implementation must start from the current code and relevant evidence, then select a
@@ -64,56 +64,59 @@ locally; existing cross-platform CI remains required when the user submits the c
 behavior changed, and no Avalonia headless test dependency was added. The launcher as a whole is
 still incomplete according to the responsibilities below.
 
-## Installation inspection slice
+## Managed installation slice
 
-Branch: `bernie/launcher_installation_readiness`.
-Baseline: `a6d9c32` (the user's formatting follow-up after the diagnostic repair merge).
+Branch: `bernie/launcher_managed_installation`.
+Baseline: `main` at `5ab06cc3` (`diagnostic and failure records (#16)`).
 
-Implemented explicit native-folder/manual-path selection, bounded identity/layout inspection,
-application-owned immutable states, overlap rejection, cancellation/retry, stale-result invalidation,
-and window-close draining. The UI exposes real inspection behavior without claiming launch readiness.
-The local assembly version is identity evidence, not trusted release versioning. No production root
-or release endpoint is guessed, and no new runtime dependency or protocol is introduced.
+The launcher now treats `OpenConquer.Launcher` and `OpenConquer.Client` as separate executable and
+publish boundaries within one installer-owned product. The launcher resolves only its own
+`AppContext.BaseDirectory`, reads the versioned `openconquer.installation.json` layout descriptor,
+and resolves the managed client component beneath that root. It never asks the player to browse for,
+enter, or search for a game directory.
 
-The audit additionally fixed picker focus after re-enabling controls and made XAML/MSBuild warnings
-fatal for the launcher. Details, evidence, limitations, and test coverage are in
-[installation inspection](launcher-installation-inspection.md).
+`LauncherApplication` owns startup evaluation, cancellation, state transitions, and shutdown
+draining. `MainWindow` is a thin state renderer and lifecycle adapter. The descriptor is deliberately
+limited to product/layout ownership; it is not release identity, integrity authority, or launch
+authorization. Framework-dependent, self-contained, RID-specific, and native bundle details remain
+inside the independently published client component.
+
+The package layout, descriptor contract, state semantics, ownership rules, and deterministic local/
+CI composition tool are documented in [managed launcher installation](launcher-managed-installation.md).
+The launcher status surface is fixed-size. The game keeps an independently selected logical
+800×600 or 1024×768 compatibility render surface, while a launcher-owned launch request supplies
+the requested desktop size and explicit resizable, fixed, or fullscreen window mode.
 
 Validation on macOS arm64 / .NET 10.0.400: locked restore, formatting verification, zero-warning
-Release build, all 408 solution tests (78 launcher tests; no skips), tracked/published content
-verification, separate game/launcher publishes, bidirectional dependency/content isolation,
-`Server.dat` rejection, security searches, and whitespace/diff review passed. A synthetic MSBuild
-task-warning probe failed as expected under the new warning policy. Native desktop inspection
-covered both successful and failed selection/check flows, small-window layout, keyboard submission,
-picker focus/cancellation, and a normal zero-exit shutdown. Cancellation races and handle release
-are covered by the application/filesystem tests. Native Windows/Linux and screen-reader checks were
-not run locally. No known finding remains in this inspection slice; trusted readiness remains the
-next explicit responsibility.
+Release build, all 436 solution tests with no skips, tracked and published content verification,
+separate client and launcher publishes, managed product composition, payload isolation, `Server.dat`
+rejection, architecture/security checks, and whitespace review all passed. Native Windows/Linux and
+screen-reader checks remain CI responsibilities. Trusted release readiness is intentionally the next
+boundary.
 
 ## Remaining implementation sequence
 
 Each item may need more than one reviewable slice. Audit dependencies before fixing slice size.
 
-1. **Local installation discovery/inspection — implemented.** The remaining readiness transition
-   requires trusted release integrity and runtime/launch preconditions, not merely a recognized
-   directory. Suggested next branch: `bernie/launcher_release_integrity`.
-2. **Trusted installation/update/repair lifecycle.** Establish release-manifest trust, version and
+1. **Trusted installation/update/repair lifecycle.** Establish release-manifest trust, version and
    integrity contracts, staging, interrupted-operation recovery, atomic activation, rollback policy,
    disk-space handling, process/file ownership, and cancellation. Release endpoints and signing
    authority must be real deployment inputs. Keep launcher self-update with packaging where it
    requires executable replacement or platform signing; do not implement a pretend updater.
-3. **Shared game settings and launcher preferences.** Audit native `GameSetUp.ini` and current game
-   behavior, then implement one game-owned contract, validated defaults, atomic persistence,
-   corruption/forward-version behavior, and supported pre-launch editing.
-4. **Native AccountServer login and server selection.** Audit native/deob evidence and the current
+2. **Shared game settings and launcher preferences.** Keep `GameSetUp.ini` as a compatibility input
+   for the logical render surface, then implement one launcher-owned display contract, validated
+   monitor-aware defaults, atomic persistence, corruption/forward-version behavior, and supported
+   pre-launch editing. The client-side development contract already accepts explicit window size,
+   window mode, and presentation policy values.
+3. **Native AccountServer login and server selection.** Audit native/deob evidence and the current
    read-only server contract before implementing framing, packets, crypto, result semantics, and
    credential lifetimes. Establish a runtime catalog source without restoring `Server.dat`.
    Registration must follow evidence or an explicitly documented product equivalent.
-5. **Controlled Play and game-process handoff.** Enforce installation and native-session eligibility,
+4. **Controlled Play and game-process handoff.** Enforce installation and native-session eligibility,
    private local IPC, failure/timeouts, stale-session disposal, single/repeated launch behavior,
    launcher closure, client startup failure, process exit, and the explicit development bypass.
    Keep changes to the game composition root limited to the required bootstrap boundary.
-6. **Complete presentation and launcher-wide review.** Finish real status/progress/login/settings
+5. **Complete presentation and launcher-wide review.** Finish real status/progress/login/settings
    flows, keyboard/accessibility/scaling, actionable errors, and diagnostics through thin UI code.
    Audit every responsibility together; final UI polish does not substitute for working backends.
 

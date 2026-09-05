@@ -1,7 +1,7 @@
 namespace OpenConquer.Rendering;
 
 /// <summary>
-/// Selects how the fixed logical frame is placed inside the resizable host framebuffer.
+/// Selects how the fixed logical frame is placed inside the desktop game framebuffer.
 /// </summary>
 public enum PresentationPolicy
 {

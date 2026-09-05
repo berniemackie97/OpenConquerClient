@@ -13,6 +13,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Installation/openconquer.installation.json"
+          Link="openconquer.installation.json"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />

@@ -95,6 +95,10 @@ jobs:
           --no-restore
           --output "${{ runner.temp }}/openconquer-launcher"
 
+      - name: Verify managed installation descriptor
+        shell: bash
+        run: test -f "${{ runner.temp }}/openconquer-launcher/openconquer.installation.json"
+
       # The launcher is a separate product and must not acquire the game's retail runtime payload
       # merely because both executables live in the same repository.
       - name: Reject game runtime content from launcher publish
@@ -104,6 +108,26 @@ jobs:
             echo "Game runtime content must not be present in the published launcher." >&2
             exit 1
           fi
+
+      # The installer/package stage keeps the independent publish outputs separate while composing
+      # one managed product root for the launcher resolver.
+      - name: Verify managed product composition
+        shell: bash
+        run: |
+          managed="${{ runner.temp }}/openconquer-managed"
+          dotnet run \
+            --project tools/OpenConquer.Product.Tool \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            -- \
+            stage-managed-product \
+            --launcher-publish "${{ runner.temp }}/openconquer-launcher" \
+            --client-publish "${{ runner.temp }}/openconquer-client" \
+            --output "$managed"
+          test -f "$managed/openconquer.installation.json"
+          test -d "$managed/client"
+          test -f "$managed/client/content/retail-5517/manifest.json"
 
   cross-platform:
     name: ${{ matrix.name }}

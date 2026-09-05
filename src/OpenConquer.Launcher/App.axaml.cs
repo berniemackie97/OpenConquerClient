@@ -16,7 +16,10 @@ internal sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow(new InstallationSession(new InstallationInspector()));
+            LauncherApplication application = new(
+                new ManagedInstallationResolver(AppContext.BaseDirectory)
+            );
+            desktop.MainWindow = new MainWindow(application);
         }
 
         base.OnFrameworkInitializationCompleted();
