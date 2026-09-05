@@ -3,14 +3,6 @@ using Avalonia.Threading;
 
 namespace OpenConquer.Launcher.Diagnostics;
 
-/// <summary>
-/// Observes exception boundaries that escape normal launcher error handling.
-/// </summary>
-/// <remarks>
-/// UI-dispatcher exceptions are intentionally not logged from the dispatcher callback itself.
-/// Avalonia requires that callback to remain lightweight. The escaping exception is classified and
-/// recorded later by the top-level process boundary.
-/// </remarks>
 internal sealed class LauncherHostExceptionObserver : IDisposable
 {
     private readonly object _stateGate = new();
@@ -28,9 +20,6 @@ internal sealed class LauncherHostExceptionObserver : IDisposable
         _diagnostics = diagnostics;
     }
 
-    /// <summary>
-    /// Begins observing process-wide background exception boundaries.
-    /// </summary>
     public void Start()
     {
         lock (_stateGate)
@@ -59,9 +48,6 @@ internal sealed class LauncherHostExceptionObserver : IDisposable
         }
     }
 
-    /// <summary>
-    /// Attaches observation to the initialized Avalonia UI dispatcher.
-    /// </summary>
     public void AttachUiDispatcher(Dispatcher dispatcher)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -86,9 +72,6 @@ internal sealed class LauncherHostExceptionObserver : IDisposable
         }
     }
 
-    /// <summary>
-    /// Determines which host boundary produced an exception escaping the desktop lifetime.
-    /// </summary>
     public LauncherExceptionDomain ClassifyTopLevelException(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
@@ -158,9 +141,6 @@ internal sealed class LauncherHostExceptionObserver : IDisposable
     private void OnUiDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs eventArgs)
     {
         ObserveUiDispatcherException(eventArgs.Exception);
-
-        // Deliberately leave eventArgs.Handled unchanged. An unknown unhandled UI fault is not
-        // considered safe to recover from globally.
     }
 
     private void OnAppDomainUnhandledException(object? sender, UnhandledExceptionEventArgs eventArgs)
@@ -194,7 +174,7 @@ internal sealed class LauncherHostExceptionObserver : IDisposable
         }
         catch (Exception)
         {
-            // Diagnostics are best-effort at an unhandled-exception boundary. Throwing here could
+            // Diagnostics are best effort at an unhandled exception boundary. Throwing here could
             // replace or obscure the process failure that this observer exists to preserve.
         }
     }
