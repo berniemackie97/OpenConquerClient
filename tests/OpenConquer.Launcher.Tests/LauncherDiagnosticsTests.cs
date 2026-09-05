@@ -127,6 +127,43 @@ public sealed class LauncherDiagnosticsTests
     }
 
     [Fact]
+    public void RecordExceptionPersistsTheEntirePermittedDepthAndTruncationFlag()
+    {
+        string logDirectory = CreateTemporaryLogDirectoryPath();
+        try
+        {
+            Exception exception = new InvalidOperationException();
+            for (int depth = 0; depth < 12; depth++)
+            {
+                exception = new InvalidOperationException("nested-secret", exception);
+            }
+
+            using (LauncherDiagnostics diagnostics = LauncherDiagnostics.Create(logDirectory))
+            {
+                diagnostics.RecordException(LauncherExceptionDomain.TopLevel, true, exception);
+            }
+
+            string logContent = File.ReadAllText(GetSingleLogFilePath(logDirectory));
+            Assert.DoesNotContain("nested-secret", logContent, StringComparison.Ordinal);
+            using JsonDocument logEvent = JsonDocument.Parse(logContent);
+            JsonElement diagnostic = logEvent.RootElement.GetProperty("Properties").GetProperty("ExceptionDiagnostic");
+            for (int depth = 0; depth < 8; depth++)
+            {
+                Assert.Equal(typeof(InvalidOperationException).FullName, diagnostic.GetProperty("ExceptionType").GetString());
+                Assert.False(diagnostic.GetProperty("InnerExceptionsTruncated").GetBoolean());
+                diagnostic = Assert.Single(diagnostic.GetProperty("InnerExceptions").EnumerateArray());
+            }
+
+            Assert.True(diagnostic.GetProperty("InnerExceptionsTruncated").GetBoolean());
+            Assert.Empty(diagnostic.GetProperty("InnerExceptions").EnumerateArray());
+        }
+        finally
+        {
+            DeleteDirectoryIfPresent(logDirectory);
+        }
+    }
+
+    [Fact]
     public void CreateFallsBackWhenPersistentLogDirectoryCannotBeCreated()
     {
         string temporaryRoot = Path.Combine(
@@ -160,6 +197,15 @@ public sealed class LauncherDiagnosticsTests
         {
             DeleteDirectoryIfPresent(temporaryRoot);
         }
+    }
+
+    [Fact]
+    public void CreateFallsBackForMalformedAbsoluteStoragePath()
+    {
+        string path = Path.Combine(Path.GetTempPath(), "invalid\0directory");
+        using LauncherDiagnostics diagnostics = LauncherDiagnostics.Create(path);
+        diagnostics.RecordHostStarted();
+        diagnostics.RecordHostStopped(0);
     }
 
     [Fact]

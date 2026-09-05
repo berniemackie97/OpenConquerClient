@@ -126,17 +126,19 @@ The launcher intentionally does not yet implement:
 
 - account authentication;
 - registration or account recovery;
-- token storage;
+- native session-state ownership;
 - launcher-to-game authorization;
 - launcher-to-game IPC;
 - game-process launching;
 - updating or repair;
 - realm discovery;
 - realm selection;
-- legacy third-party connection profiles.
+- supported pre-launch settings.
 
 Those capabilities require their own audited implementation slices rather than placeholder services
-or speculative abstractions.
+or speculative abstractions. Account login must use the original 5517 AccountServer protocol and
+native login-to-game semantics. Moving the login UI does not authorize a replacement identity
+protocol. See the [launcher roadmap](architecture/launcher-roadmap.md) for the remaining work.
 
 The launcher does not reference the game client's runtime subsystem projects and does not consume
 the retail game-content payload.
@@ -191,11 +193,12 @@ When Linux does not provide a usable absolute `XDG_STATE_HOME`, the launcher use
 ```
 
 If no supported per-user diagnostic location can be resolved, or if the expected storage boundary
-cannot be established because of an I/O or access failure, diagnostics degrade to a no-sink logger
-rather than preventing launcher startup.
+cannot be established because of an I/O, access, or storage-path format failure, diagnostics degrade
+to a no-sink logger rather than preventing launcher startup.
 
 Programming and configuration defects are not intentionally converted into persistence fallback.
-Only expected operational storage failures are treated as unavailable diagnostics.
+Only expected operational storage failures are treated as unavailable diagnostics; path-format
+exceptions are caught around directory creation, not logger configuration.
 
 Persistent launcher events are newline-delimited JSON written to:
 
@@ -206,7 +209,7 @@ launcher-*.jsonl
 The file sink uses:
 
 - daily rolling;
-- a 5 MiB per-file size limit;
+- a 5 MiB per-file rolling threshold (the final event may cross the threshold);
 - rolling when the current file reaches that limit;
 - retention of at most 14 log files;
 - unbuffered writes;
@@ -226,9 +229,9 @@ Unhandled exceptions are first projected into a deliberately restricted represen
 
 - exception type;
 - HRESULT;
-- stack trace without source-file information;
+- bounded declaring-type/method stack names without signatures or source-file information;
 - bounded inner-exception structure;
-- an explicit indication when inner-exception traversal was truncated.
+- separate flags for truncated type names, stack text, and inner-exception traversal.
 
 The projection deliberately excludes:
 
@@ -250,8 +253,12 @@ The projection deliberately excludes:
 This establishes the default security posture before account authentication or network-facing
 launcher services exist.
 
-The exception projection is bounded to prevent pathological nested or aggregate exceptions from
-turning diagnostics into an unbounded allocation path.
+Projection visits at most 16 exception objects and eight nested levels. Each exception has at most
+512 UTF-16 code units of type name and 32 stack frames / 4,096 code units of stack text. Formatting
+stops at the budget instead of allocating an entire formatted trace first; surrogate pairs are not
+split. Runtime stack capture and reflection still allocate according to the captured stack and
+metadata; the projection does not claim to bound those CLR allocations or recover from resource
+exhaustion. Remote stack text and virtual exception text are never used.
 
 #### Launcher Fatal-Fault Policy
 

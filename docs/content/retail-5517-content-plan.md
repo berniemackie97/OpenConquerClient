@@ -581,7 +581,8 @@ inserted into `ClientContentClosure` simply because tooling consumes them.
 
 Likely future runtime content areas, subject to actual reconstruction order, include:
 
-1. authenticated realm-discovery and realm-selection presentation resources;
+1. native-compatible server-selection presentation resources, if the evidence establishes a
+   game-runtime consumer;
 2. first-party login and core UI resources where they remain game-runtime responsibilities;
 3. fonts, localization, cursors, icons, and layout definitions;
 4. item and role definitions;

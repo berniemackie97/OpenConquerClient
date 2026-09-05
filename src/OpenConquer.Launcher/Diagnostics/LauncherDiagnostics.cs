@@ -53,7 +53,18 @@ internal sealed class LauncherDiagnostics : IDisposable
 
         try
         {
-            Directory.CreateDirectory(logDirectory);
+            try
+            {
+                Directory.CreateDirectory(logDirectory);
+            }
+            catch (ArgumentException)
+            {
+                return CreateFallback();
+            }
+            catch (NotSupportedException)
+            {
+                return CreateFallback();
+            }
 
             return new LauncherDiagnostics(CreatePersistentLogger(logDirectory));
         }
@@ -128,6 +139,9 @@ internal sealed class LauncherDiagnostics : IDisposable
         string applicationVersion = typeof(LauncherDiagnostics).Assembly.GetName().Version?.ToString() ?? "unknown";
 
         return new LoggerConfiguration().MinimumLevel.Is(LogEventLevel.Information)
+            // Each exception level includes both an object and a child collection. Preserve all
+            // eight permitted nested levels; the projector already bounds the complete payload.
+            .Destructure.ToMaximumDepth(32)
             .Enrich.WithProperty("Application", "OpenConquer.Launcher")
             .Enrich.WithProperty("ApplicationVersion", applicationVersion)
             .Enrich.WithProperty("ProcessId", Environment.ProcessId)
