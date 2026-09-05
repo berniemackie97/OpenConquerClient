@@ -97,55 +97,39 @@ framebuffer according to an explicit presentation policy.
 
 Detailed architecture and compatibility documentation lives under [`docs`](docs).
 
-## Authentication and Realm Direction
+## Native-Parity Authentication Direction
 
-Retail `Server.dat` is **not** part of the modern production runtime.
-
-The audited historical file, decoder, schema, and native key material are preserved exclusively as
-offline compatibility evidence and tooling.
+`OpenConquer.Launcher` implements the retail `Play.exe` product role and is the intended supported
+entry point. There is no additional user-facing bootstrap executable.
 
 The intended production lifecycle is:
 
 ```text
-OpenConquer.Launcher
-        ↓
-account authentication
-        ↓
-one-time game launch authorization
-        ↓
-OpenConquer.Client
-        ↓
-authenticated game session
-        ↓
-realm discovery
-        ↓
-stable RealmId selection
-        ↓
-server-authoritative route + short-lived connection authorization
-        ↓
-realm ingress
+launcher → installation/readiness → update/repair as required → pre-launch settings
+         → native account login → AccountServer authentication/handoff → Play
+         → controlled OpenConquer.Client startup → native-compatible game bootstrap
 ```
 
-Only the hardened launcher and game executable boundaries currently exist. Authentication,
-launch-grant handoff, authenticated realm discovery, and realm routing remain future audited slices.
+Only the launcher host and game executable boundaries currently exist. This lifecycle is a target,
+not a description of implemented login, installation, or launch functionality.
 
-Player-facing realm identity will not be represented by infrastructure IP addresses and ports.
+Account authentication must preserve the original 5517 packets, credential transformations,
+AccountServer results, and login-to-game handoff semantics. Moving the login UI into the launcher
+does not authorize OAuth, OIDC, bearer-token login, or another replacement wire protocol. Native/deob
+evidence is authoritative; retail artifacts, legacy reconstruction, and the rewrite follow in that
+order. Packet implementation requires an audit of native evidence and the current server contract.
 
-Long-lived account credentials or launcher bearer tokens will not be passed to the game through
-ordinary command-line arguments, environment variables, or plaintext temporary files.
+Retail `Server.dat` remains offline evidence/tooling only. A runtime server-discovery source and
+selection flow must be designed explicitly from native login requirements without restoring that
+file or hardcoding endpoints into UI controls.
 
-## Legacy 5517 Interoperability
+Credentials and sensitive session material must never cross into the client through command-line
+arguments, environment variables, or plaintext temporary files. Private local IPC may carry the
+native handoff once its ownership, security, and failure semantics have been implemented and tested.
+It must not invent a replacement game-authentication system.
 
-Preserving 5517 protocol and behavioral compatibility remains a project goal.
-
-That does **not** mean the modern OpenConquer production authentication and realm architecture will
-pretend a legacy third-party server is an OpenConquer realm.
-
-If direct third-party 5517 server interoperability is implemented, it will use an explicit legacy
-compatibility boundary that keeps historical server-name, host, port, and legacy-login semantics
-separate from the modern authenticated realm model.
-
-Retail `Server.dat` will not return as that compatibility mechanism.
+The remaining slices and current audit are recorded in
+[`docs/architecture/launcher-roadmap.md`](docs/architecture/launcher-roadmap.md).
 
 ## Retail Content
 
@@ -224,8 +208,8 @@ OpenConquer.Rendering.Tests
 ```
 
 The launcher tests protect product/dependency boundaries, Windows process policy, diagnostic path
-and redaction invariants, and host exception-observation behavior without requiring a native desktop
-session.
+and redaction invariants, bounded stack/type projection, and host exception-observation behavior
+without requiring a native desktop session.
 
 ## Running
 

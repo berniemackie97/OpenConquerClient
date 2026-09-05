@@ -175,8 +175,10 @@ LauncherDiagnostics
 Persistent diagnostics are not an availability dependency.
 
 Failure to establish the expected diagnostic storage boundary because of an ordinary I/O or access
-failure causes diagnostics to degrade to a no-sink logger rather than preventing launcher startup.
+failure, or a malformed storage path, causes diagnostics to degrade to a no-sink logger rather than
+preventing launcher startup.
 
+Path-format failures are caught only around directory creation, before logger configuration.
 The expected-storage fallback is intentionally narrow. Programming and logging-configuration defects
 are not converted broadly into silent persistence fallback.
 
@@ -218,7 +220,7 @@ launcher-*.jsonl
 The current sink policy is:
 
 - daily rolling;
-- 5 MiB maximum per file;
+- 5 MiB rolling threshold per file (the final event may cross the threshold);
 - rolling on the size boundary;
 - at most 14 retained log files;
 - unbuffered writes;
@@ -247,13 +249,17 @@ The projection contains only:
 
 ```text
 ExceptionType
+ExceptionTypeTruncated
 HResult
 StackTrace
+StackTraceTruncated
 InnerExceptions
 InnerExceptionsTruncated
 ```
 
-The stack trace is captured without source-file information.
+The stack trace is captured without source-file information. Only declaring-type and method names
+are formatted; method signatures, parameter names, and virtual exception text are excluded. Stack text uses LF separators on every platform. Overloads may therefore share the
+same diagnostic name; this is an intentional limit of the redacted representation.
 
 The diagnostic projection deliberately excludes potentially secret-bearing or unnecessary exception
 state such as:
@@ -284,7 +290,20 @@ Nested exception traversal is bounded.
 The projection permits at most:
 
 - eight nested exception levels;
-- sixteen exception objects in total.
+- sixteen exception objects in total;
+- 512 UTF-16 code units per exception type name;
+- 32 stack frames and 4,096 UTF-16 code units of stack text per exception.
+
+The logger permits a destructuring depth of 32 so it preserves every projected exception and child
+collection, including the deepest truncation flag; its default depth discarded permitted children.
+Truncation never splits a surrogate pair. Type-name, stack, and inner-exception truncation have
+separate flags. Stack text is appended within its budget rather than formatting an unbounded trace
+and then slicing it. Leaves use the shared empty child collection; populated collections are exposed
+read-only without copying their backing list.
+
+These limits bound the projected payload and its formatting work, not all CLR stack-capture or
+reflection allocations. The runtime still materializes the captured stack and metadata names;
+process-fatal resource exhaustion is not recoverable through this logger.
 
 `AggregateException` children are traversed directly rather than flattened into an unbounded
 intermediate representation.
@@ -578,7 +597,7 @@ Direct game-process startup remains available for development and reconstruction
 
 It is not the intended final production account-authentication mechanism. Future production startup
 will introduce an explicit authorized launcher-to-game transition without using ordinary process
-arguments as a bearer-token transport.
+arguments as a transport for credentials or native session secrets.
 
 `ClientContentRoot` establishes the legacy client filesystem boundary.
 
@@ -732,75 +751,58 @@ The retained exact fixture resolves to 14 groups and 94 server rows.
 Detailed evidence and security interpretation are documented in
 [`docs/compatibility/server-dat.md`](../compatibility/server-dat.md).
 
-### Authentication and Realm Direction
+### Native-Parity Authentication and Launcher Lifecycle
 
-The modern production architecture does not use a locally shipped server list as its trust or
-routing boundary.
+`OpenConquer.Launcher` is the modern implementation of the retail `Play.exe` product role. It is the
+supported production entry-point target, with its own composition root and standard-user process
+policy. No second user-facing `Play.exe` is introduced in front of it.
 
-The hardened launcher process boundary required for that future architecture now exists:
-
-```text
-OpenConquer.Launcher
-        │
-        │ future authorized transition
-        ▼
-OpenConquer.Client
-```
-
-The current launcher implements the executable/product boundary, least-privilege host policy,
-bounded diagnostics, and terminal host-fault handling.
-
-It does **not** yet implement account authentication, launch authorization, launcher-to-game
-handoff, authenticated realm discovery, realm selection, or realm routing.
-
-The intended high-level lifecycle remains:
+The current implementation provides the host, diagnostics, and window shell only. The remaining
+production lifecycle is:
 
 ```text
-launcher authentication
+installation discovery and readiness
         ↓
-one-time game launch authorization
+update / repair as required
         ↓
-authenticated game session
+launcher and supported pre-launch game settings
         ↓
-realm discovery
+native 5517 account login and AccountServer authentication/handoff
         ↓
-select stable RealmId
+Play eligibility
         ↓
-server-authoritative route and short-lived connection authorization
+controlled launcher → OpenConquer.Client startup/handoff
         ↓
-realm ingress
+native-compatible game bootstrap
 ```
 
-The future authorization protocol, launcher-to-game handoff mechanism, service contracts,
-credential/session-storage policy, and realm-domain types remain implementation-slice decisions and
-must be audited when introduced.
+This reconstruction preserves the native account protocol, packets, credential transformation,
+AccountServer result semantics, and login-to-game handoff. OAuth, OIDC, PKCE, bearer-token login,
+and replacement account or game authentication systems are outside reconstruction scope.
+The previous proposed authenticated realm-routing architecture is superseded by this parity rule.
 
-The hardened launcher host must not be mistaken for an authorization implementation merely because
-the executable and its security/failure boundaries now exist.
+Native/deob evidence is authoritative, followed by retail artifacts, legacy reconstruction, and the
+current rewrite. Before implementation, authentication must be checked against both native evidence
+and the current server contract. No protocol details are established by this host-only slice.
 
-The important boundaries established so far are:
+Removing `Server.dat` from runtime remains intentional. A replacement source for server selection
+must preserve the native login contract, including any protocol server-name field, while keeping
+endpoints out of UI code. Its trust boundary and position in the flow require an evidence audit;
+server discovery is not assumed to occur after authentication.
 
-- launcher and game are separate executable products;
-- the launcher process has an explicit standard-user privilege policy;
-- launcher diagnostics are bounded and do not become an availability dependency;
-- unhandled launcher faults are projected through a message-free diagnostic boundary;
-- the launcher does not reference game runtime subsystem assemblies;
-- the launcher does not ship the game's retail runtime content closure;
-- the game runtime does not trust or consume retail `Server.dat`;
-- player-facing realm identity is not an IP address and port;
-- historical `ServerName` semantics remain at compatibility/protocol boundaries rather than becoming
-  the modern realm-domain identity;
-- account-aware realm discovery and routing belong to authenticated server-controlled boundaries.
+The launcher owns the login operation in the target architecture. Credentials are not persisted in
+plaintext or unnecessarily duplicated in the client. Passwords, keys, and sensitive session material
+must not be logged or passed through arguments, environment variables, or plaintext temporary files.
+Local launcher-to-client IPC is a separate process-lifecycle concern from the native protocol on the
+wire. Its implementation must transfer the required native state without creating another game
+login system.
 
-Future launcher account authentication should use an appropriate native-application authorization
-flow rather than collecting account passwords into an invented local protocol.
+Product state, installation integrity, settings, authentication, and launch eligibility will be
+application-owned responsibilities consumed by thin UI code. They are not yet implemented. Direct
+game execution currently remains a development path; a future audited handoff slice must enforce
+the supported production boundary without expanding into gameplay.
 
-Long-lived account credentials or launcher bearer tokens must not be passed into
-`OpenConquer.Client` through command-line arguments, environment variables, or temporary plaintext
-files.
-
-The precise secure handoff mechanism is intentionally not selected by the launcher-host-hardening
-slice.
+See [the launcher roadmap](launcher-roadmap.md) for slice ordering and completion criteria.
 
 ## Startup Logo Lifetime
 

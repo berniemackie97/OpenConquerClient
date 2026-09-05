@@ -101,6 +101,7 @@ internal static class LauncherDiagnosticPaths
 
     private static bool IsUsableBasePath([NotNullWhen(true)] string? path)
     {
-        return !string.IsNullOrWhiteSpace(path) && Path.IsPathFullyQualified(path);
+        return !string.IsNullOrWhiteSpace(path) && Path.IsPathFullyQualified(path) &&
+            !path.AsSpan().ContainsAny(Path.GetInvalidPathChars());
     }
 }

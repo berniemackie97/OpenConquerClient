@@ -261,11 +261,9 @@ boundary.
 
 The historical `ServerName` field must therefore remain distinct from presentation metadata.
 
-The modern client does not expose this legacy field as its future realm-domain identity.
-
-When the modern authenticated realm-join architecture reaches the legacy protocol compatibility
-boundary, any required legacy server-name mapping must be supplied explicitly by that boundary
-rather than leaked into modern realm models.
+The runtime server-selection design must preserve the protocol value independently of a display
+label or any modern catalog identifier. Removing the historical file does not remove this native
+login requirement. The runtime source and mapping require their own native/server contract audit.
 
 ## ServerIP and ServerPort
 
@@ -287,41 +285,20 @@ The native post-authentication world handoff is a separate protocol concern.
 
 ## Modern Runtime Decision
 
-Retail `Server.dat` leaves the production game runtime completely.
+Retail `Server.dat` remains outside the production runtime. Its removal changes the source of server
+configuration, not the native account-authentication protocol.
 
-The modern architecture will not use it for:
+The launcher must preserve original 5517 AccountServer authentication, credential transformations,
+results, and login-to-game handoff. A replacement runtime source for server discovery/selection
+requires an explicit trust and ownership boundary, with native protocol server names kept distinct
+from UI labels. Endpoints must not be hardcoded in UI code.
 
-- account authentication;
-- realm discovery;
-- realm availability;
-- population state;
-- entitlement state;
-- character-count state;
-- server routing;
-- connection tickets.
+The earlier proposed post-authentication realm-routing lifecycle is superseded by the native-parity
+reconstruction requirement. Do not infer new connection-ticket or identity-provider protocols from
+this historical decoder. No runtime server catalog or authentication implementation exists yet.
 
-Those capabilities belong to authenticated modern services and protocol boundaries.
-
-The intended high-level lifecycle is:
-
-```text
-launcher authentication
-        ↓
-one-time game launch authorization
-        ↓
-authenticated game session
-        ↓
-realm discovery
-        ↓
-select RealmId
-        ↓
-server-authoritative route and short-lived connection ticket
-        ↓
-realm ingress
-```
-
-The future modern realm model must use stable logical realm identity rather than expose
-infrastructure IP addresses and ports as player-facing configuration.
+See [launcher architecture](../architecture/architecture.md#native-parity-authentication-and-launcher-lifecycle)
+and [the remaining roadmap](../architecture/launcher-roadmap.md).
 
 ## Tooling Ownership
 

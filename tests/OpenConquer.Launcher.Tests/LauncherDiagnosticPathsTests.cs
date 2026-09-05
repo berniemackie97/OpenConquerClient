@@ -154,6 +154,19 @@ public sealed class LauncherDiagnosticPathsTests
     }
 
     [Fact]
+    public void InvalidAbsoluteBasePathsAreRejectedAndLinuxUsesItsFallback()
+    {
+        string invalidPath = Path.Combine(CreateFullyQualifiedTestPath(), "invalid\0directory");
+        string userProfile = CreateFullyQualifiedTestPath();
+
+        Assert.False(LauncherDiagnosticPaths.TryGetWindowsLogDirectory(invalidPath, out _));
+        Assert.False(LauncherDiagnosticPaths.TryGetMacOsLogDirectory(invalidPath, out _));
+        Assert.True(LauncherDiagnosticPaths.TryGetLinuxLogDirectory(invalidPath, userProfile, out string? path));
+        Assert.Equal(Path.Combine(userProfile, ".local", "state", "OpenConquer", "Launcher", "Logs"), path);
+        Assert.False(LauncherDiagnosticPaths.TryGetLinuxLogDirectory(invalidPath, invalidPath, out _));
+    }
+
+    [Fact]
     public void CurrentPlatformResolvesFullyQualifiedLogDirectory()
     {
         bool succeeded = LauncherDiagnosticPaths.TryGetLogDirectory(out string? logDirectory);
