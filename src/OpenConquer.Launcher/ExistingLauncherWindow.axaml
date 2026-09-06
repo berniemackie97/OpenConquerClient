@@ -1,0 +1,14 @@
+<Window
+    x:Class="OpenConquer.Launcher.ExistingLauncherWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="520"
+    Height="260"
+    CanResize="False"
+    WindowStartupLocation="CenterScreen">
+  <StackPanel Margin="32" Spacing="20" VerticalAlignment="Center">
+    <TextBlock x:Name="StatusTitle" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap" />
+    <TextBlock x:Name="StatusDetail" TextWrapping="Wrap" />
+    <Button x:Name="CloseButton" HorizontalAlignment="Right" Click="OnCloseRequested" />
+  </StackPanel>
+</Window>

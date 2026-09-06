@@ -71,7 +71,10 @@ Rendering owns graphics behavior and GPU resources.
 
 ## Launcher
 
-`OpenConquer.Launcher` is a .NET 10 Avalonia desktop application.
+`OpenConquer.Launcher` is a .NET 10 Avalonia desktop application. A user-scoped process lease
+precedes desktop startup; subsequent invocations activate the existing window. The main thread owns
+the lease until the activation listener and desktop have drained. See
+[launcher instances](launcher-instances.md) for scope, transport, and failure behavior.
 
 Its current composition is:
 
