@@ -11,12 +11,15 @@ Linux, designed for OpenConquer Server.
 
 | Product | Implemented | Still required |
 | --- | --- | --- |
-| Launcher | Avalonia host, redacted diagnostics, managed-package resolution, installation recheck, coordinated shutdown | Trusted release integrity, update/repair, saved settings, realm discovery, native login, secure client startup, complete player UX, signed platform packaging |
+| Launcher | Avalonia host, redacted diagnostics, managed-package resolution, installation recheck, single-instance activation, coordinated shutdown | Trusted release integrity, update/repair, saved settings, realm discovery, native login, secure client startup, complete player UX, signed platform packaging |
 | Client | Resizable/fixed/fullscreen host, logical rendering and presentation, verified bootstrap content | Networking, gameplay, higher-level rendering |
 
 The launcher replaces `Play.exe` as the product entry point. Launcher and client remain independent
 executables and dependency boundaries. A staged package contains both; the launcher automatically
 resolves its own installation and never asks the player to locate game files.
+
+Opening the launcher again activates the existing window for the current user. See
+[instance ownership](docs/architecture/launcher-instances.md) for startup and recovery behavior.
 
 An **installation found** result currently proves package layout only. It does not verify release
 integrity or authorize game startup. **Check again** re-evaluates an unavailable installation after

@@ -168,6 +168,9 @@ rechecks the same root without restarting. It does not repair files or verify re
 **Close** and the native close control drain active work and exit. See the
 [installation contract](architecture/launcher-managed-installation.md) for lifecycle and smoke checks.
 
+Opening the launcher again activates the existing instance for the same OS user, including when it
+was started from another installation path. See the [instance smoke check](architecture/launcher-instances.md#verification).
+
 Update/repair, native AccountServer login, settings, and controlled game handoff are not implemented.
 
 ## Content Verification

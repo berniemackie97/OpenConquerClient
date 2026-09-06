@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Remove="xunit.v3.mtp-v2" />
+    <Using Remove="Xunit" />
+    <ProjectReference Include="../../../src/OpenConquer.Launcher/OpenConquer.Launcher.csproj" />
+  </ItemGroup>
+</Project>

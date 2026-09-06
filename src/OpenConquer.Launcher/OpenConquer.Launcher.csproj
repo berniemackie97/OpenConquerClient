@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="OpenConquer.Launcher.Tests" />
+    <InternalsVisibleTo Include="OpenConquer.Launcher.InstanceProbe" />
   </ItemGroup>
 
   <ItemGroup>
