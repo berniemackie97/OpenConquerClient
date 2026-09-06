@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/OpenConquer.Launcher/OpenConquer.Launcher.csproj" />
+    <ProjectReference Include="../../tools/OpenConquer.Product.Tool/OpenConquer.Product.Tool.csproj" />
   </ItemGroup>
 
 </Project>

@@ -15,10 +15,12 @@ public sealed class ManagedInstallationResolverTests
 
         try
         {
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(root)
-                .ResolveAsync(CancellationToken.None);
+            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
+                root
+            ).ResolveAsync(CancellationToken.None);
 
-            ManagedInstallationResolution.Resolved resolved = Assert.IsType<ManagedInstallationResolution.Resolved>(resolution);
+            ManagedInstallationResolution.Resolved resolved =
+                Assert.IsType<ManagedInstallationResolution.Resolved>(resolution);
             Assert.Equal(Path.GetFullPath(root), resolved.Installation.RootPath);
             Assert.Equal(Path.GetFullPath(clientRoot), resolved.Installation.ClientRootPath);
             Assert.Equal(
@@ -38,11 +40,14 @@ public sealed class ManagedInstallationResolverTests
         string root = CreateTemporaryDirectory();
         try
         {
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(root)
-                .ResolveAsync(CancellationToken.None);
+            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
+                root
+            ).ResolveAsync(CancellationToken.None);
 
             Assert.Equal(
-                new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ManifestMissing),
+                new ManagedInstallationResolution.Rejected(
+                    ManagedInstallationIssue.ManifestMissing
+                ),
                 resolution
             );
         }
@@ -55,9 +60,18 @@ public sealed class ManagedInstallationResolverTests
     [Theory]
     [InlineData("{\"schemaVersion\":1,\"productId\":\"Other\",\"clientRoot\":\"client\"}")]
     [InlineData("{\"schemaVersion\":1,\"productId\":\"OpenConquer\",\"clientRoot\":\"../client\"}")]
-    [InlineData("{\"schemaVersion\":1,\"productId\":\"OpenConquer\",\"clientRoot\":\"/tmp/client\"}")]
-    [InlineData("{\"schemaVersion\":1,\"productId\":\"OpenConquer\",\"clientRoot\":\"client\",\"unexpected\":true}")]
-    [InlineData("{\"schemaVersion\":1,\"productId\":\"OpenConquer\",\"clientRoot\":\"client\",\"clientRoot\":\"other\"}")]
+    [InlineData(
+        "{\"schemaVersion\":1,\"productId\":\"OpenConquer\",\"clientRoot\":\"/tmp/client\"}"
+    )]
+    [InlineData(
+        "{\"schemaVersion\":1,\"productId\":\"OpenConquer\",\"clientRoot\":\"client\",\"unexpected\":true}"
+    )]
+    [InlineData(
+        "{\"schemaVersion\":1,\"productId\":\"OpenConquer\",\"clientRoot\":\"client\",\"clientRoot\":\"other\"}"
+    )]
+    [InlineData(
+        "{\"schemaVersion\":1,\"productId\":\"OpenConquer\",\"clientRoot\":\"components/game\"}"
+    )]
     public async Task ResolveAsyncRejectsManifestValuesOutsideTheManagedContract(string manifest)
     {
         string root = CreateTemporaryDirectory();
@@ -65,11 +79,14 @@ public sealed class ManagedInstallationResolverTests
         {
             File.WriteAllText(Path.Combine(root, ManagedInstallationManifest.FileName), manifest);
 
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(root)
-                .ResolveAsync(CancellationToken.None);
+            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
+                root
+            ).ResolveAsync(CancellationToken.None);
 
             Assert.Equal(
-                new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ManifestInvalid),
+                new ManagedInstallationResolution.Rejected(
+                    ManagedInstallationIssue.ManifestInvalid
+                ),
                 resolution
             );
         }
@@ -96,8 +113,9 @@ public sealed class ManagedInstallationResolverTests
 
         try
         {
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(root)
-                .ResolveAsync(CancellationToken.None);
+            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
+                root
+            ).ResolveAsync(CancellationToken.None);
 
             Assert.Equal(
                 new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.LinkedPath),
@@ -118,11 +136,14 @@ public sealed class ManagedInstallationResolverTests
         {
             WriteManifest(root, "client", ManagedInstallationManifest.CurrentSchemaVersion + 1);
 
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(root)
-                .ResolveAsync(CancellationToken.None);
+            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
+                root
+            ).ResolveAsync(CancellationToken.None);
 
             Assert.Equal(
-                new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.UnsupportedManifest),
+                new ManagedInstallationResolution.Rejected(
+                    ManagedInstallationIssue.UnsupportedManifest
+                ),
                 resolution
             );
         }
@@ -141,11 +162,14 @@ public sealed class ManagedInstallationResolverTests
             WriteManifest(root, "client");
             Directory.CreateDirectory(Path.Combine(root, "unrelated-client"));
 
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(root)
-                .ResolveAsync(CancellationToken.None);
+            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
+                root
+            ).ResolveAsync(CancellationToken.None);
 
             Assert.Equal(
-                new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ClientComponentMissing),
+                new ManagedInstallationResolution.Rejected(
+                    ManagedInstallationIssue.ClientComponentMissing
+                ),
                 resolution
             );
         }
@@ -165,7 +189,8 @@ public sealed class ManagedInstallationResolverTests
         try
         {
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-                new ManagedInstallationResolver(root).ResolveAsync(cancellation.Token));
+                new ManagedInstallationResolver(root).ResolveAsync(cancellation.Token)
+            );
         }
         finally
         {
@@ -173,21 +198,31 @@ public sealed class ManagedInstallationResolverTests
         }
     }
 
-    private static void WriteManifest(string root, string clientRoot, int schemaVersion = ManagedInstallationManifest.CurrentSchemaVersion)
+    private static void WriteManifest(
+        string root,
+        string clientRoot,
+        int schemaVersion = ManagedInstallationManifest.CurrentSchemaVersion
+    )
     {
-        string manifest = JsonSerializer.Serialize(new
-        {
-            schemaVersion,
-            productId = ManagedInstallationManifest.ExpectedProductId,
-            clientRoot,
-        });
+        string manifest = JsonSerializer.Serialize(
+            new
+            {
+                schemaVersion,
+                productId = ManagedInstallationManifest.ExpectedProductId,
+                clientRoot,
+            }
+        );
 
         File.WriteAllText(Path.Combine(root, ManagedInstallationManifest.FileName), manifest);
     }
 
     private static string CreateTemporaryDirectory()
     {
-        string path = Path.Combine(Path.GetTempPath(), "OpenConquer.Launcher.Tests", Guid.NewGuid().ToString("N"));
+        string path = Path.Combine(
+            Path.GetTempPath(),
+            "OpenConquer.Launcher.Tests",
+            Guid.NewGuid().ToString("N")
+        );
         Directory.CreateDirectory(path);
         return path;
     }

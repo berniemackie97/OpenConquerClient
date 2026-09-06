@@ -297,8 +297,9 @@ The earlier proposed post-authentication realm-routing lifecycle is superseded b
 reconstruction requirement. Do not infer new connection-ticket or identity-provider protocols from
 this historical decoder. No runtime server catalog or authentication implementation exists yet.
 
-See [launcher architecture](../architecture/architecture.md#native-parity-authentication-and-launcher-lifecycle)
-and [the remaining roadmap](../architecture/launcher-roadmap.md).
+See the
+[native-parity networking direction](../architecture/architecture.md#native-parity-networking-direction)
+for the runtime architecture that supersedes historical `Server.dat` discovery.
 
 ## Tooling Ownership
 

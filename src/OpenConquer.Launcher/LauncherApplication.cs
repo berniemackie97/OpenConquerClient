@@ -8,6 +8,7 @@ internal sealed class LauncherApplication : IAsyncDisposable
 {
     private readonly object _gate = new();
     private readonly IManagedInstallationResolver _installationResolver;
+
     private LauncherState _state = new LauncherState.Starting();
     private CancellationTokenSource? _lifetimeCancellation;
     private Task? _evaluation;
@@ -38,7 +39,9 @@ internal sealed class LauncherApplication : IAsyncDisposable
 
             _started = true;
             _lifetimeCancellation = new CancellationTokenSource();
-            Publish(new LauncherState.EvaluatingInstallation());
+
+            PublishLocked(new LauncherState.EvaluatingInstallation());
+
             _evaluation = EvaluateAsync(_lifetimeCancellation.Token);
             return _evaluation;
         }
@@ -62,7 +65,9 @@ internal sealed class LauncherApplication : IAsyncDisposable
             else
             {
                 _stopping = true;
-                Publish(new LauncherState.Stopping());
+
+                PublishLocked(new LauncherState.Stopping());
+
                 evaluation = _evaluation;
                 lifetimeCancellation = _lifetimeCancellation;
                 shutdownCancellationRequested = lifetimeCancellation is not null;
@@ -79,7 +84,7 @@ internal sealed class LauncherApplication : IAsyncDisposable
             }
             catch (OperationCanceledException) when (shutdownCancellationRequested)
             {
-                // Shutdown owns cancellation. The window must not turn normal close into a fault.
+                // Shutdown owns cancellation. Normal application teardown is not a fault.
             }
             catch (Exception exception)
             {
@@ -87,25 +92,20 @@ internal sealed class LauncherApplication : IAsyncDisposable
             }
         }
 
-        try
+        lock (_gate)
         {
-            lock (_gate)
+            if (_state is not LauncherState.Stopped)
             {
-                if (_state is not LauncherState.Stopped)
-                {
-                    Publish(new LauncherState.Stopped());
-                }
+                PublishLocked(new LauncherState.Stopped());
+            }
 
-                _lifetimeCancellation?.Dispose();
-                _lifetimeCancellation = null;
-            }
+            _lifetimeCancellation?.Dispose();
+            _lifetimeCancellation = null;
         }
-        finally
+
+        if (failure is not null)
         {
-            if (failure is not null)
-            {
-                ExceptionDispatchInfo.Capture(failure).Throw();
-            }
+            ExceptionDispatchInfo.Capture(failure).Throw();
         }
     }
 
@@ -118,24 +118,17 @@ internal sealed class LauncherApplication : IAsyncDisposable
     {
         try
         {
-            ManagedInstallationResolution resolution = await _installationResolver
-                .ResolveAsync(cancellationToken)
-                .ConfigureAwait(false);
+            ManagedInstallationResolution resolution = await _installationResolver.ResolveAsync(cancellationToken).ConfigureAwait(false);
 
-            cancellationToken.ThrowIfCancellationRequested();
+            LauncherState resolvedState = resolution switch
+            {
+                ManagedInstallationResolution.Resolved resolved => new LauncherState.InstallationResolved(resolved.Installation),
+                ManagedInstallationResolution.Rejected rejected => new LauncherState.InstallationUnavailable(rejected.Issue),
 
-            Publish(
-                resolution switch
-                {
-                    ManagedInstallationResolution.Resolved resolved =>
-                        new LauncherState.InstallationResolved(resolved.Installation),
-                    ManagedInstallationResolution.Rejected rejected =>
-                        new LauncherState.InstallationUnavailable(rejected.Issue),
-                    _ => throw new InvalidOperationException(
-                        "The managed installation resolver returned an invalid result."
-                    ),
-                }
-            );
+                _ => throw new InvalidOperationException("The managed installation resolver returned an invalid result."),
+            };
+
+            PublishEvaluationResult(resolvedState, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -143,12 +136,40 @@ internal sealed class LauncherApplication : IAsyncDisposable
         }
         catch
         {
-            Publish(new LauncherState.Faulted());
+            PublishEvaluationFailure();
             throw;
         }
     }
 
-    private void Publish(LauncherState state)
+    private void PublishEvaluationResult(LauncherState state, CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (_stopping)
+            {
+                return;
+            }
+
+            PublishLocked(state);
+        }
+    }
+
+    private void PublishEvaluationFailure()
+    {
+        lock (_gate)
+        {
+            if (_stopping)
+            {
+                return;
+            }
+
+            PublishLocked(new LauncherState.Faulted());
+        }
+    }
+
+    private void PublishLocked(LauncherState state)
     {
         Volatile.Write(ref _state, state);
     }

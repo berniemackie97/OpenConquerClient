@@ -284,6 +284,9 @@
           "Serilog.Sinks.File": "[7.0.0, )"
         }
       },
+      "openconquer.product.tool": {
+        "type": "Project"
+      },
       "Avalonia": {
         "type": "CentralTransitive",
         "requested": "[12.1.2, )",

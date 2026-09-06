@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="OpenConquer.Launcher.Tests" />
     <InternalsVisibleTo Include="OpenConquer.Product.Tool.Tests" />
   </ItemGroup>
 

@@ -95,9 +95,23 @@ jobs:
           --no-restore
           --output "${{ runner.temp }}/openconquer-launcher"
 
-      - name: Verify managed installation descriptor
+      # Installed-product layout belongs to package composition, not the independently published
+      # launcher. The raw launcher publish must therefore not carry the managed-installation
+      # descriptor or reserve the managed client component itself.
+      - name: Reject managed product layout from launcher publish
         shell: bash
-        run: test -f "${{ runner.temp }}/openconquer-launcher/openconquer.installation.json"
+        run: |
+          launcher="${{ runner.temp }}/openconquer-launcher"
+
+          if [[ -e "$launcher/openconquer.installation.json" ]]; then
+            echo "The raw launcher publish must not contain openconquer.installation.json." >&2
+            exit 1
+          fi
+
+          if [[ -e "$launcher/client" ]]; then
+            echo "The raw launcher publish must not contain the managed client component." >&2
+            exit 1
+          fi
 
       # The launcher is a separate product and must not acquire the game's retail runtime payload
       # merely because both executables live in the same repository.
@@ -109,12 +123,13 @@ jobs:
             exit 1
           fi
 
-      # The installer/package stage keeps the independent publish outputs separate while composing
-      # one managed product root for the launcher resolver.
+      # Product composition owns the schema-v1 installation descriptor and fixed client/ component.
+      # The helper stages both independently published products into one managed product root.
       - name: Verify managed product composition
         shell: bash
         run: |
           managed="${{ runner.temp }}/openconquer-managed"
+
           dotnet run \
             --project tools/OpenConquer.Product.Tool \
             --configuration Release \
@@ -125,6 +140,7 @@ jobs:
             --launcher-publish "${{ runner.temp }}/openconquer-launcher" \
             --client-publish "${{ runner.temp }}/openconquer-client" \
             --output "$managed"
+
           test -f "$managed/openconquer.installation.json"
           test -d "$managed/client"
           test -f "$managed/client/content/retail-5517/manifest.json"

@@ -123,9 +123,10 @@ The managed package layout and startup states are documented in
 
 Account authentication must preserve the original 5517 packets, credential transformations,
 AccountServer results, and login-to-game handoff semantics. Moving the login UI into the launcher
-does not authorize OAuth, OIDC, bearer-token login, or another replacement wire protocol. Native/deob
-evidence is authoritative; retail artifacts, legacy reconstruction, and the rewrite follow in that
-order. Packet implementation requires an audit of native evidence and the current server contract.
+does not authorize OAuth, OIDC, bearer-token login, or another replacement wire protocol.
+Native/deob evidence is authoritative; retail artifacts, legacy reconstruction, and the rewrite
+follow in that order. Packet implementation requires an audit of native evidence and the current
+server contract.
 
 Retail `Server.dat` remains offline evidence/tooling only. A runtime server-discovery source and
 selection flow must be designed explicitly from native login requirements without restoring that
@@ -136,8 +137,9 @@ arguments, environment variables, or plaintext temporary files. Private local IP
 native handoff once its ownership, security, and failure semantics have been implemented and tested.
 It must not invent a replacement game-authentication system.
 
-The remaining slices and current audit are recorded in
-[`docs/architecture/launcher-roadmap.md`](docs/architecture/launcher-roadmap.md).
+The current product boundaries are documented in
+[`docs/architecture/architecture.md`](docs/architecture/architecture.md), with development and
+verification commands in [`docs/development.md`](docs/development.md).
 
 ## Retail Content
 
@@ -283,11 +285,11 @@ the user's saved display preference rather than editing installed retail content
 
 `--window-mode` selects the desktop game-window mode independently of both resolutions:
 
-| Value                 | Behaviour                                      |
-| --------------------- | --------------------------------------------- |
-| `resizable` (default) | player can resize the game window              |
-| `fixed`               | game window uses the requested window size     |
-| `fullscreen`          | game window is presented fullscreen            |
+| Value                 | Behaviour                                  |
+| --------------------- | ------------------------------------------ |
+| `resizable` (default) | player can resize the game window          |
+| `fixed`               | game window uses the requested window size |
+| `fullscreen`          | game window is presented fullscreen        |
 
 `--presentation` selects how the fixed logical frame is presented by the selected game window:
 
