@@ -2,63 +2,44 @@ using OpenConquer.Launcher.Installation;
 
 namespace OpenConquer.Launcher;
 
-/// <summary>Centralized launcher presentation text pending the product localization system.</summary>
+/// <summary>Centralizes launcher presentation text pending the product localization system.</summary>
 internal static class LauncherText
 {
     public const string ProductName = "OpenConquer";
     public const string WindowTitle = "OpenConquer Launcher";
-    public const string InstallationHeading = "OpenConquer installation";
+    public const string InstallationHeading = "Game status";
 
-    public static (string Title, string Detail) For(LauncherState state) => state switch
+    public static (string Title, string Detail) For(LauncherState state)
     {
-        LauncherState.Starting => (
-            "Starting OpenConquer Launcher",
-            "Preparing the managed OpenConquer installation check."
-        ),
-        LauncherState.EvaluatingInstallation => (
-            "Checking OpenConquer installation",
-            "The launcher is evaluating the installation supplied by its installed package."
-        ),
-        LauncherState.InstallationResolved => (
-            "OpenConquer installation detected",
-            "The managed product boundary is present. Release validation and Play are the next launcher responsibilities."
-        ),
-        LauncherState.InstallationUnavailable unavailable => (
-            unavailable.Issue switch
-            {
-                ManagedInstallationIssue.ManifestMissing => "OpenConquer is not installed",
-                ManagedInstallationIssue.ManifestInvalid => "Installation unavailable",
-                ManagedInstallationIssue.UnsupportedManifest => "Installation requires an update",
-                ManagedInstallationIssue.ClientComponentMissing => "OpenConquer is not installed",
-                ManagedInstallationIssue.AccessDenied => "Installation unavailable",
-                ManagedInstallationIssue.LinkedPath => "Installation unavailable",
-                ManagedInstallationIssue.ReadFailure => "Installation unavailable",
-                _ => "Installation unavailable",
-            },
-            unavailable.Issue switch
-            {
-                ManagedInstallationIssue.ManifestMissing => "The launcher package does not contain its installation descriptor. Start it from a complete OpenConquer installation.",
-                ManagedInstallationIssue.ManifestInvalid => "The installed product layout descriptor is invalid. The launcher cannot continue with this installation.",
-                ManagedInstallationIssue.UnsupportedManifest => "This installation was created by a newer launcher and must be updated.",
-                ManagedInstallationIssue.ClientComponentMissing => "The launcher package does not contain the game client. Start it from a complete OpenConquer installation.",
-                ManagedInstallationIssue.AccessDenied => "The launcher cannot read its managed installation.",
-                ManagedInstallationIssue.LinkedPath => "The managed installation uses an unsupported linked component.",
-                ManagedInstallationIssue.ReadFailure => "The managed installation could not be read.",
-                _ => "The managed installation could not be evaluated.",
-            }
-        ),
-        LauncherState.Faulted => (
-            "Launcher startup failed",
-            "The launcher could not complete its managed installation check."
-        ),
-        LauncherState.Stopping => (
-            "Closing OpenConquer Launcher",
-            "Stopping launcher operations safely."
-        ),
-        LauncherState.Stopped => (
-            string.Empty,
-            string.Empty
-        ),
-        _ => throw new ArgumentOutOfRangeException(nameof(state)),
-    };
+        ArgumentNullException.ThrowIfNull(state);
+
+        return state switch
+        {
+            LauncherState.Starting => ("Starting OpenConquer", "Preparing the launcher."),
+            LauncherState.EvaluatingInstallation => ("Preparing OpenConquer", "Checking your game installation."),
+            LauncherState.InstallationResolved => ("OpenConquer installation found", "The launcher can access the installed game files."),
+            LauncherState.InstallationUnavailable unavailable => ForUnavailableInstallation(unavailable.Issue),
+            LauncherState.Faulted => ("OpenConquer Launcher couldn't start", "Close the launcher and try again."),
+            LauncherState.Stopping => ("Closing OpenConquer", "Finishing up."),
+            LauncherState.Stopped => (string.Empty, string.Empty),
+
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unsupported launcher state."),
+        };
+    }
+
+    private static (string Title, string Detail) ForUnavailableInstallation(ManagedInstallationIssue issue)
+    {
+        return issue switch
+        {
+            ManagedInstallationIssue.ManifestMissing => ("Installation incomplete", "Required OpenConquer installation information is missing."),
+            ManagedInstallationIssue.ManifestInvalid => ("Installation needs repair", "OpenConquer installation information is damaged or invalid."),
+            ManagedInstallationIssue.UnsupportedManifest => ("Launcher update required", "This installation requires a newer version of OpenConquer Launcher."),
+            ManagedInstallationIssue.ClientComponentMissing => ("Installation needs repair", "Required OpenConquer game files are missing."),
+            ManagedInstallationIssue.AccessDenied => ("Can't access OpenConquer", "The launcher doesn't have permission to read the game installation."),
+            ManagedInstallationIssue.LinkedPath => ("Installation needs repair", "OpenConquer is installed in an unsupported layout."),
+            ManagedInstallationIssue.ReadFailure => ("Can't check OpenConquer", "The launcher couldn't read the game installation."),
+
+            _ => throw new ArgumentOutOfRangeException(nameof(issue), issue, "Unsupported managed installation issue."),
+        };
+    }
 }

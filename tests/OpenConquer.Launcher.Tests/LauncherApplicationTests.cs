@@ -41,70 +41,135 @@ public sealed class LauncherApplicationTests
             Path.Combine(root, "client"),
             Path.Combine(root, ManagedInstallationManifest.FileName)
         );
-        LauncherApplication application = new(new StubResolver(
-            new ManagedInstallationResolution.Resolved(installation)));
+        LauncherApplication application = new(
+            new StubResolver(new ManagedInstallationResolution.Resolved(installation))
+        );
 
         await application.StartAsync();
 
-        LauncherState.InstallationResolved state = Assert.IsType<LauncherState.InstallationResolved>(application.State);
+        LauncherState.InstallationResolved state =
+            Assert.IsType<LauncherState.InstallationResolved>(application.State);
+
         Assert.Equal(installation, state.Installation);
 
         await application.StopAsync();
+
         Assert.IsType<LauncherState.Stopped>(application.State);
     }
 
     [Fact]
     public async Task StartAsyncRejectsASecondStartup()
     {
-        LauncherApplication application = new(new StubResolver(
-            new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ManifestMissing)));
+        LauncherApplication application = new(
+            new StubResolver(
+                new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ManifestMissing)
+            )
+        );
 
         await application.StartAsync();
 
         await Assert.ThrowsAsync<InvalidOperationException>(application.StartAsync);
+
         await application.StopAsync();
     }
 
     [Fact]
     public async Task StopAsyncCancelsAnInFlightInstallationEvaluation()
     {
-        using CancellationTokenSource resolverEntered = new();
+        TaskCompletionSource resolverEntered = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
         StubResolver resolver = new(async cancellationToken =>
         {
-            resolverEntered.Cancel();
+            resolverEntered.SetResult();
+
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+
             return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ReadFailure);
         });
+
         LauncherApplication application = new(resolver);
 
         Task evaluation = application.StartAsync();
-        await SpinWaitAsync(() => resolverEntered.IsCancellationRequested);
+
+        await resolverEntered.Task;
 
         await application.StopAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => evaluation);
+
+        Assert.IsType<LauncherState.Stopped>(application.State);
+    }
+
+    [Fact]
+    public async Task StopAsyncOwnsStateAfterShutdownBegins()
+    {
+        TaskCompletionSource resolverEntered = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
+        TaskCompletionSource<ManagedInstallationResolution> resolverCompletion = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
+        StubResolver resolver = new(async _ =>
+        {
+            resolverEntered.SetResult();
+
+            return await resolverCompletion.Task;
+        });
+
+        LauncherApplication application = new(resolver);
+
+        Task evaluation = application.StartAsync();
+
+        await resolverEntered.Task;
+
+        Task stopping = application.StopAsync();
+
+        Assert.IsType<LauncherState.Stopping>(application.State);
+
+        resolverCompletion.SetResult(
+            new ManagedInstallationResolution.Rejected(
+                ManagedInstallationIssue.ClientComponentMissing
+            )
+        );
+
+        await stopping;
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => evaluation);
+
         Assert.IsType<LauncherState.Stopped>(application.State);
     }
 
     [Fact]
     public async Task ConcurrentStopAsyncCallsShareShutdownCancellationSemantics()
     {
-        using CancellationTokenSource resolverEntered = new();
+        TaskCompletionSource resolverEntered = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
         StubResolver resolver = new(async cancellationToken =>
         {
-            resolverEntered.Cancel();
+            resolverEntered.SetResult();
+
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+
             return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ReadFailure);
         });
+
         LauncherApplication application = new(resolver);
 
         _ = application.StartAsync();
-        await SpinWaitAsync(() => resolverEntered.IsCancellationRequested);
+
+        await resolverEntered.Task;
 
         Task firstStop = application.StopAsync();
         Task secondStop = application.StopAsync();
 
         await Task.WhenAll(firstStop, secondStop);
+
         Assert.IsType<LauncherState.Stopped>(application.State);
     }
 
@@ -112,25 +177,65 @@ public sealed class LauncherApplicationTests
     public async Task StopAsyncReleasesLifetimeAfterAnUnexpectedEvaluationFailure()
     {
         InvalidOperationException failure = new("resolver failure");
-        LauncherApplication application = new(new StubResolver(_ => Task.FromException<ManagedInstallationResolution>(failure)));
+        LauncherApplication application = new(
+            new StubResolver(_ => Task.FromException<ManagedInstallationResolution>(failure))
+        );
 
         Task evaluation = application.StartAsync();
+
         await Assert.ThrowsAsync<InvalidOperationException>(() => evaluation);
 
-        InvalidOperationException stopFailure = await Assert.ThrowsAsync<InvalidOperationException>(application.StopAsync);
+        InvalidOperationException stopFailure = await Assert.ThrowsAsync<InvalidOperationException>(
+            application.StopAsync
+        );
 
         Assert.Same(failure, stopFailure);
         Assert.IsType<LauncherState.Stopped>(application.State);
     }
 
-    private static async Task SpinWaitAsync(Func<bool> condition)
+    [Fact]
+    public async Task EvaluationFailureCannotReplaceStoppingState()
     {
-        for (int attempt = 0; attempt < 100 && !condition(); attempt++)
-        {
-            await Task.Delay(10);
-        }
+        TaskCompletionSource resolverEntered = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
 
-        Assert.True(condition());
+        TaskCompletionSource<ManagedInstallationResolution> resolverCompletion = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
+        StubResolver resolver = new(async _ =>
+        {
+            resolverEntered.SetResult();
+
+            return await resolverCompletion.Task;
+        });
+
+        LauncherApplication application = new(resolver);
+
+        Task evaluation = application.StartAsync();
+
+        await resolverEntered.Task;
+
+        Task stopping = application.StopAsync();
+
+        Assert.IsType<LauncherState.Stopping>(application.State);
+
+        InvalidOperationException failure = new("resolver failure");
+
+        resolverCompletion.SetException(failure);
+
+        InvalidOperationException stopFailure = await Assert.ThrowsAsync<InvalidOperationException>(
+            () =>
+                stopping
+        );
+
+        InvalidOperationException evaluationFailure =
+            await Assert.ThrowsAsync<InvalidOperationException>(() => evaluation);
+
+        Assert.Same(failure, evaluationFailure);
+        Assert.Same(failure, stopFailure);
+        Assert.IsType<LauncherState.Stopped>(application.State);
     }
 
     private sealed class StubResolver : IManagedInstallationResolver
@@ -144,6 +249,8 @@ public sealed class LauncherApplicationTests
 
         public StubResolver(Func<CancellationToken, Task<ManagedInstallationResolution>> resolve)
         {
+            ArgumentNullException.ThrowIfNull(resolve);
+
             _resolve = resolve;
         }
 

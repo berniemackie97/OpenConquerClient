@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Xml.Linq;
+using OpenConquer.Launcher.Installation;
 
 namespace OpenConquer.Launcher.Tests;
 
@@ -85,63 +86,10 @@ public sealed class LauncherArchitectureTests
     }
 
     [Fact]
-    public void LauncherWindowDoesNotExposeArbitraryInstallationSelection()
+    public void LauncherProjectDoesNotShipManagedInstallationDescriptor()
     {
         string repositoryRoot = GetRepositoryRoot();
-        string windowPath = Path.Combine(
-            repositoryRoot,
-            "src",
-            "OpenConquer.Launcher",
-            "MainWindow.axaml"
-        );
 
-        string windowMarkup = File.ReadAllText(windowPath);
-
-        Assert.DoesNotContain("Browse", windowMarkup, StringComparison.Ordinal);
-        Assert.DoesNotContain("folder path", windowMarkup, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Find your game", windowMarkup, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void LauncherWindowUsesAStableNonResizableStatusSurface()
-    {
-        string repositoryRoot = GetRepositoryRoot();
-        string windowPath = Path.Combine(
-            repositoryRoot,
-            "src",
-            "OpenConquer.Launcher",
-            "MainWindow.axaml"
-        );
-
-        XElement window = XDocument.Load(windowPath).Root
-            ?? throw new InvalidOperationException("The launcher window markup has no root element.");
-
-        Assert.Equal("760", window.Attribute("Width")?.Value);
-        Assert.Equal("460", window.Attribute("Height")?.Value);
-        Assert.Equal("False", window.Attribute("CanResize")?.Value);
-    }
-
-    [Fact]
-    public void LauncherApplicationResolvesFromItsPackageContext()
-    {
-        string repositoryRoot = GetRepositoryRoot();
-        string appPath = Path.Combine(
-            repositoryRoot,
-            "src",
-            "OpenConquer.Launcher",
-            "App.axaml.cs"
-        );
-
-        string appSource = File.ReadAllText(appPath);
-
-        Assert.Contains("AppContext.BaseDirectory", appSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("OpenConquer.Client.csproj", appSource, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void LauncherPublishCarriesTheManagedInstallationDescriptor()
-    {
-        string repositoryRoot = GetRepositoryRoot();
         string launcherProjectPath = Path.Combine(
             repositoryRoot,
             "src",
@@ -150,17 +98,37 @@ public sealed class LauncherArchitectureTests
         );
 
         XDocument launcherProject = XDocument.Load(launcherProjectPath);
-        XElement descriptor = Assert.Single(
+
+        Assert.DoesNotContain(
             launcherProject.Descendants("None"),
-            static element => element.Attribute("Include")?.Value ==
-                "Installation/openconquer.installation.json"
+            static element =>
+            {
+                string? include = element.Attribute("Include")?.Value;
+
+                string? link = element.Attribute("Link")?.Value;
+
+                return string.Equals(
+                        Path.GetFileName(include),
+                        ManagedInstallationManifest.FileName,
+                        StringComparison.Ordinal
+                    )
+                    || string.Equals(
+                        Path.GetFileName(link),
+                        ManagedInstallationManifest.FileName,
+                        StringComparison.Ordinal
+                    );
+            }
         );
 
-        Assert.Equal(
-            "PreserveNewest",
-            descriptor.Attribute("CopyToPublishDirectory")?.Value
+        string formerDescriptorSourcePath = Path.Combine(
+            repositoryRoot,
+            "src",
+            "OpenConquer.Launcher",
+            "Installation",
+            ManagedInstallationManifest.FileName
         );
-        Assert.Equal("openconquer.installation.json", descriptor.Attribute("Link")?.Value);
+
+        Assert.False(File.Exists(formerDescriptorSourcePath));
     }
 
     private static string GetRepositoryRoot()

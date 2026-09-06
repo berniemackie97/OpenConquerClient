@@ -2,8 +2,6 @@ namespace OpenConquer.Product.Tool;
 
 internal static class ManagedProductStager
 {
-    private const string InstallationDescriptorName = "openconquer.installation.json";
-
     public static void Stage(ProductStageOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -13,45 +11,50 @@ internal static class ManagedProductStager
         string outputRootPath = NormalizePath(options.OutputRootPath, nameof(options.OutputRootPath));
 
         RejectOverlappingRoots(launcherPublishPath, clientPublishPath, outputRootPath);
-        RejectLauncherClientComponent(launcherPublishPath);
 
         EnsureOutputDirectoryDoesNotExist(outputRootPath);
 
         string? parentPath = Path.GetDirectoryName(outputRootPath);
+
         if (string.IsNullOrWhiteSpace(parentPath))
         {
             throw new InvalidOperationException("The product output must have a parent directory.");
         }
 
         Directory.CreateDirectory(parentPath);
+
         string stagingRootPath = outputRootPath + $".staging-{Guid.NewGuid():N}";
+
+        bool activated = false;
 
         try
         {
             Directory.CreateDirectory(stagingRootPath);
+
             CopyTree(launcherPublishPath, stagingRootPath);
 
-            string clientDestinationPath = Path.Combine(stagingRootPath, "client");
-            CopyTree(clientPublishPath, clientDestinationPath);
+            RejectReservedProductEntries(stagingRootPath);
 
-            string descriptorPath = Path.Combine(stagingRootPath, InstallationDescriptorName);
-            if (!File.Exists(descriptorPath))
-            {
-                throw new InvalidDataException($"The launcher publish is missing '{InstallationDescriptorName}'.");
-            }
+            string clientDestinationPath = Path.Combine(stagingRootPath, ManagedProductDescriptor.ClientRoot);
+
+            CopyTree(clientPublishPath, clientDestinationPath);
 
             if (!Directory.EnumerateFileSystemEntries(clientDestinationPath).Any())
             {
                 throw new InvalidDataException("The staged client component is empty.");
             }
 
+            ManagedProductDescriptor.Write(stagingRootPath);
+
             Directory.Move(stagingRootPath, outputRootPath);
+
+            activated = true;
         }
         finally
         {
-            if (Directory.Exists(stagingRootPath))
+            if (!activated && Directory.Exists(stagingRootPath))
             {
-                Directory.Delete(stagingRootPath, recursive: true);
+                TryDeleteFailedStagingRoot(stagingRootPath);
             }
         }
     }
@@ -59,12 +62,14 @@ internal static class ManagedProductStager
     private static string RequireDirectory(string path, string parameterName)
     {
         string normalizedPath = NormalizePath(path, parameterName);
+
         if (!Directory.Exists(normalizedPath))
         {
             throw new DirectoryNotFoundException($"The {parameterName} directory '{normalizedPath}' does not exist.");
         }
 
         FileAttributes attributes = File.GetAttributes(normalizedPath);
+
         if ((attributes & FileAttributes.ReparsePoint) != 0)
         {
             throw new InvalidDataException($"Linked paths are not allowed for product staging roots: '{normalizedPath}'.");
@@ -76,6 +81,7 @@ internal static class ManagedProductStager
     private static string NormalizePath(string path, string parameterName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path, parameterName);
+
         if (!Path.IsPathFullyQualified(path))
         {
             throw new ArgumentException("Product staging paths must be absolute.", parameterName);
@@ -107,30 +113,36 @@ internal static class ManagedProductStager
         }
     }
 
-    private static void RejectLauncherClientComponent(string launcherRoot)
+    private static void RejectReservedProductEntries(string productRoot)
     {
-        string reservedClientPath = Path.Combine(launcherRoot, "client");
-        if (File.Exists(reservedClientPath) || Directory.Exists(reservedClientPath))
+        string descriptorPath = Path.Combine(productRoot, ManagedProductDescriptor.FileName);
+
+        if (File.Exists(descriptorPath) || Directory.Exists(descriptorPath))
         {
-            throw new InvalidDataException("The launcher publish must not contain the reserved 'client' component directory.");
+            throw new InvalidDataException($"The launcher publish must not contain '{ManagedProductDescriptor.FileName}'; product composition owns that descriptor.");
+        }
+
+        string clientComponentPath = Path.Combine(productRoot, ManagedProductDescriptor.ClientRoot);
+
+        if (File.Exists(clientComponentPath) || Directory.Exists(clientComponentPath))
+        {
+            throw new InvalidDataException($"The launcher publish must not contain the reserved '{ManagedProductDescriptor.ClientRoot}' component.");
         }
     }
 
     private static bool AreRelated(string first, string second)
     {
-        StringComparison comparison = OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
+        StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
         string firstWithSeparator = first.EndsWith(Path.DirectorySeparatorChar) || first.EndsWith(Path.AltDirectorySeparatorChar)
             ? first
             : first + Path.DirectorySeparatorChar;
+
         string secondWithSeparator = second.EndsWith(Path.DirectorySeparatorChar) || second.EndsWith(Path.AltDirectorySeparatorChar)
             ? second
             : second + Path.DirectorySeparatorChar;
 
-        return string.Equals(first, second, comparison) ||
-            first.StartsWith(secondWithSeparator, comparison) ||
-            second.StartsWith(firstWithSeparator, comparison);
+        return string.Equals(first, second, comparison) || first.StartsWith(secondWithSeparator, comparison) || second.StartsWith(firstWithSeparator, comparison);
     }
 
     private static void EnsureOutputDirectoryDoesNotExist(string outputRoot)
@@ -153,9 +165,11 @@ internal static class ManagedProductStager
             }
 
             string destinationPath = Path.Combine(destinationRoot, entry.Name);
+
             if (entry is DirectoryInfo)
             {
                 CopyTree(entry.FullName, destinationPath);
+
                 continue;
             }
 
@@ -165,6 +179,7 @@ internal static class ManagedProductStager
             }
 
             File.Copy(entry.FullName, destinationPath, overwrite: false);
+
             PreserveUnixMode(entry.FullName, destinationPath);
         }
     }
@@ -182,8 +197,24 @@ internal static class ManagedProductStager
         }
         catch (PlatformNotSupportedException)
         {
-            // The runtime reports Unix mode support on the supported desktop targets. Keep the
-            // copy usable on a future target that does not expose the optional API.
+            // Preserve compatibility with a future target where Unix mode APIs
+            // are unavailable despite using this staging implementation.
+        }
+    }
+
+    private static void TryDeleteFailedStagingRoot(string stagingRootPath)
+    {
+        try
+        {
+            Directory.Delete(stagingRootPath, recursive: true);
+        }
+        catch (IOException)
+        {
+            // Cleanup must not replace the primary staging failure.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Cleanup must not replace the primary staging failure.
         }
     }
 }
