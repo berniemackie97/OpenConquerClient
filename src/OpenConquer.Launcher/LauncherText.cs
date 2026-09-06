@@ -2,12 +2,14 @@ using OpenConquer.Launcher.Installation;
 
 namespace OpenConquer.Launcher;
 
-/// <summary>Centralizes launcher presentation text pending the product localization system.</summary>
+/// <summary>Player-facing text for the launcher lifecycle and installation check.</summary>
 internal static class LauncherText
 {
     public const string ProductName = "OpenConquer";
     public const string WindowTitle = "OpenConquer Launcher";
     public const string InstallationHeading = "Game status";
+    public const string CheckAgain = "Check again";
+    public const string Close = "Close";
 
     public static (string Title, string Detail) For(LauncherState state)
     {
@@ -17,7 +19,7 @@ internal static class LauncherText
         {
             LauncherState.Starting => ("Starting OpenConquer", "Preparing the launcher."),
             LauncherState.EvaluatingInstallation => ("Preparing OpenConquer", "Checking your game installation."),
-            LauncherState.InstallationResolved => ("OpenConquer installation found", "The launcher can access the installed game files."),
+            LauncherState.InstallationResolved => ("OpenConquer installation found", "The game installation folder is available."),
             LauncherState.InstallationUnavailable unavailable => ForUnavailableInstallation(unavailable.Issue),
             LauncherState.Faulted => ("OpenConquer Launcher couldn't start", "Close the launcher and try again."),
             LauncherState.Stopping => ("Closing OpenConquer", "Finishing up."),

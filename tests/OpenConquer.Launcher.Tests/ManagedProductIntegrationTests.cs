@@ -6,6 +6,28 @@ namespace OpenConquer.Launcher.Tests;
 public sealed class ManagedProductIntegrationTests
 {
     [Fact]
+    public async Task InstallationCheck_RecoversAfterProductCompositionWithoutRestart()
+    {
+        using TemporaryDirectory temporary = new();
+        string launcherPublish = temporary.CreateDirectory("launcher");
+        string clientPublish = temporary.CreateDirectory("client");
+        string productRoot = Path.Combine(temporary.RootPath, "managed");
+        File.WriteAllText(Path.Combine(launcherPublish, "OpenConquer.Launcher"), "launcher");
+        File.WriteAllText(Path.Combine(clientPublish, "OpenConquer.Client"), "client");
+        await using LauncherApplication application = new(new ManagedInstallationResolver(productRoot));
+
+        await application.StartAsync();
+        Assert.Equal(ManagedInstallationIssue.ManifestMissing,
+            Assert.IsType<LauncherState.InstallationUnavailable>(application.State).Issue);
+
+        ManagedProductStager.Stage(new ProductStageOptions(launcherPublish, clientPublish, productRoot));
+        await application.RetryInstallationAsync();
+
+        Assert.Equal(productRoot,
+            Assert.IsType<LauncherState.InstallationResolved>(application.State).Installation.RootPath);
+    }
+
+    [Fact]
     public async Task StagedManagedProductIsAcceptedByLauncherResolver()
     {
         using TemporaryDirectory temporary = new();

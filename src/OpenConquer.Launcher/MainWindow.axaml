@@ -26,15 +26,24 @@
           FontWeight="SemiBold" />
       <TextBlock
           x:Name="StatusTitle"
+          AutomationProperties.LiveSetting="Polite"
           HorizontalAlignment="Center"
           FontSize="32"
           FontWeight="SemiBold"
           TextWrapping="Wrap" />
       <TextBlock
           x:Name="StatusDetail"
+          AutomationProperties.LiveSetting="Polite"
           HorizontalAlignment="Center"
           TextAlignment="Center"
           TextWrapping="Wrap" />
+      <StackPanel
+          Orientation="Horizontal"
+          HorizontalAlignment="Center"
+          Spacing="12">
+        <Button x:Name="RetryInstallationButton" Click="OnRetryInstallation" />
+        <Button x:Name="CloseButton" Click="OnCloseRequested" />
+      </StackPanel>
     </StackPanel>
   </Grid>
 

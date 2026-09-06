@@ -3,17 +3,16 @@ using OpenConquer.Launcher.Installation;
 
 namespace OpenConquer.Launcher;
 
-/// <summary>Owns launcher startup evaluation and process-lifetime cancellation.</summary>
+/// <summary>Owns installation evaluation, recovery, and process-lifetime cancellation.</summary>
 internal sealed class LauncherApplication : IAsyncDisposable
 {
     private readonly object _gate = new();
     private readonly IManagedInstallationResolver _installationResolver;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
 
     private LauncherState _state = new LauncherState.Starting();
-    private CancellationTokenSource? _lifetimeCancellation;
     private Task? _evaluation;
-    private bool _started;
-    private bool _stopping;
+    private Task? _shutdown;
 
     public LauncherApplication(IManagedInstallationResolver installationResolver)
     {
@@ -27,85 +26,53 @@ internal sealed class LauncherApplication : IAsyncDisposable
     {
         lock (_gate)
         {
-            if (_started)
+            if (_state is not LauncherState.Starting)
             {
-                throw new InvalidOperationException("Launcher application startup may run only once.");
+                throw new InvalidOperationException("Launcher startup requires an unstarted application.");
             }
 
-            if (_stopping)
-            {
-                throw new InvalidOperationException("Launcher application shutdown has started.");
-            }
-
-            _started = true;
-            _lifetimeCancellation = new CancellationTokenSource();
-
-            PublishLocked(new LauncherState.EvaluatingInstallation());
-
-            _evaluation = EvaluateAsync(_lifetimeCancellation.Token);
-            return _evaluation;
+            return BeginEvaluationLocked();
         }
     }
 
-    public async Task StopAsync()
+    /// <summary>Rechecks an unavailable installation; simultaneous requests share the active check.</summary>
+    public Task RetryInstallationAsync()
     {
-        Task? evaluation;
-        CancellationTokenSource? lifetimeCancellation;
-        bool shutdownCancellationRequested;
-        Exception? failure = null;
-
         lock (_gate)
         {
-            if (_stopping)
+            if (_shutdown is not null)
             {
-                evaluation = _evaluation;
-                lifetimeCancellation = null;
-                shutdownCancellationRequested = true;
+                throw new InvalidOperationException("Launcher shutdown has started.");
             }
-            else
+
+            if (_evaluation is { IsCompleted: false })
             {
-                _stopping = true;
-
-                PublishLocked(new LauncherState.Stopping());
-
-                evaluation = _evaluation;
-                lifetimeCancellation = _lifetimeCancellation;
-                shutdownCancellationRequested = lifetimeCancellation is not null;
+                return _evaluation;
             }
+
+            if (_state is not LauncherState.InstallationUnavailable)
+            {
+                throw new InvalidOperationException("Only an unavailable installation can be retried.");
+            }
+
+            return BeginEvaluationLocked();
         }
+    }
 
-        lifetimeCancellation?.Cancel();
-
-        if (evaluation is not null)
-        {
-            try
-            {
-                await evaluation.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (shutdownCancellationRequested)
-            {
-                // Shutdown owns cancellation. Normal application teardown is not a fault.
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        }
-
+    public Task StopAsync()
+    {
         lock (_gate)
         {
-            if (_state is not LauncherState.Stopped)
+            if (_shutdown is not null)
             {
-                PublishLocked(new LauncherState.Stopped());
+                return _shutdown;
             }
 
-            _lifetimeCancellation?.Dispose();
-            _lifetimeCancellation = null;
-        }
+            PublishLocked(new LauncherState.Stopping());
 
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
+            Task cancellation = _lifetimeCancellation.CancelAsync();
+            _shutdown = DrainAsync(_evaluation, cancellation);
+            return _shutdown;
         }
     }
 
@@ -114,58 +81,103 @@ internal sealed class LauncherApplication : IAsyncDisposable
         return new ValueTask(StopAsync());
     }
 
+    private Task BeginEvaluationLocked()
+    {
+        PublishLocked(new LauncherState.EvaluatingInstallation());
+        CancellationToken token = _lifetimeCancellation.Token;
+
+        _evaluation = Task.Run(() => EvaluateAsync(token), CancellationToken.None);
+        return _evaluation;
+    }
+
+    private async Task DrainAsync(Task? evaluation, Task cancellation)
+    {
+        Exception? failure = null;
+        CancellationToken token = _lifetimeCancellation.Token;
+
+        try
+        {
+            try
+            {
+                await cancellation.ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                // A broken cancellation callback must not skip evaluation drain or disposal.
+                failure = exception;
+            }
+
+            if (evaluation is not null)
+            {
+                try
+                {
+                    await evaluation.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException exception) when (token.IsCancellationRequested && exception.CancellationToken == token)
+                {
+                    // Only cancellation owned by this lifecycle is normal shutdown.
+                }
+                catch (Exception exception)
+                {
+                    failure = failure is null ? exception : new AggregateException(failure, exception);
+                }
+            }
+        }
+        finally
+        {
+            _lifetimeCancellation.Dispose();
+            lock (_gate)
+            {
+                PublishLocked(new LauncherState.Stopped());
+            }
+        }
+
+        if (failure is not null)
+        {
+            ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+    }
+
     private async Task EvaluateAsync(CancellationToken cancellationToken)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ManagedInstallationResolution resolution = await _installationResolver.ResolveAsync(cancellationToken).ConfigureAwait(false);
 
             LauncherState resolvedState = resolution switch
             {
                 ManagedInstallationResolution.Resolved resolved => new LauncherState.InstallationResolved(resolved.Installation),
                 ManagedInstallationResolution.Rejected rejected => new LauncherState.InstallationUnavailable(rejected.Issue),
-
                 _ => throw new InvalidOperationException("The managed installation resolver returned an invalid result."),
             };
 
-            PublishEvaluationResult(resolvedState, cancellationToken);
+            lock (_gate)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                PublishLocked(resolvedState);
+            }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested && exception.CancellationToken == cancellationToken)
         {
             throw;
         }
-        catch
+        catch (Exception exception)
         {
-            PublishEvaluationFailure();
+            lock (_gate)
+            {
+                if (_state is not (LauncherState.Stopping or LauncherState.Stopped))
+                {
+                    PublishLocked(new LauncherState.Faulted());
+                }
+            }
+
+            if (exception is OperationCanceledException)
+            {
+                throw new InvalidOperationException("The installation check was canceled outside launcher shutdown.", exception);
+            }
+
             throw;
-        }
-    }
-
-    private void PublishEvaluationResult(LauncherState state, CancellationToken cancellationToken)
-    {
-        lock (_gate)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (_stopping)
-            {
-                return;
-            }
-
-            PublishLocked(state);
-        }
-    }
-
-    private void PublishEvaluationFailure()
-    {
-        lock (_gate)
-        {
-            if (_stopping)
-            {
-                return;
-            }
-
-            PublishLocked(new LauncherState.Faulted());
         }
     }
 

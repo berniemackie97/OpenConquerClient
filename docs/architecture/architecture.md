@@ -99,8 +99,9 @@ The launcher currently owns:
 
 `MainWindow` is a presentation adapter. Product state belongs to `LauncherApplication`, not the UI.
 
-Shutdown becomes authoritative once it begins. Installation evaluation cannot publish a later
-installation or fault state over `Stopping`.
+Expected installation failures can be retried against the same package root. Checks run off the UI
+thread and cannot overlap. Shutdown owns one shared drain operation; late check results cannot
+replace `Stopping`. See the [installation contract](launcher-managed-installation.md) for details.
 
 The launcher currently does not implement update/repair, native account login, game settings, or
 controlled game startup. Those responsibilities should be introduced only when their actual

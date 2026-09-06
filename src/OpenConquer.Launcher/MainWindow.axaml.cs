@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 
 namespace OpenConquer.Launcher;
 
@@ -16,6 +17,8 @@ internal sealed partial class MainWindow : Window
         Title = LauncherText.WindowTitle;
         ProductName.Text = LauncherText.ProductName.ToUpperInvariant();
         InstallationHeading.Text = LauncherText.InstallationHeading;
+        RetryInstallationButton.Content = LauncherText.CheckAgain;
+        CloseButton.Content = LauncherText.Close;
         Opened += OnOpened;
         Closing += OnClosing;
         Render(_application.State);
@@ -28,7 +31,26 @@ internal sealed partial class MainWindow : Window
             return;
         }
 
-        Task evaluation = _application.StartAsync();
+        await RenderEvaluationAsync(_application.StartAsync());
+    }
+
+    private async void OnRetryInstallation(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (_closing || _application.State is not LauncherState.InstallationUnavailable)
+        {
+            return;
+        }
+
+        await RenderEvaluationAsync(_application.RetryInstallationAsync());
+    }
+
+    private void OnCloseRequested(object? sender, RoutedEventArgs eventArgs)
+    {
+        Close();
+    }
+
+    private async Task RenderEvaluationAsync(Task evaluation)
+    {
         Render(_application.State);
         try
         {
@@ -39,7 +61,10 @@ internal sealed partial class MainWindow : Window
             return;
         }
 
-        Render(_application.State);
+        if (!_closing)
+        {
+            Render(_application.State);
+        }
     }
 
     private async void OnClosing(object? sender, WindowClosingEventArgs eventArgs)
@@ -66,8 +91,6 @@ internal sealed partial class MainWindow : Window
         }
         catch
         {
-            // Shutdown still owns the close decision. Preserve the failure for the host observer,
-            // but do not leave a window open after the close request has already been accepted.
             _closeAccepted = true;
             Close();
             throw;
@@ -81,11 +104,11 @@ internal sealed partial class MainWindow : Window
     {
         if (state is LauncherState.Stopped)
         {
-            // Stopped is an application-lifecycle terminal state. The window closes after the
-            // shutdown drain; it must never remain visible as a stale "closed" screen.
             return;
         }
 
         (StatusTitle.Text, StatusDetail.Text) = LauncherText.For(state);
+        RetryInstallationButton.IsEnabled = state is LauncherState.InstallationUnavailable && !_closing;
+        CloseButton.IsEnabled = !_closing;
     }
 }
