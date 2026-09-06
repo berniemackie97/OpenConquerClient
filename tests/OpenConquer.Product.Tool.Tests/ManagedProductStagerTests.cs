@@ -10,9 +10,7 @@ public sealed class ManagedProductStagerTests
         using TemporaryDirectory temporary = new();
 
         string launcherRoot = temporary.CreateDirectory("launcher");
-
         string clientRoot = temporary.CreateDirectory("client");
-
         string outputRoot = Path.Combine(temporary.RootPath, "output");
 
         File.WriteAllText(Path.Combine(launcherRoot, "OpenConquer.Launcher"), "launcher");
@@ -51,6 +49,40 @@ public sealed class ManagedProductStagerTests
         );
 
         Assert.Equal(3, root.EnumerateObject().Count());
+    }
+
+    [Fact]
+    public void StageDoesNotPublishInternalCopySentinels()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string launcherRoot = temporary.CreateDirectory("launcher");
+
+        string launcherNestedRoot = Directory
+            .CreateDirectory(Path.Combine(launcherRoot, "nested"))
+            .FullName;
+
+        string clientRoot = temporary.CreateDirectory("client");
+
+        string clientNestedRoot = Directory
+            .CreateDirectory(Path.Combine(clientRoot, "nested"))
+            .FullName;
+
+        string outputRoot = Path.Combine(temporary.RootPath, "output");
+
+        File.WriteAllText(Path.Combine(launcherNestedRoot, "launcher.txt"), "launcher");
+
+        File.WriteAllText(Path.Combine(clientNestedRoot, "client.txt"), "client");
+
+        ManagedProductStager.Stage(new ProductStageOptions(launcherRoot, clientRoot, outputRoot));
+
+        Assert.Empty(
+            Directory.EnumerateFileSystemEntries(
+                outputRoot,
+                ".openconquer-copy-guard-*",
+                SearchOption.AllDirectories
+            )
+        );
     }
 
     [Fact]
@@ -266,6 +298,209 @@ public sealed class ManagedProductStagerTests
         );
 
         Assert.False(Directory.Exists(outputRoot));
+    }
+
+    [Fact]
+    public void StageAllowsPublishRootThroughResolvedAncestor()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string actualParent = temporary.CreateDirectory("actual-source-parent");
+
+        string launcherRoot = Directory
+            .CreateDirectory(Path.Combine(actualParent, "launcher"))
+            .FullName;
+
+        string clientRoot = temporary.CreateDirectory("client");
+
+        string linkedParent = Path.Combine(temporary.RootPath, "linked-source-parent");
+
+        string linkedLauncherRoot = Path.Combine(linkedParent, "launcher");
+
+        string outputRoot = Path.Combine(temporary.RootPath, "output");
+
+        try
+        {
+            Directory.CreateSymbolicLink(linkedParent, actualParent);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        File.WriteAllText(Path.Combine(launcherRoot, "OpenConquer.Launcher"), "launcher");
+
+        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+
+        ManagedProductStager.Stage(
+            new ProductStageOptions(linkedLauncherRoot, clientRoot, outputRoot)
+        );
+
+        Assert.Equal(
+            "launcher",
+            File.ReadAllText(Path.Combine(outputRoot, "OpenConquer.Launcher"))
+        );
+    }
+
+    [Fact]
+    public void RejectOverlappingRootsPreservesResolvedSpellingAcrossNestedAliases()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string unicodeParent = temporary.CreateDirectory("cafe\u0301");
+
+        string actualLauncherParent = temporary.CreateDirectory("actual-launcher-parent");
+
+        string actualLauncherRoot = Directory
+            .CreateDirectory(Path.Combine(actualLauncherParent, "publish"))
+            .FullName;
+
+        string clientRoot = temporary.CreateDirectory("client");
+
+        string outerAlias = Path.Combine(temporary.RootPath, "outer-alias");
+
+        string nestedAlias = Path.Combine(unicodeParent, "nested-alias");
+
+        try
+        {
+            Directory.CreateSymbolicLink(outerAlias, unicodeParent);
+
+            Directory.CreateSymbolicLink(nestedAlias, actualLauncherParent);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        string launcherThroughAliases = Path.Combine(outerAlias, "nested-alias", "publish");
+
+        string outputRoot = Path.Combine(actualLauncherRoot, "output");
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ProductStagingPathGuard.RejectOverlappingRoots(
+                launcherThroughAliases,
+                clientRoot,
+                outputRoot
+            )
+        );
+    }
+
+    [Fact]
+    public void StageRejectsOutputAncestorResolvingInsideLauncherPublish()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string launcherRoot = temporary.CreateDirectory("launcher");
+
+        string clientRoot = temporary.CreateDirectory("client");
+
+        string linkedOutputParent = Path.Combine(temporary.RootPath, "linked-output-parent");
+
+        string outputRoot = Path.Combine(linkedOutputParent, "output");
+
+        try
+        {
+            Directory.CreateSymbolicLink(linkedOutputParent, launcherRoot);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        File.WriteAllText(Path.Combine(launcherRoot, "OpenConquer.Launcher"), "launcher");
+
+        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ManagedProductStager.Stage(
+                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
+            )
+        );
+
+        Assert.False(Directory.Exists(outputRoot));
+    }
+
+    [Fact]
+    public void StageRejectsDanglingLinkedOutput()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string launcherRoot = temporary.CreateDirectory("launcher");
+
+        string clientRoot = temporary.CreateDirectory("client");
+
+        string outputRoot = Path.Combine(temporary.RootPath, "output");
+
+        string missingTarget = Path.Combine(temporary.RootPath, "missing-output-target");
+
+        try
+        {
+            Directory.CreateSymbolicLink(outputRoot, missingTarget);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        File.WriteAllText(Path.Combine(launcherRoot, "OpenConquer.Launcher"), "launcher");
+
+        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+
+        Assert.Throws<InvalidDataException>(() =>
+            ManagedProductStager.Stage(
+                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
+            )
+        );
+
+        Assert.False(Directory.Exists(missingTarget));
+    }
+
+    [Fact]
+    public void RejectOverlappingRootsUsesPortableCaseInsensitiveIdentity()
+    {
+        string temporaryRoot = Path.Combine(Path.GetTempPath(), "OpenConquer-Portable-Identity");
+
+        string launcherRoot = Path.Combine(temporaryRoot, "Launcher");
+
+        string clientRoot = Path.Combine(temporaryRoot, "Client");
+
+        string outputRoot = Path.Combine(temporaryRoot.ToLowerInvariant(), "launcher", "output");
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ProductStagingPathGuard.RejectOverlappingRoots(launcherRoot, clientRoot, outputRoot)
+        );
+    }
+
+    [Fact]
+    public void RejectOverlappingRootsUsesCanonicalUnicodeIdentity()
+    {
+        string temporaryRoot = Path.Combine(Path.GetTempPath(), "openconquer-product-identity");
+
+        string launcherRoot = Path.Combine(temporaryRoot, "caf\u00E9");
+
+        string clientRoot = Path.Combine(temporaryRoot, "client");
+
+        string outputRoot = Path.Combine(temporaryRoot, "cafe\u0301", "output");
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ProductStagingPathGuard.RejectOverlappingRoots(launcherRoot, clientRoot, outputRoot)
+        );
     }
 
     [Fact]
