@@ -163,9 +163,12 @@ Run the staged launcher on macOS/Linux with:
 A raw launcher build or publish is not an installed OpenConquer product and therefore does not have
 a managed client component.
 
-The launcher currently owns its desktop host, diagnostics, managed-installation evaluation, and
-application lifecycle. Update/repair, native AccountServer login, settings, and controlled game
-handoff are separate implementation boundaries.
+The launcher resolves the installed layout automatically. After an expected failure, **Check again**
+rechecks the same root without restarting. It does not repair files or verify release integrity.
+**Close** and the native close control drain active work and exit. See the
+[installation contract](architecture/launcher-managed-installation.md) for lifecycle and smoke checks.
+
+Update/repair, native AccountServer login, settings, and controlled game handoff are not implemented.
 
 ## Content Verification
 
