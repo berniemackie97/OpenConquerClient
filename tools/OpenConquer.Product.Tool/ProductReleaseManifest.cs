@@ -222,15 +222,31 @@ internal sealed record ProductReleaseManifest(
 
             switch (property.Name)
             {
-                case "schemaVersion" when property.Value.TryGetInt32(out int value): schemaVersion = value; break;
-                case "productId" when property.Value.ValueKind == JsonValueKind.String: productId = property.Value.GetString(); break;
-                case "releaseSequence" when property.Value.TryGetUInt64(out ulong value): releaseSequence = value; break;
-                case "releaseVersion" when property.Value.ValueKind == JsonValueKind.String: releaseVersion = property.Value.GetString(); break;
-                case "minimumLauncherVersion" when property.Value.TryGetInt32(out int value): minimumLauncherVersion = value; break;
-                case "targetRuntime" when property.Value.ValueKind == JsonValueKind.String: targetRuntime = property.Value.GetString(); break;
-                case "clientExecutable" when property.Value.ValueKind == JsonValueKind.String: clientExecutable = property.Value.GetString(); break;
-                case "files" when TryReadFiles(property.Value, out files): break;
-                default: return false;
+                case "schemaVersion" when property.Value.TryGetInt32(out int value):
+                    schemaVersion = value;
+                    break;
+                case "productId" when property.Value.ValueKind == JsonValueKind.String:
+                    productId = property.Value.GetString();
+                    break;
+                case "releaseSequence" when property.Value.TryGetUInt64(out ulong value):
+                    releaseSequence = value;
+                    break;
+                case "releaseVersion" when property.Value.ValueKind == JsonValueKind.String:
+                    releaseVersion = property.Value.GetString();
+                    break;
+                case "minimumLauncherVersion" when property.Value.TryGetInt32(out int value):
+                    minimumLauncherVersion = value;
+                    break;
+                case "targetRuntime" when property.Value.ValueKind == JsonValueKind.String:
+                    targetRuntime = property.Value.GetString();
+                    break;
+                case "clientExecutable" when property.Value.ValueKind == JsonValueKind.String:
+                    clientExecutable = property.Value.GetString();
+                    break;
+                case "files" when TryReadFiles(property.Value, out files):
+                    break;
+                default:
+                    return false;
             }
         }
 
@@ -295,10 +311,17 @@ internal sealed record ProductReleaseManifest(
 
             switch (property.Name)
             {
-                case "path" when property.Value.ValueKind == JsonValueKind.String: path = property.Value.GetString(); break;
-                case "length" when property.Value.TryGetInt64(out long value): length = value; break;
-                case "sha256" when property.Value.ValueKind == JsonValueKind.String: hash = property.Value.GetString(); break;
-                default: return false;
+                case "path" when property.Value.ValueKind == JsonValueKind.String:
+                    path = property.Value.GetString();
+                    break;
+                case "length" when property.Value.TryGetInt64(out long value):
+                    length = value;
+                    break;
+                case "sha256" when property.Value.ValueKind == JsonValueKind.String:
+                    hash = property.Value.GetString();
+                    break;
+                default:
+                    return false;
             }
         }
 
@@ -320,7 +343,10 @@ internal sealed record ProductReleaseManifest(
 
     private static void TryDelete(string path)
     {
-        try { File.Delete(path); }
+        try
+        {
+            File.Delete(path);
+        }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }

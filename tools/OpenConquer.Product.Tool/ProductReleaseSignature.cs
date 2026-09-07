@@ -151,7 +151,10 @@ internal static class ProductReleaseSignature
 
     private static void TryDelete(string path)
     {
-        try { File.Delete(path); }
+        try
+        {
+            File.Delete(path);
+        }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }

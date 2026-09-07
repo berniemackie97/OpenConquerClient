@@ -1,7 +1,7 @@
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using System.Reflection;
 using OpenConquer.Launcher.Installation;
 using OpenConquer.Launcher.Instances;
 
