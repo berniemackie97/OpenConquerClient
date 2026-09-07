@@ -15,54 +15,87 @@ internal static class ProductReleaseSignature
     private const int MaximumPublicKeyLength = 4 * 1024;
     private const int MaximumSignatureLength = 80;
     private const int MinimumSignatureLength = 64;
+    private const string KeyIdPrefix = "sha256:";
+    private const string PublicKeyPemHeader = "-----BEGIN PUBLIC KEY-----";
 
     public static void Create(ReleaseSignatureOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+
         byte[] manifest = ProductReleaseManifest.ReadRegularFile(options.ReleaseManifestPath, 8 * 1024 * 1024);
+
         _ = ProductReleaseManifest.Read(options.ReleaseManifestPath);
+
         byte[] publicKeyFile = ProductReleaseManifest.ReadRegularFile(options.PublicKeyPath, MaximumPublicKeyLength);
         byte[] signature = ProductReleaseManifest.ReadRegularFile(options.SignaturePath, MaximumSignatureLength);
+
         if (signature.Length is < MinimumSignatureLength or > MaximumSignatureLength)
         {
             throw new InvalidDataException("The ECDSA signature length is invalid.");
         }
 
         byte[] publicKey = ImportPublicKey(publicKeyFile);
+
         using ECDsa algorithm = ECDsa.Create();
-        algorithm.ImportSubjectPublicKeyInfo(publicKey, out int bytesRead);
-        if (bytesRead != publicKey.Length || !algorithm.VerifyData(manifest, signature, HashAlgorithmName.SHA256,
-                DSASignatureFormat.Rfc3279DerSequence))
+
+        try
         {
-            throw new InvalidDataException("The signature does not authenticate the release manifest.");
+            algorithm.ImportSubjectPublicKeyInfo(publicKey, out int bytesRead);
+
+            if (bytesRead != publicKey.Length || !algorithm.VerifyData(manifest, signature, HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence))
+            {
+                throw new InvalidDataException("The signature does not authenticate the release manifest.");
+            }
+        }
+        catch (CryptographicException exception)
+        {
+            throw new InvalidDataException("The release signature or public key is invalid.", exception);
         }
 
         string outputPath = ProductStagingPathGuard.NormalizePath(options.OutputPath, nameof(options.OutputPath));
-        foreach (string input in new[] { options.ReleaseManifestPath, options.PublicKeyPath, options.SignaturePath })
+
+        string[] inputPaths =
+        [
+            options.ReleaseManifestPath,
+            options.PublicKeyPath,
+            options.SignaturePath,
+        ];
+
+        StringComparison pathComparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+        foreach (string inputPath in inputPaths)
         {
-            if (string.Equals(ProductStagingPathGuard.NormalizePath(input, nameof(options)), outputPath,
-                    OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            string normalizedInputPath = ProductStagingPathGuard.NormalizePath(inputPath, nameof(options));
+
+            if (string.Equals(normalizedInputPath, outputPath, pathComparison))
             {
                 throw new InvalidOperationException("The signature envelope output must not replace an input file.");
             }
         }
 
         ProductStagingPathGuard.PrepareFileOutput(outputPath);
+
         string temporaryPath = outputPath + $".tmp-{Guid.NewGuid():N}";
         bool completed = false;
+
         try
         {
             using FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+
             using Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true });
+
             writer.WriteStartObject();
             writer.WriteNumber("schemaVersion", CurrentSchemaVersion);
-            writer.WriteString("keyId", "sha256:" + Convert.ToHexStringLower(SHA256.HashData(publicKey)));
+            writer.WriteString("keyId", GetKeyId(publicKey));
             writer.WriteString("algorithm", Algorithm);
             writer.WriteBase64String("signature", signature);
             writer.WriteEndObject();
+
             writer.Flush();
             stream.Flush(flushToDisk: true);
+
             File.Move(temporaryPath, outputPath);
+
             completed = true;
         }
         finally
@@ -77,29 +110,38 @@ internal static class ProductReleaseSignature
     public static void ValidateEnvelope(string path)
     {
         byte[] bytes = ProductReleaseManifest.ReadRegularFile(path, MaximumEnvelopeLength);
+
         using JsonDocument document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 4 });
+
         JsonElement root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Object || root.EnumerateObject().Count() != 4 ||
-            !root.TryGetProperty("schemaVersion", out JsonElement schema) || !schema.TryGetInt32(out int schemaVersion) ||
-            schemaVersion != CurrentSchemaVersion || !root.TryGetProperty("keyId", out JsonElement keyId) ||
-            !root.TryGetProperty("algorithm", out JsonElement algorithm) || !root.TryGetProperty("signature", out JsonElement signature) ||
-            keyId.ValueKind != JsonValueKind.String || algorithm.ValueKind != JsonValueKind.String || signature.ValueKind != JsonValueKind.String ||
-            !IsValidKeyId(keyId.GetString()) || !string.Equals(algorithm.GetString(), Algorithm, StringComparison.Ordinal))
+
+        if (root.ValueKind != JsonValueKind.Object || root.EnumerateObject().Count() != 4 || !root.TryGetProperty("schemaVersion", out JsonElement schema)
+            || !schema.TryGetInt32(out int schemaVersion) || schemaVersion != CurrentSchemaVersion || !root.TryGetProperty("keyId", out JsonElement keyId)
+            || !root.TryGetProperty("algorithm", out JsonElement algorithm) || !root.TryGetProperty("signature", out JsonElement signature) || keyId.ValueKind != JsonValueKind.String
+            || algorithm.ValueKind != JsonValueKind.String || signature.ValueKind != JsonValueKind.String || !IsValidKeyId(keyId.GetString()) || !string.Equals(algorithm.GetString(), Algorithm, StringComparison.Ordinal))
         {
             throw new InvalidDataException("The release signature envelope is invalid.");
         }
 
         HashSet<string> properties = root.EnumerateObject().Select(property => property.Name).ToHashSet(StringComparer.Ordinal);
+
         if (!properties.SetEquals(["schemaVersion", "keyId", "algorithm", "signature"]))
         {
             throw new InvalidDataException("The release signature envelope is invalid.");
         }
 
         string? encoded = signature.GetString();
+
+        if (encoded is null)
+        {
+            throw new InvalidDataException("The release signature envelope is invalid.");
+        }
+
         byte[] signatureBytes;
+
         try
         {
-            signatureBytes = Convert.FromBase64String(encoded ?? string.Empty);
+            signatureBytes = Convert.FromBase64String(encoded);
         }
         catch (FormatException exception)
         {
@@ -120,33 +162,68 @@ internal static class ProductReleaseSignature
     private static byte[] ImportPublicKey(ReadOnlySpan<byte> publicKeyFile)
     {
         using ECDsa algorithm = ECDsa.Create();
-        if (publicKeyFile.StartsWith("-----BEGIN"u8))
+
+        try
         {
-            algorithm.ImportFromPem(Encoding.ASCII.GetString(publicKeyFile));
-        }
-        else
-        {
-            algorithm.ImportSubjectPublicKeyInfo(publicKeyFile, out int bytesRead);
-            if (bytesRead != publicKeyFile.Length)
+            if (publicKeyFile.StartsWith("-----BEGIN"u8))
             {
-                throw new InvalidDataException("The release public key contains trailing data.");
+                string pem = Encoding.ASCII.GetString(publicKeyFile);
+
+                if (!pem.StartsWith(PublicKeyPemHeader, StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException("Only public-key PEM input is accepted for release verification.");
+                }
+
+                algorithm.ImportFromPem(pem);
             }
-        }
+            else
+            {
+                algorithm.ImportSubjectPublicKeyInfo(publicKeyFile, out int bytesRead);
 
-        ECParameters parameters = algorithm.ExportParameters(includePrivateParameters: false);
-        if (parameters.Curve.Oid.Value != ECCurve.NamedCurves.nistP256.Oid.Value ||
-            parameters.Q.X is not { Length: 32 } || parameters.Q.Y is not { Length: 32 })
+                if (bytesRead != publicKeyFile.Length)
+                {
+                    throw new InvalidDataException("The release public key contains trailing data.");
+                }
+            }
+
+            ECParameters parameters = algorithm.ExportParameters(includePrivateParameters: false);
+
+            if (parameters.Curve.Oid.Value != ECCurve.NamedCurves.nistP256.Oid.Value || parameters.Q.X is not { Length: 32 } || parameters.Q.Y is not { Length: 32 })
+            {
+                throw new InvalidDataException("Only ECDSA P-256 release public keys are supported.");
+            }
+
+            return algorithm.ExportSubjectPublicKeyInfo();
+        }
+        catch (CryptographicException exception)
         {
-            throw new InvalidDataException("Only ECDSA P-256 release public keys are supported.");
+            throw new InvalidDataException("The release public key is invalid.", exception);
         }
+    }
 
-        return algorithm.ExportSubjectPublicKeyInfo();
+    private static string GetKeyId(ReadOnlySpan<byte> publicKey)
+    {
+        return KeyIdPrefix + Convert.ToHexStringLower(SHA256.HashData(publicKey));
     }
 
     private static bool IsValidKeyId(string? keyId)
     {
-        return keyId is { Length: 71 } && keyId.StartsWith("sha256:", StringComparison.Ordinal) &&
-            keyId.AsSpan(7).All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
+        if (keyId is not { Length: 71 } || !keyId.StartsWith(KeyIdPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> digest = keyId.AsSpan(KeyIdPrefix.Length);
+
+        foreach (char character in digest)
+        {
+            if (character is not (>= '0' and <= '9') and not (>= 'a' and <= 'f'))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static void TryDelete(string path)

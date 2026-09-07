@@ -1,60 +1,76 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using OpenConquer.Launcher.Installation;
+using OpenConquer.Product.Tool;
 
 namespace OpenConquer.Launcher.Tests;
 
 public sealed class ManagedInstallationResolverTests
 {
     [Fact]
-    public async Task ResolveAsyncUsesTheLauncherPackageContextAndManagedClientRoot()
+    public async Task ResolveAsyncUsesLauncherPackageContextAndTrustedManagedClient()
     {
-        string root = CreateTemporaryDirectory();
-        string clientRoot = Path.Combine(root, "client");
-        Directory.CreateDirectory(clientRoot);
-        WriteManifest(root, "client");
+        using TemporaryDirectory temporary = new();
 
-        try
-        {
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
-                root
-            ).ResolveAsync(CancellationToken.None);
+        TrustedTestRelease release = CreateTrustedInstallation(temporary);
 
-            ManagedInstallationResolution.Resolved resolved =
-                Assert.IsType<ManagedInstallationResolution.Resolved>(resolution);
-            Assert.Equal(Path.GetFullPath(root), resolved.Installation.RootPath);
-            Assert.Equal(Path.GetFullPath(clientRoot), resolved.Installation.ClientRootPath);
-            Assert.Equal(
-                Path.Combine(Path.GetFullPath(root), ManagedInstallationManifest.FileName),
-                resolved.Installation.ManifestPath
-            );
-        }
-        finally
-        {
-            DeleteDirectory(root);
-        }
+        ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
+            temporary.RootPath,
+            release.TrustedKeys
+        ).ResolveAsync(CancellationToken.None);
+
+        ManagedInstallationResolution.Resolved resolved =
+            Assert.IsType<ManagedInstallationResolution.Resolved>(resolution);
+
+        ManagedInstallation installation = resolved.Installation;
+
+        Assert.Equal(Path.GetFullPath(temporary.RootPath), installation.RootPath);
+
+        Assert.Equal(Path.GetFullPath(release.ClientRootPath), installation.ClientRootPath);
+
+        Assert.Equal(
+            Path.GetFullPath(
+                Path.Combine(temporary.RootPath, ManagedInstallationManifest.FileName)
+            ),
+            installation.ManifestPath
+        );
+
+        Assert.Equal(
+            Path.GetFullPath(release.ReleaseManifestPath),
+            installation.ReleaseManifestPath
+        );
+
+        Assert.Equal(
+            Path.GetFullPath(release.ReleaseSignaturePath),
+            installation.ReleaseSignaturePath
+        );
+
+        Assert.Equal(
+            Path.GetFullPath(release.ClientExecutablePath),
+            installation.ClientExecutablePath
+        );
+
+        Assert.Equal(release.ReleaseSequence, installation.Release.Sequence);
+
+        Assert.Equal(release.ReleaseVersion, installation.Release.Version);
+
+        Assert.Equal(release.TargetRuntime, installation.Release.TargetRuntime);
     }
 
     [Fact]
     public async Task ResolveAsyncRejectsMissingManagedManifest()
     {
-        string root = CreateTemporaryDirectory();
-        try
-        {
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
-                root
-            ).ResolveAsync(CancellationToken.None);
+        using TemporaryDirectory temporary = new();
 
-            Assert.Equal(
-                new ManagedInstallationResolution.Rejected(
-                    ManagedInstallationIssue.ManifestMissing
-                ),
-                resolution
-            );
-        }
-        finally
-        {
-            DeleteDirectory(root);
-        }
+        ManagedInstallationResolution resolution = await CreateResolverWithUnavailableTrust(
+                temporary.RootPath
+            )
+            .ResolveAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ManifestMissing),
+            resolution
+        );
     }
 
     [Theory]
@@ -72,28 +88,24 @@ public sealed class ManagedInstallationResolverTests
     [InlineData(
         "{\"schemaVersion\":1,\"productId\":\"OpenConquer\",\"clientRoot\":\"components/game\"}"
     )]
-    public async Task ResolveAsyncRejectsManifestValuesOutsideTheManagedContract(string manifest)
+    public async Task ResolveAsyncRejectsManifestValuesOutsideManagedContract(string manifest)
     {
-        string root = CreateTemporaryDirectory();
-        try
-        {
-            File.WriteAllText(Path.Combine(root, ManagedInstallationManifest.FileName), manifest);
+        using TemporaryDirectory temporary = new();
 
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
-                root
-            ).ResolveAsync(CancellationToken.None);
+        File.WriteAllText(
+            Path.Combine(temporary.RootPath, ManagedInstallationManifest.FileName),
+            manifest
+        );
 
-            Assert.Equal(
-                new ManagedInstallationResolution.Rejected(
-                    ManagedInstallationIssue.ManifestInvalid
-                ),
-                resolution
-            );
-        }
-        finally
-        {
-            DeleteDirectory(root);
-        }
+        ManagedInstallationResolution resolution = await CreateResolverWithUnavailableTrust(
+                temporary.RootPath
+            )
+            .ResolveAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ManifestInvalid),
+            resolution
+        );
     }
 
     [Fact]
@@ -104,103 +116,277 @@ public sealed class ManagedInstallationResolverTests
             return;
         }
 
-        string root = CreateTemporaryDirectory();
-        string target = Path.Combine(root, "real-client");
-        string linked = Path.Combine(root, "client");
-        Directory.CreateDirectory(target);
+        using TemporaryDirectory temporary = new();
+
+        string target = temporary.CreateDirectory("real-client");
+
+        string linked = Path.Combine(temporary.RootPath, "client");
+
         Directory.CreateSymbolicLink(linked, target);
-        WriteManifest(root, "client");
 
-        try
-        {
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
-                root
-            ).ResolveAsync(CancellationToken.None);
+        WriteInstallationManifest(temporary.RootPath);
 
-            Assert.Equal(
-                new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.LinkedPath),
-                resolution
-            );
-        }
-        finally
-        {
-            DeleteDirectory(root);
-        }
+        ManagedInstallationResolution resolution = await CreateResolverWithUnavailableTrust(
+                temporary.RootPath
+            )
+            .ResolveAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.LinkedPath),
+            resolution
+        );
     }
 
     [Fact]
     public async Task ResolveAsyncReportsUnsupportedFutureManifest()
     {
-        string root = CreateTemporaryDirectory();
-        try
-        {
-            WriteManifest(root, "client", ManagedInstallationManifest.CurrentSchemaVersion + 1);
+        using TemporaryDirectory temporary = new();
 
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
-                root
-            ).ResolveAsync(CancellationToken.None);
+        WriteInstallationManifest(
+            temporary.RootPath,
+            ManagedInstallationManifest.CurrentSchemaVersion + 1
+        );
 
-            Assert.Equal(
-                new ManagedInstallationResolution.Rejected(
-                    ManagedInstallationIssue.UnsupportedManifest
-                ),
-                resolution
-            );
-        }
-        finally
-        {
-            DeleteDirectory(root);
-        }
+        ManagedInstallationResolution resolution = await CreateResolverWithUnavailableTrust(
+                temporary.RootPath
+            )
+            .ResolveAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new ManagedInstallationResolution.Rejected(
+                ManagedInstallationIssue.UnsupportedManifest
+            ),
+            resolution
+        );
     }
 
     [Fact]
     public async Task ResolveAsyncReportsMissingClientComponentWithoutSearchingElsewhere()
     {
-        string root = CreateTemporaryDirectory();
-        try
-        {
-            WriteManifest(root, "client");
-            Directory.CreateDirectory(Path.Combine(root, "unrelated-client"));
+        using TemporaryDirectory temporary = new();
 
-            ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
-                root
-            ).ResolveAsync(CancellationToken.None);
+        WriteInstallationManifest(temporary.RootPath);
 
-            Assert.Equal(
-                new ManagedInstallationResolution.Rejected(
-                    ManagedInstallationIssue.ClientComponentMissing
-                ),
-                resolution
-            );
-        }
-        finally
-        {
-            DeleteDirectory(root);
-        }
+        temporary.CreateDirectory("unrelated-client");
+
+        ManagedInstallationResolution resolution = await CreateResolverWithUnavailableTrust(
+                temporary.RootPath
+            )
+            .ResolveAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new ManagedInstallationResolution.Rejected(
+                ManagedInstallationIssue.ClientComponentMissing
+            ),
+            resolution
+        );
+    }
+
+    [Fact]
+    public async Task ResolveAsyncRejectsMissingReleaseMetadata()
+    {
+        using TemporaryDirectory temporary = new();
+
+        WriteInstallationManifest(temporary.RootPath);
+
+        temporary.CreateDirectory(ManagedInstallationManifest.ExpectedClientRoot);
+
+        ManagedInstallationResolution resolution = await CreateResolverWithUnavailableTrust(
+                temporary.RootPath
+            )
+            .ResolveAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new ManagedInstallationResolution.Rejected(
+                ManagedInstallationIssue.ReleaseMetadataMissing
+            ),
+            resolution
+        );
+    }
+
+    [Fact]
+    public async Task ResolveAsyncRejectsUnavailableReleaseAuthority()
+    {
+        using TemporaryDirectory temporary = new();
+
+        _ = CreateTrustedInstallation(temporary);
+
+        ManagedInstallationResolution resolution = await CreateResolverWithUnavailableTrust(
+                temporary.RootPath
+            )
+            .ResolveAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new ManagedInstallationResolution.Rejected(
+                ManagedInstallationIssue.ReleaseAuthorityUnavailable
+            ),
+            resolution
+        );
+    }
+
+    [Fact]
+    public async Task ResolveAsyncRejectsClientMutationAfterReleaseWasSigned()
+    {
+        using TemporaryDirectory temporary = new();
+
+        TrustedTestRelease release = CreateTrustedInstallation(temporary);
+
+        File.AppendAllText(release.ClientExecutablePath, "-tampered");
+
+        ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
+            temporary.RootPath,
+            release.TrustedKeys
+        ).ResolveAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new ManagedInstallationResolution.Rejected(
+                ManagedInstallationIssue.ClientIntegrityFailure
+            ),
+            resolution
+        );
+    }
+
+    [Fact]
+    public async Task ResolveAsyncRejectsReleaseSignedByDifferentPublisher()
+    {
+        using TemporaryDirectory temporary = new();
+
+        _ = CreateTrustedInstallation(temporary);
+
+        using ECDsa unrelatedPublisher = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+
+        TrustedReleaseKeys unrelatedTrust = TrustedReleaseKeys.Create(
+            unrelatedPublisher.ExportSubjectPublicKeyInfo()
+        );
+
+        ManagedInstallationResolution resolution = await new ManagedInstallationResolver(
+            temporary.RootPath,
+            unrelatedTrust
+        ).ResolveAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new ManagedInstallationResolution.Rejected(
+                ManagedInstallationIssue.ReleaseSignatureInvalid
+            ),
+            resolution
+        );
     }
 
     [Fact]
     public async Task ResolveAsyncHonorsCancellationBeforeReadingManifest()
     {
-        string root = CreateTemporaryDirectory();
+        using TemporaryDirectory temporary = new();
         using CancellationTokenSource cancellation = new();
+
         cancellation.Cancel();
 
-        try
-        {
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-                new ManagedInstallationResolver(root).ResolveAsync(cancellation.Token)
-            );
-        }
-        finally
-        {
-            DeleteDirectory(root);
-        }
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            CreateResolverWithUnavailableTrust(temporary.RootPath).ResolveAsync(cancellation.Token)
+        );
     }
 
-    private static void WriteManifest(
+    private static TrustedTestRelease CreateTrustedInstallation(TemporaryDirectory temporary)
+    {
+        string targetRuntime =
+            ReleaseTargetRuntime.Current
+            ?? throw new PlatformNotSupportedException(
+                "Launcher resolver tests require a supported OpenConquer target runtime."
+            );
+
+        string clientExecutable = ReleaseTargetRuntime.ClientExecutable(targetRuntime);
+
+        string clientRoot = temporary.CreateDirectory(
+            ManagedInstallationManifest.ExpectedClientRoot
+        );
+
+        string clientExecutablePath = Path.Combine(clientRoot, clientExecutable);
+
+        File.WriteAllText(clientExecutablePath, "client");
+
+        WriteInstallationManifest(temporary.RootPath);
+
+        const ulong releaseSequence = 7;
+        const string releaseVersion = "resolver-test";
+
+        string releaseManifestPath = Path.Combine(
+            temporary.RootPath,
+            ProductReleaseManifest.FileName
+        );
+
+        ProductReleaseManifest.Create(
+            new ReleaseManifestOptions(
+                clientRoot,
+                targetRuntime,
+                releaseVersion,
+                releaseSequence,
+                ManagedReleaseManifest.CurrentLauncherVersion,
+                releaseManifestPath
+            )
+        );
+
+        byte[] manifestBytes = File.ReadAllBytes(releaseManifestPath);
+
+        using ECDsa publisher = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+
+        byte[] publicKey = publisher.ExportSubjectPublicKeyInfo();
+
+        byte[] rawSignature = publisher.SignData(
+            manifestBytes,
+            HashAlgorithmName.SHA256,
+            DSASignatureFormat.Rfc3279DerSequence
+        );
+
+        string signingInputRoot = temporary.CreateDirectory($"signing-{Guid.NewGuid():N}");
+
+        string publicKeyPath = Path.Combine(signingInputRoot, "publisher-public-key.der");
+
+        string rawSignaturePath = Path.Combine(signingInputRoot, "release-signature.der");
+
+        string releaseSignaturePath = Path.Combine(
+            temporary.RootPath,
+            ProductReleaseSignature.FileName
+        );
+
+        File.WriteAllBytes(publicKeyPath, publicKey);
+
+        File.WriteAllBytes(rawSignaturePath, rawSignature);
+
+        ProductReleaseSignature.Create(
+            new ReleaseSignatureOptions(
+                releaseManifestPath,
+                publicKeyPath,
+                rawSignaturePath,
+                releaseSignaturePath
+            )
+        );
+
+        TrustedReleaseKeys trustedKeys = TrustedReleaseKeys.Create(publicKey);
+
+        return new TrustedTestRelease(
+            trustedKeys,
+            clientRoot,
+            clientExecutablePath,
+            releaseManifestPath,
+            releaseSignaturePath,
+            targetRuntime,
+            releaseSequence,
+            releaseVersion
+        );
+    }
+
+    private static ManagedInstallationResolver CreateResolverWithUnavailableTrust(string root)
+    {
+        TrustedReleaseKeys unavailableTrust = TrustedReleaseKeys.LoadEmbedded(
+            typeof(ManagedInstallationResolverTests).Assembly
+        );
+
+        Assert.False(unavailableTrust.IsConfigured);
+
+        return new ManagedInstallationResolver(root, unavailableTrust);
+    }
+
+    private static void WriteInstallationManifest(
         string root,
-        string clientRoot,
         int schemaVersion = ManagedInstallationManifest.CurrentSchemaVersion
     )
     {
@@ -209,29 +395,56 @@ public sealed class ManagedInstallationResolverTests
             {
                 schemaVersion,
                 productId = ManagedInstallationManifest.ExpectedProductId,
-                clientRoot,
+                clientRoot = ManagedInstallationManifest.ExpectedClientRoot,
             }
         );
 
         File.WriteAllText(Path.Combine(root, ManagedInstallationManifest.FileName), manifest);
     }
 
-    private static string CreateTemporaryDirectory()
+    private sealed record TrustedTestRelease(
+        TrustedReleaseKeys TrustedKeys,
+        string ClientRootPath,
+        string ClientExecutablePath,
+        string ReleaseManifestPath,
+        string ReleaseSignaturePath,
+        string TargetRuntime,
+        ulong ReleaseSequence,
+        string ReleaseVersion
+    );
+
+    private sealed class TemporaryDirectory : IDisposable
     {
-        string path = Path.Combine(
+        private readonly string _path = Path.Combine(
             Path.GetTempPath(),
             "OpenConquer.Launcher.Tests",
             Guid.NewGuid().ToString("N")
         );
-        Directory.CreateDirectory(path);
-        return path;
-    }
 
-    private static void DeleteDirectory(string path)
-    {
-        if (Directory.Exists(path))
+        public TemporaryDirectory()
         {
-            Directory.Delete(path, recursive: true);
+            Directory.CreateDirectory(_path);
+        }
+
+        public string RootPath => _path;
+
+        public string CreateDirectory(string name)
+        {
+            string path = Path.Combine(_path, name);
+
+            Directory.CreateDirectory(path);
+
+            return path;
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                Directory.Delete(_path, recursive: true);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
     }
 }

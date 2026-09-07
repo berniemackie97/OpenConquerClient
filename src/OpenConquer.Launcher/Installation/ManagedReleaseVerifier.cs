@@ -13,16 +13,12 @@ internal sealed class ManagedReleaseVerifier
     public ManagedReleaseVerifier(TrustedReleaseKeys trustedKeys, string? currentRuntime = null)
     {
         ArgumentNullException.ThrowIfNull(trustedKeys);
+
         _trustedKeys = trustedKeys;
         _currentRuntime = currentRuntime ?? ReleaseTargetRuntime.Current;
     }
 
-    public async Task<ManagedReleaseVerification> VerifyAsync(
-        string clientRootPath,
-        ManagedReleaseManifest manifest,
-        ReadOnlyMemory<byte> manifestBytes,
-        ManagedReleaseSignature signature,
-        CancellationToken cancellationToken)
+    public async Task<ManagedReleaseVerification> VerifyAsync(string clientRootPath, ManagedReleaseManifest manifest, ReadOnlyMemory<byte> manifestBytes, ManagedReleaseSignature signature, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientRootPath);
         ArgumentNullException.ThrowIfNull(manifest);
@@ -46,7 +42,9 @@ internal sealed class ManagedReleaseVerifier
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            IReadOnlyDictionary<string, string> actualFiles = EnumerateClientFiles(clientRootPath, cancellationToken);
+
+            Dictionary<string, string> actualFiles = EnumerateClientFiles(clientRootPath, cancellationToken);
+
             if (actualFiles.Count != manifest.Files.Count)
             {
                 return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ClientIntegrityFailure);
@@ -55,25 +53,27 @@ internal sealed class ManagedReleaseVerifier
             foreach (ManagedReleaseFile expected in manifest.Files)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!actualFiles.TryGetValue(expected.Path, out string? actualPath) ||
-                    !await MatchesAsync(actualPath, expected, cancellationToken).ConfigureAwait(false))
+
+                if (!actualFiles.TryGetValue(expected.Path, out string? actualPath) || !await MatchesAsync(actualPath, expected, cancellationToken).ConfigureAwait(false))
                 {
                     return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ClientIntegrityFailure);
                 }
             }
 
-            // Re-enumeration catches ordinary update/repair races that add, remove, link, or rename
-            // entries while hashing. A same-user hostile process remains outside this trust boundary.
-            IReadOnlyDictionary<string, string> finalFiles = EnumerateClientFiles(clientRootPath, cancellationToken);
-            if (finalFiles.Count != actualFiles.Count || actualFiles.Any(pair =>
-                    !finalFiles.TryGetValue(pair.Key, out string? finalPath) || !string.Equals(pair.Value, finalPath, StringComparison.Ordinal)))
+            // Re-enumeration catches ordinary update/repair races that add, remove,
+            // link, or rename entries while hashing. A hostile process executing as
+            // the same OS user is outside this filesystem-integrity trust boundary.
+            Dictionary<string, string> finalFiles = EnumerateClientFiles(clientRootPath, cancellationToken);
+
+            if (finalFiles.Count != actualFiles.Count || actualFiles.Any(pair => !finalFiles.TryGetValue(pair.Key, out string? finalPath)
+                    || !string.Equals(pair.Value, finalPath, StringComparison.Ordinal)))
             {
                 return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ClientIntegrityFailure);
             }
 
             string executablePath = ReleasePackagePath.Combine(clientRootPath, manifest.ClientExecutable);
-            return new ManagedReleaseVerification.Verified(new ManagedReleaseIdentity(
-                manifest.ReleaseSequence, manifest.ReleaseVersion, manifest.TargetRuntime), executablePath);
+
+            return new ManagedReleaseVerification.Verified(new ManagedReleaseIdentity(manifest.ReleaseSequence, manifest.ReleaseVersion, manifest.TargetRuntime), executablePath);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -97,23 +97,27 @@ internal sealed class ManagedReleaseVerifier
         }
     }
 
-    private static IReadOnlyDictionary<string, string> EnumerateClientFiles(string clientRootPath, CancellationToken cancellationToken)
+    private static Dictionary<string, string> EnumerateClientFiles(string clientRootPath, CancellationToken cancellationToken)
     {
         Dictionary<string, string> files = new(StringComparer.Ordinal);
         HashSet<string> portablePaths = new(StringComparer.Ordinal);
         Stack<DirectoryInfo> pending = new();
+
         pending.Push(new DirectoryInfo(clientRootPath));
+
         int directoryCount = 0;
 
         while (pending.TryPop(out DirectoryInfo? directory))
         {
             cancellationToken.ThrowIfCancellationRequested();
+
             if (++directoryCount > MaximumDirectoryCount)
             {
                 throw new InvalidDataException("The client directory count exceeds the release limit.");
             }
 
             directory.Refresh();
+
             if (!directory.Exists || directory.LinkTarget is not null || (directory.Attributes & FileAttributes.ReparsePoint) != 0)
             {
                 throw new LinkedInstallationPathException();
@@ -122,7 +126,9 @@ internal sealed class ManagedReleaseVerifier
             foreach (FileSystemInfo entry in directory.EnumerateFileSystemInfos().OrderBy(item => item.Name, StringComparer.Ordinal))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
                 entry.Refresh();
+
                 if (entry.LinkTarget is not null || (entry.Attributes & FileAttributes.ReparsePoint) != 0)
                 {
                     throw new LinkedInstallationPathException();
@@ -145,6 +151,7 @@ internal sealed class ManagedReleaseVerifier
                 }
 
                 string relativePath = Path.GetRelativePath(clientRootPath, entry.FullName).Replace(Path.DirectorySeparatorChar, '/');
+
                 if (!ReleasePackagePath.IsValid(relativePath) || !files.TryAdd(relativePath, entry.FullName) || !portablePaths.Add(ReleasePackagePath.PortableIdentity(relativePath)))
                 {
                     throw new InvalidDataException("The client contains an invalid or ambiguous path.");
@@ -157,14 +164,17 @@ internal sealed class ManagedReleaseVerifier
 
     private static async Task<bool> MatchesAsync(string path, ManagedReleaseFile expected, CancellationToken cancellationToken)
     {
-        FileAttributes attributes = File.GetAttributes(path);
-        if ((attributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.Device)) != 0)
+        FileAttributes pathAttributes = File.GetAttributes(path);
+
+        if ((pathAttributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.Device)) != 0)
         {
             throw new LinkedInstallationPathException();
         }
 
         await using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 128 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
+
         FileAttributes openedAttributes = File.GetAttributes(stream.SafeFileHandle);
+
         if ((openedAttributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.Device)) != 0)
         {
             throw new LinkedInstallationPathException();
@@ -176,7 +186,20 @@ internal sealed class ManagedReleaseVerifier
         }
 
         byte[] actualHash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
-        return stream.Length == expected.Length && !File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint) && CryptographicOperations.FixedTimeEquals(actualHash, expected.Sha256);
+
+        if (stream.Length != expected.Length)
+        {
+            return false;
+        }
+
+        FileAttributes finalPathAttributes = File.GetAttributes(path);
+
+        if ((finalPathAttributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.Device)) != 0)
+        {
+            return false;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(actualHash, expected.Sha256);
     }
 }
 
@@ -188,6 +211,8 @@ internal abstract record ManagedReleaseVerification
     {
     }
 
-    internal sealed record Verified(ManagedReleaseIdentity Release, string ClientExecutablePath) : ManagedReleaseVerification;
+    internal sealed record Verified(ManagedReleaseIdentity Release, string ClientExecutablePath)
+        : ManagedReleaseVerification;
+
     internal sealed record Rejected(ManagedInstallationIssue Issue) : ManagedReleaseVerification;
 }

@@ -4,8 +4,11 @@ namespace OpenConquer.Product.Tool.Tests;
 
 public sealed class ManagedProductStagerTests
 {
+    private const string TestTargetRuntime = "linux-x64";
+    private const string TestClientExecutable = "OpenConquer.Client";
+
     [Fact]
-    public void StageComposesManagedProductAndWritesDescriptor()
+    public void StageComposesManagedProductAndWritesDescriptorAndReleaseMetadata()
     {
         using TemporaryDirectory temporary = new();
 
@@ -15,9 +18,20 @@ public sealed class ManagedProductStagerTests
 
         File.WriteAllText(Path.Combine(launcherRoot, "OpenConquer.Launcher"), "launcher");
 
-        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
 
-        ManagedProductStager.Stage(new ProductStageOptions(launcherRoot, clientRoot, outputRoot));
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
+        );
+
+        byte[] expectedManifest = File.ReadAllBytes(options.ReleaseManifestPath);
+
+        byte[] expectedSignature = File.ReadAllBytes(options.ReleaseSignaturePath);
+
+        ManagedProductStager.Stage(options);
 
         Assert.Equal(
             "launcher",
@@ -27,7 +41,7 @@ public sealed class ManagedProductStagerTests
         Assert.Equal(
             "client",
             File.ReadAllText(
-                Path.Combine(outputRoot, ManagedProductDescriptor.ClientRoot, "OpenConquer.Client")
+                Path.Combine(outputRoot, ManagedProductDescriptor.ClientRoot, TestClientExecutable)
             )
         );
 
@@ -49,6 +63,16 @@ public sealed class ManagedProductStagerTests
         );
 
         Assert.Equal(3, root.EnumerateObject().Count());
+
+        Assert.Equal(
+            expectedManifest,
+            File.ReadAllBytes(Path.Combine(outputRoot, ProductReleaseManifest.FileName))
+        );
+
+        Assert.Equal(
+            expectedSignature,
+            File.ReadAllBytes(Path.Combine(outputRoot, ProductReleaseSignature.FileName))
+        );
     }
 
     [Fact]
@@ -72,9 +96,13 @@ public sealed class ManagedProductStagerTests
 
         File.WriteAllText(Path.Combine(launcherNestedRoot, "launcher.txt"), "launcher");
 
-        File.WriteAllText(Path.Combine(clientNestedRoot, "client.txt"), "client");
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
 
-        ManagedProductStager.Stage(new ProductStageOptions(launcherRoot, clientRoot, outputRoot));
+        File.WriteAllText(Path.Combine(clientNestedRoot, "client.txt"), "client-data");
+
+        ManagedProductStager.Stage(
+            CreateStageOptions(temporary, launcherRoot, clientRoot, outputRoot)
+        );
 
         Assert.Empty(
             Directory.EnumerateFileSystemEntries(
@@ -98,13 +126,16 @@ public sealed class ManagedProductStagerTests
 
         File.WriteAllText(Path.Combine(launcherRoot, ManagedProductDescriptor.FileName), "{}");
 
-        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
 
-        Assert.Throws<InvalidDataException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
         );
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
 
         Assert.False(Directory.Exists(outputRoot));
     }
@@ -122,13 +153,43 @@ public sealed class ManagedProductStagerTests
 
         Directory.CreateDirectory(Path.Combine(launcherRoot, ManagedProductDescriptor.ClientRoot));
 
-        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
 
-        Assert.Throws<InvalidDataException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
         );
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
+
+        Assert.False(Directory.Exists(outputRoot));
+    }
+
+    [Fact]
+    public void StageRejectsLauncherPublishContainingReservedReleaseMetadata()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string launcherRoot = temporary.CreateDirectory("launcher");
+
+        string clientRoot = temporary.CreateDirectory("client");
+
+        string outputRoot = Path.Combine(temporary.RootPath, "output");
+
+        File.WriteAllText(Path.Combine(launcherRoot, ProductReleaseManifest.FileName), "{}");
+
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
+
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
+        );
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
 
         Assert.False(Directory.Exists(outputRoot));
     }
@@ -146,15 +207,18 @@ public sealed class ManagedProductStagerTests
 
         string existingFile = Path.Combine(outputRoot, "keep.txt");
 
-        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
 
         File.WriteAllText(existingFile, "keep");
 
-        Assert.Throws<InvalidOperationException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
         );
+
+        Assert.Throws<InvalidOperationException>(() => ManagedProductStager.Stage(options));
 
         Assert.Equal("keep", File.ReadAllText(existingFile));
     }
@@ -172,11 +236,15 @@ public sealed class ManagedProductStagerTests
 
         File.WriteAllText(Path.Combine(launcherRoot, "OpenConquer.Launcher"), "launcher");
 
-        Assert.Throws<InvalidDataException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot,
+            createManifestFromClient: false
         );
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
 
         Assert.False(Directory.Exists(outputRoot));
 
@@ -194,7 +262,7 @@ public sealed class ManagedProductStagerTests
 
         string outputRoot = Path.Combine(temporary.RootPath, "output");
 
-        string clientExecutable = Path.Combine(clientRoot, "OpenConquer.Client");
+        string clientExecutable = Path.Combine(clientRoot, TestClientExecutable);
 
         File.WriteAllText(clientExecutable, "client");
 
@@ -213,11 +281,14 @@ public sealed class ManagedProductStagerTests
             return;
         }
 
-        Assert.Throws<InvalidDataException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
         );
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
 
         Assert.False(Directory.Exists(outputRoot));
     }
@@ -233,7 +304,7 @@ public sealed class ManagedProductStagerTests
 
         string outputRoot = Path.Combine(temporary.RootPath, "output");
 
-        string clientFile = Path.Combine(clientRoot, "OpenConquer.Client");
+        string clientFile = Path.Combine(clientRoot, TestClientExecutable);
 
         File.WriteAllText(clientFile, "client");
 
@@ -252,11 +323,15 @@ public sealed class ManagedProductStagerTests
             return;
         }
 
-        Assert.Throws<InvalidDataException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot,
+            createManifestFromClient: false
         );
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
 
         Assert.False(Directory.Exists(outputRoot));
 
@@ -276,7 +351,7 @@ public sealed class ManagedProductStagerTests
 
         string linkedClientRoot = Path.Combine(temporary.RootPath, "linked-client");
 
-        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
 
         try
         {
@@ -291,11 +366,15 @@ public sealed class ManagedProductStagerTests
             return;
         }
 
-        Assert.Throws<InvalidDataException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, linkedClientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            linkedClientRoot,
+            outputRoot,
+            createManifestFromClient: false
         );
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
 
         Assert.False(Directory.Exists(outputRoot));
     }
@@ -334,10 +413,10 @@ public sealed class ManagedProductStagerTests
 
         File.WriteAllText(Path.Combine(launcherRoot, "OpenConquer.Launcher"), "launcher");
 
-        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
 
         ManagedProductStager.Stage(
-            new ProductStageOptions(linkedLauncherRoot, clientRoot, outputRoot)
+            CreateStageOptions(temporary, linkedLauncherRoot, clientRoot, outputRoot)
         );
 
         Assert.Equal(
@@ -421,13 +500,16 @@ public sealed class ManagedProductStagerTests
 
         File.WriteAllText(Path.Combine(launcherRoot, "OpenConquer.Launcher"), "launcher");
 
-        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
 
-        Assert.Throws<InvalidOperationException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
         );
+
+        Assert.Throws<InvalidOperationException>(() => ManagedProductStager.Stage(options));
 
         Assert.False(Directory.Exists(outputRoot));
     }
@@ -460,13 +542,16 @@ public sealed class ManagedProductStagerTests
 
         File.WriteAllText(Path.Combine(launcherRoot, "OpenConquer.Launcher"), "launcher");
 
-        File.WriteAllText(Path.Combine(clientRoot, "OpenConquer.Client"), "client");
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
 
-        Assert.Throws<InvalidDataException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
         );
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
 
         Assert.False(Directory.Exists(missingTarget));
     }
@@ -514,11 +599,15 @@ public sealed class ManagedProductStagerTests
 
         string outputRoot = Path.Combine(launcherRoot, "output");
 
-        Assert.Throws<InvalidOperationException>(() =>
-            ManagedProductStager.Stage(
-                new ProductStageOptions(launcherRoot, clientRoot, outputRoot)
-            )
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot,
+            createManifestFromClient: false
         );
+
+        Assert.Throws<InvalidOperationException>(() => ManagedProductStager.Stage(options));
 
         Assert.False(Directory.Exists(outputRoot));
     }
@@ -539,7 +628,7 @@ public sealed class ManagedProductStagerTests
 
         string outputRoot = Path.Combine(temporary.RootPath, "output");
 
-        string clientExecutable = Path.Combine(clientRoot, "OpenConquer.Client");
+        string clientExecutable = Path.Combine(clientRoot, TestClientExecutable);
 
         File.WriteAllText(clientExecutable, "client");
 
@@ -554,15 +643,219 @@ public sealed class ManagedProductStagerTests
 
         File.SetUnixFileMode(clientExecutable, expectedMode);
 
-        ManagedProductStager.Stage(new ProductStageOptions(launcherRoot, clientRoot, outputRoot));
+        ManagedProductStager.Stage(
+            CreateStageOptions(temporary, launcherRoot, clientRoot, outputRoot)
+        );
 
         string stagedExecutable = Path.Combine(
             outputRoot,
             ManagedProductDescriptor.ClientRoot,
-            "OpenConquer.Client"
+            TestClientExecutable
         );
 
         Assert.Equal(expectedMode, File.GetUnixFileMode(stagedExecutable));
+    }
+
+    [Fact]
+    public void StageRejectsClientMutationAfterManifestCreation()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string launcherRoot = temporary.CreateDirectory("launcher");
+
+        string clientRoot = temporary.CreateDirectory("client");
+
+        string outputRoot = Path.Combine(temporary.RootPath, "output");
+
+        string clientExecutable = Path.Combine(clientRoot, TestClientExecutable);
+
+        File.WriteAllText(clientExecutable, "client");
+
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
+        );
+
+        File.AppendAllText(clientExecutable, "-mutated");
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
+
+        Assert.False(Directory.Exists(outputRoot));
+
+        Assert.Empty(Directory.EnumerateDirectories(temporary.RootPath, "output.staging-*"));
+    }
+
+    [Fact]
+    public void StageRejectsMalformedReleaseSignatureWithoutCreatingOutput()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string launcherRoot = temporary.CreateDirectory("launcher");
+
+        string clientRoot = temporary.CreateDirectory("client");
+
+        string outputRoot = Path.Combine(temporary.RootPath, "output");
+
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
+
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
+        );
+
+        File.WriteAllText(options.ReleaseSignaturePath, "{}");
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
+
+        Assert.False(Directory.Exists(outputRoot));
+
+        Assert.Empty(Directory.EnumerateDirectories(temporary.RootPath, "output.staging-*"));
+    }
+
+    [Fact]
+    public void StageRejectsReleaseMetadataInsideLauncherPublish()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string launcherRoot = temporary.CreateDirectory("launcher");
+
+        string clientRoot = temporary.CreateDirectory("client");
+
+        string outputRoot = Path.Combine(temporary.RootPath, "output");
+
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
+
+        ProductStageOptions externalOptions = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
+        );
+
+        string embeddedSignature = Path.Combine(launcherRoot, ProductReleaseSignature.FileName);
+
+        File.Copy(externalOptions.ReleaseSignaturePath, embeddedSignature);
+
+        ProductStageOptions options = new(
+            launcherRoot,
+            clientRoot,
+            externalOptions.ReleaseManifestPath,
+            embeddedSignature,
+            outputRoot
+        );
+
+        Assert.Throws<InvalidOperationException>(() => ManagedProductStager.Stage(options));
+
+        Assert.False(Directory.Exists(outputRoot));
+    }
+
+    private static ProductStageOptions CreateStageOptions(
+        TemporaryDirectory temporary,
+        string launcherRoot,
+        string clientRoot,
+        string outputRoot,
+        bool createManifestFromClient = true
+    )
+    {
+        string metadataRoot = temporary.CreateDirectory($"release-{Guid.NewGuid():N}");
+
+        string manifestPath = Path.Combine(metadataRoot, ProductReleaseManifest.FileName);
+
+        string signaturePath = Path.Combine(metadataRoot, ProductReleaseSignature.FileName);
+
+        if (createManifestFromClient)
+        {
+            ProductReleaseManifest.Create(
+                new ReleaseManifestOptions(
+                    clientRoot,
+                    TestTargetRuntime,
+                    "test-release",
+                    ReleaseSequence: 1,
+                    MinimumLauncherVersion: 1,
+                    manifestPath
+                )
+            );
+        }
+        else
+        {
+            WritePlaceholderReleaseManifest(manifestPath);
+        }
+
+        WriteSignatureEnvelope(signaturePath);
+
+        return new ProductStageOptions(
+            launcherRoot,
+            clientRoot,
+            manifestPath,
+            signaturePath,
+            outputRoot
+        );
+    }
+
+    private static void WritePlaceholderReleaseManifest(string path)
+    {
+        using FileStream stream = new(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+
+        using Utf8JsonWriter writer = new(stream);
+
+        writer.WriteStartObject();
+
+        writer.WriteNumber("schemaVersion", ProductReleaseManifest.CurrentSchemaVersion);
+
+        writer.WriteString("productId", ProductReleaseManifest.ExpectedProductId);
+
+        writer.WriteNumber("releaseSequence", 1);
+
+        writer.WriteString("releaseVersion", "test-release");
+
+        writer.WriteNumber("minimumLauncherVersion", 1);
+
+        writer.WriteString("targetRuntime", TestTargetRuntime);
+
+        writer.WriteString("clientExecutable", TestClientExecutable);
+
+        writer.WriteStartArray("files");
+
+        writer.WriteStartObject();
+
+        writer.WriteString("path", TestClientExecutable);
+
+        writer.WriteNumber("length", 6);
+
+        writer.WriteString("sha256", new string('0', 64));
+
+        writer.WriteEndObject();
+
+        writer.WriteEndArray();
+
+        writer.WriteEndObject();
+
+        writer.Flush();
+    }
+
+    private static void WriteSignatureEnvelope(string path)
+    {
+        using FileStream stream = new(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+
+        using Utf8JsonWriter writer = new(stream);
+
+        writer.WriteStartObject();
+
+        writer.WriteNumber("schemaVersion", 1);
+
+        writer.WriteString("keyId", "sha256:" + new string('0', 64));
+
+        writer.WriteString("algorithm", ProductReleaseSignature.Algorithm);
+
+        writer.WriteBase64String("signature", new byte[64]);
+
+        writer.WriteEndObject();
+
+        writer.Flush();
     }
 
     private sealed class TemporaryDirectory : IDisposable

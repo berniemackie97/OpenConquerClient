@@ -8,40 +8,24 @@ internal static class ManagedProductStager
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        string launcherPublishPath = ProductStagingPathGuard.RequireDirectory(
-            options.LauncherPublishPath,
-            nameof(options.LauncherPublishPath)
-        );
+        string launcherPublishPath = ProductStagingPathGuard.RequireDirectory(options.LauncherPublishPath, nameof(options.LauncherPublishPath));
+        string clientPublishPath = ProductStagingPathGuard.RequireDirectory(options.ClientPublishPath, nameof(options.ClientPublishPath));
+        string releaseManifestPath = ProductStagingPathGuard.RequireRegularFile(options.ReleaseManifestPath, nameof(options.ReleaseManifestPath));
+        string releaseSignaturePath = ProductStagingPathGuard.RequireRegularFile(options.ReleaseSignaturePath, nameof(options.ReleaseSignaturePath));
 
-        string clientPublishPath = ProductStagingPathGuard.RequireDirectory(
-            options.ClientPublishPath,
-            nameof(options.ClientPublishPath)
-        );
+        RejectReleaseMetadataWithinPublishRoots(launcherPublishPath, clientPublishPath, releaseManifestPath, releaseSignaturePath);
 
-        string outputRootPath = ProductStagingPathGuard.NormalizePath(
-            options.OutputRootPath,
-            nameof(options.OutputRootPath)
-        );
+        _ = ProductReleaseManifest.Read(releaseManifestPath);
+        ProductReleaseSignature.ValidateEnvelope(releaseSignaturePath);
 
-        ProductStagingPathGuard.RejectOverlappingRoots(
-            launcherPublishPath,
-            clientPublishPath,
-            outputRootPath
-        );
+        string outputRootPath = ProductStagingPathGuard.NormalizePath(options.OutputRootPath, nameof(options.OutputRootPath));
 
+        ProductStagingPathGuard.RejectOverlappingRoots(launcherPublishPath, clientPublishPath, outputRootPath);
         ProductStagingPathGuard.PrepareOutputParent(outputRootPath);
 
         string stagingRootPath = outputRootPath + $".staging-{Guid.NewGuid():N}";
 
-        /*
-         * The staging directory is itself a product root candidate and must
-         * satisfy the same source-separation policy as the final output.
-         */
-        ProductStagingPathGuard.RejectOverlappingRoots(
-            launcherPublishPath,
-            clientPublishPath,
-            stagingRootPath
-        );
+        ProductStagingPathGuard.RejectOverlappingRoots(launcherPublishPath, clientPublishPath, stagingRootPath);
 
         EnsureStagingRootDoesNotExist(stagingRootPath);
 
@@ -59,10 +43,7 @@ internal static class ManagedProductStager
 
             RejectReservedProductEntries(stagingRootPath);
 
-            string clientDestinationPath = Path.Combine(
-                stagingRootPath,
-                ManagedProductDescriptor.ClientRoot
-            );
+            string clientDestinationPath = Path.Combine(stagingRootPath, ManagedProductDescriptor.ClientRoot);
 
             CopyTree(clientPublishPath, clientDestinationPath, copySentinelFileName);
 
@@ -70,6 +51,18 @@ internal static class ManagedProductStager
             {
                 throw new InvalidDataException("The staged client component is empty.");
             }
+
+            string stagedReleaseManifestPath = Path.Combine(stagingRootPath, ProductReleaseManifest.FileName);
+            string stagedReleaseSignaturePath = Path.Combine(stagingRootPath, ProductReleaseSignature.FileName);
+
+            CopyReleaseMetadata(releaseManifestPath, stagedReleaseManifestPath, "release manifest");
+            CopyReleaseMetadata(releaseSignaturePath, stagedReleaseSignaturePath, "release signature");
+
+            ProductReleaseManifest stagedManifest = ProductReleaseManifest.Read(stagedReleaseManifestPath);
+
+            ProductReleaseSignature.ValidateEnvelope(stagedReleaseSignaturePath);
+
+            ProductReleaseManifest.VerifyClient(clientDestinationPath, stagedManifest);
 
             ManagedProductDescriptor.Write(stagingRootPath);
 
@@ -86,57 +79,74 @@ internal static class ManagedProductStager
         }
     }
 
+    private static void RejectReleaseMetadataWithinPublishRoots(string launcherPublishPath, string clientPublishPath, string releaseManifestPath, string releaseSignaturePath)
+    {
+        ProductStagingPathGuard.RejectPathWithinRoot(launcherPublishPath, releaseManifestPath, "The release manifest must remain outside the launcher publish.");
+        ProductStagingPathGuard.RejectPathWithinRoot(clientPublishPath, releaseManifestPath, "The release manifest must remain outside the client publish.");
+        ProductStagingPathGuard.RejectPathWithinRoot(launcherPublishPath, releaseSignaturePath, "The release signature must remain outside the launcher publish.");
+        ProductStagingPathGuard.RejectPathWithinRoot(clientPublishPath, releaseSignaturePath, "The release signature must remain outside the client publish.");
+    }
+
     private static void RejectReservedProductEntries(string productRoot)
     {
-        string descriptorPath = Path.Combine(productRoot, ManagedProductDescriptor.FileName);
+        RejectReservedProductEntry(productRoot, ManagedProductDescriptor.FileName, "product composition owns that descriptor");
+        RejectReservedProductEntry(productRoot, ManagedProductDescriptor.ClientRoot, "product composition owns the managed client component");
+        RejectReservedProductEntry(productRoot, ProductReleaseManifest.FileName, "product composition owns the release manifest");
+        RejectReservedProductEntry(productRoot, ProductReleaseSignature.FileName, "product composition owns the release signature");
+    }
 
-        if (File.Exists(descriptorPath) || Directory.Exists(descriptorPath))
+    private static void RejectReservedProductEntry(string productRoot, string entryName, string reason)
+    {
+        string entryPath = Path.Combine(productRoot, entryName);
+
+        if (File.Exists(entryPath) || Directory.Exists(entryPath) || EntryExists(entryPath))
         {
-            throw new InvalidDataException(
-                $"The launcher publish must not contain '{ManagedProductDescriptor.FileName}'; product composition owns that descriptor."
-            );
+            throw new InvalidDataException($"The launcher publish must not contain reserved entry '{entryName}'; {reason}.");
+        }
+    }
+
+    private static void CopyReleaseMetadata(string sourcePath, string destinationPath, string description)
+    {
+        string validatedSourcePath = ProductStagingPathGuard.RequireRegularFile(sourcePath, description);
+
+        if (File.Exists(destinationPath) || Directory.Exists(destinationPath) || EntryExists(destinationPath))
+        {
+            throw new InvalidOperationException($"The staged {description} destination already exists.");
         }
 
-        string clientComponentPath = Path.Combine(productRoot, ManagedProductDescriptor.ClientRoot);
+        File.Copy(validatedSourcePath, destinationPath, overwrite: false);
 
-        if (File.Exists(clientComponentPath) || Directory.Exists(clientComponentPath))
-        {
-            throw new InvalidDataException(
-                $"The launcher publish must not contain the reserved '{ManagedProductDescriptor.ClientRoot}' component."
-            );
-        }
+        _ = ProductStagingPathGuard.RequireRegularFile(destinationPath, $"staged {description}");
     }
 
     private static void EnsureStagingRootDoesNotExist(string stagingRootPath)
     {
-        if (File.Exists(stagingRootPath) || Directory.Exists(stagingRootPath))
+        if (EntryExists(stagingRootPath))
         {
-            throw new InvalidOperationException(
-                $"The temporary staging path '{stagingRootPath}' already exists."
-            );
+            throw new InvalidOperationException($"The temporary staging path '{stagingRootPath}' already exists.");
+        }
+    }
+
+    private static bool EntryExists(string path)
+    {
+        if (File.Exists(path) || Directory.Exists(path))
+        {
+            return true;
         }
 
-        /*
-         * Exists() follows links on some platforms and can report false for a
-         * dangling link. GetAttributes inspects the lexical entry and gives us
-         * an additional collision check before we claim the staging pathname.
-         */
         try
         {
-            _ = File.GetAttributes(stagingRootPath);
+            _ = File.GetAttributes(path);
+            return true;
         }
         catch (FileNotFoundException)
         {
-            return;
+            return false;
         }
         catch (DirectoryNotFoundException)
         {
-            return;
+            return false;
         }
-
-        throw new InvalidOperationException(
-            $"The temporary staging path '{stagingRootPath}' already exists."
-        );
     }
 
     private static void CopyTree(string sourceRoot, string destinationRoot, string sentinelFileName)
@@ -153,34 +163,20 @@ internal static class ManagedProductStager
 
         try
         {
-            /*
-             * This second check occurs after the marker exists in the
-             * destination. If sourceRoot and destinationRoot are the same
-             * physical directory through an alias that portable path analysis
-             * could not identify, the source now exposes our marker and the
-             * copy fails before processing its contents.
-             */
             ThrowIfCopySentinelIsPresent(sourceRoot, sentinelFileName);
 
-            foreach (
-                FileSystemInfo entry in new DirectoryInfo(sourceRoot).EnumerateFileSystemInfos()
-            )
+            foreach (FileSystemInfo entry in new DirectoryInfo(sourceRoot).EnumerateFileSystemInfos())
             {
+                entry.Refresh();
+
                 if (string.Equals(entry.Name, sentinelFileName, StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new InvalidOperationException(
-                        "Product staging detected a filesystem alias that would copy the staging tree into itself."
-                    );
+                    throw new InvalidOperationException("Product staging detected a filesystem alias that would copy the staging tree into itself.");
                 }
 
-                if (
-                    (entry.Attributes & FileAttributes.ReparsePoint) != 0
-                    || entry.LinkTarget is not null
-                )
+                if ((entry.Attributes & FileAttributes.ReparsePoint) != 0 || entry.LinkTarget is not null)
                 {
-                    throw new InvalidDataException(
-                        $"Linked paths are not allowed in product staging: '{entry.FullName}'."
-                    );
+                    throw new InvalidDataException($"Linked paths are not allowed in product staging: '{entry.FullName}'.");
                 }
 
                 string destinationPath = Path.Combine(destinationRoot, entry.Name);
@@ -192,11 +188,9 @@ internal static class ManagedProductStager
                     continue;
                 }
 
-                if (entry is not FileInfo)
+                if (entry is not FileInfo || (entry.Attributes & (FileAttributes.Directory | FileAttributes.Device)) != 0)
                 {
-                    throw new InvalidDataException(
-                        $"Unsupported filesystem entry in product staging: '{entry.FullName}'."
-                    );
+                    throw new InvalidDataException($"Unsupported filesystem entry in product staging: '{entry.FullName}'.");
                 }
 
                 File.Copy(entry.FullName, destinationPath, overwrite: false);
@@ -210,19 +204,10 @@ internal static class ManagedProductStager
         {
             if (copyCompleted)
             {
-                /*
-                 * A successful copy may not leave internal staging machinery
-                 * in the product. Failure to remove the marker therefore makes
-                 * the staging operation fail.
-                 */
                 File.Delete(sentinelPath);
             }
             else
             {
-                /*
-                 * When another copy failure already exists, marker cleanup is
-                 * best-effort so it cannot replace the primary exception.
-                 */
                 TryDeleteCopySentinel(sentinelPath);
             }
         }
@@ -232,22 +217,15 @@ internal static class ManagedProductStager
     {
         string sentinelPath = Path.Combine(sourceRoot, sentinelFileName);
 
-        if (File.Exists(sentinelPath) || Directory.Exists(sentinelPath))
+        if (EntryExists(sentinelPath))
         {
-            throw new InvalidOperationException(
-                "Product staging detected a filesystem alias that would copy the staging tree into itself."
-            );
+            throw new InvalidOperationException("Product staging detected a filesystem alias that would copy the staging tree into itself.");
         }
     }
 
     private static void CreateCopySentinel(string sentinelPath)
     {
-        using FileStream stream = new(
-            sentinelPath,
-            FileMode.CreateNew,
-            FileAccess.Write,
-            FileShare.None
-        );
+        using FileStream stream = new(sentinelPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
     }
 
     private static void PreserveUnixMode(string sourcePath, string destinationPath)
@@ -263,10 +241,6 @@ internal static class ManagedProductStager
         }
         catch (PlatformNotSupportedException)
         {
-            /*
-             * Preserve compatibility with a future target where Unix mode APIs
-             * are unavailable despite using this staging implementation.
-             */
         }
     }
 
