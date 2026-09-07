@@ -54,6 +54,18 @@ internal static class ProductStagingPathGuard
         }
     }
 
+    public static string RequireRegularFile(string path, string parameterName)
+    {
+        string normalizedPath = NormalizePath(path, parameterName);
+        return InspectEntry(normalizedPath).Kind switch
+        {
+            PathEntryKind.File => normalizedPath,
+            PathEntryKind.Link => throw new InvalidDataException(
+                $"Linked paths are not allowed for {parameterName}: '{normalizedPath}'."),
+            _ => throw new FileNotFoundException($"The {parameterName} file '{normalizedPath}' does not exist.", normalizedPath),
+        };
+    }
+
     public static string NormalizePath(string path, string parameterName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path, parameterName);
@@ -121,6 +133,33 @@ internal static class ProductStagingPathGuard
                 "Launcher, client, and output paths must not overlap."
             );
         }
+    }
+
+    public static void RejectPathWithinRoot(string rootPath, string candidatePath, string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(candidatePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        if (AreRelated(ResolveIdentity(rootPath), ResolveIdentity(candidatePath)))
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    public static void PrepareFileOutput(string outputPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        EnsureOutputDoesNotExist(outputPath);
+        string? parentPath = Path.GetDirectoryName(outputPath);
+        if (string.IsNullOrWhiteSpace(parentPath))
+        {
+            throw new InvalidOperationException("The output file must have a parent directory.");
+        }
+
+        _ = ResolveIdentity(parentPath);
+        Directory.CreateDirectory(parentPath);
+        _ = RequireDirectory(parentPath, "output parent");
+        EnsureOutputDoesNotExist(outputPath);
     }
 
     public static void PrepareOutputParent(string outputRoot)

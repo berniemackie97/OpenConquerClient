@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using System.Reflection;
 using OpenConquer.Launcher.Installation;
 using OpenConquer.Launcher.Instances;
 
@@ -36,7 +37,8 @@ internal sealed partial class App : Application
             }
             else
             {
-                LauncherApplication application = new(new ManagedInstallationResolver(AppContext.BaseDirectory));
+                TrustedReleaseKeys trustedReleaseKeys = TrustedReleaseKeys.LoadEmbedded(Assembly.GetExecutingAssembly());
+                LauncherApplication application = new(new ManagedInstallationResolver(AppContext.BaseDirectory, trustedReleaseKeys));
                 desktop.MainWindow = new MainWindow(application, _activation);
                 desktop.ShutdownRequested += OnShutdownRequested;
             }

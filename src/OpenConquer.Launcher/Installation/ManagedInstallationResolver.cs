@@ -4,15 +4,18 @@ namespace OpenConquer.Launcher.Installation;
 internal sealed class ManagedInstallationResolver : IManagedInstallationResolver
 {
     private readonly string _launcherDirectory;
+    private readonly ManagedReleaseVerifier _releaseVerifier;
 
-    public ManagedInstallationResolver(string launcherDirectory)
+    public ManagedInstallationResolver(string launcherDirectory, TrustedReleaseKeys trustedReleaseKeys)
     {
+        ArgumentNullException.ThrowIfNull(trustedReleaseKeys);
         if (string.IsNullOrWhiteSpace(launcherDirectory) || !Path.IsPathFullyQualified(launcherDirectory))
         {
             throw new ArgumentException("The launcher directory must be a fully qualified path.", nameof(launcherDirectory));
         }
 
         _launcherDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(launcherDirectory));
+        _releaseVerifier = new ManagedReleaseVerifier(trustedReleaseKeys);
     }
 
     public async Task<ManagedInstallationResolution> ResolveAsync(CancellationToken cancellationToken)
@@ -41,7 +44,29 @@ internal sealed class ManagedInstallationResolver : IManagedInstallationResolver
                 return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ClientComponentMissing);
             }
 
-            return new ManagedInstallationResolution.Resolved(ManagedInstallation.Create(_launcherDirectory, clientRootPath, manifestPath));
+            string releaseManifestPath = Path.Combine(_launcherDirectory, ManagedReleaseManifest.FileName);
+            ReleaseManifestReadResult releaseManifestResult = await ManagedReleaseManifest.ReadAsync(releaseManifestPath, cancellationToken).ConfigureAwait(false);
+            if (releaseManifestResult is ReleaseManifestReadResult.Rejected releaseManifestRejected)
+            {
+                return new ManagedInstallationResolution.Rejected(releaseManifestRejected.Issue);
+            }
+
+            ReleaseManifestReadResult.Accepted acceptedManifest = (ReleaseManifestReadResult.Accepted)releaseManifestResult;
+            string releaseSignaturePath = Path.Combine(_launcherDirectory, ManagedReleaseSignature.FileName);
+            ReleaseSignatureReadResult releaseSignatureResult = await ManagedReleaseSignature.ReadAsync(releaseSignaturePath, cancellationToken).ConfigureAwait(false);
+            if (releaseSignatureResult is ReleaseSignatureReadResult.Rejected releaseSignatureRejected)
+            {
+                return new ManagedInstallationResolution.Rejected(releaseSignatureRejected.Issue);
+            }
+
+            ManagedReleaseVerification verification = await _releaseVerifier.VerifyAsync(clientRootPath, acceptedManifest.Manifest, acceptedManifest.Bytes, ((ReleaseSignatureReadResult.Accepted)releaseSignatureResult).Signature, cancellationToken).ConfigureAwait(false);
+            if (verification is ManagedReleaseVerification.Rejected verificationRejected)
+            {
+                return new ManagedInstallationResolution.Rejected(verificationRejected.Issue);
+            }
+
+            ManagedReleaseVerification.Verified verified = (ManagedReleaseVerification.Verified)verification;
+            return new ManagedInstallationResolution.Resolved(ManagedInstallation.Create(rootPath: _launcherDirectory, clientRootPath, manifestPath, releaseManifestPath, releaseSignaturePath, verified.ClientExecutablePath, verified.Release));
         }
         catch (UnauthorizedAccessException)
         {
@@ -77,5 +102,4 @@ internal sealed class ManagedInstallationResolver : IManagedInstallationResolver
         return (attributes & (FileAttributes.Directory | FileAttributes.Device)) == FileAttributes.Directory;
     }
 
-    private sealed class LinkedInstallationPathException : IOException;
 }
