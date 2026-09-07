@@ -48,35 +48,35 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
 
         try
         {
-            using FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-
-            using Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true });
-
-            writer.WriteStartObject();
-            writer.WriteNumber("schemaVersion", CurrentSchemaVersion);
-            writer.WriteString("productId", ExpectedProductId);
-            writer.WriteNumber("releaseSequence", options.ReleaseSequence);
-            writer.WriteString("releaseVersion", options.ReleaseVersion);
-            writer.WriteNumber("minimumLauncherVersion", options.MinimumLauncherVersion);
-            writer.WriteString("targetRuntime", options.TargetRuntime);
-            writer.WriteString("clientExecutable", executable);
-
-            writer.WriteStartArray("files");
-
-            foreach (ProductReleaseFile file in files)
+            using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true }))
             {
                 writer.WriteStartObject();
-                writer.WriteString("path", file.Path);
-                writer.WriteNumber("length", file.Length);
-                writer.WriteString("sha256", Convert.ToHexStringLower(file.Sha256));
+                writer.WriteNumber("schemaVersion", CurrentSchemaVersion);
+                writer.WriteString("productId", ExpectedProductId);
+                writer.WriteNumber("releaseSequence", options.ReleaseSequence);
+                writer.WriteString("releaseVersion", options.ReleaseVersion);
+                writer.WriteNumber("minimumLauncherVersion", options.MinimumLauncherVersion);
+                writer.WriteString("targetRuntime", options.TargetRuntime);
+                writer.WriteString("clientExecutable", executable);
+
+                writer.WriteStartArray("files");
+
+                foreach (ProductReleaseFile file in files)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("path", file.Path);
+                    writer.WriteNumber("length", file.Length);
+                    writer.WriteString("sha256", Convert.ToHexStringLower(file.Sha256));
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndArray();
                 writer.WriteEndObject();
+                writer.Flush();
+
+                stream.Flush(flushToDisk: true);
             }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-            writer.Flush();
-
-            stream.Flush(flushToDisk: true);
 
             File.Move(temporaryPath, outputPath);
             completed = true;

@@ -80,19 +80,19 @@ internal static class ProductReleaseSignature
 
         try
         {
-            using FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true }))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("schemaVersion", CurrentSchemaVersion);
+                writer.WriteString("keyId", GetKeyId(publicKey));
+                writer.WriteString("algorithm", Algorithm);
+                writer.WriteBase64String("signature", signature);
+                writer.WriteEndObject();
 
-            using Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true });
-
-            writer.WriteStartObject();
-            writer.WriteNumber("schemaVersion", CurrentSchemaVersion);
-            writer.WriteString("keyId", GetKeyId(publicKey));
-            writer.WriteString("algorithm", Algorithm);
-            writer.WriteBase64String("signature", signature);
-            writer.WriteEndObject();
-
-            writer.Flush();
-            stream.Flush(flushToDisk: true);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
 
             File.Move(temporaryPath, outputPath);
 
