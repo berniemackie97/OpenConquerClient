@@ -3,13 +3,16 @@ using OpenConquer.Launcher.Instances;
 
 namespace OpenConquer.Launcher.Tests.Instances;
 
-public sealed class LauncherInstanceProcessTests
+public sealed class LauncherInstanceProcessTests : IDisposable
 {
+    private readonly ActivationTestNamespace _namespace = new();
+
+    public void Dispose() => _namespace.Dispose();
     [Fact]
     public async Task SecondProcess_ActivatesOwnerAndExitsWithoutTakingOwnership()
     {
         string lease = NewLeaseName();
-        string pipe = LauncherActivationServerTests.NewPipeName();
+        string pipe = _namespace.NewPipeName();
         using Probe owner = Probe.Start("listen", lease, pipe);
         Assert.Equal("ready", await owner.ReadLineAsync());
         using Probe secondary = Probe.Start("activate", lease, pipe);
@@ -26,7 +29,7 @@ public sealed class LauncherInstanceProcessTests
     public async Task ConcurrentProcesses_GrantExactlyOneLease()
     {
         string lease = NewLeaseName();
-        string pipe = LauncherActivationServerTests.NewPipeName();
+        string pipe = _namespace.NewPipeName();
         using Probe first = Probe.Start("hold", lease, pipe);
         using Probe second = Probe.Start("hold", lease, pipe);
         string?[] states = await Task.WhenAll(first.ReadLineAsync(), second.ReadLineAsync());
@@ -43,12 +46,16 @@ public sealed class LauncherInstanceProcessTests
     public async Task TerminatedOwner_ReleasesLeaseAndStaleSocketIsRecoverable()
     {
         string lease = NewLeaseName();
-        string pipe = LauncherActivationServerTests.NewPipeName();
+        string pipe = _namespace.NewPipeName();
         using (Probe crashed = Probe.Start("listen", lease, pipe))
         {
             Assert.Equal("ready", await crashed.ReadLineAsync());
             crashed.Kill();
             await crashed.WaitForExitAsync();
+            if (!OperatingSystem.IsWindows())
+            {
+                Assert.True(File.Exists(pipe), "An interrupted Unix owner must leave a stale endpoint for this recovery test.");
+            }
         }
 
         using Probe replacement = Probe.Start("listen", lease, pipe);
@@ -65,7 +72,7 @@ public sealed class LauncherInstanceProcessTests
     public async Task UnresponsiveOwner_DoesNotGrantASecondLease()
     {
         string lease = NewLeaseName();
-        string pipe = LauncherActivationServerTests.NewPipeName();
+        string pipe = _namespace.NewPipeName();
         using Probe owner = Probe.Start("hold", lease, pipe);
         Assert.Equal("ready", await owner.ReadLineAsync());
         using Probe secondary = Probe.Start("activate", lease, pipe);
@@ -80,7 +87,7 @@ public sealed class LauncherInstanceProcessTests
     public async Task ExitingOwner_AllowsWaitingInvocationToBecomePrimary()
     {
         string lease = NewLeaseName();
-        string pipe = LauncherActivationServerTests.NewPipeName();
+        string pipe = _namespace.NewPipeName();
         using Probe owner = Probe.Start("hold", lease, pipe);
         Assert.Equal("ready", await owner.ReadLineAsync());
         using Probe secondary = Probe.Start("wait", lease, pipe);
@@ -94,7 +101,7 @@ public sealed class LauncherInstanceProcessTests
     public async Task TerminatedOwner_AllowsExistingMutexHandleToAcquireAbandonedLease()
     {
         string lease = NewLeaseName();
-        string pipe = LauncherActivationServerTests.NewPipeName();
+        string pipe = _namespace.NewPipeName();
         using Probe owner = Probe.Start("hold", lease, pipe);
         Assert.Equal("ready", await owner.ReadLineAsync());
         using Probe secondary = Probe.Start("wait", lease, pipe);

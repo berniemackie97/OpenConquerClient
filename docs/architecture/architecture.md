@@ -80,6 +80,8 @@ Its current composition is:
 
 ```text
 Program
+├── private activation namespace and user-scoped process lease
+├── activation listener
 ├── diagnostics
 ├── host exception observation
 └── Avalonia

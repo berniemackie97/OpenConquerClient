@@ -4,8 +4,11 @@ using OpenConquer.Launcher.Instances;
 
 namespace OpenConquer.Launcher.Tests.Instances;
 
-public sealed class LauncherActivationServerTests
+public sealed class LauncherActivationServerTests : IDisposable
 {
+    private readonly ActivationTestNamespace _namespace = new();
+
+    public void Dispose() => _namespace.Dispose();
     [Fact]
     public async Task Activation_AcknowledgesExactlyOneCallbackAndHandlesRepeatedConnections()
     {
@@ -181,9 +184,5 @@ public sealed class LauncherActivationServerTests
         return deadline;
     }
 
-    internal static string NewPipeName()
-    {
-        string name = "oc-test-" + Guid.NewGuid().ToString("N");
-        return OperatingSystem.IsWindows() ? name : "/tmp/" + name;
-    }
+    private string NewPipeName() => _namespace.NewPipeName();
 }

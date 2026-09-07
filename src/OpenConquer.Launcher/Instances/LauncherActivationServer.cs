@@ -7,7 +7,7 @@ internal sealed class LauncherActivationServer : IAsyncDisposable
 {
     private readonly object _gate = new();
     private readonly NamedPipeServerStream _pipe;
-    private readonly CancellationTokenSource _lifetime = new();
+    private readonly CancellationTokenSource _lifetime;
     private readonly TimeSpan _requestBudget;
     private Task? _run;
     private Task? _stop;
@@ -30,6 +30,10 @@ internal sealed class LauncherActivationServer : IAsyncDisposable
         {
             options |= PipeOptions.FirstPipeInstance;
         }
+        else
+        {
+            UnixActivationNamespace.ValidateEndpoint(pipeName);
+        }
 
         // On Unix, the runtime removes stale socket entries. The process lease must already be
         // held before constructing this server, and remain held until it has been disposed.
@@ -40,11 +44,11 @@ internal sealed class LauncherActivationServer : IAsyncDisposable
             {
                 File.SetUnixFileMode(pipeName, UnixFileMode.UserRead | UnixFileMode.UserWrite);
             }
+            _lifetime = new CancellationTokenSource();
         }
         catch
         {
             _pipe.Dispose();
-            _lifetime.Dispose();
             throw;
         }
     }
