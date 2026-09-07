@@ -6,7 +6,8 @@ any future machine-wide installation/update transaction lock.
 
 ## Startup and shutdown
 
-1. Before opening diagnostics or Avalonia, `Program` attempts a user-scoped named mutex.
+1. Before opening diagnostics or Avalonia, `Program` resolves the activation namespace and attempts
+   a user-scoped named mutex.
 2. The owner creates the activation listener, then starts the desktop. It retains the mutex on the
    main thread until both desktop and listener shutdown have completed.
 3. A second invocation requests activation and exits with code `0` after acknowledgement. If the
@@ -25,8 +26,7 @@ activation; an aborted dispatcher request cannot reopen them later.
 
 ## Local channel
 
-- Windows uses a named pipe; macOS/Linux use a short absolute socket path under `/tmp`, independent
-  of shell-specific temporary directories. A hash of the user identity distinguishes endpoints.
+- Windows keeps its user-identity-derived named pipe. Unix uses the private namespace below.
 - The mutex uses `CurrentUserOnly`, with session restriction disabled. Both pipe peers use
   `PipeOptions.CurrentUserOnly`; Unix socket permissions are additionally restricted to `0600`.
   Identity checks come from the OS, not the endpoint name or a client-supplied identifier.
@@ -40,12 +40,52 @@ activation; an aborted dispatcher request cannot reopen them later.
 Runtime behavior follows [.NET pipe peer isolation](https://learn.microsoft.com/en-us/dotnet/api/system.io.pipes.pipeoptions?view=net-10.0)
 and [named mutex scoping](https://learn.microsoft.com/en-us/dotnet/api/system.threading.namedwaithandleoptions?view=net-10.0).
 
+## Unix namespace
+
+| Platform | Location |
+| --- | --- |
+| Linux | `$XDG_RUNTIME_DIR/openconquer/activate`; if unset, `/run/user/<effective UID>/openconquer/activate` |
+| Linux without a runtime directory | `<validated home>/.openconquer-runtime/activate` |
+| macOS | `confstr(_CS_DARWIN_USER_TEMP_DIR)` plus `openconquer/activate`; independent of `TMPDIR` |
+
+Configured runtime roots must already exist, belong to the effective UID, and have mode `0700`.
+An invalid configured root fails closed; only an absent default `/run/user` location permits the
+home fallback. The home must belong to the user and be protected from writes by other users.
+Overlong paths fail closed: UTF-8 paths may occupy at most 107 bytes on Linux or 103 on macOS.
+
+`UnixActivationNamespace` traverses from `/` using `openat` with no-follow directory handles and
+checks ownership/mode on those handles. Ancestors must belong to root or the effective UID and
+exclude group/other writes, except root-owned sticky directories. macOS extended ACL grants are
+rejected; deny-only ACLs are allowed. Apple's fixed `/var` alias is mapped to `/private/var` when
+resolving the OS-provided path; arbitrary symlinks are never followed.
+
+The application directory is created atomically with `mkdirat(..., 0700)` and validated again.
+Existing permissions are never repaired. Before binding, the server revalidates its private parent
+and permits only an absent endpoint or a same-user socket; it never replaces a symlink or ordinary
+file. The mutex must be held before stale-socket replacement. Shutdown removes the socket, leaving
+the private directory reusable. Cross-user protection assumes the OS/root and the current user
+are trusted; a same-UID process can already alter that user's launcher and files.
+
+The interop uses public Linux `statx` and Darwin `stat64` ABIs on x64/arm64, not private .NET APIs.
+See the [XDG runtime contract](https://specifications.freedesktop.org/basedir/0.8/) and
+[handle-relative filesystem metadata](https://man7.org/linux/man-pages/man2/statx.2.html).
+There is no fallback to the old shared `/tmp/oc-launcher-*` endpoint. Close an old launcher before
+starting the upgraded version. Sessions must use the same per-user runtime location for activation.
+
 ## Verification
 
 `LauncherInstanceProcessTests` use the test-only `Launcher.InstanceProbe` executable to exercise
 concurrent processes, activation, unresponsive ownership, normal release, and forced termination.
 Transport tests cover invalid/truncated frames, idle peers, cancellation, application-failure
 propagation, and Unix socket permissions. The probe is not part of either product publish.
+Namespace tests cover unsafe modes, directory/endpoint links, writable ancestors, preserved foreign
+objects, UTF-8 path limits, macOS ACLs, and process-termination recovery on both Unix platforms.
+
+Linux CI also runs `tests/Fixtures/OpenConquer.Launcher.InstanceProbe/verify-cross-uid.py` as root
+on its isolated runner. The script drops to the distinct `nobody` and `daemon` UIDs for product
+execution and attacks. It proves that occupation of the old endpoint cannot block startup and that
+the attacker cannot create, connect to, bind, or unlink the private endpoint. It requires the built
+probe output directory as its sole argument; it creates no accounts or permanent system settings.
 
 Desktop smoke check: open a staged launcher, minimize it, and execute it again. The existing window
 must return; the second process must exit successfully. Closing the owner must exit successfully,

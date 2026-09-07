@@ -8,6 +8,10 @@ internal sealed record LauncherInstanceIdentity(string LeaseName, string PipeNam
 {
     public static LauncherInstanceIdentity ForCurrentUser()
     {
+        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+        {
+            return new LauncherInstanceIdentity("OpenConquer.Launcher", UnixActivationNamespace.ForCurrentUser());
+        }
         string user;
         if (OperatingSystem.IsWindows())
         {
@@ -16,21 +20,10 @@ internal sealed record LauncherInstanceIdentity(string LeaseName, string PipeNam
         }
         else
         {
-            user = Environment.UserName;
+            throw new PlatformNotSupportedException("Unsupported launcher desktop platform.");
         }
         string suffix = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(user)));
         string pipeName = "OpenConquer.Launcher." + suffix;
-
-        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
-        {
-            // A stable, short Unix socket path also works across Finder/shell sessions with
-            // different TMPDIR values. Peer identity is enforced by the pipe, not this hash.
-            pipeName = "/tmp/oc-launcher-" + suffix;
-        }
-        else if (!OperatingSystem.IsWindows())
-        {
-            throw new PlatformNotSupportedException("Unsupported launcher desktop platform.");
-        }
 
         return new LauncherInstanceIdentity("OpenConquer.Launcher", pipeName);
     }
