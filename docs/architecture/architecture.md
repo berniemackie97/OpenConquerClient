@@ -45,7 +45,7 @@ High-level ownership:
 
 | Project                  | Responsibility                                                                                                     |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `OpenConquer.Launcher`   | launcher process, UI, diagnostics, installation/readiness state, future update/login/settings/launch orchestration |
+| `OpenConquer.Launcher`   | launcher process, UI, diagnostics, installation/readiness state, display preferences, future trusted update and controlled launch orchestration |
 | `OpenConquer.Client`     | game-runtime composition root and game-process lifetime                                                            |
 | `OpenConquer.Platform`   | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, future desktop input      |
 | `OpenConquer.Gameplay`   | game state and gameplay behavior                                                                                   |
@@ -100,7 +100,8 @@ The launcher currently owns:
 - bounded best-effort local diagnostics;
 - fatal host-failure handling;
 - managed-installation evaluation;
-- application state and cancellation.
+- application state and cancellation;
+- non-secret display preferences and the owned settings dialog.
 
 `MainWindow` is a presentation adapter. Product state belongs to `LauncherApplication`, not the UI.
 
@@ -108,9 +109,11 @@ Expected installation failures can be retried against the same package root. Che
 thread and cannot overlap. Shutdown owns one shared drain operation; late check results cannot
 replace `Stopping`. See the [installation contract](launcher-managed-installation.md) for details.
 
-The launcher currently does not implement update/repair, native account login, game settings, or
-controlled game startup. Those responsibilities should be introduced only when their actual
-contracts are implemented.
+Display preferences have a separate [storage and dialog contract](launcher-settings.md). The view
+owns its draft; the settings session owns I/O cancellation and draining.
+
+Trusted update/repair and controlled client startup remain unimplemented. Native account login,
+realm selection and all game-session networking belong to Client/Networking, not the launcher.
 
 ### Privilege Boundary
 
@@ -224,33 +227,25 @@ The intended product flow is:
 
 ```text
 OpenConquer.Launcher
-    │
-    ├── installation/readiness
-    ├── update/repair when implemented
-    ├── pre-launch settings when implemented
-    └── native AccountServer login when implemented
-            │
-            ▼
-       AccountServer
-            │
-            ▼
-   native login handoff
-            │
-            ▼
-OpenConquer.Client
-            │
-            ▼
-       GameServer
+    ├── installation/readiness and trusted release integrity
+    ├── update/repair and recovery
+    ├── pre-launch display preferences
+    └── controlled, verified and authorized client startup
+            ↓
+OpenConquer.Client + OpenConquer.Networking
+    ├── realm discovery/selection and login UI
+    ├── AccountServer / MsgAccount / MsgConnectEx
+    ├── native credential transformations and compatibility crypto
+    └── GameServer / MsgConnect / character flow / gameplay
 ```
 
+Launcher authorization establishes product provenance; it does not authenticate the game account.
+The launcher must not depend on game-protocol packet types. Registration/recovery entry points
+require a real authoritative account service; no temporary desktop protocol is planned.
+
 Native/deob evidence is authoritative for packet layout, credential transformations, cryptography,
-result semantics, and login-to-game handoff behavior.
-
-The preservation branch must not silently replace native account authentication with OAuth, OIDC,
-bearer tokens, or another incompatible identity protocol.
-
-`OpenConquer.Networking` remains the game-networking boundary. Broad game networking should not be
-invented before the launcher/login and native evidence establish the required contracts.
+result semantics and login-to-game handoff. OAuth/OIDC is not a substitute for the native protocol.
+The capability table in the README tracks implementation status; this flow defines ownership.
 
 ## Installed Product
 

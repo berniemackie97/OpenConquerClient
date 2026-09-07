@@ -171,7 +171,9 @@ rechecks the same root without restarting. It does not repair files or verify re
 Opening the launcher again activates the existing instance for the same OS user, including when it
 was started from another installation path. See the [instance smoke check](architecture/launcher-instances.md#verification).
 
-Update/repair, native AccountServer login, settings, and controlled game handoff are not implemented.
+[Display preferences](architecture/launcher-settings.md) persist independently of installation readiness.
+Trusted update/repair and controlled client startup are not implemented. Realm selection, native
+AccountServer login and game-session handoff belong to Client/Networking.
 
 ## Content Verification
 

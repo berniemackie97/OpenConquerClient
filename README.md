@@ -11,7 +11,7 @@ Linux, designed for OpenConquer Server.
 
 | Product | Implemented | Still required |
 | --- | --- | --- |
-| Launcher | Avalonia host, redacted diagnostics, managed-package resolution, installation recheck, single-instance activation, coordinated shutdown | Trusted release integrity, update/repair, saved settings, realm discovery, native login, secure client startup, complete player UX, signed platform packaging |
+| Launcher | Avalonia host, redacted diagnostics, managed-package resolution, installation recheck, single-instance activation, coordinated shutdown, saved display preferences | Trusted release integrity, update/repair, secure client startup, complete player UX, signed platform packaging |
 | Client | Resizable/fixed/fullscreen host, logical rendering and presentation, verified bootstrap content | Networking, gameplay, higher-level rendering |
 
 The launcher replaces `Play.exe` as the product entry point. Launcher and client remain independent
@@ -47,8 +47,8 @@ The intended production lifecycle is:
 
 ```text
 launcher → installation/readiness → update/repair as required → pre-launch settings
-         → native account login → AccountServer authentication/handoff → Play
-         → controlled OpenConquer.Client startup → native-compatible game bootstrap
+         → verified, authorized OpenConquer.Client startup
+client   → realm selection → native AccountServer login → GameServer handoff → game
 ```
 
 The capability table above distinguishes implemented stages from those still being built.
@@ -90,7 +90,8 @@ dotnet run --project src/OpenConquer.Client -- \
 
 The current internal render surface is 800×600 or 1024×768, selected by compatibility
 `ini/GameSetUp.ini`. Desktop size and mode are independent. Installed retail content is not rewritten
-for player preferences; launcher settings persistence and launch delivery remain unimplemented.
+for player preferences. The launcher saves modern [display preferences](docs/architecture/launcher-settings.md);
+delivery through controlled client startup remains unimplemented.
 
 ## Compatibility rules
 
@@ -98,7 +99,8 @@ for player preferences; launcher settings persistence and launch delivery remain
   and game handoff semantics. Native/deob evidence and the current server contract must be audited
   before implementing protocol behavior. OAuth/OIDC is not a replacement for native login.
 - Credentials and session material must not pass through arguments, environment variables, or
-  plaintext temporary files. Secure local handoff is a required launcher boundary.
+  plaintext temporary files. Account login and native game-session handoff belong to Client/Networking.
+  Launcher startup authorization establishes product provenance, not account authentication.
 - Keep the content manifest, runtime consumer closure, tracked payload, and client publish equal.
   The current bootstrap payload is `Logo1.bmp`, `Logo2.bmp`, `GameSetUp.ini`, `info.ini`, and
   `package.ini`; see the [content plan](docs/content/retail-5517-content-plan.md).

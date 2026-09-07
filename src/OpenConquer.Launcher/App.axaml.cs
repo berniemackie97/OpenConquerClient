@@ -38,9 +38,19 @@ internal sealed partial class App : Application
             {
                 LauncherApplication application = new(new ManagedInstallationResolver(AppContext.BaseDirectory));
                 desktop.MainWindow = new MainWindow(application, _activation);
+                desktop.ShutdownRequested += OnShutdownRequested;
             }
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static async void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs args)
+    {
+        if (sender is IClassicDesktopStyleApplicationLifetime { MainWindow: MainWindow window } && !window.IsShutdownComplete)
+        {
+            args.Cancel = true;
+            await window.RequestShutdownAsync();
+        }
     }
 }

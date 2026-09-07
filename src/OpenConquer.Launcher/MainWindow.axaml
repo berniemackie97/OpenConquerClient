@@ -42,6 +42,7 @@
           HorizontalAlignment="Center"
           Spacing="12">
         <Button x:Name="RetryInstallationButton" Click="OnRetryInstallation" />
+        <Button x:Name="SettingsButton" Content="Display settings" Click="OnDisplaySettings" />
         <Button x:Name="CloseButton" Click="OnCloseRequested" />
       </StackPanel>
     </StackPanel>
