@@ -81,6 +81,22 @@ propagation, and Unix socket permissions. The probe is not part of either produc
 Namespace tests cover unsafe modes, directory/endpoint links, writable ancestors, preserved foreign
 objects, UTF-8 path limits, macOS ACLs, and process-termination recovery on both Unix platforms.
 
+Linux CI additionally runs the C# instance probe with `--verify-cross-uid` on its disposable runner.
+The root coordinator uses `setpriv` to run the launcher and attacker as UIDs 65534 and 1, with
+matching GIDs, no supplementary groups/capabilities, and privilege escalation disabled. Actors
+verify their kernel-reported identities and privileges; missing prerequisites fail the check.
+Positive controls establish that filesystem/socket operations work in the attacker's own directory.
+The test requires permission-denied results before startup, while listening, and after a forced
+crash. It also verifies independent per-user ownership, normal activation, same-user stale recovery,
+and rejection of a foreign runtime root. The attacker holds the exact obsolete `/tmp` endpoint
+throughout startup and recovery. The test creates no user accounts.
+
+To repeat in an **isolated Linux VM/container**, build Release and run as root:
+
+```sh
+dotnet tests/Fixtures/OpenConquer.Launcher.InstanceProbe/bin/Release/net10.0/OpenConquer.Launcher.InstanceProbe.dll --verify-cross-uid
+```
+
 Desktop smoke check: open a staged launcher, minimize it, and execute it again. The existing window
 must return; the second process must exit successfully. Closing the owner must exit successfully,
 and the next invocation must be able to become the owner.

@@ -6,6 +6,15 @@ internal static class Program
 {
     public static int Main(string[] args)
     {
+        if (args is ["--verify-cross-uid"] && OperatingSystem.IsLinux())
+        {
+            LinuxCrossUidVerification.RunAsync().GetAwaiter().GetResult();
+            return 0;
+        }
+        if (args is ["--cross-uid-actor", ..] && OperatingSystem.IsLinux())
+        {
+            return LinuxCrossUidActor.Run(args[1..]);
+        }
         if (args.Length != 3)
         {
             return 64;
