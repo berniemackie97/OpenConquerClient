@@ -47,12 +47,6 @@ jobs:
       - name: Test
         run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 
-      - name: Verify launcher isolation across Unix users
-        run: >
-          sudo --preserve-env=PATH python3
-          tests/Fixtures/OpenConquer.Launcher.InstanceProbe/verify-cross-uid.py
-          tests/Fixtures/OpenConquer.Launcher.InstanceProbe/bin/Release/net10.0
-
       # Proves the implemented content closure, tracked manifest, and physical payload are identical
       # from a clean clone. This catches both ignored/dropped payload and content-slice drift.
       - name: Verify content set

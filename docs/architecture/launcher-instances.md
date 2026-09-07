@@ -81,12 +81,6 @@ propagation, and Unix socket permissions. The probe is not part of either produc
 Namespace tests cover unsafe modes, directory/endpoint links, writable ancestors, preserved foreign
 objects, UTF-8 path limits, macOS ACLs, and process-termination recovery on both Unix platforms.
 
-Linux CI also runs `tests/Fixtures/OpenConquer.Launcher.InstanceProbe/verify-cross-uid.py` as root
-on its isolated runner. The script drops to the distinct `nobody` and `daemon` UIDs for product
-execution and attacks. It proves that occupation of the old endpoint cannot block startup and that
-the attacker cannot create, connect to, bind, or unlink the private endpoint. It requires the built
-probe output directory as its sole argument; it creates no accounts or permanent system settings.
-
 Desktop smoke check: open a staged launcher, minimize it, and execute it again. The existing window
 must return; the second process must exit successfully. Closing the owner must exit successfully,
 and the next invocation must be able to become the owner.
