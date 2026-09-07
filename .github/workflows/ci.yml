@@ -47,6 +47,23 @@ jobs:
       - name: Test
         run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 
+      # Only this coordinator runs as root on the disposable hosted Linux runner. Each launcher
+      # and attacker process drops to a distinct UID with no supplementary groups/capabilities.
+      - name: Verify launcher isolation across Unix users
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          # The runner's checkout ancestors may deny traversal to other UIDs. Stage the full
+          # probe dependency closure without changing checkout or runner-home permissions.
+          probe_output="tests/Fixtures/OpenConquer.Launcher.InstanceProbe/bin/Release/net10.0"
+          probe_stage="$(sudo mktemp -d /tmp/oc-instance-probe.XXXXXXXX)"
+          trap 'sudo rm -r -- "$probe_stage"' EXIT
+
+          sudo cp -R -- "$probe_output/." "$probe_stage/"
+          sudo chmod -R a=rX -- "$probe_stage"
+          sudo -- "$(command -v dotnet)" \
+            "$probe_stage/OpenConquer.Launcher.InstanceProbe.dll" --verify-cross-uid
+
       # Proves the implemented content closure, tracked manifest, and physical payload are identical
       # from a clean clone. This catches both ignored/dropped payload and content-slice drift.
       - name: Verify content set
