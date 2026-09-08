@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 
 namespace OpenConquer.Product.Tool;
@@ -39,9 +40,16 @@ internal sealed class DotNetProcessRunner : IDotNetProcessRunner
             StartInfo = startInfo,
         };
 
-        if (!process.Start())
+        try
         {
-            throw new InvalidOperationException("The .NET SDK process could not be started.");
+            if (!process.Start())
+            {
+                throw new InvalidOperationException("The .NET SDK process could not be started.");
+            }
+        }
+        catch (Win32Exception exception)
+        {
+            throw new InvalidOperationException("The .NET SDK process could not be started. Ensure the .NET SDK is installed and 'dotnet' is available on PATH.", exception);
         }
 
         process.WaitForExit();

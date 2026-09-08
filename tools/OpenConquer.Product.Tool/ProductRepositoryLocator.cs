@@ -29,8 +29,11 @@ internal static class ProductRepositoryLocator
 
     private static bool IsRepositoryRoot(string path)
     {
-        return File.Exists(Path.Combine(path, "OpenConquer.Client.slnx")) && File.Exists(Path.Combine(path, "global.json")) && File.Exists(Path.Combine(path, "src", "OpenConquer.Client", "OpenConquer.Client.csproj"))
+        return File.Exists(Path.Combine(path, "OpenConquer.Client.slnx"))
+               && File.Exists(Path.Combine(path, "global.json"))
+               && File.Exists(Path.Combine(path, "src", "OpenConquer.Client", "OpenConquer.Client.csproj"))
                && File.Exists(Path.Combine(path, "src", "OpenConquer.Launcher", "OpenConquer.Launcher.csproj"))
+               && File.Exists(Path.Combine(path, "tools", "OpenConquer.Content.Tool", "OpenConquer.Content.Tool.csproj"))
                && File.Exists(Path.Combine(path, "tools", "OpenConquer.Product.Tool", "OpenConquer.Product.Tool.csproj"));
     }
 }

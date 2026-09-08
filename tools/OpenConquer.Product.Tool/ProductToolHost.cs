@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace OpenConquer.Product.Tool;
 
 internal static class ProductToolHost
@@ -31,6 +33,11 @@ internal static class ProductToolHost
                     ProductReleaseTrust.Create(trustOptions);
                     Console.WriteLine($"Created release trust at '{trustOptions.OutputPath}'.");
                     break;
+                case LocalProductOptions localProductOptions:
+                    LocalProductBuilder builder = new(new DotNetProcessRunner());
+                    LocalProductBuildResult result = builder.Build(localProductOptions, DevelopmentPublisherIdentityPaths.CreateCurrent());
+                    Console.WriteLine($"Created local OpenConquer product release '{result.ReleaseVersion}' ({result.TargetRuntime}, sequence {result.ReleaseSequence}) at '{result.ProductPath}'.");
+                    break;
                 case ProductStageOptions stageOptions:
                     ManagedProductStager.Stage(stageOptions);
                     Console.WriteLine($"Staged managed OpenConquer product at '{stageOptions.OutputRootPath}'.");
@@ -38,9 +45,10 @@ internal static class ProductToolHost
                 default:
                     throw new InvalidOperationException("The product tool received an unsupported operation.");
             }
+
             return SuccessExitCode;
         }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
+        catch (Exception exception) when (exception is ArgumentException or IOException or InvalidDataException or JsonException or NotSupportedException or UnauthorizedAccessException or InvalidOperationException)
         {
             Console.Error.WriteLine($"OpenConquer.Product.Tool: {exception.Message}");
             return OperationFailedExitCode;

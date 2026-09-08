@@ -19,8 +19,9 @@ public sealed class ProductRepositoryLocatorTests
 
         CreateRepositoryMarkers(temporary.RootPath);
 
-        string nestedPath = Directory.CreateDirectory(
-            Path.Combine(temporary.RootPath, "tools", "nested", "working")).FullName;
+        string nestedPath = Directory
+            .CreateDirectory(Path.Combine(temporary.RootPath, "tools", "nested", "working"))
+            .FullName;
 
         Assert.Equal(temporary.RootPath, ProductRepositoryLocator.Find(nestedPath));
     }
@@ -30,10 +31,36 @@ public sealed class ProductRepositoryLocatorTests
     {
         using TemporaryDirectory temporary = new();
 
-        File.WriteAllText(Path.Combine(temporary.RootPath, "OpenConquer.Client.slnx"), string.Empty);
+        File.WriteAllText(
+            Path.Combine(temporary.RootPath, "OpenConquer.Client.slnx"),
+            string.Empty
+        );
         File.WriteAllText(Path.Combine(temporary.RootPath, "global.json"), "{}");
 
-        Assert.Throws<InvalidOperationException>(() => ProductRepositoryLocator.Find(temporary.RootPath));
+        Assert.Throws<InvalidOperationException>(() =>
+            ProductRepositoryLocator.Find(temporary.RootPath)
+        );
+    }
+
+    [Fact]
+    public void FindRejectsRepositoryWithoutContentTool()
+    {
+        using TemporaryDirectory temporary = new();
+
+        CreateRepositoryMarkers(temporary.RootPath);
+
+        File.Delete(
+            Path.Combine(
+                temporary.RootPath,
+                "tools",
+                "OpenConquer.Content.Tool",
+                "OpenConquer.Content.Tool.csproj"
+            )
+        );
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ProductRepositoryLocator.Find(temporary.RootPath)
+        );
     }
 
     [Fact]
@@ -53,7 +80,18 @@ public sealed class ProductRepositoryLocatorTests
 
         WriteProject(rootPath, "src", "OpenConquer.Client", "OpenConquer.Client.csproj");
         WriteProject(rootPath, "src", "OpenConquer.Launcher", "OpenConquer.Launcher.csproj");
-        WriteProject(rootPath, "tools", "OpenConquer.Product.Tool", "OpenConquer.Product.Tool.csproj");
+        WriteProject(
+            rootPath,
+            "tools",
+            "OpenConquer.Content.Tool",
+            "OpenConquer.Content.Tool.csproj"
+        );
+        WriteProject(
+            rootPath,
+            "tools",
+            "OpenConquer.Product.Tool",
+            "OpenConquer.Product.Tool.csproj"
+        );
     }
 
     private static void WriteProject(string rootPath, params string[] relativePath)
@@ -66,7 +104,10 @@ public sealed class ProductRepositoryLocatorTests
 
     private sealed class TemporaryDirectory : IDisposable
     {
-        private readonly string _path = Path.Combine(Path.GetTempPath(), $"openconquer-product-repository-{Guid.NewGuid():N}");
+        private readonly string _path = Path.Combine(
+            Path.GetTempPath(),
+            $"openconquer-product-repository-{Guid.NewGuid():N}"
+        );
 
         public TemporaryDirectory()
         {
