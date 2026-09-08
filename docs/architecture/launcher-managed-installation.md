@@ -23,18 +23,19 @@ signature, mutable release trust, a legacy root-level managed `client/`, or game
 
 ```json
 {
-  "schemaVersion": 2,
-  "productId": "OpenConquer",
-  "activeRelease": "00000000000000000042-<manifest-sha256>",
-  "fallbackRelease": null
+    "schemaVersion": 2,
+    "productId": "OpenConquer",
+    "activeRelease": "00000000000000000042-<manifest-sha256>",
+    "fallbackRelease": null
 }
 ```
 
 Installation schema v2 requires exactly these properties. The active release is mandatory; the
 fallback is either null or a distinct release identity. A release identity contains a zero-padded
-20-digit positive sequence, the lowercase SHA-256 digest of the exact signed manifest bytes, and,
-for same-release repair generations, an optional 32-digit lowercase nonce. This makes every selected
-directory name independently checkable without granting the descriptor release authority.
+20-digit positive sequence, the lowercase SHA-256 digest of the exact signed manifest bytes, and an
+optional 32-digit lowercase nonce used for same-release repair and safe generation
+collision/corruption avoidance. This makes every selected directory name independently checkable
+without granting the descriptor release authority.
 
 Duplicate/unknown fields, malformed JSON, nonpositive or nonportable identities, equal active and
 fallback identities, and arbitrary paths are rejected. A structurally recognized higher version
@@ -46,9 +47,10 @@ Schema v1 remains a read and one-way migration contract for existing flat produc
 { "schemaVersion": 1, "productId": "OpenConquer", "clientRoot": "client" }
 ```
 
-New composition never emits schema v1. A successful update migrates a healthy legacy client into an
-immutable generation before selecting the new generation. The untouched flat files remain inert;
-removing them is a packaging/lifecycle decision, not part of activation.
+New composition never emits schema v1. A successful update migrates a healthy legacy client into a
+versioned generation without mutating the legacy client in place before selecting the new
+generation. The untouched flat files remain inert; removing them is a packaging/lifecycle decision,
+not part of activation.
 
 `openconquer.release.json` identifies the product, monotonically positive release sequence, release
 version, minimum compatible launcher version, target runtime, client executable, and the complete
@@ -75,7 +77,7 @@ Resolution also requires:
 - a generation identity matching the signed manifest sequence and exact manifest digest;
 - the exact manifest-declared client file set;
 - matching file lengths and SHA-256 hashes;
-- valid, non-linked, non-device, portable package paths; and
+- valid, non-linked, non-device, portable package paths;
 - the declared platform-specific client executable; and
 - portable executable permissions for that entry point on Unix.
 
@@ -124,7 +126,7 @@ Production private-key custody remains outside `OpenConquer.Product.Tool`.
 
 Staging requires the release manifest and signature envelope as explicit inputs. It validates their
 structure, snapshots their exact bytes, derives the release identity, copies the launcher and client
-into a temporary sibling directory, copies release metadata into the immutable generation, rejects
+into a temporary sibling directory, copies release metadata into the versioned generation, rejects
 metadata races, verifies the staged client against the staged manifest, writes the schema-v2
 descriptor, sanitizes copied Unix file modes while preserving executable intent, forces the declared
 Unix client entry point to portable `0755`, and activates the staging root by rename without
@@ -243,9 +245,14 @@ player-facing update or repair.
 ## Installed client update, repair, and rollback transaction
 
 `ManagedReleaseTransaction` owns the narrow mutation boundary after a candidate release has been
-acquired. A candidate is one release root containing exactly the signed manifest, signature envelope,
-and client directory. The transaction does not discover releases, download them, choose a channel,
-update the running launcher, elevate privileges, or define an account/game protocol.
+acquired. A candidate is one release root containing exactly the signed manifest, signature
+envelope, and client directory. The transaction does not discover releases, download them, choose a
+channel, update the running launcher, elevate privileges, or define an account/game protocol.
+
+Candidate and managed-product roots must also remain filesystem-identity-disjoint. Existing ancestor
+links are resolved for relationship checks, and comparison uses a conservative portable
+case-insensitive policy so case aliases cannot bypass the boundary on filesystems such as default
+macOS APFS.
 
 Before changing installed state, the transaction:
 
@@ -255,14 +262,17 @@ Before changing installed state, the transaction:
    payload files are damaged;
 4. rejects update sequences that do not strictly advance and repair candidates that are not the
    exact same signed release;
-5. copies only manifest-declared files into a private staging generation with bounded traversal,
-   no links/devices, create-new destinations, durable file flushes, and safe Unix modes; and
+5. copies only manifest-declared files and no more than their authenticated lengths into an
+   unselected staging generation with bounded traversal, no links/devices, create-new destinations,
+   durable file flushes, and restrictive Unix creation modes before final mode normalization; and
 6. authenticates and hashes the copied generation again.
 
 Only after those checks does it rename the complete staging generation into `releases/` and replace
-the descriptor. The descriptor replacement is the commit point and is one same-directory atomic
-rename. Cancellation is honored through the last pre-commit check; after the synchronous commit
-there is no cancellable work whose failure could falsely report an unchanged installation.
+the descriptor. The descriptor replacement is the commit point and uses same-directory atomic
+replacement semantics (`File.Replace` for an existing descriptor on Windows and rename/move
+semantics otherwise). Cancellation is honored through the last pre-commit check; after the
+synchronous commit there is no cancellable work whose failure could falsely report an unchanged
+installation.
 
 An update records the former active generation as fallback only if it still verifies completely. If
 the active payload is damaged, an already-recorded healthy fallback is retained; otherwise the new
@@ -276,8 +286,8 @@ authority, rejected candidate integrity, non-advancing update, blocked downgrade
 release, unavailable fallback, concurrent maintenance, access denial, linked paths, and filesystem
 failure. Cancellation remains cancellation rather than being flattened into a repair error.
 
-On supported local filesystems that provide atomic same-directory rename, process-crash behavior is
-deterministic:
+On supported local filesystems that provide atomic same-directory replacement semantics,
+process-crash behavior is deterministic:
 
 - before descriptor replacement, the previous active release remains selected;
 - after descriptor replacement, the completely copied and reverified generation is selected;
@@ -286,6 +296,9 @@ deterministic:
 - selected active/fallback generations are never deleted by this transaction.
 
 The implementation durably flushes copied files and the temporary descriptor before activation.
+Mutable staging files and the transaction lock are created with private Unix permissions, and the
+published descriptor is normalized to portable read permissions before activation.
+
 .NET does not expose a portable parent-directory flush, so the launcher does not claim stronger
 sudden-power-loss guarantees than the host filesystem provides.
 
@@ -298,10 +311,15 @@ launcher self-update, and signed platform deployment remain later launcher-owned
 `ManagedInstallationResolverTests` cover schema/layout rejection, missing release metadata,
 unavailable release authority, untrusted signatures, client mutation, and trusted resolution.
 
-`ManagedReleaseTransactionTests` cover trusted update, same-release repair, damaged-client recovery,
-legacy migration, verified rollback, corrupt fallback rejection, sequence policy, release-identity
-binding, cancellation, lock contention, linked and unexpected candidate entries, selected-generation
-shape, and Unix executable permissions.
+`ManagedReleaseTransactionTests` and the focused hardening tests cover trusted update, same-release
+repair, damaged-client recovery, legacy migration, verified rollback, corrupt fallback rejection,
+sequence policy, release-identity binding, cancellation, lock contention, linked and unexpected
+candidate entries, filesystem-identity alias rejection, authenticated-length staging,
+selected-generation shape, Unix lock permissions, and Unix executable permissions.
+
+`ManagedInstallationPathGuardTests` cover exact, conservative case-insensitive, ancestor-link, and
+unrelated filesystem identities. `ManagedInstallationManifestTests` cover descriptor replacement
+semantics and final Unix descriptor permissions.
 
 `LauncherApplicationTests` cover retry, cancellation ownership, concurrent/reentrant shutdown,
 callback failures, and terminal state.
@@ -321,6 +339,7 @@ Product Tool tests cover:
 - repository and runtime discovery;
 - local-product paths;
 - publish/product artifact isolation;
+- release-manifest traversal ordering and linked-entry rejection;
 - local-product orchestration;
 - rollback-safe local activation; and
 - managed-product staging.

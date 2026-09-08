@@ -145,16 +145,11 @@ internal sealed class ManagedReleaseVerifier
 
         pending.Push(new DirectoryInfo(clientRootPath));
 
-        int directoryCount = 0;
+        int directoryCount = 1;
 
         while (pending.TryPop(out DirectoryInfo? directory))
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            if (++directoryCount > MaximumDirectoryCount)
-            {
-                throw new InvalidDataException("The client directory count exceeds the release limit.");
-            }
 
             directory.Refresh();
 
@@ -163,7 +158,7 @@ internal sealed class ManagedReleaseVerifier
                 throw new LinkedInstallationPathException();
             }
 
-            foreach (FileSystemInfo entry in directory.EnumerateFileSystemInfos().OrderBy(item => item.Name, StringComparer.Ordinal))
+            foreach (FileSystemInfo entry in directory.EnumerateFileSystemInfos())
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -176,6 +171,12 @@ internal sealed class ManagedReleaseVerifier
 
                 if (entry is DirectoryInfo childDirectory)
                 {
+                    if (directoryCount == MaximumDirectoryCount)
+                    {
+                        throw new InvalidDataException("The client directory count exceeds the release limit.");
+                    }
+
+                    directoryCount++;
                     pending.Push(childDirectory);
                     continue;
                 }

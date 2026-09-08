@@ -155,9 +155,104 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
     {
         List<ProductReleaseFile> files = [];
         HashSet<string> portablePaths = new(StringComparer.Ordinal);
-        CopyTraversalGuard traversal = new();
+        Stack<DirectoryInfo> pending = new();
 
-        ReadDirectory(new DirectoryInfo(clientRoot), clientRoot, files, portablePaths, traversal);
+        DirectoryInfo root = new(clientRoot);
+        root.Refresh();
+
+        if (!root.Exists || root.LinkTarget is not null || (root.Attributes & FileAttributes.ReparsePoint) != 0)
+        {
+            throw new InvalidDataException($"Linked or unavailable directories are not allowed in a release: '{root.FullName}'.");
+        }
+
+        if ((root.Attributes & FileAttributes.Device) != 0)
+        {
+            throw new InvalidDataException("The client publish contains unsupported or excessive entries.");
+        }
+
+        pending.Push(root);
+
+        int directoryCount = 1;
+
+        while (pending.TryPop(out DirectoryInfo? directory))
+        {
+            directory.Refresh();
+
+            if (!directory.Exists || directory.LinkTarget is not null || (directory.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new InvalidDataException($"Linked or unavailable directories are not allowed in a release: '{directory.FullName}'.");
+            }
+
+            if ((directory.Attributes & FileAttributes.Device) != 0)
+            {
+                throw new InvalidDataException("The client publish contains unsupported or excessive entries.");
+            }
+
+            foreach (FileSystemInfo entry in directory.EnumerateFileSystemInfos())
+            {
+                entry.Refresh();
+
+                if (entry.LinkTarget is not null || (entry.Attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    throw new InvalidDataException($"Linked paths are not allowed in a release: '{entry.FullName}'.");
+                }
+
+                if ((entry.Attributes & FileAttributes.Device) != 0)
+                {
+                    throw new InvalidDataException("The client publish contains unsupported or excessive entries.");
+                }
+
+                if (entry is DirectoryInfo child)
+                {
+                    if (directoryCount == MaximumDirectoryCount)
+                    {
+                        throw new InvalidDataException("The client directory count exceeds the release limit.");
+                    }
+
+                    directoryCount++;
+                    pending.Push(child);
+                    continue;
+                }
+
+                if (entry is not FileInfo file || (entry.Attributes & FileAttributes.Directory) != 0 || files.Count == MaximumFileCount)
+                {
+                    throw new InvalidDataException("The client publish contains unsupported or excessive entries.");
+                }
+
+                string relativePath = Path.GetRelativePath(clientRoot, file.FullName).Replace(Path.DirectorySeparatorChar, '/');
+
+                if (!ProductReleasePath.IsValid(relativePath) || !portablePaths.Add(ProductReleasePath.PortableIdentity(relativePath)))
+                {
+                    throw new InvalidDataException($"The client publish contains an invalid or ambiguous path: '{relativePath}'.");
+                }
+
+                using FileStream stream = new(file.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 128 * 1024, FileOptions.SequentialScan);
+
+                FileAttributes openedAttributes = File.GetAttributes(stream.SafeFileHandle);
+
+                if ((openedAttributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.Device)) != 0)
+                {
+                    throw new InvalidDataException($"The client publish contains an unsupported file: '{relativePath}'.");
+                }
+
+                long length = stream.Length;
+                byte[] hash = SHA256.HashData(stream);
+
+                if (stream.Length != length)
+                {
+                    throw new IOException($"Client file changed while reading: '{relativePath}'.");
+                }
+
+                FileAttributes finalAttributes = File.GetAttributes(file.FullName);
+
+                if ((finalAttributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.Device)) != 0)
+                {
+                    throw new IOException($"Client file changed while reading: '{relativePath}'.");
+                }
+
+                files.Add(new ProductReleaseFile(relativePath, length, hash));
+            }
+        }
 
         files.Sort(static (left, right) => string.CompareOrdinal(left.Path, right.Path));
 
@@ -167,73 +262,6 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
         }
 
         return files;
-    }
-
-    private static void ReadDirectory(DirectoryInfo directory, string clientRoot, List<ProductReleaseFile> files, HashSet<string> portablePaths, CopyTraversalGuard traversal)
-    {
-        traversal.EnterDirectory();
-
-        directory.Refresh();
-
-        if (!directory.Exists || directory.LinkTarget is not null || (directory.Attributes & FileAttributes.ReparsePoint) != 0)
-        {
-            throw new InvalidDataException($"Linked or unavailable directories are not allowed in a release: '{directory.FullName}'.");
-        }
-
-        foreach (FileSystemInfo entry in directory.EnumerateFileSystemInfos().OrderBy(item => item.Name, StringComparer.Ordinal))
-        {
-            entry.Refresh();
-
-            if (entry.LinkTarget is not null || (entry.Attributes & FileAttributes.ReparsePoint) != 0)
-            {
-                throw new InvalidDataException($"Linked paths are not allowed in a release: '{entry.FullName}'.");
-            }
-
-            if (entry is DirectoryInfo child)
-            {
-                ReadDirectory(child, clientRoot, files, portablePaths, traversal);
-
-                continue;
-            }
-
-            if (entry is not FileInfo file || (entry.Attributes & (FileAttributes.Directory | FileAttributes.Device)) != 0 || files.Count == MaximumFileCount)
-            {
-                throw new InvalidDataException("The client publish contains unsupported or excessive entries.");
-            }
-
-            string relativePath = Path.GetRelativePath(clientRoot, file.FullName).Replace(Path.DirectorySeparatorChar, '/');
-
-            if (!ProductReleasePath.IsValid(relativePath) || !portablePaths.Add(ProductReleasePath.PortableIdentity(relativePath)))
-            {
-                throw new InvalidDataException($"The client publish contains an invalid or ambiguous path: '{relativePath}'.");
-            }
-
-            using FileStream stream = new(file.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 128 * 1024, FileOptions.SequentialScan);
-
-            FileAttributes openedAttributes = File.GetAttributes(stream.SafeFileHandle);
-
-            if ((openedAttributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.Device)) != 0)
-            {
-                throw new InvalidDataException($"The client publish contains an unsupported file: '{relativePath}'.");
-            }
-
-            long length = stream.Length;
-            byte[] hash = SHA256.HashData(stream);
-
-            if (stream.Length != length)
-            {
-                throw new IOException($"Client file changed while reading: '{relativePath}'.");
-            }
-
-            FileAttributes finalAttributes = File.GetAttributes(file.FullName);
-
-            if ((finalAttributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.Device)) != 0)
-            {
-                throw new IOException($"Client file changed while reading: '{relativePath}'.");
-            }
-
-            files.Add(new ProductReleaseFile(relativePath, length, hash));
-        }
     }
 
     private static bool TryRead(JsonElement root, out ProductReleaseManifest? manifest)
@@ -414,18 +442,5 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
-    }
-
-    private sealed class CopyTraversalGuard
-    {
-        private int _directories;
-
-        public void EnterDirectory()
-        {
-            if (++_directories > MaximumDirectoryCount)
-            {
-                throw new InvalidDataException("The client directory count exceeds the release limit.");
-            }
-        }
     }
 }

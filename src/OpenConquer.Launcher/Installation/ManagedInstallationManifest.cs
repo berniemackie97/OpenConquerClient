@@ -16,6 +16,8 @@ internal sealed record ManagedInstallationManifest(int SchemaVersion, string Pro
     private const int ReleaseDigestLength = 64;
     private const int GenerationNonceLength = 32;
     private const int ReleaseSequenceLength = 20;
+    private static readonly UnixFileMode s_descriptorFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+    private static readonly UnixFileMode s_privateFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
 
     public static ManagedInstallationManifest CreateCurrent(string activeRelease, string? fallbackRelease)
     {
@@ -87,11 +89,26 @@ internal sealed record ManagedInstallationManifest(int SchemaVersion, string Pro
             throw new ArgumentException("The installation descriptor must have a parent directory.", nameof(path));
         }
 
+        bool destinationExists = File.Exists(path);
         string temporaryPath = Path.Combine(directoryPath, $".{FileName}.{Guid.NewGuid():N}.tmp");
         bool activated = false;
         try
         {
-            await using (FileStream stream = new(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize: 4096, FileOptions.Asynchronous | FileOptions.WriteThrough))
+            FileStreamOptions options = new()
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                Share = FileShare.None,
+                BufferSize = 4096,
+                Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
+            };
+
+            if (!OperatingSystem.IsWindows())
+            {
+                options.UnixCreateMode = s_privateFileMode;
+            }
+
+            await using (FileStream stream = new(temporaryPath, options))
             {
                 await JsonSerializer.SerializeAsync(stream, new
                 {
@@ -100,12 +117,18 @@ internal sealed record ManagedInstallationManifest(int SchemaVersion, string Pro
                     activeRelease = manifest.ActiveRelease,
                     fallbackRelease = manifest.FallbackRelease,
                 }, cancellationToken: cancellationToken).ConfigureAwait(false);
+
                 await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
                 stream.Flush(flushToDisk: true);
             }
 
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(temporaryPath, s_descriptorFileMode);
+            }
+
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporaryPath, path, overwrite: true);
+            InstallationFile.Commit(temporaryPath, path, destinationExists);
             activated = true;
         }
         finally

@@ -5,7 +5,7 @@ using OpenConquer.Product.Tool;
 
 namespace OpenConquer.Launcher.Tests;
 
-public sealed class ManagedReleaseTransactionTests
+public sealed partial class ManagedReleaseTransactionTests
 {
     [Fact]
     public async Task UpdateInstallsNewGenerationAndPreservesVerifiedFallback()

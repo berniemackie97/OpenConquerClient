@@ -43,15 +43,15 @@ OpenConquer.Networking
 
 High-level ownership:
 
-| Project                  | Responsibility                                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `OpenConquer.Launcher`   | launcher process, UI, diagnostics, installation/readiness state, display preferences, future trusted update and controlled launch orchestration |
-| `OpenConquer.Client`     | game-runtime composition root and game-process lifetime                                                            |
-| `OpenConquer.Platform`   | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, future desktop input      |
-| `OpenConquer.Gameplay`   | game state and gameplay behavior                                                                                   |
-| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, presentation, GPU resources                                                 |
-| `OpenConquer.Content`    | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup                                   |
-| `OpenConquer.Networking` | native-compatible game transport and protocol behavior when implemented                                            |
+| Project                  | Responsibility                                                                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OpenConquer.Launcher`   | launcher process, UI, diagnostics, installation/readiness state, display preferences, trusted installed-release transaction, future release acquisition and controlled launch orchestration |
+| `OpenConquer.Client`     | game-runtime composition root and game-process lifetime                                                                                                                                     |
+| `OpenConquer.Platform`   | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, future desktop input                                                                               |
+| `OpenConquer.Gameplay`   | game state and gameplay behavior                                                                                                                                                            |
+| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, presentation, GPU resources                                                                                                                          |
+| `OpenConquer.Content`    | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup                                                                                                            |
+| `OpenConquer.Networking` | native-compatible game transport and protocol behavior when implemented                                                                                                                     |
 
 The game runtime dependency direction is:
 
@@ -100,6 +100,7 @@ The launcher currently owns:
 - bounded best-effort local diagnostics;
 - fatal host-failure handling;
 - managed-installation evaluation;
+- authenticated installed-release update, repair, and verified rollback transactions;
 - application state and cancellation;
 - non-secret display preferences and the owned settings dialog.
 
@@ -112,8 +113,9 @@ replace `Stopping`. See the [installation contract](launcher-managed-installatio
 Display preferences have a separate [storage and dialog contract](launcher-settings.md). The view
 owns its draft; the settings session owns I/O cancellation and draining.
 
-Trusted update/repair and controlled client startup remain unimplemented. Native account login,
-realm selection and all game-session networking belong to Client/Networking, not the launcher.
+Authoritative release acquisition, player-facing update/repair orchestration, launcher self-update,
+and controlled client startup remain unimplemented. Native account login, realm selection and all
+game-session networking belong to Client/Networking, not the launcher.
 
 ### Privilege Boundary
 
@@ -272,15 +274,16 @@ Product composition creates:
             └── client publish
 ```
 
-The schema-v2 descriptor atomically selects one immutable client generation and may name one verified
-fallback. The raw launcher publish must not contain `openconquer.installation.json`, `releases/`, or
-the legacy root-level managed `client/` component. Those belong to product composition.
+The schema-v2 descriptor atomically selects one versioned client generation that supported
+transaction code never mutates in place and may name one verified fallback. The raw launcher publish
+must not contain `openconquer.installation.json`, `releases/`, or the legacy root-level managed
+`client/` component. Those belong to product composition.
 
 `OpenConquer.Product.Tool` provides deterministic local and CI composition. It is not the production
 installer, updater, signing system, or deployment authority.
 
-See [`launcher-managed-installation.md`](launcher-managed-installation.md) for the schema-v2 contract
-and its read-only schema-v1 compatibility path.
+See [`launcher-managed-installation.md`](launcher-managed-installation.md) for the schema-v2
+contract and its read-only schema-v1 compatibility path.
 
 ## Publish Invariants
 
@@ -299,7 +302,7 @@ The launcher publish must:
 The composed product must:
 
 - contain the generated schema-v2 installation descriptor;
-- contain the client publish in the selected immutable release generation;
+- contain the client publish in the selected versioned release generation;
 - be resolvable by the real launcher installation resolver.
 
 CI enforces these boundaries.
