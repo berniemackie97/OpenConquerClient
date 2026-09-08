@@ -87,6 +87,7 @@ internal sealed class DisplaySettingsStore : IDisplaySettingsStore
                 SettingsReadResult.Rejected rejected => rejected.Revision,
                 _ => throw new InvalidOperationException("Invalid settings result.")
             };
+
             if (current is SettingsReadResult.Rejected failure && failure.Issue != SettingsIssue.Invalid)
             {
                 return failure.Issue;
@@ -105,12 +106,14 @@ internal sealed class DisplaySettingsStore : IDisplaySettingsStore
             token.ThrowIfCancellationRequested();
             Directory.CreateDirectory(_directory);
             temporary = Path.Combine(_directory, ".display-" + Guid.NewGuid().ToString("N") + ".tmp");
+
             FileStreamOptions options = new()
             {
                 Mode = FileMode.CreateNew,
                 Access = FileAccess.Write,
                 Share = FileShare.None
             };
+
             if (!OperatingSystem.IsWindows())
             {
                 options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
@@ -121,8 +124,11 @@ internal sealed class DisplaySettingsStore : IDisplaySettingsStore
                 stream.Write(DisplaySettingsDocument.Serialize(preferences));
                 stream.Flush(flushToDisk: true);
             }
+
             token.ThrowIfCancellationRequested();
-            File.Move(temporary, Path.Combine(_directory, FileName), overwrite: true);
+
+            SettingsFile.Commit(temporary, Path.Combine(_directory, FileName), destinationExists: revision is not null);
+
             temporary = null;
             return null;
         }
