@@ -13,6 +13,7 @@ internal static class LocalProductArtifactValidator
         ProductReleaseManifest.FileName,
         ProductReleaseSignature.FileName,
         ProductReleaseTrust.FileName,
+        ManagedProductDescriptor.ReleasesRoot,
         ManagedProductDescriptor.ClientRoot,
         LocalProductPaths.PublicKeyFileName,
         LocalProductPaths.RawSignatureFileName,

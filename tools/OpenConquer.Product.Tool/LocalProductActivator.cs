@@ -19,14 +19,14 @@ internal static class LocalProductActivator
 
         using FileStream activationLock = AcquireLock(rootPath);
 
-        ProductReleaseManifest candidateManifest = ValidateCandidate(candidatePath);
+        ProductReleaseManifest candidateManifest = ValidateProduct(candidatePath, allowLegacyLayout: false);
 
         bool currentProductExists = EntryExists(productPath);
 
         if (currentProductExists)
         {
             string currentProductPath = ProductStagingPathGuard.RequireDirectory(productPath, "active local product");
-            ProductReleaseManifest currentManifest = ProductReleaseManifest.Read(Path.Combine(currentProductPath, ProductReleaseManifest.FileName));
+            ProductReleaseManifest currentManifest = ValidateProduct(currentProductPath, allowLegacyLayout: true);
 
             if (candidateManifest.ReleaseSequence <= currentManifest.ReleaseSequence)
             {
@@ -50,8 +50,7 @@ internal static class LocalProductActivator
 
             _ = ProductStagingPathGuard.RequireDirectory(productPath, "activated local product");
         }
-        catch (Exception activationException)
-            when (activationException is IOException or UnauthorizedAccessException)
+        catch (Exception activationException) when (activationException is IOException or UnauthorizedAccessException)
         {
             if (previousProductCreated && !EntryExists(productPath))
             {
@@ -59,8 +58,7 @@ internal static class LocalProductActivator
                 {
                     Directory.Move(previousProductPath, productPath);
                 }
-                catch (Exception rollbackException)
-                    when (rollbackException is IOException or UnauthorizedAccessException)
+                catch (Exception rollbackException) when (rollbackException is IOException or UnauthorizedAccessException)
                 {
                     throw new InvalidOperationException("Local-product activation failed and the previous product could not be restored automatically.", new AggregateException(activationException, rollbackException));
                 }
@@ -70,17 +68,26 @@ internal static class LocalProductActivator
         }
     }
 
-    private static ProductReleaseManifest ValidateCandidate(string candidatePath)
+    private static ProductReleaseManifest ValidateProduct(string candidatePath, bool allowLegacyLayout)
     {
-        _ = ProductStagingPathGuard.RequireRegularFile(Path.Combine(candidatePath, ManagedProductDescriptor.FileName), "local-product installation descriptor");
+        ManagedProductLayout layout = ManagedProductDescriptor.Read(candidatePath);
+        if (layout.ActiveRelease is null && !allowLegacyLayout)
+        {
+            throw new InvalidDataException("A new local-product candidate must use the current managed layout.");
+        }
 
-        string manifestPath = ProductStagingPathGuard.RequireRegularFile(Path.Combine(candidatePath, ProductReleaseManifest.FileName), "local-product release manifest");
-
-        string signaturePath = ProductStagingPathGuard.RequireRegularFile(Path.Combine(candidatePath, ProductReleaseSignature.FileName), "local-product release signature");
-
-        string clientPath = ProductStagingPathGuard.RequireDirectory(Path.Combine(candidatePath, ManagedProductDescriptor.ClientRoot), "local-product client component");
+        string releasePath = ManagedProductDescriptor.GetActiveReleaseRoot(candidatePath, layout);
+        string manifestPath = ProductStagingPathGuard.RequireRegularFile(Path.Combine(releasePath, ProductReleaseManifest.FileName), "local-product release manifest");
+        string signaturePath = ProductStagingPathGuard.RequireRegularFile(Path.Combine(releasePath, ProductReleaseSignature.FileName), "local-product release signature");
+        string clientPath = ProductStagingPathGuard.RequireDirectory(Path.Combine(releasePath, ManagedProductDescriptor.ClientRoot), "local-product client component");
 
         ProductReleaseManifest manifest = ProductReleaseManifest.Read(manifestPath);
+
+        byte[] manifestBytes = ProductReleaseManifest.ReadRegularFile(manifestPath, 8 * 1024 * 1024);
+        if (layout.ActiveRelease is not null && !ProductReleaseIdentity.Matches(layout.ActiveRelease, manifest.ReleaseSequence, manifestBytes))
+        {
+            throw new InvalidDataException("The active release identity does not match its signed manifest.");
+        }
 
         ProductReleaseSignature.ValidateEnvelope(signaturePath);
         ProductReleaseManifest.VerifyClient(clientPath, manifest);

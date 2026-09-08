@@ -6,6 +6,8 @@ internal enum ManagedInstallationIssue
     ManifestMissing,
     ManifestInvalid,
     UnsupportedManifest,
+    ActiveReleaseMissing,
+    ReleaseIdentityMismatch,
     ClientComponentMissing,
     ReleaseMetadataMissing,
     ReleaseManifestInvalid,

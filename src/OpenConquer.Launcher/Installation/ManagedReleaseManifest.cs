@@ -144,6 +144,7 @@ internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductI
         if (schemaVersion is null or <= 0 || productId is null || !string.Equals(productId, ExpectedProductId, StringComparison.Ordinal)
             || releaseSequence is null or 0 || releaseVersion is null || !IsValidVersion(releaseVersion) || minimumLauncherVersion is null or <= 0
             || targetRuntime is null || !ReleaseTargetRuntime.IsSupported(targetRuntime) || clientExecutable is null || !ReleasePackagePath.IsValid(clientExecutable)
+            || !string.Equals(clientExecutable, ReleaseTargetRuntime.ClientExecutable(targetRuntime), StringComparison.Ordinal)
             || files is null || files.Count == 0 || !files.Any(file => string.Equals(file.Path, clientExecutable, StringComparison.Ordinal)))
         {
             return false;

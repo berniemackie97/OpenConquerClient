@@ -105,6 +105,24 @@ public sealed class LocalProductArtifactValidatorTests
     }
 
     [Fact]
+    public void ValidateLauncherPublishRejectsManagedReleaseGenerations()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string launcherRoot = temporary.CreateDirectory("launcher");
+        CreateLauncherExecutable(launcherRoot);
+        Directory.CreateDirectory(Path.Combine(launcherRoot,
+            ManagedProductDescriptor.ReleasesRoot));
+
+        Assert.Throws<InvalidDataException>(() =>
+            LocalProductArtifactValidator.ValidateLauncherPublish(
+                launcherRoot,
+                RequireCurrentTargetRuntime()
+            )
+        );
+    }
+
+    [Fact]
     public void ValidateLauncherPublishRejectsMissingExecutable()
     {
         using TemporaryDirectory temporary = new();

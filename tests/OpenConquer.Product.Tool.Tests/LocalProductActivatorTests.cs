@@ -40,6 +40,23 @@ public sealed class LocalProductActivatorTests
         Assert.Equal(10UL, ReadReleaseSequence(paths.PreviousProductPath));
     }
 
+    [Fact]
+    public void ActivateReplacesLegacyCurrentProductAndPreservesItForRecovery()
+    {
+        using TemporaryDirectory temporary = new();
+
+        LocalProductPaths paths = CreatePaths(temporary);
+
+        CreateManagedProduct(paths.ProductPath, releaseSequence: 10, legacyLayout: true);
+        CreateManagedProduct(paths.CandidateProductPath, releaseSequence: 11);
+
+        LocalProductActivator.Activate(paths);
+
+        Assert.Equal(11UL, ReadReleaseSequence(paths.ProductPath));
+        Assert.Equal(10UL, ReadReleaseSequence(paths.PreviousProductPath));
+        Assert.Null(ManagedProductDescriptor.Read(paths.PreviousProductPath).ActiveRelease);
+    }
+
     [Theory]
     [InlineData(10UL)]
     [InlineData(9UL)]
@@ -81,6 +98,21 @@ public sealed class LocalProductActivatorTests
         Assert.Equal(10UL, ReadReleaseSequence(paths.ProductPath));
         Assert.True(Directory.Exists(paths.CandidateProductPath));
         Assert.False(Directory.Exists(paths.PreviousProductPath));
+    }
+
+    [Fact]
+    public void ActivateRejectsLegacyCandidate()
+    {
+        using TemporaryDirectory temporary = new();
+
+        LocalProductPaths paths = CreatePaths(temporary);
+        CreateManagedProduct(paths.CandidateProductPath, releaseSequence: 1,
+            legacyLayout: true);
+
+        Assert.Throws<InvalidDataException>(() => LocalProductActivator.Activate(paths));
+
+        Assert.True(Directory.Exists(paths.CandidateProductPath));
+        Assert.False(Directory.Exists(paths.ProductPath));
     }
 
     [Fact]
@@ -146,38 +178,18 @@ public sealed class LocalProductActivatorTests
         return paths;
     }
 
-    private static void CreateManagedProduct(string productPath, ulong releaseSequence)
+    private static void CreateManagedProduct(
+        string productPath,
+        ulong releaseSequence,
+        bool legacyLayout = false)
     {
         Directory.CreateDirectory(productPath);
-
-        string clientPath = Path.Combine(productPath, ManagedProductDescriptor.ClientRoot);
-        Directory.CreateDirectory(clientPath);
-
-        string executablePath = Path.Combine(clientPath, "OpenConquer.Client");
         byte[] executable = [0x01, 0x02, 0x03, 0x04];
-
-        File.WriteAllBytes(executablePath, executable);
-
-        using (
-            FileStream stream = new(
-                Path.Combine(productPath, ManagedProductDescriptor.FileName),
-                FileMode.CreateNew,
-                FileAccess.Write,
-                FileShare.None
-            )
-        )
-        using (Utf8JsonWriter writer = new(stream))
-        {
-            writer.WriteStartObject();
-            writer.WriteNumber("schemaVersion", 1);
-            writer.WriteString("productId", "OpenConquer");
-            writer.WriteString("clientRoot", ManagedProductDescriptor.ClientRoot);
-            writer.WriteEndObject();
-        }
+        string temporaryManifestPath = Path.Combine(productPath, "release.tmp");
 
         using (
             FileStream stream = new(
-                Path.Combine(productPath, ProductReleaseManifest.FileName),
+                temporaryManifestPath,
                 FileMode.CreateNew,
                 FileAccess.Write,
                 FileShare.None
@@ -205,9 +217,21 @@ public sealed class LocalProductActivatorTests
             writer.WriteEndObject();
         }
 
+        byte[] manifestBytes = File.ReadAllBytes(temporaryManifestPath);
+        string? releaseId = legacyLayout
+            ? null
+            : ProductReleaseIdentity.Create(releaseSequence, manifestBytes);
+        string releasePath = legacyLayout
+            ? productPath
+            : Path.Combine(productPath, ManagedProductDescriptor.ReleasesRoot, releaseId!);
+        string clientPath = Path.Combine(releasePath, ManagedProductDescriptor.ClientRoot);
+        Directory.CreateDirectory(clientPath);
+        File.WriteAllBytes(Path.Combine(clientPath, "OpenConquer.Client"), executable);
+        File.Move(temporaryManifestPath, Path.Combine(releasePath, ProductReleaseManifest.FileName));
+
         using (
             FileStream stream = new(
-                Path.Combine(productPath, ProductReleaseSignature.FileName),
+                Path.Combine(releasePath, ProductReleaseSignature.FileName),
                 FileMode.CreateNew,
                 FileAccess.Write,
                 FileShare.None
@@ -222,12 +246,28 @@ public sealed class LocalProductActivatorTests
             writer.WriteBase64String("signature", new byte[64]);
             writer.WriteEndObject();
         }
+
+        if (legacyLayout)
+        {
+            File.WriteAllText(Path.Combine(productPath, ManagedProductDescriptor.FileName),
+                JsonSerializer.Serialize(new
+                {
+                    schemaVersion = 1,
+                    productId = ProductReleaseManifest.ExpectedProductId,
+                    clientRoot = ManagedProductDescriptor.ClientRoot,
+                }));
+        }
+        else
+        {
+            ManagedProductDescriptor.Write(productPath, releaseId!);
+        }
     }
 
     private static ulong ReadReleaseSequence(string productPath)
     {
         return ProductReleaseManifest
-            .Read(Path.Combine(productPath, ProductReleaseManifest.FileName))
+            .Read(Path.Combine(ManagedProductDescriptor.GetActiveReleaseRoot(productPath),
+                ProductReleaseManifest.FileName))
             .ReleaseSequence;
     }
 

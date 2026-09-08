@@ -271,6 +271,11 @@ jobs:
             exit 1
           fi
 
+          if [[ -e "$launcher/releases" ]]; then
+            echo "The raw launcher publish must not contain managed release generations." >&2
+            exit 1
+          fi
+
       # The launcher is a separate product and must not acquire the game's retail runtime payload
       # merely because both executables live in the same repository.
       - name: Reject game runtime content from launcher publish
@@ -281,9 +286,9 @@ jobs:
             exit 1
           fi
 
-      # Composition copies the independently produced release manifest/signature to the product
-      # root, verifies that the staged client still matches the manifest, writes the installation
-      # descriptor, and activates the complete product by sibling-directory rename.
+      # Composition copies the independently produced release manifest/signature into an immutable
+      # generation, verifies that the staged client still matches the manifest, writes the atomic
+      # generation selector, and activates the complete product by sibling-directory rename.
       - name: Verify managed product composition
         shell: bash
         run: |
@@ -306,19 +311,39 @@ jobs:
             --output "$managed"
 
           test -f "$managed/openconquer.installation.json"
-          test -f "$managed/openconquer.release.json"
-          test -f "$managed/openconquer.release.sig"
-          test -d "$managed/client"
-          test -f "$managed/client/OpenConquer.Client"
-          test -f "$managed/client/content/retail-5517/manifest.json"
+          active_release="$(
+            jq -er '
+              if .schemaVersion == 2
+                and .productId == "OpenConquer"
+                and (.activeRelease | type) == "string"
+                and .fallbackRelease == null
+                and (keys | sort) == ["activeRelease", "fallbackRelease", "productId", "schemaVersion"]
+              then .activeRelease
+              else empty
+              end
+            ' "$managed/openconquer.installation.json"
+          )"
+          mapfile -t release_dirs < <(
+            find "$managed/releases" -mindepth 1 -maxdepth 1 -print
+          )
+          test "${#release_dirs[@]}" -eq 1
+          generation="${release_dirs[0]}"
+          test -d "$generation"
+          test "$(basename "$generation")" = "$active_release"
+          test -f "$generation/openconquer.release.json"
+          test -f "$generation/openconquer.release.sig"
+          test -d "$generation/client"
+          test -f "$generation/client/OpenConquer.Client"
+          test -x "$generation/client/OpenConquer.Client"
+          test -f "$generation/client/content/retail-5517/manifest.json"
 
           cmp \
             "$release_root/openconquer.release.json" \
-            "$managed/openconquer.release.json"
+            "$generation/openconquer.release.json"
 
           cmp \
             "$release_root/openconquer.release.sig" \
-            "$managed/openconquer.release.sig"
+            "$generation/openconquer.release.sig"
 
           test ! -e "$managed/publisher-private.pem"
           test ! -e "$managed/publisher-public.der"

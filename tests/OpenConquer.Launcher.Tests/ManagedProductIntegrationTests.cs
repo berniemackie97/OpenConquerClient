@@ -82,11 +82,20 @@ public sealed class ManagedProductIntegrationTests
             Assert.IsType<ManagedInstallationResolution.Resolved>(resolution);
 
         ManagedInstallation installation = resolved.Installation;
+        ManagedProductLayout layout = ManagedProductDescriptor.Read(managedProductPath);
+        string activeReleaseRoot = Path.Combine(managedProductPath,
+            ManagedProductDescriptor.ReleasesRoot, layout.ActiveRelease!);
 
         Assert.Equal(Path.GetFullPath(managedProductPath), installation.RootPath);
 
+        Assert.Equal(Path.GetFullPath(activeReleaseRoot), installation.ReleaseRootPath);
+
+        Assert.Equal(layout.ActiveRelease, installation.ActiveReleaseId);
+
+        Assert.Null(installation.FallbackReleaseId);
+
         Assert.Equal(
-            Path.GetFullPath(Path.Combine(managedProductPath, ManagedProductDescriptor.ClientRoot)),
+            Path.GetFullPath(Path.Combine(activeReleaseRoot, ManagedProductDescriptor.ClientRoot)),
             installation.ClientRootPath
         );
 
@@ -96,19 +105,19 @@ public sealed class ManagedProductIntegrationTests
         );
 
         Assert.Equal(
-            Path.GetFullPath(Path.Combine(managedProductPath, ProductReleaseManifest.FileName)),
+            Path.GetFullPath(Path.Combine(activeReleaseRoot, ProductReleaseManifest.FileName)),
             installation.ReleaseManifestPath
         );
 
         Assert.Equal(
-            Path.GetFullPath(Path.Combine(managedProductPath, ProductReleaseSignature.FileName)),
+            Path.GetFullPath(Path.Combine(activeReleaseRoot, ProductReleaseSignature.FileName)),
             installation.ReleaseSignaturePath
         );
 
         Assert.Equal(
             Path.GetFullPath(
                 Path.Combine(
-                    managedProductPath,
+                    activeReleaseRoot,
                     ManagedProductDescriptor.ClientRoot,
                     release.ClientExecutable
                 )

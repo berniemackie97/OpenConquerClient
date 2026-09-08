@@ -38,6 +38,8 @@ internal static class LauncherText
             ManagedInstallationIssue.ManifestMissing => ("Installation incomplete", "Required OpenConquer installation information is missing."),
             ManagedInstallationIssue.ManifestInvalid => ("Installation needs repair", "OpenConquer installation information is damaged or invalid."),
             ManagedInstallationIssue.UnsupportedManifest => ("Launcher update required", "This installation requires a newer version of OpenConquer Launcher."),
+            ManagedInstallationIssue.ActiveReleaseMissing => ("Installation needs repair", "The selected OpenConquer release is missing."),
+            ManagedInstallationIssue.ReleaseIdentityMismatch => ("Release not trusted", "The selected release does not match its authenticated release information."),
             ManagedInstallationIssue.ClientComponentMissing => ("Installation needs repair", "Required OpenConquer game files are missing."),
             ManagedInstallationIssue.ReleaseMetadataMissing => ("Installation incomplete", "Trusted OpenConquer release information is missing."),
             ManagedInstallationIssue.ReleaseManifestInvalid => ("Installation needs repair", "OpenConquer release information is damaged or invalid."),

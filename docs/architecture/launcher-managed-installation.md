@@ -10,23 +10,45 @@ authority.
 <product root>/
 ├── launcher publish files
 ├── openconquer.installation.json
-├── openconquer.release.json
-├── openconquer.release.sig
-└── client/                       # client publish files
+└── releases/
+    └── <release-id>/
+        ├── openconquer.release.json
+        ├── openconquer.release.sig
+        └── client/                       # client publish files
 ```
 
 Composition generates the installation descriptor and stages the authenticated release metadata. The
-raw launcher publish must not contain the descriptor, release manifest, release signature, mutable
-release trust, managed `client/`, or game runtime content.
+raw launcher publish must not contain the descriptor, `releases/`, release manifest, release
+signature, mutable release trust, a legacy root-level managed `client/`, or game runtime content.
+
+```json
+{
+  "schemaVersion": 2,
+  "productId": "OpenConquer",
+  "activeRelease": "00000000000000000042-<manifest-sha256>",
+  "fallbackRelease": null
+}
+```
+
+Installation schema v2 requires exactly these properties. The active release is mandatory; the
+fallback is either null or a distinct release identity. A release identity contains a zero-padded
+20-digit positive sequence, the lowercase SHA-256 digest of the exact signed manifest bytes, and,
+for same-release repair generations, an optional 32-digit lowercase nonce. This makes every selected
+directory name independently checkable without granting the descriptor release authority.
+
+Duplicate/unknown fields, malformed JSON, nonpositive or nonportable identities, equal active and
+fallback identities, and arbitrary paths are rejected. A structurally recognized higher version
+reports that a launcher update is required. The descriptor is bounded to 32 KiB.
+
+Schema v1 remains a read and one-way migration contract for existing flat products:
 
 ```json
 { "schemaVersion": 1, "productId": "OpenConquer", "clientRoot": "client" }
 ```
 
-Installation schema v1 requires exactly these properties and values. Duplicate/unknown fields,
-malformed JSON, nonpositive versions, and arbitrary client paths are rejected. A structurally
-recognized higher version reports that a launcher update is required. The descriptor is bounded to
-32 KiB.
+New composition never emits schema v1. A successful update migrates a healthy legacy client into an
+immutable generation before selecting the new generation. The untouched flat files remain inert;
+removing them is a packaging/lifecycle decision, not part of activation.
 
 `openconquer.release.json` identifies the product, monotonically positive release sequence, release
 version, minimum compatible launcher version, target runtime, client executable, and the complete
@@ -39,9 +61,10 @@ release-signing keys are never part of the launcher or managed product.
 
 ## Resolution and recovery
 
-`ManagedInstallationResolver` starts at `AppContext.BaseDirectory`. It requires a valid descriptor
-and a direct, real `client/` directory; linked/reparse descriptors and client directories are
-rejected. It never searches the machine or asks the player to choose a folder.
+`ManagedInstallationResolver` starts at `AppContext.BaseDirectory`. It requires a valid descriptor,
+a direct `releases/` root, an exact selected-generation root, and a direct `client/` directory;
+linked/reparse paths are rejected. The selected generation may contain only its manifest, signature,
+and client directory. It never searches the machine or asks the player to choose a folder.
 
 Resolution also requires:
 
@@ -49,10 +72,12 @@ Resolution also requires:
 - configured embedded publisher trust;
 - a valid ECDSA P-256 signature from a trusted publisher over the exact manifest bytes;
 - a release target runtime matching the current launcher platform;
+- a generation identity matching the signed manifest sequence and exact manifest digest;
 - the exact manifest-declared client file set;
 - matching file lengths and SHA-256 hashes;
 - valid, non-linked, non-device, portable package paths; and
-- the declared platform-specific client executable.
+- the declared platform-specific client executable; and
+- portable executable permissions for that entry point on Unix.
 
 The client tree is enumerated again after hashing to catch ordinary update/repair races that add,
 remove, rename, or link entries during verification. A hostile process executing as the same OS user
@@ -98,10 +123,12 @@ by the launcher's embedded-resource build boundary.
 Production private-key custody remains outside `OpenConquer.Product.Tool`.
 
 Staging requires the release manifest and signature envelope as explicit inputs. It validates their
-structure, copies the launcher and client into a temporary sibling directory, copies the release
-metadata to the product root, verifies the staged client against the staged manifest, writes the
-installation descriptor, preserves Unix executable modes, and activates the staging root by rename
-without replacing an existing output.
+structure, snapshots their exact bytes, derives the release identity, copies the launcher and client
+into a temporary sibling directory, copies release metadata into the immutable generation, rejects
+metadata races, verifies the staged client against the staged manifest, writes the schema-v2
+descriptor, sanitizes copied Unix file modes while preserving executable intent, forces the declared
+Unix client entry point to portable `0755`, and activates the staging root by rename without
+replacing an existing output.
 
 Failed-stage cleanup is best-effort and preserves the primary error.
 
@@ -213,10 +240,68 @@ A failed candidate before activation leaves the current active product untouched
 `product.previous` is a local-development rollback/recovery slot. It is not an implementation of
 player-facing update or repair.
 
+## Installed client update, repair, and rollback transaction
+
+`ManagedReleaseTransaction` owns the narrow mutation boundary after a candidate release has been
+acquired. A candidate is one release root containing exactly the signed manifest, signature envelope,
+and client directory. The transaction does not discover releases, download them, choose a channel,
+update the running launcher, elevate privileges, or define an account/game protocol.
+
+Before changing installed state, the transaction:
+
+1. fully authenticates and hashes the candidate against embedded publisher trust;
+2. acquires the product-root update lock, serializing update, repair, and rollback across processes;
+3. authenticates current signed metadata to retain an anti-rollback floor even when current client
+   payload files are damaged;
+4. rejects update sequences that do not strictly advance and repair candidates that are not the
+   exact same signed release;
+5. copies only manifest-declared files into a private staging generation with bounded traversal,
+   no links/devices, create-new destinations, durable file flushes, and safe Unix modes; and
+6. authenticates and hashes the copied generation again.
+
+Only after those checks does it rename the complete staging generation into `releases/` and replace
+the descriptor. The descriptor replacement is the commit point and is one same-directory atomic
+rename. Cancellation is honored through the last pre-commit check; after the synchronous commit
+there is no cancellable work whose failure could falsely report an unchanged installation.
+
+An update records the former active generation as fallback only if it still verifies completely. If
+the active payload is damaged, an already-recorded healthy fallback is retained; otherwise the new
+release is selected without a fallback. Repair always writes a new nonce-bearing generation rather
+than modifying the selected directory in place. Explicit rollback fully verifies the fallback before
+selecting it and retains the displaced active generation as the next fallback only when it remains
+healthy.
+
+Expected failures are classified without exposing paths or exception text: unavailable current
+authority, rejected candidate integrity, non-advancing update, blocked downgrade, wrong repair
+release, unavailable fallback, concurrent maintenance, access denial, linked paths, and filesystem
+failure. Cancellation remains cancellation rather than being flattened into a repair error.
+
+On supported local filesystems that provide atomic same-directory rename, process-crash behavior is
+deterministic:
+
+- before descriptor replacement, the previous active release remains selected;
+- after descriptor replacement, the completely copied and reverified generation is selected;
+- incomplete staging directories and completed unreferenced generations are inert because no
+  descriptor names them; and
+- selected active/fallback generations are never deleted by this transaction.
+
+The implementation durably flushes copied files and the temporary descriptor before activation.
+.NET does not expose a portable parent-directory flush, so the launcher does not claim stronger
+sudden-power-loss guarantees than the host filesystem provides.
+
+Automatic reclamation is intentionally absent until controlled client-process lifetime can prove a
+generation is no longer executing, especially on Windows. Authoritative acquisition, recovery UI,
+launcher self-update, and signed platform deployment remain later launcher-owned slices.
+
 ## Verification
 
 `ManagedInstallationResolverTests` cover schema/layout rejection, missing release metadata,
 unavailable release authority, untrusted signatures, client mutation, and trusted resolution.
+
+`ManagedReleaseTransactionTests` cover trusted update, same-release repair, damaged-client recovery,
+legacy migration, verified rollback, corrupt fallback rejection, sequence policy, release-identity
+binding, cancellation, lock contention, linked and unexpected candidate entries, selected-generation
+shape, and Unix executable permissions.
 
 `LauncherApplicationTests` cover retry, cancellation ownership, concurrent/reentrant shutdown,
 callback failures, and terminal state.

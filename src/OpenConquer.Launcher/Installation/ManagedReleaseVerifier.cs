@@ -18,25 +18,20 @@ internal sealed class ManagedReleaseVerifier
         _currentRuntime = currentRuntime ?? ReleaseTargetRuntime.Current;
     }
 
-    public async Task<ManagedReleaseVerification> VerifyAsync(string clientRootPath, ManagedReleaseManifest manifest, ReadOnlyMemory<byte> manifestBytes, ManagedReleaseSignature signature, CancellationToken cancellationToken)
+    public async Task<ManagedReleaseVerification> VerifyAsync(string clientRootPath, string manifestPath, string signaturePath,
+        ManagedReleaseManifest manifest, ReadOnlyMemory<byte> manifestBytes, ManagedReleaseSignature signature, ReadOnlyMemory<byte> signatureBytes,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientRootPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(manifestPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(signaturePath);
         ArgumentNullException.ThrowIfNull(manifest);
         ArgumentNullException.ThrowIfNull(signature);
 
-        if (!_trustedKeys.IsConfigured)
+        ManagedReleaseMetadataVerification metadata = VerifyMetadata(manifest, manifestBytes.Span, signature);
+        if (metadata is ManagedReleaseMetadataVerification.Rejected metadataRejected)
         {
-            return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ReleaseAuthorityUnavailable);
-        }
-
-        if (!_trustedKeys.Verify(signature, manifestBytes.Span))
-        {
-            return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ReleaseSignatureInvalid);
-        }
-
-        if (_currentRuntime is null || !string.Equals(manifest.TargetRuntime, _currentRuntime, StringComparison.Ordinal))
-        {
-            return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ClientPlatformMismatch);
+            return new ManagedReleaseVerification.Rejected(metadataRejected.Issue);
         }
 
         try
@@ -60,20 +55,42 @@ internal sealed class ManagedReleaseVerifier
                 }
             }
 
-            // Re-enumeration catches ordinary update/repair races that add, remove,
-            // link, or rename entries while hashing. A hostile process executing as
-            // the same OS user is outside this filesystem-integrity trust boundary.
             Dictionary<string, string> finalFiles = EnumerateClientFiles(clientRootPath, cancellationToken);
 
-            if (finalFiles.Count != actualFiles.Count || actualFiles.Any(pair => !finalFiles.TryGetValue(pair.Key, out string? finalPath)
-                    || !string.Equals(pair.Value, finalPath, StringComparison.Ordinal)))
+            if (finalFiles.Count != actualFiles.Count || actualFiles.Any(pair => !finalFiles.TryGetValue(pair.Key, out string? finalPath) || !string.Equals(pair.Value, finalPath, StringComparison.Ordinal)))
             {
                 return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ClientIntegrityFailure);
             }
 
             string executablePath = ReleasePackagePath.Combine(clientRootPath, manifest.ClientExecutable);
+            if (!OperatingSystem.IsWindows())
+            {
+                UnixFileMode mode = File.GetUnixFileMode(executablePath);
+                UnixFileMode required = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+                if ((mode & required) != required)
+                {
+                    return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ClientIntegrityFailure);
+                }
+            }
 
-            return new ManagedReleaseVerification.Verified(new ManagedReleaseIdentity(manifest.ReleaseSequence, manifest.ReleaseVersion, manifest.TargetRuntime), executablePath);
+            ReleaseManifestReadResult finalManifest = await ManagedReleaseManifest.ReadAsync(manifestPath, cancellationToken).ConfigureAwait(false);
+            if (finalManifest is ReleaseManifestReadResult.Rejected finalManifestRejected)
+            {
+                return new ManagedReleaseVerification.Rejected(finalManifestRejected.Issue);
+            }
+
+            ReleaseSignatureReadResult finalSignature = await ManagedReleaseSignature.ReadAsync(signaturePath, cancellationToken).ConfigureAwait(false);
+            if (finalSignature is ReleaseSignatureReadResult.Rejected finalSignatureRejected)
+            {
+                return new ManagedReleaseVerification.Rejected(finalSignatureRejected.Issue);
+            }
+
+            if (!manifestBytes.Span.SequenceEqual(((ReleaseManifestReadResult.Accepted)finalManifest).Bytes) || !signatureBytes.Span.SequenceEqual(((ReleaseSignatureReadResult.Accepted)finalSignature).Bytes))
+            {
+                return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ReadFailure);
+            }
+
+            return new ManagedReleaseVerification.Verified(((ManagedReleaseMetadataVerification.Verified)metadata).Release, executablePath);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -95,6 +112,29 @@ internal sealed class ManagedReleaseVerifier
         {
             return new ManagedReleaseVerification.Rejected(ManagedInstallationIssue.ReadFailure);
         }
+    }
+
+    public ManagedReleaseMetadataVerification VerifyMetadata(ManagedReleaseManifest manifest, ReadOnlySpan<byte> manifestBytes, ManagedReleaseSignature signature)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(signature);
+
+        if (!_trustedKeys.IsConfigured)
+        {
+            return new ManagedReleaseMetadataVerification.Rejected(ManagedInstallationIssue.ReleaseAuthorityUnavailable);
+        }
+
+        if (!_trustedKeys.Verify(signature, manifestBytes))
+        {
+            return new ManagedReleaseMetadataVerification.Rejected(ManagedInstallationIssue.ReleaseSignatureInvalid);
+        }
+
+        if (_currentRuntime is null || !string.Equals(manifest.TargetRuntime, _currentRuntime, StringComparison.Ordinal))
+        {
+            return new ManagedReleaseMetadataVerification.Rejected(ManagedInstallationIssue.ClientPlatformMismatch);
+        }
+
+        return new ManagedReleaseMetadataVerification.Verified(new ManagedReleaseIdentity(manifest.ReleaseSequence, manifest.ReleaseVersion, manifest.TargetRuntime));
     }
 
     private static Dictionary<string, string> EnumerateClientFiles(string clientRootPath, CancellationToken cancellationToken)
@@ -205,14 +245,22 @@ internal sealed class ManagedReleaseVerifier
 
 internal sealed record ManagedReleaseIdentity(ulong Sequence, string Version, string TargetRuntime);
 
+internal abstract record ManagedReleaseMetadataVerification
+{
+    private ManagedReleaseMetadataVerification()
+    {
+    }
+
+    internal sealed record Verified(ManagedReleaseIdentity Release) : ManagedReleaseMetadataVerification;
+    internal sealed record Rejected(ManagedInstallationIssue Issue) : ManagedReleaseMetadataVerification;
+}
+
 internal abstract record ManagedReleaseVerification
 {
     private ManagedReleaseVerification()
     {
     }
 
-    internal sealed record Verified(ManagedReleaseIdentity Release, string ClientExecutablePath)
-        : ManagedReleaseVerification;
-
+    internal sealed record Verified(ManagedReleaseIdentity Release, string ClientExecutablePath) : ManagedReleaseVerification;
     internal sealed record Rejected(ManagedInstallationIssue Issue) : ManagedReleaseVerification;
 }
