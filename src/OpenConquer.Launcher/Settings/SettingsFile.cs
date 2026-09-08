@@ -41,12 +41,28 @@ internal static partial class SettingsFile
 
             throw new IOException("Cannot open settings.", new Win32Exception(error));
         }
+
         SafeFileHandle handle = new(descriptor, ownsHandle: true);
         try
         {
             return new FileStream(handle, FileAccess.Read);
         }
-        catch { handle.Dispose(); throw; }
+        catch
+        {
+            handle.Dispose();
+            throw;
+        }
+    }
+
+    internal static void Commit(string temporaryPath, string destinationPath, bool destinationExists)
+    {
+        if (OperatingSystem.IsWindows() && destinationExists)
+        {
+            File.Replace(temporaryPath, destinationPath, destinationBackupFileName: null);
+            return;
+        }
+
+        File.Move(temporaryPath, destinationPath, overwrite: destinationExists);
     }
 
     [LibraryImport("libc", EntryPoint = "open", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]

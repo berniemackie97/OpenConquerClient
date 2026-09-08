@@ -105,4 +105,200 @@ public sealed class ProductToolCommandLineTests
         Assert.False(duplicate);
         Assert.False(outOfOrder);
     }
+
+    [Fact]
+    public void TryParseLocalProductCapturesWorkingDirectory()
+    {
+        string workingDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "openconquer-local-product-working"
+        );
+
+        bool parsed = ProductToolCommandLine.TryParse(
+            ["create-local-product"],
+            workingDirectory,
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.True(parsed, errorMessage);
+
+        LocalProductOptions localOptions = Assert.IsType<LocalProductOptions>(options);
+
+        Assert.Equal(Path.GetFullPath(workingDirectory), localOptions.WorkingDirectoryPath);
+    }
+
+    [Fact]
+    public void TryParseLocalProductRejectsOptions()
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            ["create-local-product", "--output", "somewhere"],
+            Path.GetTempPath(),
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.Equal("Command 'create-local-product' does not accept options.", errorMessage);
+    }
+
+    [Fact]
+    public void TryParseReleaseTrustResolvesRepeatedPublicKeyPaths()
+    {
+        string workingDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "openconquer-product-tool-trust-working"
+        );
+
+        bool parsed = ProductToolCommandLine.TryParse(
+            [
+                "create-release-trust",
+                "--public-key",
+                "keys/first.der",
+                "--public-key",
+                "keys/second.der",
+                "--output",
+                "release/release-trust.json",
+            ],
+            workingDirectory,
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.True(parsed, errorMessage);
+
+        ReleaseTrustOptions trustOptions = Assert.IsType<ReleaseTrustOptions>(options);
+
+        Assert.Equal(
+            [
+                Path.GetFullPath(Path.Combine(workingDirectory, "keys/first.der")),
+                Path.GetFullPath(Path.Combine(workingDirectory, "keys/second.der")),
+            ],
+            trustOptions.PublicKeyPaths
+        );
+
+        Assert.Equal(
+            Path.GetFullPath(Path.Combine(workingDirectory, "release/release-trust.json")),
+            trustOptions.OutputPath
+        );
+    }
+
+    [Fact]
+    public void TryParseReleaseTrustRejectsRepeatedOutput()
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            [
+                "create-release-trust",
+                "--public-key",
+                "publisher.der",
+                "--output",
+                "first.json",
+                "--output",
+                "second.json",
+            ],
+            Path.GetTempPath(),
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.Equal("Option '--output' must not be repeated.", errorMessage);
+    }
+
+    [Fact]
+    public void TryParseReleaseTrustRejectsMissingPublicKey()
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            ["create-release-trust", "--output", "release-trust.json"],
+            Path.GetTempPath(),
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.Equal("Option '--public-key' is required.", errorMessage);
+    }
+
+    [Fact]
+    public void TryParseReleaseTrustRejectsMissingOutput()
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            ["create-release-trust", "--public-key", "publisher.der"],
+            Path.GetTempPath(),
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.Equal("Option '--output' is required.", errorMessage);
+    }
+
+    [Fact]
+    public void TryParseReleaseTrustRejectsUnknownOption()
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            [
+                "create-release-trust",
+                "--public-key",
+                "publisher.der",
+                "--trust-store",
+                "release-trust.json",
+            ],
+            Path.GetTempPath(),
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.Equal("Option '--trust-store' is not valid for this command.", errorMessage);
+    }
+
+    [Fact]
+    public void TryParseReleaseTrustRejectsMoreThanMaximumKeyCount()
+    {
+        List<string> args = ["create-release-trust"];
+
+        for (int index = 0; index <= ProductReleaseTrust.MaximumKeyCount; index++)
+        {
+            args.Add("--public-key");
+            args.Add($"publisher-{index}.der");
+        }
+
+        args.Add("--output");
+        args.Add("release-trust.json");
+
+        bool parsed = ProductToolCommandLine.TryParse(
+            args,
+            Path.GetTempPath(),
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.Equal(
+            $"Release trust supports at most {ProductReleaseTrust.MaximumKeyCount} public keys.",
+            errorMessage
+        );
+    }
+
+    [Fact]
+    public void TryParseReleaseTrustRejectsMissingOptionValue()
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            ["create-release-trust", "--public-key", "--output", "release-trust.json"],
+            Path.GetTempPath(),
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.Equal("Option '--public-key' requires a value.", errorMessage);
+    }
 }
