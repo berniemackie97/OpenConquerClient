@@ -107,9 +107,49 @@ public sealed class ProductToolCommandLineTests
     }
 
     [Fact]
+    public void TryParseLocalProductCapturesWorkingDirectory()
+    {
+        string workingDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "openconquer-local-product-working"
+        );
+
+        bool parsed = ProductToolCommandLine.TryParse(
+            ["create-local-product"],
+            workingDirectory,
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.True(parsed, errorMessage);
+
+        LocalProductOptions localOptions = Assert.IsType<LocalProductOptions>(options);
+
+        Assert.Equal(Path.GetFullPath(workingDirectory), localOptions.WorkingDirectoryPath);
+    }
+
+    [Fact]
+    public void TryParseLocalProductRejectsOptions()
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            ["create-local-product", "--output", "somewhere"],
+            Path.GetTempPath(),
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
+
+        Assert.False(parsed);
+        Assert.Null(options);
+        Assert.Equal("Command 'create-local-product' does not accept options.", errorMessage);
+    }
+
+    [Fact]
     public void TryParseReleaseTrustResolvesRepeatedPublicKeyPaths()
     {
-        string workingDirectory = Path.Combine(Path.GetTempPath(), "openconquer-product-tool-trust-working");
+        string workingDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "openconquer-product-tool-trust-working"
+        );
 
         bool parsed = ProductToolCommandLine.TryParse(
             [
@@ -123,7 +163,8 @@ public sealed class ProductToolCommandLineTests
             ],
             workingDirectory,
             out ProductToolOptions? options,
-            out string? errorMessage);
+            out string? errorMessage
+        );
 
         Assert.True(parsed, errorMessage);
 
@@ -134,11 +175,13 @@ public sealed class ProductToolCommandLineTests
                 Path.GetFullPath(Path.Combine(workingDirectory, "keys/first.der")),
                 Path.GetFullPath(Path.Combine(workingDirectory, "keys/second.der")),
             ],
-            trustOptions.PublicKeyPaths);
+            trustOptions.PublicKeyPaths
+        );
 
         Assert.Equal(
             Path.GetFullPath(Path.Combine(workingDirectory, "release/release-trust.json")),
-            trustOptions.OutputPath);
+            trustOptions.OutputPath
+        );
     }
 
     [Fact]
@@ -156,7 +199,8 @@ public sealed class ProductToolCommandLineTests
             ],
             Path.GetTempPath(),
             out ProductToolOptions? options,
-            out string? errorMessage);
+            out string? errorMessage
+        );
 
         Assert.False(parsed);
         Assert.Null(options);
@@ -167,14 +211,11 @@ public sealed class ProductToolCommandLineTests
     public void TryParseReleaseTrustRejectsMissingPublicKey()
     {
         bool parsed = ProductToolCommandLine.TryParse(
-            [
-                "create-release-trust",
-                "--output",
-                "release-trust.json",
-            ],
+            ["create-release-trust", "--output", "release-trust.json"],
             Path.GetTempPath(),
             out ProductToolOptions? options,
-            out string? errorMessage);
+            out string? errorMessage
+        );
 
         Assert.False(parsed);
         Assert.Null(options);
@@ -185,14 +226,11 @@ public sealed class ProductToolCommandLineTests
     public void TryParseReleaseTrustRejectsMissingOutput()
     {
         bool parsed = ProductToolCommandLine.TryParse(
-            [
-                "create-release-trust",
-                "--public-key",
-                "publisher.der",
-            ],
+            ["create-release-trust", "--public-key", "publisher.der"],
             Path.GetTempPath(),
             out ProductToolOptions? options,
-            out string? errorMessage);
+            out string? errorMessage
+        );
 
         Assert.False(parsed);
         Assert.Null(options);
@@ -212,7 +250,8 @@ public sealed class ProductToolCommandLineTests
             ],
             Path.GetTempPath(),
             out ProductToolOptions? options,
-            out string? errorMessage);
+            out string? errorMessage
+        );
 
         Assert.False(parsed);
         Assert.Null(options);
@@ -233,26 +272,30 @@ public sealed class ProductToolCommandLineTests
         args.Add("--output");
         args.Add("release-trust.json");
 
-        bool parsed = ProductToolCommandLine.TryParse(args, Path.GetTempPath(), out ProductToolOptions? options, out string? errorMessage);
+        bool parsed = ProductToolCommandLine.TryParse(
+            args,
+            Path.GetTempPath(),
+            out ProductToolOptions? options,
+            out string? errorMessage
+        );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.Equal($"Release trust supports at most {ProductReleaseTrust.MaximumKeyCount} public keys.", errorMessage);
+        Assert.Equal(
+            $"Release trust supports at most {ProductReleaseTrust.MaximumKeyCount} public keys.",
+            errorMessage
+        );
     }
 
     [Fact]
     public void TryParseReleaseTrustRejectsMissingOptionValue()
     {
         bool parsed = ProductToolCommandLine.TryParse(
-            [
-                "create-release-trust",
-                "--public-key",
-                "--output",
-                "release-trust.json",
-            ],
+            ["create-release-trust", "--public-key", "--output", "release-trust.json"],
             Path.GetTempPath(),
             out ProductToolOptions? options,
-            out string? errorMessage);
+            out string? errorMessage
+        );
 
         Assert.False(parsed);
         Assert.Null(options);
