@@ -11,7 +11,7 @@ Linux, designed for OpenConquer Server.
 
 | Product  | Implemented                                                                                                                                                                                                                                                     | Still required                                                                                           |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Launcher | Avalonia host, redacted diagnostics, authenticated managed-package resolution, embedded publisher trust, release-signature and client-integrity verification, installation recheck, single-instance activation, coordinated shutdown, saved display preferences | Trusted update/repair, controlled verified client startup, complete player UX, signed platform packaging |
+| Launcher | Avalonia host, redacted diagnostics, authenticated managed-package resolution, embedded publisher trust, release-signature and client-integrity verification, crash-safe client-generation update/repair and verified rollback transaction, installation recheck, single-instance activation, coordinated shutdown, saved display preferences | Authoritative release discovery/acquisition and player-facing maintenance flow, launcher self-update, controlled verified client startup, complete player UX, signed platform packaging |
 | Client   | Resizable/fixed/fullscreen host, logical rendering and presentation, verified bootstrap content                                                                                                                                                                 | Networking, gameplay, higher-level rendering                                                             |
 
 The launcher replaces `Play.exe` as the product entry point. Launcher and client remain independent
@@ -52,8 +52,9 @@ launcher → installation/readiness → update/repair as required → pre-launch
 client   → realm selection → native AccountServer login → GameServer handoff → game
 ```
 
-Authenticated installation readiness is implemented. Trusted update/repair and controlled client
-startup remain separate future launcher capabilities.
+Authenticated installation readiness and the trusted client-generation update/repair transaction are
+implemented. Authoritative release discovery/acquisition, launcher self-update, player-facing
+maintenance orchestration, and controlled client startup remain separate launcher capabilities.
 
 ## Build and verify
 

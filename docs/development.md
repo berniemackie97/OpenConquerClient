@@ -254,7 +254,8 @@ Resolution verifies:
 - client file lengths;
 - SHA-256 hashes;
 - valid package paths; and
-- the platform-specific client executable.
+- the platform-specific client executable; and
+- portable executable permissions on Unix.
 
 A raw launcher build or publish is not an installed OpenConquer product and does not contain a
 managed client component. A launcher published without corresponding embedded release trust fails
@@ -263,8 +264,11 @@ closed when resolving a signed release.
 After an expected installation failure, **Check again** rechecks the same root without restarting.
 It does not repair files.
 
-Trusted update/repair and controlled client startup remain future launcher capabilities. Realm
-selection, native AccountServer login, and game-session handoff belong to Client/Networking.
+The trusted client-generation update/repair and explicit verified-rollback transaction is
+implemented below the UI boundary. Authoritative release discovery/acquisition, launcher self-update,
+player-facing maintenance orchestration, and controlled client startup remain future launcher
+capabilities. Realm selection, native AccountServer login, and game-session handoff belong to
+Client/Networking.
 
 ### Tamper smoke check
 
@@ -275,15 +279,17 @@ On macOS:
 
 ```bash
 tmp_root="$(mktemp -d /tmp/openconquer-corrupt.XXXXXX)"
-original_hash="$(shasum -a 256 artifacts/local-product/product/client/OpenConquer.Client | awk '{print $1}')"
+active_release="$(jq -r '.activeRelease' artifacts/local-product/product/openconquer.installation.json)"
+client_path="releases/$active_release/client/OpenConquer.Client"
+original_hash="$(shasum -a 256 "artifacts/local-product/product/$client_path" | awk '{print $1}')"
 
 ditto artifacts/local-product/product "$tmp_root/product"
-printf '\0' >> "$tmp_root/product/client/OpenConquer.Client"
+printf '\0' >> "$tmp_root/product/$client_path"
 
 "$tmp_root/product/OpenConquer.Launcher"
 launcher_exit=$?
 
-after_hash="$(shasum -a 256 artifacts/local-product/product/client/OpenConquer.Client | awk '{print $1}')"
+after_hash="$(shasum -a 256 "artifacts/local-product/product/$client_path" | awk '{print $1}')"
 
 echo "launcher_exit=$launcher_exit"
 echo "active_product_unchanged=$([[ "$original_hash" == "$after_hash" ]] && echo yes || echo no)"

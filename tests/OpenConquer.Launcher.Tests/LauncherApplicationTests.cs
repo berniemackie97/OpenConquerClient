@@ -539,6 +539,50 @@ public sealed class LauncherApplicationTests
     }
 
     [Fact]
+    public void ManagedInstallationRejectsNoncanonicalGenerationLayout()
+    {
+        string root = Path.GetFullPath(Path.Combine(Path.GetTempPath(),
+            "managed-installation-generation"));
+        string releaseId = ManagedReleaseId.Create(1, "manifest"u8);
+        string releaseRoot = Path.Combine(root, "arbitrary-release");
+        string clientRoot = Path.Combine(releaseRoot,
+            ManagedInstallationManifest.ExpectedClientRoot);
+        string runtime = ReleaseTargetRuntime.Current ?? "linux-x64";
+
+        Assert.Throws<ArgumentException>(() => ManagedInstallation.Create(
+            root,
+            releaseRoot,
+            clientRoot,
+            Path.Combine(root, ManagedInstallationManifest.FileName),
+            Path.Combine(releaseRoot, ManagedReleaseManifest.FileName),
+            Path.Combine(releaseRoot, ManagedReleaseSignature.FileName),
+            Path.Combine(clientRoot, ReleaseTargetRuntime.ClientExecutable(runtime)),
+            CreateReleaseIdentity(runtime),
+            releaseId));
+    }
+
+    [Fact]
+    public void ManagedInstallationRejectsFallbackWithoutActiveRelease()
+    {
+        string root = Path.GetFullPath(Path.Combine(Path.GetTempPath(),
+            "managed-installation-fallback"));
+        string clientRoot = Path.Combine(root, ManagedInstallationManifest.ExpectedClientRoot);
+        string runtime = ReleaseTargetRuntime.Current ?? "linux-x64";
+
+        Assert.Throws<ArgumentException>(() => ManagedInstallation.Create(
+            root,
+            root,
+            clientRoot,
+            Path.Combine(root, ManagedInstallationManifest.FileName),
+            Path.Combine(root, ManagedReleaseManifest.FileName),
+            Path.Combine(root, ManagedReleaseSignature.FileName),
+            Path.Combine(clientRoot, ReleaseTargetRuntime.ClientExecutable(runtime)),
+            CreateReleaseIdentity(runtime),
+            activeReleaseId: null,
+            fallbackReleaseId: ManagedReleaseId.Create(1, "manifest"u8)));
+    }
+
+    [Fact]
     public async Task StartAsyncAutomaticallyEvaluatesManagedInstallation()
     {
         string root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "managed-installation"));

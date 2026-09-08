@@ -15,7 +15,10 @@ internal static class ManagedProductStager
 
         RejectReleaseMetadataWithinPublishRoots(launcherPublishPath, clientPublishPath, releaseManifestPath, releaseSignaturePath);
 
-        _ = ProductReleaseManifest.Read(releaseManifestPath);
+        ProductReleaseManifest releaseManifest = ProductReleaseManifest.Read(releaseManifestPath);
+        byte[] releaseManifestBytes = ProductReleaseManifest.ReadRegularFile(releaseManifestPath, 8 * 1024 * 1024);
+        byte[] releaseSignatureBytes = ProductReleaseManifest.ReadRegularFile(releaseSignaturePath, 4 * 1024);
+        string releaseId = ProductReleaseIdentity.Create(releaseManifest.ReleaseSequence, releaseManifestBytes);
         ProductReleaseSignature.ValidateEnvelope(releaseSignaturePath);
 
         string outputRootPath = ProductStagingPathGuard.NormalizePath(options.OutputRootPath, nameof(options.OutputRootPath));
@@ -43,7 +46,17 @@ internal static class ManagedProductStager
 
             RejectReservedProductEntries(stagingRootPath);
 
-            string clientDestinationPath = Path.Combine(stagingRootPath, ManagedProductDescriptor.ClientRoot);
+            string releasesRootPath = Path.Combine(stagingRootPath, ManagedProductDescriptor.ReleasesRoot);
+            Directory.CreateDirectory(releasesRootPath);
+            _ = ProductStagingPathGuard.RequireDirectory(releasesRootPath, "product releases root");
+            NormalizeUnixDirectoryMode(releasesRootPath);
+
+            string releaseRootPath = Path.Combine(releasesRootPath, releaseId);
+            Directory.CreateDirectory(releaseRootPath);
+            _ = ProductStagingPathGuard.RequireDirectory(releaseRootPath, "product release root");
+            NormalizeUnixDirectoryMode(releaseRootPath);
+
+            string clientDestinationPath = Path.Combine(releaseRootPath, ManagedProductDescriptor.ClientRoot);
 
             CopyTree(clientPublishPath, clientDestinationPath, copySentinelFileName);
 
@@ -52,19 +65,33 @@ internal static class ManagedProductStager
                 throw new InvalidDataException("The staged client component is empty.");
             }
 
-            string stagedReleaseManifestPath = Path.Combine(stagingRootPath, ProductReleaseManifest.FileName);
-            string stagedReleaseSignaturePath = Path.Combine(stagingRootPath, ProductReleaseSignature.FileName);
+            string stagedReleaseManifestPath = Path.Combine(releaseRootPath, ProductReleaseManifest.FileName);
+            string stagedReleaseSignaturePath = Path.Combine(releaseRootPath, ProductReleaseSignature.FileName);
 
             CopyReleaseMetadata(releaseManifestPath, stagedReleaseManifestPath, "release manifest");
             CopyReleaseMetadata(releaseSignaturePath, stagedReleaseSignaturePath, "release signature");
 
+            byte[] stagedReleaseManifestBytes = ProductReleaseManifest.ReadRegularFile(stagedReleaseManifestPath, 8 * 1024 * 1024);
+            byte[] stagedReleaseSignatureBytes = ProductReleaseManifest.ReadRegularFile(stagedReleaseSignaturePath, 4 * 1024);
+            if (!releaseManifestBytes.AsSpan().SequenceEqual(stagedReleaseManifestBytes) || !releaseSignatureBytes.AsSpan().SequenceEqual(stagedReleaseSignatureBytes))
+            {
+                throw new IOException("Release metadata changed while the managed product was staged.");
+            }
+
             ProductReleaseManifest stagedManifest = ProductReleaseManifest.Read(stagedReleaseManifestPath);
+
+            if (!ProductReleaseIdentity.Matches(releaseId, stagedManifest.ReleaseSequence, stagedReleaseManifestBytes))
+            {
+                throw new IOException("The staged release identity changed during product composition.");
+            }
 
             ProductReleaseSignature.ValidateEnvelope(stagedReleaseSignaturePath);
 
+            EnsureClientExecutableMode(clientDestinationPath, stagedManifest.ClientExecutable);
+
             ProductReleaseManifest.VerifyClient(clientDestinationPath, stagedManifest);
 
-            ManagedProductDescriptor.Write(stagingRootPath);
+            ManagedProductDescriptor.Write(stagingRootPath, releaseId);
 
             Directory.Move(stagingRootPath, outputRootPath);
 
@@ -90,6 +117,7 @@ internal static class ManagedProductStager
     private static void RejectReservedProductEntries(string productRoot)
     {
         RejectReservedProductEntry(productRoot, ManagedProductDescriptor.FileName, "product composition owns that descriptor");
+        RejectReservedProductEntry(productRoot, ManagedProductDescriptor.ReleasesRoot, "product composition owns the release generations");
         RejectReservedProductEntry(productRoot, ManagedProductDescriptor.ClientRoot, "product composition owns the managed client component");
         RejectReservedProductEntry(productRoot, ProductReleaseManifest.FileName, "product composition owns the release manifest");
         RejectReservedProductEntry(productRoot, ProductReleaseSignature.FileName, "product composition owns the release signature");
@@ -117,6 +145,7 @@ internal static class ManagedProductStager
         File.Copy(validatedSourcePath, destinationPath, overwrite: false);
 
         _ = ProductStagingPathGuard.RequireRegularFile(destinationPath, $"staged {description}");
+        NormalizeUnixFileMode(destinationPath, executable: false);
     }
 
     private static void EnsureStagingRootDoesNotExist(string stagingRootPath)
@@ -154,6 +183,7 @@ internal static class ManagedProductStager
         ThrowIfCopySentinelIsPresent(sourceRoot, sentinelFileName);
 
         Directory.CreateDirectory(destinationRoot);
+        NormalizeUnixDirectoryMode(destinationRoot);
 
         string sentinelPath = Path.Combine(destinationRoot, sentinelFileName);
 
@@ -235,13 +265,46 @@ internal static class ManagedProductStager
             return;
         }
 
-        try
+        UnixFileMode sourceMode = File.GetUnixFileMode(sourcePath);
+        bool executable = (sourceMode & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) != 0;
+        NormalizeUnixFileMode(destinationPath, executable);
+    }
+
+    private static void NormalizeUnixFileMode(string path, bool executable)
+    {
+        if (OperatingSystem.IsWindows())
         {
-            File.SetUnixFileMode(destinationPath, File.GetUnixFileMode(sourcePath));
+            return;
         }
-        catch (PlatformNotSupportedException)
+
+        UnixFileMode safeMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+        if (executable)
         {
+            safeMode |= UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
         }
+
+        File.SetUnixFileMode(path, safeMode);
+    }
+
+    private static void NormalizeUnixDirectoryMode(string path)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            UnixFileMode mode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
+            File.SetUnixFileMode(path, mode);
+        }
+    }
+
+    private static void EnsureClientExecutableMode(string clientRoot, string clientExecutable)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string executablePath = ProductReleasePath.Combine(clientRoot, clientExecutable);
+        UnixFileMode mode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
+        File.SetUnixFileMode(executablePath, mode);
     }
 
     private static void TryDeleteCopySentinel(string sentinelPath)

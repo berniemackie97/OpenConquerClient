@@ -38,13 +38,6 @@ public sealed class ManagedProductStagerTests
             File.ReadAllText(Path.Combine(outputRoot, "OpenConquer.Launcher"))
         );
 
-        Assert.Equal(
-            "client",
-            File.ReadAllText(
-                Path.Combine(outputRoot, ManagedProductDescriptor.ClientRoot, TestClientExecutable)
-            )
-        );
-
         string descriptorPath = Path.Combine(outputRoot, ManagedProductDescriptor.FileName);
 
         Assert.True(File.Exists(descriptorPath));
@@ -53,25 +46,32 @@ public sealed class ManagedProductStagerTests
 
         JsonElement root = descriptor.RootElement;
 
-        Assert.Equal(1, root.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(2, root.GetProperty("schemaVersion").GetInt32());
 
         Assert.Equal("OpenConquer", root.GetProperty("productId").GetString());
 
-        Assert.Equal(
-            ManagedProductDescriptor.ClientRoot,
-            root.GetProperty("clientRoot").GetString()
-        );
+        string releaseId = Assert.IsType<string>(root.GetProperty("activeRelease").GetString());
+        Assert.True(ProductReleaseIdentity.IsValid(releaseId));
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("fallbackRelease").ValueKind);
 
-        Assert.Equal(3, root.EnumerateObject().Count());
+        Assert.Equal(4, root.EnumerateObject().Count());
+
+        string activeReleaseRoot = ManagedProductDescriptor.GetActiveReleaseRoot(outputRoot);
+
+        Assert.Equal(
+            "client",
+            File.ReadAllText(Path.Combine(activeReleaseRoot,
+                ManagedProductDescriptor.ClientRoot, TestClientExecutable))
+        );
 
         Assert.Equal(
             expectedManifest,
-            File.ReadAllBytes(Path.Combine(outputRoot, ProductReleaseManifest.FileName))
+            File.ReadAllBytes(Path.Combine(activeReleaseRoot, ProductReleaseManifest.FileName))
         );
 
         Assert.Equal(
             expectedSignature,
-            File.ReadAllBytes(Path.Combine(outputRoot, ProductReleaseSignature.FileName))
+            File.ReadAllBytes(Path.Combine(activeReleaseRoot, ProductReleaseSignature.FileName))
         );
     }
 
@@ -164,6 +164,30 @@ public sealed class ManagedProductStagerTests
 
         Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
 
+        Assert.False(Directory.Exists(outputRoot));
+    }
+
+    [Fact]
+    public void StageRejectsLauncherPublishContainingReservedReleaseGenerations()
+    {
+        using TemporaryDirectory temporary = new();
+
+        string launcherRoot = temporary.CreateDirectory("launcher");
+        string clientRoot = temporary.CreateDirectory("client-publish");
+        string outputRoot = Path.Combine(temporary.RootPath, "output");
+
+        Directory.CreateDirectory(Path.Combine(launcherRoot,
+            ManagedProductDescriptor.ReleasesRoot));
+        File.WriteAllText(Path.Combine(clientRoot, TestClientExecutable), "client");
+
+        ProductStageOptions options = CreateStageOptions(
+            temporary,
+            launcherRoot,
+            clientRoot,
+            outputRoot
+        );
+
+        Assert.Throws<InvalidDataException>(() => ManagedProductStager.Stage(options));
         Assert.False(Directory.Exists(outputRoot));
     }
 
@@ -613,7 +637,7 @@ public sealed class ManagedProductStagerTests
     }
 
     [Fact]
-    public void StagePreservesUnixExecutableMode()
+    public void StageSanitizesUnixModesAndPreservesExecutableIntent()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -641,19 +665,35 @@ public sealed class ManagedProductStagerTests
             | UnixFileMode.OtherRead
             | UnixFileMode.OtherExecute;
 
-        File.SetUnixFileMode(clientExecutable, expectedMode);
+        File.SetUnixFileMode(clientExecutable, (UnixFileMode)0xfff);
 
-        ManagedProductStager.Stage(
-            CreateStageOptions(temporary, launcherRoot, clientRoot, outputRoot)
-        );
+        ProductStageOptions options = CreateStageOptions(
+            temporary, launcherRoot, clientRoot, outputRoot);
+        File.SetUnixFileMode(options.ReleaseManifestPath, (UnixFileMode)0xfff);
+        File.SetUnixFileMode(options.ReleaseSignaturePath, (UnixFileMode)0xfff);
 
+        ManagedProductStager.Stage(options);
+
+        string activeReleaseRoot = ManagedProductDescriptor.GetActiveReleaseRoot(outputRoot);
         string stagedExecutable = Path.Combine(
-            outputRoot,
+            activeReleaseRoot,
             ManagedProductDescriptor.ClientRoot,
             TestClientExecutable
         );
 
         Assert.Equal(expectedMode, File.GetUnixFileMode(stagedExecutable));
+        Assert.Equal(expectedMode, File.GetUnixFileMode(outputRoot));
+        Assert.Equal(expectedMode, File.GetUnixFileMode(Path.Combine(outputRoot,
+            ManagedProductDescriptor.ReleasesRoot)));
+        Assert.Equal(expectedMode, File.GetUnixFileMode(activeReleaseRoot));
+        UnixFileMode dataMode = UnixFileMode.UserRead | UnixFileMode.UserWrite |
+            UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+        Assert.Equal(dataMode, File.GetUnixFileMode(Path.Combine(activeReleaseRoot,
+            ProductReleaseManifest.FileName)));
+        Assert.Equal(dataMode, File.GetUnixFileMode(Path.Combine(activeReleaseRoot,
+            ProductReleaseSignature.FileName)));
+        Assert.Equal(dataMode, File.GetUnixFileMode(Path.Combine(outputRoot,
+            ManagedProductDescriptor.FileName)));
     }
 
     [Fact]

@@ -264,18 +264,23 @@ Product composition creates:
 <product root>/
 ├── launcher files
 ├── openconquer.installation.json
-└── client/
-    └── client publish
+└── releases/
+    └── <release-id>/
+        ├── openconquer.release.json
+        ├── openconquer.release.sig
+        └── client/
+            └── client publish
 ```
 
-The raw launcher publish must not contain `openconquer.installation.json` or the managed `client/`
-component. Those belong to product composition.
+The schema-v2 descriptor atomically selects one immutable client generation and may name one verified
+fallback. The raw launcher publish must not contain `openconquer.installation.json`, `releases/`, or
+the legacy root-level managed `client/` component. Those belong to product composition.
 
 `OpenConquer.Product.Tool` provides deterministic local and CI composition. It is not the production
 installer, updater, signing system, or deployment authority.
 
-See [`launcher-managed-installation.md`](launcher-managed-installation.md) for the exact schema-v1
-contract.
+See [`launcher-managed-installation.md`](launcher-managed-installation.md) for the schema-v2 contract
+and its read-only schema-v1 compatibility path.
 
 ## Publish Invariants
 
@@ -293,8 +298,8 @@ The launcher publish must:
 
 The composed product must:
 
-- contain the generated schema-v1 installation descriptor;
-- contain the client publish under `client/`;
+- contain the generated schema-v2 installation descriptor;
+- contain the client publish in the selected immutable release generation;
 - be resolvable by the real launcher installation resolver.
 
 CI enforces these boundaries.

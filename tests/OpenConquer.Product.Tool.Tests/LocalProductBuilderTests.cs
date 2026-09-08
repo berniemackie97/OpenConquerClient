@@ -30,9 +30,9 @@ public sealed class LocalProductBuilderTests
         Assert.Equal("local-1", result.ReleaseVersion);
         Assert.Equal(targetRuntime, result.TargetRuntime);
 
+        string activeReleaseRoot = ManagedProductDescriptor.GetActiveReleaseRoot(result.ProductPath);
         ProductReleaseManifest manifest = ProductReleaseManifest.Read(
-            Path.Combine(result.ProductPath, ProductReleaseManifest.FileName)
-        );
+            Path.Combine(activeReleaseRoot, ProductReleaseManifest.FileName));
 
         Assert.Equal(1UL, manifest.ReleaseSequence);
         Assert.Equal("local-1", manifest.ReleaseVersion);
@@ -40,12 +40,12 @@ public sealed class LocalProductBuilderTests
         Assert.Equal(1, manifest.MinimumLauncherVersion);
 
         ProductReleaseManifest.VerifyClient(
-            Path.Combine(result.ProductPath, ManagedProductDescriptor.ClientRoot),
+            Path.Combine(activeReleaseRoot, ManagedProductDescriptor.ClientRoot),
             manifest
         );
 
         ProductReleaseSignature.ValidateEnvelope(
-            Path.Combine(result.ProductPath, ProductReleaseSignature.FileName)
+            Path.Combine(activeReleaseRoot, ProductReleaseSignature.FileName)
         );
 
         Assert.True(
@@ -351,7 +351,8 @@ public sealed class LocalProductBuilderTests
     private static ulong ReadReleaseSequence(string productPath)
     {
         return ProductReleaseManifest
-            .Read(Path.Combine(productPath, ProductReleaseManifest.FileName))
+            .Read(Path.Combine(ManagedProductDescriptor.GetActiveReleaseRoot(productPath),
+                ProductReleaseManifest.FileName))
             .ReleaseSequence;
     }
 

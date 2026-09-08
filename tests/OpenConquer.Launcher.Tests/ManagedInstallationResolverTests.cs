@@ -303,6 +303,8 @@ public sealed class ManagedInstallationResolverTests
 
         File.WriteAllText(clientExecutablePath, "client");
 
+        EnsureExecutable(clientExecutablePath);
+
         WriteInstallationManifest(temporary.RootPath);
 
         const ulong releaseSequence = 7;
@@ -385,9 +387,19 @@ public sealed class ManagedInstallationResolverTests
         return new ManagedInstallationResolver(root, unavailableTrust);
     }
 
+    private static void EnsureExecutable(string path)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite |
+                UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+                UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
+    }
+
     private static void WriteInstallationManifest(
         string root,
-        int schemaVersion = ManagedInstallationManifest.CurrentSchemaVersion
+        int schemaVersion = 1
     )
     {
         string manifest = JsonSerializer.Serialize(

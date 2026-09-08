@@ -6,7 +6,7 @@ internal sealed class ManagedInstallationResolver : IManagedInstallationResolver
     private readonly string _launcherDirectory;
     private readonly ManagedReleaseVerifier _releaseVerifier;
 
-    public ManagedInstallationResolver(string launcherDirectory, TrustedReleaseKeys trustedReleaseKeys)
+    public ManagedInstallationResolver(string launcherDirectory, TrustedReleaseKeys trustedReleaseKeys, string? currentRuntime = null)
     {
         ArgumentNullException.ThrowIfNull(trustedReleaseKeys);
         if (string.IsNullOrWhiteSpace(launcherDirectory) || !Path.IsPathFullyQualified(launcherDirectory))
@@ -15,7 +15,7 @@ internal sealed class ManagedInstallationResolver : IManagedInstallationResolver
         }
 
         _launcherDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(launcherDirectory));
-        _releaseVerifier = new ManagedReleaseVerifier(trustedReleaseKeys);
+        _releaseVerifier = new ManagedReleaseVerifier(trustedReleaseKeys, currentRuntime);
     }
 
     public async Task<ManagedInstallationResolution> ResolveAsync(CancellationToken cancellationToken)
@@ -33,18 +33,52 @@ internal sealed class ManagedInstallationResolver : IManagedInstallationResolver
 
         ManagedInstallationManifest manifest = ((ManifestReadResult.Accepted)manifestResult).Manifest;
 
-        string clientRootPath = Path.Combine(_launcherDirectory, manifest.ClientRoot);
-
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (!IsDirectory(_launcherDirectory))
+            {
+                return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ManifestMissing);
+            }
+
+            string releaseRootPath;
+            string? activeReleaseId;
+
+            if (manifest.SchemaVersion == 1)
+            {
+                releaseRootPath = _launcherDirectory;
+                activeReleaseId = null;
+            }
+            else
+            {
+                string releasesRootPath = Path.Combine(_launcherDirectory, ManagedInstallationManifest.ReleasesRoot);
+                if (!IsDirectory(releasesRootPath))
+                {
+                    return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ActiveReleaseMissing);
+                }
+
+                activeReleaseId = manifest.ActiveRelease!;
+                releaseRootPath = Path.Combine(releasesRootPath, activeReleaseId);
+                if (!IsDirectory(releaseRootPath))
+                {
+                    return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ActiveReleaseMissing);
+                }
+
+                if (!ManagedReleaseDirectory.HasExpectedShape(releaseRootPath))
+                {
+                    return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ClientIntegrityFailure);
+                }
+            }
+
+            string clientRootPath = Path.Combine(releaseRootPath, ManagedInstallationManifest.ExpectedClientRoot);
 
             if (!IsDirectory(clientRootPath))
             {
                 return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ClientComponentMissing);
             }
 
-            string releaseManifestPath = Path.Combine(_launcherDirectory, ManagedReleaseManifest.FileName);
+            string releaseManifestPath = Path.Combine(releaseRootPath, ManagedReleaseManifest.FileName);
             ReleaseManifestReadResult releaseManifestResult = await ManagedReleaseManifest.ReadAsync(releaseManifestPath, cancellationToken).ConfigureAwait(false);
             if (releaseManifestResult is ReleaseManifestReadResult.Rejected releaseManifestRejected)
             {
@@ -52,21 +86,33 @@ internal sealed class ManagedInstallationResolver : IManagedInstallationResolver
             }
 
             ReleaseManifestReadResult.Accepted acceptedManifest = (ReleaseManifestReadResult.Accepted)releaseManifestResult;
-            string releaseSignaturePath = Path.Combine(_launcherDirectory, ManagedReleaseSignature.FileName);
+
+            if (activeReleaseId is not null && !ManagedReleaseId.Matches(activeReleaseId, acceptedManifest.Manifest.ReleaseSequence, acceptedManifest.Bytes))
+            {
+                return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ReleaseIdentityMismatch);
+            }
+
+            string releaseSignaturePath = Path.Combine(releaseRootPath, ManagedReleaseSignature.FileName);
             ReleaseSignatureReadResult releaseSignatureResult = await ManagedReleaseSignature.ReadAsync(releaseSignaturePath, cancellationToken).ConfigureAwait(false);
             if (releaseSignatureResult is ReleaseSignatureReadResult.Rejected releaseSignatureRejected)
             {
                 return new ManagedInstallationResolution.Rejected(releaseSignatureRejected.Issue);
             }
 
-            ManagedReleaseVerification verification = await _releaseVerifier.VerifyAsync(clientRootPath, acceptedManifest.Manifest, acceptedManifest.Bytes, ((ReleaseSignatureReadResult.Accepted)releaseSignatureResult).Signature, cancellationToken).ConfigureAwait(false);
+            ReleaseSignatureReadResult.Accepted acceptedSignature = (ReleaseSignatureReadResult.Accepted)releaseSignatureResult;
+            ManagedReleaseVerification verification = await _releaseVerifier.VerifyAsync(clientRootPath, releaseManifestPath, releaseSignaturePath, acceptedManifest.Manifest, acceptedManifest.Bytes, acceptedSignature.Signature, acceptedSignature.Bytes, cancellationToken).ConfigureAwait(false);
             if (verification is ManagedReleaseVerification.Rejected verificationRejected)
             {
                 return new ManagedInstallationResolution.Rejected(verificationRejected.Issue);
             }
 
+            if (activeReleaseId is not null && !ManagedReleaseDirectory.HasExpectedShape(releaseRootPath))
+            {
+                return new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ClientIntegrityFailure);
+            }
+
             ManagedReleaseVerification.Verified verified = (ManagedReleaseVerification.Verified)verification;
-            return new ManagedInstallationResolution.Resolved(ManagedInstallation.Create(rootPath: _launcherDirectory, clientRootPath, manifestPath, releaseManifestPath, releaseSignaturePath, verified.ClientExecutablePath, verified.Release));
+            return new ManagedInstallationResolution.Resolved(ManagedInstallation.Create(rootPath: _launcherDirectory, releaseRootPath, clientRootPath, manifestPath, releaseManifestPath, releaseSignaturePath, verified.ClientExecutablePath, verified.Release, activeReleaseId, manifest.FallbackRelease));
         }
         catch (UnauthorizedAccessException)
         {
@@ -92,7 +138,19 @@ internal sealed class ManagedInstallationResolver : IManagedInstallationResolver
 
     private static bool IsDirectory(string path)
     {
-        FileAttributes attributes = File.GetAttributes(path);
+        FileAttributes attributes;
+        try
+        {
+            attributes = File.GetAttributes(path);
+        }
+        catch (FileNotFoundException)
+        {
+            return false;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return false;
+        }
 
         if ((attributes & FileAttributes.ReparsePoint) != 0)
         {

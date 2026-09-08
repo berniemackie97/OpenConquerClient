@@ -20,7 +20,7 @@ internal sealed record ManagedReleaseSignature(string KeyId, byte[] Signature)
             byte[] bytes = await InstallationFile.ReadBoundedAsync(path, MaximumLength, cancellationToken).ConfigureAwait(false);
             using JsonDocument document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 4 });
             return TryRead(document.RootElement, out ManagedReleaseSignature? signature) && signature is not null
-                ? new ReleaseSignatureReadResult.Accepted(signature)
+                ? new ReleaseSignatureReadResult.Accepted(signature, bytes)
                 : new ReleaseSignatureReadResult.Rejected(ManagedInstallationIssue.ReleaseSignatureInvalid);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -120,6 +120,6 @@ internal abstract record ReleaseSignatureReadResult
     {
     }
 
-    internal sealed record Accepted(ManagedReleaseSignature Signature) : ReleaseSignatureReadResult;
+    internal sealed record Accepted(ManagedReleaseSignature Signature, byte[] Bytes) : ReleaseSignatureReadResult;
     internal sealed record Rejected(ManagedInstallationIssue Issue) : ReleaseSignatureReadResult;
 }

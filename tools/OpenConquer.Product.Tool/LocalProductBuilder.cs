@@ -49,8 +49,7 @@ internal sealed class LocalProductBuilder
 
             WriteNewFile(paths.PublicKeyPath, publisher.ExportPublicKey());
 
-            ProductReleaseManifest.Create(new ReleaseManifestOptions(paths.ClientPublishPath, targetRuntime, releaseVersion, releaseSequence,
-                LocalDevelopmentMinimumLauncherVersion, paths.ReleaseManifestPath));
+            ProductReleaseManifest.Create(new ReleaseManifestOptions(paths.ClientPublishPath, targetRuntime, releaseVersion, releaseSequence, LocalDevelopmentMinimumLauncherVersion, paths.ReleaseManifestPath));
 
             byte[] releaseManifest = ProductReleaseManifest.ReadRegularFile(paths.ReleaseManifestPath, MaximumReleaseManifestLength);
             byte[] rawSignature = publisher.Sign(releaseManifest);
@@ -63,8 +62,7 @@ internal sealed class LocalProductBuilder
             PublishLauncher(repositoryRoot, paths);
             LocalProductArtifactValidator.ValidateLauncherPublish(paths.LauncherPublishPath, targetRuntime);
 
-            ManagedProductStager.Stage(new ProductStageOptions(paths.LauncherPublishPath, paths.ClientPublishPath, paths.ReleaseManifestPath,
-                paths.ReleaseSignaturePath, paths.CandidateProductPath));
+            ManagedProductStager.Stage(new ProductStageOptions(paths.LauncherPublishPath, paths.ClientPublishPath, paths.ReleaseManifestPath, paths.ReleaseSignaturePath, paths.CandidateProductPath));
 
             LocalProductArtifactValidator.ValidateManagedProduct(paths.CandidateProductPath);
             LocalProductActivator.Activate(paths);
@@ -161,8 +159,7 @@ internal sealed class LocalProductBuilder
 
     private static ulong ReadHistoricalReleaseFloor(LocalProductPaths paths)
     {
-        return Math.Max(ReadReleaseSequenceIfPresent(paths.ProductPath, "active local product"),
-            ReadReleaseSequenceIfPresent(paths.PreviousProductPath, "previous local product"));
+        return Math.Max(ReadReleaseSequenceIfPresent(paths.ProductPath, "active local product"), ReadReleaseSequenceIfPresent(paths.PreviousProductPath, "previous local product"));
     }
 
     private static ulong ReadReleaseSequenceIfPresent(string productPath, string description)
@@ -177,8 +174,18 @@ internal sealed class LocalProductBuilder
 
         if (directory.Exists)
         {
-            return ProductReleaseManifest.Read(Path.Combine(ProductStagingPathGuard.RequireDirectory(productPath, description),
-                ProductReleaseManifest.FileName)).ReleaseSequence;
+            string validatedProduct = ProductStagingPathGuard.RequireDirectory(productPath, description);
+            ManagedProductLayout layout = ManagedProductDescriptor.Read(validatedProduct);
+            string activeRelease = ManagedProductDescriptor.GetActiveReleaseRoot(validatedProduct, layout);
+            string manifestPath = Path.Combine(activeRelease, ProductReleaseManifest.FileName);
+            ProductReleaseManifest manifest = ProductReleaseManifest.Read(manifestPath);
+            byte[] manifestBytes = ProductReleaseManifest.ReadRegularFile(manifestPath, 8 * 1024 * 1024);
+            if (layout.ActiveRelease is not null && !ProductReleaseIdentity.Matches(layout.ActiveRelease, manifest.ReleaseSequence, manifestBytes))
+            {
+                throw new InvalidDataException($"The {description} release identity does not match its manifest.");
+            }
+
+            return manifest.ReleaseSequence;
         }
 
         FileInfo file = new(productPath);
