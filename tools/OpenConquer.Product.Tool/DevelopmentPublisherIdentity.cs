@@ -7,7 +7,6 @@ internal sealed class DevelopmentPublisherIdentity : IDisposable
 {
     private const int MaximumPrivateKeyLength = 1024;
 
-    private const UnixFileMode DirectoryMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
     private const UnixFileMode PrivateKeyMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
 
     private readonly ECDsa _algorithm;
@@ -24,12 +23,13 @@ internal sealed class DevelopmentPublisherIdentity : IDisposable
         string rootPath = ProductStagingPathGuard.NormalizePath(paths.RootPath, nameof(paths.RootPath));
         string privateKeyPath = ProductStagingPathGuard.NormalizePath(paths.PrivateKeyPath, nameof(paths.PrivateKeyPath));
 
-        if (!string.Equals(Path.GetDirectoryName(privateKeyPath), rootPath, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        if (!string.Equals(Path.GetDirectoryName(privateKeyPath), rootPath, OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
         {
             throw new InvalidOperationException("The development publisher private key must be stored directly in its identity directory.");
         }
 
-        PrepareIdentityDirectory(rootPath);
+        _ = DevelopmentStateDirectory.Prepare(rootPath);
 
         try
         {
@@ -55,30 +55,6 @@ internal sealed class DevelopmentPublisherIdentity : IDisposable
     public void Dispose()
     {
         _algorithm.Dispose();
-    }
-
-    private static void PrepareIdentityDirectory(string rootPath)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            Directory.CreateDirectory(rootPath);
-        }
-        else
-        {
-            Directory.CreateDirectory(rootPath, DirectoryMode);
-        }
-
-        _ = ProductStagingPathGuard.RequireDirectory(rootPath, "development publisher identity");
-
-        if (!OperatingSystem.IsWindows())
-        {
-            File.SetUnixFileMode(rootPath, DirectoryMode);
-
-            if (File.GetUnixFileMode(rootPath) != DirectoryMode)
-            {
-                throw new UnauthorizedAccessException("The development publisher identity directory permissions could not be restricted to the current user.");
-            }
-        }
     }
 
     private static DevelopmentPublisherIdentity LoadExisting(string privateKeyPath)
@@ -169,6 +145,7 @@ internal sealed class DevelopmentPublisherIdentity : IDisposable
             }
 
             File.Move(temporaryPath, privateKeyPath);
+
             completed = true;
         }
         finally
