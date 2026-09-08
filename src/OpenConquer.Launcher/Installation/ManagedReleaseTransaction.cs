@@ -37,9 +37,25 @@ internal sealed class ManagedReleaseTransaction
         }
 
         string candidateRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidateReleasePath));
-        if (PathsOverlap(_store.ProductRoot, candidateRoot))
+
+        try
         {
-            throw new ArgumentException("The candidate release must remain outside the managed product root.", nameof(candidateReleasePath));
+            if (ManagedInstallationPathGuard.PathsOverlap(_store.ProductRoot, candidateRoot))
+            {
+                throw new ArgumentException("The candidate release must remain outside the managed product root.", nameof(candidateReleasePath));
+            }
+        }
+        catch (InvalidDataException)
+        {
+            return Rejected(ManagedReleaseChangeIssue.LinkedPath);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Rejected(ManagedReleaseChangeIssue.AccessDenied);
+        }
+        catch (IOException)
+        {
+            return Rejected(ManagedReleaseChangeIssue.FileSystemFailure);
         }
 
         StoredReleaseReadResult candidateResult = await _store.ReadCandidateAsync(candidateRoot, cancellationToken).ConfigureAwait(false);
@@ -250,21 +266,6 @@ internal sealed class ManagedReleaseTransaction
         return await _store.IsHealthyGenerationAsync(descriptor.FallbackRelease, cancellationToken).ConfigureAwait(false)
             ? descriptor.FallbackRelease
             : null;
-    }
-
-    private static bool PathsOverlap(string left, string right) => IsSameOrChild(left, right) || IsSameOrChild(right, left);
-
-    private static bool IsSameOrChild(string root, string candidate)
-    {
-        StringComparison comparison = OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
-        if (string.Equals(root, candidate, comparison))
-        {
-            return true;
-        }
-
-        return candidate.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }
 
     private static ManagedReleaseTransactionResult.Rejected Rejected(ManagedReleaseChangeIssue issue, ManagedInstallationIssue? detail = null) => new(issue, detail);

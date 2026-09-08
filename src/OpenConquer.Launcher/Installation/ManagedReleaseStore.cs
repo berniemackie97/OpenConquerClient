@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace OpenConquer.Launcher.Installation;
 
 /// <summary>Owns safe release-tree reads, copies, generation paths, and the mutation lock.</summary>
@@ -8,7 +10,8 @@ internal sealed class ManagedReleaseStore
     private static readonly UnixFileMode s_dataFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
     private static readonly UnixFileMode s_executableFileMode = s_dataFileMode | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
     private static readonly UnixFileMode s_directoryMode = s_executableFileMode;
-    private static readonly UnixFileMode s_lockFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+    private static readonly UnixFileMode s_privateFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+    private static readonly UnixFileMode s_lockFileMode = s_privateFileMode;
 
     private readonly ManagedReleaseVerifier _releaseVerifier;
     private readonly string _lockFileName;
@@ -86,17 +89,17 @@ internal sealed class ManagedReleaseStore
         bool moved = false;
         try
         {
-            Directory.CreateDirectory(stagingRoot);
+            CreateDirectory(stagingRoot);
             RequireDirectory(stagingRoot);
             SetDirectoryMode(stagingRoot);
 
             string stagedClientRoot = Path.Combine(stagingRoot, ManagedInstallationManifest.ExpectedClientRoot);
-            Directory.CreateDirectory(stagedClientRoot);
+            CreateDirectory(stagedClientRoot);
             RequireDirectory(stagedClientRoot);
             SetDirectoryMode(stagedClientRoot);
 
-            await CopyFileAsync(source.ManifestPath, Path.Combine(stagingRoot, ManagedReleaseManifest.FileName), executable: false, cancellationToken).ConfigureAwait(false);
-            await CopyFileAsync(source.SignaturePath, Path.Combine(stagingRoot, ManagedReleaseSignature.FileName), executable: false, cancellationToken).ConfigureAwait(false);
+            await CopyFileAsync(source.ManifestPath, Path.Combine(stagingRoot, ManagedReleaseManifest.FileName), source.ManifestBytes.LongLength, executable: false, cancellationToken).ConfigureAwait(false);
+            await CopyFileAsync(source.SignaturePath, Path.Combine(stagingRoot, ManagedReleaseSignature.FileName), source.SignatureBytes.LongLength, executable: false, cancellationToken).ConfigureAwait(false);
 
             foreach (ManagedReleaseFile file in source.Manifest.Files)
             {
@@ -104,7 +107,7 @@ internal sealed class ManagedReleaseStore
                 string sourcePath = ReleasePackagePath.Combine(source.ClientRootPath, file.Path);
                 string destinationPath = ReleasePackagePath.Combine(stagedClientRoot, file.Path);
                 EnsureDestinationParent(stagedClientRoot, destinationPath);
-                await CopyFileAsync(sourcePath, destinationPath, string.Equals(file.Path, source.Manifest.ClientExecutable, StringComparison.Ordinal), cancellationToken).ConfigureAwait(false);
+                await CopyFileAsync(sourcePath, destinationPath, file.Length, string.Equals(file.Path, source.Manifest.ClientExecutable, StringComparison.Ordinal), cancellationToken).ConfigureAwait(false);
             }
 
             StoredReleaseReadResult stagedResult = await ReadReleaseAsync(stagingRoot, verifyClient: true, cancellationToken).ConfigureAwait(false);
@@ -158,7 +161,7 @@ internal sealed class ManagedReleaseStore
         string releasesRoot = Path.Combine(ProductRoot, ManagedInstallationManifest.ReleasesRoot);
         if (!EntryExists(releasesRoot))
         {
-            Directory.CreateDirectory(releasesRoot);
+            CreateDirectory(releasesRoot);
         }
 
         RequireDirectory(releasesRoot);
@@ -178,7 +181,19 @@ internal sealed class ManagedReleaseStore
         FileStream stream;
         try
         {
-            stream = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            FileStreamOptions options = new()
+            {
+                Mode = FileMode.OpenOrCreate,
+                Access = FileAccess.ReadWrite,
+                Share = FileShare.None,
+            };
+
+            if (!OperatingSystem.IsWindows())
+            {
+                options.UnixCreateMode = s_lockFileMode;
+            }
+
+            stream = new FileStream(lockPath, options);
         }
         catch (IOException exception)
         {
@@ -302,8 +317,10 @@ internal sealed class ManagedReleaseStore
         }
     }
 
-    private static async Task CopyFileAsync(string sourcePath, string destinationPath, bool executable, CancellationToken cancellationToken)
+    private static async Task CopyFileAsync(string sourcePath, string destinationPath, long expectedLength, bool executable, CancellationToken cancellationToken)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(expectedLength);
+
         RequireRegularFile(sourcePath);
         await using FileStream source = new(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, CopyBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
         FileAttributes openedAttributes = File.GetAttributes(source.SafeFileHandle);
@@ -312,15 +329,58 @@ internal sealed class ManagedReleaseStore
             throw new LinkedInstallationPathException();
         }
 
-        long originalLength = source.Length;
-        await using (FileStream destination = new(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, CopyBufferSize, FileOptions.Asynchronous | FileOptions.WriteThrough))
+        if (source.Length != expectedLength)
         {
-            await source.CopyToAsync(destination, CopyBufferSize, cancellationToken).ConfigureAwait(false);
-            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
-            destination.Flush(flushToDisk: true);
+            throw new IOException("A release source file length does not match authenticated metadata.");
         }
 
-        if (source.Length != originalLength)
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(CopyBufferSize);
+        try
+        {
+            FileStreamOptions destinationOptions = new()
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                Share = FileShare.None,
+                BufferSize = CopyBufferSize,
+                Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
+            };
+
+            if (!OperatingSystem.IsWindows())
+            {
+                destinationOptions.UnixCreateMode = s_privateFileMode;
+            }
+
+            await using (FileStream destination = new(destinationPath, destinationOptions))
+            {
+                long remaining = expectedLength;
+                while (remaining > 0)
+                {
+                    int read = await source.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)), cancellationToken).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        throw new IOException("A release source file changed while it was copied.");
+                    }
+
+                    await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                    remaining -= read;
+                }
+
+                if (await source.ReadAsync(buffer.AsMemory(0, 1), cancellationToken).ConfigureAwait(false) != 0)
+                {
+                    throw new IOException("A release source file changed while it was copied.");
+                }
+
+                await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+                destination.Flush(flushToDisk: true);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+
+        if (source.Length != expectedLength)
         {
             throw new IOException("A release source file changed while it was copied.");
         }
@@ -337,7 +397,7 @@ internal sealed class ManagedReleaseStore
             throw new IOException("The release destination has no parent directory.");
         }
 
-        Directory.CreateDirectory(parent);
+        CreateDirectory(parent);
 
         string relativeParent = Path.GetRelativePath(clientRoot, parent);
         string current = clientRoot;
@@ -349,6 +409,18 @@ internal sealed class ManagedReleaseStore
                 RequireDirectory(current);
                 SetDirectoryMode(current);
             }
+        }
+    }
+
+    private static void CreateDirectory(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Directory.CreateDirectory(path);
+        }
+        else
+        {
+            Directory.CreateDirectory(path, s_directoryMode);
         }
     }
 

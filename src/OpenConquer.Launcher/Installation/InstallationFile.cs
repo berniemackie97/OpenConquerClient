@@ -18,7 +18,9 @@ internal static class InstallationFile
             throw new IOException("The installation entry is not a regular file.");
         }
 
-        await using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        FileShare share = OperatingSystem.IsWindows() ? FileShare.Read | FileShare.Delete : FileShare.Read;
+
+        await using FileStream stream = new(path, FileMode.Open, FileAccess.Read, share, bufferSize: 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
         FileAttributes openedAttributes = File.GetAttributes(stream.SafeFileHandle);
         if ((openedAttributes & (FileAttributes.ReparsePoint | FileAttributes.Directory | FileAttributes.Device)) != 0)
         {
@@ -39,6 +41,17 @@ internal static class InstallationFile
         }
 
         return bytes;
+    }
+
+    public static void Commit(string temporaryPath, string destinationPath, bool destinationExists)
+    {
+        if (OperatingSystem.IsWindows() && destinationExists)
+        {
+            File.Replace(temporaryPath, destinationPath, destinationBackupFileName: null);
+            return;
+        }
+
+        File.Move(temporaryPath, destinationPath, overwrite: destinationExists);
     }
 }
 
