@@ -15,6 +15,10 @@
     <InternalsVisibleTo Include="OpenConquer.Launcher.InstanceProbe" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(OpenConquerReleaseTrustPath)' != ''">
+    <EmbeddedResource Include="$(OpenConquerReleaseTrustPath)" LogicalName="OpenConquer.Launcher.release-trust.json" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />

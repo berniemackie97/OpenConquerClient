@@ -12,7 +12,7 @@ internal static class ProductToolHost
             !ProductToolCommandLine.TryParse(
                 args,
                 Environment.CurrentDirectory,
-                out ProductStageOptions? options,
+                out ProductToolOptions? options,
                 out string? errorMessage
             )
         )
@@ -24,11 +24,23 @@ internal static class ProductToolHost
 
         try
         {
-            ProductStageOptions stageOptions = options;
-            ManagedProductStager.Stage(stageOptions);
-            Console.WriteLine(
-                $"Staged managed OpenConquer product at '{stageOptions.OutputRootPath}'."
-            );
+            switch (options)
+            {
+                case ReleaseManifestOptions manifestOptions:
+                    ProductReleaseManifest.Create(manifestOptions);
+                    Console.WriteLine($"Created release manifest at '{manifestOptions.OutputPath}'.");
+                    break;
+                case ReleaseSignatureOptions signatureOptions:
+                    ProductReleaseSignature.Create(signatureOptions);
+                    Console.WriteLine($"Created release signature envelope at '{signatureOptions.OutputPath}'.");
+                    break;
+                case ProductStageOptions stageOptions:
+                    ManagedProductStager.Stage(stageOptions);
+                    Console.WriteLine($"Staged managed OpenConquer product at '{stageOptions.OutputRootPath}'.");
+                    break;
+                default:
+                    throw new InvalidOperationException("The product tool received an unsupported operation.");
+            }
             return SuccessExitCode;
         }
         catch (Exception exception)

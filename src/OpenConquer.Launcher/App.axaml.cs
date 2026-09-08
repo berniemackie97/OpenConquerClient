@@ -1,3 +1,4 @@
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -36,11 +37,22 @@ internal sealed partial class App : Application
             }
             else
             {
-                LauncherApplication application = new(new ManagedInstallationResolver(AppContext.BaseDirectory));
+                TrustedReleaseKeys trustedReleaseKeys = TrustedReleaseKeys.LoadEmbedded(Assembly.GetExecutingAssembly());
+                LauncherApplication application = new(new ManagedInstallationResolver(AppContext.BaseDirectory, trustedReleaseKeys));
                 desktop.MainWindow = new MainWindow(application, _activation);
+                desktop.ShutdownRequested += OnShutdownRequested;
             }
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static async void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs args)
+    {
+        if (sender is IClassicDesktopStyleApplicationLifetime { MainWindow: MainWindow window } && !window.IsShutdownComplete)
+        {
+            args.Cancel = true;
+            await window.RequestShutdownAsync();
+        }
     }
 }

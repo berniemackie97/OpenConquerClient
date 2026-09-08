@@ -1,232 +1,156 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 
 namespace OpenConquer.Product.Tool;
 
 internal static class ProductToolCommandLine
 {
     public const string Usage =
-        "Usage: stage-managed-product --launcher-publish <path> --client-publish <path> --output <path>";
+        "Commands:\n" +
+        "  create-release-manifest --client-publish <path> --target-runtime <rid> --release-version <value> --release-sequence <positive integer> --minimum-launcher-version <positive integer> --output <path>\n" +
+        "  create-release-signature --release-manifest <path> --public-key <path> --signature <path> --output <path>\n" +
+        "  stage-managed-product --launcher-publish <path> --client-publish <path> --release-manifest <path> --release-signature <path> --output <path>";
 
     public static bool TryParse(
         IReadOnlyList<string> args,
         string workingDirectoryPath,
-        [NotNullWhen(true)] out ProductStageOptions? options,
-        [NotNullWhen(false)] out string? errorMessage
-    )
+        [NotNullWhen(true)] out ProductToolOptions? options,
+        [NotNullWhen(false)] out string? errorMessage)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectoryPath);
+        options = null;
 
-        string? launcherPath = null;
-        string? clientPath = null;
-        string? outputPath = null;
-
-        bool commandSeen = false;
-        bool launcherPathSeen = false;
-        bool clientPathSeen = false;
-        bool outputPathSeen = false;
-
-        for (int index = 0; index < args.Count; index++)
+        if (args.Count == 0)
         {
-            string option = args[index];
-
-            switch (option)
-            {
-                case "stage-managed-product":
-                    if (index != 0 || commandSeen)
-                    {
-                        return Fail(
-                            "The command must be the first argument.",
-                            out options,
-                            out errorMessage
-                        );
-                    }
-
-                    commandSeen = true;
-
-                    break;
-
-                case "--launcher-publish":
-                    if (!commandSeen || launcherPathSeen)
-                    {
-                        return Fail(
-                            "Option '--launcher-publish' may only be specified once after the staging command.",
-                            out options,
-                            out errorMessage
-                        );
-                    }
-
-                    launcherPathSeen = true;
-
-                    if (!TryReadValue(args, ref index, option, out launcherPath, out errorMessage))
-                    {
-                        return Fail(errorMessage, out options, out errorMessage);
-                    }
-
-                    break;
-
-                case "--client-publish":
-                    if (!commandSeen || clientPathSeen)
-                    {
-                        return Fail(
-                            "Option '--client-publish' may only be specified once after the staging command.",
-                            out options,
-                            out errorMessage
-                        );
-                    }
-
-                    clientPathSeen = true;
-
-                    if (!TryReadValue(args, ref index, option, out clientPath, out errorMessage))
-                    {
-                        return Fail(errorMessage, out options, out errorMessage);
-                    }
-
-                    break;
-
-                case "--output":
-                    if (!commandSeen || outputPathSeen)
-                    {
-                        return Fail(
-                            "Option '--output' may only be specified once after the staging command.",
-                            out options,
-                            out errorMessage
-                        );
-                    }
-
-                    outputPathSeen = true;
-
-                    if (!TryReadValue(args, ref index, option, out outputPath, out errorMessage))
-                    {
-                        return Fail(errorMessage, out options, out errorMessage);
-                    }
-
-                    break;
-
-                default:
-                    return Fail($"Unknown argument '{option}'.", out options, out errorMessage);
-            }
-        }
-
-        if (!commandSeen || launcherPath is null || clientPath is null || outputPath is null)
-        {
-            return Fail(
-                "Launcher publish, client publish, and output paths are required.",
-                out options,
-                out errorMessage
-            );
-        }
-
-        if (
-            !TryNormalizeAbsolutePath(
-                launcherPath,
-                workingDirectoryPath,
-                out string? normalizedLauncherPath
-            )
-            || !TryNormalizeAbsolutePath(
-                clientPath,
-                workingDirectoryPath,
-                out string? normalizedClientPath
-            )
-            || !TryNormalizeAbsolutePath(
-                outputPath,
-                workingDirectoryPath,
-                out string? normalizedOutputPath
-            )
-        )
-        {
-            return Fail(
-                "All paths must be valid absolute or working-directory-relative paths.",
-                out options,
-                out errorMessage
-            );
-        }
-
-        options = new ProductStageOptions(
-            normalizedLauncherPath,
-            normalizedClientPath,
-            normalizedOutputPath
-        );
-
-        errorMessage = null;
-
-        return true;
-    }
-
-    private static bool TryReadValue(
-        IReadOnlyList<string> args,
-        ref int index,
-        string option,
-        [NotNullWhen(true)] out string? value,
-        [NotNullWhen(false)] out string? errorMessage
-    )
-    {
-        if (index + 1 >= args.Count || string.IsNullOrWhiteSpace(args[index + 1]))
-        {
-            value = null;
-            errorMessage = $"Option '{option}' requires a path value.";
-
+            errorMessage = "A command is required.";
             return false;
         }
 
-        value = args[++index];
-
-        errorMessage = null;
-
-        return true;
-    }
-
-    private static bool TryNormalizeAbsolutePath(
-        string path,
-        string workingDirectoryPath,
-        [NotNullWhen(true)] out string? normalizedPath
-    )
-    {
-        normalizedPath = null;
-
-        try
+        string command = args[0];
+        if (command is not ("create-release-manifest" or "create-release-signature" or "stage-managed-product"))
         {
-            string normalizedWorkingDirectoryPath = Path.GetFullPath(workingDirectoryPath);
+            errorMessage = $"Unknown command '{command}'.";
+            return false;
+        }
 
-            string candidate = Path.IsPathFullyQualified(path)
-                ? path
-                : Path.Combine(normalizedWorkingDirectoryPath, path);
-
-            string resolvedPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate));
-
-            if (string.IsNullOrWhiteSpace(resolvedPath))
+        Dictionary<string, string> values = new(StringComparer.Ordinal);
+        for (int index = 1; index < args.Count; index++)
+        {
+            string name = args[index];
+            if (!name.StartsWith("--", StringComparison.Ordinal) || !values.TryAdd(name, string.Empty))
             {
+                errorMessage = $"Unknown or duplicate option '{name}'.";
                 return false;
             }
 
-            normalizedPath = resolvedPath;
+            if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]) || args[index].StartsWith("--", StringComparison.Ordinal))
+            {
+                errorMessage = $"Option '{name}' requires a value.";
+                return false;
+            }
 
-            return true;
+            values[name] = args[index];
         }
-        catch (ArgumentException)
+
+        return command switch
         {
-            return false;
-        }
-        catch (NotSupportedException)
-        {
-            return false;
-        }
-        catch (PathTooLongException)
-        {
-            return false;
-        }
+            "create-release-manifest" => TryParseManifest(values, workingDirectoryPath, out options, out errorMessage),
+            "create-release-signature" => TryParseSignature(values, workingDirectoryPath, out options, out errorMessage),
+            "stage-managed-product" => TryParseStage(values, workingDirectoryPath, out options, out errorMessage),
+            _ => throw new InvalidOperationException("Unsupported product-tool command."),
+        };
     }
 
-    private static bool Fail(
-        string? message,
-        out ProductStageOptions? options,
-        [NotNull] out string? errorMessage
-    )
+    private static bool TryParseManifest(Dictionary<string, string> values, string workingDirectory,
+        out ProductToolOptions? options, out string? error)
     {
-        options = null;
+        string[] required = ["--client-publish", "--target-runtime", "--release-version", "--release-sequence", "--minimum-launcher-version", "--output"];
+        if (!HasExactly(values, required, out error) ||
+            !TryPath(values["--client-publish"], workingDirectory, out string? client) ||
+            !TryPath(values["--output"], workingDirectory, out string? output) ||
+            !ulong.TryParse(values["--release-sequence"], NumberStyles.None, CultureInfo.InvariantCulture, out ulong sequence) || sequence == 0 ||
+            !int.TryParse(values["--minimum-launcher-version"], NumberStyles.None, CultureInfo.InvariantCulture, out int minimumLauncherVersion) || minimumLauncherVersion <= 0)
+        {
+            options = null;
+            error ??= "Release paths, sequence, or launcher compatibility are invalid.";
+            return false;
+        }
 
-        errorMessage = message ?? "Invalid product staging arguments.";
+        options = new ReleaseManifestOptions(client, values["--target-runtime"], values["--release-version"],
+            sequence, minimumLauncherVersion, output);
+        error = null;
+        return true;
+    }
 
-        return false;
+    private static bool TryParseSignature(Dictionary<string, string> values, string workingDirectory,
+        out ProductToolOptions? options, out string? error)
+    {
+        string[] required = ["--release-manifest", "--public-key", "--signature", "--output"];
+        if (!HasExactly(values, required, out error) ||
+            !TryPath(values["--release-manifest"], workingDirectory, out string? manifest) ||
+            !TryPath(values["--public-key"], workingDirectory, out string? publicKey) ||
+            !TryPath(values["--signature"], workingDirectory, out string? signature) ||
+            !TryPath(values["--output"], workingDirectory, out string? output))
+        {
+            options = null;
+            error ??= "Release signature paths are invalid.";
+            return false;
+        }
+
+        options = new ReleaseSignatureOptions(manifest, publicKey, signature, output);
+        error = null;
+        return true;
+    }
+
+    private static bool TryParseStage(Dictionary<string, string> values, string workingDirectory,
+        out ProductToolOptions? options, out string? error)
+    {
+        string[] required = ["--launcher-publish", "--client-publish", "--release-manifest", "--release-signature", "--output"];
+        if (!HasExactly(values, required, out error) ||
+            !TryPath(values["--launcher-publish"], workingDirectory, out string? launcher) ||
+            !TryPath(values["--client-publish"], workingDirectory, out string? client) ||
+            !TryPath(values["--release-manifest"], workingDirectory, out string? manifest) ||
+            !TryPath(values["--release-signature"], workingDirectory, out string? signature) ||
+            !TryPath(values["--output"], workingDirectory, out string? output))
+        {
+            options = null;
+            error ??= "Product staging paths are invalid.";
+            return false;
+        }
+
+        options = new ProductStageOptions(launcher, client, manifest, signature, output);
+        error = null;
+        return true;
+    }
+
+    private static bool HasExactly(Dictionary<string, string> values, string[] required, out string? error)
+    {
+        HashSet<string> expected = new(required, StringComparer.Ordinal);
+        string? unexpected = values.Keys.FirstOrDefault(option => !expected.Contains(option));
+        string? missing = required.FirstOrDefault(option => !values.ContainsKey(option));
+        if (unexpected is not null || missing is not null || values.Count != required.Length)
+        {
+            error = unexpected is not null ? $"Option '{unexpected}' is not valid for this command." : $"Option '{missing}' is required.";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    private static bool TryPath(string path, string workingDirectory, [NotNullWhen(true)] out string? normalized)
+    {
+        normalized = null;
+        try
+        {
+            string candidate = Path.IsPathFullyQualified(path) ? path : Path.Combine(Path.GetFullPath(workingDirectory), path);
+            normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate));
+            return !string.IsNullOrWhiteSpace(normalized);
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
     }
 }

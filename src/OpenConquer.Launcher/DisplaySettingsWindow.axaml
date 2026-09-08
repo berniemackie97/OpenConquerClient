@@ -1,0 +1,39 @@
+<Window x:Class="OpenConquer.Launcher.DisplaySettingsWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Display settings" Width="580" Height="440" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <ScrollViewer>
+    <StackPanel Margin="28" Spacing="14">
+      <TextBlock Text="Display settings" FontSize="26" FontWeight="SemiBold" />
+      <TextBlock Text="Choose how the game window opens." TextWrapping="Wrap" />
+      <StackPanel x:Name="Fields" Spacing="10">
+        <TextBlock Text="Window size (pixels)" />
+        <Grid ColumnDefinitions="*,Auto,*">
+          <TextBox x:Name="WidthInput" AutomationProperties.Name="Window width in pixels" MaxLength="5" TextChanged="OnEdited" />
+          <TextBlock Grid.Column="1" Text="×" Margin="12,0" VerticalAlignment="Center" />
+          <TextBox Grid.Column="2" x:Name="HeightInput" AutomationProperties.Name="Window height in pixels" MaxLength="5" TextChanged="OnEdited" />
+        </Grid>
+        <TextBlock Text="Window mode" />
+        <ComboBox x:Name="ModeInput" HorizontalAlignment="Stretch" AutomationProperties.Name="Game window mode" SelectionChanged="OnSelectionEdited">
+          <ComboBoxItem Content="Resizable window" />
+          <ComboBoxItem Content="Fixed window" />
+          <ComboBoxItem Content="Fullscreen" />
+        </ComboBox>
+        <TextBlock Text="Image scaling" />
+        <ComboBox x:Name="PresentationInput" HorizontalAlignment="Stretch" AutomationProperties.Name="Game image scaling" SelectionChanged="OnSelectionEdited">
+          <ComboBoxItem Content="Fit — preserve proportions" />
+          <ComboBoxItem Content="Integer — whole-pixel scaling" />
+          <ComboBoxItem Content="Stretch — fill the window" />
+        </ComboBox>
+      </StackPanel>
+      <TextBlock x:Name="Status" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" MinHeight="46" />
+      <WrapPanel Orientation="Horizontal">
+        <Button x:Name="DefaultsButton" Content="Restore defaults" Click="OnDefaults" Margin="0,0,8,8" />
+        <Button x:Name="ReloadButton" Content="Reload" Click="OnReload" Margin="0,0,8,8" />
+        <Button x:Name="SaveButton" Content="Save" Classes="accent" IsDefault="True" Click="OnSave" Margin="0,0,8,8" />
+        <Button Content="Cancel" IsCancel="True" Click="OnCancel" Margin="0,0,0,8" />
+      </WrapPanel>
+    </StackPanel>
+  </ScrollViewer>
+</Window>

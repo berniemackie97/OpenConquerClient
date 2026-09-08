@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using OpenConquer.Launcher.Instances;
+using OpenConquer.Launcher.Settings;
 
 namespace OpenConquer.Launcher;
 
@@ -8,6 +9,8 @@ internal sealed partial class MainWindow : Window
 {
     private readonly LauncherApplication _application;
     private readonly LauncherActivationServer? _activation;
+    private readonly DisplaySettingsStore _settings = DisplaySettingsStore.ForCurrentUser();
+    private DisplaySettingsWindow? _settingsWindow;
     private bool _closing;
     private bool _closeAccepted;
 
@@ -64,6 +67,11 @@ internal sealed partial class MainWindow : Window
             }
 
             Show();
+            if (_settingsWindow is not null)
+            {
+                return _settingsWindow.ActivateSettings();
+            }
+
             Activate();
             return true;
         }, cancellationToken);
@@ -84,6 +92,29 @@ internal sealed partial class MainWindow : Window
         Close();
     }
 
+    private async void OnDisplaySettings(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (_closing || _settingsWindow is not null)
+        {
+            return;
+        }
+
+        DisplaySettingsWindow window = new(_settings);
+        _settingsWindow = window;
+        try
+        {
+            await window.ShowDialog(this);
+        }
+        finally
+        {
+            try
+            {
+                await window.StopAsync();
+            }
+            finally { _settingsWindow = null; }
+        }
+    }
+
     private async Task RenderEvaluationAsync(Task evaluation)
     {
         Render(_application.State);
@@ -102,6 +133,8 @@ internal sealed partial class MainWindow : Window
         }
     }
 
+    internal bool IsShutdownComplete => _closeAccepted;
+
     private async void OnClosing(object? sender, WindowClosingEventArgs eventArgs)
     {
         if (_closeAccepted)
@@ -109,30 +142,29 @@ internal sealed partial class MainWindow : Window
             return;
         }
 
+        eventArgs.Cancel = true;
+        await RequestShutdownAsync();
+    }
+
+    internal async Task RequestShutdownAsync()
+    {
         if (_closing)
         {
-            eventArgs.Cancel = true;
             return;
         }
 
-        eventArgs.Cancel = true;
         _closing = true;
-        Task stopping = Task.WhenAll(_application.StopAsync(), _activation?.StopAsync() ?? Task.CompletedTask);
+        Task stopping = Task.WhenAll(_application.StopAsync(), _activation?.StopAsync() ?? Task.CompletedTask, _settingsWindow?.StopAsync() ?? Task.CompletedTask);
         Render(_application.State);
-
         try
         {
             await stopping;
         }
-        catch
+        finally
         {
             _closeAccepted = true;
             Close();
-            throw;
         }
-
-        _closeAccepted = true;
-        Close();
     }
 
     private void Render(LauncherState state)
@@ -145,5 +177,6 @@ internal sealed partial class MainWindow : Window
         (StatusTitle.Text, StatusDetail.Text) = LauncherText.For(state);
         RetryInstallationButton.IsEnabled = state is LauncherState.InstallationUnavailable && !_closing;
         CloseButton.IsEnabled = !_closing;
+        SettingsButton.IsEnabled = !_closing;
     }
 }

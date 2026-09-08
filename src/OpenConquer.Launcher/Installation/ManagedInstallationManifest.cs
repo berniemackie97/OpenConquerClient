@@ -159,7 +159,6 @@ internal sealed record ManagedInstallationManifest(int SchemaVersion, string Pro
         return (attributes & (FileAttributes.Directory | FileAttributes.Device)) == 0;
     }
 
-    private sealed class LinkedInstallationPathException : IOException;
 }
 
 internal abstract record ManifestReadResult

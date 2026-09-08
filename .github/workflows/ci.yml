@@ -53,37 +53,49 @@ jobs:
         timeout-minutes: 3
         shell: bash
         run: |
-          # The runner's checkout ancestors may deny traversal to other UIDs. Stage the full
-          # probe dependency closure without changing checkout or runner-home permissions.
           probe_output="tests/Fixtures/OpenConquer.Launcher.InstanceProbe/bin/Release/net10.0"
           probe_stage="$(sudo mktemp -d /tmp/oc-instance-probe.XXXXXXXX)"
           trap 'sudo rm -r -- "$probe_stage"' EXIT
 
           sudo cp -R -- "$probe_output/." "$probe_stage/"
           sudo chmod -R a=rX -- "$probe_stage"
+
           sudo -- "$(command -v dotnet)" \
-            "$probe_stage/OpenConquer.Launcher.InstanceProbe.dll" --verify-cross-uid
+            "$probe_stage/OpenConquer.Launcher.InstanceProbe.dll" \
+            --verify-cross-uid
 
       # Proves the implemented content closure, tracked manifest, and physical payload are identical
       # from a clean clone. This catches both ignored/dropped payload and content-slice drift.
       - name: Verify content set
-        run: >
-          dotnet run --project tools/OpenConquer.Content.Tool --configuration Release --no-build --no-restore
-          -- verify-content-set --content-set content/retail-5517
+        run: >-
+          dotnet run
+          --project tools/OpenConquer.Content.Tool
+          --configuration Release
+          --no-build
+          --no-restore
+          --
+          verify-content-set
+          --content-set content/retail-5517
 
-      # Publishing is a separate product boundary from building. Both executable products must
-      # remain publishable from a clean clone before a change can merge.
+      # Publishing is a separate product boundary from building. The client publish becomes the
+      # exact byte tree authenticated by the release manifest below.
       - name: Publish client
-        run: >
-          dotnet publish src/OpenConquer.Client/OpenConquer.Client.csproj
+        run: >-
+          dotnet publish
+          src/OpenConquer.Client/OpenConquer.Client.csproj
           --configuration Release
           --no-restore
           --output "${{ runner.temp }}/openconquer-client"
 
       - name: Verify published client content
-        run: >
-          dotnet run --project tools/OpenConquer.Content.Tool --configuration Release --no-build --no-restore
-          -- verify-content-set
+        run: >-
+          dotnet run
+          --project tools/OpenConquer.Content.Tool
+          --configuration Release
+          --no-build
+          --no-restore
+          --
+          verify-content-set
           --content-set "${{ runner.temp }}/openconquer-client/content/retail-5517"
 
       # Server.dat is intentionally offline compatibility evidence. Even if future project-file
@@ -105,16 +117,127 @@ jobs:
             exit 1
           fi
 
+      # CI owns an ephemeral publisher identity only for exercising the complete release pipeline.
+      # The private key never enters the repository or a product artifact. Production publishing
+      # must supply its separately controlled publisher key and the corresponding public trust root.
+      - name: Create CI release authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+
+          release_root="${{ runner.temp }}/openconquer-release"
+          private_key="$release_root/publisher-private.pem"
+          public_key="$release_root/publisher-public.der"
+          trust_file="$release_root/release-trust.json"
+
+          mkdir -p "$release_root"
+
+          openssl ecparam \
+            -name prime256v1 \
+            -genkey \
+            -noout \
+            -out "$private_key"
+
+          openssl pkey \
+            -in "$private_key" \
+            -pubout \
+            -outform DER \
+            -out "$public_key"
+
+          encoded_public_key="$(base64 -w 0 "$public_key")"
+
+          printf \
+            '{"schemaVersion":1,"keys":[{"algorithm":"ecdsa-p256-sha256-der","publicKey":"%s"}]}\n' \
+            "$encoded_public_key" \
+            > "$trust_file"
+
+          test -s "$private_key"
+          test -s "$public_key"
+          test -s "$trust_file"
+
+      # The manifest authenticates the exact published client tree. Release identity is synthetic
+      # in CI but obeys the same schema and platform contract as a production release.
+      - name: Create CI release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_root="${{ runner.temp }}/openconquer-release"
+
+          dotnet run \
+            --project tools/OpenConquer.Product.Tool \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            -- \
+            create-release-manifest \
+            --client-publish "${{ runner.temp }}/openconquer-client" \
+            --target-runtime linux-x64 \
+            --release-version "ci-${GITHUB_SHA}" \
+            --release-sequence "${GITHUB_RUN_NUMBER}" \
+            --minimum-launcher-version 1 \
+            --output "$release_root/openconquer.release.json"
+
+          test -s "$release_root/openconquer.release.json"
+
+      # Signing remains external to the product tool. The tool receives the resulting DER ECDSA
+      # signature and public key, verifies them against the exact manifest bytes, and creates the
+      # bounded signature envelope consumed by the launcher.
+      - name: Sign CI release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_root="${{ runner.temp }}/openconquer-release"
+          private_key="$release_root/publisher-private.pem"
+          public_key="$release_root/publisher-public.der"
+          manifest="$release_root/openconquer.release.json"
+          raw_signature="$release_root/openconquer.release.der"
+          signature_envelope="$release_root/openconquer.release.sig"
+
+          trap 'rm -f -- "$private_key"' EXIT
+
+          openssl dgst \
+            -sha256 \
+            -sign "$private_key" \
+            -out "$raw_signature" \
+            "$manifest"
+
+          dotnet run \
+            --project tools/OpenConquer.Product.Tool \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            -- \
+            create-release-signature \
+            --release-manifest "$manifest" \
+            --public-key "$public_key" \
+            --signature "$raw_signature" \
+            --output "$signature_envelope"
+
+          test -s "$raw_signature"
+          test -s "$signature_envelope"
+
+      # A production-capable launcher must carry publisher trust. CI injects the public half of its
+      # ephemeral test authority through the same MSBuild boundary used by a production release.
       - name: Publish launcher
-        run: >
-          dotnet publish src/OpenConquer.Launcher/OpenConquer.Launcher.csproj
-          --configuration Release
-          --no-restore
-          --output "${{ runner.temp }}/openconquer-launcher"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          trust_file="${{ runner.temp }}/openconquer-release/release-trust.json"
+
+          dotnet publish \
+            src/OpenConquer.Launcher/OpenConquer.Launcher.csproj \
+            --configuration Release \
+            --no-restore \
+            --output "${{ runner.temp }}/openconquer-launcher" \
+            -p:OpenConquerReleaseTrustPath="$trust_file"
 
       # Installed-product layout belongs to package composition, not the independently published
-      # launcher. The raw launcher publish must therefore not carry the managed-installation
-      # descriptor or reserve the managed client component itself.
+      # launcher. Release trust is embedded as an assembly resource; raw release metadata and client
+      # content must remain outside the launcher publish.
       - name: Reject managed product layout from launcher publish
         shell: bash
         run: |
@@ -122,6 +245,21 @@ jobs:
 
           if [[ -e "$launcher/openconquer.installation.json" ]]; then
             echo "The raw launcher publish must not contain openconquer.installation.json." >&2
+            exit 1
+          fi
+
+          if [[ -e "$launcher/openconquer.release.json" ]]; then
+            echo "The raw launcher publish must not contain openconquer.release.json." >&2
+            exit 1
+          fi
+
+          if [[ -e "$launcher/openconquer.release.sig" ]]; then
+            echo "The raw launcher publish must not contain openconquer.release.sig." >&2
+            exit 1
+          fi
+
+          if [[ -e "$launcher/release-trust.json" ]]; then
+            echo "Release trust must be embedded rather than shipped as mutable loose metadata." >&2
             exit 1
           fi
 
@@ -140,12 +278,16 @@ jobs:
             exit 1
           fi
 
-      # Product composition owns the schema-v1 installation descriptor and fixed client/ component.
-      # The helper stages both independently published products into one managed product root.
+      # Composition copies the independently produced release manifest/signature to the product
+      # root, verifies that the staged client still matches the manifest, writes the installation
+      # descriptor, and activates the complete product by sibling-directory rename.
       - name: Verify managed product composition
         shell: bash
         run: |
+          set -euo pipefail
+
           managed="${{ runner.temp }}/openconquer-managed"
+          release_root="${{ runner.temp }}/openconquer-release"
 
           dotnet run \
             --project tools/OpenConquer.Product.Tool \
@@ -156,11 +298,28 @@ jobs:
             stage-managed-product \
             --launcher-publish "${{ runner.temp }}/openconquer-launcher" \
             --client-publish "${{ runner.temp }}/openconquer-client" \
+            --release-manifest "$release_root/openconquer.release.json" \
+            --release-signature "$release_root/openconquer.release.sig" \
             --output "$managed"
 
           test -f "$managed/openconquer.installation.json"
+          test -f "$managed/openconquer.release.json"
+          test -f "$managed/openconquer.release.sig"
           test -d "$managed/client"
+          test -f "$managed/client/OpenConquer.Client"
           test -f "$managed/client/content/retail-5517/manifest.json"
+
+          cmp \
+            "$release_root/openconquer.release.json" \
+            "$managed/openconquer.release.json"
+
+          cmp \
+            "$release_root/openconquer.release.sig" \
+            "$managed/openconquer.release.sig"
+
+          test ! -e "$managed/publisher-private.pem"
+          test ! -e "$managed/publisher-public.der"
+          test ! -e "$managed/release-trust.json"
 
   cross-platform:
     name: ${{ matrix.name }}
