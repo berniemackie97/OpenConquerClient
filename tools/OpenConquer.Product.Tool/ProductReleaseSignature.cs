@@ -117,8 +117,9 @@ internal static class ProductReleaseSignature
 
         if (root.ValueKind != JsonValueKind.Object || root.EnumerateObject().Count() != 4 || !root.TryGetProperty("schemaVersion", out JsonElement schema)
             || !schema.TryGetInt32(out int schemaVersion) || schemaVersion != CurrentSchemaVersion || !root.TryGetProperty("keyId", out JsonElement keyId)
-            || !root.TryGetProperty("algorithm", out JsonElement algorithm) || !root.TryGetProperty("signature", out JsonElement signature) || keyId.ValueKind != JsonValueKind.String
-            || algorithm.ValueKind != JsonValueKind.String || signature.ValueKind != JsonValueKind.String || !IsValidKeyId(keyId.GetString()) || !string.Equals(algorithm.GetString(), Algorithm, StringComparison.Ordinal))
+            || !root.TryGetProperty("algorithm", out JsonElement algorithm) || !root.TryGetProperty("signature", out JsonElement signature)
+            || keyId.ValueKind != JsonValueKind.String || algorithm.ValueKind != JsonValueKind.String || signature.ValueKind != JsonValueKind.String
+            || !IsValidKeyId(keyId.GetString()) || !string.Equals(algorithm.GetString(), Algorithm, StringComparison.Ordinal))
         {
             throw new InvalidDataException("The release signature envelope is invalid.");
         }
@@ -201,7 +202,7 @@ internal static class ProductReleaseSignature
         }
     }
 
-    private static string GetKeyId(ReadOnlySpan<byte> publicKey)
+    internal static string GetKeyId(ReadOnlySpan<byte> publicKey)
     {
         return KeyIdPrefix + Convert.ToHexStringLower(SHA256.HashData(publicKey));
     }

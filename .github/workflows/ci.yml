@@ -145,12 +145,15 @@ jobs:
             -outform DER \
             -out "$public_key"
 
-          encoded_public_key="$(base64 -w 0 "$public_key")"
-
-          printf \
-            '{"schemaVersion":1,"keys":[{"algorithm":"ecdsa-p256-sha256-der","publicKey":"%s"}]}\n' \
-            "$encoded_public_key" \
-            > "$trust_file"
+          dotnet run \
+            --project tools/OpenConquer.Product.Tool \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            -- \
+            create-release-trust \
+            --public-key "$public_key" \
+            --output "$trust_file"
 
           test -s "$private_key"
           test -s "$public_key"
