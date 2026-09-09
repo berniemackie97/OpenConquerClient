@@ -73,6 +73,35 @@ internal sealed class OpenGLRenderTarget : IDisposable
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _framebuffer);
     }
 
+    internal unsafe byte[] ReadColorTopLeftRgba()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        int rowLength = checked(_width * 4);
+        byte[] pixels = GC.AllocateUninitializedArray<byte>(checked(rowLength * _height));
+
+        _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _framebuffer);
+
+        fixed (byte* pixelPointer = pixels)
+        {
+            _gl.ReadPixels(0, 0, (uint)_width, (uint)_height, PixelFormat.Rgba, PixelType.UnsignedByte, pixelPointer);
+        }
+
+        byte[] temporaryRow = GC.AllocateUninitializedArray<byte>(rowLength);
+
+        for (int topRow = 0, bottomRow = _height - 1; topRow < bottomRow; topRow++, bottomRow--)
+        {
+            Span<byte> top = pixels.AsSpan(topRow * rowLength, rowLength);
+            Span<byte> bottom = pixels.AsSpan(bottomRow * rowLength, rowLength);
+
+            top.CopyTo(temporaryRow);
+            bottom.CopyTo(top);
+            temporaryRow.CopyTo(bottom);
+        }
+
+        return pixels;
+    }
+
     public void Dispose()
     {
         if (_disposed)

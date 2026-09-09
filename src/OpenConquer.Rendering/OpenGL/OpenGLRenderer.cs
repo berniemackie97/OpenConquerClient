@@ -8,12 +8,14 @@ public sealed class OpenGLRenderer : IDisposable
     private readonly GL _gl;
     private readonly LogicalRenderSize _logicalRenderSize;
     private readonly OpenGLRenderTarget _renderTarget;
+    private readonly OpenGLSpriteRenderer _spriteRenderer;
     private readonly PresentationPolicy _presentationPolicy;
 
     private int _framebufferWidth;
     private int _framebufferHeight;
     private PresentationViewport _viewport;
     private bool _hostFramebufferValidated;
+    private bool _frameActive;
     private bool _disposed;
 
     internal OpenGLRenderer(GL gl, LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy)
@@ -26,6 +28,24 @@ public sealed class OpenGLRenderer : IDisposable
         _logicalRenderSize = logicalRenderSize;
         _presentationPolicy = presentationPolicy;
         _renderTarget = new OpenGLRenderTarget(gl, logicalRenderSize.Width, logicalRenderSize.Height);
+
+        try
+        {
+            _spriteRenderer = new OpenGLSpriteRenderer(gl);
+        }
+        catch
+        {
+            try
+            {
+                _renderTarget.Dispose();
+            }
+            catch
+            {
+                // Preserve the original sprite-renderer creation failure.
+            }
+
+            throw;
+        }
 
         _framebufferWidth = framebufferWidth;
         _framebufferHeight = framebufferHeight;
@@ -40,7 +60,6 @@ public sealed class OpenGLRenderer : IDisposable
     public void ResizeHostFramebuffer(int width, int height)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-
         ArgumentOutOfRangeException.ThrowIfNegative(width);
         ArgumentOutOfRangeException.ThrowIfNegative(height);
 
@@ -49,12 +68,67 @@ public sealed class OpenGLRenderer : IDisposable
         _viewport = PresentationViewport.Compute(_logicalRenderSize, width, height, _presentationPolicy);
     }
 
-    public void RenderFrame()
+    public void BeginFrame()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        if (_frameActive)
+        {
+            throw new InvalidOperationException("A rendering frame is already active.");
+        }
+
         _renderTarget.BeginFrame();
-        BlitToHostFramebuffer();
+        _frameActive = true;
+    }
+
+    public void DrawSprite(OpenGLTexture2D texture, int x, int y)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(texture);
+
+        if (!_frameActive)
+        {
+            throw new InvalidOperationException("A rendering frame must be active before drawing.");
+        }
+
+        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, x, y);
+    }
+
+    internal byte[] ReadFrameTopLeftRgba()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!_frameActive)
+        {
+            throw new InvalidOperationException("A rendering frame must be active before reading its color buffer.");
+        }
+
+        return _renderTarget.ReadColorTopLeftRgba();
+    }
+
+    public void EndFrame()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!_frameActive)
+        {
+            throw new InvalidOperationException("No rendering frame is active.");
+        }
+
+        try
+        {
+            BlitToHostFramebuffer();
+        }
+        finally
+        {
+            _frameActive = false;
+        }
+    }
+
+    public void RenderFrame()
+    {
+        BeginFrame();
+        EndFrame();
     }
 
     public void Dispose()
@@ -64,14 +138,32 @@ public sealed class OpenGLRenderer : IDisposable
             return;
         }
 
+        ExceptionDispatchInfo? firstFailure = null;
+
+        try
+        {
+            _spriteRenderer.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
         try
         {
             _renderTarget.Dispose();
         }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
         finally
         {
+            _frameActive = false;
             _disposed = true;
         }
+
+        firstFailure?.Throw();
     }
 
     private void BlitToHostFramebuffer()
@@ -84,18 +176,15 @@ public sealed class OpenGLRenderer : IDisposable
             {
                 _gl.Disable(EnableCap.ScissorTest);
                 _gl.Disable(EnableCap.FramebufferSrgb);
-
                 _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, framebuffer: 0);
 
                 ValidateHostFramebuffer();
                 ClearLetterboxBars();
-
                 _renderTarget.BindForRead();
 
                 _gl.BlitFramebuffer(srcX0: 0, srcY0: 0, srcX1: _logicalRenderSize.Width, srcY1: _logicalRenderSize.Height,
                     dstX0: _viewport.OffsetX, dstY0: _viewport.OffsetY, dstX1: _viewport.OffsetX + _viewport.Width,
-                    dstY1: _viewport.OffsetY + _viewport.Height, (uint)ClearBufferMask.ColorBufferBit,
-                    ToBlitFilter(_viewport.Filter));
+                    dstY1: _viewport.OffsetY + _viewport.Height, (uint)ClearBufferMask.ColorBufferBit, ToBlitFilter(_viewport.Filter));
             }
         }
         catch (Exception exception)
@@ -146,7 +235,6 @@ public sealed class OpenGLRenderer : IDisposable
         {
             PresentationFilter.Nearest => BlitFramebufferFilter.Nearest,
             PresentationFilter.Linear => BlitFramebufferFilter.Linear,
-
             _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "Unknown presentation filter."),
         };
     }

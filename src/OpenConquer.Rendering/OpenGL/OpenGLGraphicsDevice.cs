@@ -79,6 +79,13 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy);
     }
 
+    public OpenGLTexture2D CreateTexture2D(int width, int height, ReadOnlySpan<byte> rgbaPixels)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        return new OpenGLTexture2D(_gl, width, height, rgbaPixels);
+    }
+
     public OpenGLStartupSurfaceRenderer CreateStartupSurfaceRenderer(int width, int height, ReadOnlySpan<byte> rgbaPixels)
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);
