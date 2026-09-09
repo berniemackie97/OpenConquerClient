@@ -21,6 +21,9 @@
     <Project Path="tools/OpenConquer.Content.Tool/OpenConquer.Content.Tool.csproj" />
     <Project Path="tools/OpenConquer.Product.Tool/OpenConquer.Product.Tool.csproj" />
   </Folder>
+  <Folder Name="/tests/Conformance/">
+    <Project Path="tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj" />
+  </Folder>
   <Folder Name="/tests/Fixtures/">
     <Project Path="tests/Fixtures/OpenConquer.Launcher.InstanceProbe/OpenConquer.Launcher.InstanceProbe.csproj" />
   </Folder>

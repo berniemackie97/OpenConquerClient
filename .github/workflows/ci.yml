@@ -26,12 +26,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           global-json-file: global.json
 
@@ -47,8 +47,6 @@ jobs:
       - name: Test
         run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 
-      # Only this coordinator runs as root on the disposable hosted Linux runner. Each launcher
-      # and attacker process drops to a distinct UID with no supplementary groups/capabilities.
       - name: Verify launcher isolation across Unix users
         timeout-minutes: 3
         shell: bash
@@ -64,8 +62,6 @@ jobs:
             "$probe_stage/OpenConquer.Launcher.InstanceProbe.dll" \
             --verify-cross-uid
 
-      # Proves the implemented content closure, tracked manifest, and physical payload are identical
-      # from a clean clone. This catches both ignored/dropped payload and content-slice drift.
       - name: Verify content set
         run: >-
           dotnet run
@@ -77,8 +73,6 @@ jobs:
           verify-content-set
           --content-set content/retail-5517
 
-      # Publishing is a separate product boundary from building. The client publish becomes the
-      # exact byte tree authenticated by the release manifest below.
       - name: Publish client
         run: >-
           dotnet publish
@@ -98,9 +92,6 @@ jobs:
           verify-content-set
           --content-set "${{ runner.temp }}/openconquer-client/content/retail-5517"
 
-      # Server.dat is intentionally offline compatibility evidence. Even if future project-file
-      # changes accidentally stage it outside the verified content-set subtree, publishing must
-      # still reject the legacy file anywhere in the production client.
       - name: Reject legacy Server.dat from client publish
         shell: bash
         run: |
@@ -117,9 +108,6 @@ jobs:
             exit 1
           fi
 
-      # CI owns an ephemeral publisher identity only for exercising the complete release pipeline.
-      # The private key never enters the repository or a product artifact. Production publishing
-      # must supply its separately controlled publisher key and the corresponding public trust root.
       - name: Create CI release authority
         shell: bash
         run: |
@@ -159,8 +147,6 @@ jobs:
           test -s "$public_key"
           test -s "$trust_file"
 
-      # The manifest authenticates the exact published client tree. Release identity is synthetic
-      # in CI but obeys the same schema and platform contract as a production release.
       - name: Create CI release manifest
         shell: bash
         run: |
@@ -184,9 +170,6 @@ jobs:
 
           test -s "$release_root/openconquer.release.json"
 
-      # Signing remains external to the product tool. The tool verifies the resulting signatures,
-      # builds the exact client package and catalog consumed by acquisition, and never receives the
-      # private key.
       - name: Sign and package CI release catalog
         shell: bash
         run: |
@@ -289,13 +272,12 @@ jobs:
           mapfile -t package_entries < <(zipinfo -1 "$package")
           test "${package_entries[0]}" = "openconquer.release.json"
           test "${package_entries[1]}" = "openconquer.release.sig"
+
           if printf '%s\n' "${package_entries[@]}" | grep -Eq '(^/|^\.\.?/|/\.\.?/)'; then
             echo "The release package contains a nonportable archive path." >&2
             exit 1
           fi
 
-      # A production-capable launcher must carry publisher trust. CI injects the public half of its
-      # ephemeral test authority through the same MSBuild boundary used by a production release.
       - name: Publish launcher
         shell: bash
         run: |
@@ -310,9 +292,6 @@ jobs:
             --output "${{ runner.temp }}/openconquer-launcher" \
             -p:OpenConquerReleaseTrustPath="$trust_file"
 
-      # Installed-product layout belongs to package composition, not the independently published
-      # launcher. Release trust is embedded as an assembly resource; raw release metadata and client
-      # content must remain outside the launcher publish.
       - name: Reject managed product layout from launcher publish
         shell: bash
         run: |
@@ -348,8 +327,6 @@ jobs:
             exit 1
           fi
 
-      # The launcher is a separate product and must not acquire the game's retail runtime payload
-      # merely because both executables live in the same repository.
       - name: Reject game runtime content from launcher publish
         shell: bash
         run: |
@@ -358,9 +335,6 @@ jobs:
             exit 1
           fi
 
-      # Composition copies the independently produced release manifest/signature into an immutable
-      # generation, verifies that the staged client still matches the manifest, writes the atomic
-      # generation selector, and activates the complete product by sibling-directory rename.
       - name: Verify managed product composition
         shell: bash
         run: |
@@ -383,6 +357,7 @@ jobs:
             --output "$managed"
 
           test -f "$managed/openconquer.installation.json"
+
           active_release="$(
             jq -er '
               if .schemaVersion == 2
@@ -395,11 +370,12 @@ jobs:
               end
             ' "$managed/openconquer.installation.json"
           )"
-          mapfile -t release_dirs < <(
-            find "$managed/releases" -mindepth 1 -maxdepth 1 -print
-          )
+
+          mapfile -t release_dirs < <(find "$managed/releases" -mindepth 1 -maxdepth 1 -print)
           test "${#release_dirs[@]}" -eq 1
+
           generation="${release_dirs[0]}"
+
           test -d "$generation"
           test "$(basename "$generation")" = "$active_release"
           test -f "$generation/openconquer.release.json"
@@ -409,13 +385,8 @@ jobs:
           test -x "$generation/client/OpenConquer.Client"
           test -f "$generation/client/content/retail-5517/manifest.json"
 
-          cmp \
-            "$release_root/openconquer.release.json" \
-            "$generation/openconquer.release.json"
-
-          cmp \
-            "$release_root/openconquer.release.sig" \
-            "$generation/openconquer.release.sig"
+          cmp "$release_root/openconquer.release.json" "$generation/openconquer.release.json"
+          cmp "$release_root/openconquer.release.sig" "$generation/openconquer.release.sig"
 
           test ! -e "$managed/publisher-private.pem"
           test ! -e "$managed/publisher-public.der"
@@ -437,12 +408,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           global-json-file: global.json
 
@@ -452,7 +423,5 @@ jobs:
       - name: Build
         run: dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
 
-      # Both desktop products are platform-specific parts of this repository, so the complete suite
-      # runs on every target rather than only on the Linux quality job.
       - name: Test
         run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore

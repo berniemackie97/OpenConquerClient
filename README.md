@@ -9,10 +9,10 @@ Linux, designed for OpenConquer Server.
 
 ## Current capabilities
 
-| Product  | Implemented                                                                                                                                                                                                                                                                                                                                           | Still required                                                                                                                                                                          |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product  | Implemented                                                                                                                                                                                                                                                                                                                                                                                                                | Still required                                                                                                                                                                      |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Launcher | Avalonia host, redacted diagnostics, authenticated managed-package resolution, embedded publisher trust, release-signature and client-integrity verification, signed release-catalog selection, bounded HTTPS package acquisition, process-crash-safe client-generation update/repair and verified rollback transaction, installation recheck, single-instance activation, coordinated shutdown, saved display preferences | Production release origin/configuration and player-facing maintenance flow, launcher self-update, controlled verified client startup, complete player UX, signed platform packaging |
-| Client   | Resizable/fixed/fullscreen host, logical rendering and presentation, verified bootstrap content                                                                                                                                                                                                                                                       | Networking, gameplay, higher-level rendering                                                                                                                                            |
+| Client   | Resizable/fixed/fullscreen host, logical rendering and presentation, verified bootstrap content                                                                                                                                                                                                                                                                                                                            | Networking, gameplay, higher-level rendering                                                                                                                                        |
 
 The launcher replaces `Play.exe` as the product entry point. Launcher and client remain independent
 executables and dependency boundaries. A managed product contains both; the launcher automatically
@@ -70,8 +70,9 @@ dotnet test OpenConquer.Client.slnx -c Release --no-build --no-restore
 
 CI builds and tests on Linux, Windows, and macOS. The Linux quality job also checks formatting,
 content integrity, independent publishes, authenticated release composition, launcher isolation, and
-managed-product staging. These gates do not replace native desktop checks, platform packaging,
-production signing, or notarization.
+managed-product staging. Real OpenGL rendering conformance is executed separately on supported
+desktop hardware against the native driver. CI does not replace native-driver conformance, platform
+packaging, production signing, or notarization.
 
 ## Run
 
@@ -172,6 +173,8 @@ src/
 └── OpenConquer.Rendering/
 
 tests/
+├── Conformance/
+│   └── OpenConquer.Rendering.Conformance/
 ├── OpenConquer.Client.Tests/
 ├── OpenConquer.Content.Tests/
 ├── OpenConquer.Content.Tool.Tests/
