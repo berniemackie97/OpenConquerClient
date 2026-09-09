@@ -26,8 +26,34 @@ internal static class ProductReleaseSignature
 
         _ = ProductReleaseManifest.Read(options.ReleaseManifestPath);
 
-        byte[] publicKeyFile = ProductReleaseManifest.ReadRegularFile(options.PublicKeyPath, MaximumPublicKeyLength);
-        byte[] signature = ProductReleaseManifest.ReadRegularFile(options.SignaturePath, MaximumSignatureLength);
+        CreateVerifiedEnvelope(manifest, options.ReleaseManifestPath, options.PublicKeyPath,
+            options.SignaturePath, options.OutputPath, 8 * 1024 * 1024);
+    }
+
+    public static void Create(CatalogSignatureOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        byte[] catalog = ProductReleaseManifest.ReadRegularFile(
+            options.ReleaseCatalogPath, ProductReleaseCatalog.MaximumLength);
+        _ = ProductReleaseCatalog.Read(catalog);
+
+        CreateVerifiedEnvelope(catalog, options.ReleaseCatalogPath, options.PublicKeyPath,
+            options.SignaturePath, options.OutputPath, ProductReleaseCatalog.MaximumLength);
+    }
+
+    private static void CreateVerifiedEnvelope(
+        byte[] signedContent,
+        string signedContentPath,
+        string publicKeyPath,
+        string signaturePath,
+        string outputPathValue,
+        int maximumContentLength)
+    {
+        byte[] publicKeyFile = ProductReleaseManifest.ReadRegularFile(
+            publicKeyPath, MaximumPublicKeyLength);
+        byte[] signature = ProductReleaseManifest.ReadRegularFile(
+            signaturePath, MaximumSignatureLength);
 
         if (signature.Length is < MinimumSignatureLength or > MaximumSignatureLength)
         {
@@ -42,9 +68,10 @@ internal static class ProductReleaseSignature
         {
             algorithm.ImportSubjectPublicKeyInfo(publicKey, out int bytesRead);
 
-            if (bytesRead != publicKey.Length || !algorithm.VerifyData(manifest, signature, HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence))
+            if (bytesRead != publicKey.Length || !algorithm.VerifyData(signedContent, signature,
+                    HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence))
             {
-                throw new InvalidDataException("The signature does not authenticate the release manifest.");
+                throw new InvalidDataException("The signature does not authenticate the signed release metadata.");
             }
         }
         catch (CryptographicException exception)
@@ -52,20 +79,22 @@ internal static class ProductReleaseSignature
             throw new InvalidDataException("The release signature or public key is invalid.", exception);
         }
 
-        string outputPath = ProductStagingPathGuard.NormalizePath(options.OutputPath, nameof(options.OutputPath));
+        string outputPath = ProductStagingPathGuard.NormalizePath(
+            outputPathValue, nameof(outputPathValue));
 
         string[] inputPaths =
         [
-            options.ReleaseManifestPath,
-            options.PublicKeyPath,
-            options.SignaturePath,
+            signedContentPath,
+            publicKeyPath,
+            signaturePath,
         ];
 
         StringComparison pathComparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
         foreach (string inputPath in inputPaths)
         {
-            string normalizedInputPath = ProductStagingPathGuard.NormalizePath(inputPath, nameof(options));
+            string normalizedInputPath = ProductStagingPathGuard.NormalizePath(
+                inputPath, nameof(inputPath));
 
             if (string.Equals(normalizedInputPath, outputPath, pathComparison))
             {
@@ -94,6 +123,12 @@ internal static class ProductReleaseSignature
                 stream.Flush(flushToDisk: true);
             }
 
+            if (!signedContent.AsSpan().SequenceEqual(ProductReleaseManifest.ReadRegularFile(
+                    signedContentPath, maximumContentLength)))
+            {
+                throw new IOException("The signed content changed while creating its envelope.");
+            }
+
             File.Move(temporaryPath, outputPath);
 
             completed = true;
@@ -110,6 +145,54 @@ internal static class ProductReleaseSignature
     public static void ValidateEnvelope(string path)
     {
         byte[] bytes = ProductReleaseManifest.ReadRegularFile(path, MaximumEnvelopeLength);
+
+        ValidateEnvelope(bytes);
+    }
+
+    internal static void ValidateEnvelope(ReadOnlyMemory<byte> bytes)
+    {
+        _ = ReadEnvelope(bytes);
+    }
+
+    internal static void VerifyEnvelope(
+        ReadOnlyMemory<byte> signedContent,
+        ReadOnlyMemory<byte> envelope,
+        string publicKeyPath)
+    {
+        (string keyId, byte[] signature) = ReadEnvelope(envelope);
+        byte[] publicKey = ExportSubjectPublicKeyInfo(publicKeyPath);
+        if (!string.Equals(keyId, GetKeyId(publicKey), StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                "The release signature does not identify the supplied public key.");
+        }
+
+        using ECDsa algorithm = ECDsa.Create();
+        try
+        {
+            algorithm.ImportSubjectPublicKeyInfo(publicKey, out int bytesRead);
+            if (bytesRead != publicKey.Length || !algorithm.VerifyData(signedContent.Span,
+                    signature, HashAlgorithmName.SHA256,
+                    DSASignatureFormat.Rfc3279DerSequence))
+            {
+                throw new InvalidDataException(
+                    "The signature does not authenticate the signed release metadata.");
+            }
+        }
+        catch (CryptographicException exception)
+        {
+            throw new InvalidDataException(
+                "The release signature or public key is invalid.", exception);
+        }
+    }
+
+    private static (string KeyId, byte[] Signature) ReadEnvelope(
+        ReadOnlyMemory<byte> bytes)
+    {
+        if (bytes.IsEmpty || bytes.Length > MaximumEnvelopeLength)
+        {
+            throw new InvalidDataException("The release signature envelope is invalid.");
+        }
 
         using JsonDocument document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 4 });
 
@@ -153,6 +236,8 @@ internal static class ProductReleaseSignature
         {
             throw new InvalidDataException("The release signature envelope is invalid.");
         }
+
+        return (keyId.GetString()!, signatureBytes);
     }
 
     internal static byte[] ExportSubjectPublicKeyInfo(string publicKeyPath)

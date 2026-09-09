@@ -94,6 +94,16 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
     {
         byte[] bytes = ReadRegularFile(path, MaximumLength);
 
+        return Read(bytes);
+    }
+
+    internal static ProductReleaseManifest Read(ReadOnlyMemory<byte> bytes)
+    {
+        if (bytes.IsEmpty || bytes.Length > MaximumLength)
+        {
+            throw new InvalidDataException("The release manifest length is invalid.");
+        }
+
         using JsonDocument document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 8 });
 
         if (!TryRead(document.RootElement, out ProductReleaseManifest? manifest) || manifest is null)
@@ -154,7 +164,7 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
     private static List<ProductReleaseFile> ReadClientFiles(string clientRoot)
     {
         List<ProductReleaseFile> files = [];
-        HashSet<string> portablePaths = new(StringComparer.Ordinal);
+        ProductReleasePathTopology pathTopology = new(MaximumDirectoryCount);
         Stack<DirectoryInfo> pending = new();
 
         DirectoryInfo root = new(clientRoot);
@@ -172,7 +182,7 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
 
         pending.Push(root);
 
-        int directoryCount = 1;
+        int directoryCount = 0;
 
         while (pending.TryPop(out DirectoryInfo? directory))
         {
@@ -221,7 +231,8 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
 
                 string relativePath = Path.GetRelativePath(clientRoot, file.FullName).Replace(Path.DirectorySeparatorChar, '/');
 
-                if (!ProductReleasePath.IsValid(relativePath) || !portablePaths.Add(ProductReleasePath.PortableIdentity(relativePath)))
+                if (!ProductReleasePath.IsValid(relativePath) ||
+                    !pathTopology.TryAddFile(relativePath))
                 {
                     throw new InvalidDataException($"The client publish contains an invalid or ambiguous path: '{relativePath}'.");
                 }
@@ -332,6 +343,7 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
         if (schemaVersion != CurrentSchemaVersion || productId is null || !string.Equals(productId, ExpectedProductId, StringComparison.Ordinal)
             || releaseSequence is null or 0 || releaseVersion is null || !IsValidVersion(releaseVersion) || minimumLauncherVersion is null or <= 0
             || targetRuntime is null || !ProductTargetRuntime.IsSupported(targetRuntime) || clientExecutable is null || !ProductReleasePath.IsValid(clientExecutable)
+            || !string.Equals(clientExecutable, ProductTargetRuntime.ClientExecutable(targetRuntime), StringComparison.Ordinal)
             || files is not { Count: > 0 } || !files.Any(file => string.Equals(file.Path, clientExecutable, StringComparison.Ordinal)))
         {
             return false;
@@ -352,14 +364,15 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
         }
 
         List<ProductReleaseFile> parsed = [];
-        HashSet<string> portablePaths = new(StringComparer.Ordinal);
+        ProductReleasePathTopology pathTopology = new(MaximumDirectoryCount);
 
         string? previous = null;
 
         foreach (JsonElement item in element.EnumerateArray())
         {
             if (parsed.Count == MaximumFileCount || !TryReadFile(item, out ProductReleaseFile? file) || file is null
-                || !portablePaths.Add(ProductReleasePath.PortableIdentity(file.Path)) || previous is not null && string.CompareOrdinal(previous, file.Path) >= 0)
+                || !pathTopology.TryAddFile(file.Path)
+                || previous is not null && string.CompareOrdinal(previous, file.Path) >= 0)
             {
                 return false;
             }

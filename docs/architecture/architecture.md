@@ -101,6 +101,7 @@ The launcher currently owns:
 - fatal host-failure handling;
 - managed-installation evaluation;
 - authenticated installed-release update, repair, and verified rollback transactions;
+- authenticated release-catalog selection and bounded package acquisition;
 - application state and cancellation;
 - non-secret display preferences and the owned settings dialog.
 
@@ -113,8 +114,9 @@ replace `Stopping`. See the [installation contract](launcher-managed-installatio
 Display preferences have a separate [storage and dialog contract](launcher-settings.md). The view
 owns its draft; the settings session owns I/O cancellation and draining.
 
-Authoritative release acquisition, player-facing update/repair orchestration, launcher self-update,
-and controlled client startup remain unimplemented. Native account login, realm selection and all
+The acquisition core is intentionally not wired to a fabricated service. Production release-origin
+configuration and publishing, player-facing update/repair orchestration, launcher self-update, and
+controlled client startup remain unimplemented. Native account login, realm selection and all
 game-session networking belong to Client/Networking, not the launcher.
 
 ### Privilege Boundary

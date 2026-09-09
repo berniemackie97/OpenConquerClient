@@ -9,6 +9,9 @@ internal static class ProductToolCommandLine
         "Commands:\n"
         + "  create-release-manifest --client-publish <path> --target-runtime <rid> --release-version <value> --release-sequence <positive integer> --minimum-launcher-version <positive integer> --output <path>\n"
         + "  create-release-signature --release-manifest <path> --public-key <path> --signature <path> --output <path>\n"
+        + "  create-release-package --client-publish <path> --release-manifest <path> --release-signature <path> --public-key <path> --output <path>\n"
+        + "  create-release-catalog --release-package <path> [--release-package <path> ...] --package-base-uri <https URI ending in /> --public-key <path> [--public-key <path> ...] --expires-utc <yyyy-MM-ddTHH:mm:ssZ> --output <path>\n"
+        + "  create-release-catalog-signature --release-catalog <path> --public-key <path> --signature <path> --output <path>\n"
         + "  create-release-trust --public-key <path> [--public-key <path> ...] --output <path>\n"
         + "  create-local-product\n"
         + "  stage-managed-product --launcher-publish <path> --client-publish <path> --release-manifest <path> --release-signature <path> --output <path>";
@@ -27,7 +30,10 @@ internal static class ProductToolCommandLine
 
         string command = args[0];
 
-        if (command is not ("create-release-manifest" or "create-release-signature" or "create-release-trust" or "create-local-product" or "stage-managed-product"))
+        if (command is not ("create-release-manifest" or "create-release-signature" or
+                "create-release-package" or "create-release-catalog" or
+                "create-release-catalog-signature" or "create-release-trust" or
+                "create-local-product" or "stage-managed-product"))
         {
             errorMessage = $"Unknown command '{command}'.";
             return false;
@@ -49,6 +55,12 @@ internal static class ProductToolCommandLine
         if (command == "create-release-trust")
         {
             return TryParseTrust(args, workingDirectoryPath, out options, out errorMessage);
+        }
+
+        if (command == "create-release-catalog")
+        {
+            return TryParseCatalog(args, workingDirectoryPath, out options,
+                out errorMessage);
         }
 
         Dictionary<string, string> values = new(StringComparer.Ordinal);
@@ -76,6 +88,10 @@ internal static class ProductToolCommandLine
         {
             "create-release-manifest" => TryParseManifest(values, workingDirectoryPath, out options, out errorMessage),
             "create-release-signature" => TryParseSignature(values, workingDirectoryPath, out options, out errorMessage),
+            "create-release-package" => TryParsePackage(values, workingDirectoryPath,
+                out options, out errorMessage),
+            "create-release-catalog-signature" => TryParseCatalogSignature(values,
+                workingDirectoryPath, out options, out errorMessage),
             "stage-managed-product" => TryParseStage(values, workingDirectoryPath, out options, out errorMessage),
             _ => throw new InvalidOperationException("Unsupported product-tool command."),
         };
@@ -124,6 +140,166 @@ internal static class ProductToolCommandLine
         }
 
         options = new ReleaseSignatureOptions(manifest, publicKey, signature, output);
+        error = null;
+        return true;
+    }
+
+    private static bool TryParsePackage(
+        Dictionary<string, string> values,
+        string workingDirectory,
+        out ProductToolOptions? options,
+        out string? error)
+    {
+        string[] required =
+        [
+            "--client-publish",
+            "--release-manifest",
+            "--release-signature",
+            "--public-key",
+            "--output",
+        ];
+
+        if (!HasExactly(values, required, out error) ||
+            !TryPath(values["--client-publish"], workingDirectory, out string? client) ||
+            !TryPath(values["--release-manifest"], workingDirectory, out string? manifest) ||
+            !TryPath(values["--release-signature"], workingDirectory,
+                out string? signature) ||
+            !TryPath(values["--public-key"], workingDirectory, out string? publicKey) ||
+            !TryPath(values["--output"], workingDirectory, out string? output))
+        {
+            options = null;
+            error ??= "Release package paths are invalid.";
+            return false;
+        }
+
+        options = new ReleasePackageOptions(client, manifest, signature, publicKey, output);
+        error = null;
+        return true;
+    }
+
+    private static bool TryParseCatalogSignature(
+        Dictionary<string, string> values,
+        string workingDirectory,
+        out ProductToolOptions? options,
+        out string? error)
+    {
+        string[] required =
+            ["--release-catalog", "--public-key", "--signature", "--output"];
+        if (!HasExactly(values, required, out error) ||
+            !TryPath(values["--release-catalog"], workingDirectory,
+                out string? catalog) ||
+            !TryPath(values["--public-key"], workingDirectory, out string? publicKey) ||
+            !TryPath(values["--signature"], workingDirectory, out string? signature) ||
+            !TryPath(values["--output"], workingDirectory, out string? output))
+        {
+            options = null;
+            error ??= "Release catalog signature paths are invalid.";
+            return false;
+        }
+
+        options = new CatalogSignatureOptions(catalog, publicKey, signature, output);
+        error = null;
+        return true;
+    }
+
+    private static bool TryParseCatalog(
+        IReadOnlyList<string> args,
+        string workingDirectory,
+        out ProductToolOptions? options,
+        out string? error)
+    {
+        List<string> packages = [];
+        List<string> publicKeys = [];
+        Uri? packageBaseUri = null;
+        DateTimeOffset? expiresAt = null;
+        string? output = null;
+        for (int index = 1; index < args.Count; index++)
+        {
+            string name = args[index];
+            if (name is not ("--release-package" or "--package-base-uri" or "--public-key" or
+                    "--expires-utc" or "--output"))
+            {
+                options = null;
+                error = $"Option '{name}' is not valid for this command.";
+                return false;
+            }
+
+            if (++index >= args.Count || string.IsNullOrWhiteSpace(args[index]) ||
+                args[index].StartsWith("--", StringComparison.Ordinal))
+            {
+                options = null;
+                error = $"Option '{name}' requires a value.";
+                return false;
+            }
+
+            if (name == "--release-package")
+            {
+                if (packages.Count == ProductReleaseCatalog.MaximumReleaseCount ||
+                    !TryPath(args[index], workingDirectory, out string? package))
+                {
+                    options = null;
+                    error = "The release package list is invalid or excessive.";
+                    return false;
+                }
+
+                packages.Add(package);
+            }
+            else if (name == "--public-key")
+            {
+                if (publicKeys.Count == ProductReleaseTrust.MaximumKeyCount ||
+                    !TryPath(args[index], workingDirectory, out string? publicKey))
+                {
+                    options = null;
+                    error = "The release public-key list is invalid or excessive.";
+                    return false;
+                }
+
+                publicKeys.Add(publicKey);
+            }
+            else if (name == "--package-base-uri")
+            {
+                if (packageBaseUri is not null ||
+                    !ProductReleaseUri.TryParseBase(args[index], out packageBaseUri))
+                {
+                    options = null;
+                    error = "The package base URI is invalid or repeated.";
+                    return false;
+                }
+            }
+            else if (name == "--expires-utc")
+            {
+                if (expiresAt is not null || !DateTimeOffset.TryParseExact(args[index],
+                        ProductReleaseCatalog.TimestampFormat,
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                        out DateTimeOffset parsedExpiration))
+                {
+                    options = null;
+                    error = "The catalog expiration is invalid or repeated.";
+                    return false;
+                }
+
+                expiresAt = parsedExpiration;
+            }
+            else if (output is not null ||
+                !TryPath(args[index], workingDirectory, out output))
+            {
+                options = null;
+                error = "The release catalog output path is invalid or repeated.";
+                return false;
+            }
+        }
+
+        if (packages.Count == 0 || publicKeys.Count == 0 || packageBaseUri is null ||
+            expiresAt is null || output is null)
+        {
+            options = null;
+            error = "Release packages, publisher keys, package base URI, expiration, and output are required.";
+            return false;
+        }
+
+        options = new ReleaseCatalogOptions(packages, packageBaseUri, publicKeys,
+            expiresAt.Value, output);
         error = null;
         return true;
     }

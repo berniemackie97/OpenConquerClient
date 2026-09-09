@@ -3,6 +3,60 @@ namespace OpenConquer.Product.Tool.Tests;
 public sealed class ProductToolCommandLineTests
 {
     [Fact]
+    public void TryParseReleaseCatalogAcceptsRepeatedPackagesAndHttpsBase()
+    {
+        string workingDirectory = Path.Combine(Path.GetTempPath(),
+            "openconquer-product-tool-catalog-working");
+
+        bool parsed = ProductToolCommandLine.TryParse(
+            [
+                "create-release-catalog",
+                "--release-package",
+                "packages/win.zip",
+                "--release-package",
+                "packages/linux.zip",
+                "--package-base-uri",
+                "https://releases.example.test/client/",
+                "--public-key",
+                "keys/publisher.der",
+                "--expires-utc",
+                "2026-09-15T12:00:00Z",
+                "--output",
+                "catalog/openconquer.catalog.json",
+            ], workingDirectory, out ProductToolOptions? options, out string? error);
+
+        Assert.True(parsed, error);
+        ReleaseCatalogOptions catalog = Assert.IsType<ReleaseCatalogOptions>(options);
+        Assert.Equal(2, catalog.ReleasePackagePaths.Count);
+        Assert.Equal(new Uri("https://releases.example.test/client/"),
+            catalog.PackageBaseUri);
+    }
+
+    [Theory]
+    [InlineData("http://releases.example.test/")]
+    [InlineData("https://releases.example.test/path")]
+    [InlineData("https://user:password@releases.example.test/")]
+    public void TryParseReleaseCatalogRejectsUnsafeBaseUri(string baseUri)
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            [
+                "create-release-catalog",
+                "--release-package",
+                "release.zip",
+                "--package-base-uri",
+                baseUri,
+                "--public-key",
+                "publisher.der",
+                "--expires-utc",
+                "2026-09-15T12:00:00Z",
+                "--output",
+                "catalog.json",
+            ], Path.GetTempPath(), out _, out _);
+
+        Assert.False(parsed);
+    }
+
+    [Fact]
     public void TryParse_ResolvesWorkingDirectoryRelativePaths()
     {
         string workingDirectory = Path.Combine(
