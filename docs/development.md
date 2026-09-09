@@ -40,7 +40,8 @@ legacy-compatible logical render sizes:
 1024x768
 ```
 
-Windows and macOS CI run this boundary against their native desktop drivers.
+The project is built by Windows and macOS CI as part of the solution. Execute the conformance
+boundary on a supported desktop host with a usable native OpenGL driver.
 
 ## Game Client
 
@@ -224,15 +225,16 @@ Linux
 Windows
 ├── locked restore
 ├── Release build
-├── complete test suite
-└── real OpenGL conformance
+└── complete test suite
 
 macOS
 ├── locked restore
 ├── Release build
-├── complete test suite
-└── real OpenGL conformance
+└── complete test suite
 ```
+
+The conformance project is restored and built on Windows and macOS through the solution but requires
+a supported desktop host with a usable native OpenGL driver for execution.
 
 GitHub Actions dependencies are pinned to immutable commit SHAs.
 

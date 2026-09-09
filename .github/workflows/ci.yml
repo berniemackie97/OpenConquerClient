@@ -425,7 +425,3 @@ jobs:
 
       - name: Test
         run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
-
-      - name: OpenGL conformance
-        timeout-minutes: 2
-        run: dotnet run --project tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj --configuration Release --no-build --no-restore

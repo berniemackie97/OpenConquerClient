@@ -70,9 +70,9 @@ dotnet test OpenConquer.Client.slnx -c Release --no-build --no-restore
 
 CI builds and tests on Linux, Windows, and macOS. The Linux quality job also checks formatting,
 content integrity, independent publishes, authenticated release composition, launcher isolation, and
-managed-product staging. Windows and macOS additionally execute the real OpenGL rendering
-conformance boundary against the native desktop driver. CI does not replace platform packaging,
-production signing, or notarization.
+managed-product staging. Real OpenGL rendering conformance is executed separately on supported
+desktop hardware against the native driver. CI does not replace native-driver conformance, platform
+packaging, production signing, or notarization.
 
 ## Run
 
