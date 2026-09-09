@@ -85,13 +85,29 @@ public sealed class OpenGLRenderer : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(texture);
-
-        if (!_frameActive)
-        {
-            throw new InvalidOperationException("A rendering frame must be active before drawing.");
-        }
+        EnsureFrameActiveForDrawing();
 
         _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, x, y);
+    }
+
+    public void DrawSprite(OpenGLTexture2D texture, int x, int y, int width, int height)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(texture);
+        EnsureFrameActiveForDrawing();
+
+        SpriteSourceRectangle sourceRectangle = new(x: 0, y: 0, texture.Width, texture.Height);
+
+        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height);
+    }
+
+    public void DrawSprite(OpenGLTexture2D texture, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(texture);
+        EnsureFrameActiveForDrawing();
+
+        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height);
     }
 
     internal byte[] ReadFrameTopLeftRgba()
@@ -164,6 +180,14 @@ public sealed class OpenGLRenderer : IDisposable
         }
 
         firstFailure?.Throw();
+    }
+
+    private void EnsureFrameActiveForDrawing()
+    {
+        if (!_frameActive)
+        {
+            throw new InvalidOperationException("A rendering frame must be active before drawing.");
+        }
     }
 
     private void BlitToHostFramebuffer()

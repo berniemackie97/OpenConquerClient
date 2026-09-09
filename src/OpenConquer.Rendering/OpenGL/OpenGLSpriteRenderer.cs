@@ -45,27 +45,61 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 
     public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, int x, int y)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        ArgumentNullException.ThrowIfNull(texture);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetWidth);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetHeight);
+        ValidateCommonDrawArguments(texture, targetWidth, targetHeight);
 
-        texture.ValidateOwner(_gl, nameof(texture));
+        SpriteSourceRectangle sourceRectangle = new(x: 0, y: 0, texture.Width, texture.Height);
 
-        long rightPixel = checked((long)x + texture.Width);
-        long bottomPixel = checked((long)y + texture.Height);
+        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, texture.Width, texture.Height);
+    }
+
+    public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height)
+    {
+        ValidateCommonDrawArguments(texture, targetWidth, targetHeight);
+        ValidateSourceRectangle(texture, sourceRectangle);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+
+        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            DestroyResources();
+        }
+        finally
+        {
+            _disposed = true;
+        }
+    }
+
+    private void DrawCore(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height)
+    {
+        long rightPixel = (long)x + width;
+        long bottomPixel = (long)y + height;
 
         float left = ToNormalizedX(x, targetWidth);
         float right = ToNormalizedX(rightPixel, targetWidth);
         float top = ToNormalizedY(y, targetHeight);
         float bottom = ToNormalizedY(bottomPixel, targetHeight);
 
+        float sourceLeft = ToNormalizedTextureCoordinate(sourceRectangle.X, texture.Width);
+        float sourceRight = ToNormalizedTextureCoordinate(sourceRectangle.Right, texture.Width);
+        float sourceTop = ToNormalizedTextureCoordinate(sourceRectangle.Y, texture.Height);
+        float sourceBottom = ToNormalizedTextureCoordinate(sourceRectangle.Bottom, texture.Height);
+
         Span<float> vertices =
         [
-            left, top, 0f, 0f,
-            right, top, 1f, 0f,
-            right, bottom, 1f, 1f,
-            left, bottom, 0f, 1f,
+            left, top, sourceLeft, sourceTop,
+            right, top, sourceRight, sourceTop,
+            right, bottom, sourceRight, sourceBottom,
+            left, bottom, sourceLeft, sourceBottom,
         ];
 
         OpenGLProgram program = _program ?? throw new InvalidOperationException("The OpenGL sprite program is unavailable.");
@@ -100,20 +134,26 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         _gl.DepthMask(true);
     }
 
-    public void Dispose()
+    private void ValidateCommonDrawArguments(OpenGLTexture2D texture, int targetWidth, int targetHeight)
     {
-        if (_disposed)
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(texture);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetHeight);
+
+        texture.ValidateOwner(_gl, nameof(texture));
+    }
+
+    private static void ValidateSourceRectangle(OpenGLTexture2D texture, SpriteSourceRectangle sourceRectangle)
+    {
+        if (sourceRectangle.X < 0 || sourceRectangle.Y < 0 || sourceRectangle.Width <= 0 || sourceRectangle.Height <= 0)
         {
-            return;
+            throw new ArgumentOutOfRangeException(nameof(sourceRectangle), sourceRectangle, "The sprite source rectangle must have non-negative coordinates and positive dimensions.");
         }
 
-        try
+        if (sourceRectangle.Right > texture.Width || sourceRectangle.Bottom > texture.Height)
         {
-            DestroyResources();
-        }
-        finally
-        {
-            _disposed = true;
+            throw new ArgumentOutOfRangeException(nameof(sourceRectangle), sourceRectangle, $"The sprite source rectangle must fit within the {texture.Width}x{texture.Height} texture.");
         }
     }
 
@@ -222,6 +262,11 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
     private static float ToNormalizedY(long pixelY, int targetHeight)
     {
         return (float)(1.0 - 2.0 * pixelY / targetHeight);
+    }
+
+    private static float ToNormalizedTextureCoordinate(long pixel, int textureExtent)
+    {
+        return (float)((double)pixel / textureExtent);
     }
 
     private const string VertexShaderSource = """
