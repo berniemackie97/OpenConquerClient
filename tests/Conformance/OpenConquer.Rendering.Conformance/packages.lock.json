@@ -44,6 +44,9 @@
         "resolved": "3.4.0",
         "contentHash": "Iy22JopynbOJ32vA0lBhFEzGi65GQJBuJHYBYRBpydrDpNoTiHnjIXfA65Gu+8qsOr/ZEoIF8r9aHCgAXuO6DA=="
       },
+      "openconquer.content": {
+        "type": "Project"
+      },
       "openconquer.platform": {
         "type": "Project",
         "dependencies": {

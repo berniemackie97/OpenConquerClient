@@ -3,7 +3,7 @@ using Silk.NET.OpenGL;
 
 namespace OpenConquer.Rendering.OpenGL;
 
-internal sealed unsafe class OpenGLStartupImage : IDisposable
+internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 {
     private const int FloatsPerVertex = 4;
 
@@ -12,14 +12,13 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
     private readonly GL _gl;
 
     private OpenGLProgram? _program;
-    private OpenGLTexture2D? _texture;
     private uint _vertexArray;
     private uint _vertexBuffer;
     private uint _indexBuffer;
     private int _textureUniform;
     private bool _disposed;
 
-    public OpenGLStartupImage(GL gl, int width, int height, ReadOnlySpan<byte> rgbaPixels)
+    public OpenGLSpriteRenderer(GL gl)
     {
         ArgumentNullException.ThrowIfNull(gl);
 
@@ -27,7 +26,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
         try
         {
-            CreatePipeline(width, height, rgbaPixels);
+            CreateResources();
         }
         catch
         {
@@ -37,28 +36,29 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
             }
             catch
             {
-                // Preserve the original pipeline-creation failure.
+                // Preserve the original sprite-pipeline creation failure.
             }
 
             throw;
         }
     }
 
-    /// <summary>
-    /// Draws the image into the top left corner of the viewport at the requested device size.
-    /// </summary>
-    public void DrawTopLeft(int viewportWidth, int viewportHeight, int destinationWidth, int destinationHeight)
+    public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, int x, int y)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(viewportWidth);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(viewportHeight);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(destinationWidth);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(destinationHeight);
+        ArgumentNullException.ThrowIfNull(texture);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetHeight);
 
-        float left = ToNormalizedX(0, viewportWidth);
-        float right = ToNormalizedX(destinationWidth, viewportWidth);
-        float top = ToNormalizedY(0, viewportHeight);
-        float bottom = ToNormalizedY(destinationHeight, viewportHeight);
+        texture.ValidateOwner(_gl, nameof(texture));
+
+        long rightPixel = checked((long)x + texture.Width);
+        long bottomPixel = checked((long)y + texture.Height);
+
+        float left = ToNormalizedX(x, targetWidth);
+        float right = ToNormalizedX(rightPixel, targetWidth);
+        float top = ToNormalizedY(y, targetHeight);
+        float bottom = ToNormalizedY(bottomPixel, targetHeight);
 
         Span<float> vertices =
         [
@@ -68,13 +68,16 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
             left, bottom, 0f, 1f,
         ];
 
-        OpenGLProgram program = _program ?? throw new InvalidOperationException("The startup image program is unavailable.");
-        OpenGLTexture2D texture = _texture ?? throw new InvalidOperationException("The startup image texture is unavailable.");
+        OpenGLProgram program = _program ?? throw new InvalidOperationException("The OpenGL sprite program is unavailable.");
 
+        _gl.Disable(EnableCap.ScissorTest);
         _gl.Disable(EnableCap.DepthTest);
         _gl.DepthMask(false);
         _gl.Disable(EnableCap.CullFace);
-        _gl.Disable(EnableCap.Blend);
+        _gl.ColorMask(red: true, green: true, blue: true, alpha: true);
+        _gl.Enable(EnableCap.Blend);
+        _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+        _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
         program.Use();
 
@@ -91,7 +94,9 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
         _gl.Uniform1(_textureUniform, 0);
         _gl.DrawElements(PrimitiveType.Triangles, (uint)s_indices.Length, DrawElementsType.UnsignedInt, null);
 
+        _gl.BindTexture(TextureTarget.Texture2D, texture: 0);
         _gl.BindVertexArray(0);
+        _gl.Disable(EnableCap.Blend);
         _gl.DepthMask(true);
     }
 
@@ -112,11 +117,10 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
         }
     }
 
-    private void CreatePipeline(int width, int height, ReadOnlySpan<byte> rgbaPixels)
+    private void CreateResources()
     {
         _program = new OpenGLProgram(_gl, VertexShaderSource, FragmentShaderSource);
         _textureUniform = _program.GetRequiredUniformLocation("uTexture");
-        _texture = new OpenGLTexture2D(_gl, width, height, rgbaPixels);
 
         _vertexArray = _gl.GenVertexArray();
         _vertexBuffer = _gl.GenBuffer();
@@ -147,21 +151,6 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
     {
         ExceptionDispatchInfo? firstFailure = null;
 
-        OpenGLTexture2D? texture = _texture;
-        _texture = null;
-
-        if (texture is not null)
-        {
-            try
-            {
-                texture.Dispose();
-            }
-            catch (Exception exception)
-            {
-                firstFailure = ExceptionDispatchInfo.Capture(exception);
-            }
-        }
-
         uint indexBuffer = _indexBuffer;
         _indexBuffer = 0;
 
@@ -173,7 +162,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
             }
             catch (Exception exception)
             {
-                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+                firstFailure = ExceptionDispatchInfo.Capture(exception);
             }
         }
 
@@ -225,14 +214,14 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
         firstFailure?.Throw();
     }
 
-    private static float ToNormalizedX(int pixelX, int viewportWidth)
+    private static float ToNormalizedX(long pixelX, int targetWidth)
     {
-        return 2f * pixelX / viewportWidth - 1f;
+        return (float)(2.0 * pixelX / targetWidth - 1.0);
     }
 
-    private static float ToNormalizedY(int pixelY, int viewportHeight)
+    private static float ToNormalizedY(long pixelY, int targetHeight)
     {
-        return 1f - 2f * pixelY / viewportHeight;
+        return (float)(1.0 - 2.0 * pixelY / targetHeight);
     }
 
     private const string VertexShaderSource = """
