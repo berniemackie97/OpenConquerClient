@@ -6,9 +6,11 @@ namespace OpenConquer.Rendering.OpenGL;
 internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 {
     private const int FloatsPerVertex = 4;
+
     private static readonly uint[] s_indices = [0, 1, 2, 0, 2, 3];
 
     private readonly GL _gl;
+
     private OpenGLProgram? _program;
     private uint _vertexArray;
     private uint _vertexBuffer;
@@ -47,6 +49,8 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         ArgumentNullException.ThrowIfNull(texture);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetWidth);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetHeight);
+
+        texture.ValidateOwner(_gl, nameof(texture));
 
         long rightPixel = checked((long)x + texture.Width);
         long bottomPixel = checked((long)y + texture.Height);

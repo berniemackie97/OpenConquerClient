@@ -22,15 +22,22 @@ Repository builds use warnings as errors and the analyzers configured by `Direct
 
 ### OpenGL Conformance
 
-On a supported desktop host, run the production rendering path against the native OpenGL driver:
+On a supported desktop host, run the production rendering path against the native OpenGL driver and
+an exact retail 5517 content root:
 
 ```bash
 dotnet run \
   --project tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj \
   -c Release \
   --no-build \
-  --no-restore
+  --no-restore \
+  -- \
+  --content-root /path/to/retail-5517-root
 ```
+
+The supplied root is the complete retail client root, not an extracted individual asset directory.
+Content resolution runs through the production packaged-content boundary, including loose-file and
+WDF package lookup according to the retail package configuration.
 
 The conformance executable creates the production OpenGL context and renderer and exercises both
 legacy-compatible logical render sizes:
@@ -40,8 +47,31 @@ legacy-compatible logical render sizes:
 1024x768
 ```
 
+It also validates the first verified ANI sprite vertical through the production content and
+rendering boundaries:
+
+```text
+ani/Common.Ani
+└── [Syndicate]
+    └── data/pic/Syndicate.tga
+```
+
+That case verifies:
+
+- ANI section and frame resolution
+- exact encoded retail TGA identity
+- exact independently established decoded RGBA identity
+- production OpenGL texture upload
+- default retail-compatible sprite blending and rasterization
+- rendering into the production 16-bit logical target
+- exact RGB565 or RGB555 framebuffer output
+
+The current verified framebuffer oracles are documented in
+[`compatibility/native-graphics.md`](compatibility/native-graphics.md).
+
 The project is built by Windows and macOS CI as part of the solution. Execute the conformance
-boundary on a supported desktop host with a usable native OpenGL driver.
+boundary on a supported desktop host with a usable native OpenGL driver and access to the exact
+retail 5517 content tree.
 
 ## Game Client
 
@@ -78,6 +108,9 @@ ini/GameSetUp.ini
 ini/info.ini
 ini/package.ini
 ```
+
+The ANI/TGA Syndicate asset used by rendering conformance is retail compatibility evidence and does
+not expand the managed runtime content closure by itself.
 
 Retail `Server.dat` is offline compatibility evidence only and must not ship with the runtime
 client.
@@ -204,8 +237,8 @@ Ownership:
 - Product Tool tests: release metadata, local-product orchestration, activation, and composition.
 - Platform tests: desktop host mechanics.
 - Rendering tests: graphics behavior that does not require a live native driver.
-- Rendering conformance: production OpenGL context, render-target, and presentation behavior on a
-  real driver.
+- Rendering conformance: production OpenGL context, render-target, presentation, retail ANI/TGA
+  decoding, sprite rendering, and exact framebuffer behavior on a real driver.
 
 ## Continuous Integration
 
@@ -234,7 +267,7 @@ macOS
 ```
 
 The conformance project is restored and built on Windows and macOS through the solution but requires
-a supported desktop host with a usable native OpenGL driver for execution.
+a supported desktop host with a usable native OpenGL driver and exact retail evidence for execution.
 
 GitHub Actions dependencies are pinned to immutable commit SHAs.
 
@@ -257,7 +290,9 @@ dotnet run \
   --project tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj \
   -c Release \
   --no-build \
-  --no-restore
+  --no-restore \
+  -- \
+  --content-root /path/to/retail-5517-root
 ```
 
 Run `create-local-product` when the slice affects launcher resolution, release integrity, content

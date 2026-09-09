@@ -253,6 +253,166 @@ Retail rendering also establishes `D3DRS_DITHERENABLE = FALSE`. OpenGL enables d
 and dithering affects conversion into fixed-point framebuffer precision. Logical framebuffer
 rendering therefore explicitly disables OpenGL dithering rather than inheriting the OpenGL default.
 
+## Sprite Rendering
+
+The first verified retail sprite vertical is:
+
+```text
+ani/Common.Ani
+└── [Syndicate]
+    └── Frame0=data/pic/Syndicate.tga
+```
+
+The `[Syndicate]` section contains exactly one frame.
+
+The verified encoded frame identity is:
+
+```text
+path: data/pic/Syndicate.tga
+dimensions: 14×14
+SHA-256: a813875f120d20908e13c5cdb4410008d5ff1b6f2d6f9186051185f7aa331b3a
+```
+
+The selected TGA uses:
+
+```text
+image type: 10, RLE true color
+pixel depth: 32 bits
+descriptor: 0x08
+image ID: none
+color map: none
+X origin: 0
+Y origin: 0
+source pixel order: BGRA
+```
+
+The content decoder normalizes that source into top-left RGBA pixels. The independently established
+decoded-image identity is:
+
+```text
+SHA-256:
+1e112db318ecd33cba4b2980d0ed92e502e74bcd0e6a539747733cad718f8c37
+```
+
+The current decoder support is intentionally limited to this verified retail TGA shape. The other
+loose retail TGA variants are not implied to be supported by this vertical.
+
+### Native Default Sprite State
+
+The verified retail `Sprite_Prepare` path establishes:
+
+```text
+ALPHABLENDENABLE = TRUE
+ZENABLE = FALSE
+ZWRITEENABLE = FALSE
+CULLMODE = NONE
+```
+
+For `Sprite_Draw` with the default draw parameter `0`, retail establishes:
+
+```text
+SRCBLEND = SRCALPHA
+DESTBLEND = INVSRCALPHA
+```
+
+The OpenGL equivalent used by the selected sprite path is therefore:
+
+```text
+blend enabled
+depth test disabled
+depth writes disabled
+culling disabled
+blend equation = add
+source factor = source alpha
+destination factor = one minus source alpha
+```
+
+The texture is uploaded as RGBA8 and the selected compatibility path uses nearest sampling,
+clamp-to-edge wrapping, and one mip level.
+
+### Pixel Coordinates
+
+The Direct3D 8 sprite path offsets generated screen vertices by `-0.5` in X and Y. That correction
+is specific to the Direct3D rasterization convention and must not be copied mechanically into
+OpenGL.
+
+The verified OpenGL mapping uses integer logical pixel edges:
+
+```text
+left   =  2 * x / width - 1
+right  =  2 * (x + spriteWidth) / width - 1
+top    =  1 - 2 * y / height
+bottom =  1 - 2 * (y + spriteHeight) / height
+```
+
+Top vertices sample texture coordinate `v = 0`; bottom vertices sample `v = 1`. The content boundary
+therefore remains top-left oriented while OpenGL's framebuffer readback remains bottom-left
+oriented.
+
+### Syndicate Framebuffer Conformance
+
+Native-driver conformance renders the verified 14×14 Syndicate frame at logical coordinate `(7, 9)`
+into a 32×32 opaque-black logical target.
+
+The expected framebuffer depends on the retail-compatible 16-bit color format selected by the
+logical render target:
+
+```text
+RGB565 framebuffer SHA-256:
+93939cf5e51ea6298b729836b80561627550505e6f0771588082c5a33142833c
+
+RGB555 framebuffer SHA-256:
+313ec6083e2eb72c7e3e63594859225c09bee573d155afa9e24d0399fd203ed7
+```
+
+Those hashes were derived independently from the production TGA decoder. The decoded RGBA hash is
+checked separately before GPU upload, so a decoder error cannot make both the rendered and expected
+sides wrong in the same way.
+
+The retained earlier RGBA8 framebuffer oracle is:
+
+```text
+fe8e6998cad4c6399059d43ec465837f53a346878f8d69e200bc7005a348a459
+```
+
+That value remains useful as evidence for the independently decoded sprite, but it is not the
+production logical-target oracle because the production renderer now preserves retail 16-bit color
+precision.
+
+The verified Apple Silicon conformance run used:
+
+```text
+OpenGL version: 4.1 Metal - 90.5
+GLSL version: 4.10
+vendor: Apple
+renderer: Apple M4
+selected logical color format: RGB565
+```
+
+and produced the exact RGB565 framebuffer hash above.
+
+### Current Sprite Scope
+
+The current vertical deliberately establishes only the behavior required by the verified whole-frame
+Syndicate case.
+
+It does not yet claim compatibility for:
+
+- ANI runtime frame progression or modulo wrapping
+- source sub-rectangles
+- destination stretching
+- sprite color/tint parameters
+- draw parameters 1 or 2
+- sprite rotation
+- sprite batching
+- texture caching or lifetime policy above the GPU resource boundary
+- DDS decoding
+- the broader set of loose TGA encodings
+- map, UI, role, effect, or animation-system integration
+
+Those capabilities require their own native evidence and conformance slices rather than being
+inferred from the first sprite path.
+
 ## Host Framebuffer
 
 The OpenGL host framebuffer is presentation-only from the game's perspective.

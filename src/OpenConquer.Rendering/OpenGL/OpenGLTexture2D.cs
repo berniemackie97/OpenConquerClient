@@ -48,13 +48,21 @@ public sealed class OpenGLTexture2D : IDisposable
     public int Width
     {
         get;
-
     }
 
     public int Height
     {
         get;
+    }
 
+    internal void ValidateOwner(GL gl, string parameterName)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!ReferenceEquals(_gl, gl))
+        {
+            throw new ArgumentException("The OpenGL texture was created by a different graphics device.", parameterName);
+        }
     }
 
     internal void Bind()
