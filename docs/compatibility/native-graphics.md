@@ -1,261 +1,138 @@
 # Native Graphics Compatibility
 
-This document records verified graphics behavior from the retail Conquer Online 5517 client that
-constrains the OpenConquer Client implementation.
-
-It defines compatibility requirements rather than implementation architecture. Detailed
+Verified retail 5517 graphics behavior that constrains OpenConquer Client. Detailed
 reverse-engineering evidence remains in the native analysis notes.
 
-## Rendering Resolution
+## Logical Resolution
 
-Retail 5517 defines four screen modes:
+| Retail mode | Logical size | Retail shell            |
+| ----------: | -----------: | ----------------------- |
+|           0 |      800×600 | Windowed                |
+|           1 |      800×600 | Display-mode fullscreen |
+|           2 |     1024×768 | Windowed                |
+|           3 |     1024×768 | Display-mode fullscreen |
 
-| Mode | Logical resolution | Shell behavior          |
-| ---: | -----------------: | ----------------------- |
-|    0 |            800×600 | windowed                |
-|    1 |            800×600 | display-mode fullscreen |
-|    2 |           1024×768 | windowed                |
-|    3 |           1024×768 | display-mode fullscreen |
-
-All four modes use a windowed Direct3D 8 device. Modes 1 and 3 change the desktop display mode and
-window placement rather than creating a Direct3D fullscreen swap chain.
-
-Retail obtains the selected mode from:
+Source:
 
 ```ini
 [ScreenMode]
 ScreenModeRecord=<value>
 ```
 
-in:
+from `ini/GameSetUp.ini`.
 
-```text
-ini/GameSetUp.ini
-```
-
-OpenConquer Client reads that configuration during startup and preserves the verified logical
-resolution mapping:
+OpenConquer preserves the logical size only:
 
 ```text
 0 or 1 → 800×600
 2 or 3 → 1024×768
 ```
 
-The selected dimensions become the fixed logical rendering surface. The desktop host is a separate
-policy: the client can run in resizable, fixed, or fullscreen mode without changing that logical
-resolution. The launcher-owned launch configuration supplies the requested physical host size; in
-fixed mode that size is enforced, while resizable and fullscreen modes allow the platform to report
-the resulting physical framebuffer.
+Desktop window size and mode are modern host policy and do not change logical game coordinates.
 
-The display-mode and fixed-shell behavior associated with retail modes 1 and 3 is not currently
-reproduced. That remains an intentional desktop-host difference rather than changing the verified
-logical resolution associated with those modes.
+## Logical Render Target
 
-## Depth and Stencil
+### Color
 
-Retail graphics initialization selects:
+Retail probes:
+
+1. `D3DFMT_R5G6B5`
+2. `D3DFMT_X1R5G5B5`
+
+OpenGL mirrors that preference:
+
+1. `RGB565`
+2. `RGB5`
+
+The allocated target is accepted only when the driver reports the expected component precision:
+
+```text
+RGB565 → R5 G6 B5 A0
+RGB5   → R5 G5 B5 A0
+```
+
+Dithering is disabled because retail uses `D3DRS_DITHERENABLE = FALSE`.
+
+Retail also contains a later `D3DFMT_X8R8G8B8` fallback after Direct3D device-creation failure.
+OpenConquer does not treat generic OpenGL render-target failure as equivalent because the native
+trigger is different.
+
+### Depth
+
+Reachable retail paths use:
 
 ```text
 D3DFMT_D16
 ```
 
-for every reachable 5517 startup and reset path.
+OpenConquer therefore requires an exact 16-bit depth attachment and no stencil attachment.
 
-The C3 graphics library contains a dormant `D3DFMT_D24S8` branch controlled by bit 31 of the upper
-`HintGraphicDetail` flags. The retail client never sets that bit:
+The dormant retail `D24S8` branch is not reachable from verified 5517 callers.
 
-- the only retail `HintGraphicDetail` calls pass `0`, `2`, and `0`
-- `HintGraphicDetail` is the sole writer of the upper-flags global
-- `Init3DEx` is the sole reader
-- reset and resolution-change paths preserve the established presentation parameters
+### Frame Clear
 
-The reachable retail renderer also does not use stencil render states or stencil clears.
+Each logical frame begins with:
 
-The OpenGL logical render target therefore uses a 16-bit depth-only attachment and no stencil
-attachment.
+```text
+color = opaque black
+depth = 1.0
+```
 
-Because OpenGL may provide greater component precision than the requested minimum for renderbuffer
-storage, the renderer queries the allocated depth component size and accepts the logical target only
-when OpenGL reports exactly 16 depth bits.
-
-Depth precision is compatibility-sensitive. Retail rendering actively uses depth testing, depth
-writes, and depth clears, so replacing D16 with a higher-precision format is not treated as an
-implementation-neutral modernization.
-
-The ordinary retail frame clears both the color and depth buffers, using opaque black (`0xFF000000`)
-and a depth value of `1.0`.
-
-OpenGL frame initialization mirrors those values and establishes deterministic full-target clear
-state by:
-
-- disabling scissor testing
-- enabling writes to every color component
-- enabling depth writes
-- clearing color to opaque black
-- clearing depth to `1.0`
+Rendering establishes deterministic clear state before clearing.
 
 ## Presentation
 
-Retail `D3DPRESENT_PARAMETERS` are cleared before initialization. The effective presentation
-configuration includes:
-
-- `BackBufferCount = 1`
-- `SwapEffect = D3DSWAPEFFECT_DISCARD`
-- `Windowed = TRUE`
-- automatic depth/stencil enabled with `D3DFMT_D16`
-- `Flags = 0`
-- `FullScreen_RefreshRateInHz = 0`
-- `FullScreen_PresentationInterval = 0`
-
-The presentation interval remains unchanged through device reset and resolution changes.
-
-Every retail screen mode uses a windowed Direct3D 8 device with the discard swap effect. The
-effective retail presentation path is immediate rather than explicitly synchronized to vertical
-retrace.
-
-The modern desktop host therefore does not force VSync.
-
-### Outer Client Frame Cadence
-
-The retail outer client loop uses a 25 ms gate around its frame pipeline.
-
-The effective maximum cadence is therefore:
+Verified retail presentation:
 
 ```text
-25 ms per frame
-= 40 frames per second
+BackBufferCount = 1
+SwapEffect = DISCARD
+Windowed = TRUE
+Depth = D16
+PresentationInterval = 0
 ```
 
-When less than 25 ms has elapsed since the previous frame boundary, retail waits for the remaining
-interval before allowing the next frame pipeline execution.
+Retail uses a windowed Direct3D device for all four screen modes. Modes 1 and 3 alter desktop/window
+state rather than using a fullscreen D3D swap chain.
 
-OpenConquer Client preserves this as an explicit application policy.
+OpenConquer therefore:
 
-`ClientApplication` owns the verified 25 ms value and supplies it to `DesktopWindow`. Platform owns
-the pacing mechanism but does not contain a Conquer-specific frame-rate constant.
+- keeps VSync disabled;
+- renders to the fixed logical target;
+- presents that target into the physical host framebuffer separately.
 
-The modern pacer follows these compatibility and runtime-safety rules:
+### Frame Cadence
 
-- elapsed time comes from a monotonic timestamp source
-- early frames wait only for the remaining portion of the 25 ms interval
-- elapsed time is rechecked after a wait rather than assuming the requested sleep duration was exact
-- an overrun does not incur an additional wait before the next frame
-- missed frame intervals are not replayed
-- an overrun establishes the actual next frame as the new cadence anchor instead of creating a
-  catch-up burst
+Retail gates the outer client frame pipeline at:
 
-Silk.NET's independent render and update rate limiters remain uncapped. OpenConquer owns cadence in
-its custom outer desktop loop, so adding another Silk.NET limiter would create overlapping pacing
-policies.
+```text
+25 ms
+40 FPS maximum
+```
 
-VSync remains disabled. The explicit outer cadence and the swap interval are separate controls.
+OpenConquer preserves that cadence using monotonic time.
 
-The 25 ms outer frame gate is not treated as a universal client clock. Gameplay simulation timing,
-startup-host timers, network deadlines, animation timing, and other domains remain separate unless
-additional native evidence establishes a shared contract.
+Rules:
 
-Presentation cadence is therefore separate from gameplay simulation timing.
+- wait only for the remaining interval;
+- recheck elapsed time after waiting;
+- do not replay missed frames;
+- overruns establish the next cadence anchor;
+- gameplay, networking, animation, and other clocks remain separate.
 
 ## Multisampling
 
-`HintGraphicDetail` divides its argument into two independent controls:
+Retail can select 2×, 4×, or 8× multisampling depending on graphics-detail configuration and format
+support.
 
-- bits 0–3 select a multisample quality tier
-- bits 4–31 are retained as upper graphics-detail flags
+Logical-target multisampling is not implemented yet.
 
-Retail callers use values whose upper bits are clear, so the multisample tier does not alter the
-verified D16 depth-format choice.
-
-The native renderer can select a supported multisample type from 8×, 4×, or 2× candidates when the
-requested tier enables multisampling. Compatibility checks require both the color and depth formats
-to support the selected sample type.
-
-Multisampling configuration has not yet been implemented in OpenConquer Client.
-
-Until the native multisampling policy is implemented for the logical render target, the desktop host
-explicitly requests zero framebuffer samples. This prevents backend-default host multisampling from
-changing the host-composition path or interfering with scaled framebuffer blits.
-
-## Color Format
-
-Retail 5517 probes the main back-buffer color format in this order:
-
-1. `D3DFMT_R5G6B5`
-2. `D3DFMT_X1R5G5B5`
-
-If both format probes fail, graphics initialization fails rather than selecting a different format.
-
-If the selected 16-bit format passes validation but later Direct3D device-creation attempts fail,
-the native graphics layer contains a separate `D3DFMT_X8R8G8B8` device-creation fallback.
-
-The distinction matters:
-
-```text
-format probe
-    ↓
-R5G6B5
-    ↓ fallback
-X1R5G5B5
-    ↓
-selected 16-bit color format
-    ↓
-Direct3D device creation
-    ↓ failure after behavior retries
-X8R8G8B8 device-creation fallback
-```
-
-The OpenGL backend preserves the verified 16-bit format preference rather than treating the native
-32-bit device-creation fallback as a generic render-target fallback.
-
-The logical render target attempts:
-
-1. `RGB565`, corresponding to retail `R5G6B5`
-2. `RGB5`, corresponding to the RGB precision of retail `X1R5G5B5`
-
-`RGB565` is used only when the active OpenGL implementation guarantees support through OpenGL 4.2 or
-later, or through `GL_ARB_ES2_compatibility`.
-
-The renderer does not assume that requesting a sized internal format guarantees the exact storage
-precision. After texture allocation it queries the actual component sizes reported by OpenGL.
-
-A color target is accepted only when its allocation reports one of these exact component layouts:
-
-```text
-RGB565
-R = 5
-G = 6
-B = 5
-A = 0
-
-RGB5
-R = 5
-G = 5
-B = 5
-A = 0
-```
-
-This prevents a driver from silently substituting a higher-precision texture while the client
-believes it is preserving retail color quantization.
-
-If neither compatible 16-bit layout can be created, graphics initialization fails explicitly rather
-than silently changing the game's color precision.
-
-The native `D3DFMT_X8R8G8B8` fallback does not currently have a direct OpenGL equivalent. Its native
-trigger is failure during Direct3D device creation, not rejection of both 16-bit back-buffer format
-probes. Mapping an OpenGL render-target failure to that path would introduce behavior not
-established by the native evidence.
-
-Retail color precision is compatibility-sensitive. The original renderer performs blending into its
-selected back buffer, so changing the target from 16-bit RGB to an 8-bit-per-channel format can
-change quantization and blended pixel results.
-
-Retail rendering also establishes `D3DRS_DITHERENABLE = FALSE`. OpenGL enables dithering by default,
-and dithering affects conversion into fixed-point framebuffer precision. Logical framebuffer
-rendering therefore explicitly disables OpenGL dithering rather than inheriting the OpenGL default.
+The desktop host therefore requests zero framebuffer samples so backend defaults cannot alter
+presentation behavior.
 
 ## Sprite Rendering
 
-The first verified retail sprite vertical is:
+### Verified Asset
 
 ```text
 ani/Common.Ani
@@ -263,216 +140,274 @@ ani/Common.Ani
     └── Frame0=data/pic/Syndicate.tga
 ```
 
-The `[Syndicate]` section contains exactly one frame.
-
-The verified encoded frame identity is:
+Fixture:
 
 ```text
-path: data/pic/Syndicate.tga
-dimensions: 14×14
-SHA-256: a813875f120d20908e13c5cdb4410008d5ff1b6f2d6f9186051185f7aa331b3a
+size:        14×14
+TGA type:    10 (RLE true color)
+pixel depth: 32-bit
+descriptor:  0x08
+source:      BGRA
+output:      top-left RGBA
 ```
 
-The selected TGA uses:
+Hashes:
 
 ```text
-image type: 10, RLE true color
-pixel depth: 32 bits
-descriptor: 0x08
-image ID: none
-color map: none
-X origin: 0
-Y origin: 0
-source pixel order: BGRA
-```
+encoded TGA:
+a813875f120d20908e13c5cdb4410008d5ff1b6f2d6f9186051185f7aa331b3a
 
-The content decoder normalizes that source into top-left RGBA pixels. The independently established
-decoded-image identity is:
-
-```text
-SHA-256:
+decoded RGBA:
 1e112db318ecd33cba4b2980d0ed92e502e74bcd0e6a539747733cad718f8c37
 ```
 
-The current decoder support is intentionally limited to this verified retail TGA shape. The other
-loose retail TGA variants are not implied to be supported by this vertical.
+Current TGA support is intentionally limited to the verified format required by this path.
 
-### Native Default Sprite State
+### Default Sprite State
 
-The verified retail `Sprite_Prepare` path establishes:
+Retail default sprite rendering uses:
 
 ```text
-ALPHABLENDENABLE = TRUE
-ZENABLE = FALSE
-ZWRITEENABLE = FALSE
-CULLMODE = NONE
+alpha blending = enabled
+depth test     = disabled
+depth write    = disabled
+culling        = disabled
+
+source blend      = SRCALPHA
+destination blend = INVSRCALPHA
 ```
 
-For `Sprite_Draw` with the default draw parameter `0`, retail establishes:
+OpenGL equivalent:
 
 ```text
-SRCBLEND = SRCALPHA
-DESTBLEND = INVSRCALPHA
+BlendEquation = Add
+BlendFunc      = SrcAlpha, OneMinusSrcAlpha
 ```
 
-The OpenGL equivalent used by the selected sprite path is therefore:
+Textures use:
 
 ```text
-blend enabled
-depth test disabled
-depth writes disabled
-culling disabled
-blend equation = add
-source factor = source alpha
-destination factor = one minus source alpha
+RGBA8
+nearest min/mag filtering
+clamp-to-edge
+single mip level
 ```
 
-The texture is uploaded as RGBA8 and the selected compatibility path uses nearest sampling,
-clamp-to-edge wrapping, and one mip level.
+### Coordinates
 
-### Pixel Coordinates
+Retail Direct3D 8 applies a `-0.5` screen-space correction. That D3D rasterization workaround is not
+carried into OpenGL.
 
-The Direct3D 8 sprite path offsets generated screen vertices by `-0.5` in X and Y. That correction
-is specific to the Direct3D rasterization convention and must not be copied mechanically into
-OpenGL.
-
-The verified OpenGL mapping uses integer logical pixel edges:
+OpenGL uses integer logical pixel edges:
 
 ```text
-left   =  2 * x / width - 1
-right  =  2 * (x + spriteWidth) / width - 1
-top    =  1 - 2 * y / height
-bottom =  1 - 2 * (y + spriteHeight) / height
+left   =  2 * x / targetWidth - 1
+right  =  2 * (x + width) / targetWidth - 1
+top    =  1 - 2 * y / targetHeight
+bottom =  1 - 2 * (y + height) / targetHeight
 ```
 
-Top vertices sample texture coordinate `v = 0`; bottom vertices sample `v = 1`. The content boundary
-therefore remains top-left oriented while OpenGL's framebuffer readback remains bottom-left
-oriented.
+Texture coordinates remain top-left oriented.
 
-### Syndicate Framebuffer Conformance
+Destination geometry may extend outside the logical target and is clipped normally by the graphics
+pipeline.
 
-Native-driver conformance renders the verified 14×14 Syndicate frame at logical coordinate `(7, 9)`
-into a 32×32 opaque-black logical target.
+### Source Regions and Stretching
 
-The expected framebuffer depends on the retail-compatible 16-bit color format selected by the
-logical render target:
+Retail supports selecting a source region independently from its destination size.
+
+OpenConquer exposes that behavior through a modern source-region type:
 
 ```text
-RGB565 framebuffer SHA-256:
+SpriteSourceRectangle
+├── X
+├── Y
+├── Width
+└── Height
+```
+
+Supported source region:
+
+```text
+X >= 0
+Y >= 0
+Width > 0
+Height > 0
+X + Width <= texture width
+Y + Height <= texture height
+```
+
+The public rendering operations are:
+
+```text
+whole texture → natural size
+whole texture → explicit destination size
+source region → explicit destination size
+```
+
+This preserves observable retail behavior without carrying forward Win32 `RECT*`, null-pointer, or
+zero-dimension sentinel APIs.
+
+Source UVs are calculated from pixel coordinates:
+
+```text
+u0 = X / textureWidth
+v0 = Y / textureHeight
+u1 = (X + Width) / textureWidth
+v1 = (Y + Height) / textureHeight
+```
+
+Destination width and height are independent from the selected source size and must be positive.
+
+No verified 5517 caller currently requires negative, reversed, empty, or out-of-texture source
+regions.
+
+## Sprite Conformance
+
+Real-driver conformance uses a 32×32 opaque-black RGB565/RGB555 logical target.
+
+### Natural Size
+
+```text
+source:      full 14×14 Syndicate frame
+destination: 14×14
+position:    (7, 9)
+```
+
+Canonical framebuffer hashes:
+
+```text
+RGB565:
 93939cf5e51ea6298b729836b80561627550505e6f0771588082c5a33142833c
 
-RGB555 framebuffer SHA-256:
+RGB555:
 313ec6083e2eb72c7e3e63594859225c09bee573d155afa9e24d0399fd203ed7
 ```
 
-Those hashes were derived independently from the production TGA decoder. The decoded RGBA hash is
-checked separately before GPU upload, so a decoder error cannot make both the rendered and expected
-sides wrong in the same way.
+These were derived independently from the production decoder.
 
-The retained earlier RGBA8 framebuffer oracle is:
+Historical RGBA8 oracle:
 
 ```text
 fe8e6998cad4c6399059d43ec465837f53a346878f8d69e200bc7005a348a459
 ```
 
-That value remains useful as evidence for the independently decoded sprite, but it is not the
-production logical-target oracle because the production renderer now preserves retail 16-bit color
-precision.
+It is retained as evidence only; production renders into the 16-bit logical target.
 
-The verified Apple Silicon conformance run used:
+### Whole-Texture Stretch
 
 ```text
-OpenGL version: 4.1 Metal - 90.5
-GLSL version: 4.10
-vendor: Apple
-renderer: Apple M4
-selected logical color format: RGB565
+source:      full 14×14 texture
+destination: 20×18
+position:    (2, 2)
 ```
 
-and produced the exact RGB565 framebuffer hash above.
+### Source-Region Stretch
 
-### Current Sprite Scope
+```text
+source:      (1, 1), 12×12
+destination: 20×16
+position:    (6, 8)
+```
 
-The current vertical deliberately establishes only the behavior required by the verified whole-frame
-Syndicate case.
+The stretch cases use different non-integer X/Y scale ratios.
 
-It does not yet claim compatibility for:
+Conformance independently derives nearest-neighbor source selection from each destination pixel
+center and compares the complete GPU readback byte-for-byte with the expected framebuffer.
 
-- ANI runtime frame progression or modulo wrapping
-- source sub-rectangles
-- destination stretching
-- sprite color/tint parameters
-- draw parameters 1 or 2
-- sprite rotation
-- sprite batching
-- texture caching or lifetime policy above the GPU resource boundary
-- DDS decoding
-- the broader set of loose TGA encodings
-- map, UI, role, effect, or animation-system integration
+The crop/stretch fixture must also remain distinct from the whole-texture stretch fixture.
 
-Those capabilities require their own native evidence and conformance slices rather than being
-inferred from the first sprite path.
+Verified Apple M4 RGB565 observations:
+
+```text
+whole-texture stretch:
+45098e61451897bda7b976fc8d55b749ac5d327c1739e9e5fcbc249848b37340
+
+source-region stretch:
+f4d724a2e3703eec53fa10df55f64da31c59b706db5db41a00bd8592eb9cbbfd
+```
+
+Verified driver:
+
+```text
+OpenGL:  4.1 Metal - 90.5
+GLSL:    4.10
+Vendor:  Apple
+Renderer: Apple M4
+Target:  RGB565
+```
 
 ## Host Framebuffer
 
-The OpenGL host framebuffer is presentation-only from the game's perspective.
-
-Game rendering occurs in the fixed logical render target. Only its color buffer is copied to the
-desktop framebuffer, so the host framebuffer does not require its own depth or stencil storage.
-
-The host framebuffer is explicitly requested without multisampling. Multisampling compatibility
-belongs to the logical game-rendering path rather than the platform host surface.
-
-Current ownership and flow are:
+The physical framebuffer is presentation-only.
 
 ```text
-logical render target
-├── RGB565 preferred / RGB5 fallback color texture
-└── exact D16 depth renderbuffer
+logical target
+├── RGB565 preferred / RGB5 fallback
+└── D16 depth
         │
-        │ OpenGLRenderer linear color blit
+        ▼
+OpenGL framebuffer blit
+        │
         ▼
 desktop framebuffer
-├── color
-├── single-sampled
-├── no requested depth
-└── no requested stencil
         │
-        │ Platform native buffer swap
         ▼
-desktop window
+platform buffer swap
 ```
 
-`OpenConquer.Rendering` owns the logical-to-host color blit. `OpenConquer.Platform` owns the native
-window, OpenGL context, and host-buffer swap.
+Rendering owns the logical-to-host blit. Platform owns the window, OpenGL context, framebuffer size,
+and swap.
 
-The logical color attachment is copied across the complete physical framebuffer using a linear
-framebuffer blit.
+Current presentation requirements:
 
-Before the blit, Rendering disables scissor testing so later scene state cannot clip the host
-composition operation.
+- host framebuffer is single-sampled;
+- `GL_FRAMEBUFFER_SRGB` is disabled before the blit;
+- scissor testing cannot clip the presentation blit;
+- zero-sized host framebuffers are valid while minimized;
+- host resizing does not change logical coordinates or recreate the logical target.
 
-Rendering also disables `GL_FRAMEBUFFER_SRGB` before the blit. The compatibility path does not rely
-on implicit framebuffer sRGB conversion, and host composition must not change because unrelated
-rendering code leaves that state enabled.
+## Current Scope
 
-The renderer validates that the host framebuffer is single-sampled before using the current scaled
-blit path.
+Verified:
 
-Transient physical host framebuffer changes do not recreate the logical render target or alter its
-coordinate system.
+- 800×600 and 1024×768 logical rendering;
+- RGB565 / RGB555-compatible color precision;
+- exact D16 depth;
+- fixed outer 25 ms frame cadence;
+- default sprite blending;
+- top-left RGBA textures;
+- whole-texture natural-size drawing;
+- whole-texture stretching;
+- source-region selection and stretching;
+- nearest sprite sampling;
+- logical-target clipping;
+- exact real-driver framebuffer conformance.
 
-A zero-width or zero-height physical framebuffer is valid while the host is minimized. Host
-composition is skipped in that state without changing or recreating the logical render target.
+Not yet verified or implemented:
 
-## Intentional Differences
+- logical-target multisampling;
+- ANI runtime frame progression and timing;
+- sprite tint/color;
+- draw parameters 1 and 2;
+- sprite rotation;
+- sprite batching;
+- higher-level texture caching/lifetime policy;
+- DDS decoding;
+- broader TGA variants;
+- map, UI, role, effect, and animation-system integration.
 
-The modern client intentionally differs from retail in desktop-window behavior.
+## Intentional Modernization
 
-Retail uses fixed-size shell behavior associated with its four screen modes. OpenConquer Client
-retains the fixed logical rendering surface selected by the retail screen-mode configuration while
-exposing an explicit resizable, fixed, or fullscreen desktop host policy.
+OpenConquer preserves compatibility-sensitive output and behavior, not legacy implementation
+machinery.
 
-This difference must remain confined to the desktop presentation boundary. Logical game coordinates,
-content layout, simulation behavior, and protocol-visible behavior must not become dependent on the
-physical host framebuffer size.
+Examples:
+
+- logical resolutions are preserved; retail desktop shell behavior is not;
+- D3D8 half-pixel correction is replaced by correct OpenGL pixel-edge mapping;
+- source-region behavior is preserved without exposing Win32 `RECT*`;
+- legacy sentinel arguments are replaced by explicit rendering operations.
+
+Modernization must not change logical coordinates, asset interpretation, framebuffer precision,
+blending, timing, protocol-visible behavior, or other verified game behavior.

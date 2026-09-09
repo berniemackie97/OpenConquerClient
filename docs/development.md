@@ -1,29 +1,54 @@
 # Development
 
-OpenConquer Client uses the .NET SDK pinned by [`global.json`](../global.json) and committed NuGet
-lock files.
+OpenConquer Client targets the SDK pinned by [`global.json`](../global.json).
 
-Architecture and ownership rules live in
-[`architecture/architecture.md`](architecture/architecture.md). Managed installation, release,
-signing, update, repair, and rollback contracts live in
-[`architecture/launcher-managed-installation.md`](architecture/launcher-managed-installation.md).
+Architecture rules: [`architecture/architecture.md`](architecture/architecture.md) Native graphics
+contracts: [`compatibility/native-graphics.md`](compatibility/native-graphics.md) Launcher/install
+contracts:
+[`architecture/launcher-managed-installation.md`](architecture/launcher-managed-installation.md)
 
-## Build and Verify
+## Quality Gate
+
+Before committing:
 
 ```bash
 dotnet restore OpenConquer.Client.slnx --locked-mode
 dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
 dotnet build OpenConquer.Client.slnx -c Release --no-restore
 dotnet test OpenConquer.Client.slnx -c Release --no-build --no-restore
+git diff --check
 ```
 
-Repository builds use warnings as errors and the analyzers configured by `Directory.Build.props` and
-`.editorconfig`.
+Repository builds use warnings as errors and the analyzer configuration in `Directory.Build.props`
+and `.editorconfig`.
 
-### OpenGL Conformance
+## Run Client
 
-On a supported desktop host, run the production rendering path against the native OpenGL driver and
-an exact retail 5517 content root:
+```bash
+dotnet run --project src/OpenConquer.Client/OpenConquer.Client.csproj
+```
+
+Desktop options:
+
+```text
+--window-size WIDTHxHEIGHT
+--window-mode resizable|fixed|fullscreen
+--presentation fit|integer|stretch
+--content-root /path/to/client
+```
+
+`ini/GameSetUp.ini` selects the retail-compatible logical render size. Physical window size, window
+mode, and presentation are separate desktop-host concerns.
+
+## Rendering Conformance
+
+Build first:
+
+```bash
+dotnet build tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj -c Release --no-restore
+```
+
+Run against an exact retail 5517 client root:
 
 ```bash
 dotnet run \
@@ -35,71 +60,35 @@ dotnet run \
   --content-root /path/to/retail-5517-root
 ```
 
-The supplied root is the complete retail client root, not an extracted individual asset directory.
-Content resolution runs through the production packaged-content boundary, including loose-file and
-WDF package lookup according to the retail package configuration.
+The supplied path must be the complete retail root. Content resolution uses the production
+loose-file/WDF lookup path.
 
-The conformance executable creates the production OpenGL context and renderer and exercises both
-legacy-compatible logical render sizes:
+Current conformance covers:
 
-```text
-800x600
-1024x768
-```
+- 800×600 and 1024×768 logical targets;
+- production OpenGL context and renderer;
+- retail-compatible RGB565/RGB555 logical color precision;
+- exact D16 depth allocation;
+- ANI lookup through `ani/Common.Ani`;
+- verified `data/pic/Syndicate.tga` identity and decoding;
+- default sprite blending and rasterization;
+- whole-texture natural-size drawing;
+- whole-texture stretching;
+- source-region stretching;
+- exact framebuffer comparison on a real driver.
 
-It also validates the first verified ANI sprite vertical through the production content and
-rendering boundaries:
-
-```text
-ani/Common.Ani
-└── [Syndicate]
-    └── data/pic/Syndicate.tga
-```
-
-That case verifies:
-
-- ANI section and frame resolution
-- exact encoded retail TGA identity
-- exact independently established decoded RGBA identity
-- production OpenGL texture upload
-- default retail-compatible sprite blending and rasterization
-- rendering into the production 16-bit logical target
-- exact RGB565 or RGB555 framebuffer output
-
-The current verified framebuffer oracles are documented in
+Expected graphics contracts and fixture hashes are documented in
 [`compatibility/native-graphics.md`](compatibility/native-graphics.md).
 
-The project is built by Windows and macOS CI as part of the solution. Execute the conformance
-boundary on a supported desktop host with a usable native OpenGL driver and access to the exact
-retail 5517 content tree.
+## Content
 
-## Game Client
-
-Run the client directly:
-
-```bash
-dotnet run --project src/OpenConquer.Client/OpenConquer.Client.csproj
-```
-
-Current desktop options:
-
-```text
---window-size WIDTHxHEIGHT
---window-mode resizable|fixed|fullscreen
---presentation fit|integer|stretch
---content-root /path/to/client
-```
-
-`ini/GameSetUp.ini` selects the legacy-compatible logical render surface. Physical desktop size,
-window mode, and presentation remain separate host concerns.
-
-The packaged runtime content currently resolves beneath:
+Runtime retail content is resolved beneath:
 
 ```text
 content/retail-5517/payload
 ```
 
-Current runtime closure:
+Current managed runtime closure:
 
 ```text
 data/main/Logo1.bmp
@@ -109,13 +98,12 @@ ini/info.ini
 ini/package.ini
 ```
 
-The ANI/TGA Syndicate asset used by rendering conformance is retail compatibility evidence and does
-not expand the managed runtime content closure by itself.
+The Syndicate ANI/TGA assets used by rendering conformance are compatibility evidence and do not
+expand the packaged runtime closure by themselves.
 
-Retail `Server.dat` is offline compatibility evidence only and must not ship with the runtime
-client.
+Retail `Server.dat` is offline compatibility evidence and must not ship with the client.
 
-Inspect one explicitly with:
+Inspect one with:
 
 ```bash
 dotnet run \
@@ -125,68 +113,9 @@ dotnet run \
   --file /path/to/Server.dat
 ```
 
-## Local Managed Product
+### Verify Content Set
 
-The launcher and client publish independently and are composed into an authenticated managed
-product.
-
-Create or refresh the canonical local product:
-
-```bash
-dotnet run \
-  --project tools/OpenConquer.Product.Tool \
-  -c Release \
-  -- \
-  create-local-product
-```
-
-The canonical repository-local layout is:
-
-```text
-artifacts/local-product/
-├── work/
-├── product/
-└── product.previous/
-```
-
-`product/` is active. `product.previous/` is the retained rollback generation. `work/` contains
-isolated per-run composition state and is normally empty after successful cleanup.
-
-Run the managed launcher:
-
-macOS/Linux:
-
-```bash
-./artifacts/local-product/product/OpenConquer.Launcher
-```
-
-Windows:
-
-```powershell
-.\artifacts\local-product\product\OpenConquer.Launcher.exe
-```
-
-A healthy authenticated local installation reports:
-
-```text
-OpenConquer is ready
-Release local-N is verified for this device.
-```
-
-Development publisher keys, release-sequence state, and coordination locks live outside the
-repository in the current user's platform configuration directory. They must never enter source
-control or managed-product output.
-
-The Product Tool owns development orchestration only. Production private signing keys remain outside
-the Product Tool.
-
-For release metadata, package, catalog, signing, activation, repair, rollback, and trust contracts,
-use [`architecture/launcher-managed-installation.md`](architecture/launcher-managed-installation.md)
-instead of duplicating those contracts here.
-
-## Content Verification
-
-Verify the tracked retail content set:
+Repository content:
 
 ```bash
 dotnet run \
@@ -199,7 +128,7 @@ dotnet run \
   --content-set content/retail-5517
 ```
 
-Verify a published client by pointing the same command at its packaged content set:
+Published content:
 
 ```bash
 dotnet run \
@@ -212,7 +141,65 @@ dotnet run \
   --content-set /path/to/client-publish/content/retail-5517
 ```
 
-Tracked content, the runtime consumer closure, and published client content must remain consistent.
+Tracked content, runtime closure, and published content must remain consistent.
+
+## Local Managed Product
+
+Create or refresh the local managed product:
+
+```bash
+dotnet run \
+  --project tools/OpenConquer.Product.Tool \
+  -c Release \
+  -- \
+  create-local-product
+```
+
+Layout:
+
+```text
+artifacts/local-product/
+├── work/
+├── product/
+└── product.previous/
+```
+
+- `product/` — active installation
+- `product.previous/` — rollback generation
+- `work/` — transient composition state
+
+Run on macOS/Linux:
+
+```bash
+./artifacts/local-product/product/OpenConquer.Launcher
+```
+
+Run on Windows:
+
+```powershell
+.\artifacts\local-product\product\OpenConquer.Launcher.exe
+```
+
+A healthy installation reports:
+
+```text
+OpenConquer is ready
+Release local-N is verified for this device.
+```
+
+Development signing keys, release-sequence state, and coordination locks must remain outside the
+repository and managed-product output.
+
+Run `create-local-product` when changes affect:
+
+- launcher resolution;
+- release integrity;
+- packaged content;
+- installation layout;
+- activation;
+- update;
+- repair;
+- rollback.
 
 ## Tests
 
@@ -231,72 +218,58 @@ tests/
 
 Ownership:
 
-- Client tests: startup and game-runtime composition.
-- Content tests: runtime content and legacy formats.
-- Launcher tests: launcher lifecycle, settings, release verification, and product boundaries.
-- Product Tool tests: release metadata, local-product orchestration, activation, and composition.
-- Platform tests: desktop host mechanics.
-- Rendering tests: graphics behavior that does not require a live native driver.
-- Rendering conformance: production OpenGL context, render-target, presentation, retail ANI/TGA
-  decoding, sprite rendering, and exact framebuffer behavior on a real driver.
+- **Client** — startup and runtime composition.
+- **Content** — runtime content and legacy formats.
+- **Content Tool** — content inspection and verification.
+- **Launcher** — launcher lifecycle, settings, releases, and product boundaries.
+- **Platform** — desktop host mechanics.
+- **Product Tool** — local product composition and activation.
+- **Rendering** — graphics behavior not requiring a native driver.
+- **Rendering Conformance** — real-driver rendering and exact framebuffer behavior.
 
-## Continuous Integration
+## CI
 
-CI runs:
+### Linux
 
 ```text
-Linux
-├── locked restore
-├── formatting
-├── Release build
-├── complete test suite
-├── launcher isolation
-├── content verification
-├── client and launcher publish verification
-└── authenticated release/product composition
-
-Windows
-├── locked restore
-├── Release build
-└── complete test suite
-
-macOS
-├── locked restore
-├── Release build
-└── complete test suite
+locked restore
+format verification
+Release build
+tests
+launcher isolation
+content verification
+publish verification
+authenticated product composition
 ```
 
-The conformance project is restored and built on Windows and macOS through the solution but requires
-a supported desktop host with a usable native OpenGL driver and exact retail evidence for execution.
+### Windows
 
-GitHub Actions dependencies are pinned to immutable commit SHAs.
-
-## Before Committing
-
-Run the local quality gate:
-
-```bash
-dotnet restore OpenConquer.Client.slnx --locked-mode
-dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
-dotnet build OpenConquer.Client.slnx -c Release --no-restore
-dotnet test OpenConquer.Client.slnx -c Release --no-build --no-restore
-git diff --check
+```text
+locked restore
+Release build
+tests
 ```
 
-For rendering changes on a supported desktop host:
+### macOS
 
-```bash
-dotnet run \
-  --project tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj \
-  -c Release \
-  --no-build \
-  --no-restore \
-  -- \
-  --content-root /path/to/retail-5517-root
+```text
+locked restore
+Release build
+tests
 ```
 
-Run `create-local-product` when the slice affects launcher resolution, release integrity, content
-publication, installation layout, activation, update, repair, or rollback.
+The rendering conformance project builds in CI but requires a desktop OpenGL driver and exact retail
+content for execution.
 
-Commit only after implementation, tests, relevant documentation, applicable native verification, and
-the final slice audit are clean.
+GitHub Actions dependencies must remain pinned to immutable commit SHAs.
+
+## Commit Rule
+
+Commit only when the slice has:
+
+1. completed implementation;
+2. completed relevant tests;
+3. updated relevant documentation;
+4. passed applicable native/real-driver verification;
+5. passed the full quality gate;
+6. passed final slice re-audit.

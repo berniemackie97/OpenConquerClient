@@ -25,6 +25,19 @@ internal static class Program
     private const int SyndicateX = 7;
     private const int SyndicateY = 9;
 
+    private const int SyndicateStretchX = 2;
+    private const int SyndicateStretchY = 2;
+    private const int SyndicateStretchWidth = 20;
+    private const int SyndicateStretchHeight = 18;
+
+    private const int SyndicateCropX = 6;
+    private const int SyndicateCropY = 8;
+    private const int SyndicateCropWidth = 20;
+    private const int SyndicateCropHeight = 16;
+
+    private static readonly SpriteSourceRectangle s_syndicateFullSource = new(x: 0, y: 0, SyndicateFrameWidth, SyndicateFrameHeight);
+    private static readonly SpriteSourceRectangle s_syndicateCropSource = new(x: 1, y: 1, width: 12, height: 12);
+
     private static readonly LogicalRenderSize[] s_logicalRenderSizes =
     [
         new(800, 600),
@@ -84,7 +97,10 @@ internal static class Program
                 RunPresentationCase(graphicsDevice, logicalRenderSize, framebufferSize);
             }
 
-            RunSyndicateCase(graphicsDevice, syndicateImage, framebufferSize);
+            SyndicateFramebufferBaseline baseline = RunSyndicateNaturalCase(graphicsDevice, syndicateImage, framebufferSize);
+            RunSyndicateWholeTextureStretchCase(graphicsDevice, syndicateImage, framebufferSize, baseline);
+            RunSyndicateCropStretchCase(graphicsDevice, syndicateImage, framebufferSize, baseline);
+
             frameRendered = true;
         };
 
@@ -119,7 +135,7 @@ internal static class Program
             throw new InvalidOperationException("The OpenGL context was not released through the production lifetime boundary.");
         }
 
-        Console.WriteLine("OpenGL render-target, presentation, and ANI asset conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, and sprite conformance passed.");
 
         return 0;
     }
@@ -197,7 +213,7 @@ internal static class Program
         Console.WriteLine($"Presentation viewport: {viewport.Width}x{viewport.Height} at ({viewport.OffsetX}, {viewport.OffsetY}), {viewport.Filter}");
     }
 
-    private static void RunSyndicateCase(OpenGLGraphicsDevice graphicsDevice, RgbaImage image, PixelSize framebufferSize)
+    private static SyndicateFramebufferBaseline RunSyndicateNaturalCase(OpenGLGraphicsDevice graphicsDevice, RgbaImage image, PixelSize framebufferSize)
     {
         LogicalRenderSize logicalRenderSize = new(SyndicateTargetWidth, SyndicateTargetHeight);
 
@@ -215,18 +231,151 @@ internal static class Program
         {
             ExpectedRgb565FramebufferSha256 => "RGB565",
             ExpectedRgb555FramebufferSha256 => "RGB555",
-            _ => throw new InvalidDataException(
-                $"Syndicate framebuffer SHA256 {framebufferHash} does not match a verified retail-compatible 16-bit color layout. " +
-                $"Expected RGB565 {ExpectedRgb565FramebufferSha256} or RGB555 {ExpectedRgb555FramebufferSha256}."),
+            _ => throw new InvalidDataException($"Syndicate framebuffer SHA256 {framebufferHash} does not match a verified retail-compatible 16-bit color layout. Expected RGB565 {ExpectedRgb565FramebufferSha256} or RGB555 {ExpectedRgb555FramebufferSha256}."),
         };
 
         Console.WriteLine($"Syndicate ANI frame: {image.Width}x{image.Height} at ({SyndicateX}, {SyndicateY})");
         Console.WriteLine($"Syndicate logical target: {SyndicateTargetWidth}x{SyndicateTargetHeight}, {colorFormat}");
         Console.WriteLine($"Syndicate framebuffer SHA256: {framebufferHash}");
+
+        return new SyndicateFramebufferBaseline(framebuffer, colorFormat);
+    }
+
+    private static void RunSyndicateWholeTextureStretchCase(OpenGLGraphicsDevice graphicsDevice, RgbaImage image, PixelSize framebufferSize, SyndicateFramebufferBaseline baseline)
+    {
+        LogicalRenderSize logicalRenderSize = new(SyndicateTargetWidth, SyndicateTargetHeight);
+        byte[] expected = ComposeNearestSyndicateFramebuffer(baseline.Pixels, s_syndicateFullSource, SyndicateStretchX, SyndicateStretchY, SyndicateStretchWidth, SyndicateStretchHeight);
+
+        using OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
+        using OpenGLTexture2D texture = graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
+
+        renderer.BeginFrame();
+        renderer.DrawSprite(texture, SyndicateStretchX, SyndicateStretchY, SyndicateStretchWidth, SyndicateStretchHeight);
+        byte[] actual = renderer.ReadFrameTopLeftRgba();
+        renderer.EndFrame();
+
+        VerifyExactFramebuffer("Syndicate whole-texture stretch", expected, actual);
+
+        Console.WriteLine($"Syndicate whole-texture stretch: {image.Width}x{image.Height} -> {SyndicateStretchWidth}x{SyndicateStretchHeight} at ({SyndicateStretchX}, {SyndicateStretchY}), {baseline.ColorFormat}");
+        Console.WriteLine($"Syndicate whole-texture stretch SHA256: {ToLowerHex(SHA256.HashData(actual))}");
+    }
+
+    private static void RunSyndicateCropStretchCase(OpenGLGraphicsDevice graphicsDevice, RgbaImage image, PixelSize framebufferSize, SyndicateFramebufferBaseline baseline)
+    {
+        LogicalRenderSize logicalRenderSize = new(SyndicateTargetWidth, SyndicateTargetHeight);
+        byte[] expected = ComposeNearestSyndicateFramebuffer(baseline.Pixels, s_syndicateCropSource, SyndicateCropX, SyndicateCropY, SyndicateCropWidth, SyndicateCropHeight);
+        byte[] wholeTextureExpected = ComposeNearestSyndicateFramebuffer(baseline.Pixels, s_syndicateFullSource, SyndicateStretchX, SyndicateStretchY, SyndicateStretchWidth, SyndicateStretchHeight);
+
+        if (expected.AsSpan().SequenceEqual(wholeTextureExpected))
+        {
+            throw new InvalidDataException("The Syndicate crop/stretch fixture does not produce a framebuffer distinct from the whole-texture stretch fixture.");
+        }
+
+        using OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
+        using OpenGLTexture2D texture = graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
+
+        renderer.BeginFrame();
+        renderer.DrawSprite(texture, s_syndicateCropSource, SyndicateCropX, SyndicateCropY, SyndicateCropWidth, SyndicateCropHeight);
+        byte[] actual = renderer.ReadFrameTopLeftRgba();
+        renderer.EndFrame();
+
+        VerifyExactFramebuffer("Syndicate source-crop stretch", expected, actual);
+
+        Console.WriteLine($"Syndicate source crop: ({s_syndicateCropSource.X}, {s_syndicateCropSource.Y}) {s_syndicateCropSource.Width}x{s_syndicateCropSource.Height} -> {SyndicateCropWidth}x{SyndicateCropHeight} at ({SyndicateCropX}, {SyndicateCropY}), {baseline.ColorFormat}");
+        Console.WriteLine($"Syndicate source-crop stretch SHA256: {ToLowerHex(SHA256.HashData(actual))}");
+    }
+
+    private static byte[] ComposeNearestSyndicateFramebuffer(ReadOnlySpan<byte> verifiedNaturalFramebuffer, SpriteSourceRectangle sourceRectangle, int destinationX, int destinationY, int destinationWidth, int destinationHeight)
+    {
+        int expectedFramebufferLength = checked(SyndicateTargetWidth * SyndicateTargetHeight * 4);
+
+        if (verifiedNaturalFramebuffer.Length != expectedFramebufferLength)
+        {
+            throw new ArgumentException($"Expected a {SyndicateTargetWidth}x{SyndicateTargetHeight} RGBA framebuffer.", nameof(verifiedNaturalFramebuffer));
+        }
+
+        long sourceRight = (long)sourceRectangle.X + sourceRectangle.Width;
+        long sourceBottom = (long)sourceRectangle.Y + sourceRectangle.Height;
+
+        if (sourceRectangle.X < 0 || sourceRectangle.Y < 0 || sourceRectangle.Width <= 0 || sourceRectangle.Height <= 0 || sourceRight > SyndicateFrameWidth || sourceBottom > SyndicateFrameHeight)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceRectangle), sourceRectangle, "The Syndicate oracle source rectangle must fit within the verified frame.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(destinationX);
+        ArgumentOutOfRangeException.ThrowIfNegative(destinationY);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(destinationWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(destinationHeight);
+
+        long destinationRight = (long)destinationX + destinationWidth;
+        long destinationBottom = (long)destinationY + destinationHeight;
+
+        if (destinationRight > SyndicateTargetWidth || destinationBottom > SyndicateTargetHeight)
+        {
+            throw new ArgumentOutOfRangeException(nameof(destinationWidth), "The Syndicate oracle destination must fit within the logical target.");
+        }
+
+        byte[] expected = CreateOpaqueBlackFramebuffer();
+
+        for (int destinationOffsetY = 0; destinationOffsetY < destinationHeight; destinationOffsetY++)
+        {
+            int sourceOffsetY = GetNearestSourceOffset(destinationOffsetY, destinationHeight, sourceRectangle.Height);
+            int verifiedY = SyndicateY + sourceRectangle.Y + sourceOffsetY;
+
+            for (int destinationOffsetX = 0; destinationOffsetX < destinationWidth; destinationOffsetX++)
+            {
+                int sourceOffsetX = GetNearestSourceOffset(destinationOffsetX, destinationWidth, sourceRectangle.Width);
+                int verifiedX = SyndicateX + sourceRectangle.X + sourceOffsetX;
+                int sourceOffset = ((verifiedY * SyndicateTargetWidth) + verifiedX) * 4;
+
+                int outputX = destinationX + destinationOffsetX;
+                int outputY = destinationY + destinationOffsetY;
+                int destinationOffset = ((outputY * SyndicateTargetWidth) + outputX) * 4;
+
+                verifiedNaturalFramebuffer.Slice(sourceOffset, 4).CopyTo(expected.AsSpan(destinationOffset, 4));
+            }
+        }
+
+        return expected;
+    }
+
+    private static int GetNearestSourceOffset(int destinationOffset, int destinationExtent, int sourceExtent)
+    {
+        long sourceNumerator = (2L * destinationOffset + 1) * sourceExtent;
+        long sourceDenominator = 2L * destinationExtent;
+
+        return (int)(sourceNumerator / sourceDenominator);
+    }
+
+    private static byte[] CreateOpaqueBlackFramebuffer()
+    {
+        byte[] framebuffer = new byte[SyndicateTargetWidth * SyndicateTargetHeight * 4];
+
+        for (int offset = 0; offset < framebuffer.Length; offset += 4)
+        {
+            framebuffer[offset + 3] = byte.MaxValue;
+        }
+
+        return framebuffer;
+    }
+
+    private static void VerifyExactFramebuffer(string caseName, ReadOnlySpan<byte> expected, ReadOnlySpan<byte> actual)
+    {
+        if (actual.SequenceEqual(expected))
+        {
+            return;
+        }
+
+        string expectedHash = ToLowerHex(SHA256.HashData(expected));
+        string actualHash = ToLowerHex(SHA256.HashData(actual));
+
+        throw new InvalidDataException($"{caseName} framebuffer SHA256 {actualHash} does not match the independently composed expected framebuffer {expectedHash}.");
     }
 
     private static string ToLowerHex(ReadOnlySpan<byte> bytes)
     {
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
+
+    private readonly record struct SyndicateFramebufferBaseline(byte[] Pixels, string ColorFormat);
 }
