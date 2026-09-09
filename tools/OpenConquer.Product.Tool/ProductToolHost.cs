@@ -29,6 +29,18 @@ internal static class ProductToolHost
                     ProductReleaseSignature.Create(signatureOptions);
                     Console.WriteLine($"Created release signature envelope at '{signatureOptions.OutputPath}'.");
                     break;
+                case ReleasePackageOptions packageOptions:
+                    ProductReleasePackage.Create(packageOptions);
+                    Console.WriteLine($"Created release package at '{packageOptions.OutputPath}'.");
+                    break;
+                case ReleaseCatalogOptions catalogOptions:
+                    ProductReleaseCatalog.Create(catalogOptions);
+                    Console.WriteLine($"Created release catalog at '{catalogOptions.OutputPath}'.");
+                    break;
+                case CatalogSignatureOptions catalogSignatureOptions:
+                    ProductReleaseSignature.Create(catalogSignatureOptions);
+                    Console.WriteLine($"Created release catalog signature envelope at '{catalogSignatureOptions.OutputPath}'.");
+                    break;
                 case ReleaseTrustOptions trustOptions:
                     ProductReleaseTrust.Create(trustOptions);
                     Console.WriteLine($"Created release trust at '{trustOptions.OutputPath}'.");

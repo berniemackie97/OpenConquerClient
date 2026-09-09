@@ -15,6 +15,7 @@ internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductI
 
     private const int MaximumLength = 8 * 1024 * 1024;
     private const int MaximumVersionLength = 64;
+    private const int MaximumDirectoryCount = 16 * 1024;
 
     public static async Task<ReleaseManifestReadResult> ReadAsync(string path, CancellationToken cancellationToken)
     {
@@ -165,15 +166,15 @@ internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductI
         }
 
         List<ManagedReleaseFile> parsed = [];
-        HashSet<string> paths = new(StringComparer.Ordinal);
-        HashSet<string> portablePaths = new(StringComparer.Ordinal);
+        ReleasePackagePathTopology pathTopology = new(MaximumDirectoryCount);
 
         string? previousPath = null;
 
         foreach (JsonElement item in element.EnumerateArray())
         {
-            if (parsed.Count == MaximumFileCount || !TryReadFile(item, out ManagedReleaseFile? file) || file is null || !paths.Add(file.Path)
-                || !portablePaths.Add(ReleasePackagePath.PortableIdentity(file.Path)) || previousPath is not null && string.CompareOrdinal(previousPath, file.Path) >= 0)
+            if (parsed.Count == MaximumFileCount || !TryReadFile(item, out ManagedReleaseFile? file) || file is null
+                || !pathTopology.TryAddFile(file.Path)
+                || previousPath is not null && string.CompareOrdinal(previousPath, file.Path) >= 0)
             {
                 return false;
             }

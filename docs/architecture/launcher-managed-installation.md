@@ -138,6 +138,71 @@ The stager does not establish publisher trust. The launcher independently verifi
 signature against public trust roots embedded into its package before reporting the installation as
 resolved.
 
+## Release discovery and acquisition
+
+The release-acquisition core consumes two configured HTTPS resources:
+
+```text
+openconquer.catalog.json
+openconquer.catalog.sig
+```
+
+The detached catalog signature uses the same embedded ECDSA P-256 publisher trust as installed
+release manifests. The schema identifies `OpenConquer`, carries an exact UTC expiry, and contains at
+most 128 releases. The launcher rejects expired catalogs and expirations more than 31 days ahead,
+bounding a cache/origin freeze attack. Each entry binds a positive release sequence, display version,
+minimum launcher version, supported runtime, absolute HTTPS package URI, positive compressed length,
+and lowercase SHA-256 package digest. The launcher rejects duplicate runtime/sequence identities,
+unknown or duplicate fields, unsupported schema, invalid compatibility data, unsafe URIs, invalid
+signatures, and catalogs larger than 256 KiB. It deterministically selects the greatest sequence for
+the current runtime and then enforces launcher compatibility. If that release requires a newer launcher,
+the catalog reports `LauncherUpdateRequired` instead of silently selecting an older release.
+
+Transport accepts only an exact HTTP 200 response from the signed URI. Redirects, authentication or
+query data in URLs, fragments, content encoding, oversized declared or streamed content, length
+mismatch, digest mismatch, default credentials, cookies, automatic decompression, and stalled
+network operations are rejected. Metadata operations have a two-minute whole-operation deadline;
+package transfers have a 12-hour deadline in addition to the 30-second network-idle limit. Catalog
+documents remain memory-bounded. Packages stream through SHA-256 directly into a new private file;
+an existing destination is never replaced or removed after a rejected response.
+
+The package is a deterministic ZIP containing only:
+
+```text
+openconquer.release.json
+openconquer.release.sig
+client/<every manifest-declared file>
+```
+
+Directory entries, links/reparse entries, traversal, alternate separators, nonportable or ambiguous
+names, missing/extra entries, metadata disagreement, file-length/hash mismatch, more than 16,384
+client files or materialized directories, packages over 16 GiB, and expanded payloads over 64 GiB
+are rejected. Extraction uses
+new files below a private per-attempt directory, rechecks the exact tree shape, sanitizes Unix modes,
+and never selects the candidate. `ManagedReleaseTransaction` independently reauthenticates the
+manifest, signature, client tree, compatibility, sequence policy, and destination generation before
+atomically changing the descriptor.
+
+Acquisition workspaces must be absolute and filesystem-disjoint from the managed product, including
+resolved aliases. A private cross-process lock serializes acquisition. Startup under that lock
+removes only stale directories with the exact launcher-owned attempt-name format; unknown entries
+are preserved. A returned candidate lease holds serialization through the transaction and performs
+best-effort cleanup before releasing it. Cancellation is propagated without being converted into a
+recoverable transfer error.
+
+`ManagedReleaseMaintenance` handles concurrent state changes explicitly. A healthy installed
+sequence at or above the selected catalog sequence is kept, so replayed metadata cannot downgrade a
+working client. A strictly newer package uses update policy. A same-sequence package can use repair
+only after an update-policy rejection, a fresh failed resolution, and the transaction's independent
+manifest-identity check. Expected failures retain their catalog, transfer, package, installation, or
+transaction classification for the future player-facing recovery UI.
+
+No production URL is hard-coded. A later deployment slice must provide a real publisher-controlled
+HTTPS origin, immutable package publication, environment configuration, key custody/rotation,
+consistency-preserving catalog/signature publication and cache policy, and an end-to-end live-origin
+check. This core does not define launcher self-update, UI policy, elevated installation, account
+login, or game protocol behavior.
+
 ## Local development composition
 
 `create-local-product` is the canonical development orchestration for exercising the complete
@@ -303,8 +368,9 @@ published descriptor is normalized to portable read permissions before activatio
 sudden-power-loss guarantees than the host filesystem provides.
 
 Automatic reclamation is intentionally absent until controlled client-process lifetime can prove a
-generation is no longer executing, especially on Windows. Authoritative acquisition, recovery UI,
-launcher self-update, and signed platform deployment remain later launcher-owned slices.
+generation is no longer executing, especially on Windows. Production release-origin integration,
+recovery UI, launcher self-update, and signed platform deployment remain later launcher-owned
+slices.
 
 ## Verification
 
@@ -321,6 +387,12 @@ selected-generation shape, Unix lock permissions, and Unix executable permission
 unrelated filesystem identities. `ManagedInstallationManifestTests` cover descriptor replacement
 semantics and final Unix descriptor permissions.
 
+`ReleaseAcquisitionTests` cover authenticated compatible selection, tamper and ambiguity rejection,
+unsafe URLs, exact bounded transfers, redirect and oversize rejection, collision preservation,
+archive extraction, traversal containment, metadata agreement, Unix executable intent, workspace
+serialization, stale-attempt ownership, lease cleanup, end-to-end update and same-release repair,
+anti-downgrade behavior, and precise catalog failure classification.
+
 `LauncherApplicationTests` cover retry, cancellation ownership, concurrent/reentrant shutdown,
 callback failures, and terminal state.
 
@@ -331,6 +403,8 @@ Product Tool tests cover:
 
 - release metadata;
 - release-signature envelopes;
+- deterministic release packages and strict archive validation;
+- publisher-authorized multi-runtime catalog construction and catalog signatures;
 - publisher trust;
 - persistent development publisher identity;
 - development-state permissions;
@@ -346,8 +420,9 @@ Product Tool tests cover:
 
 CI generates an ephemeral P-256 publisher solely to exercise the production-capable release
 composition primitives. It creates the client manifest, creates release trust through the Product
-Tool, signs the manifest externally, creates the verified signature envelope, embeds the
-corresponding public trust root into the CI launcher publish, and composes the managed product.
+Tool, signs the manifest externally, creates the verified signature envelope, packages the exact
+client, builds and externally signs its catalog, embeds the corresponding public trust root into the
+CI launcher publish, and composes the managed product.
 
 The CI publisher is unrelated to the persistent local-development publisher. Production release
 signing must use a separately controlled production publisher identity.

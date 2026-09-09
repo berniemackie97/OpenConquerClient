@@ -184,10 +184,10 @@ jobs:
 
           test -s "$release_root/openconquer.release.json"
 
-      # Signing remains external to the product tool. The tool receives the resulting DER ECDSA
-      # signature and public key, verifies them against the exact manifest bytes, and creates the
-      # bounded signature envelope consumed by the launcher.
-      - name: Sign CI release
+      # Signing remains external to the product tool. The tool verifies the resulting signatures,
+      # builds the exact client package and catalog consumed by acquisition, and never receives the
+      # private key.
+      - name: Sign and package CI release catalog
         shell: bash
         run: |
           set -euo pipefail
@@ -198,6 +198,10 @@ jobs:
           manifest="$release_root/openconquer.release.json"
           raw_signature="$release_root/openconquer.release.der"
           signature_envelope="$release_root/openconquer.release.sig"
+          package="$release_root/openconquer-client-linux-x64.zip"
+          catalog="$release_root/openconquer.catalog.json"
+          raw_catalog_signature="$release_root/openconquer.catalog.der"
+          catalog_signature_envelope="$release_root/openconquer.catalog.sig"
 
           trap 'rm -f -- "$private_key"' EXIT
 
@@ -219,8 +223,76 @@ jobs:
             --signature "$raw_signature" \
             --output "$signature_envelope"
 
+          dotnet run \
+            --project tools/OpenConquer.Product.Tool \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            -- \
+            create-release-package \
+            --client-publish "${{ runner.temp }}/openconquer-client" \
+            --release-manifest "$manifest" \
+            --release-signature "$signature_envelope" \
+            --public-key "$public_key" \
+            --output "$package"
+
+          dotnet run \
+            --project tools/OpenConquer.Product.Tool \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            -- \
+            create-release-catalog \
+            --release-package "$package" \
+            --package-base-uri "https://releases.invalid/openconquer/" \
+            --public-key "$public_key" \
+            --expires-utc "$(date -u -d '+1 day' '+%Y-%m-%dT%H:%M:%SZ')" \
+            --output "$catalog"
+
+          openssl dgst \
+            -sha256 \
+            -sign "$private_key" \
+            -out "$raw_catalog_signature" \
+            "$catalog"
+
+          dotnet run \
+            --project tools/OpenConquer.Product.Tool \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            -- \
+            create-release-catalog-signature \
+            --release-catalog "$catalog" \
+            --public-key "$public_key" \
+            --signature "$raw_catalog_signature" \
+            --output "$catalog_signature_envelope"
+
           test -s "$raw_signature"
           test -s "$signature_envelope"
+          test -s "$package"
+          test -s "$catalog"
+          test -s "$raw_catalog_signature"
+          test -s "$catalog_signature_envelope"
+
+          jq -e \
+            --arg uri "https://releases.invalid/openconquer/openconquer-client-linux-x64.zip" \
+            '.schemaVersion == 1
+              and .productId == "OpenConquer"
+              and (.expiresUtc | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))
+              and (.releases | length) == 1
+              and .releases[0].targetRuntime == "linux-x64"
+              and .releases[0].packageUri == $uri
+              and (.releases[0].packageLength > 0)
+              and (.releases[0].packageSha256 | test("^[0-9a-f]{64}$"))' \
+            "$catalog"
+
+          mapfile -t package_entries < <(zipinfo -1 "$package")
+          test "${package_entries[0]}" = "openconquer.release.json"
+          test "${package_entries[1]}" = "openconquer.release.sig"
+          if printf '%s\n' "${package_entries[@]}" | grep -Eq '(^/|^\.\.?/|/\.\.?/)'; then
+            echo "The release package contains a nonportable archive path." >&2
+            exit 1
+          fi
 
       # A production-capable launcher must carry publisher trust. CI injects the public half of its
       # ephemeral test authority through the same MSBuild boundary used by a production release.

@@ -85,3 +85,82 @@ internal static class ProductReleasePath
         return false;
     }
 }
+
+/// <summary>Tracks a bounded release tree using the same identity on every platform.</summary>
+internal sealed class ProductReleasePathTopology
+{
+    private readonly int _maximumDirectoryCount;
+    private readonly Node _root = new();
+    private int _directoryCount;
+
+    public ProductReleasePathTopology(int maximumDirectoryCount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumDirectoryCount);
+        _maximumDirectoryCount = maximumDirectoryCount;
+    }
+
+    public bool TryAddFile(string path)
+    {
+        if (!ProductReleasePath.IsValid(path))
+        {
+            return false;
+        }
+
+        string[] segments = path.Split('/');
+        Node current = _root;
+        for (int index = 0; index < segments.Length; index++)
+        {
+            string segment = segments[index];
+            string identity = segment.ToUpperInvariant();
+            bool isFile = index == segments.Length - 1;
+            if (isFile)
+            {
+                return !current.Directories.ContainsKey(identity) &&
+                    current.Files.Add(identity);
+            }
+
+            if (current.Files.Contains(identity))
+            {
+                return false;
+            }
+
+            if (!current.Directories.TryGetValue(identity, out DirectoryEntry? directory))
+            {
+                if (_directoryCount == _maximumDirectoryCount)
+                {
+                    return false;
+                }
+
+                directory = new DirectoryEntry(segment);
+                current.Directories.Add(identity, directory);
+                _directoryCount++;
+            }
+            else if (!string.Equals(directory.Name, segment, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            current = directory.Children;
+        }
+
+        throw new InvalidOperationException("A validated release path has no segments.");
+    }
+
+    private sealed class Node
+    {
+        public Dictionary<string, DirectoryEntry> Directories
+        {
+            get;
+        } =
+            new(StringComparer.Ordinal);
+
+        public HashSet<string> Files { get; } = new(StringComparer.Ordinal);
+    }
+
+    private sealed class DirectoryEntry(string name)
+    {
+        public string Name { get; } = name;
+
+        public Node Children { get; } = new();
+    }
+}

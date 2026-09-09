@@ -145,7 +145,7 @@ internal sealed class ManagedReleaseVerifier
 
         pending.Push(new DirectoryInfo(clientRootPath));
 
-        int directoryCount = 1;
+        int directoryCount = 0;
 
         while (pending.TryPop(out DirectoryInfo? directory))
         {

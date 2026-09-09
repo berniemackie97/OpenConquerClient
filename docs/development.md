@@ -264,11 +264,11 @@ closed when resolving a signed release.
 After an expected installation failure, **Check again** rechecks the same root without restarting.
 It does not repair files.
 
-The trusted client-generation update/repair and explicit verified-rollback transaction is
-implemented below the UI boundary. Authoritative release discovery/acquisition, launcher self-update,
-player-facing maintenance orchestration, and controlled client startup remain future launcher
-capabilities. Realm selection, native AccountServer login, and game-session handoff belong to
-Client/Networking.
+Signed release-catalog selection, bounded package acquisition, trusted client-generation
+update/repair, and explicit verified rollback are implemented below the UI boundary. Production
+release-origin configuration and publishing, launcher self-update, player-facing maintenance
+orchestration, and controlled client startup remain future launcher capabilities. Realm selection,
+native AccountServer login, and game-session handoff belong to Client/Networking.
 
 ### Tamper smoke check
 
@@ -406,6 +406,58 @@ dotnet run \
   --output /path/to/release/openconquer.release.sig
 ```
 
+Create the immutable client package. The Product Tool verifies the complete client tree and requires
+the embedded release signature to authenticate against the supplied publisher key:
+
+```bash
+dotnet run \
+  --project tools/OpenConquer.Product.Tool \
+  --configuration Release \
+  -- \
+  create-release-package \
+  --client-publish /path/to/client-publish \
+  --release-manifest /path/to/release/openconquer.release.json \
+  --release-signature /path/to/release/openconquer.release.sig \
+  --public-key /path/to/publisher-public.der \
+  --output /path/to/release/openconquer-client-osx-arm64.zip
+```
+
+Build a catalog from one or more already authenticated packages. Package names become immutable
+objects below the HTTPS base URI. Repeat `--release-package` and `--public-key` for additional
+platform packages and accepted rotation keys. `--expires-utc` is mandatory, uses whole-second UTC,
+and must be no more than 31 days ahead:
+
+```bash
+dotnet run \
+  --project tools/OpenConquer.Product.Tool \
+  --configuration Release \
+  -- \
+  create-release-catalog \
+  --release-package /path/to/release/openconquer-client-osx-arm64.zip \
+  --package-base-uri https://releases.example.com/openconquer/ \
+  --public-key /path/to/publisher-public.der \
+  --expires-utc "$OPENCONQUER_CATALOG_EXPIRES_UTC" \
+  --output /path/to/release/openconquer.catalog.json
+```
+
+Sign the exact catalog externally, then create its detached envelope:
+
+```bash
+dotnet run \
+  --project tools/OpenConquer.Product.Tool \
+  --configuration Release \
+  -- \
+  create-release-catalog-signature \
+  --release-catalog /path/to/release/openconquer.catalog.json \
+  --public-key /path/to/publisher-public.der \
+  --signature /path/to/release/openconquer.catalog.der \
+  --output /path/to/release/openconquer.catalog.sig
+```
+
+Upload the versioned package before consistency-preserving publication of the matching catalog and
+signature. The repository does not define a placeholder production host; deployment must provide a
+real publisher-controlled HTTPS origin and the two configured catalog URLs.
+
 Publish the launcher with the trust document embedded:
 
 ```bash
@@ -511,12 +563,14 @@ GitHub Actions verifies:
 9. deterministic release-manifest creation for the exact client publish;
 10. release-trust creation through the Product Tool;
 11. external signing and Product Tool verification of the release-signature envelope;
-12. launcher publication with CI public release trust embedded;
-13. absence of mutable installed-product layout, loose release metadata, and game content from the
+12. deterministic release-package construction and validation;
+13. signed catalog construction for the exact package identity;
+14. launcher publication with CI public release trust embedded;
+15. absence of mutable installed-product layout, loose release metadata, and game content from the
     raw launcher publish;
-14. authenticated managed-product composition using the manifest and signature;
-15. absence of CI publisher key material from the composed product; and
-16. Windows and macOS solution build/test coverage.
+16. authenticated managed-product composition using the manifest and signature;
+17. absence of CI publisher key material from the composed product; and
+18. Windows and macOS solution build/test coverage.
 
 The CI release publisher is intentionally ephemeral and exists only to prove the complete release
 pipeline. It is unrelated to the persistent local-development publisher and is not a production
