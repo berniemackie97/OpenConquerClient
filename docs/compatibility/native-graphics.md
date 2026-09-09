@@ -298,7 +298,7 @@ It is retained as evidence only; production renders into the 16-bit logical targ
 
 ```text
 source:      full 14×14 texture
-destination: 28×28
+destination: 20×18
 position:    (2, 2)
 ```
 
@@ -306,24 +306,25 @@ position:    (2, 2)
 
 ```text
 source:      (1, 1), 12×12
-destination: 24×24
-position:    (5, 6)
+destination: 20×16
+position:    (6, 8)
 ```
 
-For both stretch cases, conformance independently composes the expected framebuffer from the
-already-verified natural framebuffer and compares the complete GPU readback byte-for-byte.
+The stretch cases use different non-integer X/Y scale ratios.
 
-The crop/stretch fixture is required to produce a framebuffer distinct from the whole-texture
-stretch case.
+Conformance independently derives nearest-neighbor source selection from each destination pixel
+center and compares the complete GPU readback byte-for-byte with the expected framebuffer.
+
+The crop/stretch fixture must also remain distinct from the whole-texture stretch fixture.
 
 Verified Apple M4 RGB565 observations:
 
 ```text
 whole-texture stretch:
-7e84a990d80f8999a54b5f9124f51e887d1d1ec34135f2fb5c37267c1deea8cc
+45098e61451897bda7b976fc8d55b749ac5d327c1739e9e5fcbc249848b37340
 
 source-region stretch:
-fdbde3cc938f5f97fbb4641a1739295d4df4466ca6f18959fafe7d09d0a15879
+f4d724a2e3703eec53fa10df55f64da31c59b706db5db41a00bd8592eb9cbbfd
 ```
 
 Verified driver:

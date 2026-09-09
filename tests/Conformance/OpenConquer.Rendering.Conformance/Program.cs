@@ -27,14 +27,13 @@ internal static class Program
 
     private const int SyndicateStretchX = 2;
     private const int SyndicateStretchY = 2;
-    private const int SyndicateStretchWidth = 28;
-    private const int SyndicateStretchHeight = 28;
+    private const int SyndicateStretchWidth = 20;
+    private const int SyndicateStretchHeight = 18;
 
-    private const int SyndicateCropX = 5;
-    private const int SyndicateCropY = 6;
-    private const int SyndicateCropWidth = 24;
-    private const int SyndicateCropHeight = 24;
-    private const int SyndicateScale = 2;
+    private const int SyndicateCropX = 6;
+    private const int SyndicateCropY = 8;
+    private const int SyndicateCropWidth = 20;
+    private const int SyndicateCropHeight = 16;
 
     private static readonly SpriteSourceRectangle s_syndicateFullSource = new(x: 0, y: 0, SyndicateFrameWidth, SyndicateFrameHeight);
     private static readonly SpriteSourceRectangle s_syndicateCropSource = new(x: 1, y: 1, width: 12, height: 12);
@@ -245,7 +244,7 @@ internal static class Program
     private static void RunSyndicateWholeTextureStretchCase(OpenGLGraphicsDevice graphicsDevice, RgbaImage image, PixelSize framebufferSize, SyndicateFramebufferBaseline baseline)
     {
         LogicalRenderSize logicalRenderSize = new(SyndicateTargetWidth, SyndicateTargetHeight);
-        byte[] expected = ComposeScaledSyndicateFramebuffer(baseline.Pixels, s_syndicateFullSource, SyndicateStretchX, SyndicateStretchY, SyndicateScale);
+        byte[] expected = ComposeNearestSyndicateFramebuffer(baseline.Pixels, s_syndicateFullSource, SyndicateStretchX, SyndicateStretchY, SyndicateStretchWidth, SyndicateStretchHeight);
 
         using OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
         using OpenGLTexture2D texture = graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
@@ -264,8 +263,8 @@ internal static class Program
     private static void RunSyndicateCropStretchCase(OpenGLGraphicsDevice graphicsDevice, RgbaImage image, PixelSize framebufferSize, SyndicateFramebufferBaseline baseline)
     {
         LogicalRenderSize logicalRenderSize = new(SyndicateTargetWidth, SyndicateTargetHeight);
-        byte[] expected = ComposeScaledSyndicateFramebuffer(baseline.Pixels, s_syndicateCropSource, SyndicateCropX, SyndicateCropY, SyndicateScale);
-        byte[] wholeTextureExpected = ComposeScaledSyndicateFramebuffer(baseline.Pixels, s_syndicateFullSource, SyndicateStretchX, SyndicateStretchY, SyndicateScale);
+        byte[] expected = ComposeNearestSyndicateFramebuffer(baseline.Pixels, s_syndicateCropSource, SyndicateCropX, SyndicateCropY, SyndicateCropWidth, SyndicateCropHeight);
+        byte[] wholeTextureExpected = ComposeNearestSyndicateFramebuffer(baseline.Pixels, s_syndicateFullSource, SyndicateStretchX, SyndicateStretchY, SyndicateStretchWidth, SyndicateStretchHeight);
 
         if (expected.AsSpan().SequenceEqual(wholeTextureExpected))
         {
@@ -286,7 +285,7 @@ internal static class Program
         Console.WriteLine($"Syndicate source-crop stretch SHA256: {ToLowerHex(SHA256.HashData(actual))}");
     }
 
-    private static byte[] ComposeScaledSyndicateFramebuffer(ReadOnlySpan<byte> verifiedNaturalFramebuffer, SpriteSourceRectangle sourceRectangle, int destinationX, int destinationY, int scale)
+    private static byte[] ComposeNearestSyndicateFramebuffer(ReadOnlySpan<byte> verifiedNaturalFramebuffer, SpriteSourceRectangle sourceRectangle, int destinationX, int destinationY, int destinationWidth, int destinationHeight)
     {
         int expectedFramebufferLength = checked(SyndicateTargetWidth * SyndicateTargetHeight * 4);
 
@@ -294,8 +293,6 @@ internal static class Program
         {
             throw new ArgumentException($"Expected a {SyndicateTargetWidth}x{SyndicateTargetHeight} RGBA framebuffer.", nameof(verifiedNaturalFramebuffer));
         }
-
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(scale);
 
         long sourceRight = (long)sourceRectangle.X + sourceRectangle.Width;
         long sourceBottom = (long)sourceRectangle.Y + sourceRectangle.Height;
@@ -305,41 +302,49 @@ internal static class Program
             throw new ArgumentOutOfRangeException(nameof(sourceRectangle), sourceRectangle, "The Syndicate oracle source rectangle must fit within the verified frame.");
         }
 
-        int destinationWidth = checked(sourceRectangle.Width * scale);
-        int destinationHeight = checked(sourceRectangle.Height * scale);
+        ArgumentOutOfRangeException.ThrowIfNegative(destinationX);
+        ArgumentOutOfRangeException.ThrowIfNegative(destinationY);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(destinationWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(destinationHeight);
+
         long destinationRight = (long)destinationX + destinationWidth;
         long destinationBottom = (long)destinationY + destinationHeight;
 
-        if (destinationX < 0 || destinationY < 0 || destinationRight > SyndicateTargetWidth || destinationBottom > SyndicateTargetHeight)
+        if (destinationRight > SyndicateTargetWidth || destinationBottom > SyndicateTargetHeight)
         {
-            throw new ArgumentOutOfRangeException(nameof(destinationX), "The Syndicate oracle destination must fit within the logical target.");
+            throw new ArgumentOutOfRangeException(nameof(destinationWidth), "The Syndicate oracle destination must fit within the logical target.");
         }
 
         byte[] expected = CreateOpaqueBlackFramebuffer();
 
-        for (int sourceY = 0; sourceY < sourceRectangle.Height; sourceY++)
+        for (int destinationOffsetY = 0; destinationOffsetY < destinationHeight; destinationOffsetY++)
         {
-            for (int sourceX = 0; sourceX < sourceRectangle.Width; sourceX++)
+            int sourceOffsetY = GetNearestSourceOffset(destinationOffsetY, destinationHeight, sourceRectangle.Height);
+            int verifiedY = SyndicateY + sourceRectangle.Y + sourceOffsetY;
+
+            for (int destinationOffsetX = 0; destinationOffsetX < destinationWidth; destinationOffsetX++)
             {
-                int verifiedX = SyndicateX + sourceRectangle.X + sourceX;
-                int verifiedY = SyndicateY + sourceRectangle.Y + sourceY;
+                int sourceOffsetX = GetNearestSourceOffset(destinationOffsetX, destinationWidth, sourceRectangle.Width);
+                int verifiedX = SyndicateX + sourceRectangle.X + sourceOffsetX;
                 int sourceOffset = ((verifiedY * SyndicateTargetWidth) + verifiedX) * 4;
 
-                for (int scaleY = 0; scaleY < scale; scaleY++)
-                {
-                    for (int scaleX = 0; scaleX < scale; scaleX++)
-                    {
-                        int outputX = destinationX + (sourceX * scale) + scaleX;
-                        int outputY = destinationY + (sourceY * scale) + scaleY;
-                        int destinationOffset = ((outputY * SyndicateTargetWidth) + outputX) * 4;
+                int outputX = destinationX + destinationOffsetX;
+                int outputY = destinationY + destinationOffsetY;
+                int destinationOffset = ((outputY * SyndicateTargetWidth) + outputX) * 4;
 
-                        verifiedNaturalFramebuffer.Slice(sourceOffset, 4).CopyTo(expected.AsSpan(destinationOffset, 4));
-                    }
-                }
+                verifiedNaturalFramebuffer.Slice(sourceOffset, 4).CopyTo(expected.AsSpan(destinationOffset, 4));
             }
         }
 
         return expected;
+    }
+
+    private static int GetNearestSourceOffset(int destinationOffset, int destinationExtent, int sourceExtent)
+    {
+        long sourceNumerator = (2L * destinationOffset + 1) * sourceExtent;
+        long sourceDenominator = 2L * destinationExtent;
+
+        return (int)(sourceNumerator / sourceDenominator);
     }
 
     private static byte[] CreateOpaqueBlackFramebuffer()
