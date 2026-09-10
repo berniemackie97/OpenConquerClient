@@ -79,7 +79,7 @@ public sealed class AniFrameSetLoaderTests
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
-        temporaryDirectory.WriteFile(AniContentPath, $"[{SectionName}]\nFrameAmount=1\nFrame0=data/effect/frame.dds\n");
+        temporaryDirectory.WriteFile(AniContentPath, $"[{SectionName}]\nFrameAmount=1\nFrame0=data/effect/frame.bmp\n");
 
         ClientContentRoot contentSource = new(temporaryDirectory.RootPath);
 
@@ -100,20 +100,20 @@ public sealed class AniFrameSetLoaderTests
 
     private static byte[] CreateSinglePixelTarga(byte red, byte green, byte blue, byte alpha)
     {
-        const int HeaderLength = 18;
+        const int headerLength = 18;
 
-        byte[] targa = new byte[HeaderLength + 5];
+        byte[] targa = new byte[headerLength + 5];
 
         targa[2] = 10;
         BinaryPrimitives.WriteUInt16LittleEndian(targa.AsSpan(12), 1);
         BinaryPrimitives.WriteUInt16LittleEndian(targa.AsSpan(14), 1);
         targa[16] = 32;
         targa[17] = 0x08;
-        targa[HeaderLength] = 0x80;
-        targa[HeaderLength + 1] = blue;
-        targa[HeaderLength + 2] = green;
-        targa[HeaderLength + 3] = red;
-        targa[HeaderLength + 4] = alpha;
+        targa[headerLength] = 0x80;
+        targa[headerLength + 1] = blue;
+        targa[headerLength + 2] = green;
+        targa[headerLength + 3] = red;
+        targa[headerLength + 4] = alpha;
 
         return targa;
     }
