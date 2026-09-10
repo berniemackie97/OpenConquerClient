@@ -88,11 +88,16 @@ public sealed class OpenGLRenderer : IDisposable
 
     public void DrawSprite(OpenGLTexture2D texture, int x, int y, SpriteColor color)
     {
+        DrawSprite(texture, x, y, color, SpriteBlendMode.Alpha);
+    }
+
+    public void DrawSprite(OpenGLTexture2D texture, int x, int y, SpriteColor color, SpriteBlendMode blendMode)
+    {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(texture);
         EnsureFrameActiveForDrawing();
 
-        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, x, y, color);
+        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, x, y, color, blendMode);
     }
 
     public void DrawSprite(OpenGLTexture2D texture, int x, int y, int width, int height)

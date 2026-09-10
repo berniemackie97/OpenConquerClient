@@ -109,6 +109,7 @@ internal static class Program
             SyndicateFramebufferBaseline baseline = RunSyndicateNaturalCase(graphicsDevice, syndicateImage, framebufferSize);
             RunSyndicateExplicitWhiteColorCase(graphicsDevice, syndicateImage, framebufferSize, baseline);
             RunSpriteColorModulationCase(graphicsDevice, framebufferSize, baseline.ColorFormat);
+            RunSpriteAdditiveBlendCase(graphicsDevice, framebufferSize);
             RunSyndicateWholeTextureStretchCase(graphicsDevice, syndicateImage, framebufferSize, baseline);
             RunSyndicateCropStretchCase(graphicsDevice, syndicateImage, framebufferSize, baseline);
             RunSpriteRotationCase(graphicsDevice, framebufferSize, baseline.ColorFormat);
@@ -147,7 +148,7 @@ internal static class Program
             throw new InvalidOperationException("The OpenGL context was not released through the production lifetime boundary.");
         }
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, sprite geometry, sprite color, and sprite rotation conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, sprite geometry, sprite color, sprite blending, and sprite rotation conformance passed.");
 
         return 0;
     }
@@ -298,6 +299,30 @@ internal static class Program
 
         Console.WriteLine($"Sprite RGBA modulation: ({color.Red}, {color.Green}, {color.Blue}, {color.Alpha}), {colorFormat}");
         Console.WriteLine($"Sprite RGBA modulation SHA256: {ToLowerHex(SHA256.HashData(actual))}");
+    }
+
+    private static void RunSpriteAdditiveBlendCase(OpenGLGraphicsDevice graphicsDevice, PixelSize framebufferSize)
+    {
+        LogicalRenderSize logicalRenderSize = new(1, 1);
+        ReadOnlySpan<byte> whitePixel = [byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue];
+        ReadOnlySpan<byte> expected = [byte.MaxValue, 0, byte.MaxValue, byte.MaxValue];
+
+        SpriteColor destinationBlue = new(0, 0, byte.MaxValue, byte.MaxValue);
+        SpriteColor additiveRed = new(byte.MaxValue, 0, 0, 128);
+
+        using OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
+        using OpenGLTexture2D texture = graphicsDevice.CreateTexture2D(width: 1, height: 1, whitePixel);
+
+        renderer.BeginFrame();
+        renderer.DrawSprite(texture, x: 0, y: 0, destinationBlue);
+        renderer.DrawSprite(texture, x: 0, y: 0, additiveRed, SpriteBlendMode.Additive);
+        byte[] actual = renderer.ReadFrameTopLeftRgba();
+        renderer.EndFrame();
+
+        VerifyExactFramebuffer("Sprite additive blending", expected, actual);
+
+        Console.WriteLine($"Sprite additive blending: destination blue + red alpha {additiveRed.Alpha}, One/One");
+        Console.WriteLine($"Sprite additive blending SHA256: {ToLowerHex(SHA256.HashData(actual))}");
     }
 
     private static void RunSyndicateWholeTextureStretchCase(OpenGLGraphicsDevice graphicsDevice, RgbaImage image, PixelSize framebufferSize, SyndicateFramebufferBaseline baseline)
