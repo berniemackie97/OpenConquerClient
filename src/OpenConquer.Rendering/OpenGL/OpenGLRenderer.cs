@@ -83,14 +83,24 @@ public sealed class OpenGLRenderer : IDisposable
 
     public void DrawSprite(OpenGLTexture2D texture, int x, int y)
     {
+        DrawSprite(texture, x, y, SpriteColor.White);
+    }
+
+    public void DrawSprite(OpenGLTexture2D texture, int x, int y, SpriteColor color)
+    {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(texture);
         EnsureFrameActiveForDrawing();
 
-        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, x, y);
+        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, x, y, color);
     }
 
     public void DrawSprite(OpenGLTexture2D texture, int x, int y, int width, int height)
+    {
+        DrawSprite(texture, x, y, width, height, SpriteColor.White);
+    }
+
+    public void DrawSprite(OpenGLTexture2D texture, int x, int y, int width, int height, SpriteColor color)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(texture);
@@ -98,16 +108,21 @@ public sealed class OpenGLRenderer : IDisposable
 
         SpriteSourceRectangle sourceRectangle = new(x: 0, y: 0, texture.Width, texture.Height);
 
-        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height);
+        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height, color);
     }
 
     public void DrawSprite(OpenGLTexture2D texture, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height)
+    {
+        DrawSprite(texture, sourceRectangle, x, y, width, height, SpriteColor.White);
+    }
+
+    public void DrawSprite(OpenGLTexture2D texture, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(texture);
         EnsureFrameActiveForDrawing();
 
-        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height);
+        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height, color);
     }
 
     internal byte[] ReadFrameTopLeftRgba()

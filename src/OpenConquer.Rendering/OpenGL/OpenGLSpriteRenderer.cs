@@ -16,6 +16,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
     private uint _vertexBuffer;
     private uint _indexBuffer;
     private int _textureUniform;
+    private int _colorUniform;
     private bool _disposed;
 
     public OpenGLSpriteRenderer(GL gl)
@@ -45,21 +46,31 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 
     public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, int x, int y)
     {
+        Draw(texture, targetWidth, targetHeight, x, y, SpriteColor.White);
+    }
+
+    public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, int x, int y, SpriteColor color)
+    {
         ValidateCommonDrawArguments(texture, targetWidth, targetHeight);
 
         SpriteSourceRectangle sourceRectangle = new(x: 0, y: 0, texture.Width, texture.Height);
 
-        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, texture.Width, texture.Height);
+        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, texture.Width, texture.Height, color);
     }
 
     public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height)
+    {
+        Draw(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height, SpriteColor.White);
+    }
+
+    public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color)
     {
         ValidateCommonDrawArguments(texture, targetWidth, targetHeight);
         ValidateSourceRectangle(texture, sourceRectangle);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height);
+        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height, color);
     }
 
     public void Dispose()
@@ -79,7 +90,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         }
     }
 
-    private void DrawCore(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height)
+    private void DrawCore(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color)
     {
         long rightPixel = (long)x + width;
         long bottomPixel = (long)y + height;
@@ -94,13 +105,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         float sourceTop = ToNormalizedTextureCoordinate(sourceRectangle.Y, texture.Height);
         float sourceBottom = ToNormalizedTextureCoordinate(sourceRectangle.Bottom, texture.Height);
 
-        Span<float> vertices =
-        [
-            left, top, sourceLeft, sourceTop,
-            right, top, sourceRight, sourceTop,
-            right, bottom, sourceRight, sourceBottom,
-            left, bottom, sourceLeft, sourceBottom,
-        ];
+        Span<float> vertices = [left, top, sourceLeft, sourceTop, right, top, sourceRight, sourceTop, right, bottom, sourceRight, sourceBottom, left, bottom, sourceLeft, sourceBottom];
 
         OpenGLProgram program = _program ?? throw new InvalidOperationException("The OpenGL sprite program is unavailable.");
 
@@ -126,6 +131,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         _gl.ActiveTexture(TextureUnit.Texture0);
         texture.Bind();
         _gl.Uniform1(_textureUniform, 0);
+        _gl.Uniform4(_colorUniform, ToNormalizedColorChannel(color.Red), ToNormalizedColorChannel(color.Green), ToNormalizedColorChannel(color.Blue), ToNormalizedColorChannel(color.Alpha));
         _gl.DrawElements(PrimitiveType.Triangles, (uint)s_indices.Length, DrawElementsType.UnsignedInt, null);
 
         _gl.BindTexture(TextureTarget.Texture2D, texture: 0);
@@ -161,6 +167,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
     {
         _program = new OpenGLProgram(_gl, VertexShaderSource, FragmentShaderSource);
         _textureUniform = _program.GetRequiredUniformLocation("uTexture");
+        _colorUniform = _program.GetRequiredUniformLocation("uColor");
 
         _vertexArray = _gl.GenVertexArray();
         _vertexBuffer = _gl.GenBuffer();
@@ -269,6 +276,11 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         return (float)((double)pixel / textureExtent);
     }
 
+    private static float ToNormalizedColorChannel(byte channel)
+    {
+        return channel / (float)byte.MaxValue;
+    }
+
     private const string VertexShaderSource = """
         #version 330 core
         layout (location = 0) in vec2 aPosition;
@@ -287,10 +299,11 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         in vec2 textureCoordinate;
         out vec4 outputColor;
         uniform sampler2D uTexture;
+        uniform vec4 uColor;
 
         void main()
         {
-            outputColor = texture(uTexture, textureCoordinate);
+            outputColor = texture(uTexture, textureCoordinate) * uColor;
         }
         """;
 }
