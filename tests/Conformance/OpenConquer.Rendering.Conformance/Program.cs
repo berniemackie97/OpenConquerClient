@@ -35,8 +35,17 @@ internal static class Program
     private const int SyndicateCropWidth = 20;
     private const int SyndicateCropHeight = 16;
 
+    private const int RotationTargetWidth = 8;
+    private const int RotationTargetHeight = 6;
+    private const int RotationX = 2;
+    private const int RotationY = 2;
+    private const int RotationWidth = 4;
+    private const int RotationHeight = 2;
+    private const int RotationDegrees = 1_440_000_090;
+
     private static readonly SpriteSourceRectangle s_syndicateFullSource = new(x: 0, y: 0, SyndicateFrameWidth, SyndicateFrameHeight);
     private static readonly SpriteSourceRectangle s_syndicateCropSource = new(x: 1, y: 1, width: 12, height: 12);
+    private static readonly SpriteSourceRectangle s_rotationSource = new(x: 1, y: 0, width: 2, height: 1);
 
     private static readonly LogicalRenderSize[] s_logicalRenderSizes =
     [
@@ -102,6 +111,7 @@ internal static class Program
             RunSpriteColorModulationCase(graphicsDevice, framebufferSize, baseline.ColorFormat);
             RunSyndicateWholeTextureStretchCase(graphicsDevice, syndicateImage, framebufferSize, baseline);
             RunSyndicateCropStretchCase(graphicsDevice, syndicateImage, framebufferSize, baseline);
+            RunSpriteRotationCase(graphicsDevice, framebufferSize, baseline.ColorFormat);
 
             frameRendered = true;
         };
@@ -137,7 +147,7 @@ internal static class Program
             throw new InvalidOperationException("The OpenGL context was not released through the production lifetime boundary.");
         }
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, sprite geometry, and sprite color conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, sprite geometry, sprite color, and sprite rotation conformance passed.");
 
         return 0;
     }
@@ -334,6 +344,34 @@ internal static class Program
         Console.WriteLine($"Syndicate source-crop stretch SHA256: {ToLowerHex(SHA256.HashData(actual))}");
     }
 
+    private static void RunSpriteRotationCase(OpenGLGraphicsDevice graphicsDevice, PixelSize framebufferSize, string colorFormat)
+    {
+        LogicalRenderSize logicalRenderSize = new(RotationTargetWidth, RotationTargetHeight);
+
+        ReadOnlySpan<byte> texturePixels =
+        [
+            0, 0, byte.MaxValue, byte.MaxValue,
+            byte.MaxValue, 0, 0, byte.MaxValue,
+            0, byte.MaxValue, 0, byte.MaxValue,
+            byte.MaxValue, byte.MaxValue, 0, byte.MaxValue,
+        ];
+
+        byte[] expected = CreateSpriteRotationExpectedFramebuffer();
+
+        using OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
+        using OpenGLTexture2D texture = graphicsDevice.CreateTexture2D(width: 4, height: 1, texturePixels);
+
+        renderer.BeginFrame();
+        renderer.DrawSprite(texture, s_rotationSource, RotationX, RotationY, RotationWidth, RotationHeight, SpriteColor.White, RotationDegrees);
+        byte[] actual = renderer.ReadFrameTopLeftRgba();
+        renderer.EndFrame();
+
+        VerifyExactFramebuffer("Sprite rotation", expected, actual);
+
+        Console.WriteLine($"Sprite rotation: source ({s_rotationSource.X}, {s_rotationSource.Y}) {s_rotationSource.Width}x{s_rotationSource.Height} -> {RotationWidth}x{RotationHeight} at ({RotationX}, {RotationY}), {RotationDegrees} degrees, {colorFormat}");
+        Console.WriteLine($"Sprite rotation SHA256: {ToLowerHex(SHA256.HashData(actual))}");
+    }
+
     private static byte[] ComposeNearestSyndicateFramebuffer(ReadOnlySpan<byte> verifiedNaturalFramebuffer, SpriteSourceRectangle sourceRectangle, int destinationX, int destinationY, int destinationWidth, int destinationHeight)
     {
         int expectedFramebufferLength = checked(SyndicateTargetWidth * SyndicateTargetHeight * 4);
@@ -364,7 +402,7 @@ internal static class Program
             throw new ArgumentOutOfRangeException(nameof(destinationWidth), "The Syndicate oracle destination must fit within the logical target.");
         }
 
-        byte[] expected = CreateOpaqueBlackFramebuffer();
+        byte[] expected = CreateOpaqueBlackFramebuffer(SyndicateTargetWidth, SyndicateTargetHeight);
 
         for (int destinationOffsetY = 0; destinationOffsetY < destinationHeight; destinationOffsetY++)
         {
@@ -388,6 +426,27 @@ internal static class Program
         return expected;
     }
 
+    private static byte[] CreateSpriteRotationExpectedFramebuffer()
+    {
+        byte[] expected = CreateOpaqueBlackFramebuffer(RotationTargetWidth, RotationTargetHeight);
+
+        for (int y = 1; y < 5; y++)
+        {
+            bool red = y < 3;
+
+            for (int x = 3; x < 5; x++)
+            {
+                int offset = ((y * RotationTargetWidth) + x) * 4;
+
+                expected[offset] = red ? byte.MaxValue : (byte)0;
+                expected[offset + 1] = red ? (byte)0 : byte.MaxValue;
+                expected[offset + 2] = 0;
+            }
+        }
+
+        return expected;
+    }
+
     private static int GetNearestSourceOffset(int destinationOffset, int destinationExtent, int sourceExtent)
     {
         long sourceNumerator = (2L * destinationOffset + 1) * sourceExtent;
@@ -396,9 +455,12 @@ internal static class Program
         return (int)(sourceNumerator / sourceDenominator);
     }
 
-    private static byte[] CreateOpaqueBlackFramebuffer()
+    private static byte[] CreateOpaqueBlackFramebuffer(int width, int height)
     {
-        byte[] framebuffer = new byte[SyndicateTargetWidth * SyndicateTargetHeight * 4];
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+
+        byte[] framebuffer = new byte[checked(width * height * 4)];
 
         for (int offset = 0; offset < framebuffer.Length; offset += 4)
         {

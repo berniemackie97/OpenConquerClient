@@ -8,6 +8,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
     private const int FloatsPerVertex = 4;
 
     private static readonly uint[] s_indices = [0, 1, 2, 0, 2, 3];
+    private static readonly float s_degreesToRadians = BitConverter.Int32BitsToSingle(0x3C8EFA35);
 
     private readonly GL _gl;
 
@@ -55,7 +56,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 
         SpriteSourceRectangle sourceRectangle = new(x: 0, y: 0, texture.Width, texture.Height);
 
-        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, texture.Width, texture.Height, color);
+        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, texture.Width, texture.Height, color, rotationDegrees: 0);
     }
 
     public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height)
@@ -65,12 +66,17 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 
     public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color)
     {
+        Draw(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height, color, rotationDegrees: 0);
+    }
+
+    public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color, int rotationDegrees)
+    {
         ValidateCommonDrawArguments(texture, targetWidth, targetHeight);
         ValidateSourceRectangle(texture, sourceRectangle);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height, color);
+        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height, color, rotationDegrees);
     }
 
     public void Dispose()
@@ -90,7 +96,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         }
     }
 
-    private void DrawCore(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color)
+    private void DrawCore(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color, int rotationDegrees)
     {
         long rightPixel = (long)x + width;
         long bottomPixel = (long)y + height;
@@ -100,12 +106,19 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         float top = ToNormalizedY(y, targetHeight);
         float bottom = ToNormalizedY(bottomPixel, targetHeight);
 
+        Span<float> positions = [left, top, right, top, right, bottom, left, bottom];
+
+        if (rotationDegrees != 0)
+        {
+            WriteRotatedNormalizedPositions(positions, targetWidth, targetHeight, x, y, width, height, rotationDegrees);
+        }
+
         float sourceLeft = ToNormalizedTextureCoordinate(sourceRectangle.X, texture.Width);
         float sourceRight = ToNormalizedTextureCoordinate(sourceRectangle.Right, texture.Width);
         float sourceTop = ToNormalizedTextureCoordinate(sourceRectangle.Y, texture.Height);
         float sourceBottom = ToNormalizedTextureCoordinate(sourceRectangle.Bottom, texture.Height);
 
-        Span<float> vertices = [left, top, sourceLeft, sourceTop, right, top, sourceRight, sourceTop, right, bottom, sourceRight, sourceBottom, left, bottom, sourceLeft, sourceBottom];
+        Span<float> vertices = [positions[0], positions[1], sourceLeft, sourceTop, positions[2], positions[3], sourceRight, sourceTop, positions[4], positions[5], sourceRight, sourceBottom, positions[6], positions[7], sourceLeft, sourceBottom];
 
         OpenGLProgram program = _program ?? throw new InvalidOperationException("The OpenGL sprite program is unavailable.");
 
@@ -161,6 +174,41 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         {
             throw new ArgumentOutOfRangeException(nameof(sourceRectangle), sourceRectangle, $"The sprite source rectangle must fit within the {texture.Width}x{texture.Height} texture.");
         }
+    }
+
+    private static void WriteRotatedNormalizedPositions(Span<float> positions, int targetWidth, int targetHeight, int x, int y, int width, int height, int rotationDegrees)
+    {
+        float left = x;
+        float top = y;
+        float right = (float)((long)x + width);
+        float bottom = (float)((long)y + height);
+
+        float pivotX = (right - left) / 2f + left;
+        float pivotY = (bottom - top) / 2f + top;
+
+        int reducedDegrees = rotationDegrees % 360;
+        float radians = (float)reducedDegrees * s_degreesToRadians;
+        (float sine, float cosine) = MathF.SinCos(radians);
+
+        RotatePoint(left, top, pivotX, pivotY, sine, cosine, out positions[0], out positions[1]);
+        RotatePoint(right, top, pivotX, pivotY, sine, cosine, out positions[2], out positions[3]);
+        RotatePoint(right, bottom, pivotX, pivotY, sine, cosine, out positions[4], out positions[5]);
+        RotatePoint(left, bottom, pivotX, pivotY, sine, cosine, out positions[6], out positions[7]);
+
+        for (int offset = 0; offset < positions.Length; offset += 2)
+        {
+            positions[offset] = ToNormalizedX(positions[offset], targetWidth);
+            positions[offset + 1] = ToNormalizedY(positions[offset + 1], targetHeight);
+        }
+    }
+
+    private static void RotatePoint(float x, float y, float pivotX, float pivotY, float sine, float cosine, out float rotatedX, out float rotatedY)
+    {
+        float deltaX = x - pivotX;
+        float deltaY = y - pivotY;
+
+        rotatedX = deltaX * cosine - deltaY * sine + pivotX;
+        rotatedY = deltaX * sine + deltaY * cosine + pivotY;
     }
 
     private void CreateResources()
@@ -266,7 +314,17 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         return (float)(2.0 * pixelX / targetWidth - 1.0);
     }
 
+    private static float ToNormalizedX(float pixelX, int targetWidth)
+    {
+        return (float)(2.0 * pixelX / targetWidth - 1.0);
+    }
+
     private static float ToNormalizedY(long pixelY, int targetHeight)
+    {
+        return (float)(1.0 - 2.0 * pixelY / targetHeight);
+    }
+
+    private static float ToNormalizedY(float pixelY, int targetHeight)
     {
         return (float)(1.0 - 2.0 * pixelY / targetHeight);
     }

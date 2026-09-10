@@ -118,11 +118,16 @@ public sealed class OpenGLRenderer : IDisposable
 
     public void DrawSprite(OpenGLTexture2D texture, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color)
     {
+        DrawSprite(texture, sourceRectangle, x, y, width, height, color, rotationDegrees: 0);
+    }
+
+    public void DrawSprite(OpenGLTexture2D texture, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color, int rotationDegrees)
+    {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(texture);
         EnsureFrameActiveForDrawing();
 
-        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height, color);
+        _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height, color, rotationDegrees);
     }
 
     internal byte[] ReadFrameTopLeftRgba()
