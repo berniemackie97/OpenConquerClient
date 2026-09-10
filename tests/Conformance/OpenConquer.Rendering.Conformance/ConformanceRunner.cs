@@ -12,45 +12,23 @@ internal static class ConformanceRunner
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        PackagedClientContentSource contentSource = PackagedClientContentSource.Open(
-            options.ContentRoot
-        );
+        PackagedClientContentSource contentSource = PackagedClientContentSource.Open(options.ContentRoot);
         RgbaImage syndicateImage = SyndicateRetailFixture.Load(contentSource);
+        RgbaImage fireworkImage = FireworkRetailFixture.Load(contentSource);
 
-        OpenGLConformanceHost.Run(
-            (graphicsDevice, framebufferSize) =>
-            {
-                PresentationConformance.Run(graphicsDevice, framebufferSize);
+        OpenGLConformanceHost.Run((graphicsDevice, framebufferSize) =>
+        {
+            PresentationConformance.Run(graphicsDevice, framebufferSize);
 
-                SyndicateSpriteBaseline syndicateBaseline = SyndicateSpriteConformance.Run(
-                    graphicsDevice,
-                    syndicateImage,
-                    framebufferSize
-                );
+            SyndicateSpriteBaseline syndicateBaseline = SyndicateSpriteConformance.Run(graphicsDevice, syndicateImage, framebufferSize);
 
-                SpriteColorConformance.Run(
-                    graphicsDevice,
-                    syndicateImage,
-                    framebufferSize,
-                    syndicateBaseline
-                );
-                SpriteBlendConformance.Run(graphicsDevice, framebufferSize);
-                SpriteGeometryConformance.Run(
-                    graphicsDevice,
-                    syndicateImage,
-                    framebufferSize,
-                    syndicateBaseline
-                );
-                SpriteRotationConformance.Run(
-                    graphicsDevice,
-                    framebufferSize,
-                    syndicateBaseline.ColorFormat
-                );
-            }
-        );
+            SpriteColorConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
+            SpriteBlendConformance.Run(graphicsDevice, framebufferSize);
+            FireworkDxt3Conformance.Run(graphicsDevice, fireworkImage, framebufferSize);
+            SpriteGeometryConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
+            SpriteRotationConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
+        });
 
-        Console.WriteLine(
-            "OpenGL render-target, presentation, ANI asset, sprite geometry, sprite color, sprite blending, and sprite rotation conformance passed."
-        );
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, sprite color, sprite blending, and sprite rotation conformance passed.");
     }
 }

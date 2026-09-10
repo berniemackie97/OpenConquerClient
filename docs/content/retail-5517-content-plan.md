@@ -155,6 +155,10 @@ That fixture exists for compatibility testing and offline inspection.
 No `ani/`, map, C3, audio, login, realm-selection, or general UI families are checked in merely for
 future use.
 
+The implemented ANI, TGA, and DDS compatibility boundaries do not change this closure. Their current
+retail conformance is exercised against an explicitly supplied authorized 5517 source tree rather
+than by importing those asset families into the checked-in runtime payload.
+
 ## Current Runtime Content Boundary
 
 `OpenConquer.Content` currently provides:
@@ -194,6 +198,43 @@ WindowsBitmapReader
 
 The application composes the content source; consumers do not know whether bytes came from a host
 filesystem or WDF archive unless verified compatibility behavior requires a specific lookup mode.
+
+Production Content also implements reviewed compatibility boundaries for ANI frame resolution and
+the image formats required by currently verified sprite evidence:
+
+```text
+ANI frame path
+    ├── .tga → verified retail TGA decoding
+    └── .dds → verified single-level DXT3 decoding
+
+decoded image
+    ↓
+top-left RGBA
+```
+
+The DXT3 path validates the DDS structure and supported 2D single-level contract before allocation,
+bounds decoded expansion, decodes explicit DXT3 alpha and RGB565 color data, clips partial edge
+blocks, and rejects unsupported mipmapped, volume, cubemap, and trailing-payload structures.
+
+These production decoding capabilities are currently exercised by unit and rendering-conformance
+consumers. They do not themselves authorize expansion of `ClientContentClosure`.
+
+The verified retail DXT3 conformance path resolves:
+
+```text
+ani/weather.ani
+    ↓
+[YinFa1] Frame0
+    ↓
+data/firework/yinfa1/1.dds
+    ↓
+data.wdf
+```
+
+The selected DDS is explicitly verified through package-backed lookup and decoded independently by
+both the production Content path and the conformance reference decoder. Detailed graphics-format
+semantics and real-driver rendering evidence are maintained in
+[`../compatibility/native-graphics.md`](../compatibility/native-graphics.md).
 
 Retail `Server.dat` is no longer a runtime Content consumer.
 
@@ -477,6 +518,11 @@ The lookup modes remain explicit:
 
 There is no universal loose/package precedence outside the entry point that requested the lookup.
 
+The retail firework conformance deliberately uses normal retail lookup for `ani/weather.ani`, then
+proves that `data/firework/yinfa1/1.dds` is absent from loose content and resolves through
+`PackageOnly`. This locks the actual WDF dependency rather than permitting an accidental loose-file
+substitute to satisfy the compatibility check.
+
 ### Archive validation
 
 A WDF archive is treated as untrusted binary data.
@@ -577,6 +623,11 @@ The runtime content set is never expanded speculatively.
 Historical compatibility fixtures follow their own evidence-driven ownership rule and must not be
 inserted into `ClientContentClosure` simply because tooling consumes them.
 
+Production parsers and decoders may be implemented before their first executable runtime consumer
+when they are required to prove an already verified compatibility boundary. That capability alone
+does not change the runtime closure; closure expansion still waits for the executable consumer that
+owns the asset dependency.
+
 ## Planned Consumer-Led Expansion
 
 Likely future runtime content areas, subject to actual reconstruction order, include:
@@ -615,9 +666,13 @@ Cleanup failures must not replace an existing primary failure.
 Explicit offline tooling does not inherit runtime content lookup behavior unless that behavior is
 itself the subject of the compatibility test.
 
+Image decoders additionally bound both encoded input and decoded expansion. Format fields that are
+semantically irrelevant to the selected encoding are not assigned modern meaning merely because
+legacy files contain unusual values.
+
 ## Test Strategy
 
-Runtime Content tests should remain synthetic wherever practical.
+Content boundary tests should remain synthetic wherever practical.
 
 They should cover:
 
@@ -632,6 +687,14 @@ They should cover:
 - WDF entry-stream read and seek containment;
 - configuration grammar;
 - bitmap decoding;
+- ANI index parsing and frame resolution;
+- explicit ANI image-extension dispatch;
+- verified TGA decoding;
+- single-level DXT3 decoding;
+- DXT3 explicit-alpha and four-color interpolation semantics;
+- RGB565 endpoint expansion;
+- partial DXT3 edge-block clipping;
+- DDS header, dimension, decoded-size, mip, depth, caps, and exact-payload validation;
 - content-closure resolution;
 - import determinism;
 - manifest/payload/closure verification;
@@ -652,6 +715,32 @@ Tests must not require redistribution of large retail payload families.
 Small compatibility fixtures may be tracked when necessary to permanently lock a parity-sensitive
 format boundary. Such fixtures do not need to be part of the runtime content closure when their
 consumer is test or offline tooling rather than the game runtime.
+
+Compatibility conformance may also run directly against an explicitly supplied authorized retail
+root when proving package routing, exact retail asset identity, or an end-to-end production
+rendering path would otherwise require checking a retail asset family into the repository.
+
+For graphics content, the conformance implementation must keep the production decoder and its
+independent reference oracle separate. A production decoder must not validate itself through shared
+decode helpers.
+
+The verified DXT3 firework conformance establishes:
+
+```text
+retail ANI frame identity
+        ↓
+package-backed WDF asset identity
+        ↓
+production DXT3 decode
+        ==
+independent DXT3 reference decode
+        ↓
+existing RGBA8 rendering path
+        ↓
+verified additive consumer behavior
+```
+
+This is compatibility evidence, not runtime closure expansion.
 
 ## Commit and Release Gate
 
@@ -697,11 +786,28 @@ dotnet run \
   --file tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
 ```
 
+When a slice changes a production image format or graphics-content compatibility path, the
+production real-driver conformance must also be run against an authorized retail 5517 root:
+
+```bash
+dotnet run \
+  --project tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj \
+  --configuration Release \
+  --no-build \
+  --no-restore \
+  -- \
+  --content-root <authorized-retail-5517-root>
+```
+
 Published client output must contain the same manifest-approved runtime closure as the checked-in
 content set.
 
 Historical tooling fixtures such as `Server.dat` must not appear in published client runtime
 content.
+
+Retail assets used only through explicit external conformance must likewise not appear in published
+runtime content unless a later reviewed runtime consumer expands `ClientContentClosure` to require
+them.
 
 ## Non-Goals
 
@@ -709,4 +815,9 @@ The content system is not:
 
 - a bulk retail-file mirror;
 - a general-purpose game-engine asset pipeline;
-- an
+- an excuse to pre-import unsupported content;
+- an architecture copied from the legacy reconstruction;
+- a compatibility layer that preserves unsafe native undefined behavior.
+
+Its job is to provide the smallest correct, deterministic, auditable content boundary required by
+the reconstructed 5517 client.

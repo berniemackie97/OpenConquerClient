@@ -30,6 +30,18 @@ public sealed class DdsImageReaderTests
     }
 
     [Fact]
+    public void DecodeDxt3_DecodesRgb565WithBitReplication()
+    {
+        byte[] dds = CreateDxt3Dds(1, 1);
+
+        WriteDxt3Block(dds.AsSpan(PixelDataOffset, 16), ulong.MaxValue, 0x1A27, 0, 0);
+
+        RgbaImage image = DdsImageReader.DecodeDxt3(dds);
+
+        Assert.Equal([24, 69, 57, byte.MaxValue], image.Pixels.ToArray());
+    }
+
+    [Fact]
     public void DecodeDxt3_ClipsPartialEdgeBlocks()
     {
         byte[] dds = CreateDxt3Dds(5, 1);
@@ -92,6 +104,15 @@ public sealed class DdsImageReaderTests
         Assert.Throws<InvalidDataException>(() => DdsImageReader.DecodeDxt3(dds));
     }
 
+    [Fact]
+    public void DecodeDxt3_RejectsAdditionalPixelFormatFlags()
+    {
+        byte[] dds = CreateDxt3Dds(4, 4);
+        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(80), 0x00000005);
+
+        Assert.Throws<InvalidDataException>(() => DdsImageReader.DecodeDxt3(dds));
+    }
+
     [Theory]
     [InlineData(0, 4)]
     [InlineData(4, 0)]
@@ -143,11 +164,29 @@ public sealed class DdsImageReaderTests
     }
 
     [Fact]
+    public void DecodeDxt3_RejectsMipMapCountWithoutFlag()
+    {
+        byte[] dds = CreateDxt3Dds(4, 4);
+        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(28), 1);
+
+        Assert.Throws<InvalidDataException>(() => DdsImageReader.DecodeDxt3(dds));
+    }
+
+    [Fact]
     public void DecodeDxt3_RejectsVolumeTexture()
     {
         byte[] dds = CreateDxt3Dds(4, 4);
 
         BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(8), 0x00881007);
+        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(24), 1);
+
+        Assert.Throws<InvalidDataException>(() => DdsImageReader.DecodeDxt3(dds));
+    }
+
+    [Fact]
+    public void DecodeDxt3_RejectsDepthWithoutFlag()
+    {
+        byte[] dds = CreateDxt3Dds(4, 4);
         BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(24), 1);
 
         Assert.Throws<InvalidDataException>(() => DdsImageReader.DecodeDxt3(dds));

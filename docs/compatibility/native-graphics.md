@@ -102,7 +102,7 @@ single-sampled framebuffer.
 
 ### Texture Contract
 
-Current framebuffer conformance uses:
+The verified TGA framebuffer fixture uses:
 
 ```text
 ani/Common.Ani
@@ -130,6 +130,76 @@ decoded RGBA:
 1e112db318ecd33cba4b2980d0ed92e502e74bcd0e6a539747733cad718f8c37
 ```
 
+The verified retail DXT3 firework fixture uses:
+
+```text
+ani/weather.ani
+└── [YinFa1]
+    ├── FrameAmount=9
+    └── Frame0=data/firework/yinfa1/1.dds
+```
+
+Verified frame 0:
+
+```text
+storage:     data.wdf
+size:        384 bytes
+dimensions:  16×16
+DDS format:  single-level DXT3
+pixel flags: DDPF_FOURCC only
+FourCC:      DXT3
+```
+
+Encoded SHA-256:
+
+```text
+1a79bb1faf0c94b759d723a18b9ef6908e38a0c7f5e600ceadb3675ecb7ea2df
+```
+
+OpenConquer's supported DDS contract is deliberately narrower than the native decoder:
+
+```text
+standard DDS header
+2D texture
+single level
+DXT3 / BC2 encoding
+explicit 4-bit alpha
+RGB565 color endpoints
+DXT3 four-color interpolation
+partial edge-block clipping
+no cubemaps
+no volume textures
+no mip chains
+no trailing levels or payload
+```
+
+Verified retail FourCC files contain legacy values in fields that are irrelevant when `DDPF_FOURCC`
+is selected. Those unused RGB and reserved fields are therefore not interpreted as
+uncompressed-pixel metadata.
+
+ANI frame decoding dispatches supported image formats explicitly:
+
+```text
+.tga → retail TGA decoder
+.dds → retail DXT3 DDS decoder
+```
+
+Other image extensions remain unsupported until consumer evidence requires them.
+
+The Content-to-Rendering boundary is normalized RGBA:
+
+```text
+retail TGA / DXT3 DDS
+        ↓
+OpenConquer.Content
+        ↓
+top-left RGBA pixels
+        ↓
+OpenConquer.Rendering
+        ↓
+RGBA8 OpenGL texture
+```
+
 GPU sprite textures use:
 
 ```text
@@ -139,7 +209,12 @@ clamp-to-edge
 single mip level
 ```
 
-TGA support remains limited to formats required by verified content.
+The native client can preserve DXT3 compression through texture upload when the device supports it.
+That is native implementation machinery rather than an observable compatibility requirement.
+OpenConquer preserves decoded pixels and rendering behavior instead of exposing DDS, DXT3, BC2, or
+compressed OpenGL representation across the Content-to-Rendering boundary.
+
+TGA and DDS support remain limited to formats required by verified retail consumers.
 
 ### Default State
 
@@ -164,16 +239,20 @@ Existing sprite APIs default to `Alpha`.
 `Additive` represents the resolved rendering behavior required by verified retail mode-1 firework
 paths. OpenConquer does not expose the native integer draw parameter or Direct3D format predicate.
 
-The verified mode-1 callers use:
+The verified mode-1 firework callers use:
 
 ```text
 full texture
 natural dimensions
 white RGB modulation
 alpha = 255
-DXT3-preserving texture uploads
+DXT3 source content
 ONE / ONE blending
 ```
+
+The native client may retain DXT3 as compressed GPU content for this path. OpenConquer instead
+decodes the same DXT3 pixels to RGBA8 before rendering; compressed residency itself is not part of
+the compatibility contract.
 
 The native mode-1 `SRCCOLOR / ONE` branch is proven at the primitive level but has no verified
 retail production consumer yet, so it is not implemented.
@@ -299,7 +378,7 @@ Renderer: Apple M4
 Target:   RGB565
 ```
 
-### Baselines
+### Stable Baselines
 
 | Case                         | SHA-256                                                            |
 | ---------------------------- | ------------------------------------------------------------------ |
@@ -315,7 +394,8 @@ Explicit white modulation remains byte-identical to the natural RGB565 baseline.
 
 ### Additive Probe
 
-The additive probe deliberately distinguishes `ONE / ONE` from both other plausible blend pairs:
+The synthetic additive probe deliberately distinguishes `ONE / ONE` from both other plausible blend
+pairs:
 
 ```text
 destination = opaque blue
@@ -339,6 +419,59 @@ RGBA = (255, 0, 255, 255)
 SHA-256:
 f7f9e13d8ace3958b3fee2a2cbfa1d16dc90523b4ea4fd124c8e3aba6a872401
 ```
+
+This remains the exact blend-state oracle for `SpriteBlendMode.Additive`.
+
+### Retail DXT3 Firework Probe
+
+The retail DXT3 probe verifies the production compatibility path rather than only synthetic blend
+state:
+
+```text
+ani/weather.ani
+    ↓
+[YinFa1] Frame0
+    ↓
+data.wdf / data/firework/yinfa1/1.dds
+    ↓
+production ANI → DDS decoder
+    ↕ byte-exact comparison
+independent DXT3 reference decoder
+    ↓
+RGBA8 OpenGL texture
+    ↓
+full texture / natural size / SpriteColor.White
+    ↓
+SpriteBlendMode.Additive
+```
+
+Verified decoded RGBA SHA-256:
+
+```text
+883de947994f7866531817efc02f2aedd8dfeb0ac7489683d21ec9dea3f05624
+```
+
+On the verified Apple M4 RGB565 target:
+
+```text
+additive framebuffer:
+286c83f89306b178692db40f6fa26c3cc2220b7cfd727a69986efb38949f2cdb
+
+alpha framebuffer:
+cd6f0b1244ce58dfce7c2e705f17dc491b84f2e98d367edee5bce1cbc83765bc
+```
+
+These framebuffer hashes document the observed verified-driver result rather than defining a
+portable cross-driver baseline.
+
+The conformance requirement is:
+
+```text
+production decoded RGBA == independent DXT3 reference decode
+additive framebuffer != alpha framebuffer
+```
+
+The synthetic additive probe separately pins the exact `ONE / ONE` blend behavior.
 
 ### Rotation Probe
 
@@ -402,6 +535,15 @@ RGB565 / RGB555-compatible logical color
 D16 depth
 25 ms outer frame cadence
 
+ANI TGA frame dispatch and decoding for verified retail content
+ANI DXT3 DDS frame dispatch and decoding for verified retail content
+single-level DXT3 / BC2 pixel decoding
+explicit-alpha DXT3 semantics
+RGB565 endpoint expansion
+partial DXT3 block-edge clipping
+package-backed WDF DDS resolution
+normalized top-left RGBA Content-to-Rendering boundary
+
 top-left RGBA sprite textures
 natural-size drawing
 stretching
@@ -414,6 +556,8 @@ integer-degree rotation
 logical-target clipping
 
 real-driver framebuffer conformance
+independent retail DXT3 decode conformance
+verified retail DXT3 additive rendering
 ```
 
 Remaining:
@@ -425,7 +569,7 @@ unverified mode-1 SRCCOLOR/ONE consumer behavior
 native draw-parameter-2 consumer verification
 sprite batching
 higher-level texture caching
-DDS decoding
+additional DDS variants only when verified consumers require them
 additional required TGA variants
 map/UI/role/effect/animation integration
 ```
@@ -441,7 +585,10 @@ replace RECT*/sentinel APIs with explicit operations
 replace packed/mutable sprite color with per-draw SpriteColor
 replace native draw integers with verified rendering semantics
 replace mutable C3Sprite rotation history with explicit per-draw rotation
+normalize supported retail image formats to RGBA at the Content boundary
+do not expose DDS/DXT3/BC2 or compressed GPU representation without a proven requirement
 do not propagate D3DFORMAT values without a proven compatibility requirement
 do not implement unverified sprite-mode combinations speculatively
+do not implement additional image formats without verified consumer evidence
 do not emulate CPU-specific native math dispatch without a compatibility requirement
 ```
