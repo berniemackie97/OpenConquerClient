@@ -21,7 +21,7 @@ ScreenModeRecord=<value>
 
 from `ini/GameSetUp.ini`.
 
-OpenConquer preserves the logical size only:
+OpenConquer preserves the logical size:
 
 ```text
 0 or 1 → 800×600
@@ -36,15 +36,19 @@ Desktop window size and mode are modern host policy and do not change logical ga
 
 Retail probes:
 
-1. `D3DFMT_R5G6B5`
-2. `D3DFMT_X1R5G5B5`
+```text
+1. D3DFMT_R5G6B5
+2. D3DFMT_X1R5G5B5
+```
 
 OpenGL mirrors that preference:
 
-1. `RGB565`
-2. `RGB5`
+```text
+1. RGB565
+2. RGB5
+```
 
-The allocated target is accepted only when the driver reports the expected component precision:
+Accepted precision:
 
 ```text
 RGB565 → R5 G6 B5 A0
@@ -53,7 +57,7 @@ RGB5   → R5 G5 B5 A0
 
 Dithering is disabled because retail uses `D3DRS_DITHERENABLE = FALSE`.
 
-Retail also contains a later `D3DFMT_X8R8G8B8` fallback after Direct3D device-creation failure.
+Retail contains a later `D3DFMT_X8R8G8B8` fallback after Direct3D device-creation failure.
 OpenConquer does not treat generic OpenGL render-target failure as equivalent because the native
 trigger is different.
 
@@ -85,21 +89,18 @@ Rendering establishes deterministic clear state before clearing.
 Verified retail presentation:
 
 ```text
-BackBufferCount = 1
-SwapEffect = DISCARD
-Windowed = TRUE
-Depth = D16
-PresentationInterval = 0
+BackBufferCount       = 1
+SwapEffect            = DISCARD
+Windowed              = TRUE
+Depth                 = D16
+PresentationInterval  = 0
 ```
 
 Retail uses a windowed Direct3D device for all four screen modes. Modes 1 and 3 alter desktop/window
 state rather than using a fullscreen D3D swap chain.
 
-OpenConquer therefore:
-
-- keeps VSync disabled;
-- renders to the fixed logical target;
-- presents that target into the physical host framebuffer separately.
+OpenConquer keeps VSync disabled, renders to the fixed logical target, then presents that target
+into the physical host framebuffer separately.
 
 ### Frame Cadence
 
@@ -112,13 +113,15 @@ Retail gates the outer client frame pipeline at:
 
 OpenConquer preserves that cadence using monotonic time.
 
-Rules:
+Contract:
 
-- wait only for the remaining interval;
-- recheck elapsed time after waiting;
-- do not replay missed frames;
-- overruns establish the next cadence anchor;
-- gameplay, networking, animation, and other clocks remain separate.
+```text
+wait only for the remaining interval
+recheck elapsed time after waiting
+do not replay missed frames
+overruns establish the next cadence anchor
+gameplay/network/animation clocks remain independent
+```
 
 ## Multisampling
 
@@ -163,7 +166,7 @@ decoded RGBA:
 
 Current TGA support is intentionally limited to the verified format required by this path.
 
-### Default Sprite State
+### Default State
 
 Retail default sprite rendering uses:
 
@@ -209,14 +212,13 @@ bottom =  1 - 2 * (y + height) / targetHeight
 
 Texture coordinates remain top-left oriented.
 
-Destination geometry may extend outside the logical target and is clipped normally by the graphics
-pipeline.
+Destination geometry may extend outside the logical target and is clipped by the graphics pipeline.
 
 ### Source Regions and Stretching
 
 Retail supports selecting a source region independently from its destination size.
 
-OpenConquer exposes that behavior through a modern source-region type:
+OpenConquer represents that behavior with:
 
 ```text
 SpriteSourceRectangle
@@ -226,7 +228,7 @@ SpriteSourceRectangle
 └── Height
 ```
 
-Supported source region:
+Valid regions require:
 
 ```text
 X >= 0
@@ -237,7 +239,7 @@ X + Width <= texture width
 Y + Height <= texture height
 ```
 
-The public rendering operations are:
+Public operations:
 
 ```text
 whole texture → natural size
@@ -248,7 +250,7 @@ source region → explicit destination size
 This preserves observable retail behavior without carrying forward Win32 `RECT*`, null-pointer, or
 zero-dimension sentinel APIs.
 
-Source UVs are calculated from pixel coordinates:
+UV mapping:
 
 ```text
 u0 = X / textureWidth
@@ -257,14 +259,50 @@ u1 = (X + Width) / textureWidth
 v1 = (Y + Height) / textureHeight
 ```
 
-Destination width and height are independent from the selected source size and must be positive.
+Destination width and height are independent from source size and must be positive.
 
 No verified 5517 caller currently requires negative, reversed, empty, or out-of-texture source
 regions.
 
+### Color Modulation
+
+Retail sprite color is applied uniformly across the sprite vertices before texture blending.
+
+OpenConquer represents the color explicitly as RGBA byte channels:
+
+```text
+SpriteColor
+├── Red
+├── Green
+├── Blue
+└── Alpha
+```
+
+Neutral modulation is:
+
+```text
+SpriteColor.White = (255, 255, 255, 255)
+```
+
+The fragment operation is equivalent to:
+
+```text
+output RGBA = sampled texture RGBA × normalized sprite RGBA
+```
+
+The result then enters the existing source-alpha blend path.
+
+Existing colorless draw operations explicitly use `SpriteColor.White`, preserving their previous
+output. Explicit-color overloads exist for natural-size, stretched, and source-region draws.
+
+Rendering does not preserve native mutable sprite-color state or expose packed Direct3D color
+values. A legacy zero-value sentinel or retained-color behavior belongs at a compatibility consumer
+boundary if a verified caller requires it.
+
 ## Sprite Conformance
 
-Real-driver conformance uses a 32×32 opaque-black RGB565/RGB555 logical target.
+Real-driver conformance uses retail-compatible RGB565/RGB555 logical targets and reads the
+production framebuffer back byte-for-byte.
 
 ### Natural Size
 
@@ -284,15 +322,13 @@ RGB555:
 313ec6083e2eb72c7e3e63594859225c09bee573d155afa9e24d0399fd203ed7
 ```
 
-These were derived independently from the production decoder.
-
-Historical RGBA8 oracle:
+Historical RGBA8 evidence:
 
 ```text
 fe8e6998cad4c6399059d43ec465837f53a346878f8d69e200bc7005a348a459
 ```
 
-It is retained as evidence only; production renders into the 16-bit logical target.
+Production renders into the 16-bit logical target.
 
 ### Whole-Texture Stretch
 
@@ -300,6 +336,12 @@ It is retained as evidence only; production renders into the 16-bit logical targ
 source:      full 14×14 texture
 destination: 20×18
 position:    (2, 2)
+```
+
+Verified Apple M4 RGB565 hash:
+
+```text
+45098e61451897bda7b976fc8d55b749ac5d327c1739e9e5fcbc249848b37340
 ```
 
 ### Source-Region Stretch
@@ -310,36 +352,55 @@ destination: 20×16
 position:    (6, 8)
 ```
 
-The stretch cases use different non-integer X/Y scale ratios.
-
-Conformance independently derives nearest-neighbor source selection from each destination pixel
-center and compares the complete GPU readback byte-for-byte with the expected framebuffer.
-
-The crop/stretch fixture must also remain distinct from the whole-texture stretch fixture.
-
-Verified Apple M4 RGB565 observations:
+Verified Apple M4 RGB565 hash:
 
 ```text
-whole-texture stretch:
-45098e61451897bda7b976fc8d55b749ac5d327c1739e9e5fcbc249848b37340
-
-source-region stretch:
 f4d724a2e3703eec53fa10df55f64da31c59b706db5db41a00bd8592eb9cbbfd
 ```
 
-Verified driver:
+Stretch conformance independently derives nearest-neighbor source selection from destination pixel
+centers and compares the complete GPU readback with the expected framebuffer.
+
+### Color
+
+Explicit white modulation must produce the exact canonical natural-size framebuffer:
 
 ```text
-OpenGL:  4.1 Metal - 90.5
-GLSL:    4.10
-Vendor:  Apple
+RGB565:
+93939cf5e51ea6298b729836b80561627550505e6f0771588082c5a33142833c
+```
+
+The non-white probe uses:
+
+```text
+texture:  1×1 opaque white
+color:    RGBA (255, 128, 64, 128)
+target:   three pixels
+paths:    natural / stretch / source region
+```
+
+Verified Apple M4 RGB565 framebuffer hash:
+
+```text
+3fc3d1e606877135ff6296dd684e01d77756917cf05cbc7a756765f6e50eb1b7
+```
+
+This verifies RGB modulation, alpha modulation, source-alpha blending, all three explicit-color draw
+operations, and fixed-point RGB565 output through the production OpenGL path.
+
+### Verified Driver
+
+```text
+OpenGL:   4.1 Metal - 90.5
+GLSL:     4.10
+Vendor:   Apple
 Renderer: Apple M4
-Target:  RGB565
+Target:   RGB565
 ```
 
 ## Host Framebuffer
 
-The physical framebuffer is presentation-only.
+The physical framebuffer is presentation-only:
 
 ```text
 logical target
@@ -361,53 +422,60 @@ and swap.
 
 Current presentation requirements:
 
-- host framebuffer is single-sampled;
-- `GL_FRAMEBUFFER_SRGB` is disabled before the blit;
-- scissor testing cannot clip the presentation blit;
-- zero-sized host framebuffers are valid while minimized;
-- host resizing does not change logical coordinates or recreate the logical target.
+```text
+host framebuffer is single-sampled
+GL_FRAMEBUFFER_SRGB disabled before blit
+scissor cannot clip presentation
+zero-sized host framebuffer valid while minimized
+host resize does not change logical coordinates or recreate logical target
+```
 
 ## Current Scope
 
-Verified:
+Verified and implemented:
 
-- 800×600 and 1024×768 logical rendering;
-- RGB565 / RGB555-compatible color precision;
-- exact D16 depth;
-- fixed outer 25 ms frame cadence;
-- default sprite blending;
-- top-left RGBA textures;
-- whole-texture natural-size drawing;
-- whole-texture stretching;
-- source-region selection and stretching;
-- nearest sprite sampling;
-- logical-target clipping;
-- exact real-driver framebuffer conformance.
+```text
+800×600 and 1024×768 logical rendering
+RGB565 / RGB555-compatible color precision
+D16 depth
+25 ms outer frame cadence
+default sprite alpha blending
+top-left RGBA textures
+natural-size sprite drawing
+whole-texture stretching
+source-region selection and stretching
+nearest sprite sampling
+per-draw RGBA sprite modulation
+logical-target clipping
+real-driver framebuffer conformance
+```
 
 Not yet verified or implemented:
 
-- logical-target multisampling;
-- ANI runtime frame progression and timing;
-- sprite tint/color;
-- draw parameters 1 and 2;
-- sprite rotation;
-- sprite batching;
-- higher-level texture caching/lifetime policy;
-- DDS decoding;
-- broader TGA variants;
-- map, UI, role, effect, and animation-system integration.
+```text
+logical-target multisampling
+ANI runtime frame progression and timing
+draw parameters 1 and 2
+sprite rotation
+sprite batching
+higher-level texture caching/lifetime policy
+DDS decoding
+broader TGA variants
+map/UI/role/effect/animation-system integration
+```
 
 ## Intentional Modernization
 
 OpenConquer preserves compatibility-sensitive output and behavior, not legacy implementation
 machinery.
 
-Examples:
-
-- logical resolutions are preserved; retail desktop shell behavior is not;
-- D3D8 half-pixel correction is replaced by correct OpenGL pixel-edge mapping;
-- source-region behavior is preserved without exposing Win32 `RECT*`;
-- legacy sentinel arguments are replaced by explicit rendering operations.
+```text
+preserve logical resolutions
+replace D3D8 half-pixel workaround with correct OpenGL pixel-edge mapping
+preserve source-region behavior without Win32 RECT*
+replace sentinel draw arguments with explicit operations
+preserve sprite color behavior without packed DWORD or mutable renderer state
+```
 
 Modernization must not change logical coordinates, asset interpretation, framebuffer precision,
 blending, timing, protocol-visible behavior, or other verified game behavior.
