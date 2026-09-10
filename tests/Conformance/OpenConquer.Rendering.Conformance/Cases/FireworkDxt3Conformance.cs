@@ -29,12 +29,18 @@ internal static class FireworkDxt3Conformance
         using OpenGLTexture2D backgroundTexture = graphicsDevice.CreateTexture2D(width: 1, height: 1, whitePixel);
         using OpenGLTexture2D fireworkTexture = graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
 
-        byte[] additive = RenderFrame(renderer, backgroundTexture, fireworkTexture, SpriteBlendMode.Additive);
-        byte[] alpha = RenderFrame(renderer, backgroundTexture, fireworkTexture, SpriteBlendMode.Alpha);
+        byte[] background = RenderBackgroundFrame(renderer, backgroundTexture);
+        byte[] additive = RenderFireworkFrame(renderer, backgroundTexture, fireworkTexture, SpriteBlendMode.Additive);
+        byte[] alpha = RenderFireworkFrame(renderer, backgroundTexture, fireworkTexture, SpriteBlendMode.Alpha);
 
-        if (additive.AsSpan().SequenceEqual(alpha))
+        if (!HasDifferentRgb(background, additive))
         {
-            throw new InvalidDataException("Retail DXT3 firework additive rendering is not observably distinct from alpha blending.");
+            throw new InvalidDataException("Retail DXT3 firework additive rendering does not contribute visible RGB output.");
+        }
+
+        if (!HasDifferentRgb(additive, alpha))
+        {
+            throw new InvalidDataException("Retail DXT3 firework additive rendering is not observably distinct from alpha blending in RGB output.");
         }
 
         Console.WriteLine($"Retail DXT3 firework decoded RGBA SHA256: {ConformanceHash.Sha256(image.Pixels.Span)}");
@@ -42,7 +48,17 @@ internal static class FireworkDxt3Conformance
         Console.WriteLine($"Retail DXT3 firework alpha framebuffer SHA256: {ConformanceHash.Sha256(alpha)}");
     }
 
-    private static byte[] RenderFrame(OpenGLRenderer renderer, OpenGLTexture2D backgroundTexture, OpenGLTexture2D fireworkTexture, SpriteBlendMode blendMode)
+    private static byte[] RenderBackgroundFrame(OpenGLRenderer renderer, OpenGLTexture2D backgroundTexture)
+    {
+        renderer.BeginFrame();
+        renderer.DrawSprite(backgroundTexture, x: 0, y: 0, width: TargetWidth, height: TargetHeight, s_backgroundColor);
+        byte[] framebuffer = renderer.ReadFrameTopLeftRgba();
+        renderer.EndFrame();
+
+        return framebuffer;
+    }
+
+    private static byte[] RenderFireworkFrame(OpenGLRenderer renderer, OpenGLTexture2D backgroundTexture, OpenGLTexture2D fireworkTexture, SpriteBlendMode blendMode)
     {
         renderer.BeginFrame();
         renderer.DrawSprite(backgroundTexture, x: 0, y: 0, width: TargetWidth, height: TargetHeight, s_backgroundColor);
@@ -51,5 +67,23 @@ internal static class FireworkDxt3Conformance
         renderer.EndFrame();
 
         return framebuffer;
+    }
+
+    private static bool HasDifferentRgb(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
+    {
+        if (left.Length != right.Length || (left.Length & 3) != 0)
+        {
+            throw new ArgumentException("Framebuffer comparisons require equally sized RGBA buffers.");
+        }
+
+        for (int offset = 0; offset < left.Length; offset += 4)
+        {
+            if (left[offset] != right[offset] || left[offset + 1] != right[offset + 1] || left[offset + 2] != right[offset + 2])
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

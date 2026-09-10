@@ -69,15 +69,21 @@ Current conformance covers:
 - production OpenGL context and renderer;
 - retail-compatible RGB565/RGB555 logical color precision;
 - exact D16 depth allocation;
-- ANI lookup through `ani/Common.Ani`;
-- verified `data/pic/Syndicate.tga` identity and decoding;
-- default sprite blending and rasterization;
+- ANI lookup through `ani/Common.Ani` and `ani/weather.ani`;
+- verified `data/pic/Syndicate.tga` identity and TGA decoding;
+- verified package-backed `data/firework/yinfa1/1.dds` identity and DXT3 decoding;
+- byte-exact production DXT3 output against an independent reference decoder;
+- default alpha blending and explicit RGBA sprite modulation;
+- exact synthetic `ONE / ONE` additive-blend behavior;
+- verified retail DXT3 firework additive rendering with visible RGB contribution and output distinct
+  from alpha blending;
 - whole-texture natural-size drawing;
 - whole-texture stretching;
 - source-region stretching;
+- integer-degree sprite rotation;
 - exact framebuffer comparison on a real driver.
 
-Expected graphics contracts and fixture hashes are documented in
+Expected graphics contracts, fixture identities, and verified framebuffer hashes are documented in
 [`compatibility/native-graphics.md`](compatibility/native-graphics.md).
 
 ## Content
@@ -98,8 +104,9 @@ ini/info.ini
 ini/package.ini
 ```
 
-The Syndicate ANI/TGA assets used by rendering conformance are compatibility evidence and do not
-expand the packaged runtime closure by themselves.
+The Syndicate ANI/TGA and weather/firework ANI/DXT3 assets used by rendering conformance are
+compatibility evidence and do not expand the packaged runtime closure by themselves. Production
+format support and checked-in runtime asset dependencies remain separate concerns.
 
 Retail `Server.dat` is offline compatibility evidence and must not ship with the client.
 

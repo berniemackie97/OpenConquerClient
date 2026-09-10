@@ -203,7 +203,7 @@ Rendering owns:
 
 ### Content
 
-`OpenConquer.Content` owns runtime content access and required legacy formats.
+`OpenConquer.Content` owns runtime content access and evidence-backed legacy format boundaries.
 
 The current verified retail runtime closure is:
 
@@ -215,12 +215,18 @@ ini/info.ini
 ini/package.ini
 ```
 
-Historical formats are not kept in runtime assemblies without a production consumer.
+Production format support does not itself expand that runtime closure. A parser or decoder may live
+in `OpenConquer.Content` before its first executable game-runtime consumer when it is required to
+prove an already verified compatibility boundary through tests or conformance. Runtime content is
+added only when an implemented game-runtime consumer requires the corresponding asset dependency.
 
-Retail `Server.dat` is therefore offline evidence/tooling only. It must not appear in the production
-client publish and is not a runtime server catalog.
+Retail `Server.dat` remains outside that production boundary. It is offline evidence/tooling only,
+must not appear in the production client publish, and is not a runtime server catalog.
 
-See [`../compatibility/server-dat.md`](../compatibility/server-dat.md) for the compatibility record.
+See [`../content/retail-5517-content-plan.md`](../content/retail-5517-content-plan.md) for the
+runtime closure and ingestion policy, and
+[`../compatibility/server-dat.md`](../compatibility/server-dat.md) for the `Server.dat`
+compatibility record.
 
 ## Native-Parity Networking Direction
 

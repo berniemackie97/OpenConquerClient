@@ -29,10 +29,7 @@ public sealed class DdsImageLoaderTests
         using TemporaryContentDirectory temporaryDirectory = new();
 
         temporaryDirectory.WriteFile("ini/package.ini", "data.wdf\n");
-        temporaryDirectory.WriteFile(
-            "data.wdf",
-            WdfTestArchiveBuilder.CreateSingleEntry(ContentPath, CreateSinglePixelDxt3())
-        );
+        temporaryDirectory.WriteFile("data.wdf", WdfTestArchiveBuilder.CreateSingleEntry(ContentPath, CreateSinglePixelDxt3()));
 
         PackagedClientContentSource contentSource = PackagedClientContentSource.Open(temporaryDirectory.RootPath);
 
