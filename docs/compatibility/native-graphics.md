@@ -1,23 +1,24 @@
 # Native Graphics Compatibility
 
-Compatibility requirements for reconstructing Conquer Online 5517 graphics behavior. Detailed
-reverse-engineering evidence belongs in the native analysis notes.
+Current compatibility contract for reconstructing Conquer Online 5517 graphics behavior. Detailed
+native addresses, decompilation traces, caller inventories, and unresolved reverse-engineering
+evidence belong in the native analysis notes.
 
-## Logical Resolution
+## Logical Frame
 
-Retail `ini/GameSetUp.ini` maps screen modes to two logical render sizes:
+### Resolution
+
+Retail `ini/GameSetUp.ini` maps screen modes to:
 
 | Modes | Logical size |
 | ----- | -----------: |
 | 0, 1  |      800×600 |
 | 2, 3  |     1024×768 |
 
-Window size, fullscreen mode, and presentation scaling are modern host concerns and do not change
-logical game coordinates.
+Desktop window size, fullscreen state, and presentation scaling do not change logical game
+coordinates.
 
-## Logical Render Target
-
-### Color
+### Color Target
 
 Retail prefers:
 
@@ -26,7 +27,7 @@ D3DFMT_R5G6B5
 D3DFMT_X1R5G5B5
 ```
 
-OpenConquer uses:
+OpenConquer requires an equivalent alpha-less 16-bit RGB logical target:
 
 ```text
 RGB565 → R5 G6 B5
@@ -35,8 +36,8 @@ RGB5   → R5 G5 B5
 
 Dithering is disabled.
 
-Retail also contains an `X8R8G8B8` fallback tied to Direct3D device-creation failure. OpenConquer
-does not treat generic OpenGL failure as equivalent.
+Retail also contains an `X8R8G8B8` device-creation fallback. Generic OpenGL failure is not treated
+as equivalent evidence for selecting that path.
 
 ### Depth
 
@@ -49,9 +50,9 @@ OpenConquer requires:
 no stencil
 ```
 
-The dormant retail `D24S8` path is not part of the verified 5517 contract.
+The dormant retail `D24S8` path is outside the verified 5517 contract.
 
-### Frame Clear
+### Clear
 
 Each logical frame starts with:
 
@@ -62,7 +63,7 @@ depth = 1.0
 
 ## Presentation
 
-Verified retail presentation uses:
+Retail presentation uses:
 
 ```text
 BackBufferCount      = 1
@@ -71,10 +72,7 @@ Windowed             = TRUE
 PresentationInterval = 0
 ```
 
-Retail screen modes alter desktop/window state rather than switching the Direct3D device to a
-fullscreen swap chain.
-
-OpenConquer keeps logical rendering separate from physical presentation:
+OpenConquer keeps logical rendering independent from desktop presentation:
 
 ```text
 logical target
@@ -84,14 +82,7 @@ presentation transform
 desktop framebuffer
 ```
 
-### Frame Cadence
-
-Retail gates the outer client frame pipeline at approximately:
-
-```text
-25 ms
-40 FPS maximum
-```
+The outer retail client frame pipeline is gated at approximately 25 ms / 40 FPS.
 
 OpenConquer preserves:
 
@@ -103,16 +94,13 @@ overruns establish the next cadence anchor
 gameplay/network/animation clocks remain independent
 ```
 
-### Multisampling
-
-Retail can select 2×, 4×, or 8× multisampling depending on configuration and format support.
-
-Logical-target multisampling is not implemented yet. The desktop host therefore requests zero
-framebuffer samples.
+Retail can request 2×, 4×, or 8× multisampling depending on configuration and device support.
+Logical-target multisampling is not implemented yet; the current desktop host therefore requests a
+single-sampled framebuffer.
 
 ## Sprite Rendering
 
-### Verified Asset
+### Texture Contract
 
 Current framebuffer conformance uses:
 
@@ -142,30 +130,7 @@ decoded RGBA:
 1e112db318ecd33cba4b2980d0ed92e502e74bcd0e6a539747733cad718f8c37
 ```
 
-TGA support remains limited to formats required by verified runtime content.
-
-### Default State
-
-Retail default sprite drawing uses:
-
-```text
-blend       = enabled
-depth test  = disabled
-depth write = disabled
-culling     = disabled
-
-source blend      = SRCALPHA
-destination blend = INVSRCALPHA
-```
-
-OpenGL equivalent:
-
-```text
-BlendEquation = Add
-BlendFunc      = SrcAlpha, OneMinusSrcAlpha
-```
-
-Sprite textures use:
+GPU sprite textures use:
 
 ```text
 RGBA8
@@ -174,9 +139,59 @@ clamp-to-edge
 single mip level
 ```
 
+TGA support remains limited to formats required by verified content.
+
+### Default State
+
+Sprite drawing uses:
+
+```text
+blend       = enabled
+depth test  = disabled
+depth write = disabled
+culling     = disabled
+```
+
+Blend mode is explicit rendering intent:
+
+| `SpriteBlendMode` | Source       | Destination            | Verified basis                  |
+| ----------------- | ------------ | ---------------------- | ------------------------------- |
+| `Alpha`           | source alpha | one minus source alpha | retail default                  |
+| `Additive`        | one          | one                    | reachable retail mode-1 callers |
+
+Existing sprite APIs default to `Alpha`.
+
+`Additive` represents the resolved rendering behavior required by verified retail mode-1 firework
+paths. OpenConquer does not expose the native integer draw parameter or Direct3D format predicate.
+
+The verified mode-1 callers use:
+
+```text
+full texture
+natural dimensions
+white RGB modulation
+alpha = 255
+DXT3-preserving texture uploads
+ONE / ONE blending
+```
+
+The native mode-1 `SRCCOLOR / ONE` branch is proven at the primitive level but has no verified
+retail production consumer yet, so it is not implemented.
+
+Native draw parameter 2 is also proven at the primitive level:
+
+```text
+SRCALPHA / INVSRCALPHA
+RGB-only color writes
+fixed all-channel write-mask restoration afterward
+```
+
+No reachable retail mode-2 consumer, target, or observable framebuffer requirement has been
+verified. Mode 2 therefore remains deferred and is not part of the modern Rendering API.
+
 ### Coordinates
 
-Retail applies a Direct3D 8 `-0.5` screen-space correction. This rasterization workaround is not
+Retail applies a Direct3D 8 `-0.5` screen-space correction. That rasterization workaround is not
 carried into OpenGL.
 
 OpenConquer maps logical pixel edges directly:
@@ -186,22 +201,21 @@ xNdc =  2 * x / width - 1
 yNdc =  1 - 2 * y / height
 ```
 
-Coordinates are top-left oriented. Geometry outside the logical target is clipped by the graphics
-pipeline.
+Coordinates are top-left oriented. Out-of-bounds geometry is clipped by the graphics pipeline.
 
 ### Source Regions and Stretching
 
-`SpriteSourceRectangle` represents a non-empty texture region:
+`SpriteSourceRectangle` requires:
 
 ```text
 X >= 0
 Y >= 0
 Width > 0
 Height > 0
-region must fit within texture
+region contained by texture
 ```
 
-Supported operations:
+Supported geometry:
 
 ```text
 full texture → natural size
@@ -209,41 +223,37 @@ full texture → explicit destination size
 source region → explicit destination size
 ```
 
-Source rectangles affect UVs only. Destination dimensions independently establish sprite geometry.
+Source rectangles affect UVs only. Destination dimensions independently establish geometry.
 
-This replaces native `RECT*`, null-pointer, and zero-dimension sentinel APIs with explicit
+Native `RECT*`, null-pointer, and zero-dimension sentinel behavior is represented by explicit modern
 operations.
+
+The currently verified additive capability is exposed only for full-texture natural-size drawing.
+Additive combinations with source rectangles, stretching, or rotation are not exposed without
+verified consumer evidence.
 
 ### Color
 
-Retail sprite diffuse color uniformly modulates sampled texture RGBA.
-
-OpenConquer uses:
+`SpriteColor` explicitly represents per-draw RGBA modulation:
 
 ```text
 SpriteColor(Red, Green, Blue, Alpha)
-```
-
-Neutral modulation:
-
-```text
 SpriteColor.White = (255, 255, 255, 255)
 ```
 
-Rendering behavior:
+Fragment output is:
 
 ```text
-sampled texture × normalized sprite color
-    ↓
-source-alpha blending
+sampled texture × normalized SpriteColor
 ```
 
-Color is explicit per draw. Rendering does not preserve packed Direct3D colors or mutable native
-sprite-color state.
+The selected blend mode is then applied.
+
+Rendering does not retain packed Direct3D diffuse colors or mutable native sprite-color state.
 
 ### Rotation
 
-Verified retail rotation semantics:
+Verified retail rotation:
 
 ```text
 input              = signed integer degrees
@@ -252,7 +262,7 @@ positive direction = clockwise in screen coordinates
 pivot              = destination center
 ```
 
-Destination geometry is established before rotation:
+Ordering:
 
 ```text
 source region
@@ -261,90 +271,76 @@ destination size / stretch
     ↓
 rotate about destination center
     ↓
-logical-pixel → OpenGL coordinates
+logical pixel → OpenGL coordinates
 ```
 
-Rotation preserves:
+Rotation preserves UVs, color, and texture selection.
+
+Native `Sprite_Rotate` mutates current vertices, but all seven recovered rotating callers rebuild
+destination geometry first. OpenConquer therefore models rotation explicitly per draw.
+
+An original angle of `0` uses the unrotated path. Other values execute signed modulo reduction.
+
+CPU-specific native approximation/dispatch behavior is implementation machinery, not a portable
+compatibility requirement.
+
+## Real-Driver Conformance
+
+Conformance renders through the production OpenGL path and compares logical framebuffer bytes
+against independent expectations.
+
+Verified Apple M4 driver:
 
 ```text
-UVs
-color
-texture
+OpenGL:   4.1 Metal - 90.5
+GLSL:     4.10
+Vendor:   Apple
+Renderer: Apple M4
+Target:   RGB565
 ```
 
-Native `Sprite_Rotate` mutates existing vertices, but all seven recovered rotating callers rebuild
-destination geometry before invoking it. OpenConquer therefore uses explicit per-draw rotation
-rather than mutable sprite history.
+### Baselines
 
-An original angle of `0` uses the unrotated path. Other values use signed modulo reduction.
+| Case                         | SHA-256                                                            |
+| ---------------------------- | ------------------------------------------------------------------ |
+| Natural RGB565               | `93939cf5e51ea6298b729836b80561627550505e6f0771588082c5a33142833c` |
+| Natural RGB555               | `313ec6083e2eb72c7e3e63594859225c09bee573d155afa9e24d0399fd203ed7` |
+| Whole-texture stretch RGB565 | `45098e61451897bda7b976fc8d55b749ac5d327c1739e9e5fcbc249848b37340` |
+| Source-region stretch RGB565 | `f4d724a2e3703eec53fa10df55f64da31c59b706db5db41a00bd8592eb9cbbfd` |
+| RGBA modulation RGB565       | `3fc3d1e606877135ff6296dd684e01d77756917cf05cbc7a756765f6e50eb1b7` |
+| Additive blend RGB565        | `f7f9e13d8ace3958b3fee2a2cbfa1d16dc90523b4ea4fd124c8e3aba6a872401` |
+| Rotation RGB565              | `56f3bd55bec37797ec2e6b30f9db8daf8a8347417ee8a09fb86d59cb952e17f7` |
 
-CPU-specific x87/SSE/3DNow! approximation behavior is native implementation machinery rather than a
-portable rendering requirement.
+Explicit white modulation remains byte-identical to the natural RGB565 baseline.
 
-## Sprite Conformance
+### Additive Probe
 
-Real-driver conformance renders through the production OpenGL path and compares logical framebuffer
-output against independent expectations.
-
-### Natural Sprite
+The additive probe deliberately distinguishes `ONE / ONE` from both other plausible blend pairs:
 
 ```text
-source:      full 14×14 Syndicate frame
-destination: 14×14
-position:    (7, 9)
+destination = opaque blue
+source      = opaque-white texture × (255, 0, 0, 128)
+
+ONE / ONE
+→ (255, 0, 255)
+
+SRCALPHA / ONE
+→ reduced red + full blue
+
+SRCALPHA / INVSRCALPHA
+→ reduced red + reduced blue
 ```
 
-Hashes:
+Verified framebuffer:
 
 ```text
-RGB565:
-93939cf5e51ea6298b729836b80561627550505e6f0771588082c5a33142833c
+RGBA = (255, 0, 255, 255)
 
-RGB555:
-313ec6083e2eb72c7e3e63594859225c09bee573d155afa9e24d0399fd203ed7
+SHA-256:
+f7f9e13d8ace3958b3fee2a2cbfa1d16dc90523b4ea4fd124c8e3aba6a872401
 ```
 
-### Stretch
-
-```text
-source:      full 14×14
-destination: 20×18
-position:    (2, 2)
-
-RGB565:
-45098e61451897bda7b976fc8d55b749ac5d327c1739e9e5fcbc249848b37340
-```
-
-### Source Region + Stretch
-
-```text
-source:      (1, 1), 12×12
-destination: 20×16
-position:    (6, 8)
-
-RGB565:
-f4d724a2e3703eec53fa10df55f64da31c59b706db5db41a00bd8592eb9cbbfd
-```
-
-### Color
-
-Explicit white remains byte-identical to the natural sprite case.
-
-Non-white probe:
-
-```text
-texture = opaque white
-color   = (255, 128, 64, 128)
-
-RGB565:
-3fc3d1e606877135ff6296dd684e01d77756917cf05cbc7a756765f6e50eb1b7
-```
-
-This verifies RGB modulation, alpha modulation, blending, and explicit-color sprite operations.
-
-### Rotation
-
-Rotation probe:
+### Rotation Probe
 
 ```text
 texture:       blue | red | green | yellow
@@ -355,10 +351,7 @@ pivot:         destination center
 target:        8×6
 ```
 
-The large input makes signed `% 360` reduction observable rather than relying on trigonometric
-periodicity alone.
-
-Expected clockwise result:
+Expected clockwise output:
 
 ```text
 ........
@@ -369,39 +362,15 @@ Expected clockwise result:
 ........
 ```
 
-This verifies:
-
-```text
-signed angle reduction
-clockwise direction
-destination-center pivot
-stretch-before-rotation ordering
-source-region UV preservation
-production rotating draw path
-```
-
-Verified Apple M4 RGB565 hash:
-
-```text
-56f3bd55bec37797ec2e6b30f9db8daf8a8347417ee8a09fb86d59cb952e17f7
-```
-
-### Verified Driver
-
-```text
-OpenGL:   4.1 Metal - 90.5
-GLSL:     4.10
-Vendor:   Apple
-Renderer: Apple M4
-Target:   RGB565
-```
+This verifies signed reduction, clockwise orientation, center pivot, stretch-before-rotation
+ordering, source UV preservation, and the production rotation path.
 
 ## Host Framebuffer
 
 The desktop framebuffer is presentation-only:
 
 ```text
-logical RGB565/RGB5 + D16 target
+logical RGB565/RGB5 + D16
     ↓
 OpenGL framebuffer blit
     ↓
@@ -410,7 +379,7 @@ desktop framebuffer
 platform swap
 ```
 
-Current requirements:
+Requirements:
 
 ```text
 single-sampled host framebuffer
@@ -433,13 +402,14 @@ RGB565 / RGB555-compatible logical color
 D16 depth
 25 ms outer frame cadence
 
-sprite alpha blending
-top-left RGBA textures
+top-left RGBA sprite textures
 natural-size drawing
 stretching
 source regions
 nearest sampling
 RGBA modulation
+alpha blending
+additive blending for the verified natural-size consumer contract
 integer-degree rotation
 logical-target clipping
 
@@ -451,7 +421,8 @@ Remaining:
 ```text
 logical-target multisampling
 ANI runtime progression/timing
-draw parameters 1 and 2
+unverified mode-1 SRCCOLOR/ONE consumer behavior
+native draw-parameter-2 consumer verification
 sprite batching
 higher-level texture caching
 DDS decoding
@@ -461,13 +432,16 @@ map/UI/role/effect/animation integration
 
 ## Modernization Boundary
 
-Preserve observable 5517 behavior, not obsolete implementation machinery.
+Preserve observable 5517 behavior, not obsolete implementation machinery:
 
 ```text
 preserve logical coordinates and framebuffer precision
 replace D3D8 half-pixel correction with correct OpenGL mapping
 replace RECT*/sentinel APIs with explicit operations
 replace packed/mutable sprite color with per-draw SpriteColor
-replace mutable C3Sprite rotation history with verified per-draw rotation
+replace native draw integers with verified rendering semantics
+replace mutable C3Sprite rotation history with explicit per-draw rotation
+do not propagate D3DFORMAT values without a proven compatibility requirement
+do not implement unverified sprite-mode combinations speculatively
 do not emulate CPU-specific native math dispatch without a compatibility requirement
 ```

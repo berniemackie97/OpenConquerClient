@@ -52,11 +52,16 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 
     public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, int x, int y, SpriteColor color)
     {
+        Draw(texture, targetWidth, targetHeight, x, y, color, SpriteBlendMode.Alpha);
+    }
+
+    public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, int x, int y, SpriteColor color, SpriteBlendMode blendMode)
+    {
         ValidateCommonDrawArguments(texture, targetWidth, targetHeight);
 
         SpriteSourceRectangle sourceRectangle = new(x: 0, y: 0, texture.Width, texture.Height);
 
-        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, texture.Width, texture.Height, color, rotationDegrees: 0);
+        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, texture.Width, texture.Height, color, blendMode, rotationDegrees: 0);
     }
 
     public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height)
@@ -76,7 +81,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height, color, rotationDegrees);
+        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height, color, SpriteBlendMode.Alpha, rotationDegrees);
     }
 
     public void Dispose()
@@ -96,8 +101,10 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         }
     }
 
-    private void DrawCore(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color, int rotationDegrees)
+    private void DrawCore(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color, SpriteBlendMode blendMode, int rotationDegrees)
     {
+        (BlendingFactor sourceBlend, BlendingFactor destinationBlend) = GetBlendFactors(blendMode);
+
         long rightPixel = (long)x + width;
         long bottomPixel = (long)y + height;
 
@@ -129,7 +136,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         _gl.ColorMask(red: true, green: true, blue: true, alpha: true);
         _gl.Enable(EnableCap.Blend);
         _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
-        _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+        _gl.BlendFunc(sourceBlend, destinationBlend);
 
         program.Use();
 
@@ -174,6 +181,16 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         {
             throw new ArgumentOutOfRangeException(nameof(sourceRectangle), sourceRectangle, $"The sprite source rectangle must fit within the {texture.Width}x{texture.Height} texture.");
         }
+    }
+
+    private static (BlendingFactor Source, BlendingFactor Destination) GetBlendFactors(SpriteBlendMode blendMode)
+    {
+        return blendMode switch
+        {
+            SpriteBlendMode.Alpha => (BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha),
+            SpriteBlendMode.Additive => (BlendingFactor.One, BlendingFactor.One),
+            _ => throw new ArgumentOutOfRangeException(nameof(blendMode), blendMode, "Unknown sprite blend mode."),
+        };
     }
 
     private static void WriteRotatedNormalizedPositions(Span<float> positions, int targetWidth, int targetHeight, int x, int y, int width, int height, int rotationDegrees)
