@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 
-namespace OpenConquer.Rendering.Conformance;
+namespace OpenConquer.Rendering.Conformance.Reference;
 
 /// <summary>
 /// Independently decodes a verified single-level DXT3 DDS for rendering conformance.
@@ -26,8 +26,8 @@ internal static class Dxt3ReferenceDecoder
 
         uint magic = BinaryPrimitives.ReadUInt32LittleEndian(dds);
         uint headerSize = BinaryPrimitives.ReadUInt32LittleEndian(dds[4..]);
-        int height = checked((int)BinaryPrimitives.ReadUInt32LittleEndian(dds[12..]));
-        int width = checked((int)BinaryPrimitives.ReadUInt32LittleEndian(dds[16..]));
+        uint height = BinaryPrimitives.ReadUInt32LittleEndian(dds[12..]);
+        uint width = BinaryPrimitives.ReadUInt32LittleEndian(dds[16..]);
         uint linearSize = BinaryPrimitives.ReadUInt32LittleEndian(dds[20..]);
         uint pixelFormatSize = BinaryPrimitives.ReadUInt32LittleEndian(dds[76..]);
         uint pixelFormatFlags = BinaryPrimitives.ReadUInt32LittleEndian(dds[80..]);
@@ -38,7 +38,7 @@ internal static class Dxt3ReferenceDecoder
             throw new InvalidDataException("The reference DDS does not contain a standard DDS/DXT header.");
         }
 
-        if (width != expectedWidth || height != expectedHeight)
+        if (width != (uint)expectedWidth || height != (uint)expectedHeight)
         {
             throw new InvalidDataException($"The reference DDS is {width}x{height}; expected {expectedWidth}x{expectedHeight}.");
         }
@@ -48,8 +48,8 @@ internal static class Dxt3ReferenceDecoder
             throw new InvalidDataException($"The reference DDS pixel format is flags 0x{pixelFormatFlags:X8}, FourCC 0x{fourCc:X8}; expected DXT3.");
         }
 
-        int blockCountX = (width + 3) / 4;
-        int blockCountY = (height + 3) / 4;
+        int blockCountX = (expectedWidth + 3) / 4;
+        int blockCountY = (expectedHeight + 3) / 4;
         int encodedLength = checked(blockCountX * blockCountY * 16);
 
         if (linearSize != (uint)encodedLength || dds.Length != checked(HeaderLength + encodedLength))
@@ -57,14 +57,14 @@ internal static class Dxt3ReferenceDecoder
             throw new InvalidDataException("The reference DDS does not contain exactly one complete DXT3 level.");
         }
 
-        byte[] rgba = new byte[checked(width * height * 4)];
+        byte[] rgba = new byte[checked(expectedWidth * expectedHeight * 4)];
         int sourceOffset = HeaderLength;
 
         for (int blockY = 0; blockY < blockCountY; blockY++)
         {
             for (int blockX = 0; blockX < blockCountX; blockX++)
             {
-                DecodeBlock(dds.Slice(sourceOffset, 16), blockX, blockY, width, height, rgba);
+                DecodeBlock(dds.Slice(sourceOffset, 16), blockX, blockY, expectedWidth, expectedHeight, rgba);
                 sourceOffset += 16;
             }
         }
