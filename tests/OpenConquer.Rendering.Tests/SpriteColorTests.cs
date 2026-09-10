@@ -1,4 +1,3 @@
-
 namespace OpenConquer.Rendering.Tests;
 
 public sealed class SpriteColorTests
