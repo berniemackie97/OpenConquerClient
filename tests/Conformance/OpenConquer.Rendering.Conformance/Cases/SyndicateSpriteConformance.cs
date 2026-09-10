@@ -36,9 +36,7 @@ internal static class SyndicateSpriteConformance
         {
             ExpectedRgb565FramebufferSha256 => "RGB565",
             ExpectedRgb555FramebufferSha256 => "RGB555",
-            _ => throw new InvalidDataException(
-                $"Syndicate framebuffer SHA256 {framebufferHash} does not match a verified retail-compatible 16-bit color layout. " +
-                $"Expected RGB565 {ExpectedRgb565FramebufferSha256} or RGB555 {ExpectedRgb555FramebufferSha256}."),
+            _ => throw new InvalidDataException($"Syndicate framebuffer SHA256 {framebufferHash} does not match a verified retail-compatible 16-bit color layout. Expected RGB565 {ExpectedRgb565FramebufferSha256} or RGB555 {ExpectedRgb555FramebufferSha256}."),
         };
 
         Console.WriteLine($"Syndicate ANI frame: {image.Width}x{image.Height} at ({X}, {Y})");
