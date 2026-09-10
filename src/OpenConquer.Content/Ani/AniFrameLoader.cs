@@ -32,11 +32,16 @@ public static class AniFrameLoader
 
         string frameContentPath = section.FramePaths[frameIndex];
 
-        if (!frameContentPath.EndsWith(".tga", StringComparison.OrdinalIgnoreCase))
+        if (frameContentPath.EndsWith(".tga", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidDataException($"ANI section [{section.Name}] frame {frameIndex} references unsupported image '{frameContentPath}'.");
+            return TargaImageLoader.Load(contentSource, frameContentPath, mode);
         }
 
-        return TargaImageLoader.Load(contentSource, frameContentPath, mode);
+        if (frameContentPath.EndsWith(".dds", StringComparison.OrdinalIgnoreCase))
+        {
+            return DdsImageLoader.Load(contentSource, frameContentPath, mode);
+        }
+
+        throw new InvalidDataException($"ANI section [{section.Name}] frame {frameIndex} references unsupported image '{frameContentPath}'.");
     }
 }
