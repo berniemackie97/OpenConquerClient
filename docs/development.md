@@ -3,7 +3,8 @@
 OpenConquer Client targets the SDK pinned by [`global.json`](../global.json).
 
 Architecture rules: [`architecture/architecture.md`](architecture/architecture.md) Native graphics
-contracts: [`compatibility/native-graphics.md`](compatibility/native-graphics.md) Launcher/install
+contracts: [`compatibility/native-graphics.md`](compatibility/native-graphics.md) Native text
+contracts: [`compatibility/native-text.md`](compatibility/native-text.md) Launcher/install
 contracts:
 [`architecture/launcher-managed-installation.md`](architecture/launcher-managed-installation.md)
 
@@ -85,6 +86,11 @@ Current conformance covers:
 
 Expected graphics contracts, fixture identities, and verified framebuffer hashes are documented in
 [`compatibility/native-graphics.md`](compatibility/native-graphics.md).
+
+Native text input contracts are documented in
+[`compatibility/native-text.md`](compatibility/native-text.md) and are currently verified through
+driver-independent Content and Rendering unit tests. Pixel-level text conformance remains deferred
+until the rasterizer and text-rendering path are implemented.
 
 ## Content
 
@@ -231,7 +237,7 @@ Ownership:
 - **Launcher** — launcher lifecycle, settings, releases, and product boundaries.
 - **Platform** — desktop host mechanics.
 - **Product Tool** — local product composition and activation.
-- **Rendering** — graphics behavior not requiring a native driver.
+- **Rendering** — graphics and rendering-facing text behavior not requiring a native driver.
 - **Rendering Conformance** — real-driver rendering and exact framebuffer behavior.
 
 ## CI
