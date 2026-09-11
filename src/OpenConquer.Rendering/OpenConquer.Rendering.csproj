@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FreeTypeSharp" />
     <PackageReference Include="Silk.NET.OpenGL" />
   </ItemGroup>
 
