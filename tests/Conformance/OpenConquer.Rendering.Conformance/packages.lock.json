@@ -58,8 +58,15 @@
       "openconquer.rendering": {
         "type": "Project",
         "dependencies": {
+          "FreeTypeSharp": "[3.1.0, )",
           "Silk.NET.OpenGL": "[2.23.0, )"
         }
+      },
+      "FreeTypeSharp": {
+        "type": "CentralTransitive",
+        "requested": "[3.1.0, )",
+        "resolved": "3.1.0",
+        "contentHash": "w0pPUztBFVokuvML8G55SM1HeycyzQQqC/NV3rWdyGOPi/rtVm1vE6UAQ7v4VYzVWoP59KM8O56qH89zJY5T+g=="
       },
       "Silk.NET.Core": {
         "type": "CentralTransitive",
