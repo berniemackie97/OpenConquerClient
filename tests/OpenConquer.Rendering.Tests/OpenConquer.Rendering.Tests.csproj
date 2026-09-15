@@ -4,4 +4,13 @@
     <ProjectReference Include="../../src/OpenConquer.Rendering/OpenConquer.Rendering.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Fixtures/Fonts/Knewave-Regular.ttf"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Never" />
+    <None Include="Fixtures/Fonts/OFL.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
 </Project>

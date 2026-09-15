@@ -1,8 +1,10 @@
 # Native Text Compatibility
 
-Current compatibility contract for reconstructing Conquer Online 5517 text input behavior. Detailed
-native addresses, decompilation traces, caller inventories, and unresolved reverse-engineering
-evidence belong in the native analysis notes.
+Compatibility contract for Conquer Online 5517 text configuration, encoded-text semantics, font
+resolution, and glyph rasterization.
+
+Detailed native addresses, decompilation traces, caller inventories, and unresolved
+reverse-engineering evidence belong in the native analysis notes.
 
 ## Startup Configuration
 
@@ -10,47 +12,65 @@ evidence belong in the native analysis notes.
 
 Retail `ini/Font.ini` configures the initial game-font request.
 
-The verified format is:
+Format:
 
 ```text
 <face token><space><nominal pixel height>
 ```
 
-Parsing uses the final ASCII space as the delimiter, allowing face names that contain spaces.
+Parsing uses the final ASCII space, allowing spaces inside face names.
 
-The clean 5517 client contains:
+Clean 5517 content:
 
 ```text
 Arial 12
 ```
 
-The compatibility contract is:
+Contract:
 
 ```text
 face token            = bytes before final ASCII space
 nominal pixel height  = integer suffix
 invalid/zero height   = 12
+negative nonzero      = preserved
 ```
 
 The face token is preserved exactly at the Content boundary.
 
-Native `$*.tt?` tokens are expanded beneath the Windows Fonts directory during font resolution. That
-Windows-specific behavior is not part of configuration parsing and remains deferred to the
-font-resolution/rasterizer boundary.
+`Font.ini` is a loose-file dependency; WDF packages do not satisfy it.
 
-`Font.ini` is a loose-file dependency in the native client. OpenConquer therefore does not resolve
-it through WDF packages.
+OpenConquer limits the file to 256 bytes and rejects larger inputs instead of reproducing native
+fixed-buffer truncation.
 
-OpenConquer bounds the file to 256 bytes and rejects larger inputs rather than reproducing native
-fixed-buffer truncation behavior. This is an intentional defensive modernization outside the
-verified retail content path.
+The file is not added to the managed runtime content closure until an implemented runtime consumer
+requires it.
 
-Production parser support does not add `Font.ini` to the managed runtime content closure until an
-implemented runtime text consumer requires it.
+### Native Font Tokens
+
+The native text system accepts family names and file-oriented tokens:
+
+```text
+$*.tt?
+```
+
+The leading `$` selects file-token semantics.
+
+Examples:
+
+```text
+$simsun.ttc
+$simsun.ttf
+```
+
+The `?` represents the third character of the three-character extension; OpenConquer does not treat
+it as a wildcard. Accepted extensions have three characters whose first two characters are `tt`.
+
+File tokens resolve only against fonts registered with the host font system. They do not trigger
+recursive filesystem searches or arbitrary path access.
 
 ### Normal UI Font Height
 
-Retail `ini/info.ini` contains the normal UI font height:
+Retail `ini/info.ini` contains:
 
 ```ini
 [FontSize]
@@ -58,23 +78,20 @@ Size=12
 Width=6
 ```
 
-The currently verified text consumers require `Size`.
+Current consumers require only `Size`.
 
-The compatibility contract is:
+Contract:
 
 ```text
-[FontSize] Size present and integer → configured value
-missing file                       → 14
-missing section/key                → 14
-invalid integer                    → 14
+Size present and integer → configured value
+missing file             → 14
+missing section/key      → 14
+invalid integer          → 14
 ```
 
-The clean 5517 client resolves the normal UI font height to `12`.
+Clean 5517 resolves this value to `12`.
 
-`Width` is not currently exposed because no implemented or verified consumer requires it.
-
-The normal UI font height is distinct from the nominal height in `Font.ini`; their fallback values
-must not be collapsed:
+The two height defaults are intentionally distinct:
 
 ```text
 Font.ini nominal-height fallback = 12
@@ -87,32 +104,26 @@ info.ini normal-height fallback  = 14
 
 Retail optionally reads `ini/CodePage.ini`.
 
-Its first line supplies the native client code-page value. Later lines participate in native
-font-size-level configuration and are outside the current text-input slice.
+The first line supplies the configured native code-page value. Later font-size-level data is outside
+this slice.
 
-The native code-page global initializes to:
+The native global begins at:
 
 ```text
 0
 ```
 
-When `CodePage.ini` is absent, the native client leaves this value unchanged. On Windows, `0` means
-`CP_ACP`, so the effective encoding depends on the host ANSI code page.
+On Windows, code page `0` means `CP_ACP`.
 
-The clean 5517 asset set contains no `CodePage.ini`.
-
-Independent decoding of the shipped retail data corpus establishes CP936 as the authored encoding.
-OpenConquer therefore separates the native configured value from its deterministic cross-platform
-resolution:
+Clean 5517 content contains no `CodePage.ini`. Independent decoding of the shipped data establishes
+CP936 as the authored encoding, so OpenConquer resolves the clean configuration deterministically:
 
 ```text
-CodePage.ini absent
-
 ConfiguredCodePage = 0
 EffectiveCodePage  = 936
 ```
 
-An explicitly configured nonzero code page is preserved:
+An explicit nonzero code page is preserved:
 
 ```text
 CodePage.ini: 950
@@ -121,7 +132,7 @@ ConfiguredCodePage = 950
 EffectiveCodePage  = 950
 ```
 
-The first-line parser preserves native-style integer-prefix behavior:
+First-line parsing preserves native-style integer-prefix behavior:
 
 ```text
 leading ASCII whitespace allowed
@@ -130,37 +141,33 @@ consume decimal digits until first non-digit
 no digits → 0
 ```
 
-OpenConquer rejects values outside the signed 32-bit range rather than reproducing undefined native
-`atoi` overflow behavior.
+OpenConquer rejects signed 32-bit overflow rather than reproducing native `atoi` overflow behavior.
 
-`CodePage.ini` is optional and loose-only. Packaged content does not satisfy it.
-
-OpenConquer additionally applies a 256-byte safety ceiling to the first line.
+`CodePage.ini` is optional, loose-only, and limited to a 256-byte first line.
 
 ## Encoded Text Model
 
-The native text pipeline operates on encoded bytes rather than Unicode code points.
-
-OpenConquer preserves that boundary before rasterization:
+The native text path establishes encoded-byte identity before Unicode conversion:
 
 ```text
 encoded bytes
     ↓
 code-page-aware byte walk
     ↓
-glyph / newline / data-icon semantic units
+glyph / newline / data-icon unit
     ↓
-future measurement and rasterization
+native glyph-cache key
+    ↓
+code-page decoding
+    ↓
+Unicode scalar
+    ↓
+FreeType glyph lookup
 ```
-
-No UTF-16 `char`, Unicode `Rune`, font rasterizer, glyph atlas, or OpenGL state participates in this
-stage.
 
 ### String Termination
 
-Text follows native C-string semantics.
-
-The first NUL byte terminates the input:
+The first NUL terminates the logical input:
 
 ```text
 41 00 42
@@ -169,11 +176,11 @@ glyph 0x0041
 end
 ```
 
-Bytes after the first NUL are not inspected.
+Bytes after the first NUL are ignored.
 
 ### Single-Byte Glyphs
 
-A byte that is not consumed as a DBCS lead byte maps directly to the native glyph-cache key:
+A byte not consumed as a DBCS lead byte maps directly to its native glyph key:
 
 ```text
 41
@@ -185,8 +192,6 @@ A byte that is not consumed as a DBCS lead byte maps directly to the native glyp
 
 Lead-byte classification follows the Windows DBCS code-page contract.
 
-Supported lead-byte domains are:
-
 | Code page | Lead-byte ranges          |
 | --------: | ------------------------- |
 |       932 | `81-9F`, `E0-FC`          |
@@ -195,15 +200,15 @@ Supported lead-byte domains are:
 |       950 | `81-FE`                   |
 |      1361 | `84-D3`, `D8-DE`, `E0-F9` |
 
-Other code pages produce no DBCS lead bytes at this boundary.
+Other code pages have no DBCS lead-byte ranges at this boundary.
 
-A lead byte with another byte available consumes the pair. The native glyph-cache key is:
+A lead byte followed by another logical byte consumes both:
 
 ```text
-(lead << 8) | trail
+key = (lead << 8) | trail
 ```
 
-For the verified CP936 character `白`:
+Verified CP936 example:
 
 ```text
 B0 D7
@@ -211,10 +216,9 @@ B0 D7
 0xB0D7
 ```
 
-Lead-byte classification does not validate the second byte independently. This preserves the native
-byte-walking contract.
+The trail byte is not independently validated during byte walking.
 
-A lead byte at the end of the terminated input remains a single-byte glyph:
+A dangling lead byte remains a single-byte glyph:
 
 ```text
 B0
@@ -222,8 +226,7 @@ B0
 0x00B0
 ```
 
-A NUL immediately following a lead byte also makes the lead byte dangling because the NUL is outside
-the logical text:
+A following NUL also leaves the lead byte dangling:
 
 ```text
 B0 00 D7
@@ -232,9 +235,41 @@ B0 00 D7
 end
 ```
 
+### Glyph-Key Decoding
+
+`EncodedGlyphDecoder` converts one established native glyph key into exactly one Unicode scalar.
+
+Single-byte key:
+
+```text
+0x0041
+↓
+41
+```
+
+Double-byte key:
+
+```text
+0xB0D7
+↓
+B0 D7
+↓
+CP936
+↓
+U+767D 白
+```
+
+Decoding fails when:
+
+- the effective code page is invalid, unavailable, or unsupported;
+- the encoded bytes are malformed;
+- decoding does not produce exactly one Unicode scalar.
+
+Malformed native glyph keys are not repaired or reinterpreted.
+
 ### Newline
 
-ASCII line feed is represented separately from glyph data:
+ASCII line feed is a distinct semantic unit:
 
 ```text
 0A
@@ -242,23 +277,17 @@ ASCII line feed is represented separately from glyph data:
 newline
 ```
 
-Layout consequences such as resetting X and applying the native line advance belong to the later
-measurement/layout slice.
+Layout effects belong to GFX-TEXT-003.
 
 ## Data Icons
 
-The native measurement path optionally recognizes inline data-icon escapes.
-
-Recognition is enabled only for a caller that supplies data-icon behavior. Ordinary text traversal
-does not interpret the sequence specially.
-
-A valid token is exactly:
+The native measurement path can optionally recognize:
 
 ```text
 #NN
 ```
 
-where both `N` bytes are ASCII decimal digits.
+Both `N` bytes must be ASCII decimal digits.
 
 Examples:
 
@@ -269,11 +298,9 @@ Examples:
 #99 → icon 99
 ```
 
-Recognition consumes exactly three bytes.
+A valid token consumes exactly three bytes.
 
-The token remains valid when its second digit is the final byte of the string.
-
-Malformed or truncated sequences are ordinary glyph bytes:
+Malformed or truncated forms remain ordinary glyph bytes:
 
 ```text
 #
@@ -293,12 +320,351 @@ When data-icon recognition is disabled:
 '7'
 ```
 
-The later measurement layer owns icon lookup, caller-supplied width overrides, and the native
-16-pixel fallback when lookup fails or reports zero width.
+Icon lookup, width overrides, and the native 16-pixel fallback belong to the later measurement
+layer.
 
-## Current Managed Boundary
+## Host Font Discovery
 
-`OpenConquer.Content` owns retail configuration parsing:
+`OpenConquer.Rendering` discovers fonts through each operating system's registered font APIs.
+
+```text
+Windows → GDI + DirectWrite
+macOS   → CoreText + CoreFoundation
+Linux   → fontconfig
+```
+
+A discovered font reference contains:
+
+```text
+physical file path
+optional face index
+```
+
+A null face index means the host identified a file but not one specific face.
+
+No adapter recursively scans guessed font directories.
+
+### Windows
+
+Windows enumerates the DirectWrite system font collection and resolves local physical font files and
+face indices.
+
+The default GUI candidate begins with:
+
+```text
+GetStockObject(DEFAULT_GUI_FONT)
+```
+
+Its `LOGFONTW` is translated through DirectWrite to a physical font resource.
+
+If that resource cannot be resolved concretely, the default GUI reference may be absent.
+
+### macOS
+
+macOS enumerates registered font URLs through CoreText.
+
+The default GUI candidate begins with the CoreText system UI font and resolves its file through:
+
+```text
+kCTFontURLAttribute
+```
+
+This path does not currently provide a required face index, so the reference may use a null face
+index.
+
+### Linux
+
+Linux uses an isolated fontconfig configuration and the system font set.
+
+The default GUI candidate is matched from:
+
+```text
+sans-serif
+```
+
+`FC_FILE` and `FC_INDEX` identify the concrete resource.
+
+Fontconfig sysroot information is honored when constructing physical paths.
+
+## Host Font Catalog
+
+`HostFontCatalog` converts host discovery into deterministic resolver data.
+
+Font paths are canonicalized before identity comparison.
+
+Catalog path identity uses an explicit platform policy:
+
+```text
+Windows → case-insensitive
+macOS   → ordinal
+Linux   → ordinal
+```
+
+Catalog ordering is deterministic and independent of host enumeration order.
+
+Duplicate references to the same physical file are merged.
+
+If any registration for a file has an unknown face index, all inspectable faces in that file are
+eligible. Otherwise only explicitly registered face indices are eligible.
+
+The default GUI resource is included even when absent from the ordinary host enumeration.
+
+FreeType inspection supplies family and style metadata.
+
+Invalid, inaccessible, empty, or otherwise uninspectable registered files remain known candidate
+files without producing family entries.
+
+For a default GUI reference with an explicit face index, the concrete resource remains a valid
+candidate even when metadata inspection fails.
+
+For a default GUI reference without a face index:
+
+```text
+regular face preferred
+otherwise first deterministic inspectable face
+no inspectable face → no resolved default GUI font
+```
+
+## Font Resolution
+
+`SystemFontResolver` handles family and file-token requests separately.
+
+### Family Requests
+
+Family lookup is case-insensitive.
+
+When multiple faces share a family:
+
+```text
+regular face preferred
+otherwise deterministic first catalog entry
+```
+
+The selected face index is preserved.
+
+### File Requests
+
+A leading `$` selects registered-file resolution:
+
+```text
+$simsun.ttc
+```
+
+Matching uses the registered physical filename and is case-insensitive.
+
+Directory separators are rejected so file tokens cannot become arbitrary filesystem paths.
+
+The current verified file-token contract does not carry a collection face index:
+
+```text
+ResolvedFont(filePath, faceIndex: 0)
+```
+
+### Default GUI Font
+
+Default GUI resolution uses the concrete host resource discovered by the platform adapter.
+
+It is not converted back into a family name for another resolution pass.
+
+## Native Font Creation Fallback
+
+Resolution and face creation are separate stages.
+
+Creation attempts occur in this exact order:
+
+```text
+1. requested face/token
+2. host default GUI font
+3. $simsun.ttc
+4. $simsun.ttf
+5. Courier New
+```
+
+Rules:
+
+```text
+null requested token  → skip requested stage
+empty requested token → skip requested stage
+whitespace token      → attempt normally
+unresolved candidate  → continue
+recoverable creation failure → continue
+successful creation   → stop
+```
+
+Recoverable creation failures are limited to:
+
+```text
+FontFaceCreationException
+InvalidDataException
+IOException
+UnauthorizedAccessException
+```
+
+Unexpected ABI, lifetime, arithmetic, resource-exhaustion, or programming failures propagate.
+
+The fallback chain is not deduplicated. Two stages resolving to the same physical face remain two
+policy attempts.
+
+If no usable candidate exists, creation fails explicitly.
+
+This policy is only for font creation. Missing-glyph fallback after face creation belongs to
+GFX-TEXT-003.
+
+## FreeType Boundary
+
+`OpenConquer.Rendering` owns a narrow FreeType native seam.
+
+The managed ABI declarations model the supported FreeType 2.x ABI and do not escape the
+interop/rasterization boundary.
+
+Runtime requirement:
+
+```text
+FreeType 2.x >= 2.14.3
+```
+
+The packaged native dependency currently provides FreeType 2.14.3.
+
+When `FreeTypeLibrary` initializes, it queries the loaded version and rejects:
+
+```text
+major != 2
+version < 2.14.3
+```
+
+### ABI Portability
+
+Native C `long` width differs across supported 64-bit platforms:
+
+```text
+Unix 64-bit C long     = 64-bit
+Windows 64-bit C long  = 32-bit
+```
+
+The FreeType seam therefore uses explicit `CLong` and `CULong` representations.
+
+ABI layout tests verify the native structures consumed by the rasterizer on supported CI platforms.
+
+### Lifetime
+
+`FreeTypeLibrary` owns one initialized native library.
+
+`FreeTypeFace` owns:
+
+```text
+FT_Face
+mapped font file
+library lease
+```
+
+A face's library lease keeps FreeType alive even if the original `FreeTypeLibrary` owner is
+disposed.
+
+Destruction order:
+
+```text
+FT_Face
+mapped font file
+library lease
+```
+
+Failed construction releases partially acquired resources.
+
+## Glyph Rasterization
+
+`FreeTypeGlyphRasterizer` owns one configured face.
+
+Face sizing uses:
+
+```text
+FT_Set_Char_Size(
+    face,
+    0,
+    nominalPixelHeight << 6,
+    0,
+    0)
+```
+
+The `× 64` conversion uses checked arithmetic.
+
+```text
+height == 0 → rejected
+negative nonzero height → preserved and passed through
+```
+
+### Glyph Lookup
+
+Unicode scalars are mapped through FreeType's active character map.
+
+A zero glyph index means missing:
+
+```text
+TryRasterizeGlyph → false
+glyph             → null
+```
+
+The rasterizer does not choose a fallback font.
+
+### Metrics
+
+Managed metrics preserve the verified native semantics:
+
+```text
+bearing X  = bitmap_left
+top offset = nominalPixelHeight - bitmap_top
+advance    = horizontal 26.6 advance / 64
+```
+
+Signed advance conversion truncates toward zero.
+
+`RasterizedGlyph` also carries:
+
+```text
+bitmap width
+bitmap height
+normalized coverage
+```
+
+A valid space can therefore have:
+
+```text
+bitmap area = 0
+advance     > 0
+```
+
+### Bitmap Normalization
+
+FreeType bitmap rows are copied using the native pitch directly:
+
+```text
+row pointer = buffer + row * pitch
+```
+
+Positive and negative pitch are both valid FreeType representations.
+
+Output coverage is tightly packed in logical row order.
+
+### Antialiasing
+
+Enabled:
+
+```text
+FreeType render mode = normal
+coverage             = normalized grayscale
+```
+
+Disabled:
+
+```text
+FreeType render mode = mono
+coverage             = 0 or 255
+```
+
+Rendering color, fragment alpha, atlas placement, and GPU drawing remain later concerns.
+
+## Managed Ownership
+
+### `OpenConquer.Content`
 
 ```text
 GameFontConfiguration
@@ -316,68 +682,115 @@ ClientCodePageConfiguration
     deterministic effective value
 ```
 
-`OpenConquer.Rendering` owns rendering-facing encoded text semantics:
+### `OpenConquer.Rendering`
 
 ```text
 DbcsLeadByteClassifier
 EncodedTextToken
 EncodedTextReader
+EncodedGlyphDecoder
+
+HostFontReference
+HostFontDiscovery
+IHostFontSource
+SystemHostFontSource
+WindowsHostFontSource
+MacOSHostFontSource
+LinuxHostFontSource
+
+HostFontCatalog
+IFontResolver
+SystemFontResolver
+ResolvedFont
+
+FreeTypeLibrary
+FreeTypeFontFile
+FreeTypeFontInspector
+FreeTypeFace
+FreeTypeBitmapNormalizer
+
+IGlyphRasterizer
+FreeTypeGlyphRasterizer
+FreeTypeGlyphRasterizerFactory
+RasterizedGlyph
 ```
 
 Content and Rendering remain independent sibling projects.
 
-The Client composition root will eventually supply Content-derived configuration values to Rendering
-when a runtime text consumer exists.
+Host font APIs are rendering-resource discovery mechanisms and remain inside Rendering. They do not
+introduce a Rendering → Platform dependency.
 
-## Current Scope
+The Client composition root will connect Content-derived configuration to Rendering when a runtime
+text consumer exists.
 
-Implemented and unit verified:
+## GFX-TEXT-002 Scope
+
+Implemented and verified:
 
 ```text
-retail Font.ini input contract
-normal UI font-height input contract
-optional CodePage.ini first-line contract
-native configured code-page preservation
-deterministic CP_ACP → CP936 resolution for clean 5517
-Windows DBCS lead-byte classification
+Font.ini contract
+info.ini normal font-height contract
+CodePage.ini first-line contract
+configured code-page preservation
+deterministic clean-5517 CP936 resolution
+
+DBCS lead-byte classification
 single-byte glyph keys
-two-byte DBCS glyph keys
+double-byte glyph keys
 NUL termination
 newline recognition
 dangling lead-byte behavior
-conditional #NN recognition
+optional #NN recognition
 data-icon indices 00-99
+glyph-key → Unicode scalar decoding
+
+Windows registered-font discovery
+macOS registered-font discovery
+Linux registered-font discovery
+host default-GUI resource discovery
+deterministic host font catalog
+
+family resolution
+$*.tt? registered-file resolution
+native font-creation fallback order
+
+FreeType 2.x ABI enforcement
+FreeType 2.14.3 minimum-version enforcement
+portable C ABI representation
+native library/face lifetime
+font metadata inspection
+
+grayscale bitmap normalization
+monochrome bitmap normalization
+glyph rasterization
+glyph metrics seam
+space advance preservation
+missing-glyph reporting
+antialias mode selection
 ```
 
-Not implemented in this slice:
+Deferred:
 
 ```text
-$*.tt? Windows-font expansion
-system font discovery
-native font fallback chain
 CodePage.ini font-size levels
-Unicode decoding for rasterization
-font rasterizer
-glyph metrics
+
+missing-glyph fallback to font record index 0
 glyph cache
 glyph atlas
 text measurement/layout
 newline layout advance
-missing-glyph fallback
 data-icon resource lookup
 data-icon width resolution
 font batching
-antialias behavior
+
 text color/corner behavior
 OpenGL text drawing
 runtime HUD/text consumers
 ```
 
-These are later text-rendering slices rather than missing work in the text-input contract.
+Deferred work is outside GFX-TEXT-002 rather than incomplete implementation of this slice.
 
-## Planned Text Reconstruction
-
-The remaining text path is intentionally staged:
+## Text Reconstruction Roadmap
 
 ```text
 GFX-TEXT-001
@@ -386,10 +799,12 @@ retail text configuration
         ↓
 GFX-TEXT-002
 font resolution
++ font creation fallback
 + rasterizer / glyph-metrics seam
         ↓
 GFX-TEXT-003
 native measurement/layout
++ missing-glyph fallback
 + glyph cache / atlas
         ↓
 GFX-TEXT-004
@@ -400,37 +815,96 @@ GFX-UI-001
 first native UI consumer
 ```
 
-The first intended UI consumer is the verified status-hint panel, which combines text measurement
-with existing ANI and sprite source-region/stretch behavior.
+The intended first UI consumer remains the verified status-hint panel.
+
+## GFX-TEXT-003 Requirements
+
+Verified requirements reserved for the next slice:
+
+```text
+newline:
+    X resets
+    Y += nominal height + nominal height / 4
+
+space:
+    advance cursor
+    emit no glyph vertices
+
+missing glyph:
+    retry font record index 0
+    if retry fails, advance using primary line-height behavior
+
+glyph atlas:
+    512 × 512
+    2-pixel separation
+```
+
+These behaviors must remain outside the font-creation factory.
 
 ## Conformance Boundary
 
-GFX-TEXT-001 is deterministic and driver-independent, so unit tests are the appropriate conformance
-mechanism.
+GFX-TEXT-001 and deterministic GFX-TEXT-002 policy are covered primarily by unit tests.
 
-Pixel-level text conformance is deliberately deferred.
+Host-font adapters require execution on their real operating systems. CI therefore validates the
+native host and FreeType seams on supported Windows, macOS, and Linux environments.
 
-The native rasterizer is FreeType-shaped, but its exact retail version has not been established.
-OpenConquer must therefore keep rasterizer output behind an explicit conformance seam and must not
-claim native pixel identity from self-generated host-font golden images.
+Pixel-level text conformance remains deferred.
+
+The exact FreeType revision used by the retail client has not been established. OpenConquer
+therefore does not claim pixel-identical rendering merely because both implementations are
+FreeType-shaped.
+
+Exact pixels can vary with:
+
+```text
+font revision
+FreeType revision
+hinting behavior
+host font selection
+final rendering state
+```
+
+Real rendering conformance belongs to GFX-TEXT-004.
 
 ## Modernization Boundary
 
-Preserve observable 5517 text behavior while replacing host-specific or unsafe machinery:
+Preserve verified 5517 behavior:
 
 ```text
-preserve encoded-byte traversal before rasterization
-preserve native one/two-byte glyph-cache keys
-preserve optional #NN recognition semantics
-preserve native configured code-page value
-pin unrepresentable CP_ACP default to evidence-backed CP936
-keep configuration parsing in Content
-keep text/render behavior in Rendering
-keep Content and Rendering independent
-bound configuration inputs defensively
-reject integer overflow deterministically
-do not make host ANSI settings part of game behavior
-do not expand native Windows font paths during Content parsing
-do not introduce font/rasterizer/atlas abstractions before their slice
-do not expand runtime content closure without an implemented consumer
+encoded-byte traversal before Unicode conversion
+native one/two-byte glyph-cache keys
+optional #NN recognition
+configured code-page semantics
+evidence-backed CP936 clean-client default
+
+$*.tt? file-token semantics
+exact font-creation fallback order
+negative nonzero requested font heights
+verified FreeType metric semantics
+grayscale versus monochrome rasterization
+```
+
+Modern implementation constraints:
+
+```text
+Content owns configuration parsing
+Rendering owns text and font behavior
+Content and Rendering remain independent
+Rendering and Platform remain independent siblings
+
+use authoritative host font systems
+do not recursively scan guessed font directories
+do not allow font tokens to become arbitrary paths
+
+use explicit native C ABI widths
+make native ownership and destruction explicit
+require FreeType 2.x >= 2.14.3
+bound configuration inputs
+reject arithmetic overflow deterministically
+do not depend on host ANSI settings for clean-client behavior
+
+do not expand runtime content without a consumer
+do not conflate creation fallback with missing-glyph fallback
+do not pull cache/layout/rendering behavior into earlier slices
+do not claim pixel identity without evidence
 ```

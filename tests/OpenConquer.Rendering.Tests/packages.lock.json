@@ -134,8 +134,15 @@
       "openconquer.rendering": {
         "type": "Project",
         "dependencies": {
+          "AlvorKit.FreeType.Native": "[2.14.3.9, )",
           "Silk.NET.OpenGL": "[2.23.0, )"
         }
+      },
+      "AlvorKit.FreeType.Native": {
+        "type": "CentralTransitive",
+        "requested": "[2.14.3.9, )",
+        "resolved": "2.14.3.9",
+        "contentHash": "S1cEZRmxlQWksmFbFWVqfInSUhNedE0v6LoFwpdZGTVTRoq9roRW6qxW+ilq7gHEX0mTWSJIsg5wp8bUJHavMg=="
       },
       "Silk.NET.Core": {
         "type": "CentralTransitive",

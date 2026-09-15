@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AlvorKit.FreeType.Native" IncludeAssets="native" />
     <PackageReference Include="Silk.NET.OpenGL" />
   </ItemGroup>
 
