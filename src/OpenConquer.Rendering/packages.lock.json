@@ -2,6 +2,12 @@
   "version": 2,
   "dependencies": {
     "net10.0": {
+      "AlvorKit.FreeType.Native": {
+        "type": "Direct",
+        "requested": "[2.14.3.9, )",
+        "resolved": "2.14.3.9",
+        "contentHash": "S1cEZRmxlQWksmFbFWVqfInSUhNedE0v6LoFwpdZGTVTRoq9roRW6qxW+ilq7gHEX0mTWSJIsg5wp8bUJHavMg=="
+      },
       "Silk.NET.OpenGL": {
         "type": "Direct",
         "requested": "[2.23.0, )",

@@ -49,7 +49,7 @@ High-level ownership:
 | `OpenConquer.Client`     | game-runtime composition root and game-process lifetime                                                                                                                                     |
 | `OpenConquer.Platform`   | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, future desktop input                                                                               |
 | `OpenConquer.Gameplay`   | game state and gameplay behavior                                                                                                                                                            |
-| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, presentation, GPU resources                                                                                                                          |
+| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, presentation, GPU resources, rendering-facing text semantics, host font-resource discovery, and glyph rasterization                                  |
 | `OpenConquer.Content`    | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup                                                                                                            |
 | `OpenConquer.Networking` | native-compatible game transport and protocol behavior when implemented                                                                                                                     |
 
@@ -67,7 +67,12 @@ OpenConquer.Client
 Subsystem projects remain independent unless an actual ownership requirement justifies a dependency.
 
 In particular, Platform and Rendering are siblings. Platform owns the native desktop mechanism;
-Rendering owns graphics behavior and GPU resources.
+Rendering owns graphics behavior, GPU resources, and rendering-resource mechanisms such as font
+discovery and rasterization.
+
+Operating-system font APIs do not create a Rendering-to-Platform dependency. They are part of the
+Rendering text subsystem because they discover resources consumed directly by rendering rather than
+managing the desktop host.
 
 ## Launcher
 
@@ -199,7 +204,37 @@ Rendering owns:
 - render targets;
 - logical rendering;
 - presentation transforms;
-- GPU resources.
+- GPU resources;
+- rendering-facing encoded-text semantics;
+- host font-resource discovery;
+- deterministic font resolution;
+- FreeType library, font-file, face, and rasterizer lifetime;
+- glyph rasterization and rasterizer-facing metrics.
+
+Font discovery is deliberately based on the operating system's registered/configured font system
+rather than recursive filesystem probing.
+
+The current platform mechanisms are:
+
+```text
+Windows → GDI + DirectWrite
+macOS   → CoreText + CoreFoundation
+Linux   → fontconfig
+```
+
+These APIs are rendering-resource mechanisms, not desktop-host mechanisms. Their ownership therefore
+remains inside `OpenConquer.Rendering`.
+
+`OpenConquer.Platform` remains unaware of font discovery, font resolution, FreeType, glyph metrics,
+and text rasterization.
+
+Rendering similarly does not depend on Platform to discover fonts.
+
+Text configuration remains owned by Content. The Client composition root will eventually supply
+Content-derived configuration to Rendering when an implemented runtime text consumer requires it.
+
+Detailed compatibility behavior belongs in
+[`../compatibility/native-text.md`](../compatibility/native-text.md).
 
 ### Content
 
@@ -250,11 +285,13 @@ OpenConquer.Client + OpenConquer.Networking
 ```
 
 Launcher authorization establishes product provenance; it does not authenticate the game account.
+
 The launcher must not depend on game-protocol packet types. Registration/recovery entry points
 require a real authoritative account service; no temporary desktop protocol is planned.
 
 Native/deob evidence is authoritative for packet layout, credential transformations, cryptography,
 result semantics and login-to-game handoff. OAuth/OIDC is not a substitute for the native protocol.
+
 The capability table in the README tracks implementation status; this flow defines ownership.
 
 ## Installed Product
@@ -283,9 +320,10 @@ Product composition creates:
 ```
 
 The schema-v2 descriptor atomically selects one versioned client generation that supported
-transaction code never mutates in place and may name one verified fallback. The raw launcher publish
-must not contain `openconquer.installation.json`, `releases/`, or the legacy root-level managed
-`client/` component. Those belong to product composition.
+transaction code never mutates in place and may name one verified fallback.
+
+The raw launcher publish must not contain `openconquer.installation.json`, `releases/`, or the
+legacy root-level managed `client/` component. Those belong to product composition.
 
 `OpenConquer.Product.Tool` provides deterministic local and CI composition. It is not the production
 installer, updater, signing system, or deployment authority.
@@ -320,15 +358,19 @@ CI enforces these boundaries.
 When adding code:
 
 1. preserve native behavior where compatibility is evidence-backed;
-2. keep platform mechanisms behind Platform;
-3. keep graphics behavior behind Rendering;
-4. keep content-format behavior behind Content;
+2. keep desktop/window/input mechanisms behind Platform;
+3. keep graphics, rendering resources, and rendering-facing text behavior behind Rendering;
+4. keep content-format and configuration parsing behavior behind Content;
 5. keep protocol behavior behind Networking;
 6. keep launcher product behavior inside Launcher;
-7. do not create shared/common utility projects without a concrete ownership need;
-8. do not introduce speculative abstractions for future features;
-9. keep resource ownership and lifetime explicit;
-10. treat tests and documentation as part of each completed work slice.
+7. keep subsystem projects independent unless a concrete ownership requirement justifies a
+   dependency;
+8. do not create shared/common utility projects without a concrete ownership need;
+9. do not introduce speculative abstractions for future features;
+10. keep native and managed resource ownership and lifetime explicit;
+11. use authoritative host resource systems rather than guessed filesystem topology when platform
+    APIs provide the required truth;
+12. treat tests and documentation as part of each completed work slice.
 
 A green build is necessary but not sufficient. Each slice must also be architecturally coherent,
 audited, documented, and independently justifiable.
