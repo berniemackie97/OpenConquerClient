@@ -1,0 +1,585 @@
+name: Native FreeType
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'freetype-native-v*'
+    paths:
+      - '.github/workflows/native-freetype.yml'
+      - 'native/OpenConquer.FreeType.Native/**'
+  pull_request:
+    paths:
+      - '.github/workflows/native-freetype.yml'
+      - 'native/OpenConquer.FreeType.Native/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            runner: ubuntu-24.04
+            preset: linux-x64
+            platform: linux
+            asset: artifacts/package/runtimes/linux-x64/native/libfreetype.so
+            expected-machine: Advanced Micro Devices X86-64
+
+          - name: Linux arm64
+            runner: ubuntu-24.04-arm
+            preset: linux-arm64
+            platform: linux
+            asset: artifacts/package/runtimes/linux-arm64/native/libfreetype.so
+            expected-machine: AArch64
+
+          - name: macOS x64
+            runner: macos-15-intel
+            preset: osx-x64
+            platform: macos
+            asset: artifacts/package/runtimes/osx-x64/native/libfreetype.dylib
+            expected-machine: x86_64
+
+          - name: macOS arm64
+            runner: macos-15
+            preset: osx-arm64
+            platform: macos
+            asset: artifacts/package/runtimes/osx-arm64/native/libfreetype.dylib
+            expected-machine: arm64
+
+          - name: Windows x64
+            runner: windows-2025-vs2026
+            preset: win-x64
+            platform: windows
+            asset: artifacts/package/runtimes/win-x64/native/freetype.dll
+            expected-machine: '0x8664'
+
+          - name: Windows arm64
+            runner: windows-11-vs2026-arm
+            preset: win-arm64
+            platform: windows
+            asset: artifacts/package/runtimes/win-arm64/native/freetype.dll
+            expected-machine: '0xAA64'
+
+    defaults:
+      run:
+        working-directory: native/OpenConquer.FreeType.Native
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Show CMake version
+        run: cmake --version
+
+      - name: Configure
+        run: cmake --preset "${{ matrix.preset }}"
+
+      - name: Build
+        run: cmake --build --preset "${{ matrix.preset }}"
+
+      - name: Hash staged runtime
+        run: cmake -E sha256sum "${{ matrix.asset }}"
+
+      - name: Verify Linux runtime
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          asset="${{ matrix.asset }}"
+
+          test -f "$asset"
+
+          actual_machine="$(
+            readelf -h "$asset" |
+              awk -F: '/^[[:space:]]*Machine:/ {
+                sub(/^[[:space:]]+/, "", $2)
+                print $2
+              }'
+          )"
+
+          if [[ "$actual_machine" != "${{ matrix.expected-machine }}" ]]; then
+            echo "Expected machine '${{ matrix.expected-machine }}' but found '$actual_machine'." >&2
+            exit 1
+          fi
+
+          file "$asset"
+          readelf -d "$asset"
+
+      - name: Verify macOS runtime
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          asset="${{ matrix.asset }}"
+
+          test -f "$asset"
+
+          actual_machine="$(lipo -archs "$asset")"
+
+          if [[ "$actual_machine" != "${{ matrix.expected-machine }}" ]]; then
+            echo "Expected architecture '${{ matrix.expected-machine }}' but found '$actual_machine'." >&2
+            exit 1
+          fi
+
+          file "$asset"
+          otool -L "$asset"
+
+      - name: Verify Windows runtime
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $asset = "${{ matrix.asset }}"
+
+          if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
+              throw "Missing staged native runtime: $asset"
+          }
+
+          $bytes = [System.IO.File]::ReadAllBytes($asset)
+
+          if ($bytes.Length -lt 64) {
+              throw "Native runtime is too small to contain a valid PE header: $asset"
+          }
+
+          if ($bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+              throw "Native runtime does not contain a valid DOS MZ header: $asset"
+          }
+
+          $peOffset = [System.BitConverter]::ToInt32($bytes, 0x3C)
+
+          if ($peOffset -lt 0 -or ($peOffset + 6) -gt $bytes.Length) {
+              throw "Native runtime contains an invalid PE header offset: $asset"
+          }
+
+          $peSignature = [System.BitConverter]::ToUInt32($bytes, $peOffset)
+
+          if ($peSignature -ne 0x00004550) {
+              throw "Native runtime does not contain a valid PE signature: $asset"
+          }
+
+          $actualMachine = [System.BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          $expectedMachine = [System.Convert]::ToUInt16(
+              "${{ matrix.expected-machine }}".Substring(2),
+              16
+          )
+
+          if ($actualMachine -ne $expectedMachine) {
+              throw (
+                  "Expected PE machine 0x{0:X4} but found 0x{1:X4}." -f
+                  $expectedMachine,
+                  $actualMachine
+              )
+          }
+
+          Write-Host ("Verified PE machine: 0x{0:X4}" -f $actualMachine)
+
+      - name: Upload verified runtime
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: freetype-runtime-${{ matrix.preset }}
+          path: native/OpenConquer.FreeType.Native/${{ matrix.asset }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  package:
+    name: NuGet package
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: native/OpenConquer.FreeType.Native
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          global-json-file: global.json
+
+      - name: Download verified runtimes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: freetype-runtime-*
+          path: native/OpenConquer.FreeType.Native/artifacts/downloads
+
+      - name: Stage verified runtimes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf artifacts/package
+          mkdir -p \
+            artifacts/package/runtimes/linux-x64/native \
+            artifacts/package/runtimes/linux-arm64/native \
+            artifacts/package/runtimes/osx-x64/native \
+            artifacts/package/runtimes/osx-arm64/native \
+            artifacts/package/runtimes/win-x64/native \
+            artifacts/package/runtimes/win-arm64/native
+
+          install -m 0644 \
+            artifacts/downloads/freetype-runtime-linux-x64/libfreetype.so \
+            artifacts/package/runtimes/linux-x64/native/libfreetype.so
+
+          install -m 0644 \
+            artifacts/downloads/freetype-runtime-linux-arm64/libfreetype.so \
+            artifacts/package/runtimes/linux-arm64/native/libfreetype.so
+
+          install -m 0644 \
+            artifacts/downloads/freetype-runtime-osx-x64/libfreetype.dylib \
+            artifacts/package/runtimes/osx-x64/native/libfreetype.dylib
+
+          install -m 0644 \
+            artifacts/downloads/freetype-runtime-osx-arm64/libfreetype.dylib \
+            artifacts/package/runtimes/osx-arm64/native/libfreetype.dylib
+
+          install -m 0644 \
+            artifacts/downloads/freetype-runtime-win-x64/freetype.dll \
+            artifacts/package/runtimes/win-x64/native/freetype.dll
+
+          install -m 0644 \
+            artifacts/downloads/freetype-runtime-win-arm64/freetype.dll \
+            artifacts/package/runtimes/win-arm64/native/freetype.dll
+
+      - name: Verify staged runtime set
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected="$(
+            cat <<'EOF'
+          linux-arm64/native/libfreetype.so
+          linux-x64/native/libfreetype.so
+          osx-arm64/native/libfreetype.dylib
+          osx-x64/native/libfreetype.dylib
+          win-arm64/native/freetype.dll
+          win-x64/native/freetype.dll
+          EOF
+          )"
+
+          actual="$(
+            find artifacts/package/runtimes \
+              -type f \
+              -printf '%P\n' |
+              LC_ALL=C sort
+          )"
+
+          if [[ "$actual" != "$expected" ]]; then
+            echo "Unexpected staged FreeType runtime set." >&2
+            echo >&2
+            echo "Expected:" >&2
+            printf '%s\n' "$expected" >&2
+            echo >&2
+            echo "Actual:" >&2
+            printf '%s\n' "$actual" >&2
+            exit 1
+          fi
+
+          find artifacts/package/runtimes \
+            -type f \
+            -print0 |
+            sort -z |
+            xargs -0 sha256sum
+
+      - name: Validate package asset contract
+        run: >-
+          dotnet msbuild
+          OpenConquer.FreeType.Native.csproj
+          -t:ValidateNativePackageAssets
+
+      - name: Restore package project
+        run: dotnet restore OpenConquer.FreeType.Native.csproj
+
+      - name: Pack
+        run: >-
+          dotnet pack
+          OpenConquer.FreeType.Native.csproj
+          --configuration Release
+          --no-restore
+
+      - name: Resolve packed package
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          shopt -s nullglob
+
+          packages=(
+            artifacts/packages/OpenConquer.FreeType.Native.*.nupkg
+          )
+
+          if (( ${#packages[@]} != 1 )); then
+            echo "Expected exactly one OpenConquer.FreeType.Native package, found ${#packages[@]}." >&2
+            printf '%s\n' "${packages[@]}" >&2
+            exit 1
+          fi
+
+          package="${packages[0]}"
+
+          printf 'path=%s\n' "$package" >> "$GITHUB_OUTPUT"
+          printf 'filename=%s\n' "$(basename "$package")" >> "$GITHUB_OUTPUT"
+
+      - name: Verify NuGet package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          package="${{ steps.package.outputs.path }}"
+          entries="artifacts/packages/package-entries.txt"
+          nuspec="artifacts/packages/OpenConquer.FreeType.Native.nuspec"
+          provenance="artifacts/packages/PROVENANCE.md"
+
+          test -f "$package"
+
+          unzip -Z1 "$package" > "$entries"
+
+          require_entry() {
+            local entry="$1"
+
+            if ! grep -Fxq "$entry" "$entries"; then
+              echo "NuGet package is missing required entry: $entry" >&2
+              cat "$entries" >&2
+              exit 1
+            fi
+          }
+
+          require_entry 'FTL.TXT'
+          require_entry 'LICENSE.TXT'
+          require_entry 'licenses/bdf/README'
+          require_entry 'licenses/pcf/README'
+          require_entry 'PROVENANCE.md'
+
+          unzip -p \
+            "$package" \
+            OpenConquer.FreeType.Native.nuspec \
+            > "$nuspec"
+
+          if ! grep -Fq '<license type="file">FTL.TXT</license>' "$nuspec"; then
+            echo "NuGet package does not declare FTL.TXT as its license file." >&2
+            cat "$nuspec" >&2
+            exit 1
+          fi
+
+          if ! grep -Fq '<readme>PROVENANCE.md</readme>' "$nuspec"; then
+            echo "NuGet package does not declare PROVENANCE.md as its readme." >&2
+            cat "$nuspec" >&2
+            exit 1
+          fi
+
+          unzip -p \
+            "$package" \
+            PROVENANCE.md \
+            > "$provenance"
+
+          provenance_text="$(tr '\n' ' ' < "$provenance")"
+
+          if [[ "$provenance_text" != *"based in part on the work of the FreeType Team"* ]]; then
+            echo "NuGet package provenance is missing the required FreeType Team attribution." >&2
+            exit 1
+          fi
+
+          expected="$(
+            cat <<'EOF'
+          runtimes/linux-arm64/native/libfreetype.so
+          runtimes/linux-x64/native/libfreetype.so
+          runtimes/osx-arm64/native/libfreetype.dylib
+          runtimes/osx-x64/native/libfreetype.dylib
+          runtimes/win-arm64/native/freetype.dll
+          runtimes/win-x64/native/freetype.dll
+          EOF
+          )"
+
+          actual="$(
+            grep '^runtimes/' "$entries" |
+              LC_ALL=C sort
+          )"
+
+          if [[ "$actual" != "$expected" ]]; then
+            echo "Unexpected native runtime contents in NuGet package." >&2
+            echo >&2
+            echo "Expected:" >&2
+            printf '%s\n' "$expected" >&2
+            echo >&2
+            echo "Actual:" >&2
+            printf '%s\n' "$actual" >&2
+            exit 1
+          fi
+
+          if grep -Eq \
+            '^(lib|ref|content|contentFiles|build|buildTransitive|analyzers|tools)/' \
+            "$entries"
+          then
+            echo "Native package contains unexpected managed/build assets." >&2
+            cat "$entries" >&2
+            exit 1
+          fi
+
+          sha256sum "$package"
+          cat "$entries"
+
+      - name: Upload verified NuGet package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: OpenConquer.FreeType.Native
+          path: native/OpenConquer.FreeType.Native/${{ steps.package.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  publish:
+    name: Publish NuGet package
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/freetype-native-v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: nuget-production
+
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Validate release commit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! git show-ref --verify --quiet refs/remotes/origin/main; then
+            echo "Unable to resolve origin/main for release validation." >&2
+            exit 1
+          fi
+
+          release_commit="$(git rev-parse "${GITHUB_SHA}^{commit}")"
+          checkout_commit="$(git rev-parse 'HEAD^{commit}')"
+
+          if [[ "$checkout_commit" != "$release_commit" ]]; then
+            echo "Checked-out commit does not match the release event commit." >&2
+            echo "Release:  $release_commit" >&2
+            echo "Checkout: $checkout_commit" >&2
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$release_commit" origin/main; then
+            echo "Release commit $release_commit has not been accepted into main." >&2
+            exit 1
+          fi
+
+          printf 'Verified release commit %s is contained in origin/main.\n' "$release_commit"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          dotnet-version: '10.0.400'
+
+      - name: Download verified NuGet package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: OpenConquer.FreeType.Native
+          path: artifacts/publish
+
+      - name: Validate release tag and package
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          prefix='freetype-native-v'
+          tag="$GITHUB_REF_NAME"
+
+          if [[ "$tag" != "$prefix"* ]]; then
+            echo "Unexpected release tag: $tag" >&2
+            exit 1
+          fi
+
+          version="${tag#"$prefix"}"
+
+          if [[ -z "$version" ]]; then
+            echo "Release tag does not contain a package version." >&2
+            exit 1
+          fi
+
+          expected="artifacts/publish/OpenConquer.FreeType.Native.${version}.nupkg"
+
+          shopt -s nullglob
+          packages=(
+            artifacts/publish/OpenConquer.FreeType.Native.*.nupkg
+          )
+
+          if (( ${#packages[@]} != 1 )); then
+            echo "Expected exactly one package for publication, found ${#packages[@]}." >&2
+            printf '%s\n' "${packages[@]}" >&2
+            exit 1
+          fi
+
+          if [[ "${packages[0]}" != "$expected" ]]; then
+            echo "Release tag/package version mismatch." >&2
+            echo "Tag version: $version" >&2
+            echo "Expected:    $expected" >&2
+            echo "Actual:      ${packages[0]}" >&2
+            exit 1
+          fi
+
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          printf 'package=%s\n' "$expected" >> "$GITHUB_OUTPUT"
+
+      - name: Validate NuGet publisher identity
+        shell: bash
+        env:
+          NUGET_USER: ${{ secrets.NUGET_USER }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$NUGET_USER" ]]; then
+            echo "The nuget-production environment must define the NUGET_USER secret." >&2
+            exit 1
+          fi
+
+      - name: NuGet login
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish package
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          dotnet nuget push \
+            "${{ steps.release.outputs.package }}" \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json

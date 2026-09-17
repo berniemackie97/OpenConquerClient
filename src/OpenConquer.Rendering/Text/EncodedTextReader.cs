@@ -18,9 +18,7 @@ internal ref struct EncodedTextReader
     {
         int nullIndex = encodedText.IndexOf((byte)0);
 
-        _encodedText = nullIndex >= 0
-            ? encodedText[..nullIndex]
-            : encodedText;
+        _encodedText = nullIndex >= 0 ? encodedText[..nullIndex] : encodedText;
 
         _effectiveCodePage = effectiveCodePage;
         _recognizeDataIcons = recognizeDataIcons;

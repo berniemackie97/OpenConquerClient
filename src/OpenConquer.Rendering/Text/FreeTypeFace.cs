@@ -61,12 +61,7 @@ internal sealed unsafe class FreeTypeFace : IDisposable
             nint faceAddress = libraryLease.UseHandle(libraryHandle =>
             {
                 FreeTypeFaceRecord* face = null;
-                int error = FreeTypeNative.NewMemoryFace(
-                    libraryHandle,
-                    fontFile.Data,
-                    new CLong(fontFile.Length),
-                    new CLong(font.FaceIndex),
-                    &face);
+                int error = FreeTypeNative.NewMemoryFace(libraryHandle, fontFile.Data, new CLong(fontFile.Length), new CLong(font.FaceIndex), &face);
 
                 if (error == 0 && face is not null)
                 {
@@ -78,8 +73,7 @@ internal sealed unsafe class FreeTypeFace : IDisposable
                     _ = FreeTypeNative.DoneFace(face);
                 }
 
-                throw new FontFaceCreationException(
-                    $"FreeType could not open face {font.FaceIndex} from font '{font.FilePath}' (error {error}).");
+                throw new FontFaceCreationException($"FreeType could not open face {font.FaceIndex} from font '{font.FilePath}' (error {error}).");
             });
 
             try
@@ -88,8 +82,7 @@ internal sealed unsafe class FreeTypeFace : IDisposable
             }
             catch
             {
-                _ = libraryLease.UseHandle(
-                    _ => FreeTypeNative.DoneFace((FreeTypeFaceRecord*)faceAddress));
+                _ = libraryLease.UseHandle(_ => FreeTypeNative.DoneFace((FreeTypeFaceRecord*)faceAddress));
 
                 throw;
             }

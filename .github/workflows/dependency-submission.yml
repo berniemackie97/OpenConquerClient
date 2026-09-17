@@ -1,0 +1,47 @@
+name: Dependency Submission
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/dependency-submission.yml'
+      - '**/*.csproj'
+      - '**/*.props'
+      - '**/*.targets'
+      - '**/*.sln'
+      - '**/*.slnx'
+      - '**/packages.lock.json'
+      - 'global.json'
+      - 'NuGet.config'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  submit:
+    name: NuGet dependency graph
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          global-json-file: global.json
+
+      - name: Submit NuGet dependency graph
+        uses: advanced-security/component-detection-dependency-submission-action@ce792dce44c6e59487bcd862f3917f2c2b9a7fb0
+        with:
+          detectorsCategories: NuGet
+          directoryExclusionList: native/OpenConquer.FreeType.Native/upstream/freetype
