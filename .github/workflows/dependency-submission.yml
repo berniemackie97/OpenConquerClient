@@ -44,4 +44,3 @@ jobs:
         uses: advanced-security/component-detection-dependency-submission-action@ce792dce44c6e59487bcd862f3917f2c2b9a7fb0
         with:
           detectorsCategories: NuGet
-          directoryExclusionList: native/OpenConquer.FreeType.Native/upstream/freetype
