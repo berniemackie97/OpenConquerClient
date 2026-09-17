@@ -15,10 +15,7 @@ public sealed class FreeTypeBitmapNormalizerTests
             30, 40, 0xEE,
         ];
 
-        byte[] coverage = WithBuffer(source, buffer =>
-            FreeTypeBitmapNormalizer.CopyCoverage(
-                buffer, widthPixels: 2, heightPixels: 2, pitch: 3,
-                FreeTypePixelMode.Gray, grayLevels: 256));
+        byte[] coverage = WithBuffer(source, buffer => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 2, heightPixels: 2, pitch: 3, FreeTypePixelMode.Gray, grayLevels: 256));
 
         Assert.Equal([10, 20, 30, 40], coverage);
     }
@@ -32,10 +29,7 @@ public sealed class FreeTypeBitmapNormalizerTests
             10, 20, 0xEE,
         ];
 
-        byte[] coverage = WithBuffer(source, bufferOffset: 3, buffer =>
-            FreeTypeBitmapNormalizer.CopyCoverage(
-                buffer, widthPixels: 2, heightPixels: 2, pitch: -3,
-                FreeTypePixelMode.Gray, grayLevels: 256));
+        byte[] coverage = WithBuffer(source, buffer => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 2, heightPixels: 2, pitch: -3, FreeTypePixelMode.Gray, grayLevels: 256));
 
         Assert.Equal([10, 20, 30, 40], coverage);
     }
@@ -45,10 +39,7 @@ public sealed class FreeTypeBitmapNormalizerTests
     {
         byte[] source = [0, 1, 2, 3];
 
-        byte[] coverage = WithBuffer(source, buffer =>
-            FreeTypeBitmapNormalizer.CopyCoverage(
-                buffer, widthPixels: 4, heightPixels: 1, pitch: 4,
-                FreeTypePixelMode.Gray, grayLevels: 4));
+        byte[] coverage = WithBuffer(source, buffer => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 4, heightPixels: 1, pitch: 4, FreeTypePixelMode.Gray, grayLevels: 4));
 
         Assert.Equal([0, 85, 170, 255], coverage);
     }
@@ -60,15 +51,9 @@ public sealed class FreeTypeBitmapNormalizerTests
 
         WithBuffer(source, buffer =>
         {
-            Assert.Throws<InvalidOperationException>(() =>
-                FreeTypeBitmapNormalizer.CopyCoverage(
-                    buffer, widthPixels: 1, heightPixels: 1, pitch: 1,
-                    FreeTypePixelMode.Gray, grayLevels: 1));
+            Assert.Throws<InvalidOperationException>(() => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 1, heightPixels: 1, pitch: 1, FreeTypePixelMode.Gray, grayLevels: 1));
 
-            Assert.Throws<InvalidOperationException>(() =>
-                FreeTypeBitmapNormalizer.CopyCoverage(
-                    buffer, widthPixels: 1, heightPixels: 1, pitch: 1,
-                    FreeTypePixelMode.Gray, grayLevels: 257));
+            Assert.Throws<InvalidOperationException>(() => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 1, heightPixels: 1, pitch: 1, FreeTypePixelMode.Gray, grayLevels: 257));
         });
     }
 
@@ -77,11 +62,7 @@ public sealed class FreeTypeBitmapNormalizerTests
     {
         byte[] source = [4];
 
-        WithBuffer(source, buffer =>
-            Assert.Throws<InvalidOperationException>(() =>
-                FreeTypeBitmapNormalizer.CopyCoverage(
-                    buffer, widthPixels: 1, heightPixels: 1, pitch: 1,
-                    FreeTypePixelMode.Gray, grayLevels: 4)));
+        WithBuffer(source, buffer => Assert.Throws<InvalidOperationException>(() => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 1, heightPixels: 1, pitch: 1, FreeTypePixelMode.Gray, grayLevels: 4)));
     }
 
     [Fact]
@@ -93,10 +74,27 @@ public sealed class FreeTypeBitmapNormalizerTests
             0b0101_1010, 0b0100_0000, 0xEE,
         ];
 
-        byte[] coverage = WithBuffer(source, buffer =>
-            FreeTypeBitmapNormalizer.CopyCoverage(
-                buffer, widthPixels: 10, heightPixels: 2, pitch: 3,
-                FreeTypePixelMode.Mono, grayLevels: 2));
+        byte[] coverage = WithBuffer(source, buffer => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 10, heightPixels: 2, pitch: 3, FreeTypePixelMode.Mono, grayLevels: 2));
+
+        byte[] expected =
+        [
+            255, 0, 255, 0, 0, 255, 0, 255, 255, 0,
+            0, 255, 0, 255, 255, 0, 255, 0, 0, 255,
+        ];
+
+        Assert.Equal(expected, coverage);
+    }
+
+    [Fact]
+    public void CopyCoverage_MonochromeWithNegativePitch_PreservesLogicalRowOrder()
+    {
+        byte[] source =
+        [
+            0b0101_1010, 0b0100_0000, 0xEE,
+            0b1010_0101, 0b1000_0000, 0xEE,
+        ];
+
+        byte[] coverage = WithBuffer(source, buffer => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 10, heightPixels: 2, pitch: -3, FreeTypePixelMode.Mono, grayLevels: 2));
 
         byte[] expected =
         [
@@ -110,9 +108,7 @@ public sealed class FreeTypeBitmapNormalizerTests
     [Fact]
     public void CopyCoverage_EmptyBitmap_AllowsNullBufferAndZeroPitch()
     {
-        byte[] coverage = FreeTypeBitmapNormalizer.CopyCoverage(
-            nint.Zero, widthPixels: 0, heightPixels: 4, pitch: 0,
-            FreeTypePixelMode.Gray, grayLevels: 0);
+        byte[] coverage = FreeTypeBitmapNormalizer.CopyCoverage(nint.Zero, widthPixels: 0, heightPixels: 4, pitch: 0, FreeTypePixelMode.Gray, grayLevels: 0);
 
         Assert.Empty(coverage);
     }
@@ -120,10 +116,7 @@ public sealed class FreeTypeBitmapNormalizerTests
     [Fact]
     public void CopyCoverage_NonEmptyBitmapWithNullBuffer_Throws()
     {
-        Assert.Throws<InvalidOperationException>(() =>
-            FreeTypeBitmapNormalizer.CopyCoverage(
-                nint.Zero, widthPixels: 1, heightPixels: 1, pitch: 1,
-                FreeTypePixelMode.Gray, grayLevels: 256));
+        Assert.Throws<InvalidOperationException>(() => FreeTypeBitmapNormalizer.CopyCoverage(nint.Zero, widthPixels: 1, heightPixels: 1, pitch: 1, FreeTypePixelMode.Gray, grayLevels: 256));
     }
 
     [Theory]
@@ -134,11 +127,7 @@ public sealed class FreeTypeBitmapNormalizerTests
     {
         byte[] source = [0, 0];
 
-        WithBuffer(source, buffer =>
-            Assert.Throws<InvalidOperationException>(() =>
-                FreeTypeBitmapNormalizer.CopyCoverage(
-                    buffer, widthPixels: 2, heightPixels: 1, pitch,
-                    FreeTypePixelMode.Gray, grayLevels: 256)));
+        WithBuffer(source, buffer => Assert.Throws<InvalidOperationException>(() => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 2, heightPixels: 1, pitch, FreeTypePixelMode.Gray, grayLevels: 256)));
     }
 
     [Fact]
@@ -146,20 +135,13 @@ public sealed class FreeTypeBitmapNormalizerTests
     {
         byte[] source = [0];
 
-        WithBuffer(source, buffer =>
-            Assert.Throws<InvalidOperationException>(() =>
-                FreeTypeBitmapNormalizer.CopyCoverage(
-                    buffer, widthPixels: 1, heightPixels: 1, pitch: 1,
-                    (FreeTypePixelMode)byte.MaxValue, grayLevels: 256)));
+        WithBuffer(source, buffer => Assert.Throws<InvalidOperationException>(() => FreeTypeBitmapNormalizer.CopyCoverage(buffer, widthPixels: 1, heightPixels: 1, pitch: 1, (FreeTypePixelMode)byte.MaxValue, grayLevels: 256)));
     }
 
     [Fact]
     public void CopyCoverage_BitmapAreaOverflow_Throws()
     {
-        Assert.Throws<OverflowException>(() =>
-            FreeTypeBitmapNormalizer.CopyCoverage(
-                nint.Zero, widthPixels: int.MaxValue, heightPixels: 2, pitch: int.MaxValue,
-                FreeTypePixelMode.Gray, grayLevels: 256));
+        Assert.Throws<OverflowException>(() => FreeTypeBitmapNormalizer.CopyCoverage(nint.Zero, widthPixels: int.MaxValue, heightPixels: 2, pitch: int.MaxValue, FreeTypePixelMode.Gray, grayLevels: 256));
     }
 
     [Theory]
@@ -167,30 +149,20 @@ public sealed class FreeTypeBitmapNormalizerTests
     [InlineData(0, -1)]
     public void CopyCoverage_NegativeDimensions_Throw(int widthPixels, int heightPixels)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            FreeTypeBitmapNormalizer.CopyCoverage(
-                nint.Zero, widthPixels, heightPixels, pitch: 1,
-                FreeTypePixelMode.Gray, grayLevels: 256));
+        Assert.Throws<ArgumentOutOfRangeException>(() => FreeTypeBitmapNormalizer.CopyCoverage(nint.Zero, widthPixels, heightPixels, pitch: 1, FreeTypePixelMode.Gray, grayLevels: 256));
     }
 
     private static T WithBuffer<T>(byte[] source, Func<nint, T> operation)
     {
-        return WithBuffer(source, bufferOffset: 0, operation);
-    }
-
-    private static T WithBuffer<T>(byte[] source, int bufferOffset, Func<nint, T> operation)
-    {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(operation);
-        ArgumentOutOfRangeException.ThrowIfNegative(bufferOffset);
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(bufferOffset, source.Length);
 
         nint allocation = Marshal.AllocHGlobal(source.Length);
 
         try
         {
             Marshal.Copy(source, 0, allocation, source.Length);
-            return operation(allocation + bufferOffset);
+            return operation(allocation);
         }
         finally
         {

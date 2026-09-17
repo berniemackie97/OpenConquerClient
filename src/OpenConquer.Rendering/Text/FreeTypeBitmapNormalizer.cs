@@ -50,7 +50,7 @@ internal static unsafe class FreeTypeBitmapNormalizer
 
         for (int row = 0; row < heightPixels; row++)
         {
-            byte* source = GetRow(buffer, pitch, row);
+            byte* source = GetLogicalRow(buffer, pitch, row, heightPixels);
             Span<byte> destination = coverage.AsSpan(checked(row * widthPixels), widthPixels);
 
             if (grayLevels == 256)
@@ -86,7 +86,7 @@ internal static unsafe class FreeTypeBitmapNormalizer
 
         for (int row = 0; row < heightPixels; row++)
         {
-            byte* source = GetRow(buffer, pitch, row);
+            byte* source = GetLogicalRow(buffer, pitch, row, heightPixels);
             Span<byte> destination = coverage.AsSpan(checked(row * widthPixels), widthPixels);
 
             for (int column = 0; column < widthPixels; column++)
@@ -112,8 +112,10 @@ internal static unsafe class FreeTypeBitmapNormalizer
         }
     }
 
-    private static byte* GetRow(nint buffer, int pitch, int row)
+    private static byte* GetLogicalRow(nint buffer, int pitch, int row, int heightPixels)
     {
-        return (byte*)buffer + checked(row * pitch);
+        long rowOffset = pitch > 0 ? checked((long)row * pitch) : checked((long)(heightPixels - 1 - row) * -(long)pitch);
+
+        return (byte*)buffer + checked((nint)rowOffset);
     }
 }

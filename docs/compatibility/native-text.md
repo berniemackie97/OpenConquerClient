@@ -634,13 +634,19 @@ advance     > 0
 
 ### Bitmap Normalization
 
-FreeType bitmap rows are copied using the native pitch directly:
+FreeType bitmap pitch can be positive or negative. Logical row traversal therefore depends on the
+pitch sign:
 
 ```text
-row pointer = buffer + row * pitch
+pitch >= 0:
+    row pointer = buffer + row * pitch
+
+pitch < 0:
+    row pointer = buffer + (rows - 1 - row) * abs(pitch)
 ```
 
-Positive and negative pitch are both valid FreeType representations.
+For negative pitch, `buffer` addresses the lower physical row and logical traversal proceeds in the
+opposite physical direction.
 
 Output coverage is tightly packed in logical row order.
 
