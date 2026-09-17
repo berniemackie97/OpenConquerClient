@@ -64,15 +64,15 @@
       "openconquer.rendering": {
         "type": "Project",
         "dependencies": {
-          "AlvorKit.FreeType.Native": "[2.14.3.9, )",
+          "OpenConquer.FreeType.Native": "[1.0.0, )",
           "Silk.NET.OpenGL": "[2.23.0, )"
         }
       },
-      "AlvorKit.FreeType.Native": {
+      "OpenConquer.FreeType.Native": {
         "type": "CentralTransitive",
-        "requested": "[2.14.3.9, )",
-        "resolved": "2.14.3.9",
-        "contentHash": "S1cEZRmxlQWksmFbFWVqfInSUhNedE0v6LoFwpdZGTVTRoq9roRW6qxW+ilq7gHEX0mTWSJIsg5wp8bUJHavMg=="
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "f+/g37FZxN6IqRbULgTK2rVUU2rfOAZQi3+d/FoOTxNtfdSzZwP37AaE9MhtRtwV2UBDgsTTQz+SVxsPf6dTzg=="
       },
       "Silk.NET.Core": {
         "type": "CentralTransitive",
