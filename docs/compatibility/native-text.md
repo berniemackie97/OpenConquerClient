@@ -1,7 +1,7 @@
 # Native Text Compatibility
 
 Compatibility contract for Conquer Online 5517 text configuration, encoded-text semantics, font
-resolution, and glyph rasterization.
+resolution, glyph rasterization, caching, atlas storage, and text layout.
 
 Detailed native addresses, decompilation traces, caller inventories, and unresolved
 reverse-engineering evidence belong in the native analysis notes.
@@ -104,8 +104,8 @@ info.ini normal-height fallback  = 14
 
 Retail optionally reads `ini/CodePage.ini`.
 
-The first line supplies the configured native code-page value. Later font-size-level data is outside
-this slice.
+The first line supplies the configured native code-page value. Later font-size-level data remains
+outside the implemented contract.
 
 The native global begins at:
 
@@ -277,7 +277,12 @@ ASCII line feed is a distinct semantic unit:
 newline
 ```
 
-Layout effects belong to GFX-TEXT-003.
+Layout applies:
+
+```text
+X = 0
+Y += nominalPixelHeight + nominalPixelHeight / 4
+```
 
 ## Data Icons
 
@@ -320,8 +325,17 @@ When data-icon recognition is disabled:
 '7'
 ```
 
-Icon lookup, width overrides, and the native 16-pixel fallback belong to the later measurement
-layer.
+Measurement resolves icon width in this order:
+
+```text
+positive caller width
+provider width
+16-pixel fallback
+```
+
+A missing or zero provider width uses the 16-pixel fallback.
+
+OpenConquer rejects a negative provider width as an invalid managed provider result.
 
 ## Host Font Discovery
 
@@ -507,8 +521,8 @@ policy attempts.
 
 If no usable candidate exists, creation fails explicitly.
 
-This policy is only for font creation. Missing-glyph fallback after face creation belongs to
-GFX-TEXT-003.
+This policy is only for font creation. Missing-glyph fallback after face creation is handled by the
+native glyph-cache layer.
 
 ## FreeType Boundary
 
@@ -666,7 +680,167 @@ FreeType render mode = mono
 coverage             = 0 or 255
 ```
 
-Rendering color, fragment alpha, atlas placement, and GPU drawing remain later concerns.
+Rendering color, fragment alpha, GPU upload, and GPU drawing remain later concerns.
+
+## Missing-Glyph Fallback
+
+Font creation fallback and missing-glyph fallback are separate policies.
+
+Each native glyph cache is configured with:
+
+```text
+primary font record
+font record 0
+effective code page
+```
+
+For an uncached encoded glyph key:
+
+```text
+decode glyph key
+try primary font record
+
+if missing and primary record != 0:
+    try font record 0
+
+if still missing:
+    advance using primary line-height behavior
+```
+
+When the primary font is already record 0, the fallback record is not retried.
+
+A glyph-key decoding failure is treated as missing and uses the primary line-height advance without
+calling either rasterizer.
+
+Unexpected rasterizer failures propagate rather than being converted into missing-glyph results.
+
+## Native Glyph Cache
+
+The cache key remains the native encoded glyph key:
+
+```text
+ushort encoded glyph key
+```
+
+Unicode decoding occurs only after a cache miss.
+
+Cached entries preserve:
+
+```text
+source font-record index
+bearing-left
+top offset
+advance
+optional atlas region
+missing state
+```
+
+Successful zero-area glyphs such as spaces are cached with their advance but without atlas storage.
+
+Missing results are cached so repeated unsupported glyphs do not repeatedly perform decoding or font
+lookup.
+
+Coverage bytes are stored by the atlas rather than duplicated in every cache entry.
+
+The cache does not own or dispose the supplied font rasterizers.
+
+## Glyph Atlas
+
+Verified native atlas requirements:
+
+```text
+page width  = 512 pixels
+page height = 512 pixels
+separation  = 2 pixels
+```
+
+Zero-area glyphs do not consume atlas storage.
+
+Glyphs larger than one atlas page fail explicitly.
+
+OpenConquer currently uses deterministic shelf allocation inside those verified page and separation
+constraints.
+
+Exact native row-wrap and page-allocation thresholds have not been established, so OpenConquer does
+not claim that its internal atlas coordinates are native-identical.
+
+Each page exposes normalized grayscale coverage and a monotonically increasing revision for later
+GPU synchronization.
+
+GPU texture ownership remains outside GFX-TEXT-003.
+
+## Native Text Layout
+
+Layout consumes `EncodedTextReader` tokens rather than reparsing encoded bytes.
+
+The pen begins at:
+
+```text
+X = 0
+Y = 0
+```
+
+### Glyphs
+
+Drawable glyph position:
+
+```text
+X = pen X + bearing-left
+Y = pen Y + top offset
+```
+
+After processing the glyph:
+
+```text
+pen X += advance
+```
+
+A successful zero-area glyph advances the pen without emitting a drawable glyph item.
+
+A missing glyph advances using the cached primary line-height behavior and emits no drawable item.
+
+### Newlines
+
+On newline:
+
+```text
+maximum width = max(maximum width, pen X)
+pen X         = 0
+pen Y        += nominal height + nominal height / 4
+```
+
+### Measurement
+
+Final dimensions are:
+
+```text
+width  = maximum horizontal pen extent
+height = accumulated newline advance + nominal height
+```
+
+An empty string therefore measures:
+
+```text
+width  = 0
+height = nominal height
+```
+
+Layout arithmetic uses checked integer operations.
+
+### Data Icons
+
+A recognized data icon emits one ordered data-icon layout item carrying:
+
+```text
+icon index
+X
+Y
+resolved width
+```
+
+Its width advances the horizontal pen.
+
+Actual icon resource selection and drawing remain rendering concerns.
 
 ## Managed Ownership
 
@@ -719,6 +893,19 @@ IGlyphRasterizer
 FreeTypeGlyphRasterizer
 FreeTypeGlyphRasterizerFactory
 RasterizedGlyph
+
+NativeTextFontRecord
+CachedGlyph
+NativeGlyphCache
+
+GlyphAtlasRegion
+GlyphAtlasPage
+GlyphAtlas
+
+IDataIconWidthProvider
+NativeTextLayoutItem
+NativeTextLayout
+NativeTextLayoutEngine
 ```
 
 Content and Rendering remain independent sibling projects.
@@ -775,26 +962,55 @@ missing-glyph reporting
 antialias mode selection
 ```
 
+Deferred work from GFX-TEXT-002 is implemented by later slices rather than being incomplete work in
+that slice.
+
+## GFX-TEXT-003 Scope
+
+Implemented and verified:
+
+```text
+native font-record layout model
+missing-glyph fallback to font record index 0
+primary line-height missing-glyph advance
+encoded-key glyph cache
+cached missing-glyph results
+cached zero-area glyph metrics
+
+512x512 glyph-atlas pages
+2-pixel glyph separation
+deterministic managed atlas allocation
+multi-page atlas growth
+zero-area atlas bypass
+atlas page revision tracking
+
+native text measurement
+glyph destination layout
+newline X reset
+newline Y advance
+space advance without drawable geometry
+ordered glyph/data-icon layout items
+
+optional data-icon recognition
+explicit data-icon width override
+provider data-icon width lookup
+16-pixel missing/zero width fallback
+
+checked layout and atlas arithmetic
+```
+
 Deferred:
 
 ```text
 CodePage.ini font-size levels
 
-missing-glyph fallback to font record index 0
-glyph cache
-glyph atlas
-text measurement/layout
-newline layout advance
-data-icon resource lookup
-data-icon width resolution
 font batching
-
 text color/corner behavior
+OpenGL atlas upload
 OpenGL text drawing
+pixel-level real-driver conformance
 runtime HUD/text consumers
 ```
-
-Deferred work is outside GFX-TEXT-002 rather than incomplete implementation of this slice.
 
 ## Text Reconstruction Roadmap
 
@@ -823,33 +1039,9 @@ first native UI consumer
 
 The intended first UI consumer remains the verified status-hint panel.
 
-## GFX-TEXT-003 Requirements
-
-Verified requirements reserved for the next slice:
-
-```text
-newline:
-    X resets
-    Y += nominal height + nominal height / 4
-
-space:
-    advance cursor
-    emit no glyph vertices
-
-missing glyph:
-    retry font record index 0
-    if retry fails, advance using primary line-height behavior
-
-glyph atlas:
-    512 × 512
-    2-pixel separation
-```
-
-These behaviors must remain outside the font-creation factory.
-
 ## Conformance Boundary
 
-GFX-TEXT-001 and deterministic GFX-TEXT-002 policy are covered primarily by unit tests.
+GFX-TEXT-001 through deterministic GFX-TEXT-003 policy are covered primarily by unit tests.
 
 Host-font adapters require execution on their real operating systems. CI therefore validates the
 native host and FreeType seams on supported Windows, macOS, and Linux environments.
@@ -888,6 +1080,12 @@ exact font-creation fallback order
 negative nonzero requested font heights
 verified FreeType metric semantics
 grayscale versus monochrome rasterization
+
+record-zero missing-glyph retry
+primary line-height missing-glyph advance
+newline reset/advance behavior
+512x512 glyph atlas
+2-pixel atlas separation
 ```
 
 Modern implementation constraints:
@@ -910,7 +1108,9 @@ reject arithmetic overflow deterministically
 do not depend on host ANSI settings for clean-client behavior
 
 do not expand runtime content without a consumer
-do not conflate creation fallback with missing-glyph fallback
-do not pull cache/layout/rendering behavior into earlier slices
+do not conflate font-creation fallback with missing-glyph fallback
+do not put missing-glyph fallback into the font-creation factory
+do not put GPU objects into measurement/cache/atlas policy
+do not claim undocumented atlas coordinates as native behavior
 do not claim pixel identity without evidence
 ```

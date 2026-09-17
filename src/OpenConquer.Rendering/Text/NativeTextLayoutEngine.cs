@@ -29,8 +29,6 @@ internal sealed class NativeTextLayoutEngine
 
     public NativeTextLayout Layout(ReadOnlySpan<byte> encodedText, bool recognizeDataIcons, int dataIconWidthPixels = 0)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(dataIconWidthPixels);
-
         EncodedTextReader reader = new(encodedText, _effectiveCodePage, recognizeDataIcons);
         List<NativeTextLayoutItem> items = new(Math.Min(encodedText.Length, 256));
         int penXPixels = 0;
@@ -81,7 +79,7 @@ internal sealed class NativeTextLayoutEngine
 
     private int ResolveDataIconWidth(byte dataIconIndex, int explicitWidthPixels)
     {
-        if (explicitWidthPixels > 0)
+        if (explicitWidthPixels != 0)
         {
             return explicitWidthPixels;
         }
@@ -89,11 +87,6 @@ internal sealed class NativeTextLayoutEngine
         if (_dataIconWidthProvider is null || !_dataIconWidthProvider.TryGetWidth(dataIconIndex, out int widthPixels))
         {
             return MissingDataIconWidthPixels;
-        }
-
-        if (widthPixels < 0)
-        {
-            throw new InvalidOperationException($"Data-icon width provider returned negative width {widthPixels} for icon {dataIconIndex}.");
         }
 
         return widthPixels == 0 ? MissingDataIconWidthPixels : widthPixels;

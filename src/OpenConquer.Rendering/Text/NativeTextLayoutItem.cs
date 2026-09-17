@@ -57,7 +57,7 @@ internal readonly record struct NativeTextLayoutItem
 
     public static NativeTextLayoutItem CreateDataIcon(byte dataIconIndex, int xPixels, int yPixels, int widthPixels)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(widthPixels, 0);
+        ArgumentOutOfRangeException.ThrowIfZero(widthPixels);
         return new NativeTextLayoutItem(NativeTextLayoutItemKind.DataIcon, xPixels, yPixels, 0, default, dataIconIndex, widthPixels);
     }
 }
