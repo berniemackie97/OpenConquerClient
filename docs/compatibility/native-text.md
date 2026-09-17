@@ -328,14 +328,14 @@ When data-icon recognition is disabled:
 Measurement resolves icon width in this order:
 
 ```text
-positive caller width
+nonzero caller width
 provider width
 16-pixel fallback
 ```
 
 A missing or zero provider width uses the 16-pixel fallback.
 
-OpenConquer rejects a negative provider width as an invalid managed provider result.
+Nonzero caller and provider widths preserve their signed native value.
 
 ## Host Font Discovery
 
@@ -992,9 +992,10 @@ space advance without drawable geometry
 ordered glyph/data-icon layout items
 
 optional data-icon recognition
-explicit data-icon width override
+explicit nonzero data-icon width override
 provider data-icon width lookup
 16-pixel missing/zero width fallback
+signed nonzero data-icon width preservation
 
 checked layout and atlas arithmetic
 ```
@@ -1084,6 +1085,7 @@ grayscale versus monochrome rasterization
 record-zero missing-glyph retry
 primary line-height missing-glyph advance
 newline reset/advance behavior
+nonzero signed data-icon width semantics
 512x512 glyph atlas
 2-pixel atlas separation
 ```
