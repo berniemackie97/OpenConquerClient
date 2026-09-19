@@ -5,7 +5,7 @@ using System.Text;
 namespace OpenConquer.Content.Ani;
 
 /// <summary>
-/// Parses and resolves sections from a retail ANI text index.
+/// Parses and resolves sections from an ANI text index.
 /// </summary>
 public sealed class AniIndexFile
 {
@@ -183,6 +183,7 @@ public sealed class AniIndexFile
 
     private static int NormalizeFrameCount(int rawFrameCount)
     {
+        // Preserve the ANI frame count wrapping semantics while retaining the sign of negative values.
         int normalized = rawFrameCount & unchecked((int)0x8000003F);
 
         if (normalized < 0)

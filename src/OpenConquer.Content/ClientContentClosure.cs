@@ -3,15 +3,12 @@ using OpenConquer.Content.Configuration;
 namespace OpenConquer.Content;
 
 /// <summary>
-/// The exact set of retail content paths the implemented runtime slices read.
+/// Resolves the content paths required by the client at runtime.
 /// </summary>
 public static class ClientContentClosure
 {
     private static readonly int[] s_startupLogoVariantIndexes = [1, 2];
 
-    /// <summary>
-    /// Resolves the closure against <paramref name="contentSource"/>.
-    /// </summary>
     public static IReadOnlyList<string> Resolve(IClientContentSource contentSource)
     {
         ArgumentNullException.ThrowIfNull(contentSource);

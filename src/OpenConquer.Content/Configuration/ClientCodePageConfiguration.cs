@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Configuration;
 
 /// <summary>
-/// Resolves the client code-page configuration used by the legacy text pipeline.
+/// Resolves the client codepage configuration used by the text pipeline.
 /// </summary>
 public sealed class ClientCodePageConfiguration
 {

@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Ani;
 
 /// <summary>
-/// One section from a retail ANI index with its ordered frame content paths.
+/// Represents an ANI index section and its ordered frame content paths.
 /// </summary>
 public sealed class AniIndexSection
 {
