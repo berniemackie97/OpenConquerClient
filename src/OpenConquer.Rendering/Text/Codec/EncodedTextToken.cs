@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering.Text.Encoding;
+namespace OpenConquer.Rendering.Text.Codec;
 
 internal enum EncodedTextTokenKind
 {

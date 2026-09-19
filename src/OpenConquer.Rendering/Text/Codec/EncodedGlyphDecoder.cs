@@ -1,7 +1,7 @@
 using System.Buffers;
 using System.Text;
 
-namespace OpenConquer.Rendering.Text.Encoding;
+namespace OpenConquer.Rendering.Text.Codec;
 
 /// <summary>
 /// Converts encoded glyph keys into Unicode scalar values for rasterization.

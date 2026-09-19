@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering.Text.Encoding;
+namespace OpenConquer.Rendering.Text.Codec;
 
 /// <summary>
 /// Classifies lead bytes for supported DBCS code pages.

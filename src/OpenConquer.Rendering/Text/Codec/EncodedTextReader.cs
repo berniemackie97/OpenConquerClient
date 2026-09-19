@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering.Text.Encoding;
+namespace OpenConquer.Rendering.Text.Codec;
 
 /// <summary>
 /// Reads encoded text as glyph, newline, and data-icon tokens using the configured character encoding.

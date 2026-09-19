@@ -1,7 +1,6 @@
-using OpenConquer.Rendering.Text.Fonts.Discovery;
 using OpenConquer.Rendering.Text.Native;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.Discovery;
 
 /// <summary>
 /// Discovers fonts registered with the Windows DirectWrite system font collection.
