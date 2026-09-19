@@ -3,7 +3,7 @@ using OpenConquer.Content.Images;
 namespace OpenConquer.Content.Ani;
 
 /// <summary>
-/// Represents a non-empty decoded frame set from one retail ANI section.
+/// Represents a nonempty decoded frame set from an ANI section.
 /// </summary>
 public sealed class AniFrameSet
 {
@@ -45,7 +45,7 @@ public sealed class AniFrameSet
     public int FrameCount => _frames.Length;
 
     /// <summary>
-    /// Resolves a requested frame using the unsigned modulo behavior of retail CAni.
+    /// Wraps frame indices to the available frame count using unsigned modulo semantics.
     /// </summary>
     public RgbaImage GetFrame(uint frameIndex)
     {

@@ -1,5 +1,5 @@
 using System.Runtime.ExceptionServices;
-using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Atlas;
 using Silk.NET.OpenGL;
 
 namespace OpenConquer.Rendering.OpenGL;

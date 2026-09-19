@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Images;
 
 /// <summary>
-/// Loads retail TGA image content into normalized RGBA pixels.
+/// Loads TGA image content into normalized RGBA pixels.
 /// </summary>
 public static class TargaImageLoader
 {
@@ -12,7 +12,7 @@ public static class TargaImageLoader
         ArgumentNullException.ThrowIfNull(contentSource);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
 
-        byte[] encodedImage = ContentRead.ReadRequiredBytes(contentSource, contentPath, mode, MaximumEncodedLength);
+        byte[] encodedImage = ContentReader.ReadRequiredBytes(contentSource, contentPath, mode, MaximumEncodedLength);
 
         return TargaImageReader.DecodeRle32Bit(encodedImage);
     }

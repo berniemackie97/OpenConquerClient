@@ -1,6 +1,6 @@
 using OpenConquer.Client.Startup;
 using OpenConquer.Platform;
-using OpenConquer.Rendering;
+using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests;
 

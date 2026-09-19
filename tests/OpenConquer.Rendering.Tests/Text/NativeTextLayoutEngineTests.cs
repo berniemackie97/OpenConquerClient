@@ -1,5 +1,7 @@
 using System.Text;
-using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Atlas;
+using OpenConquer.Rendering.Text.Glyphs;
+using OpenConquer.Rendering.Text.Layout;
 
 namespace OpenConquer.Rendering.Tests.Text;
 

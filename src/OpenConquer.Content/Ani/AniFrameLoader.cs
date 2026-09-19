@@ -3,7 +3,7 @@ using OpenConquer.Content.Images;
 namespace OpenConquer.Content.Ani;
 
 /// <summary>
-/// Resolves and decodes frames from retail ANI indexes.
+/// Resolves and decodes image frames referenced by ANI indexes.
 /// </summary>
 public static class AniFrameLoader
 {

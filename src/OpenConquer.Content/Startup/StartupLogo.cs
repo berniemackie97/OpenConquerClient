@@ -4,7 +4,7 @@ using OpenConquer.Content.Images;
 namespace OpenConquer.Content.Startup;
 
 /// <summary>
-/// The one-shot retail startup logo selected for this launch.
+/// The one shot startup logo selected for this launch.
 /// </summary>
 public sealed class StartupLogo
 {
@@ -71,7 +71,7 @@ public sealed class StartupLogo
 
             using (stream)
             {
-                encodedImage = ContentRead.ReadBytes(stream, contentPath, MaximumEncodedLength);
+                encodedImage = ContentReader.ReadBytes(stream, contentPath, MaximumEncodedLength);
             }
 
             return new StartupLogo(variantIndex, contentPath, WindowsBitmapReader.Decode24Bit(encodedImage), unavailableReason: null);

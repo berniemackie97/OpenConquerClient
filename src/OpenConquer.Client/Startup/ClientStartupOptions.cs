@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using OpenConquer.Platform;
-using OpenConquer.Rendering;
+using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Startup;
 

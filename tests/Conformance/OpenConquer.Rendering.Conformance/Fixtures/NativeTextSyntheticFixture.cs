@@ -1,5 +1,7 @@
 using System.Text;
-using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Atlas;
+using OpenConquer.Rendering.Text.Glyphs;
+using OpenConquer.Rendering.Text.Layout;
 
 namespace OpenConquer.Rendering.Conformance.Fixtures;
 
@@ -68,7 +70,7 @@ internal sealed class NativeTextSyntheticFixture : IDisposable
             get;
         }
 
-        public bool TryRasterizeGlyph(Rune character, out RasterizedGlyph? glyph)
+        public bool TryRasterizeGlyph(Rune rune, out RasterizedGlyph? glyph)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 

@@ -1,5 +1,8 @@
 using System.Text;
-using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Fonts;
+using OpenConquer.Rendering.Text.Fonts.Discovery;
+using OpenConquer.Rendering.Text.Fonts.FreeType;
+using OpenConquer.Rendering.Text.Glyphs;
 
 namespace OpenConquer.Rendering.Tests.Text;
 
@@ -132,7 +135,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
                     return expected;
                 }
 
-                throw new FontFaceCreationException("Expected creation failure.");
+                throw new FreeTypeFaceCreationException("Expected creation failure.");
             }
         );
 
@@ -180,7 +183,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
     [Fact]
     public void Create_FontFaceCreationFailure_AdvancesToNextCandidate()
     {
-        AssertRecoverableFailureAdvances(new FontFaceCreationException("Face failure."));
+        AssertRecoverableFailureAdvances(new FreeTypeFaceCreationException("Face failure."));
     }
 
     [Fact]
@@ -271,7 +274,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
                     throw lastFailure;
                 }
 
-                throw new FontFaceCreationException("Earlier failure.");
+                throw new FreeTypeFaceCreationException("Earlier failure.");
             }
         );
 
@@ -331,7 +334,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
                     return expected;
                 }
 
-                throw new FontFaceCreationException("Expected creation failure.");
+                throw new FreeTypeFaceCreationException("Expected creation failure.");
             }
         );
 
@@ -522,7 +525,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
     {
         public bool AntialiasEnabled => true;
 
-        public bool TryRasterizeGlyph(Rune character, out RasterizedGlyph? glyph)
+        public bool TryRasterizeGlyph(Rune rune, out RasterizedGlyph? glyph)
         {
             glyph = null;
             return false;

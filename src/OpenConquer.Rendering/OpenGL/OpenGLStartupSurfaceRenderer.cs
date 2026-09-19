@@ -3,7 +3,7 @@ using Silk.NET.OpenGL;
 namespace OpenConquer.Rendering.OpenGL;
 
 /// <summary>
-/// Renders the one shot retail startup logo directly to a startup window's framebuffer.
+/// Renders the one shot startup logo directly to a startup window's framebuffer.
 /// </summary>
 public sealed class OpenGLStartupSurfaceRenderer : IDisposable
 {

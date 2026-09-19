@@ -3,7 +3,7 @@ using OpenConquer.Content.Images;
 namespace OpenConquer.Content.Ani;
 
 /// <summary>
-/// Resolves and decodes a complete retail ANI section.
+/// Resolves and decodes a complete ANI section.
 /// </summary>
 public static class AniFrameSetLoader
 {

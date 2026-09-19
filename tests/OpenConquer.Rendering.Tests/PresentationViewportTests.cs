@@ -1,3 +1,5 @@
+using OpenConquer.Rendering.Presentation;
+
 namespace OpenConquer.Rendering.Tests;
 
 /// <summary>

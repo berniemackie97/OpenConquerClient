@@ -5,7 +5,7 @@ using System.Text;
 namespace OpenConquer.Content.Ani;
 
 /// <summary>
-/// Parses and resolves sections from a retail ANI text index.
+/// Parses and resolves sections from an ANI text index.
 /// </summary>
 public sealed class AniIndexFile
 {
@@ -24,7 +24,7 @@ public sealed class AniIndexFile
         ArgumentNullException.ThrowIfNull(contentSource);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
 
-        byte[] payload = ContentRead.ReadRequiredBytes(contentSource, contentPath, mode, MaximumEncodedLength);
+        byte[] payload = ContentReader.ReadRequiredBytes(contentSource, contentPath, mode, MaximumEncodedLength);
 
         return Parse(payload, contentPath);
     }
@@ -34,7 +34,7 @@ public sealed class AniIndexFile
         ArgumentNullException.ThrowIfNull(stream);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
 
-        byte[] payload = ContentRead.ReadBytes(stream, contentPath, MaximumEncodedLength);
+        byte[] payload = ContentReader.ReadBytes(stream, contentPath, MaximumEncodedLength);
 
         return Parse(payload, contentPath);
     }
@@ -183,6 +183,7 @@ public sealed class AniIndexFile
 
     private static int NormalizeFrameCount(int rawFrameCount)
     {
+        // Preserve the ANI frame count wrapping semantics while retaining the sign of negative values.
         int normalized = rawFrameCount & unchecked((int)0x8000003F);
 
         if (normalized < 0)
