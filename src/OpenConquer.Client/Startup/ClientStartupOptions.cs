@@ -3,7 +3,7 @@ using System.Globalization;
 using OpenConquer.Platform;
 using OpenConquer.Rendering;
 
-namespace OpenConquer.Client;
+namespace OpenConquer.Client.Startup;
 
 internal sealed class ClientStartupOptions
 {
@@ -15,25 +15,21 @@ internal sealed class ClientStartupOptions
     private const int MaximumWindowDimension = 16_384;
     private const long MaximumWindowArea = 7_680L * 4_320L;
 
-    private static readonly (string Name, PresentationPolicy Policy)[] s_presentationPolicies =
+    private static readonly (string Name, PresentationPolicy Policy)[] s_presentationOptions =
     [
         ("fit", PresentationPolicy.Fit),
         ("integer", PresentationPolicy.IntegerScale),
         ("stretch", PresentationPolicy.Stretch),
     ];
 
-    private static readonly (string Name, DesktopWindowMode Mode)[] s_windowModes =
+    private static readonly (string Name, DesktopWindowMode Mode)[] s_windowModeOptions =
     [
         ("resizable", DesktopWindowMode.Resizable),
         ("fixed", DesktopWindowMode.Fixed),
         ("fullscreen", DesktopWindowMode.Fullscreen),
     ];
 
-    private ClientStartupOptions(
-        string contentRootPath,
-        PresentationPolicy presentationPolicy,
-        DesktopWindowMode windowMode,
-        PixelSize windowSize)
+    private ClientStartupOptions(string contentRootPath, PresentationPolicy presentationPolicy, DesktopWindowMode windowMode, PixelSize windowSize)
     {
         ContentRootPath = contentRootPath;
         PresentationPolicy = presentationPolicy;
@@ -46,33 +42,27 @@ internal sealed class ClientStartupOptions
         get;
     }
 
-    /// <summary>
-    /// How the fixed logical frame is presented by the native game window.
-    /// </summary>
     public PresentationPolicy PresentationPolicy
     {
         get;
     }
 
-    /// <summary>
-    /// How the native game window is presented independently of the logical render size.
-    /// </summary>
     public DesktopWindowMode WindowMode
     {
         get;
     }
 
     /// <summary>
-    /// The requested physical desktop size. The active display may determine the final fullscreen framebuffer.
+    /// The requested window size. Fullscreen presentation may use the active display's framebuffer size instead.
     /// </summary>
     public PixelSize WindowSize
     {
         get;
     }
 
-    public static string PresentationPolicyNames => string.Join('|', s_presentationPolicies.Select(entry => entry.Name));
+    public static string PresentationPolicyNames => string.Join('|', s_presentationOptions.Select(entry => entry.Name));
 
-    public static string WindowModeNames => string.Join('|', s_windowModes.Select(entry => entry.Name));
+    public static string WindowModeNames => string.Join('|', s_windowModeOptions.Select(entry => entry.Name));
 
     public static bool TryParse(string[] args, [NotNullWhen(true)] out ClientStartupOptions? options, [NotNullWhen(false)] out string? errorMessage)
     {
@@ -208,9 +198,6 @@ internal sealed class ClientStartupOptions
         return true;
     }
 
-    /// <summary>
-    /// Consumes the value following an option, advancing <paramref name="index"/> past it.
-    /// </summary>
     private static bool TryReadOptionValue(IReadOnlyList<string> args, ref int index, string optionName, string expectation, [NotNullWhen(true)] out string? value, out string? errorMessage)
     {
         if (index + 1 >= args.Count)
@@ -241,7 +228,7 @@ internal sealed class ClientStartupOptions
 
     private static bool TryParsePresentationPolicy(string value, out PresentationPolicy policy)
     {
-        foreach ((string name, PresentationPolicy candidate) in s_presentationPolicies)
+        foreach ((string name, PresentationPolicy candidate) in s_presentationOptions)
         {
             if (string.Equals(value, name, StringComparison.OrdinalIgnoreCase))
             {
@@ -256,7 +243,7 @@ internal sealed class ClientStartupOptions
 
     private static bool TryParseWindowMode(string value, out DesktopWindowMode mode)
     {
-        foreach ((string name, DesktopWindowMode candidate) in s_windowModes)
+        foreach ((string name, DesktopWindowMode candidate) in s_windowModeOptions)
         {
             if (string.Equals(value, name, StringComparison.OrdinalIgnoreCase))
             {
@@ -289,10 +276,7 @@ internal sealed class ClientStartupOptions
 
         if (!int.TryParse(widthText, NumberStyles.None, CultureInfo.InvariantCulture, out int width) ||
             !int.TryParse(heightText, NumberStyles.None, CultureInfo.InvariantCulture, out int height) ||
-            width <= 0 ||
-            height <= 0 ||
-            width > MaximumWindowDimension ||
-            height > MaximumWindowDimension ||
+            width <= 0 || height <= 0 || width > MaximumWindowDimension || height > MaximumWindowDimension ||
             (long)width * height > MaximumWindowArea)
         {
             size = default;

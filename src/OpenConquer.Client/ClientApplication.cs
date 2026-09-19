@@ -13,7 +13,7 @@ internal sealed class ClientApplication : IDisposable
 {
     private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
 
-    private readonly string _clientContentRootPath;
+    private readonly string _contentRootPath;
     private readonly PresentationPolicy _presentationPolicy;
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
@@ -25,20 +25,17 @@ internal sealed class ClientApplication : IDisposable
     private bool _runStarted;
     private bool _disposed;
 
-    public ClientApplication(
-        string clientContentRootPath,
-        PresentationPolicy presentationPolicy = PresentationPolicy.Fit,
-        DesktopWindowMode windowMode = DesktopWindowMode.Resizable,
-        PixelSize? windowSize = null)
+    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit,
+        DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(clientContentRootPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
 
         if (!Enum.IsDefined(windowMode))
         {
             throw new ArgumentOutOfRangeException(nameof(windowMode), windowMode, "Unsupported desktop window mode.");
         }
 
-        _clientContentRootPath = clientContentRootPath;
+        _contentRootPath = contentRootPath;
         _presentationPolicy = presentationPolicy;
         _windowMode = windowMode;
 
@@ -59,9 +56,9 @@ internal sealed class ClientApplication : IDisposable
 
         _runStarted = true;
 
-        PackagedClientContentSource contentSource = PackagedClientContentSource.Open(_clientContentRootPath);
+        PackagedClientContentSource contentSource = PackagedClientContentSource.Open(_contentRootPath);
 
-        ReportTolerableContentGaps(contentSource);
+        ReportPackageRegistrationWarnings(contentSource);
 
         StartupLogo startupLogo = StartupLogo.Load(contentSource, Environment.TickCount64);
 
@@ -149,10 +146,7 @@ internal sealed class ClientApplication : IDisposable
         _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
     }
 
-    /// <summary>
-    /// Reports the <c>ini/package.ini</c> declarations retail resolves without failing.
-    /// </summary>
-    private static void ReportTolerableContentGaps(PackagedClientContentSource contentSource)
+    private static void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
     {
         foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
         {

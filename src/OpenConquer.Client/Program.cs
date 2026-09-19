@@ -1,3 +1,5 @@
+using OpenConquer.Client.Startup;
+
 namespace OpenConquer.Client;
 
 internal static class Program
