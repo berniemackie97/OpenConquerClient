@@ -3,7 +3,7 @@ using System.Globalization;
 namespace OpenConquer.Content.Configuration;
 
 /// <summary>
-/// Resolves the client UI font-size configuration used by the legacy text pipeline.
+/// Resolves the client UI font size configuration used by the text pipeline.
 /// </summary>
 public sealed class ClientFontSizeConfiguration
 {

@@ -1,5 +1,5 @@
 using System.Text;
-using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Glyphs;
 
 namespace OpenConquer.Rendering.Tests.Text;
 
@@ -28,14 +28,14 @@ internal sealed class TestGlyphRasterizer : IGlyphRasterizer
 
     public List<Rune> Characters { get; } = [];
 
-    public bool TryRasterizeGlyph(Rune character, out RasterizedGlyph? glyph)
+    public bool TryRasterizeGlyph(Rune rune, out RasterizedGlyph? glyph)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         CallCount++;
-        Characters.Add(character);
+        Characters.Add(rune);
 
-        (bool found, RasterizedGlyph? result) = _handler(character);
+        (bool found, RasterizedGlyph? result) = _handler(rune);
         glyph = result;
         return found;
     }

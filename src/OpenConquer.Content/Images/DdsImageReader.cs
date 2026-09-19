@@ -89,14 +89,14 @@ internal static class DdsImageReader
 
         if ((flags & DdsdDepth) != 0 || depth != 0)
         {
-            throw new InvalidDataException("Volume DDS textures are not supported by the retail DXT3 image path.");
+            throw new InvalidDataException("Volume DDS textures are not supported by the DXT3 image path.");
         }
 
         if ((flags & DdsdMipMapCount) != 0)
         {
             if (mipMapCount != 1)
             {
-                throw new InvalidDataException("Mipmapped DDS textures are not supported by the retail DXT3 image path.");
+                throw new InvalidDataException("Mipmapped DDS textures are not supported by the DXT3 image path.");
             }
         }
         else if (mipMapCount != 0)
@@ -117,7 +117,7 @@ internal static class DdsImageReader
 
         if (pixelFormatFlags != DdpfFourCc)
         {
-            throw new InvalidDataException($"The DDS pixel-format flags are 0x{pixelFormatFlags:X8}; expected the FourCC-only retail texture format.");
+            throw new InvalidDataException($"The DDS pixel-format flags are 0x{pixelFormatFlags:X8}; expected the FourCC-only texture format.");
         }
 
         uint fourCc = BinaryPrimitives.ReadUInt32LittleEndian(pixelFormat[8..]);
@@ -137,12 +137,12 @@ internal static class DdsImageReader
 
         if ((caps & (DdsCapsComplex | DdsCapsMipMap)) != 0)
         {
-            throw new InvalidDataException("Complex or mipmapped DDS textures are not supported by the retail DXT3 image path.");
+            throw new InvalidDataException("Complex or mipmapped DDS textures are not supported by the DXT3 image path.");
         }
 
         if (caps2 != 0)
         {
-            throw new InvalidDataException("Cubemap and volume DDS texture capabilities are not supported by the retail DXT3 image path.");
+            throw new InvalidDataException("Cubemap and volume DDS texture capabilities are not supported by the DXT3 image path.");
         }
 
         int blockCountX = (width + 3) / 4;

@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Wdf;
 
 /// <summary>
-/// Derives the routing prefixes that bind a declared retail package to virtual paths.
+/// Derives the routing prefixes that bind declared packages to virtual paths.
 /// </summary>
 internal static class WdfPackagePrefix
 {
@@ -32,7 +32,7 @@ internal static class WdfPackagePrefix
     }
 
     /// <summary>
-    /// Applies the native path normalization: ASCII <c>A-Z</c> folded to lowercase and <c>'\'</c> mapped to <c>'/'</c>. Nothing else is altered.
+    /// Normalizes package paths by folding ASCII <c>A-Z</c> to lowercase and mapping <c>'\'</c> to <c>'/'</c>.
     /// </summary>
     private static string Normalize(string value)
     {

@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using OpenConquer.Client.Startup;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Startup;
@@ -6,6 +7,7 @@ using OpenConquer.Content.Wdf;
 using OpenConquer.Platform;
 using OpenConquer.Rendering;
 using OpenConquer.Rendering.OpenGL;
+using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client;
 
@@ -67,7 +69,7 @@ internal sealed class ClientApplication : IDisposable
             Console.Error.WriteLine($"OpenConquer: startup logo unavailable; {unavailableReason}");
         }
 
-        DesktopWindow window = ClientWindowCreationSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
+        DesktopWindow window = StartupWindowSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
             () => InitializeRuntimeConfiguration(contentSource),
             () => new DesktopWindow(_windowSize, _windowMode, s_frameInterval));
 

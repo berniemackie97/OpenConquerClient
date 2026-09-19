@@ -1,4 +1,4 @@
-using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Fonts.FreeType;
 
 namespace OpenConquer.Rendering.Tests.Text;
 

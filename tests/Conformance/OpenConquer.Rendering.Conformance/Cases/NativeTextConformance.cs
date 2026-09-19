@@ -2,7 +2,9 @@ using OpenConquer.Platform;
 using OpenConquer.Rendering.Conformance.Fixtures;
 using OpenConquer.Rendering.Conformance.Support;
 using OpenConquer.Rendering.OpenGL;
-using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Atlas;
+using OpenConquer.Rendering.Text.Layout;
+using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Rendering.Conformance.Cases;
 

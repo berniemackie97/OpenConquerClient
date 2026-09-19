@@ -4,7 +4,7 @@ using System.Text;
 namespace OpenConquer.Content.Configuration;
 
 /// <summary>
-/// Loads the retail game-font configuration consumed during graphics startup.
+/// Loads the game font configuration consumed during graphics startup.
 /// </summary>
 public sealed class GameFontConfiguration
 {
@@ -27,9 +27,6 @@ public sealed class GameFontConfiguration
         get;
     }
 
-    /// <summary>
-    /// Gets the configured nominal pixel height.
-    /// </summary>
     public int NominalPixelHeight
     {
         get;
@@ -39,7 +36,7 @@ public sealed class GameFontConfiguration
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        byte[] bytes = ContentRead.ReadRequiredBytes(contentSource, RelativePath, ContentLookupMode.LooseOnly, MaximumFileLength);
+        byte[] bytes = ContentReader.ReadRequiredBytes(contentSource, RelativePath, ContentLookupMode.LooseOnly, MaximumFileLength);
 
         return Parse(bytes);
     }

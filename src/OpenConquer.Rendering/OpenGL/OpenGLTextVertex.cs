@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Rendering.OpenGL;
 

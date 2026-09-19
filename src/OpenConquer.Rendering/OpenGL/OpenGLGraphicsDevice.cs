@@ -1,4 +1,5 @@
-using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Presentation;
+using OpenConquer.Rendering.Text.Layout;
 using Silk.NET.OpenGL;
 
 namespace OpenConquer.Rendering.OpenGL;
