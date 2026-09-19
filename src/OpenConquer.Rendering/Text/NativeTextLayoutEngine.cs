@@ -1,3 +1,5 @@
+using OpenConquer.Rendering.Text.Encoding;
+
 namespace OpenConquer.Rendering.Text;
 
 /// <summary>

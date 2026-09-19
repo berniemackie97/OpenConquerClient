@@ -5,7 +5,7 @@ using OpenConquer.Content.Wdf;
 namespace OpenConquer.Content;
 
 /// <summary>
-/// Composes loose retail files with the WDF packages declared by <c>ini/package.ini</c>.
+/// Composes loose files with the WDF packages declared by <c>ini/package.ini</c>.
 /// </summary>
 public sealed class PackagedClientContentSource : IClientContentSource
 {
@@ -42,6 +42,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
 
         string[] declaredPackageNames;
 
+        // Package declarations are optional, unreadable or malformed configuration falls back to loose file lookup.
         try
         {
             if (!looseFiles.TryOpenRead(PackageConfigurationPath, ContentLookupMode.LooseOnly, out Stream? declarationStream))
@@ -137,6 +138,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
 
         WdfArchive archive;
 
+        // An unavailable package is recorded without preventing the remaining content sources from loading.
         try
         {
             if (!looseFiles.TryResolveFile(declaredName, out string? packagePath))

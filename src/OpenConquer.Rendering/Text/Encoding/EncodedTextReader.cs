@@ -1,8 +1,7 @@
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Encoding;
 
 /// <summary>
-/// Walks the legacy encoded text stream using the native one- or two-byte
-/// character rules.
+/// Reads encoded text as glyph, newline, and data-icon tokens using the configured character encoding.
 /// </summary>
 internal ref struct EncodedTextReader
 {

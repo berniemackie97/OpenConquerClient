@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace OpenConquer.Content.Wdf;
 
 /// <summary>
-/// Reads and indexes one retail WDF archive.
+/// Reads and indexes a WDF archive.
 /// </summary>
 internal sealed class WdfArchive
 {

@@ -1,5 +1,6 @@
 using System.Text;
 using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Fonts.FreeType;
 
 namespace OpenConquer.Rendering.Tests.Text;
 
@@ -135,7 +136,7 @@ public sealed class FreeTypeGlyphRasterizerTests
             using FreeTypeLibrary library = new();
             ResolvedFont font = new(temporaryFilePath, faceIndex: 0);
 
-            Assert.Throws<FontFaceCreationException>(() =>
+            Assert.Throws<FreeTypeFaceCreationException>(() =>
                 new FreeTypeGlyphRasterizer(library, font, nominalPixelHeight: 16, antialiasEnabled: true));
         }
         finally
@@ -150,7 +151,7 @@ public sealed class FreeTypeGlyphRasterizerTests
         using FreeTypeLibrary library = new();
         ResolvedFont font = new(FontFilePath, faceIndex: 1);
 
-        Assert.Throws<FontFaceCreationException>(() =>
+        Assert.Throws<FreeTypeFaceCreationException>(() =>
             new FreeTypeGlyphRasterizer(library, font, nominalPixelHeight: 16, antialiasEnabled: true));
     }
 

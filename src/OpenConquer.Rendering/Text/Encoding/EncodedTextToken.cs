@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Encoding;
 
 internal enum EncodedTextTokenKind
 {
@@ -8,7 +8,7 @@ internal enum EncodedTextTokenKind
 }
 
 /// <summary>
-/// Represents one semantic unit consumed from the legacy encoded text stream.
+/// Represents one semantic unit consumed from an encoded text stream.
 /// </summary>
 internal readonly record struct EncodedTextToken
 {
@@ -26,7 +26,7 @@ internal readonly record struct EncodedTextToken
     }
 
     /// <summary>
-    /// Gets the native glyph-cache key for a glyph token.
+    /// Gets the encoded glyph key carried by a glyph token.
     /// </summary>
     public ushort GlyphKey
     {

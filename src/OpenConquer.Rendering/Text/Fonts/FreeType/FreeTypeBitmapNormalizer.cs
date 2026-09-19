@@ -1,7 +1,10 @@
 using OpenConquer.Rendering.Text.Native;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
+/// <summary>
+/// Normalizes FreeType glyph bitmaps into contiguous 8bit coverage data.
+/// </summary>
 internal static unsafe class FreeTypeBitmapNormalizer
 {
     public static byte[] CopyCoverage(FreeTypeBitmap bitmap)

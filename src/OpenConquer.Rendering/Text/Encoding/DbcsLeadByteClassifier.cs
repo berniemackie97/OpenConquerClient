@@ -1,7 +1,7 @@
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Encoding;
 
 /// <summary>
-/// Reproduces the lead-byte classification used by the native Windows DBCS text path.
+/// Classifies lead bytes for supported DBCS code pages.
 /// </summary>
 internal static class DbcsLeadByteClassifier
 {

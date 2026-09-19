@@ -4,7 +4,7 @@ using OpenConquer.Content.Images;
 namespace OpenConquer.Content.Startup;
 
 /// <summary>
-/// The one-shot retail startup logo selected for this launch.
+/// The one shot startup logo selected for this launch.
 /// </summary>
 public sealed class StartupLogo
 {

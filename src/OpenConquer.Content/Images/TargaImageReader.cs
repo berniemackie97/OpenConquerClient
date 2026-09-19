@@ -9,7 +9,7 @@ internal static class TargaImageReader
     private const int MaximumDecodedLength = 256 * 1024 * 1024;
     private const byte RleTrueColorImageType = 10;
     private const byte RgbaPixelDepth = 32;
-    private const byte RetailImageDescriptor = 0x08;
+    private const byte SupportedImageDescriptor = 0x08;
 
     public static RgbaImage DecodeRle32Bit(ReadOnlySpan<byte> payload)
     {
@@ -33,37 +33,37 @@ internal static class TargaImageReader
 
         if (imageIdLength != 0)
         {
-            throw new InvalidDataException("The retail TGA image must not contain an image ID.");
+            throw new InvalidDataException("The TGA image must not contain an image ID.");
         }
 
         if (colorMapType != 0 || colorMapFirstEntry != 0 || colorMapLength != 0 || colorMapEntrySize != 0)
         {
-            throw new InvalidDataException("The retail TGA image must not contain a color map.");
+            throw new InvalidDataException("The TGA image must not contain a color map.");
         }
 
         if (imageType != RleTrueColorImageType)
         {
-            throw new InvalidDataException($"The retail TGA image type is {imageType}; expected RLE true-color type {RleTrueColorImageType}.");
+            throw new InvalidDataException($"The TGA image type is {imageType}; expected RLE true-color type {RleTrueColorImageType}.");
         }
 
         if (xOrigin != 0 || yOrigin != 0)
         {
-            throw new InvalidDataException("The retail TGA image must use a zero image origin.");
+            throw new InvalidDataException("The TGA image must use a zero image origin.");
         }
 
         if (width is <= 0 or > MaximumDimension || height is <= 0 or > MaximumDimension)
         {
-            throw new InvalidDataException("The retail TGA dimensions are invalid or exceed the supported limit.");
+            throw new InvalidDataException("The TGA dimensions are invalid or exceed the supported limit.");
         }
 
         if (pixelDepth != RgbaPixelDepth)
         {
-            throw new InvalidDataException($"The retail TGA pixel depth is {pixelDepth}; expected {RgbaPixelDepth} bits.");
+            throw new InvalidDataException($"The TGA pixel depth is {pixelDepth}; expected {RgbaPixelDepth} bits.");
         }
 
-        if (imageDescriptor != RetailImageDescriptor)
+        if (imageDescriptor != SupportedImageDescriptor)
         {
-            throw new InvalidDataException($"The retail TGA image descriptor is 0x{imageDescriptor:X2}; expected 0x{RetailImageDescriptor:X2}.");
+            throw new InvalidDataException($"The TGA image descriptor is 0x{imageDescriptor:X2}; expected 0x{SupportedImageDescriptor:X2}.");
         }
 
         int pixelCount = checked(width * height);
@@ -71,7 +71,7 @@ internal static class TargaImageReader
 
         if (decodedLength > MaximumDecodedLength)
         {
-            throw new InvalidDataException("The decoded retail TGA exceeds the supported memory limit.");
+            throw new InvalidDataException("The decoded TGA exceeds the supported memory limit.");
         }
 
         byte[] pixels = GC.AllocateUninitializedArray<byte>((int)decodedLength);
@@ -82,7 +82,7 @@ internal static class TargaImageReader
         {
             if (sourceOffset >= payload.Length)
             {
-                throw new InvalidDataException("The retail TGA RLE payload is truncated before all pixels were decoded.");
+                throw new InvalidDataException("The TGA RLE payload is truncated before all pixels were decoded.");
             }
 
             byte packetHeader = payload[sourceOffset++];
@@ -90,14 +90,14 @@ internal static class TargaImageReader
 
             if (packetPixelCount > pixelCount - sourcePixelIndex)
             {
-                throw new InvalidDataException("The retail TGA RLE packet exceeds the declared image dimensions.");
+                throw new InvalidDataException("The TGA RLE packet exceeds the declared image dimensions.");
             }
 
             if ((packetHeader & 0x80) != 0)
             {
                 if (payload.Length - sourceOffset < 4)
                 {
-                    throw new InvalidDataException("The retail TGA RLE packet contains a truncated pixel.");
+                    throw new InvalidDataException("The TGA RLE packet contains a truncated pixel.");
                 }
 
                 ReadOnlySpan<byte> sourcePixel = payload.Slice(sourceOffset, 4);
@@ -115,7 +115,7 @@ internal static class TargaImageReader
 
             if (payload.Length - sourceOffset < packetLength)
             {
-                throw new InvalidDataException("The retail TGA raw packet is truncated.");
+                throw new InvalidDataException("The TGA raw packet is truncated.");
             }
 
             for (int index = 0; index < packetPixelCount; index++)

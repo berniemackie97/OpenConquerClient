@@ -1,5 +1,6 @@
 using System.Text;
 using OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Fonts.FreeType;
 
 namespace OpenConquer.Rendering.Tests.Text;
 
@@ -132,7 +133,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
                     return expected;
                 }
 
-                throw new FontFaceCreationException("Expected creation failure.");
+                throw new FreeTypeFaceCreationException("Expected creation failure.");
             }
         );
 
@@ -180,7 +181,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
     [Fact]
     public void Create_FontFaceCreationFailure_AdvancesToNextCandidate()
     {
-        AssertRecoverableFailureAdvances(new FontFaceCreationException("Face failure."));
+        AssertRecoverableFailureAdvances(new FreeTypeFaceCreationException("Face failure."));
     }
 
     [Fact]
@@ -271,7 +272,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
                     throw lastFailure;
                 }
 
-                throw new FontFaceCreationException("Earlier failure.");
+                throw new FreeTypeFaceCreationException("Earlier failure.");
             }
         );
 
@@ -331,7 +332,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
                     return expected;
                 }
 
-                throw new FontFaceCreationException("Expected creation failure.");
+                throw new FreeTypeFaceCreationException("Expected creation failure.");
             }
         );
 
