@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.Discovery;
 
 /// <summary>
 /// Discovers font resources registered with the current host font system.
@@ -6,7 +6,7 @@ namespace OpenConquer.Rendering.Text;
 internal interface IHostFontSource
 {
     /// <summary>
-    /// Discovers the host's registered font resources and preferred GUI font family.
+    /// Discovers the host's registered font resources and preferred GUI font resource.
     /// </summary>
     HostFontDiscovery Discover();
 }

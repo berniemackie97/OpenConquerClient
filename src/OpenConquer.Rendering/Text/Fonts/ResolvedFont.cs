@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts;
 
 /// <summary>
 /// Identifies one resolved font face within a concrete font file.

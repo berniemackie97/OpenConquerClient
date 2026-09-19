@@ -1,4 +1,5 @@
 using System.Text;
+using OpenConquer.Rendering.Text.Codec;
 
 namespace OpenConquer.Rendering.Text;
 

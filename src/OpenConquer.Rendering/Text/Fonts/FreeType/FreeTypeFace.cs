@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using OpenConquer.Rendering.Text.Native;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
 /// Owns one FreeType face and the mapped font data backing it.
@@ -73,7 +73,7 @@ internal sealed unsafe class FreeTypeFace : IDisposable
                     _ = FreeTypeNative.DoneFace(face);
                 }
 
-                throw new FontFaceCreationException($"FreeType could not open face {font.FaceIndex} from font '{font.FilePath}' (error {error}).");
+                throw new FreeTypeFaceCreationException($"FreeType could not open face {font.FaceIndex} from font '{font.FilePath}' (error {error}).");
             });
 
             try

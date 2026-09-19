@@ -4,7 +4,7 @@ using Silk.NET.OpenGL;
 namespace OpenConquer.Rendering.OpenGL;
 
 /// <summary>
-/// Owns the OpenGL glyph-atlas resources corresponding to one authoritative native text layout source.
+/// Owns the OpenGL glyph atlas resources corresponding to one authoritative text layout source.
 /// </summary>
 internal sealed class OpenGLTextResource : IDisposable
 {

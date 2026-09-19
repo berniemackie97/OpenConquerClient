@@ -1,6 +1,8 @@
+using OpenConquer.Client.Startup;
+
 namespace OpenConquer.Client.Tests;
 
-public sealed class ClientWindowCreationSequenceTests
+public sealed class StartupWindowSequenceTests
 {
     /// <summary>
     /// The splash is torn down as soon as initialization returns. Retail hides and destroys the
@@ -13,7 +15,7 @@ public sealed class ClientWindowCreationSequenceTests
         List<string> events = [];
         RecordingStartupSplash startupSplash = new(events);
 
-        object mainWindow = ClientWindowCreationSequence.CreateMainAfterStartup(
+        object mainWindow = StartupWindowSequence.CreateMainAfterStartup(
             startupSplash,
             () => events.Add("runtime-initialized"),
             () =>
@@ -39,7 +41,7 @@ public sealed class ClientWindowCreationSequenceTests
         RecordingStartupSplash startupSplash = new(events, throwWhenShown: true);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            ClientWindowCreationSequence.CreateMainAfterStartup(
+            StartupWindowSequence.CreateMainAfterStartup(
                 startupSplash,
                 () => events.Add("runtime-initialized"),
                 () =>
@@ -62,7 +64,7 @@ public sealed class ClientWindowCreationSequenceTests
         RecordingStartupSplash startupSplash = new(events);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            ClientWindowCreationSequence.CreateMainAfterStartup(
+            StartupWindowSequence.CreateMainAfterStartup(
                 startupSplash,
                 () =>
                 {
@@ -95,7 +97,7 @@ public sealed class ClientWindowCreationSequenceTests
         );
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            ClientWindowCreationSequence.CreateMainAfterStartup(
+            StartupWindowSequence.CreateMainAfterStartup(
                 startupSplash,
                 () => events.Add("runtime-initialized"),
                 () =>
@@ -119,7 +121,7 @@ public sealed class ClientWindowCreationSequenceTests
         RecordingStartupSplash startupSplash = new(events, throwWhenDisposed: true);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            ClientWindowCreationSequence.CreateMainAfterStartup(
+            StartupWindowSequence.CreateMainAfterStartup(
                 startupSplash,
                 () =>
                 {
@@ -148,7 +150,7 @@ public sealed class ClientWindowCreationSequenceTests
         RecordingStartupSplash startupSplash = new(events, throwWhenDisposed: true);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            ClientWindowCreationSequence.CreateMainAfterStartup(
+            StartupWindowSequence.CreateMainAfterStartup(
                 startupSplash,
                 () => events.Add("runtime-initialized"),
                 () =>
@@ -170,7 +172,7 @@ public sealed class ClientWindowCreationSequenceTests
         List<string> events = [];
 
         Assert.Throws<ArgumentNullException>(() =>
-            ClientWindowCreationSequence.CreateMainAfterStartup<object>(
+            StartupWindowSequence.CreateMainAfterStartup<object>(
                 null!,
                 () => { },
                 () => new object()
@@ -178,7 +180,7 @@ public sealed class ClientWindowCreationSequenceTests
         );
 
         Assert.Throws<ArgumentNullException>(() =>
-            ClientWindowCreationSequence.CreateMainAfterStartup(
+            StartupWindowSequence.CreateMainAfterStartup(
                 new RecordingStartupSplash(events),
                 null!,
                 () => new object()
@@ -186,7 +188,7 @@ public sealed class ClientWindowCreationSequenceTests
         );
 
         Assert.Throws<ArgumentNullException>(() =>
-            ClientWindowCreationSequence.CreateMainAfterStartup<object>(
+            StartupWindowSequence.CreateMainAfterStartup<object>(
                 new RecordingStartupSplash(events),
                 () => { },
                 null!

@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using OpenConquer.Rendering.Text.Native;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
 /// Rasterizes glyphs from one configured FreeType face.
@@ -64,7 +64,7 @@ internal sealed unsafe class FreeTypeGlyphRasterizer : IGlyphRasterizer
 
             if (error != 0)
             {
-                throw new FontFaceCreationException($"FreeType could not configure face {font.FaceIndex} from font '{font.FilePath}' at nominal height {nominalPixelHeight} (error {error}).");
+                throw new FreeTypeFaceCreationException($"FreeType could not configure face {font.FaceIndex} from font '{font.FilePath}' at nominal height {nominalPixelHeight} (error {error}).");
             }
 
             return true;

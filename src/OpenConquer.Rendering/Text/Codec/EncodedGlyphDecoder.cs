@@ -1,17 +1,17 @@
 using System.Buffers;
 using System.Text;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Codec;
 
 /// <summary>
-/// Converts native encoded glyph-cache keys into Unicode scalar values for rasterization.
+/// Converts encoded glyph keys into Unicode scalar values for rasterization.
 /// </summary>
 internal sealed class EncodedGlyphDecoder(int effectiveCodePage)
 {
     private readonly Encoding? _encoding = ResolveEncoding(effectiveCodePage);
 
     /// <summary>
-    /// Attempts to decode one native single- or double-byte glyph key into exactly one Unicode scalar.
+    /// Attempts to decode one single- or double-byte glyph key into exactly one Unicode scalar value.
     /// </summary>
     public bool TryDecode(ushort glyphKey, out Rune character)
     {
@@ -68,6 +68,7 @@ internal sealed class EncodedGlyphDecoder(int effectiveCodePage)
         }
         catch (DecoderFallbackException)
         {
+            // Invalid encoded byte sequences are treated as undecodable glyph keys.
         }
 
         character = default;

@@ -5,7 +5,7 @@ using Silk.NET.OpenGL;
 namespace OpenConquer.Rendering.OpenGL;
 
 /// <summary>
-/// Renders validated native-text layouts through bounded, reusable OpenGL resources.
+/// Renders validated text layouts through bounded, reusable OpenGL resources.
 /// </summary>
 internal sealed class OpenGLTextRenderer : IDisposable
 {

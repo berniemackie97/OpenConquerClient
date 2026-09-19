@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using OpenConquer.Rendering.Text.Fonts.Discovery;
 using OpenConquer.Rendering.Text.Native;
 
 namespace OpenConquer.Rendering.Text;

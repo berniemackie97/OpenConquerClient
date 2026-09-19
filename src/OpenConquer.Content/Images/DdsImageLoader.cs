@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Images;
 
 /// <summary>
-/// Loads retail DXT3 DDS image content into normalized RGBA pixels.
+/// Loads DXT3 DDS image content into normalized RGBA pixels.
 /// </summary>
 public static class DdsImageLoader
 {
@@ -12,7 +12,7 @@ public static class DdsImageLoader
         ArgumentNullException.ThrowIfNull(contentSource);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
 
-        byte[] encodedImage = ContentRead.ReadRequiredBytes(contentSource, contentPath, mode, MaximumEncodedLength);
+        byte[] encodedImage = ContentReader.ReadRequiredBytes(contentSource, contentPath, mode, MaximumEncodedLength);
 
         return DdsImageReader.DecodeDxt3(encodedImage);
     }

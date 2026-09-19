@@ -180,6 +180,7 @@ public sealed class ClientContentRoot : IClientContentSource
         }
     }
 
+    // Prevent content resolution from escaping the configured root through filesystem links.
     private static void RejectLinkedEntry(string path, FileAttributes attributes, string entryKind)
     {
         bool isDirectory = (attributes & FileAttributes.Directory) != 0;

@@ -1,4 +1,6 @@
-namespace OpenConquer.Rendering.Text;
+using OpenConquer.Rendering.Text.Fonts.FreeType;
+
+namespace OpenConquer.Rendering.Text.Fonts.Discovery;
 
 /// <summary>
 /// Normalizes host font discovery and reads family metadata from registered font resources.

@@ -1,9 +1,10 @@
 using System.Collections.Frozen;
+using OpenConquer.Rendering.Text.Fonts.Discovery;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts;
 
 /// <summary>
-/// Resolves native font tokens against discovered host fonts.
+/// Resolves font tokens against discovered host fonts.
 /// </summary>
 internal sealed class SystemFontResolver : IFontResolver
 {
@@ -56,7 +57,7 @@ internal sealed class SystemFontResolver : IFontResolver
 
     private bool TryResolveFontFile(ReadOnlySpan<char> fileName, out ResolvedFont? font)
     {
-        if (!IsNativeFontFileName(fileName))
+        if (!IsSupportedFontFileName(fileName))
         {
             font = null;
             return false;
@@ -117,7 +118,7 @@ internal sealed class SystemFontResolver : IFontResolver
         return index.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
     }
 
-    private static bool IsNativeFontFileName(ReadOnlySpan<char> fileName)
+    private static bool IsSupportedFontFileName(ReadOnlySpan<char> fileName)
     {
         if (fileName.IsEmpty || fileName.IndexOfAny('/', '\\') >= 0)
         {

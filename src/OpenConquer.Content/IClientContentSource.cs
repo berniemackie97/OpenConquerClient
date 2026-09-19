@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace OpenConquer.Content;
 
 /// <summary>
-/// Opens client content by its Windows era virtual path without exposing host filesystem paths to consumers.
+/// Opens client content by virtual path without exposing host filesystem paths to consumers.
 /// </summary>
 public interface IClientContentSource
 {

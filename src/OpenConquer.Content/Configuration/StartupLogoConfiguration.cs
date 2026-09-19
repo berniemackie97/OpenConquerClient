@@ -22,7 +22,7 @@ public sealed class StartupLogoConfiguration
     }
 
     /// <summary>
-    /// Reads <c>[DlgLogo] BgFormat</c>, falling back to the retail default
+    /// Reads <c>[DlgLogo] BgFormat</c>, falling back to the built in default.
     /// </summary>
     public static StartupLogoConfiguration LoadOrDefault(IClientContentSource contentSource)
     {
@@ -50,7 +50,7 @@ public sealed class StartupLogoConfiguration
     {
         if (variantIndex is not (1 or 2))
         {
-            throw new ArgumentOutOfRangeException(nameof(variantIndex), variantIndex, "Retail startup logo variants are 1 and 2.");
+            throw new ArgumentOutOfRangeException(nameof(variantIndex), variantIndex, "Startup logo variants are 1 and 2.");
         }
 
         string format = BackgroundFormat;

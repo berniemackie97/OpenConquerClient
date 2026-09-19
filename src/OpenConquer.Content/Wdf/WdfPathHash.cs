@@ -3,6 +3,9 @@ using System.Runtime.CompilerServices;
 
 namespace OpenConquer.Content.Wdf;
 
+/// <summary>
+/// Computes the WDF virtual path hash used to resolve archive entries.
+/// </summary>
 internal static class WdfPathHash
 {
     private const int BufferDwordCount = 64;
@@ -21,6 +24,7 @@ internal static class WdfPathHash
         Span<byte> normalizedBytes = stackalloc byte[BufferLength];
         normalizedBytes.Clear();
 
+        // WDF path hashing consumes at most the first 256 normalized bytes.
         int length = Math.Min(contentPath.Length, normalizedBytes.Length);
 
         for (int index = 0; index < length; index++)

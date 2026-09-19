@@ -1,7 +1,7 @@
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
-/// Creates a glyph rasterizer using the native font-creation fallback chain.
+/// Creates glyph rasterizers using the configured font fallback chain.
 /// </summary>
 internal sealed class FreeTypeGlyphRasterizerFactory
 {
@@ -9,20 +9,20 @@ internal sealed class FreeTypeGlyphRasterizerFactory
     private const string SimSunFontToken = "$simsun.ttf";
     private const string CourierNewFamilyName = "Courier New";
 
-    private readonly RasterizerCreator _creator;
+    private readonly RasterizerCreator _rasterizerCreator;
     private readonly IFontResolver _fontResolver;
 
     public FreeTypeGlyphRasterizerFactory(FreeTypeLibrary library, IFontResolver fontResolver) : this(fontResolver, CreateRasterizerCreator(library))
     {
     }
 
-    internal FreeTypeGlyphRasterizerFactory(IFontResolver fontResolver, RasterizerCreator creator)
+    internal FreeTypeGlyphRasterizerFactory(IFontResolver fontResolver, RasterizerCreator rasterizerCreator)
     {
         ArgumentNullException.ThrowIfNull(fontResolver);
-        ArgumentNullException.ThrowIfNull(creator);
+        ArgumentNullException.ThrowIfNull(rasterizerCreator);
 
         _fontResolver = fontResolver;
-        _creator = creator;
+        _rasterizerCreator = rasterizerCreator;
     }
 
     public IGlyphRasterizer Create(string? fontToken, int nominalPixelHeight, bool antialiasEnabled)
@@ -59,7 +59,7 @@ internal sealed class FreeTypeGlyphRasterizerFactory
             return courierNewRasterizer;
         }
 
-        throw new InvalidOperationException("No usable font could be created from the requested font or the native fallback chain.", lastFailure);
+        throw new InvalidOperationException("No usable font could be created from the requested font or fallback chain.", lastFailure);
     }
 
     internal delegate IGlyphRasterizer RasterizerCreator(ResolvedFont font, int nominalPixelHeight, bool antialiasEnabled);
@@ -78,9 +78,9 @@ internal sealed class FreeTypeGlyphRasterizerFactory
     {
         try
         {
-            return _creator(font, nominalPixelHeight, antialiasEnabled) ?? throw new InvalidOperationException("Glyph rasterizer creator returned null.");
+            return _rasterizerCreator(font, nominalPixelHeight, antialiasEnabled) ?? throw new InvalidOperationException("Glyph rasterizer creator returned null.");
         }
-        catch (FontFaceCreationException exception)
+        catch (FreeTypeFaceCreationException exception)
         {
             lastFailure = exception;
         }

@@ -20,6 +20,7 @@ public sealed class GameSetupConfiguration
         get;
     }
 
+    // Screen modes 0-1 share the 800x600 logical canvas; modes 2-3 share 1024x768.
     public int LogicalWidthPixels => ScreenMode is 0 or 1 ? 800 : 1024;
 
     public int LogicalHeightPixels => ScreenMode is 0 or 1 ? 600 : 768;
