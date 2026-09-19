@@ -1,3 +1,4 @@
+using OpenConquer.Client.Startup;
 using OpenConquer.Platform;
 using OpenConquer.Rendering;
 

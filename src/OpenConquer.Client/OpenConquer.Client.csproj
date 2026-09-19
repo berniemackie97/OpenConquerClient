@@ -16,12 +16,10 @@
     <ProjectReference Include="../OpenConquer.Rendering/OpenConquer.Rendering.csproj" />
   </ItemGroup>
 
-  <!--
-    The content set under content/retail-5517 already holds exactly the closure the implemented
-    slices read, so it is staged whole rather than enumerated file by file. Globbing keeps build
-    and publish output equal to the tracked payload: a slice cannot ship an asset it does not read,
-    and cannot omit one it does.
-  -->
+    <!--
+     The tracked retail-5517 content set is the curated client runtime closure.
+     Stage it as a unit so build and publish outputs remain identical to that tracked payload.
+   -->
   <ItemGroup>
     <Content Include="../../content/retail-5517/manifest.json"
              Link="content/retail-5517/manifest.json"
