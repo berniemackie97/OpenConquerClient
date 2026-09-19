@@ -82,15 +82,23 @@ Current conformance covers:
 - whole-texture stretching;
 - source-region stretching;
 - integer-degree sprite rotation;
+- native-text logical placement and coverage sampling;
+- native-text coverage × vertex-alpha behavior with source-alpha blending;
+- native per-corner `TR-BL` interpolation-diagonal behavior;
+- multi-page native-text batching and atlas-page switching;
+- CPU glyph-atlas revision synchronization to an existing GPU texture;
 - exact framebuffer comparison on a real driver.
 
 Expected graphics contracts, fixture identities, and verified framebuffer hashes are documented in
 [`compatibility/native-graphics.md`](compatibility/native-graphics.md).
 
-Native text input contracts are documented in
-[`compatibility/native-text.md`](compatibility/native-text.md) and are currently verified through
-driver-independent Content and Rendering unit tests. Pixel-level text conformance remains deferred
-until the rasterizer and text-rendering path are implemented.
+Native text configuration, encoded-text, font, rasterization, layout, batching, and OpenGL rendering
+contracts are documented in [`compatibility/native-text.md`](compatibility/native-text.md).
+
+Deterministic native-text CPU behavior is covered by unit tests. GFX-TEXT-004 additionally uses
+synthetic deterministic glyph coverage for real-driver OpenGL conformance so rendering behavior can
+be verified without making framebuffer goldens depend on host font selection, physical font
+revision, or FreeType rasterization differences.
 
 ## Content
 
