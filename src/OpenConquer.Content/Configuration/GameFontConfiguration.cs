@@ -36,7 +36,7 @@ public sealed class GameFontConfiguration
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        byte[] bytes = ContentRead.ReadRequiredBytes(contentSource, RelativePath, ContentLookupMode.LooseOnly, MaximumFileLength);
+        byte[] bytes = ContentReader.ReadRequiredBytes(contentSource, RelativePath, ContentLookupMode.LooseOnly, MaximumFileLength);
 
         return Parse(bytes);
     }

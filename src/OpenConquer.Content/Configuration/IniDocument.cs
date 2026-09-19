@@ -19,14 +19,14 @@ internal sealed class IniDocument
     /// </summary>
     public static IniDocument LoadRequired(IClientContentSource source, string contentPath, int maximumLength)
     {
-        byte[] bytes = ContentRead.ReadRequiredBytes(source, contentPath, ContentLookupMode.LooseOnly, maximumLength);
+        byte[] bytes = ContentReader.ReadRequiredBytes(source, contentPath, ContentLookupMode.LooseOnly, maximumLength);
 
         return Parse(bytes);
     }
 
     public static IniDocument Load(Stream stream, string contentPath, int maximumLength)
     {
-        byte[] bytes = ContentRead.ReadBytes(stream, contentPath, maximumLength);
+        byte[] bytes = ContentReader.ReadBytes(stream, contentPath, maximumLength);
 
         return Parse(bytes);
     }

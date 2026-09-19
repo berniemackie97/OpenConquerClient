@@ -120,7 +120,7 @@ public sealed class PackagedClientContentSource : IClientContentSource
 
     private static string[] ReadDeclaredPackageNames(Stream declarationStream)
     {
-        byte[] bytes = ContentRead.ReadBytes(declarationStream, PackageConfigurationPath, MaximumPackageConfigurationLength);
+        byte[] bytes = ContentReader.ReadBytes(declarationStream, PackageConfigurationPath, MaximumPackageConfigurationLength);
 
         return Encoding.Latin1.GetString(bytes).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }

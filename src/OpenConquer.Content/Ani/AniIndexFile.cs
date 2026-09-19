@@ -24,7 +24,7 @@ public sealed class AniIndexFile
         ArgumentNullException.ThrowIfNull(contentSource);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
 
-        byte[] payload = ContentRead.ReadRequiredBytes(contentSource, contentPath, mode, MaximumEncodedLength);
+        byte[] payload = ContentReader.ReadRequiredBytes(contentSource, contentPath, mode, MaximumEncodedLength);
 
         return Parse(payload, contentPath);
     }
@@ -34,7 +34,7 @@ public sealed class AniIndexFile
         ArgumentNullException.ThrowIfNull(stream);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
 
-        byte[] payload = ContentRead.ReadBytes(stream, contentPath, MaximumEncodedLength);
+        byte[] payload = ContentReader.ReadBytes(stream, contentPath, MaximumEncodedLength);
 
         return Parse(payload, contentPath);
     }
