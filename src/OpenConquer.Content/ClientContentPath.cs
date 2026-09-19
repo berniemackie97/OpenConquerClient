@@ -1,14 +1,14 @@
 namespace OpenConquer.Content;
 
 /// <summary>
-/// Defines the structural contract for retail client content paths before they reach a filesystem or package lookup boundary.
+/// Defines the structural contract for client content paths before filesystem or package lookup.
 /// </summary>
 internal static class ClientContentPath
 {
     private static readonly char[] s_pathSeparators = ['/', '\\'];
 
     /// <summary>
-    /// Parses a retail relative content path into validated path segments without silently canonicalizing structurally different input.
+    /// Parses a relative content path without canonicalizing structurally different input.
     /// </summary>
     public static string[] ParseSegments(string contentPath, string parameterName)
     {
@@ -33,7 +33,7 @@ internal static class ClientContentPath
     }
 
     /// <summary>
-    /// Produces the slash-normalized virtual path expected by the retail package layer after structural validation.
+    /// Produces the slash normalized virtual path used by package lookup after structural validation.
     /// </summary>
     public static string NormalizeVirtualPath(string contentPath, string parameterName, int maximumLength)
     {

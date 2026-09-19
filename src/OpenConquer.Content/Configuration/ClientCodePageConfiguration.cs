@@ -11,6 +11,7 @@ public sealed class ClientCodePageConfiguration
 
     private const int MaximumFirstLineLength = 256;
 
+    /// Gets the configured code page. Zero indicates that no explicit code page was configured.
     private ClientCodePageConfiguration(int configuredCodePage)
     {
         ConfiguredCodePage = configuredCodePage;
@@ -26,8 +27,8 @@ public sealed class ClientCodePageConfiguration
     }
 
     /// <summary>
-    /// Gets the deterministic code page used by the cross-platform client.
-    /// Native CP_ACP is pinned to CP936 for the clean 5517 content corpus.
+    /// Gets the deterministic code page used for text decoding.
+    /// An unspecified code page resolves to CP936 for consistent behavior across platforms.
     /// </summary>
     public int EffectiveCodePage => ConfiguredCodePage == NativeUnsetCodePage
         ? DefaultEffectiveCodePage

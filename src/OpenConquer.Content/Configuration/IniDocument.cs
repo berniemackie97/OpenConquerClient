@@ -3,7 +3,7 @@ using System.Text;
 namespace OpenConquer.Content.Configuration;
 
 /// <summary>
-/// Parses the retail client's shared INI-store grammar.
+/// Parses the INI grammar used by client configuration files.
 /// </summary>
 internal sealed class IniDocument
 {
@@ -97,9 +97,6 @@ internal sealed class IniDocument
         return new IniDocument(sections);
     }
 
-    /// <summary>
-    /// Models <c>IniStore_TryParseSectionHeaderLowercase</c> (<c>0x76ED5D</c>).
-    /// </summary>
     private static bool TryParseSectionName(ReadOnlySpan<char> line, out string sectionName)
     {
         if (line.Length == 0 || line[0] != '[')
