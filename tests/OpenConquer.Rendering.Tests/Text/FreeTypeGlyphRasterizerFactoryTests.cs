@@ -278,14 +278,9 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
             }
         );
 
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            factory.Create("Requested", nominalPixelHeight: 16, antialiasEnabled: true)
-        );
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => factory.Create("Requested", nominalPixelHeight: 16, antialiasEnabled: true));
 
-        Assert.Equal(
-            "No usable font could be created from the requested font or the native fallback chain.",
-            exception.Message
-        );
+        Assert.Equal("No usable font could be created from the requested font or fallback chain.", exception.Message);
         Assert.Same(lastFailure, exception.InnerException);
     }
 
