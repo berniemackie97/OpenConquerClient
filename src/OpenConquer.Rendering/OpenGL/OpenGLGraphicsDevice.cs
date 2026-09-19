@@ -1,3 +1,4 @@
+using OpenConquer.Rendering.Text;
 using Silk.NET.OpenGL;
 
 namespace OpenConquer.Rendering.OpenGL;
@@ -84,6 +85,14 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         return new OpenGLTexture2D(_gl, width, height, rgbaPixels);
+    }
+
+    internal OpenGLTextResource CreateTextResource(NativeTextLayoutSource source)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(source);
+
+        return new OpenGLTextResource(_gl, source);
     }
 
     public OpenGLStartupSurfaceRenderer CreateStartupSurfaceRenderer(int width, int height, ReadOnlySpan<byte> rgbaPixels)

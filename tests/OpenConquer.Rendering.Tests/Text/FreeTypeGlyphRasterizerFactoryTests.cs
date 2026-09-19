@@ -520,6 +520,8 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
 
     private sealed class FakeGlyphRasterizer : IGlyphRasterizer
     {
+        public bool AntialiasEnabled => true;
+
         public bool TryRasterizeGlyph(Rune character, out RasterizedGlyph? glyph)
         {
             glyph = null;

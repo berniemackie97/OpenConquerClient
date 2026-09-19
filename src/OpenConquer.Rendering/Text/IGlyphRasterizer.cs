@@ -8,6 +8,14 @@ namespace OpenConquer.Rendering.Text;
 internal interface IGlyphRasterizer : IDisposable
 {
     /// <summary>
+    /// Gets whether this rasterizer was configured for antialiased glyph rendering.
+    /// </summary>
+    bool AntialiasEnabled
+    {
+        get;
+    }
+
+    /// <summary>
     /// Attempts to rasterize <paramref name="character"/>.
     /// </summary>
     /// <returns>

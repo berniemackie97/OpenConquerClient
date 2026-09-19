@@ -1,7 +1,7 @@
 namespace OpenConquer.Rendering.Text;
 
 /// <summary>
-/// Describes one configured native text font record used by layout and glyph fallback.
+/// Describes one configured native text font record used by layout, rendering policy, and glyph fallback.
 /// </summary>
 internal sealed class NativeTextFontRecord
 {
@@ -40,6 +40,8 @@ internal sealed class NativeTextFontRecord
     {
         get;
     }
+
+    public bool AntialiasEnabled => Rasterizer.AntialiasEnabled;
 
     public IGlyphRasterizer Rasterizer
     {

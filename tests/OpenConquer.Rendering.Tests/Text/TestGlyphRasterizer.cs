@@ -8,10 +8,17 @@ internal sealed class TestGlyphRasterizer : IGlyphRasterizer
     private readonly Func<Rune, (bool Found, RasterizedGlyph? Glyph)> _handler;
     private bool _disposed;
 
-    public TestGlyphRasterizer(Func<Rune, (bool Found, RasterizedGlyph? Glyph)> handler)
+    public TestGlyphRasterizer(Func<Rune, (bool Found, RasterizedGlyph? Glyph)> handler, bool antialiasEnabled = true)
     {
         ArgumentNullException.ThrowIfNull(handler);
+
         _handler = handler;
+        AntialiasEnabled = antialiasEnabled;
+    }
+
+    public bool AntialiasEnabled
+    {
+        get;
     }
 
     public int CallCount

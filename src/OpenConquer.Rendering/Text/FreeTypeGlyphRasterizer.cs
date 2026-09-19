@@ -40,6 +40,8 @@ internal sealed unsafe class FreeTypeGlyphRasterizer : IGlyphRasterizer
         _renderMode = antialiasEnabled ? FreeTypeRenderMode.Normal : FreeTypeRenderMode.Mono;
     }
 
+    public bool AntialiasEnabled => _renderMode == FreeTypeRenderMode.Normal;
+
     public bool TryRasterizeGlyph(Rune character, out RasterizedGlyph? glyph)
     {
         glyph = _face.UseHandle(face => RasterizeGlyph((FreeTypeFaceRecord*)face, character));
