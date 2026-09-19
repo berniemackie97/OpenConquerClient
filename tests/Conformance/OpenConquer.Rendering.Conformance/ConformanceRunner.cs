@@ -27,8 +27,9 @@ internal static class ConformanceRunner
             FireworkDxt3Conformance.Run(graphicsDevice, fireworkImage, framebufferSize);
             SpriteGeometryConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
             SpriteRotationConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
+            NativeTextConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
         });
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, sprite color, sprite blending, and sprite rotation conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, sprite color, sprite blending, sprite rotation, and native text conformance passed.");
     }
 }

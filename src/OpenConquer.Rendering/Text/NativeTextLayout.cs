@@ -1,20 +1,27 @@
 namespace OpenConquer.Rendering.Text;
 
 /// <summary>
-/// Contains measured native text dimensions and ordered drawable layout items.
+/// Contains measured native text dimensions, ordered drawable layout items, and the authoritative source that produced them.
 /// </summary>
 internal sealed class NativeTextLayout
 {
     private readonly NativeTextLayoutItem[] _items;
 
-    public NativeTextLayout(int widthPixels, int heightPixels, IEnumerable<NativeTextLayoutItem> items)
+    public NativeTextLayout(NativeTextLayoutSource source, int widthPixels, int heightPixels, IEnumerable<NativeTextLayoutItem> items)
     {
+        ArgumentNullException.ThrowIfNull(source);
         ArgumentOutOfRangeException.ThrowIfNegative(widthPixels);
         ArgumentNullException.ThrowIfNull(items);
 
+        Source = source;
         WidthPixels = widthPixels;
         HeightPixels = heightPixels;
         _items = items.ToArray();
+    }
+
+    public NativeTextLayoutSource Source
+    {
+        get;
     }
 
     public int WidthPixels

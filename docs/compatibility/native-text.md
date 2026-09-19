@@ -1,7 +1,8 @@
 # Native Text Compatibility
 
 Compatibility contract for Conquer Online 5517 text configuration, encoded-text semantics, font
-resolution, glyph rasterization, caching, atlas storage, and text layout.
+resolution, glyph rasterization, caching, atlas storage, layout, render-style behavior, OpenGL
+resource ownership, and GPU drawing.
 
 Detailed native addresses, decompilation traces, caller inventories, and unresolved
 reverse-engineering evidence belong in the native analysis notes.
@@ -336,6 +337,13 @@ provider width
 A missing or zero provider width uses the 16-pixel fallback.
 
 Nonzero caller and provider widths preserve their signed native value.
+
+`NativeTextLayout` can therefore contain ordered data-icon items, but GFX-TEXT-004 does not invent
+an icon-texture ownership model. The glyph renderer validates the complete layout before GPU state
+mutation and rejects layouts containing data icons.
+
+Actual data-icon resource selection and rendering belong to the UI rendering path that owns those
+resources.
 
 ## Host Font Discovery
 
@@ -680,7 +688,21 @@ FreeType render mode = mono
 coverage             = 0 or 255
 ```
 
-Rendering color, fragment alpha, GPU upload, and GPU drawing remain later concerns.
+The rasterizer exposes this immutable configuration through `IGlyphRasterizer.AntialiasEnabled`.
+`NativeTextFontRecord` carries the same authoritative policy into rendering.
+
+The verified native draw behavior when antialiasing is disabled is:
+
+```text
+text color alpha   → 255
+corner color alpha → 255
+```
+
+Persistent four-corner colors used by `PerCornerColor` remain separate and are not force-opaqued by
+that rule.
+
+OpenConquer derives this behavior from the font/rasterizer configuration. There is no independent
+caller-controlled antialias boolean in the rendering API.
 
 ## Missing-Glyph Fallback
 
@@ -764,10 +786,25 @@ constraints.
 Exact native row-wrap and page-allocation thresholds have not been established, so OpenConquer does
 not claim that its internal atlas coordinates are native-identical.
 
-Each page exposes normalized grayscale coverage and a monotonically increasing revision for later
-GPU synchronization.
+Each page exposes normalized grayscale coverage and a monotonically increasing revision.
 
-GPU texture ownership remains outside GFX-TEXT-003.
+GFX-TEXT-004 mirrors each CPU page to a lazily created OpenGL `R8` texture. The GPU copy retains the
+CPU page's last uploaded revision and performs a full-page `TexSubImage2D` synchronization when that
+revision changes.
+
+Texture policy is:
+
+```text
+internal format = R8
+min filter      = nearest
+mag filter      = nearest
+wrap S/T        = clamp-to-edge
+base level      = 0
+max level       = 0
+mipmaps         = none
+```
+
+Coverage is sampled explicitly from the texture's red channel.
 
 ## Native Text Layout
 
@@ -840,7 +877,385 @@ resolved width
 
 Its width advances the horizontal pen.
 
-Actual icon resource selection and drawing remain rendering concerns.
+The glyph renderer does not attempt to reinterpret a data icon as text. Until an explicit
+icon-resource rendering path exists, such layouts are rejected before OpenGL state is modified.
+
+## Layout Provenance
+
+A glyph atlas page index is meaningful only relative to the exact glyph atlas that produced it.
+Rendering must also use the font configuration that supplied the layout's antialias policy.
+
+`NativeTextLayoutSource` therefore binds:
+
+```text
+authoritative primary font record
+authoritative CPU glyph atlas
+```
+
+Each `NativeTextLayoutEngine` creates one stable source instance and every layout produced by that
+engine retains that exact source identity.
+
+The identity contract is reference identity rather than structural equivalence:
+
+```text
+layout.Source must be the exact source bound to the GPU text resource
+```
+
+`NativeTextLayoutSource` is provenance only. It does not own or dispose the supplied font record,
+rasterizer, glyph cache, or atlas.
+
+`OpenGLTextResource` owns the OpenGL atlas mirror corresponding to exactly one layout source and one
+OpenGL device.
+
+Before drawing, rendering validates:
+
+```text
+renderer/device identity
+text-resource device identity
+layout/source identity
+layout item kinds
+atlas page validity
+render-style work budget
+```
+
+These deterministic caller failures occur before text-pipeline OpenGL state mutation.
+
+## Native Render Styles
+
+The verified native `RENDER_TEXT_STYLE` values are:
+
+```text
+0 = Normal
+1 = ShadowOffset
+2 = MultiOffsetOutline
+3 = OffsetTrail
+4 = PerCornerColor
+```
+
+### Normal
+
+One base pass:
+
+```text
+offset = (0, 0)
+color  = text color
+```
+
+### ShadowOffset
+
+Two passes:
+
+```text
+1. caller corner offset using corner color
+2. base text
+```
+
+### MultiOffsetOutline
+
+Eight one-pixel corner passes followed by the base text.
+
+Verified order:
+
+```text
+(-1,  0)
+( 1,  0)
+( 0, -1)
+( 0,  1)
+(-1, -1)
+( 1, -1)
+(-1,  1)
+( 1,  1)
+( 0,  0) base
+```
+
+### OffsetTrail
+
+The native path emits deterministic interpolated offsets from the configured displacement back
+toward the base position, then emits the base pass.
+
+Pass count:
+
+```text
+abs(offset X) + abs(offset Y) + 1
+```
+
+Verified example:
+
+```text
+offset = (3, 1)
+
+(3, 1)
+(2, 1)
+(2, 0)
+(1, 0)
+(0, 0) base
+```
+
+Signed offsets are preserved.
+
+### PerCornerColor
+
+One base geometry pass using four independently configured colors.
+
+Native corner order is:
+
+```text
+top-left
+bottom-left
+top-right
+bottom-right
+```
+
+The four persistent corner colors remain independent from the ordinary text/corner-alpha
+force-opaque behavior used when antialiasing is disabled.
+
+## Native Glyph Geometry
+
+Each glyph render pass emits six vertices as two triangles.
+
+Verified native vertex order:
+
+```text
+triangle 1:
+top-left
+bottom-left
+top-right
+
+triangle 2:
+bottom-right
+top-right
+bottom-left
+```
+
+Equivalent sequence:
+
+```text
+TL, BL, TR, BR, TR, BL
+```
+
+Per-vertex color mapping therefore follows:
+
+```text
+TL, BL, TR, BR, TR, BL
+```
+
+The `TR ↔ BL` diagonal is intentionally preserved because it changes per-corner color interpolation.
+
+Texture coordinates are normalized directly from the glyph's atlas region.
+
+Destination arithmetic uses widened integer intermediates before conversion to floating-point
+coordinates.
+
+### Half-Pixel Boundary
+
+The D3D8-era implementation contains coordinate representation details associated with its graphics
+API.
+
+OpenConquer does not reproduce a D3D8 half-pixel offset mechanically.
+
+The modern OpenGL path expresses glyph edges directly in logical pixel coordinates and maps them to
+clip space:
+
+```text
+xNdc = (x / targetWidth) * 2 - 1
+yNdc = 1 - (y / targetHeight) * 2
+```
+
+No `±0.5` correction is introduced.
+
+This preserves the observable logical placement verified by real-driver conformance without
+cargo-culting an obsolete API representation artifact.
+
+## OpenGL Text Pipeline
+
+GFX-TEXT-004 uses a dedicated OpenGL 3.3 Core-compatible text pipeline.
+
+Vertex attributes are tightly packed:
+
+```text
+offset  0: vec2 position          float
+offset  8: vec2 texture coordinate float
+offset 16: vec4 color             normalized unsigned byte
+
+stride = 20 bytes
+```
+
+The vertex ABI is covered by exact managed size and field-offset tests.
+
+The fragment contract is:
+
+```text
+coverage = texture(atlas, uv).r
+output RGB   = vertex RGB
+output alpha = vertex alpha * coverage
+```
+
+The atlas is coverage-only. Texture RGB is not used to modulate the output RGB channels.
+
+Relevant draw state is explicitly established:
+
+```text
+scissor test  = disabled
+depth test    = disabled
+depth write   = disabled
+cull          = disabled
+dither        = disabled
+framebuffer sRGB = disabled
+color mask    = RGBA enabled
+blend         = enabled
+blend equation = add
+source factor = source alpha
+dest factor   = one minus source alpha
+active texture = unit 0
+```
+
+This is the modern equivalent of the verified native text state:
+
+```text
+alpha blend = enabled
+SrcAlpha / InvSrcAlpha
+depth test/write = disabled
+alpha test = disabled
+dither = disabled
+culling = disabled
+lighting = disabled
+Gouraud shading
+solid fill
+point min/mag filtering
+no mipmaps
+texture RGB selects diffuse
+texture alpha multiplies diffuse alpha
+```
+
+Fixed-function state, FVF declarations, COM ownership, and D3D8 pipeline structure are not
+reproduced.
+
+After drawing, the text pipeline returns the renderer to its defined local baseline rather than
+depending on incidental prior OpenGL state.
+
+## Text Batching
+
+Native evidence establishes that batched text rendering:
+
+```text
+collects vertices by atlas page
+flushes atlas-page batches at Font_DrawEnd
+```
+
+The exact native atlas-page traversal order during the final flush has not been established.
+
+OpenConquer therefore does not claim parity for an undocumented page-flush ordering.
+
+Its deterministic reconstruction policy is:
+
+```text
+atlas pages flush in ascending stable page index
+```
+
+Within each page:
+
+```text
+original glyph order is preserved
+render-pass order for each glyph is preserved
+```
+
+Page indices are deterministic atlas creation-order identities.
+
+Cross-page overlap remains a documented uncertainty because a different native final page traversal
+could make overlap ordering observable.
+
+## Bounded Rendering Work
+
+Rendering uses reusable fixed-capacity CPU and GPU staging resources.
+
+Current bounds:
+
+```text
+staging capacity      = 4,096 glyph passes
+maximum draw workload = 65,536 glyph passes
+vertices per pass     = 6
+```
+
+A staging-capacity boundary causes a flush and reuse of the same storage. It is not a text-length
+compatibility limit.
+
+The maximum workload is a modern resource-safety policy that prevents pathological trail offsets or
+untrusted text from creating unbounded CPU work.
+
+For reference, the nine-pass outline style can render:
+
+```text
+floor(65,536 / 9) = 7,281 glyphs
+```
+
+in one render operation before reaching that safety boundary.
+
+The bound is not claimed to be a native client restriction.
+
+Normal warmed staging and batching paths reuse previously allocated storage. Managed allocation is
+permitted when capacities or atlas resources grow for the first time.
+
+## OpenGL Resource Ownership
+
+Ownership is intentionally separated:
+
+```text
+NativeTextLayoutSource
+    authoritative CPU font/atlas provenance
+    owns neither object
+
+OpenGLTextResource
+    one-device GPU mirror of exactly one NativeTextLayoutSource
+    owns OpenGLGlyphAtlas
+    does not own CPU font/cache/atlas
+
+OpenGLTextRenderer
+    owns reusable rendering pipeline
+    owns reusable CPU staging storage
+    owns reusable VBO/VAO resources
+    owns reusable batch planner
+    owns no font/cache/layout source
+
+OpenGLRenderer
+    owns one OpenGLTextRenderer
+    consumes independently owned OpenGLTextResource instances
+
+OpenGLGraphicsDevice
+    creates text resources for its GL device
+```
+
+GPU objects must be disposed while their OpenGL context remains valid.
+
+As with existing OpenGL texture resources, device identity is validated explicitly rather than
+allowing resources created by one graphics device to be used by another.
+
+Renderer construction and destruction follow explicit reverse ownership ordering and preserve the
+first encountered failure during cleanup.
+
+## Failure Atomicity
+
+Deterministic request validation occurs before the first text draw-state mutation.
+
+This includes:
+
+```text
+renderer disposal state
+resource disposal state
+resource/device ownership
+layout/source provenance
+target dimensions
+data-icon rejection
+atlas page references
+render-style expansion
+maximum glyph-pass workload
+batch-plan construction
+```
+
+An empty drawable layout is a true no-op and does not activate the text pipeline.
+
+Once GPU execution begins, driver/backend failures can naturally occur after partial GPU work. The
+renderer performs best-effort deterministic cleanup while preserving the first failure rather than
+masking it with a secondary cleanup exception.
 
 ## Managed Ownership
 
@@ -904,8 +1319,27 @@ GlyphAtlas
 
 IDataIconWidthProvider
 NativeTextLayoutItem
+NativeTextLayoutSource
 NativeTextLayout
 NativeTextLayoutEngine
+
+NativeTextRenderStyle
+NativeTextRenderOptions
+NativeTextVertexColors
+NativeTextRenderPass
+NativeTextRenderPassSequence
+NativeTextVertex
+NativeTextGeometryBuilder
+NativeTextBatchPlan
+
+OpenGLGlyphAtlasPageTexture
+OpenGLGlyphAtlas
+OpenGLTextResource
+OpenGLTextVertex
+OpenGLTextVertexStagingBuffer
+OpenGLTextVertexBuffer
+OpenGLTextPipeline
+OpenGLTextRenderer
 ```
 
 Content and Rendering remain independent sibling projects.
@@ -1000,18 +1434,86 @@ signed nonzero data-icon width preservation
 checked layout and atlas arithmetic
 ```
 
-Deferred:
+Later rendering work from this slice is implemented by GFX-TEXT-004 rather than being incomplete
+GFX-TEXT-003 work.
+
+Still outside the implemented compatibility contract:
 
 ```text
 CodePage.ini font-size levels
-
-font batching
-text color/corner behavior
-OpenGL atlas upload
-OpenGL text drawing
-pixel-level real-driver conformance
-runtime HUD/text consumers
 ```
+
+## GFX-TEXT-004 Scope
+
+Implemented and verified:
+
+```text
+verified native text render-style values 0-4
+normal style
+shadow-offset style
+eight-pass outline ordering
+offset-trail ordering
+per-corner vertex coloring
+
+font-derived antialias render policy
+AA-disabled text alpha forcing
+AA-disabled corner alpha forcing
+independent persistent per-corner colors
+
+logical glyph geometry
+native six-vertex triangle ordering
+native TR-BL interpolation diagonal
+logical pixel-edge positioning
+modern no-half-pixel OpenGL mapping
+
+layout-source provenance
+exact CPU atlas/font identity binding
+OpenGL resource/device identity validation
+
+R8 coverage-only OpenGL atlas textures
+512x512 GPU page mirrors
+nearest filtering
+no mipmaps
+CPU atlas revision synchronization
+
+20-byte packed OpenGL text vertex ABI
+OpenGL 3.3 Core text shaders
+coverage × vertex-alpha fragment behavior
+SrcAlpha / OneMinusSrcAlpha blending
+text-specific depth/cull/dither state
+
+native per-page batching model
+deterministic ascending-page reconstruction policy
+stable glyph ordering within each page
+stable render-pass ordering within each glyph
+
+bounded reusable CPU staging
+bounded reusable VBO storage
+bounded total glyph-pass workload
+warmed staging/batch-plan zero-managed-allocation behavior
+
+pre-GPU data-icon rejection
+pre-GPU layout/source validation
+pre-GPU work-budget validation
+first-failure-preserving cleanup
+
+real-driver synthetic native-text conformance
+coverage/placement conformance
+alpha/coverage multiplication conformance
+per-corner native-diagonal conformance
+atlas-revision synchronization conformance
+```
+
+Known evidence boundary:
+
+```text
+native batches by atlas page: verified
+exact native final page traversal order: unresolved
+OpenConquer ascending page-index order: deterministic modern policy
+```
+
+GFX-TEXT-004 deliberately does not add the first runtime HUD/UI consumer. That composition belongs
+to GFX-UI-001.
 
 ## Text Reconstruction Roadmap
 
@@ -1042,28 +1544,45 @@ The intended first UI consumer remains the verified status-hint panel.
 
 ## Conformance Boundary
 
-GFX-TEXT-001 through deterministic GFX-TEXT-003 policy are covered primarily by unit tests.
+Deterministic policy and CPU contracts are covered by unit tests.
 
-Host-font adapters require execution on their real operating systems. CI therefore validates the
-native host and FreeType seams on supported Windows, macOS, and Linux environments.
+Host-font adapters require execution on their real operating systems. CI validates the native host
+and FreeType seams on supported Windows, macOS, and Linux environments.
 
-Pixel-level text conformance remains deferred.
+GFX-TEXT-004 adds real-driver OpenGL conformance using synthetic deterministic glyph coverage rather
+than host-selected font output.
 
-The exact FreeType revision used by the retail client has not been established. OpenConquer
-therefore does not claim pixel-identical rendering merely because both implementations are
-FreeType-shaped.
+The text conformance path verifies:
 
-Exact pixels can vary with:
+```text
+logical pixel placement
+nearest coverage sampling
+coverage × diffuse alpha
+SrcAlpha / OneMinusSrcAlpha blending
+native per-corner TR-BL triangle diagonal
+CPU atlas revision → existing GPU texture synchronization
+```
+
+The synthetic fixture populates `GlyphAtlas` directly. It does not invoke FreeType or depend on host
+font discovery.
+
+This separation is intentional.
+
+The exact FreeType revision and exact physical font revision used by the retail client have not been
+established. OpenConquer therefore does not claim pixel-identical glyph bitmaps merely because both
+implementations use FreeType-shaped rasterization.
+
+Exact rasterized glyph pixels can vary with:
 
 ```text
 font revision
 FreeType revision
 hinting behavior
 host font selection
-final rendering state
 ```
 
-Real rendering conformance belongs to GFX-TEXT-004.
+The implemented GFX-TEXT-004 conformance instead establishes the deterministic rendering behavior
+after coverage has entered the authoritative OpenConquer glyph atlas.
 
 ## Modernization Boundary
 
@@ -1086,8 +1605,22 @@ record-zero missing-glyph retry
 primary line-height missing-glyph advance
 newline reset/advance behavior
 nonzero signed data-icon width semantics
+
 512x512 glyph atlas
 2-pixel atlas separation
+
+render-style values and semantics
+outline pass ordering
+trail pass ordering
+native four-corner ordering
+native six-vertex triangle ordering
+native TR-BL interpolation diagonal
+
+AA-disabled text/corner alpha behavior
+coverage-only atlas semantics
+nearest text sampling
+source-alpha blending
+per-page batching behavior
 ```
 
 Modern implementation constraints:
@@ -1112,7 +1645,30 @@ do not depend on host ANSI settings for clean-client behavior
 do not expand runtime content without a consumer
 do not conflate font-creation fallback with missing-glyph fallback
 do not put missing-glyph fallback into the font-creation factory
-do not put GPU objects into measurement/cache/atlas policy
+
+do not put GPU ownership into measurement/cache/atlas policy
+bind GPU atlas resources to exact layout-source provenance
+validate deterministic rendering failures before GPU mutation
+use bounded reusable staging and GPU buffers
+avoid warmed-path managed allocation where practical
+
+use modern OpenGL shaders rather than fixed-function D3D emulation
+use R8 coverage rather than recreating legacy texture representation
+express final pixel-edge coordinates directly
+do not recreate D3D8 half-pixel representation artifacts
+do not recreate COM, FVF, or fixed-function ownership structure
+
 do not claim undocumented atlas coordinates as native behavior
-do not claim pixel identity without evidence
+do not claim undocumented atlas-page flush order as native behavior
+do not claim retail glyph-bitmap pixel identity without evidence
+```
+
+The governing rule is observable compatibility rather than implementation archaeology:
+
+```text
+preserve behavior that affects visible output, content compatibility, protocol semantics,
+or deterministic gameplay/client behavior
+
+modernize obsolete API representation and incidental native implementation machinery
+when doing so does not change the verified observable contract
 ```

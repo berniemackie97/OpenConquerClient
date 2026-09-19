@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using OpenConquer.Rendering.Text;
 using Silk.NET.OpenGL;
 
 namespace OpenConquer.Rendering.OpenGL;
@@ -9,6 +10,7 @@ public sealed class OpenGLRenderer : IDisposable
     private readonly LogicalRenderSize _logicalRenderSize;
     private readonly OpenGLRenderTarget _renderTarget;
     private readonly OpenGLSpriteRenderer _spriteRenderer;
+    private readonly OpenGLTextRenderer _textRenderer;
     private readonly PresentationPolicy _presentationPolicy;
 
     private int _framebufferWidth;
@@ -27,21 +29,40 @@ public sealed class OpenGLRenderer : IDisposable
         _gl = gl;
         _logicalRenderSize = logicalRenderSize;
         _presentationPolicy = presentationPolicy;
-        _renderTarget = new OpenGLRenderTarget(gl, logicalRenderSize.Width, logicalRenderSize.Height);
+
+        OpenGLRenderTarget renderTarget = new(gl, logicalRenderSize.Width, logicalRenderSize.Height);
+        OpenGLSpriteRenderer? spriteRenderer = null;
 
         try
         {
-            _spriteRenderer = new OpenGLSpriteRenderer(gl);
+            spriteRenderer = new OpenGLSpriteRenderer(gl);
+            OpenGLTextRenderer textRenderer = new(gl);
+
+            _renderTarget = renderTarget;
+            _spriteRenderer = spriteRenderer;
+            _textRenderer = textRenderer;
         }
         catch
         {
+            if (spriteRenderer is not null)
+            {
+                try
+                {
+                    spriteRenderer.Dispose();
+                }
+                catch
+                {
+                    // Preserve the original renderer-resource creation failure.
+                }
+            }
+
             try
             {
-                _renderTarget.Dispose();
+                renderTarget.Dispose();
             }
             catch
             {
-                // Preserve the original sprite-renderer creation failure.
+                // Preserve the original renderer-resource creation failure.
             }
 
             throw;
@@ -135,6 +156,16 @@ public sealed class OpenGLRenderer : IDisposable
         _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height, color, rotationDegrees);
     }
 
+    internal void DrawText(OpenGLTextResource resource, NativeTextLayout layout, NativeTextRenderOptions options, int x, int y)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(resource);
+        ArgumentNullException.ThrowIfNull(layout);
+        EnsureFrameActiveForDrawing();
+
+        _textRenderer.Draw(resource, layout, options, _logicalRenderSize.Width, _logicalRenderSize.Height, x, y);
+    }
+
     internal byte[] ReadFrameTopLeftRgba()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -183,11 +214,20 @@ public sealed class OpenGLRenderer : IDisposable
 
         try
         {
-            _spriteRenderer.Dispose();
+            _textRenderer.Dispose();
         }
         catch (Exception exception)
         {
             firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            _spriteRenderer.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
         try

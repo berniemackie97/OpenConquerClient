@@ -1,0 +1,13 @@
+namespace OpenConquer.Rendering.Text;
+
+/// <summary>
+/// Defines the verified native RENDER_TEXT_STYLE values used by Conquer Online 5517 glyph rendering.
+/// </summary>
+internal enum NativeTextRenderStyle
+{
+    Normal = 0,
+    ShadowOffset = 1,
+    MultiOffsetOutline = 2,
+    OffsetTrail = 3,
+    PerCornerColor = 4,
+}
