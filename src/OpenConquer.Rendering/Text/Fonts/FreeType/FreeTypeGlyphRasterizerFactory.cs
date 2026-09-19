@@ -1,9 +1,7 @@
-using OpenConquer.Rendering.Text.Fonts.FreeType;
-
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
-/// Creates a glyph rasterizer using the native font-creation fallback chain.
+/// Creates glyph rasterizers using the configured font fallback chain.
 /// </summary>
 internal sealed class FreeTypeGlyphRasterizerFactory
 {
@@ -61,7 +59,7 @@ internal sealed class FreeTypeGlyphRasterizerFactory
             return courierNewRasterizer;
         }
 
-        throw new InvalidOperationException("No usable font could be created from the requested font or the native fallback chain.", lastFailure);
+        throw new InvalidOperationException("No usable font could be created from the requested font or fallback chain.", lastFailure);
     }
 
     internal delegate IGlyphRasterizer RasterizerCreator(ResolvedFont font, int nominalPixelHeight, bool antialiasEnabled);

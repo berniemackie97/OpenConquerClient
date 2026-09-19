@@ -1,7 +1,7 @@
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts;
 
 /// <summary>
-/// Resolves native font tokens and the host GUI fallback font.
+/// Resolves font tokens and the host GUI fallback font.
 /// </summary>
 internal interface IFontResolver
 {

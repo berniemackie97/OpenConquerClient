@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using OpenConquer.Rendering.Text.Native;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
 /// Owns one initialized FreeType library instance for the rendering text subsystem.

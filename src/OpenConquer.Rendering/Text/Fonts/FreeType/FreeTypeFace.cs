@@ -1,9 +1,8 @@
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
-using OpenConquer.Rendering.Text.Fonts.FreeType;
 using OpenConquer.Rendering.Text.Native;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
 /// Owns one FreeType face and the mapped font data backing it.

@@ -1,10 +1,10 @@
 using System.Runtime.InteropServices;
 using OpenConquer.Rendering.Text.Native;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
-/// Reads font-face metadata through FreeType for host font resolution.
+/// Reads font face metadata through FreeType for host font resolution.
 /// </summary>
 internal sealed unsafe class FreeTypeFontInspector
 {

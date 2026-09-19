@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.Discovery;
 
 /// <summary>
 /// Identifies a font file registered with the host font system and, when known,

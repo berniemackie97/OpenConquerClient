@@ -1,9 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Text;
-using OpenConquer.Rendering.Text.Fonts.FreeType;
 using OpenConquer.Rendering.Text.Native;
 
-namespace OpenConquer.Rendering.Text;
+namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
 /// Rasterizes glyphs from one configured FreeType face.
