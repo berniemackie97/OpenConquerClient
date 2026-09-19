@@ -1,9 +1,9 @@
-namespace OpenConquer.Client;
+namespace OpenConquer.Client.Startup;
 
-internal static class ClientWindowCreationSequence
+internal static class StartupWindowSequence
 {
     /// <summary>
-    /// Presents and destroys the initialization splash before constructing the main window.
+    /// Disposes the startup splash before creating the main window.
     /// </summary>
     public static TMain CreateMainAfterStartup<TMain>(IStartupSplash startupSplash, Action initialize, Func<TMain> createMain) where TMain : class
     {

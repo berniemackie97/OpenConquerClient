@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using OpenConquer.Client.Startup;
 using OpenConquer.Content;
 using OpenConquer.Content.Startup;
 

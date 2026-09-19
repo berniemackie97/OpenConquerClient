@@ -4,10 +4,10 @@ using OpenConquer.Content.Startup;
 using OpenConquer.Platform;
 using OpenConquer.Rendering.OpenGL;
 
-namespace OpenConquer.Client;
+namespace OpenConquer.Client.Startup;
 
 /// <summary>
-/// Presents the retail startup logo on a short-lived OpenGL window when the selected bitmap is available.
+/// Presents the startup logo in a short lived OpenGL window when an image is available.
 /// </summary>
 internal sealed class OpenGLStartupSplash : IStartupSplash
 {
