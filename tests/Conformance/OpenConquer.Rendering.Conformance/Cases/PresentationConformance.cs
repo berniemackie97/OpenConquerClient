@@ -1,6 +1,7 @@
 using OpenConquer.Platform;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
+using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Rendering.Conformance.Cases;
 
