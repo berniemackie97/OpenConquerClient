@@ -3,7 +3,7 @@ using OpenConquer.Rendering.Text.Layout;
 using OpenConquer.Rendering.Text.Rendering;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Text;
 
 /// <summary>
 /// Renders validated text layouts through bounded, reusable OpenGL resources.

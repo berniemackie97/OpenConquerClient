@@ -2,7 +2,7 @@ using System.Runtime.ExceptionServices;
 using OpenConquer.Rendering.Text.Atlas;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Text.Atlas;
 
 /// <summary>
 /// Owns the OpenGL coverage texture corresponding to one CPU glyph-atlas page.

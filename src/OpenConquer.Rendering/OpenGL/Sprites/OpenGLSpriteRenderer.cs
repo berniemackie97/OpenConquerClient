@@ -1,8 +1,9 @@
 using System.Runtime.ExceptionServices;
+using OpenConquer.Rendering.OpenGL.Resources;
 using OpenConquer.Rendering.Sprites;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Sprites;
 
 internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 {

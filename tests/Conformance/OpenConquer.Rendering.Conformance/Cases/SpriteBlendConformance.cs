@@ -1,6 +1,7 @@
 using OpenConquer.Platform;
 using OpenConquer.Rendering.Conformance.Support;
 using OpenConquer.Rendering.OpenGL;
+using OpenConquer.Rendering.OpenGL.Resources;
 using OpenConquer.Rendering.Presentation;
 using OpenConquer.Rendering.Sprites;
 

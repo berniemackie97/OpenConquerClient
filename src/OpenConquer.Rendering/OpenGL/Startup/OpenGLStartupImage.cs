@@ -1,7 +1,8 @@
 using System.Runtime.ExceptionServices;
+using OpenConquer.Rendering.OpenGL.Resources;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Startup;
 
 internal sealed unsafe class OpenGLStartupImage : IDisposable
 {

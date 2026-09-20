@@ -1,4 +1,7 @@
 using System.Runtime.ExceptionServices;
+using OpenConquer.Rendering.OpenGL.Resources;
+using OpenConquer.Rendering.OpenGL.Sprites;
+using OpenConquer.Rendering.OpenGL.Text;
 using OpenConquer.Rendering.Presentation;
 using OpenConquer.Rendering.Sprites;
 using OpenConquer.Rendering.Text.Layout;

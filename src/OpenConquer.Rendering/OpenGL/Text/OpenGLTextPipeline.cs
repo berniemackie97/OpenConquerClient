@@ -1,7 +1,8 @@
 using System.Runtime.ExceptionServices;
+using OpenConquer.Rendering.OpenGL.Resources;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Text;
 
 /// <summary>
 /// Owns the OpenGL shader program and fixed render-state contract for text rendering.

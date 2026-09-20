@@ -2,7 +2,7 @@ using System.Runtime.ExceptionServices;
 using OpenConquer.Rendering.Text.Rendering;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Text;
 
 /// <summary>
 /// Owns fixed-capacity OpenGL vertex resources used to upload and draw native-text glyph batches.

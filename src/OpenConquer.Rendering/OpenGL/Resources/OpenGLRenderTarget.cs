@@ -1,7 +1,7 @@
 using System.Runtime.ExceptionServices;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Resources;
 
 internal sealed class OpenGLRenderTarget : IDisposable
 {

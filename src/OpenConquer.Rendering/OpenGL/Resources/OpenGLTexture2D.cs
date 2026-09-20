@@ -1,7 +1,7 @@
 using System.Runtime.ExceptionServices;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Resources;
 
 public sealed class OpenGLTexture2D : IDisposable
 {

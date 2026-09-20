@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using OpenConquer.Rendering.Text.Rendering;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Text;
 
 /// <summary>
 /// Defines the tightly packed OpenGL vertex representation for native text rendering.

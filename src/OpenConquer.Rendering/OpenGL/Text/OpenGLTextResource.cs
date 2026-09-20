@@ -1,7 +1,8 @@
+using OpenConquer.Rendering.OpenGL.Text.Atlas;
 using OpenConquer.Rendering.Text.Layout;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Text;
 
 /// <summary>
 /// Owns the OpenGL glyph atlas resources corresponding to one authoritative text layout source.

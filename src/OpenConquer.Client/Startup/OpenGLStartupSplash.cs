@@ -3,6 +3,7 @@ using OpenConquer.Content.Images;
 using OpenConquer.Content.Startup;
 using OpenConquer.Platform;
 using OpenConquer.Rendering.OpenGL;
+using OpenConquer.Rendering.OpenGL.Startup;
 
 namespace OpenConquer.Client.Startup;
 

@@ -1,7 +1,7 @@
 using OpenConquer.Rendering.Presentation;
 using Silk.NET.OpenGL;
 
-namespace OpenConquer.Rendering.OpenGL;
+namespace OpenConquer.Rendering.OpenGL.Startup;
 
 /// <summary>
 /// Renders the one shot startup logo directly to a startup window's framebuffer.
