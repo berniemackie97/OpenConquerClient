@@ -4,7 +4,9 @@ using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
-using OpenConquer.Platform;
+using OpenConquer.Platform.Geometry;
+using OpenConquer.Platform.OpenGL;
+using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
 

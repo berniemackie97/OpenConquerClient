@@ -1,4 +1,4 @@
-namespace OpenConquer.Platform;
+namespace OpenConquer.Platform.Geometry;
 
 /// <summary>
 /// A position in host framebuffer pixels, measured from the top left.

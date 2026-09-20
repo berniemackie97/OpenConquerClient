@@ -1,10 +1,11 @@
 using System.Runtime.ExceptionServices;
-using OpenConquer.Platform.Internal;
+using OpenConquer.Platform.Geometry;
+using OpenConquer.Platform.OpenGL;
 using Silk.NET.Core.Contexts;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
-namespace OpenConquer.Platform;
+namespace OpenConquer.Platform.Windowing.Startup;
 
 /// <summary>
 /// Owns the short lived startup window and OpenGL context used during client initialization.

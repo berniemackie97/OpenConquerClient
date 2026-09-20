@@ -1,4 +1,4 @@
-using OpenConquer.Platform;
+using OpenConquer.Platform.Geometry;
 using OpenConquer.Rendering.Conformance.Support;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;

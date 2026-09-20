@@ -1,4 +1,4 @@
-using OpenConquer.Platform.Internal;
+using OpenConquer.Platform.Windowing.Desktop;
 
 namespace OpenConquer.Platform.Tests;
 

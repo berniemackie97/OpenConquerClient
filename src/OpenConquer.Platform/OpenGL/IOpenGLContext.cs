@@ -1,4 +1,4 @@
-namespace OpenConquer.Platform;
+namespace OpenConquer.Platform.OpenGL;
 
 public interface IOpenGLContext
 {

@@ -1,4 +1,4 @@
-namespace OpenConquer.Platform.Internal;
+namespace OpenConquer.Platform.Windowing.Desktop;
 
 internal sealed class DesktopFramePacer
 {

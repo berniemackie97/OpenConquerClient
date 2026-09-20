@@ -1,4 +1,4 @@
-namespace OpenConquer.Platform;
+namespace OpenConquer.Platform.Windowing.Desktop;
 
 /// <summary>
 /// Determines how the desktop game window is presented independently of the logical render size.

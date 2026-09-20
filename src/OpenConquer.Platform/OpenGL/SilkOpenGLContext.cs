@@ -1,6 +1,6 @@
 using Silk.NET.Core.Contexts;
 
-namespace OpenConquer.Platform.Internal;
+namespace OpenConquer.Platform.OpenGL;
 
 internal sealed class SilkOpenGLContext : IOpenGLContext
 {

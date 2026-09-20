@@ -1,4 +1,4 @@
-namespace OpenConquer.Platform;
+namespace OpenConquer.Platform.Geometry;
 
 public readonly record struct PixelSize
 {
