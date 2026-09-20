@@ -5,9 +5,9 @@ using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
 using OpenConquer.Platform;
-using OpenConquer.Rendering;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
+using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client;
 

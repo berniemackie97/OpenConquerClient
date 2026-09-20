@@ -2,6 +2,7 @@ using OpenConquer.Platform;
 using OpenConquer.Rendering.Conformance.Reference;
 using OpenConquer.Rendering.Conformance.Support;
 using OpenConquer.Rendering.OpenGL;
+using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Rendering.Conformance.Cases;
 

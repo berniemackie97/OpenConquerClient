@@ -1,3 +1,5 @@
+using OpenConquer.Rendering.Text.Rendering;
+
 namespace OpenConquer.Rendering.Tests;
 
 public sealed class LogicalRenderSizeTests
