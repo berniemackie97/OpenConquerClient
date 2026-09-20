@@ -1,6 +1,8 @@
+using OpenConquer.Rendering.OpenGL.Resources;
+using OpenConquer.Rendering.OpenGL.Startup;
+using OpenConquer.Rendering.OpenGL.Text;
 using OpenConquer.Rendering.Presentation;
 using OpenConquer.Rendering.Text.Layout;
-using OpenConquer.Rendering.Text.Rendering;
 using Silk.NET.OpenGL;
 
 namespace OpenConquer.Rendering.OpenGL;

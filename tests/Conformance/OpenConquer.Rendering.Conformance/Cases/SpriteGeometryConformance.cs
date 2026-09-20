@@ -1,9 +1,11 @@
 using OpenConquer.Content.Images;
-using OpenConquer.Platform;
+using OpenConquer.Platform.Geometry;
 using OpenConquer.Rendering.Conformance.Reference;
 using OpenConquer.Rendering.Conformance.Support;
 using OpenConquer.Rendering.OpenGL;
-using OpenConquer.Rendering.Text.Rendering;
+using OpenConquer.Rendering.OpenGL.Resources;
+using OpenConquer.Rendering.Presentation;
+using OpenConquer.Rendering.Sprites;
 
 namespace OpenConquer.Rendering.Conformance.Cases;
 

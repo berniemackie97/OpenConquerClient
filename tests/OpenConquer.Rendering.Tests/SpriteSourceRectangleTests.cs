@@ -1,3 +1,5 @@
+using OpenConquer.Rendering.Sprites;
+
 namespace OpenConquer.Rendering.Tests;
 
 public sealed class SpriteSourceRectangleTests

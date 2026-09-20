@@ -1,7 +1,10 @@
-using OpenConquer.Platform;
+using OpenConquer.Platform.Geometry;
 using OpenConquer.Rendering.Conformance.Fixtures;
 using OpenConquer.Rendering.Conformance.Support;
 using OpenConquer.Rendering.OpenGL;
+using OpenConquer.Rendering.OpenGL.Text;
+using OpenConquer.Rendering.Presentation;
+using OpenConquer.Rendering.Sprites;
 using OpenConquer.Rendering.Text.Atlas;
 using OpenConquer.Rendering.Text.Layout;
 using OpenConquer.Rendering.Text.Rendering;

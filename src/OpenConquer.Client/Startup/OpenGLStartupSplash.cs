@@ -1,8 +1,11 @@
 using System.Runtime.ExceptionServices;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Startup;
-using OpenConquer.Platform;
+using OpenConquer.Platform.Geometry;
+using OpenConquer.Platform.OpenGL;
+using OpenConquer.Platform.Windowing.Startup;
 using OpenConquer.Rendering.OpenGL;
+using OpenConquer.Rendering.OpenGL.Startup;
 
 namespace OpenConquer.Client.Startup;
 

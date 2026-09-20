@@ -1,3 +1,5 @@
+using OpenConquer.Platform.Geometry;
+using OpenConquer.Platform.Windowing.Desktop;
 using Silk.NET.Windowing;
 
 namespace OpenConquer.Platform.Tests;
