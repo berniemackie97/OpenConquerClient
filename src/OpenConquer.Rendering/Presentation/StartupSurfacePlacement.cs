@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering;
+namespace OpenConquer.Rendering.Presentation;
 
 /// <summary>
 /// Where the startup logo is drawn inside a startup window's framebuffer.

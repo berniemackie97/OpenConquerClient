@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering;
+namespace OpenConquer.Rendering.Sprites;
 
 /// <summary>
 /// Defines how a sprite is blended with the current render target.

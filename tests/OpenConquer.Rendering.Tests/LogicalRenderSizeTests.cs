@@ -1,4 +1,4 @@
-using OpenConquer.Rendering.Text.Rendering;
+using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Rendering.Tests;
 

@@ -1,5 +1,6 @@
 using System.Runtime.ExceptionServices;
 using OpenConquer.Rendering.Presentation;
+using OpenConquer.Rendering.Sprites;
 using OpenConquer.Rendering.Text.Layout;
 using OpenConquer.Rendering.Text.Rendering;
 using Silk.NET.OpenGL;

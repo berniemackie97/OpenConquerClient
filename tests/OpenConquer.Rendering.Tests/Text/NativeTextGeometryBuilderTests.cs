@@ -1,3 +1,4 @@
+using OpenConquer.Rendering.Sprites;
 using OpenConquer.Rendering.Text.Atlas;
 using OpenConquer.Rendering.Text.Layout;
 using OpenConquer.Rendering.Text.Rendering;

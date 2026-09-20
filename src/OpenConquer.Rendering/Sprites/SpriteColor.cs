@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering;
+namespace OpenConquer.Rendering.Sprites;
 
 /// <summary>
 /// Defines the RGBA modulation color applied to a sprite draw.

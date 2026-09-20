@@ -1,3 +1,5 @@
+using OpenConquer.Rendering.Sprites;
+
 namespace OpenConquer.Rendering.Text.Rendering;
 
 /// <summary>

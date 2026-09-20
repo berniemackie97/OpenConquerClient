@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering.Text.Rendering;
+namespace OpenConquer.Rendering.Presentation;
 
 public readonly record struct LogicalRenderSize
 {

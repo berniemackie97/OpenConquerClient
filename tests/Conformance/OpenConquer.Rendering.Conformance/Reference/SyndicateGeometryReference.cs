@@ -1,4 +1,5 @@
 using OpenConquer.Rendering.Conformance.Support;
+using OpenConquer.Rendering.Sprites;
 
 namespace OpenConquer.Rendering.Conformance.Reference;
 

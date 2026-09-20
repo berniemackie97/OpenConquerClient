@@ -1,4 +1,4 @@
-namespace OpenConquer.Rendering;
+namespace OpenConquer.Rendering.Sprites;
 
 /// <summary>
 /// Defines a non-empty rectangular region of a sprite texture in top-left pixel coordinates.
