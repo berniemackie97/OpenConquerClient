@@ -1,7 +1,9 @@
+using System.Numerics;
 using System.Runtime.ExceptionServices;
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.OpenGL;
 using Silk.NET.Core.Contexts;
+using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
@@ -14,6 +16,8 @@ public sealed class DesktopWindow : IDisposable
     private readonly IWindow _window;
     private readonly DesktopFramePacer _framePacer;
 
+    private IInputContext? _inputContext;
+    private IMouse? _mouse;
     private SilkOpenGLContext? _openGLContext;
     private bool _runStarted;
     private bool _openGLContextReleaseStarted;
@@ -27,8 +31,7 @@ public sealed class DesktopWindow : IDisposable
     /// <summary>
     /// Creates the default resizable desktop host.
     /// </summary>
-    public DesktopWindow(TimeSpan frameInterval)
-        : this(DefaultWindowSize, DesktopWindowMode.Resizable, frameInterval)
+    public DesktopWindow(TimeSpan frameInterval) : this(DefaultWindowSize, DesktopWindowMode.Resizable, frameInterval)
     {
     }
 
@@ -40,12 +43,139 @@ public sealed class DesktopWindow : IDisposable
         WindowOptions options = CreateOptions(windowSize, windowMode);
 
         _framePacer = new DesktopFramePacer(frameInterval);
-
         _window = Window.Create(options);
 
         _window.Load += OnLoad;
         _window.FramebufferResize += OnFramebufferResize;
         _window.Render += OnRender;
+    }
+
+    public event Action<PixelSize>? FramebufferResized;
+    public event Action<PixelPoint>? PointerMoved;
+    public event Action<double>? Rendering;
+    public event Action<IOpenGLContext>? OpenGLContextReady;
+    public event Action? OpenGLContextReleasing;
+
+    public PixelSize FramebufferSize
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            Vector2D<int> size = _window.FramebufferSize;
+            return new PixelSize(size.X, size.Y);
+        }
+    }
+
+    /// <summary>
+    /// Converts a top-left window-client position to the corresponding host-framebuffer pixel.
+    /// Positions outside the client area remain outside the framebuffer rather than being clamped.
+    /// </summary>
+    public PixelPoint PointToFramebuffer(float windowX, float windowY)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!float.IsFinite(windowX))
+        {
+            throw new ArgumentOutOfRangeException(nameof(windowX), windowX, "Pointer coordinate must be finite.");
+        }
+
+        if (!float.IsFinite(windowY))
+        {
+            throw new ArgumentOutOfRangeException(nameof(windowY), windowY, "Pointer coordinate must be finite.");
+        }
+
+        Vector2D<int> windowSize = _window.Size;
+        Vector2D<int> framebufferSize = _window.FramebufferSize;
+
+        if (windowSize.X <= 0 || windowSize.Y <= 0 || framebufferSize.X <= 0 || framebufferSize.Y <= 0)
+        {
+            throw new InvalidOperationException("Pointer coordinates cannot be mapped while the window or framebuffer has no drawable area.");
+        }
+
+        if (!TryMapWindowPointToFramebuffer(windowX, windowY, windowSize.X, windowSize.Y, framebufferSize.X, framebufferSize.Y, out PixelPoint framebufferPoint))
+        {
+            throw new ArgumentOutOfRangeException(nameof(windowX), "The mapped framebuffer position is outside the supported coordinate range.");
+        }
+
+        return framebufferPoint;
+    }
+
+    public void Run()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (_runStarted)
+        {
+            throw new InvalidOperationException("The desktop window has already been run.");
+        }
+
+        _runStarted = true;
+
+        try
+        {
+            _window.Initialize();
+            InitializeInput();
+            _framePacer.Start();
+            _window.Run(RunFrame);
+            _window.DoEvents();
+        }
+        catch
+        {
+            try
+            {
+                ReleaseRuntimeResources();
+            }
+            catch
+            {
+                // Preserve the original window-loop or initialization failure.
+            }
+
+            throw;
+        }
+
+        ReleaseRuntimeResources();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        ExceptionDispatchInfo? firstFailure = null;
+
+        try
+        {
+            ReleaseRuntimeResources();
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        _window.Load -= OnLoad;
+        _window.FramebufferResize -= OnFramebufferResize;
+        _window.Render -= OnRender;
+
+        try
+        {
+            _window.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+        finally
+        {
+            _mouse = null;
+            _inputContext = null;
+            _openGLContext = null;
+            _disposed = true;
+        }
+
+        firstFailure?.Throw();
     }
 
     internal static WindowOptions CreateOptions(PixelSize windowSize, DesktopWindowMode windowMode)
@@ -69,123 +199,75 @@ public sealed class DesktopWindow : IDisposable
             Size = hostSize,
             WindowState = windowState,
             WindowBorder = windowBorder,
-
             FramesPerSecond = 0,
             UpdatesPerSecond = 0,
             VSync = false,
-
             Samples = 0,
             ShouldSwapAutomatically = true,
-
             API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, new APIVersion(3, minorVersion: 3)),
-
             PreferredDepthBufferBits = 0,
             PreferredStencilBufferBits = 0,
         };
     }
 
-    public event Action<PixelSize>? FramebufferResized;
-    public event Action<double>? Rendering;
-    public event Action<IOpenGLContext>? OpenGLContextReady;
-    public event Action? OpenGLContextReleasing;
-
-    public PixelSize FramebufferSize
+    internal static bool TryMapWindowPointToFramebuffer(float windowX, float windowY, int windowWidth, int windowHeight, int framebufferWidth, int framebufferHeight, out PixelPoint framebufferPoint)
     {
-        get
+        framebufferPoint = default;
+
+        if (!float.IsFinite(windowX) || !float.IsFinite(windowY) ||
+            windowWidth <= 0 || windowHeight <= 0 || framebufferWidth <= 0 || framebufferHeight <= 0)
         {
-            ObjectDisposedException.ThrowIf(_disposed, instance: this);
-
-            Vector2D<int> size = _window.FramebufferSize;
-
-            return new PixelSize(width: size.X, height: size.Y);
-        }
-    }
-
-    /// <summary>
-    /// Converts a pointer position reported in window coordinates to host framebuffer pixels.
-    /// </summary>
-    public PixelPoint PointToFramebuffer(float windowX, float windowY)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, instance: this);
-
-        Vector2D<int> roundedWindowPoint = new((int)MathF.Round(windowX), (int)MathF.Round(windowY));
-        Vector2D<int> framebufferPoint = _window.PointToFramebuffer(roundedWindowPoint);
-
-        return new PixelPoint(X: framebufferPoint.X, Y: framebufferPoint.Y);
-    }
-
-    public void Run()
-    {
-        ObjectDisposedException.ThrowIf(_disposed, instance: this);
-
-        if (_runStarted)
-        {
-            throw new InvalidOperationException("The desktop window has already been run.");
+            return false;
         }
 
-        _runStarted = true;
+        double framebufferX = Math.Floor((double)windowX * framebufferWidth / windowWidth);
+        double framebufferY = Math.Floor((double)windowY * framebufferHeight / windowHeight);
+
+        if (framebufferX < int.MinValue || framebufferX > int.MaxValue ||
+            framebufferY < int.MinValue || framebufferY > int.MaxValue)
+        {
+            return false;
+        }
+
+        framebufferPoint = new PixelPoint((int)framebufferX, (int)framebufferY);
+        return true;
+    }
+
+    private void InitializeInput()
+    {
+        if (_inputContext is not null || _mouse is not null)
+        {
+            throw new InvalidOperationException("Desktop input has already been initialized.");
+        }
+
+        IInputContext inputContext = _window.CreateInput();
 
         try
         {
-            _window.Initialize();
-            _framePacer.Start();
-            _window.Run(RunFrame);
-            _window.DoEvents();
+            if (inputContext.Mice.Count == 0)
+            {
+                throw new NotSupportedException("The desktop input backend did not provide a mouse device.");
+            }
+
+            IMouse mouse = inputContext.Mice[0];
+            mouse.MouseMove += OnMouseMove;
+
+            _mouse = mouse;
+            _inputContext = inputContext;
         }
         catch
         {
             try
             {
-                ReleaseOpenGLContext();
+                inputContext.Dispose();
             }
             catch
             {
-                // Preserve the original window-loop failure.
+                // Preserve the input-initialization failure.
             }
 
             throw;
         }
-
-        ReleaseOpenGLContext();
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        ExceptionDispatchInfo? firstFailure = null;
-
-        try
-        {
-            ReleaseOpenGLContext();
-        }
-        catch (Exception exception)
-        {
-            firstFailure = ExceptionDispatchInfo.Capture(exception);
-        }
-
-        _window.Load -= OnLoad;
-        _window.FramebufferResize -= OnFramebufferResize;
-        _window.Render -= OnRender;
-
-        try
-        {
-            _window.Dispose();
-        }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
-        finally
-        {
-            _openGLContext = null;
-            _disposed = true;
-        }
-
-        firstFailure?.Throw();
     }
 
     private void RunFrame()
@@ -222,7 +304,6 @@ public sealed class DesktopWindow : IDisposable
         }
 
         IGLContext context = _window.GLContext ?? throw new InvalidOperationException("The OpenGL context was not created.");
-
         SilkOpenGLContext openGLContext = new(context);
 
         if (!openGLContext.IsCurrent)
@@ -231,13 +312,25 @@ public sealed class DesktopWindow : IDisposable
         }
 
         _openGLContext = openGLContext;
-
         OpenGLContextReady?.Invoke(openGLContext);
+    }
+
+    private void OnMouseMove(IMouse _, Vector2 position)
+    {
+        Vector2D<int> windowSize = _window.Size;
+        Vector2D<int> framebufferSize = _window.FramebufferSize;
+
+        if (!TryMapWindowPointToFramebuffer(position.X, position.Y, windowSize.X, windowSize.Y, framebufferSize.X, framebufferSize.Y, out PixelPoint framebufferPoint))
+        {
+            return;
+        }
+
+        PointerMoved?.Invoke(framebufferPoint);
     }
 
     private void OnFramebufferResize(Vector2D<int> size)
     {
-        FramebufferResized?.Invoke(new PixelSize(width: size.X, height: size.Y));
+        FramebufferResized?.Invoke(new PixelSize(size.X, size.Y));
     }
 
     private void OnRender(double deltaSeconds)
@@ -250,6 +343,68 @@ public sealed class DesktopWindow : IDisposable
         }
 
         Rendering?.Invoke(deltaSeconds);
+    }
+
+    private void ReleaseRuntimeResources()
+    {
+        ExceptionDispatchInfo? firstFailure = null;
+
+        try
+        {
+            ReleaseInput();
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            ReleaseOpenGLContext();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        firstFailure?.Throw();
+    }
+
+    private void ReleaseInput()
+    {
+        IMouse? mouse = _mouse;
+        IInputContext? inputContext = _inputContext;
+
+        _mouse = null;
+        _inputContext = null;
+
+        ExceptionDispatchInfo? firstFailure = null;
+
+        if (mouse is not null)
+        {
+            try
+            {
+                mouse.MouseMove -= OnMouseMove;
+            }
+            catch (Exception exception)
+            {
+                firstFailure = ExceptionDispatchInfo.Capture(exception);
+            }
+        }
+
+        if (inputContext is not null)
+        {
+            try
+            {
+                inputContext.Dispose();
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
+        }
+
+        firstFailure?.Throw();
     }
 
     private void ReleaseOpenGLContext()
