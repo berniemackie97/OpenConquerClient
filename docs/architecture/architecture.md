@@ -47,7 +47,7 @@ High-level ownership:
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `OpenConquer.Launcher`   | launcher process, UI, diagnostics, installation/readiness state, display preferences, trusted installed-release transaction, future release acquisition and controlled launch orchestration |
 | `OpenConquer.Client`     | game-runtime composition root and game-process lifetime                                                                                                                                     |
-| `OpenConquer.Platform`   | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, future desktop input                                                                               |
+| `OpenConquer.Platform`   | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, and desktop input                                                                                  |
 | `OpenConquer.Gameplay`   | game state and gameplay behavior                                                                                                                                                            |
 | `OpenConquer.Rendering`  | OpenGL integration, logical rendering, presentation, GPU resources, rendering-facing text semantics, host font-resource discovery, and glyph rasterization                                  |
 | `OpenConquer.Content`    | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup                                                                                                            |
@@ -196,7 +196,14 @@ Platform owns:
 - physical framebuffer state;
 - frame-loop orchestration;
 - pacing mechanics;
+- desktop input-device lifetime;
+- conversion of desktop pointer positions from window-client coordinates to top-left
+  host-framebuffer pixels;
 - buffer swapping.
+
+Pointer positions emitted by Platform remain in physical host-framebuffer coordinates. Platform does
+not know the game's logical render size, presentation policy, HUD layout, hit-test regions, or
+native UI semantics.
 
 Rendering owns:
 
@@ -210,6 +217,15 @@ Rendering owns:
 - deterministic font resolution;
 - FreeType library, font-file, face, and rasterizer lifetime;
 - glyph rasterization and rasterizer-facing metrics.
+
+`PresentationViewport` owns conversion from host-framebuffer positions into logical render
+coordinates, including rejection of positions outside the presented logical surface. Client
+composition is responsible for connecting Platform pointer input to that Rendering-owned transform
+when an implemented UI consumer requires it.
+
+Platform therefore does not clamp pointer positions to the window or logical render surface.
+Positions outside those areas remain outside so the owning presentation or UI layer can reject them
+without converting them into false edge hits.
 
 Font discovery is deliberately based on the operating system's registered/configured font system
 rather than recursive filesystem probing.
