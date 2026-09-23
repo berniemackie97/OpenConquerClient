@@ -95,7 +95,7 @@ public sealed class DesktopWindow : IDisposable
 
         if (!TryMapWindowPointToFramebuffer(windowX, windowY, windowSize.X, windowSize.Y, framebufferSize.X, framebufferSize.Y, out PixelPoint framebufferPoint))
         {
-            throw new ArgumentOutOfRangeException(nameof(windowX), "The mapped framebuffer position is outside the supported coordinate range.");
+            throw new ArgumentOutOfRangeException(null, "The mapped framebuffer position is outside the supported coordinate range.");
         }
 
         return framebufferPoint;
