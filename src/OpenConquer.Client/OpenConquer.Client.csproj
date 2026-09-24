@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="OpenConquer.Client.Tests" />
+    <InternalsVisibleTo Include="OpenConquer.Rendering.Conformance" />
   </ItemGroup>
 
   <ItemGroup>

@@ -10,12 +10,15 @@ internal sealed class ImportSourceRoot
 {
     private const string ExpectedClientVersion = "5517";
     private const string VersionMarkerFileName = "version.dat";
+    private const int StreamBufferLength = 81920;
 
     private readonly ClientContentRoot _contentRoot;
+    private readonly PackagedClientContentSource _packagedContentSource;
 
-    private ImportSourceRoot(ClientContentRoot contentRoot, string clientVersion, string versionMarkerSha256)
+    private ImportSourceRoot(ClientContentRoot contentRoot, PackagedClientContentSource packagedContentSource, string clientVersion, string versionMarkerSha256)
     {
         _contentRoot = contentRoot;
+        _packagedContentSource = packagedContentSource;
         RootPath = contentRoot.RootPath;
         ClientVersion = clientVersion;
         VersionMarkerSha256 = versionMarkerSha256;
@@ -62,26 +65,39 @@ internal sealed class ImportSourceRoot
             throw new InvalidDataException($"Expected retail version {ExpectedClientVersion}, but the source declares '{clientVersion}'.");
         }
 
-        return new ImportSourceRoot(new ClientContentRoot(normalizedRootPath), clientVersion, Convert.ToHexStringLower(SHA256.HashData(versionBytes)));
+        ClientContentRoot contentRoot = new(normalizedRootPath);
+        PackagedClientContentSource packagedContentSource = PackagedClientContentSource.Open(normalizedRootPath);
+
+        return new ImportSourceRoot(contentRoot, packagedContentSource, clientVersion, Convert.ToHexStringLower(SHA256.HashData(versionBytes)));
     }
 
     /// <summary>
-    /// Resolves a closure content path to a validated absolute source file.
+    /// Opens one runtime content requirement using its declared loose/package lookup contract.
     /// </summary>
-    public FileInfo ResolveRequiredFile(string contentPath)
+    public Stream OpenRequiredRead(ClientContentRequirement requirement, out string sourcePath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
+        ArgumentNullException.ThrowIfNull(requirement);
 
-        return HostFileSystemGuard.RequireFile(_contentRoot.ResolveRequiredFile(contentPath), "client content file");
+        if (requirement.LookupMode != ContentLookupMode.PackageOnly && _contentRoot.TryResolveFile(requirement.ContentPath, out string? loosePath))
+        {
+            FileInfo looseFile = HostFileSystemGuard.RequireFile(loosePath, "client content file");
+            sourcePath = GetSourceRelativePath(looseFile);
+
+            return new FileStream(looseFile.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, StreamBufferLength, FileOptions.SequentialScan);
+        }
+
+        if (requirement.LookupMode == ContentLookupMode.LooseOnly)
+        {
+            throw new FileNotFoundException($"Client content file '{requirement.ContentPath}' was not found as a loose file under '{RootPath}'.");
+        }
+
+        sourcePath = requirement.ContentPath.Replace('\\', '/');
+
+        return _packagedContentSource.OpenRequiredRead(requirement.ContentPath, ContentLookupMode.PackageOnly);
     }
 
-    /// <summary>
-    /// Returns the retail path with the case the source actually uses.
-    /// </summary>
-    public string GetSourceRelativePath(FileInfo file)
+    private string GetSourceRelativePath(FileInfo file)
     {
-        ArgumentNullException.ThrowIfNull(file);
-
         return Path.GetRelativePath(RootPath, file.FullName).Replace('\\', '/');
     }
 }

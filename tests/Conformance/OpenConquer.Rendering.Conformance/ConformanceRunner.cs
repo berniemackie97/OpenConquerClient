@@ -28,8 +28,9 @@ internal static class ConformanceRunner
             SpriteGeometryConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
             SpriteRotationConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
             NativeTextConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
+            MainHudChromeConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
         });
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, sprite color, sprite blending, sprite rotation, and native text conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, sprite color, sprite blending, sprite rotation, native text, and main HUD chrome conformance passed.");
     }
 }

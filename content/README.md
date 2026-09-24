@@ -22,23 +22,34 @@ The current retail-5517 runtime closure contains exactly:
 
 ```text
 payload/
+├── ani/
+│   └── Control.Ani
 ├── data/
 │   └── main/
 │       ├── Logo1.bmp
-│       └── Logo2.bmp
+│       ├── Logo2.bmp
+│       ├── MainDialog2.dds
+│       ├── ProgressBk.dds
+│       └── mainDialog1.dds
 └── ini/
     ├── GameSetUp.ini
     ├── info.ini
     └── package.ini
 ```
 
-`manifest.json` records deterministic identity and integrity metadata for those five files.
+`manifest.json` records deterministic identity and integrity metadata for those nine files.
 
 The current runtime consumers cover:
 
 - screen-mode configuration;
 - startup-logo path selection and bitmap decoding;
-- WDF package declaration and routing behavior.
+- WDF package declaration and routing behavior;
+- static main-HUD `Progress45` background rendering;
+- static main-HUD `Dialog4` panel rendering.
+
+`Control.Ani` is required as loose retail content. Its HUD frame references use `LooseThenPackage`
+lookup during import. The selected frame bytes are materialized into the curated payload regardless
+of whether the authorized retail source resolved them from a loose file or WDF package.
 
 Historical retail files retained only for compatibility research or offline tooling are not part of
 this runtime closure.
@@ -79,20 +90,23 @@ The importer:
 
 - validates the expected retail source identity;
 - resolves the exact `ClientContentClosure`;
+- honors each requirement's lookup mode;
 - rejects links and case-insensitive path collisions;
+- resolves package-backed requirements through the WDF content source;
 - copies only required runtime files through a staging directory;
+- preserves actual loose-file casing when loose content wins;
 - verifies copied lengths;
 - hashes payload bytes during import;
 - writes the manifest deterministically;
 - publishes the completed set only after the closure succeeds.
 
-It does **not** bulk-copy `ini/`, `data/`, `ani/`, historical compatibility fixtures, or any other
-retail directory.
+It does **not** bulk-copy `ini/`, `data/`, `ani/`, WDF archives, historical compatibility fixtures,
+or other retail directories.
 
 ## Startup Validation
 
-Validate the currently implemented runtime startup consumers against either an authorized retail
-root or an imported payload:
+Validate the implemented startup consumers against either an authorized retail root or an imported
+payload:
 
 ```bash
 dotnet run --project tools/OpenConquer.Content.Tool -- \
@@ -100,7 +114,8 @@ dotnet run --project tools/OpenConquer.Content.Tool -- \
   --content-root content/retail-5517/payload
 ```
 
-`validate-startup` covers only runtime startup consumers represented by the current content closure.
+`validate-startup` covers the startup consumers represented by the runtime content boundary and
+reports the resolved closure.
 
 Historical `Server.dat` decoding is deliberately separate from startup validation.
 

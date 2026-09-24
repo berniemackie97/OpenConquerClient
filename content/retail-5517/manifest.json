@@ -3,9 +3,16 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 5,
-  "length": 1142443,
+  "fileCount": 9,
+  "length": 1624504,
   "entries": [
+    {
+      "sourcePath": "ani/Control.Ani",
+      "pathKey": "ani/control.ani",
+      "length": 317837,
+      "sha256": "a1db47baaeb2f75eea3b5216378f97d713c2afeaefe05ec02e6f584794532d27",
+      "signature": "unknown"
+    },
     {
       "sourcePath": "data/main/Logo1.bmp",
       "pathKey": "data/main/logo1.bmp",
@@ -19,6 +26,27 @@
       "length": 562556,
       "sha256": "844a3eef6bb67dc4b6673adf8110795763f69a70e0053589e14f4ed807ce4a3e",
       "signature": "bmp"
+    },
+    {
+      "sourcePath": "data/main/MainDialog2.dds",
+      "pathKey": "data/main/maindialog2.dds",
+      "length": 32896,
+      "sha256": "818d13f62509ac859fb0ed72d36ec6aeb2b12f9ed3dee3c6172171d99ba86f41",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressBk.dds",
+      "pathKey": "data/main/progressbk.dds",
+      "length": 65664,
+      "sha256": "9b91a28e0170142a48dc03332691959eca01c179b9d8c592aa5b11af4f5d966c",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/mainDialog1.dds",
+      "pathKey": "data/main/maindialog1.dds",
+      "length": 65664,
+      "sha256": "505a4655c398e41bd25698b57caa50f48376cff713e1c8c6f287a03866038fe1",
+      "signature": "dds"
     },
     {
       "sourcePath": "ini/GameSetUp.ini",
