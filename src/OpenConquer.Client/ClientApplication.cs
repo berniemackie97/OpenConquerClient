@@ -1,5 +1,6 @@
 using System.Runtime.ExceptionServices;
 using OpenConquer.Client.Startup;
+using OpenConquer.Client.UI.Hud;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Startup;
@@ -21,6 +22,8 @@ internal sealed class ClientApplication : IDisposable
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
 
+    private MainHudChromeAssets? _mainHudChromeAssets;
+    private MainHudChromeRenderer? _mainHudChromeRenderer;
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private DesktopWindow? _window;
@@ -28,8 +31,7 @@ internal sealed class ClientApplication : IDisposable
     private bool _runStarted;
     private bool _disposed;
 
-    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit,
-        DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null)
+    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
 
@@ -70,9 +72,7 @@ internal sealed class ClientApplication : IDisposable
             Console.Error.WriteLine($"OpenConquer: startup logo unavailable; {unavailableReason}");
         }
 
-        DesktopWindow window = StartupWindowSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
-            () => InitializeRuntimeConfiguration(contentSource),
-            () => new DesktopWindow(_windowSize, _windowMode, s_frameInterval));
+        DesktopWindow window = StartupWindowSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo), () => InitializeRuntimeConfiguration(contentSource), () => new DesktopWindow(_windowSize, _windowMode, s_frameInterval));
 
         _window = window;
 
@@ -102,6 +102,8 @@ internal sealed class ClientApplication : IDisposable
         finally
         {
             _window = null;
+            _mainHudChromeRenderer = null;
+            _mainHudChromeAssets = null;
             _renderer = null;
             _graphicsDevice = null;
             _disposed = true;
@@ -110,27 +112,49 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnOpenGLContextReady(IOpenGLContext context)
     {
-        if (_graphicsDevice is not null || _renderer is not null)
+        if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
 
         OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
+        OpenGLRenderer? renderer = null;
+        MainHudChromeRenderer? mainHudChromeRenderer = null;
 
         try
         {
             DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
             LogicalRenderSize logicalRenderSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
-
+            MainHudChromeAssets mainHudChromeAssets = _mainHudChromeAssets ?? throw new InvalidOperationException("The main HUD assets have not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
-            OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
+            renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
+            mainHudChromeRenderer = new MainHudChromeRenderer(graphicsDevice, mainHudChromeAssets, logicalRenderSize);
 
             _renderer = renderer;
+            _mainHudChromeRenderer = mainHudChromeRenderer;
             _graphicsDevice = graphicsDevice;
         }
         catch
         {
+            try
+            {
+                mainHudChromeRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the renderer/context initialization failure.
+            }
+
+            try
+            {
+                renderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the renderer/context initialization failure.
+            }
+
             try
             {
                 graphicsDevice.Dispose();
@@ -169,11 +193,46 @@ internal sealed class ClientApplication : IDisposable
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
 
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
+        _mainHudChromeAssets = MainHudChromeAssets.Load(contentSource);
     }
 
-    private void OnRendering(double _)
+    private void OnRendering(double elapsedSeconds)
     {
-        _renderer?.RenderFrame();
+        OpenGLRenderer? renderer = _renderer;
+
+        if (renderer is null)
+        {
+            return;
+        }
+
+        renderer.BeginFrame();
+
+        ExceptionDispatchInfo? firstFailure = null;
+
+        try
+        {
+            _mainHudChromeRenderer?.DrawBackground(renderer);
+
+            if (_mainHudChromeRenderer is { } mainHudChromeRenderer)
+            {
+                _ = mainHudChromeRenderer.DrawPanels(renderer);
+            }
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            renderer.EndFrame();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        firstFailure?.Throw();
     }
 
     private void OnOpenGLContextReleasing()
@@ -183,9 +242,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReleaseRenderingResources()
     {
+        MainHudChromeRenderer? mainHudChromeRenderer = _mainHudChromeRenderer;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
+        _mainHudChromeRenderer = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -193,11 +254,20 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            renderer?.Dispose();
+            mainHudChromeRenderer?.Dispose();
         }
         catch (Exception exception)
         {
             firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            renderer?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
         try

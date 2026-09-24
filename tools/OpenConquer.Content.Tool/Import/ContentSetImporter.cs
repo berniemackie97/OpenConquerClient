@@ -9,6 +9,7 @@ internal static class ContentSetImporter
 {
     private const string ManifestFileName = "manifest.json";
     private const string PayloadDirectoryName = "payload";
+    private const int SignatureHeaderLength = 12;
 
     public static ContentManifest Import(string sourceRootPath, string destinationRootPath)
     {
@@ -59,7 +60,7 @@ internal static class ContentSetImporter
 
     private static ContentManifest BuildContentSet(ImportSourceRoot sourceRoot, string stagingRoot)
     {
-        IReadOnlyList<string> closure = ClientContentClosure.Resolve(new ClientContentRoot(sourceRoot.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(sourceRoot.RootPath));
 
         if (closure.Count == 0)
         {
@@ -69,10 +70,9 @@ internal static class ContentSetImporter
         string payloadRoot = Path.Combine(stagingRoot, PayloadDirectoryName);
         Dictionary<string, ContentManifestEntry> entriesByPathKey = new(StringComparer.Ordinal);
 
-        foreach (string contentPath in closure)
+        foreach (ClientContentRequirement requirement in closure)
         {
-            FileInfo sourceFile = sourceRoot.ResolveRequiredFile(contentPath);
-            string sourcePath = sourceRoot.GetSourceRelativePath(sourceFile);
+            using Stream source = sourceRoot.OpenRequiredRead(requirement, out string sourcePath);
 
             ContentPath.Validate(sourcePath);
 
@@ -83,9 +83,14 @@ internal static class ContentSetImporter
                 throw new InvalidDataException($"Closure paths '{existing.SourcePath}' and '{sourcePath}' collide case-insensitively.");
             }
 
-            long length = sourceFile.Length;
-            string signature = ContentSignature.ClassifyFile(sourceFile.FullName);
-            string sha256 = ContentPayloadCopier.CopyAndHash(sourceFile, payloadRoot, sourcePath, length);
+            if (!source.CanSeek)
+            {
+                throw new InvalidOperationException($"Retail content '{sourcePath}' does not expose a seekable source stream.");
+            }
+
+            long length = source.Length;
+            string signature = ClassifySignature(source);
+            string sha256 = ContentPayloadCopier.CopyAndHash(source, payloadRoot, sourcePath, length);
 
             entriesByPathKey.Add(pathKey, new ContentManifestEntry(sourcePath, pathKey, length, sha256, signature));
         }
@@ -95,6 +100,16 @@ internal static class ContentSetImporter
         WriteManifest(Path.Combine(stagingRoot, ManifestFileName), manifest);
 
         return manifest;
+    }
+
+    private static string ClassifySignature(Stream source)
+    {
+        Span<byte> header = stackalloc byte[SignatureHeaderLength];
+        int readLength = source.ReadAtLeast(header, minimumBytes: SignatureHeaderLength, throwOnEndOfStream: false);
+
+        source.Position = 0;
+
+        return ContentSignature.Classify(header[..readLength]);
     }
 
     private static void WriteManifest(string manifestPath, ContentManifest manifest)

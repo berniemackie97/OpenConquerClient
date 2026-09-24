@@ -17,17 +17,14 @@ internal static class ContentSetVerifier
         ArgumentException.ThrowIfNullOrWhiteSpace(contentSetRootPath);
 
         string root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(contentSetRootPath));
-
         HostFileSystemGuard.RequireDirectory(root, "content-set root");
 
         ContentManifest manifest = ReadManifest(Path.Combine(root, ManifestFileName));
-
         string payloadRoot = Path.Combine(root, PayloadDirectoryName);
 
         HostFileSystemGuard.RequireDirectory(payloadRoot, "content-set payload directory");
 
         Dictionary<string, ContentManifestEntry> expectedBySourcePath = manifest.Entries.ToDictionary(entry => entry.SourcePath, StringComparer.Ordinal);
-
         HashSet<string> observedSourcePaths = new(StringComparer.Ordinal);
 
         VerifyPayloadDirectory(payloadRoot, payloadRoot, expectedBySourcePath, observedSourcePaths);
@@ -115,19 +112,13 @@ internal static class ContentSetVerifier
 
     private static void VerifyImplementedClosure(string payloadRoot, ContentManifest manifest)
     {
-        IReadOnlyList<string> closure;
+        IReadOnlyList<ClientContentRequirement> closure;
 
         try
         {
             closure = ClientContentClosure.Resolve(new ClientContentRoot(payloadRoot));
         }
-        catch (Exception exception)
-            when (exception
-                    is ArgumentException
-                        or InvalidDataException
-                        or IOException
-                        or UnauthorizedAccessException
-            )
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
             throw new InvalidDataException("The content-set payload cannot resolve the implemented client content closure.", exception);
         }
@@ -139,9 +130,9 @@ internal static class ContentSetVerifier
 
         Dictionary<string, string> closurePathsByKey = new(StringComparer.Ordinal);
 
-        foreach (string contentPath in closure)
+        foreach (ClientContentRequirement requirement in closure)
         {
-            string normalizedPath = contentPath.Replace('\\', '/');
+            string normalizedPath = requirement.ContentPath.Replace('\\', '/');
 
             ContentPath.Validate(normalizedPath);
 
@@ -155,11 +146,8 @@ internal static class ContentSetVerifier
 
         Dictionary<string, string> manifestPathsByKey = manifest.Entries.ToDictionary(entry => entry.PathKey, entry => entry.SourcePath, StringComparer.Ordinal);
 
-        string[] missingFromManifest = closurePathsByKey.Where(entry => !manifestPathsByKey.ContainsKey(entry.Key))
-            .Select(entry => entry.Value).Order(StringComparer.Ordinal).ToArray();
-
-        string[] outsideImplementedClosure = manifestPathsByKey.Where(entry => !closurePathsByKey.ContainsKey(entry.Key))
-            .Select(entry => entry.Value).Order(StringComparer.Ordinal).ToArray();
+        string[] missingFromManifest = closurePathsByKey.Where(entry => !manifestPathsByKey.ContainsKey(entry.Key)).Select(entry => entry.Value).Order(StringComparer.Ordinal).ToArray();
+        string[] outsideImplementedClosure = manifestPathsByKey.Where(entry => !closurePathsByKey.ContainsKey(entry.Key)).Select(entry => entry.Value).Order(StringComparer.Ordinal).ToArray();
 
         if (missingFromManifest.Length == 0 && outsideImplementedClosure.Length == 0)
         {
@@ -178,7 +166,6 @@ internal static class ContentSetVerifier
             differences.Add($"outside implemented closure: {string.Join(", ", outsideImplementedClosure)}");
         }
 
-        throw new InvalidDataException("The content-set manifest does not exactly match the implemented client content "
-                                       + $"closure ({string.Join("; ", differences)}).");
+        throw new InvalidDataException($"The content-set manifest does not exactly match the implemented client content closure ({string.Join("; ", differences)}).");
     }
 }

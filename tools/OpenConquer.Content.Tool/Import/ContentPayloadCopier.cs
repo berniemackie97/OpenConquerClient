@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 namespace OpenConquer.Content.Tool.Import;
 
 /// <summary>
-/// Copies one retail file into a content-set payload tree while fingerprinting it.
+/// Copies one retail content payload into a content-set tree while fingerprinting it.
 /// </summary>
 internal static class ContentPayloadCopier
 {
@@ -12,18 +12,27 @@ internal static class ContentPayloadCopier
     public static string CopyAndHash(FileInfo sourceFile, string payloadRootPath, string sourcePath, long expectedLength)
     {
         ArgumentNullException.ThrowIfNull(sourceFile);
+
+        using FileStream source = new(sourceFile.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, BufferLength, FileOptions.SequentialScan);
+
+        return CopyAndHash(source, payloadRootPath, sourcePath, expectedLength);
+    }
+
+    public static string CopyAndHash(Stream source, string payloadRootPath, string sourcePath, long expectedLength)
+    {
+        ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(payloadRootPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        ArgumentOutOfRangeException.ThrowIfNegative(expectedLength);
 
         string destinationPath = Path.Combine(payloadRootPath, ContentPath.ToHostRelativePath(sourcePath));
-        string destinationDirectoryPath = Path.GetDirectoryName(destinationPath)
-            ?? throw new InvalidOperationException($"Payload path '{sourcePath}' has no parent directory.");
+        string destinationDirectoryPath = Path.GetDirectoryName(destinationPath) ?? throw new InvalidOperationException($"Payload path '{sourcePath}' has no parent directory.");
 
         Directory.CreateDirectory(destinationDirectoryPath);
 
-        using FileStream source = new(sourceFile.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, BufferLength, FileOptions.SequentialScan);
         using FileStream destination = new(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, BufferLength, FileOptions.SequentialScan);
-
         using IncrementalHash hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+
         byte[] buffer = new byte[BufferLength];
         long copiedLength = 0;
 
@@ -43,7 +52,7 @@ internal static class ContentPayloadCopier
 
         if (copiedLength != expectedLength)
         {
-            throw new IOException($"Retail file '{sourcePath}' was {expectedLength} bytes when enumerated but {copiedLength} bytes when copied.");
+            throw new IOException($"Retail content '{sourcePath}' was expected to contain {expectedLength} bytes but {copiedLength} bytes were copied.");
         }
 
         return Convert.ToHexStringLower(hash.GetHashAndReset());

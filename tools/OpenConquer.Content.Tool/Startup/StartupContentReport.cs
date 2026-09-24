@@ -7,7 +7,8 @@ namespace OpenConquer.Content.Tool.Startup;
 /// <summary>
 /// Describes what the implemented startup slice resolves from a content root.
 /// </summary>
-internal sealed record StartupContentReport(int ScreenMode, int LogicalWidthPixels, int LogicalHeightPixels, IReadOnlyList<StartupLogo> Logos, IReadOnlyList<WdfPackageRegistration> PackageRegistrations, IReadOnlyList<string> ClosurePaths)
+internal sealed record StartupContentReport(int ScreenMode, int LogicalWidthPixels, int LogicalHeightPixels, IReadOnlyList<StartupLogo> Logos,
+    IReadOnlyList<WdfPackageRegistration> PackageRegistrations, IReadOnlyList<ClientContentRequirement> ClosureRequirements)
 {
     public static StartupContentReport Create(string contentRootPath)
     {
@@ -16,9 +17,7 @@ internal sealed record StartupContentReport(int ScreenMode, int LogicalWidthPixe
         PackagedClientContentSource contentSource = PackagedClientContentSource.Open(contentRootPath);
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
 
-        return new StartupContentReport(gameSetup.ScreenMode, gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels,
-            [StartupLogo.Load(contentSource, monotonicTickMilliseconds: 0), StartupLogo.Load(contentSource, monotonicTickMilliseconds: 1),],
-            contentSource.PackageRegistrations, ClientContentClosure.Resolve(contentSource));
+        return new StartupContentReport(gameSetup.ScreenMode, gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels, [StartupLogo.Load(contentSource, monotonicTickMilliseconds: 0), StartupLogo.Load(contentSource, monotonicTickMilliseconds: 1)], contentSource.PackageRegistrations, ClientContentClosure.Resolve(contentSource));
     }
 
     public IEnumerable<string> ToReportLines()
@@ -37,9 +36,9 @@ internal sealed record StartupContentReport(int ScreenMode, int LogicalWidthPixe
             yield return $"Package '{registration.DeclaredName}' -> prefix '{registration.Prefix}': {registration.Outcome}";
         }
 
-        foreach (string contentPath in ClosurePaths)
+        foreach (ClientContentRequirement requirement in ClosureRequirements)
         {
-            yield return $"Closure: {contentPath}";
+            yield return $"Closure: {requirement.ContentPath} ({requirement.LookupMode})";
         }
     }
 }

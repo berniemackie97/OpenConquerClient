@@ -15,6 +15,19 @@ public static class AniFrameSetLoader
 
         AniIndexSection section = AniIndexFile.Load(contentSource, aniContentPath, mode).GetRequiredSection(sectionName);
 
+        return Load(contentSource, section, mode);
+    }
+
+    public static AniFrameSet Load(IClientContentSource contentSource, AniIndexSection section, ContentLookupMode mode)
+    {
+        ArgumentNullException.ThrowIfNull(contentSource);
+        ArgumentNullException.ThrowIfNull(section);
+
+        if (!Enum.IsDefined(mode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown content lookup mode.");
+        }
+
         if (section.FrameCount == 0)
         {
             throw new InvalidDataException($"ANI section [{section.Name}] contains no frames.");
