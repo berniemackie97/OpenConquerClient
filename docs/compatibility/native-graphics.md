@@ -1,12 +1,10 @@
 # Native Graphics Compatibility
 
-Current compatibility contract for reconstructing Conquer Online 5517 graphics behavior. Detailed
-native addresses, decompilation traces, caller inventories, and unresolved reverse-engineering
-evidence belong in the native analysis notes.
+Current compatibility contract for reconstructed Conquer Online 5517 graphics behavior. Detailed
+native addresses, decompilation traces, and unresolved reverse-engineering evidence belong in the
+native analysis notes.
 
 ## Logical Frame
-
-### Resolution
 
 Retail `ini/GameSetUp.ini` maps screen modes to:
 
@@ -17,8 +15,6 @@ Retail `ini/GameSetUp.ini` maps screen modes to:
 
 Desktop window size, fullscreen state, and presentation scaling do not change logical game
 coordinates.
-
-### Color Target
 
 Retail prefers:
 
@@ -36,43 +32,17 @@ RGB5   → R5 G5 B5
 
 Dithering is disabled.
 
-Retail also contains an `X8R8G8B8` device-creation fallback. Generic OpenGL failure is not treated
-as equivalent evidence for selecting that path.
+Verified retail callers use `D3DFMT_D16`. OpenConquer therefore requires 16-bit depth with no
+stencil.
 
-### Depth
-
-Verified retail callers use `D3DFMT_D16`.
-
-OpenConquer requires:
-
-```text
-16-bit depth
-no stencil
-```
-
-The dormant retail `D24S8` path is outside the verified 5517 contract.
-
-### Clear
-
-Each logical frame starts with:
-
-```text
-color = opaque black
-depth = 1.0
-```
+Each logical frame starts with opaque black color and depth `1.0`.
 
 ## Presentation
 
-Retail presentation uses:
+Retail presentation uses one discard backbuffer, windowed presentation, and no presentation
+interval.
 
-```text
-BackBufferCount      = 1
-SwapEffect           = DISCARD
-Windowed             = TRUE
-PresentationInterval = 0
-```
-
-OpenConquer keeps logical rendering independent from desktop presentation:
+OpenConquer separates logical rendering from the desktop framebuffer:
 
 ```text
 logical target
@@ -82,118 +52,40 @@ presentation transform
 desktop framebuffer
 ```
 
-The outer retail client frame pipeline is gated at approximately 25 ms / 40 FPS.
+The verified outer client cadence is approximately 25 ms / 40 FPS.
 
 OpenConquer preserves:
 
 ```text
 wait only for remaining frame time
-recheck time after waiting
+recheck after waiting
 do not replay missed frames
 overruns establish the next cadence anchor
 gameplay/network/animation clocks remain independent
 ```
 
-Retail can request 2×, 4×, or 8× multisampling depending on configuration and device support.
-Logical-target multisampling is not implemented yet; the current desktop host therefore requests a
-single-sampled framebuffer.
+Retail can request multisampling. Logical-target multisampling remains unimplemented; the current
+desktop host is single-sampled.
 
 ## Sprite Rendering
 
-### Texture Contract
+### Content Boundary
 
-The verified TGA framebuffer fixture uses:
-
-```text
-ani/Common.Ani
-└── [Syndicate]
-    └── Frame0=data/pic/Syndicate.tga
-```
-
-Verified frame:
-
-```text
-size:        14×14
-TGA type:    10
-pixel depth: 32-bit
-source:      BGRA
-decoded:     top-left RGBA
-```
-
-Hashes:
-
-```text
-encoded:
-a813875f120d20908e13c5cdb4410008d5ff1b6f2d6f9186051185f7aa331b3a
-
-decoded RGBA:
-1e112db318ecd33cba4b2980d0ed92e502e74bcd0e6a539747733cad718f8c37
-```
-
-The verified retail DXT3 firework fixture uses:
-
-```text
-ani/weather.ani
-└── [YinFa1]
-    ├── FrameAmount=9
-    └── Frame0=data/firework/yinfa1/1.dds
-```
-
-Verified frame 0:
-
-```text
-storage:     data.wdf
-size:        384 bytes
-dimensions:  16×16
-DDS format:  single-level DXT3
-pixel flags: DDPF_FOURCC only
-FourCC:      DXT3
-```
-
-Encoded SHA-256:
-
-```text
-1a79bb1faf0c94b759d723a18b9ef6908e38a0c7f5e600ceadb3675ecb7ea2df
-```
-
-OpenConquer's supported DDS contract is deliberately narrower than the native decoder:
-
-```text
-standard DDS header
-2D texture
-single level
-DXT3 / BC2 encoding
-explicit 4-bit alpha
-RGB565 color endpoints
-DXT3 four-color interpolation
-partial edge-block clipping
-no cubemaps
-no volume textures
-no mip chains
-no trailing levels or payload
-```
-
-Verified retail FourCC files contain legacy values in fields that are irrelevant when `DDPF_FOURCC`
-is selected. Those unused RGB and reserved fields are therefore not interpreted as
-uncompressed-pixel metadata.
-
-ANI frame decoding dispatches supported image formats explicitly:
+Verified ANI image dispatch currently supports:
 
 ```text
 .tga → retail TGA decoder
-.dds → retail DXT3 DDS decoder
+.dds → verified single-level DXT3 decoder
 ```
 
-Other image extensions remain unsupported until consumer evidence requires them.
-
-The Content-to-Rendering boundary is normalized RGBA:
+Decoded content crosses into Rendering as top-left RGBA:
 
 ```text
 retail TGA / DXT3 DDS
         ↓
 OpenConquer.Content
         ↓
-top-left RGBA pixels
+top-left RGBA
         ↓
 OpenConquer.Rendering
         ↓
@@ -209,12 +101,29 @@ clamp-to-edge
 single mip level
 ```
 
-The native client can preserve DXT3 compression through texture upload when the device supports it.
-That is native implementation machinery rather than an observable compatibility requirement.
-OpenConquer preserves decoded pixels and rendering behavior instead of exposing DDS, DXT3, BC2, or
-compressed OpenGL representation across the Content-to-Rendering boundary.
+Compressed DXT3 residency is native implementation machinery, not an observable compatibility
+requirement.
 
-TGA and DDS support remain limited to formats required by verified retail consumers.
+### DDS Contract
+
+The implemented DDS subset is:
+
+```text
+standard DDS header
+2D texture
+single level
+DXT3 / BC2
+explicit 4-bit alpha
+RGB565 color endpoints
+DXT3 four-color interpolation
+partial edge-block clipping
+no cubemaps
+no volume textures
+no mip chains
+no trailing payload
+```
+
+Unsupported variants remain deferred until a verified consumer requires them.
 
 ### Default State
 
@@ -227,148 +136,225 @@ depth write = disabled
 culling     = disabled
 ```
 
-Blend mode is explicit rendering intent:
+Supported blend intent:
 
-| `SpriteBlendMode` | Source       | Destination            | Verified basis                  |
-| ----------------- | ------------ | ---------------------- | ------------------------------- |
-| `Alpha`           | source alpha | one minus source alpha | retail default                  |
-| `Additive`        | one          | one                    | reachable retail mode-1 callers |
+| Mode     | Source       | Destination            |
+| -------- | ------------ | ---------------------- |
+| Alpha    | source alpha | one minus source alpha |
+| Additive | one          | one                    |
 
-Existing sprite APIs default to `Alpha`.
+`Alpha` is the normal sprite default.
 
-`Additive` represents the resolved rendering behavior required by verified retail mode-1 firework
-paths. OpenConquer does not expose the native integer draw parameter or Direct3D format predicate.
-
-The verified mode-1 firework callers use:
-
-```text
-full texture
-natural dimensions
-white RGB modulation
-alpha = 255
-DXT3 source content
-ONE / ONE blending
-```
-
-The native client may retain DXT3 as compressed GPU content for this path. OpenConquer instead
-decodes the same DXT3 pixels to RGBA8 before rendering; compressed residency itself is not part of
-the compatibility contract.
-
-The native mode-1 `SRCCOLOR / ONE` branch is proven at the primitive level but has no verified
-retail production consumer yet, so it is not implemented.
-
-Native draw parameter 2 is also proven at the primitive level:
-
-```text
-SRCALPHA / INVSRCALPHA
-RGB-only color writes
-fixed all-channel write-mask restoration afterward
-```
-
-No reachable retail mode-2 consumer, target, or observable framebuffer requirement has been
-verified. Mode 2 therefore remains deferred and is not part of the modern Rendering API.
+`Additive` is implemented for verified retail mode-1 consumers. The native `SRCCOLOR / ONE` branch
+and draw-parameter-2 behavior remain outside the modern API until a production consumer is
+established.
 
 ### Coordinates
 
-Retail applies a Direct3D 8 `-0.5` screen-space correction. That rasterization workaround is not
-carried into OpenGL.
+Retail applies a Direct3D 8 half-pixel correction. OpenGL does not require it.
 
-OpenConquer maps logical pixel edges directly:
+OpenConquer maps pixel edges directly:
 
 ```text
 xNdc =  2 * x / width - 1
 yNdc =  1 - 2 * y / height
 ```
 
-Coordinates are top-left oriented. Out-of-bounds geometry is clipped by the graphics pipeline.
+Coordinates are top-left oriented. Geometry outside the logical target is clipped by the graphics
+pipeline.
 
-### Source Regions and Stretching
+### Geometry
 
-`SpriteSourceRectangle` requires:
-
-```text
-X >= 0
-Y >= 0
-Width > 0
-Height > 0
-region contained by texture
-```
-
-Supported geometry:
+Supported sprite geometry:
 
 ```text
 full texture → natural size
-full texture → explicit destination size
-source region → explicit destination size
+full texture → explicit size
+source rectangle → explicit size
 ```
 
-Source rectangles affect UVs only. Destination dimensions independently establish geometry.
+`SpriteSourceRectangle` must have non-negative coordinates, positive dimensions, and remain inside
+the source texture.
 
-Native `RECT*`, null-pointer, and zero-dimension sentinel behavior is represented by explicit modern
-operations.
-
-The currently verified additive capability is exposed only for full-texture natural-size drawing.
-Additive combinations with source rectangles, stretching, or rotation are not exposed without
-verified consumer evidence.
+Native pointer/sentinel APIs are represented by explicit modern operations.
 
 ### Color
 
-`SpriteColor` explicitly represents per-draw RGBA modulation:
-
-```text
-SpriteColor(Red, Green, Blue, Alpha)
-SpriteColor.White = (255, 255, 255, 255)
-```
-
-Fragment output is:
+`SpriteColor` is per-draw RGBA modulation:
 
 ```text
 sampled texture × normalized SpriteColor
 ```
 
-The selected blend mode is then applied.
-
-Rendering does not retain packed Direct3D diffuse colors or mutable native sprite-color state.
+`SpriteColor.White` is `(255, 255, 255, 255)`.
 
 ### Rotation
 
-Verified retail rotation:
+Verified retail rotation uses:
 
 ```text
 input              = signed integer degrees
-angle reduction    = angle % 360
+reduction          = angle % 360
 positive direction = clockwise in screen coordinates
 pivot              = destination center
 ```
 
-Ordering:
+Ordering is:
 
 ```text
-source region
+source rectangle
     ↓
-destination size / stretch
+destination size
     ↓
-rotate about destination center
+rotation
     ↓
-logical pixel → OpenGL coordinates
+logical coordinate transform
 ```
 
-Rotation preserves UVs, color, and texture selection.
+Native mutable sprite state is not reproduced.
 
-Native `Sprite_Rotate` mutates current vertices, but all seven recovered rotating callers rebuild
-destination geometry first. OpenConquer therefore models rotation explicitly per draw.
+## Static Main HUD Chrome
 
-An original angle of `0` uses the unrotated path. Other values execute signed modulo reduction.
+GFX-UI-001 implements the verified static background and panel chrome from the retail main HUD.
 
-CPU-specific native approximation/dispatch behavior is implementation machinery, not a portable
-compatibility requirement.
+### Assets
+
+`ani/Control.ani` contains:
+
+```text
+[Progress45]
+FrameAmount=1
+Frame0=data/main/ProgressBk.dds
+
+[Dialog4]
+FrameAmount=2
+Frame0=data/main/mainDialog1.dds
+Frame1=data/main/mainDialog2.dds
+```
+
+Verified retail identities:
+
+```text
+ani/Control.Ani
+SHA-256 a1db47baaeb2f75eea3b5216378f97d713c2afeaefe05ec02e6f584794532d27
+
+data/main/ProgressBk.dds
+256×256
+SHA-256 9b91a28e0170142a48dc03332691959eca01c179b9d8c592aa5b11af4f5d966c
+
+data/main/mainDialog1.dds
+256×256
+SHA-256 505a4655c398e41bd25698b57caa50f48376cff713e1c8c6f287a03866038fe1
+
+data/main/MainDialog2.dds
+256×128
+SHA-256 818d13f62509ac859fb0ed72d36ec6aeb2b12f9ed3dee3c6172171d99ba86f41
+```
+
+Verified source lookup:
+
+```text
+Control.Ani       → loose
+ProgressBk.dds    → data.wdf
+mainDialog1.dds   → data.wdf
+mainDialog2.dds   → loose MainDialog2.dds override
+```
+
+Runtime import materializes the selected bytes into the curated content set; original WDF provenance
+is not preserved in deployment.
+
+### Layout
+
+For logical height `H`:
+
+```text
+HUD origin Y = H - 141
+```
+
+Background:
+
+```text
+Progress45 frame 0
+source: full 256×256
+destination: (0, H - 141)
+```
+
+Panels:
+
+```text
+A
+texture: Dialog4 frame 0
+source:  (0, 112, 256, 144)
+dest:    (0, H - 144)
+
+B
+texture: Dialog4 frame 0
+source:  (0, 0, 256, 54)
+dest:    (256, H - 53)
+
+C
+texture: Dialog4 frame 1
+source:  (0, 0, 256, 54)
+dest:    (512, H - 53)
+
+D
+texture: Dialog4 frame 1
+source:  (0, 64, 256, 54)
+dest:    (768, H - 53)
+```
+
+At `800×600`, panel D extends beyond the logical target and is clipped. It is not shrunk and no
+HUD-specific scissor is applied.
+
+All five draws use:
+
+```text
+color    = white
+blend    = alpha
+rotation = 0
+```
+
+No resolution scaling is applied to HUD coordinates.
+
+### Ordering
+
+The verified native HUD pass orders major groups as:
+
+```text
+ranges / Flash
+background
+HP / MP / stamina
+static panels
+skill / XP
+controls / overlays
+```
+
+GFX-UI-001 implements only the background and static-panel slots. The renderer intentionally exposes
+them separately so later slices can preserve native interleaving.
+
+### Failure Behavior
+
+Verified native behavior distinguishes the two asset groups:
+
+```text
+Progress45 unavailable
+→ skip background
+→ continue HUD pass
+
+Dialog4 unavailable
+→ stop the remaining HUD pass
+```
+
+Malformed ANI or decoded image data is rejected rather than silently accepted.
+
+The native outer HUD gate has not yet been reconstructed separately and is outside this static
+slice.
 
 ## Real-Driver Conformance
 
-Conformance renders through the production OpenGL path and compares logical framebuffer bytes
-against independent expectations.
+Conformance uses the production OpenGL path on a real graphics driver.
 
-Verified Apple M4 driver:
+Verified development driver:
 
 ```text
 OpenGL:   4.1 Metal - 90.5
@@ -378,7 +364,7 @@ Renderer: Apple M4
 Target:   RGB565
 ```
 
-### Stable Baselines
+### Sprite Baselines
 
 | Case                         | SHA-256                                                            |
 | ---------------------------- | ------------------------------------------------------------------ |
@@ -390,42 +376,9 @@ Target:   RGB565
 | Additive blend RGB565        | `f7f9e13d8ace3958b3fee2a2cbfa1d16dc90523b4ea4fd124c8e3aba6a872401` |
 | Rotation RGB565              | `56f3bd55bec37797ec2e6b30f9db8daf8a8347417ee8a09fb86d59cb952e17f7` |
 
-Explicit white modulation remains byte-identical to the natural RGB565 baseline.
+### Retail DXT3 Probe
 
-### Additive Probe
-
-The synthetic additive probe deliberately distinguishes `ONE / ONE` from both other plausible blend
-pairs:
-
-```text
-destination = opaque blue
-source      = opaque-white texture × (255, 0, 0, 128)
-
-ONE / ONE
-→ (255, 0, 255)
-
-SRCALPHA / ONE
-→ reduced red + full blue
-
-SRCALPHA / INVSRCALPHA
-→ reduced red + reduced blue
-```
-
-Verified framebuffer:
-
-```text
-RGBA = (255, 0, 255, 255)
-
-SHA-256:
-f7f9e13d8ace3958b3fee2a2cbfa1d16dc90523b4ea4fd124c8e3aba6a872401
-```
-
-This remains the exact blend-state oracle for `SpriteBlendMode.Additive`.
-
-### Retail DXT3 Firework Probe
-
-The retail DXT3 probe verifies the production compatibility path rather than only synthetic blend
-state:
+Verified fixture:
 
 ```text
 ani/weather.ani
@@ -433,79 +386,69 @@ ani/weather.ani
 [YinFa1] Frame0
     ↓
 data.wdf / data/firework/yinfa1/1.dds
-    ↓
-production ANI → DDS decoder
-    ↕ byte-exact comparison
-independent DXT3 reference decoder
-    ↓
-RGBA8 OpenGL texture
-    ↓
-full texture / natural size / SpriteColor.White
-    ↓
-SpriteBlendMode.Additive
 ```
 
-Verified decoded RGBA SHA-256:
+Encoded SHA-256:
+
+```text
+1a79bb1faf0c94b759d723a18b9ef6908e38a0c7f5e600ceadb3675ecb7ea2df
+```
+
+Decoded RGBA SHA-256:
 
 ```text
 883de947994f7866531817efc02f2aedd8dfeb0ac7489683d21ec9dea3f05624
 ```
 
-On the verified Apple M4 RGB565 target:
+Observed Apple M4 RGB565 framebuffers:
 
 ```text
-additive framebuffer:
+additive:
 286c83f89306b178692db40f6fa26c3cc2220b7cfd727a69986efb38949f2cdb
 
-alpha framebuffer:
+alpha:
 cd6f0b1244ce58dfce7c2e705f17dc491b84f2e98d367edee5bce1cbc83765bc
 ```
 
-These framebuffer hashes document the observed verified-driver result rather than defining a
-portable cross-driver baseline.
+Production DDS decode is compared byte-for-byte with an independent DXT3 reference decoder.
 
-The conformance requirement is:
+### Main HUD Probe
 
-```text
-production decoded RGBA == independent DXT3 reference decode
-additive framebuffer != alpha framebuffer
-```
-
-The synthetic additive probe separately pins the exact `ONE / ONE` blend behavior.
-
-### Rotation Probe
+HUD conformance verifies:
 
 ```text
-texture:       blue | red | green | yellow
-source region:       red | green
-destination:   4×2 at (2, 2)
-angle:         1,440,000,090° → 90°
-pivot:         destination center
-target:        8×6
+exact retail asset hashes
+verified loose/package provenance
+production DDS decode == independent DXT3 decode
+production MainHudChromeRenderer
+        ==
+independently specified native draw sequence
 ```
 
-Expected clockwise output:
+The reference draw path does not use `MainHudChromeLayout`.
+
+Observed Apple M4 RGB565 logical framebuffer hashes:
 
 ```text
-........
-...RR...
-...RR...
-...GG...
-...GG...
-........
+800×600
+bf905c1d0fdadf486303ba4849221bec836b8a6f52f6b23a4d91b09244cd8cf1
+
+1024×768
+dbdaa4cd332fda6661d438ad5b29b97d051ec2d51cc8149b92a2e4aede4fb629
 ```
 
-This verifies signed reduction, clockwise orientation, center pivot, stretch-before-rotation
-ordering, source UV preservation, and the production rotation path.
+These hashes document the verified driver result. The portable conformance requirement is equality
+between the production HUD renderer and the independently specified draw sequence on the active
+supported logical target.
 
 ## Host Framebuffer
 
-The desktop framebuffer is presentation-only:
+The host framebuffer is presentation-only:
 
 ```text
 logical RGB565/RGB5 + D16
     ↓
-OpenGL framebuffer blit
+framebuffer blit
     ↓
 desktop framebuffer
     ↓
@@ -530,34 +473,33 @@ and swap.
 Implemented and verified:
 
 ```text
-800×600 / 1024×768 logical rendering
+800×600 and 1024×768 logical rendering
 RGB565 / RGB555-compatible logical color
 D16 depth
 25 ms outer frame cadence
 
-ANI TGA frame dispatch and decoding for verified retail content
-ANI DXT3 DDS frame dispatch and decoding for verified retail content
-single-level DXT3 / BC2 pixel decoding
-explicit-alpha DXT3 semantics
-RGB565 endpoint expansion
-partial DXT3 block-edge clipping
-package-backed WDF DDS resolution
-normalized top-left RGBA Content-to-Rendering boundary
+TGA and single-level DXT3 ANI frame decoding
+WDF-backed DDS lookup
+top-left RGBA Content-to-Rendering boundary
 
-top-left RGBA sprite textures
-natural-size drawing
+natural-size sprites
 stretching
-source regions
-nearest sampling
+source rectangles
+nearest filtering
 RGBA modulation
 alpha blending
-additive blending for the verified natural-size consumer contract
+verified additive blending
 integer-degree rotation
 logical-target clipping
 
-real-driver framebuffer conformance
+static Progress45 HUD background
+static Dialog4 HUD panel chrome
+native HUD placement at both supported resolutions
+native background/panel ordering slots
+real-driver HUD framebuffer conformance
+
+real-driver sprite framebuffer conformance
 independent retail DXT3 decode conformance
-verified retail DXT3 additive rendering
 ```
 
 Remaining:
@@ -565,13 +507,13 @@ Remaining:
 ```text
 logical-target multisampling
 ANI runtime progression/timing
-unverified mode-1 SRCCOLOR/ONE consumer behavior
+unverified SRCCOLOR/ONE consumer behavior
 native draw-parameter-2 consumer verification
 sprite batching
 higher-level texture caching
-additional DDS variants only when verified consumers require them
-additional required TGA variants
-map/UI/role/effect/animation integration
+remaining HUD gauges, skill/XP, controls, overlays, and HUD gate
+map, role, effect, and animation integration
+additional image variants only when required by verified consumers
 ```
 
 ## Modernization Boundary
@@ -580,15 +522,12 @@ Preserve observable 5517 behavior, not obsolete implementation machinery:
 
 ```text
 preserve logical coordinates and framebuffer precision
-replace D3D8 half-pixel correction with correct OpenGL mapping
-replace RECT*/sentinel APIs with explicit operations
-replace packed/mutable sprite color with per-draw SpriteColor
+use correct OpenGL pixel-edge mapping instead of D3D8 half-pixel correction
+replace pointer/sentinel APIs with explicit operations
+replace packed mutable sprite color with SpriteColor
 replace native draw integers with verified rendering semantics
-replace mutable C3Sprite rotation history with explicit per-draw rotation
-normalize supported retail image formats to RGBA at the Content boundary
-do not expose DDS/DXT3/BC2 or compressed GPU representation without a proven requirement
-do not propagate D3DFORMAT values without a proven compatibility requirement
-do not implement unverified sprite-mode combinations speculatively
-do not implement additional image formats without verified consumer evidence
-do not emulate CPU-specific native math dispatch without a compatibility requirement
+normalize supported retail images to RGBA at the Content boundary
+preserve HUD draw order without building a monolithic HUD renderer
+do not preserve WDF deployment topology when curated bytes preserve behavior
+do not implement unverified image formats or sprite modes speculatively
 ```

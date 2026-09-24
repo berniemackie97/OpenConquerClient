@@ -17,6 +17,8 @@ dotnet restore OpenConquer.Client.slnx --locked-mode
 dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
 dotnet build OpenConquer.Client.slnx -c Release --no-restore
 dotnet test OpenConquer.Client.slnx -c Release --no-build --no-restore
+dotnet run --project tools/OpenConquer.Content.Tool -c Release --no-build -- \
+  verify-content-set --content-set content/retail-5517
 git diff --check
 ```
 
@@ -70,23 +72,20 @@ Current conformance covers:
 - production OpenGL context and renderer;
 - retail-compatible RGB565/RGB555 logical color precision;
 - exact D16 depth allocation;
-- ANI lookup through `ani/Common.Ani` and `ani/weather.ani`;
-- verified `data/pic/Syndicate.tga` identity and TGA decoding;
-- verified package-backed `data/firework/yinfa1/1.dds` identity and DXT3 decoding;
+- ANI lookup through verified retail ANI files;
+- verified TGA and DXT3 asset identities and decoding;
 - byte-exact production DXT3 output against an independent reference decoder;
 - default alpha blending and explicit RGBA sprite modulation;
 - exact synthetic `ONE / ONE` additive-blend behavior;
-- verified retail DXT3 firework additive rendering with visible RGB contribution and output distinct
-  from alpha blending;
-- whole-texture natural-size drawing;
-- whole-texture stretching;
+- verified retail DXT3 firework additive rendering;
+- whole-texture natural-size drawing and stretching;
 - source-region stretching;
 - integer-degree sprite rotation;
-- native-text logical placement and coverage sampling;
-- native-text coverage × vertex-alpha behavior with source-alpha blending;
-- native per-corner `TR-BL` interpolation-diagonal behavior;
-- multi-page native-text batching and atlas-page switching;
-- CPU glyph-atlas revision synchronization to an existing GPU texture;
+- native-text placement, coverage, interpolation, batching, and atlas synchronization;
+- static main-HUD `Progress45` and `Dialog4` asset resolution;
+- verified HUD loose/package source provenance;
+- production HUD rendering against an independently specified native draw sequence;
+- exact HUD framebuffer comparison at both supported logical resolutions;
 - exact framebuffer comparison on a real driver.
 
 Expected graphics contracts, fixture identities, and verified framebuffer hashes are documented in
@@ -111,16 +110,19 @@ content/retail-5517/payload
 Current managed runtime closure:
 
 ```text
-data/main/Logo1.bmp
-data/main/Logo2.bmp
+Data/Main/Logo1.bmp
+Data/Main/Logo2.bmp
+ani/Control.ani
+data/main/ProgressBk.dds
+data/main/mainDialog1.dds
+data/main/mainDialog2.dds
 ini/GameSetUp.ini
 ini/info.ini
 ini/package.ini
 ```
 
-The Syndicate ANI/TGA and weather/firework ANI/DXT3 assets used by rendering conformance are
-compatibility evidence and do not expand the packaged runtime closure by themselves. Production
-format support and checked-in runtime asset dependencies remain separate concerns.
+The Syndicate and weather/firework assets used only by rendering conformance remain compatibility
+evidence and do not expand the packaged runtime closure.
 
 Retail `Server.dat` is offline compatibility evidence and must not ship with the client.
 
