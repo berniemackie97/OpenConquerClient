@@ -44,7 +44,23 @@
         "resolved": "3.4.0",
         "contentHash": "Iy22JopynbOJ32vA0lBhFEzGi65GQJBuJHYBYRBpydrDpNoTiHnjIXfA65Gu+8qsOr/ZEoIF8r9aHCgAXuO6DA=="
       },
+      "openconquer.client": {
+        "type": "Project",
+        "dependencies": {
+          "OpenConquer.Content": "[1.0.0, )",
+          "OpenConquer.Gameplay": "[1.0.0, )",
+          "OpenConquer.Networking": "[1.0.0, )",
+          "OpenConquer.Platform": "[1.0.0, )",
+          "OpenConquer.Rendering": "[1.0.0, )"
+        }
+      },
       "openconquer.content": {
+        "type": "Project"
+      },
+      "openconquer.gameplay": {
+        "type": "Project"
+      },
+      "openconquer.networking": {
         "type": "Project"
       },
       "openconquer.platform": {

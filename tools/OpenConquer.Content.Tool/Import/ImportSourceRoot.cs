@@ -10,6 +10,7 @@ internal sealed class ImportSourceRoot
 {
     private const string ExpectedClientVersion = "5517";
     private const string VersionMarkerFileName = "version.dat";
+    private const int StreamBufferLength = 81920;
 
     private readonly ClientContentRoot _contentRoot;
     private readonly PackagedClientContentSource _packagedContentSource;
@@ -77,14 +78,12 @@ internal sealed class ImportSourceRoot
     {
         ArgumentNullException.ThrowIfNull(requirement);
 
-        if (requirement.LookupMode != ContentLookupMode.PackageOnly
-            && _contentRoot.TryResolveFile(requirement.ContentPath, out string? loosePath))
+        if (requirement.LookupMode != ContentLookupMode.PackageOnly && _contentRoot.TryResolveFile(requirement.ContentPath, out string? loosePath))
         {
             FileInfo looseFile = HostFileSystemGuard.RequireFile(loosePath, "client content file");
-
             sourcePath = GetSourceRelativePath(looseFile);
 
-            return new FileStream(looseFile.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920, FileOptions.SequentialScan);
+            return new FileStream(looseFile.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, StreamBufferLength, FileOptions.SequentialScan);
         }
 
         if (requirement.LookupMode == ContentLookupMode.LooseOnly)
@@ -97,23 +96,8 @@ internal sealed class ImportSourceRoot
         return _packagedContentSource.OpenRequiredRead(requirement.ContentPath, ContentLookupMode.PackageOnly);
     }
 
-    /// <summary>
-    /// Resolves a closure content path to a validated absolute source file.
-    /// </summary>
-    public FileInfo ResolveRequiredFile(string contentPath)
+    private string GetSourceRelativePath(FileInfo file)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
-
-        return HostFileSystemGuard.RequireFile(_contentRoot.ResolveRequiredFile(contentPath), "client content file");
-    }
-
-    /// <summary>
-    /// Returns the retail path with the case the source actually uses.
-    /// </summary>
-    public string GetSourceRelativePath(FileInfo file)
-    {
-        ArgumentNullException.ThrowIfNull(file);
-
         return Path.GetRelativePath(RootPath, file.FullName).Replace('\\', '/');
     }
 }

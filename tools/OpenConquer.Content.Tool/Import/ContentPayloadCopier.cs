@@ -9,15 +9,6 @@ internal static class ContentPayloadCopier
 {
     private const int BufferLength = 1024 * 1024;
 
-    public static string CopyAndHash(FileInfo sourceFile, string payloadRootPath, string sourcePath, long expectedLength)
-    {
-        ArgumentNullException.ThrowIfNull(sourceFile);
-
-        using FileStream source = new(sourceFile.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, BufferLength, FileOptions.SequentialScan);
-
-        return CopyAndHash(source, payloadRootPath, sourcePath, expectedLength);
-    }
-
     public static string CopyAndHash(Stream source, string payloadRootPath, string sourcePath, long expectedLength)
     {
         ArgumentNullException.ThrowIfNull(source);
