@@ -2,36 +2,22 @@
 
 [![CI](https://github.com/berniemackie97/OpenConquerClient/actions/workflows/ci.yml/badge.svg)](https://github.com/berniemackie97/OpenConquerClient/actions/workflows/ci.yml)
 
-A C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for Windows, macOS, and
-Linux, designed for OpenConquer Server.
+C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for Windows, macOS, and Linux.
 
 **Early development. The launcher is not release-ready.**
 
-## Current capabilities
+## Current Capabilities
 
-| Product  | Implemented                                                                                                                                                                                                                                                                                                                                                                                                                | Still required                                                                                                                                           |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Launcher | Avalonia host, redacted diagnostics, authenticated managed-package resolution, embedded publisher trust, release-signature and client-integrity verification, signed release-catalog selection, bounded HTTPS package acquisition, process-crash-safe client-generation update/repair and verified rollback transaction, installation recheck, single-instance activation, coordinated shutdown, saved display preferences | Production release origin/configuration and player-facing maintenance flow, launcher self-update, controlled verified client startup, complete player UX |
-| Client   | Resizable/fixed/fullscreen host, logical rendering and presentation, verified runtime content, retail TGA/DXT3 sprite paths, native text configuration/encoding/font resolution/rasterization/layout, atlas management, batching, OpenGL text rendering, and verified static main-HUD chrome                                                                                                                               | Remaining HUD/UI consumers, networking, gameplay, map/role/effect/animation integration, and other higher-level rendering                                |
+| Product | Implemented | Remaining |
+| --- | --- | --- |
+| Launcher | Managed installation resolution, authenticated releases, integrity verification, update/repair/rollback transaction, single-instance activation, saved display preferences | Production release origin, launcher self-update, player-facing maintenance flow, controlled client startup |
+| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina HUD vitals | Live gameplay state, networking, remaining HUD/UI, maps, roles, effects, animation |
 
-The launcher replaces `Play.exe` as the product entry point. Launcher and client remain independent
-executables and dependency boundaries. A managed product contains both; the launcher automatically
-resolves its own installation and never asks the player to locate game files.
-
-Opening the launcher again activates the existing window for the current user. See
-[instance ownership](docs/architecture/launcher-instances.md) for startup and recovery behavior.
-
-A resolved installation proves that the managed client is structurally valid, compatible with the
-current platform and launcher, authenticated by a trusted publisher, and byte-for-byte consistent
-with its signed release manifest. **Check again** re-evaluates an unavailable installation after its
-files or permissions have been restored; it does not perform repair.
-
-## Products and architecture
+## Architecture
 
 ```mermaid
 flowchart TD
     Launcher["OpenConquer.Launcher"]
-
     Client["OpenConquer.Client"]
 
     Client --> Platform["OpenConquer.Platform"]
@@ -41,25 +27,25 @@ flowchart TD
     Client --> Networking["OpenConquer.Networking"]
 ```
 
-The launcher and game client are separate executable products. The client composes its runtime
-subsystems; Platform and Rendering remain independent siblings.
-
-The intended production lifecycle is:
+Launcher and game client are separate products.
 
 ```text
-launcher → installation/readiness → update/repair as required → pre-launch settings
-         → verified, authorized OpenConquer.Client startup
-client   → realm selection → native AccountServer login → GameServer handoff → game
+launcher
+→ installation readiness
+→ update / repair
+→ pre-launch settings
+→ controlled client startup
+
+client
+→ realm selection
+→ AccountServer login
+→ GameServer handoff
+→ game
 ```
 
-Authenticated installation readiness, signed release-catalog/package acquisition, and the trusted
-client-generation update/repair transaction are implemented below the UI boundary. A real
-publisher-controlled release origin and launcher configuration, launcher self-update, player-facing
-maintenance orchestration, and controlled client startup remain separate launcher capabilities.
+## Build
 
-## Build and verify
-
-Use the exact SDK in [`global.json`](global.json). Dependencies use committed NuGet lock files.
+Use the SDK pinned by [`global.json`](global.json).
 
 ```bash
 dotnet restore OpenConquer.Client.slnx --locked-mode
@@ -68,15 +54,13 @@ dotnet build OpenConquer.Client.slnx -c Release --no-restore
 dotnet test OpenConquer.Client.slnx -c Release --no-build --no-restore
 ```
 
-CI builds and tests on Linux, Windows, and macOS. The Linux quality job also checks formatting,
-content integrity, independent publishes, authenticated release composition, launcher isolation, and
-managed-product staging. Real OpenGL rendering conformance is executed separately on supported
-desktop hardware against the native driver. CI does not replace native-driver conformance, platform
-packaging, production signing, or notarization.
+CI builds and tests on Linux, Windows, and macOS.
+
+Real-driver rendering conformance runs separately on supported desktop hardware against exact retail 5517 content.
 
 ## Run
 
-Create or refresh the canonical local managed product with:
+Create or refresh the local managed product:
 
 ```bash
 dotnet run \
@@ -86,81 +70,115 @@ dotnet run \
   create-local-product
 ```
 
-The command discovers the repository and current supported runtime, verifies and publishes the
-client, creates an authenticated development release, publishes the launcher with matching
-development trust embedded, stages the managed product, and activates it beneath:
+Output:
 
 ```text
 artifacts/local-product/product
 ```
 
-Run the managed launcher on macOS/Linux with:
+macOS/Linux:
 
 ```bash
 ./artifacts/local-product/product/OpenConquer.Launcher
 ```
 
-Use `artifacts\local-product\product\OpenConquer.Launcher.exe` on Windows.
+Windows:
 
-A raw launcher project output has no installed client component and reports an unavailable
-installation.
+```powershell
+.\artifacts\local-product\product\OpenConquer.Launcher.exe
+```
 
-For direct client development:
+Direct client development:
 
 ```bash
 dotnet run --project src/OpenConquer.Client -- \
-  --window-size 1280x720 --window-mode resizable --presentation fit
+  --window-size 1280x720 \
+  --window-mode resizable \
+  --presentation fit
 ```
 
-| Client option    | Values                                                              |
-| ---------------- | ------------------------------------------------------------------- |
-| `--window-size`  | `WIDTHxHEIGHT`; default `1280x720`                                  |
-| `--window-mode`  | `resizable` (default), `fixed`, `fullscreen`                        |
-| `--presentation` | `fit` (default), `integer`, `stretch`                               |
-| `--content-root` | Explicit authorized 5517 content tree; defaults to packaged content |
+Client options:
 
-The current internal render surface is 800×600 or 1024×768, selected by compatibility
-`ini/GameSetUp.ini`. Desktop size and mode are independent. Installed retail content is not
-rewritten for player preferences. The launcher saves modern
-[display preferences](docs/architecture/launcher-settings.md); delivery through controlled client
-startup remains unimplemented.
+| Option | Values |
+| --- | --- |
+| `--window-size` | `WIDTHxHEIGHT`; default `1280x720` |
+| `--window-mode` | `resizable`, `fixed`, `fullscreen` |
+| `--presentation` | `fit`, `integer`, `stretch` |
+| `--content-root` | Authorized retail-compatible content tree |
 
-## Compatibility rules
+Logical rendering is restricted to 800×600 or 1024×768 according to `ini/GameSetUp.ini`.
 
-- Preserve verified 5517 AccountServer packets, credential transformations, cryptography, results,
-  and game handoff semantics. Native/deob evidence and the current server contract must be audited
-  before implementing protocol behavior. OAuth/OIDC is not a replacement for native login.
-- Credentials and session material must not pass through arguments, environment variables, or
-  plaintext temporary files. Account login and native game-session handoff belong to
-  Client/Networking. Launcher startup authorization establishes product provenance, not account
-  authentication.
-- Keep the content manifest, runtime consumer closure, tracked payload, and client publish equal.
-  The current runtime closure contains nine files spanning startup configuration/logo content and
-  the verified static main-HUD dependencies; see the
-  [content plan](docs/content/retail-5517-content-plan.md).
-- Retail `Server.dat` remains offline compatibility evidence only and must not ship in the managed
-  game client.
+Desktop size, window mode, and presentation are independent.
+
+## Compatibility
+
+Native 5517 behavior is the compatibility authority.
+
+Preserve verified:
+
+```text
+protocol packets
+credential transformations
+cryptography
+login results
+game handoff semantics
+
+logical rendering
+content paths and lookup behavior
+sprite behavior
+HUD geometry and ordering
+```
+
+Do not preserve obsolete implementation machinery when observable behavior can be reproduced safely.
+
+### Runtime Content
+
+The managed runtime closure currently contains 19 files:
+
+```text
+startup configuration
+startup logos
+Control.ani
+
+Progress45 HUD background
+Dialog4 HUD panels
+
+Progress40 life frames
+Progress41 mana frames
+Progress46 stamina frames
+Progress47 extended-stamina frames
+```
+
+Required invariant:
 
 ```text
 ClientContentClosure
         ==
-tracked content manifest
+tracked manifest
         ==
-tracked runtime payload
+tracked payload
         ==
-published OpenConquer.Client content set
+published client content
 ```
 
-## Developer reference
+Retail WDF archives are import sources and are not shipped in the curated content set.
 
-| Need                                                            | Read                                                                                                                |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Build, run, local product, release tooling, content commands    | [Development](docs/development.md)                                                                                  |
-| Product dependencies and ownership                              | [Architecture](docs/architecture/architecture.md)                                                                   |
-| Package schema, authenticated resolution, composition, recovery | [Managed installation](docs/architecture/launcher-managed-installation.md)                                          |
-| Native graphics behavior                                        | [Graphics compatibility](docs/compatibility/native-graphics.md)                                                     |
-| Native text behavior                                            | [Text compatibility](docs/compatibility/native-text.md)                                                             |
-| Content provenance and ingestion                                | [Retail inventory](docs/content/retail-5517-inventory.md), [content plan](docs/content/retail-5517-content-plan.md) |
+Retail `Server.dat` remains offline compatibility evidence and is not runtime content.
+
+### HUD
+
+Implemented native HUD order:
+
+```text
+Progress45 background
+Progress40 life
+Progress41 mana
+Progress46 stamina
+Progress47 extended stamina
+Dialog4 panels
+```
+
+Remaining HUD groups are implemented only after native behavior and dependencies are verified.
 
 ## Repository
 
@@ -187,7 +205,20 @@ tests/
 
 content/
 docs/
+
 tools/
 ├── OpenConquer.Content.Tool/
 └── OpenConquer.Product.Tool/
 ```
+
+## Documentation
+
+| Area | Document |
+| --- | --- |
+| Development | [`docs/development.md`](docs/development.md) |
+| Architecture | [`docs/architecture/architecture.md`](docs/architecture/architecture.md) |
+| Managed installation | [`docs/architecture/launcher-managed-installation.md`](docs/architecture/launcher-managed-installation.md) |
+| Native graphics | [`docs/compatibility/native-graphics.md`](docs/compatibility/native-graphics.md) |
+| Native text | [`docs/compatibility/native-text.md`](docs/compatibility/native-text.md) |
+| Retail content | [`docs/content/retail-5517-content-plan.md`](docs/content/retail-5517-content-plan.md) |
+| Retail inventory | [`docs/content/retail-5517-inventory.md`](docs/content/retail-5517-inventory.md) |
