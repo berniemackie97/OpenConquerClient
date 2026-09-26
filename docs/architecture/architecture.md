@@ -43,15 +43,15 @@ OpenConquer.Networking
 
 High-level ownership:
 
-| Project                  | Responsibility                                                                                                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenConquer.Launcher`   | launcher process, UI, diagnostics, installation/readiness state, display preferences, trusted installed-release transaction, future release acquisition and controlled launch orchestration |
-| `OpenConquer.Client`     | game-runtime composition root, game-process lifetime, and client-specific UI/runtime semantics                                                                                              |
-| `OpenConquer.Platform`   | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, and desktop input                                                                                  |
-| `OpenConquer.Gameplay`   | game state and gameplay behavior                                                                                                                                                            |
-| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, presentation, GPU resources, rendering-facing text semantics, host font-resource discovery, and glyph rasterization                                  |
-| `OpenConquer.Content`    | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup                                                                                                            |
-| `OpenConquer.Networking` | native-compatible game transport and protocol behavior when implemented                                                                                                                     |
+| Project | Responsibility |
+| --- | --- |
+| `OpenConquer.Launcher` | launcher process, UI, diagnostics, installation/readiness state, display preferences, trusted installed-release transaction, future release acquisition and controlled launch orchestration |
+| `OpenConquer.Client` | game-runtime composition root, game-process lifetime, and client-specific UI/runtime semantics |
+| `OpenConquer.Platform` | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, and desktop input |
+| `OpenConquer.Gameplay` | game state and gameplay behavior |
+| `OpenConquer.Rendering` | OpenGL integration, logical rendering, presentation, GPU resources, rendering-facing text semantics, host font-resource discovery, and glyph rasterization |
+| `OpenConquer.Content` | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup |
+| `OpenConquer.Networking` | native-compatible game transport and protocol behavior when implemented |
 
 The game runtime dependency direction is:
 
@@ -261,35 +261,80 @@ Detailed compatibility behavior belongs in
 
 `OpenConquer.Content` owns runtime content access and evidence-backed legacy format boundaries.
 
-The current verified retail runtime closure is:
+The current verified retail runtime closure contains 19 files:
 
 ```text
 Data/Main/Logo1.bmp
 Data/Main/Logo2.bmp
 ani/Control.ani
+
 data/main/ProgressBk.dds
+
+data/main/ProgressForce.dds
+data/main/ProgressForce2.dds
+data/main/ProgressForce2A.dds
+data/main/ProgressForceA.dds
+
+data/main/ProgressHP.dds
+data/main/ProgressHPA.dds
+data/main/ProgressHPH.dds
+
+data/main/ProgressMP.dds
+data/main/ProgressMPA.dds
+data/main/ProgressMPH.dds
+
 data/main/mainDialog1.dds
 data/main/mainDialog2.dds
+
 ini/GameSetUp.ini
 ini/info.ini
 ini/package.ini
 ```
 
-The closure contains only dependencies of implemented runtime consumers. Current consumers cover
-startup configuration and logos plus the verified static `Progress45` and `Dialog4` main-HUD chrome.
+Current runtime consumers cover:
 
-Production format support does not itself expand the runtime closure. A parser or decoder may live
-in `OpenConquer.Content` before its first executable game-runtime consumer when it is required to
-prove an already verified compatibility boundary through tests or conformance. Runtime content is
-added only when an implemented game-runtime consumer requires the corresponding asset dependency.
+```text
+screen-mode configuration
+startup logos
+WDF package registration
 
-Retail `Server.dat` remains outside that production boundary. It is offline evidence/tooling only,
+Progress45 HUD background
+Dialog4 HUD panels
+
+Progress40 life
+Progress41 mana
+Progress46 stamina
+Progress47 extended stamina
+```
+
+`ClientContentClosure` is the production dependency boundary.
+
+Required invariant:
+
+```text
+ClientContentClosure
+        ==
+runtime manifest
+        ==
+runtime payload
+```
+
+Production format support does not itself expand the runtime closure. Runtime content is added only
+when an implemented consumer requires the dependency and the corresponding compatibility behavior
+has been verified.
+
+Retail WDF archives are source containers. Required package-backed entries are materialized into the
+curated content set and the archives themselves are not shipped.
+
+Loose retail source casing is preserved when loose content wins lookup. Logical ANI paths remain
+case-insensitive compatibility identities.
+
+Retail `Server.dat` remains outside the production boundary. It is offline evidence/tooling only,
 must not appear in the production client publish, and is not a runtime server catalog.
 
-See [`../content/retail-5517-content-plan.md`](../content/retail-5517-content-plan.md) for the
-runtime closure and ingestion policy, and
-[`../compatibility/server-dat.md`](../compatibility/server-dat.md) for the `Server.dat`
-compatibility record.
+See [`../content/retail-5517-content-plan.md`](../content/retail-5517-content-plan.md) for runtime
+content policy and [`../compatibility/server-dat.md`](../compatibility/server-dat.md) for the
+`Server.dat` compatibility record.
 
 ## Native-Parity Networking Direction
 
@@ -392,13 +437,11 @@ When adding code:
 5. keep protocol behavior behind Networking;
 6. keep launcher product behavior inside Launcher;
 7. keep client-specific runtime semantics that coordinate subsystems inside Client;
-8. keep subsystem projects independent unless a concrete ownership requirement justifies a
-   dependency;
+8. keep subsystem projects independent unless a concrete ownership requirement justifies a dependency;
 9. do not create shared/common utility projects without a concrete ownership need;
 10. do not introduce speculative abstractions for future features;
 11. keep native and managed resource ownership and lifetime explicit;
-12. use authoritative host resource systems rather than guessed filesystem topology when platform
-    APIs provide the required truth;
+12. use authoritative host resource systems rather than guessed filesystem topology when platform APIs provide the required truth;
 13. treat tests and documentation as part of each completed work slice.
 
 A green build is necessary but not sufficient. Each slice must also be architecturally coherent,

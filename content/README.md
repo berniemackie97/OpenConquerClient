@@ -1,24 +1,22 @@
 # Retail Content Sets
 
-Retail assets live outside the source assemblies and are grouped by immutable source version.
+Runtime retail content is consumer-led and versioned by source set.
 
-The checked-in `retail-5517/` set is intentionally **consumer-led**, not a bulk preservation of the
-retail tree.
-
-Its contract is:
+Invariant:
 
 ```text
-implemented ClientContentClosure
+ClientContentClosure
         ==
-manifest path set
+manifest path keys
         ==
-physical payload path set
+payload path keys
 ```
 
-A file enters the runtime content set only when an implemented client consumer requires it and the
-corresponding slice has established its behavior, validation, and tests.
+Content enters the runtime set only for an implemented, verified consumer.
 
-The current retail-5517 runtime closure contains exactly:
+## retail-5517
+
+Current runtime closure: 19 files.
 
 ```text
 payload/
@@ -30,6 +28,16 @@ payload/
 │       ├── Logo2.bmp
 │       ├── MainDialog2.dds
 │       ├── ProgressBk.dds
+│       ├── ProgressForce.dds
+│       ├── ProgressForce2.dds
+│       ├── ProgressForce2a.dds
+│       ├── ProgressForceA.dds
+│       ├── ProgressHP.dds
+│       ├── ProgressHPA.dds
+│       ├── ProgressHPH.dds
+│       ├── ProgressMP.dds
+│       ├── ProgressMPA.dds
+│       ├── ProgressMPH.dds
 │       └── mainDialog1.dds
 └── ini/
     ├── GameSetUp.ini
@@ -37,45 +45,33 @@ payload/
     └── package.ini
 ```
 
-`manifest.json` records deterministic identity and integrity metadata for those nine files.
+`manifest.json` records deterministic identity and integrity metadata for the complete closure.
 
-The current runtime consumers cover:
-
-- screen-mode configuration;
-- startup-logo path selection and bitmap decoding;
-- WDF package declaration and routing behavior;
-- static main-HUD `Progress45` background rendering;
-- static main-HUD `Dialog4` panel rendering.
-
-`Control.Ani` is required as loose retail content. Its HUD frame references use `LooseThenPackage`
-lookup during import. The selected frame bytes are materialized into the curated payload regardless
-of whether the authorized retail source resolved them from a loose file or WDF package.
-
-Historical retail files retained only for compatibility research or offline tooling are not part of
-this runtime closure.
-
-In particular, retail `Server.dat` is intentionally excluded from:
-
-- `ClientContentClosure`;
-- `content/retail-5517/payload`;
-- the runtime content manifest;
-- published client runtime content.
-
-Its exact audited retail fixture is instead preserved under:
+Current consumers:
 
 ```text
-tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
+screen-mode configuration
+startup logos
+WDF package registration
+
+Progress45 HUD background
+Dialog4 HUD panels
+
+Progress40 life
+Progress41 mana
+Progress46 stamina
+Progress47 extended stamina
 ```
 
-and is consumed only by the offline legacy tooling boundary in `OpenConquer.Content.Tool`.
+`Control.Ani` is loose retail content.
 
-This policy prevents unsupported or historical retail files from entering the product simply because
-their bytes are available. Content expansion follows real runtime consumers rather than
-directory-sized imports.
+HUD frame requirements use `LooseThenPackage` during import. The selected bytes are materialized into the curated payload regardless of retail loose/WDF provenance.
 
-## Reproducing an Import
+Actual winning loose-file casing is preserved. `Progress47` references `ProgressForce2A.dds`; the verified retail loose file is `ProgressForce2a.dds`.
 
-From the repository root:
+WDF archives are import sources and are not shipped.
+
+## Import
 
 ```bash
 dotnet run --project tools/OpenConquer.Content.Tool -- \
@@ -84,71 +80,26 @@ dotnet run --project tools/OpenConquer.Content.Tool -- \
   --destination /path/to/new/retail-5517
 ```
 
-The destination must not already exist.
+The destination must not exist.
 
-The importer:
+Importer contract:
 
-- validates the expected retail source identity;
-- resolves the exact `ClientContentClosure`;
-- honors each requirement's lookup mode;
-- rejects links and case-insensitive path collisions;
-- resolves package-backed requirements through the WDF content source;
-- copies only required runtime files through a staging directory;
-- preserves actual loose-file casing when loose content wins;
-- verifies copied lengths;
-- hashes payload bytes during import;
-- writes the manifest deterministically;
-- publishes the completed set only after the closure succeeds.
-
-It does **not** bulk-copy `ini/`, `data/`, `ani/`, WDF archives, historical compatibility fixtures,
-or other retail directories.
-
-## Startup Validation
-
-Validate the implemented startup consumers against either an authorized retail root or an imported
-payload:
-
-```bash
-dotnet run --project tools/OpenConquer.Content.Tool -- \
-  validate-startup \
-  --content-root content/retail-5517/payload
+```text
+validate retail version
+resolve ClientContentClosure
+honor lookup mode
+reject unsafe paths and ambiguity
+read required package entries only
+preserve winning loose casing
+copy through staging
+record length, signature, SHA-256
+write deterministic manifest
+publish only after complete success
 ```
 
-`validate-startup` covers the startup consumers represented by the runtime content boundary and
-reports the resolved closure.
+No bulk retail directories or WDF archives are copied.
 
-Historical `Server.dat` decoding is deliberately separate from startup validation.
-
-## Legacy Server.dat Inspection
-
-Inspect an explicit retail `Server.dat` file with:
-
-```bash
-dotnet run --project tools/OpenConquer.Content.Tool -- \
-  inspect-server-dat \
-  --file /path/to/Server.dat
-```
-
-The command:
-
-- reads only the explicit filesystem path supplied by the operator;
-- applies the audited bounded RSA/PKCS#1/gzip decoder;
-- parses the verified `outenserver` XML structure;
-- preserves historical `FlashName`, `FlashIcon`, `FlashHint`, `ServerName`, `ServerIP`, and
-  `ServerPort` semantics;
-- emits deterministic, escaped diagnostic output.
-
-It does not use runtime `IClientContentSource` lookup, WDF fallback, or the modern realm/networking
-model.
-
-The exact retail 5517 fixture is parity-tested independently of the runtime content set.
-
-See [`../docs/compatibility/server-dat.md`](../docs/compatibility/server-dat.md) for the native
-evidence, security interpretation, and preservation policy.
-
-## Content-Set Verification
-
-Verify the checked-in runtime set with:
+## Verify
 
 ```bash
 dotnet run --project tools/OpenConquer.Content.Tool -- \
@@ -156,16 +107,47 @@ dotnet run --project tools/OpenConquer.Content.Tool -- \
   --content-set content/retail-5517
 ```
 
-Verification requires all three runtime views to agree:
+Verification requires:
 
-1. the paths required by `ClientContentClosure`;
-2. the paths declared by `manifest.json`;
-3. the files physically present beneath `payload/`.
+```text
+closure == manifest == payload
+```
 
-Manifest length, signature, and SHA-256 identities are then verified against the physical files.
+It verifies path identity, manifest schema, length, signature, and SHA-256.
 
-Extra payload files, missing required files, undeclared files, and content-integrity changes all
-fail verification.
+## Startup Validation
 
-A compatibility fixture such as `Server.dat` is intentionally outside this equality because it is
-test/tooling evidence rather than shipped runtime content.
+```bash
+dotnet run --project tools/OpenConquer.Content.Tool -- \
+  validate-startup \
+  --content-root content/retail-5517/payload
+```
+
+## Compatibility-Only Content
+
+Historical evidence does not enter the runtime closure without a production consumer.
+
+Retail `Server.dat` is tooling-only:
+
+```text
+tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
+```
+
+It is excluded from:
+
+```text
+ClientContentClosure
+content/retail-5517/payload
+runtime manifest
+published client content
+```
+
+Inspect explicitly:
+
+```bash
+dotnet run --project tools/OpenConquer.Content.Tool -- \
+  inspect-server-dat \
+  --file /path/to/Server.dat
+```
+
+See [`../docs/compatibility/server-dat.md`](../docs/compatibility/server-dat.md).
