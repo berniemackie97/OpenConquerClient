@@ -9,7 +9,11 @@ namespace OpenConquer.Content;
 public static class ClientContentClosure
 {
     private const string ControlAniPath = "ani/Control.ani";
+    private const string LifeSectionName = "Progress40";
+    private const string ManaSectionName = "Progress41";
     private const string ProgressSectionName = "Progress45";
+    private const string StaminaSectionName = "Progress46";
+    private const string ExtendedStaminaSectionName = "Progress47";
     private const string DialogSectionName = "Dialog4";
 
     private static readonly int[] s_startupLogoVariantIndexes = [1, 2];
@@ -35,7 +39,11 @@ public static class ClientContentClosure
 
         AniIndexFile controlAni = AniIndexFile.Load(contentSource, ControlAniPath, ContentLookupMode.LooseOnly);
 
+        AddFrameRequirements(requirements, controlAni.GetRequiredSection(LifeSectionName), expectedFrameCount: 3);
+        AddFrameRequirements(requirements, controlAni.GetRequiredSection(ManaSectionName), expectedFrameCount: 3);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(ProgressSectionName), expectedFrameCount: 1);
+        AddFrameRequirements(requirements, controlAni.GetRequiredSection(StaminaSectionName), expectedFrameCount: 2);
+        AddFrameRequirements(requirements, controlAni.GetRequiredSection(ExtendedStaminaSectionName), expectedFrameCount: 2);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(DialogSectionName), expectedFrameCount: 2);
 
         return Normalize(requirements);

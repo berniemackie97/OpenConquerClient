@@ -26,11 +26,13 @@ internal static class ConformanceRunner
             SpriteBlendConformance.Run(graphicsDevice, framebufferSize);
             FireworkDxt3Conformance.Run(graphicsDevice, fireworkImage, framebufferSize);
             SpriteGeometryConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
+            SpriteRepeatedSamplingConformance.Run(graphicsDevice, framebufferSize);
             SpriteRotationConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
             NativeTextConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudChromeConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
+            MainHudVitalsConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
         });
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, sprite color, sprite blending, sprite rotation, native text, and main HUD chrome conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, sprite rotation, native text, main HUD chrome, and main HUD vitals conformance passed.");
     }
 }

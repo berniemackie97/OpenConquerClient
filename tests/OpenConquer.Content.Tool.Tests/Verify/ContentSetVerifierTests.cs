@@ -16,9 +16,15 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(9, manifest.FileCount);
+        Assert.Equal(19, manifest.FileCount);
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressHP.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressMP.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForceA.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2a.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/mainDialog1.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainDialog2.dds");
     }
@@ -78,9 +84,9 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        const string omittedSourcePath = "data/main/ProgressBk.dds";
+        const string omittedSourcePath = "data/main/ProgressHP.dds";
 
-        File.Delete(Path.Combine(contentSet, "payload", "data", "main", "ProgressBk.dds"));
+        File.Delete(Path.Combine(contentSet, "payload", "data", "main", "ProgressHP.dds"));
 
         ContentManifest manifest = ReadManifest(contentSet);
 
@@ -171,7 +177,7 @@ public sealed class ContentSetVerifierTests
         string manifestPath = Path.Combine(contentSet, "manifest.json");
 
         File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 9", "\"fileCount\": 8", StringComparison.Ordinal),
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 19", "\"fileCount\": 18", StringComparison.Ordinal),
             Encoding.UTF8);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));

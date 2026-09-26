@@ -21,9 +21,12 @@ internal sealed class ClientApplication : IDisposable
     private readonly PresentationPolicy _presentationPolicy;
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
+    private readonly MainHudVitalsState _mainHudVitalsState = new();
 
     private MainHudChromeAssets? _mainHudChromeAssets;
+    private MainHudVitalsAssets? _mainHudVitalsAssets;
     private MainHudChromeRenderer? _mainHudChromeRenderer;
+    private MainHudVitalsRenderer? _mainHudVitalsRenderer;
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private DesktopWindow? _window;
@@ -102,7 +105,9 @@ internal sealed class ClientApplication : IDisposable
         finally
         {
             _window = null;
+            _mainHudVitalsRenderer = null;
             _mainHudChromeRenderer = null;
+            _mainHudVitalsAssets = null;
             _mainHudChromeAssets = null;
             _renderer = null;
             _graphicsDevice = null;
@@ -112,7 +117,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnOpenGLContextReady(IOpenGLContext context)
     {
-        if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null)
+        if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null || _mainHudVitalsRenderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
@@ -120,23 +125,36 @@ internal sealed class ClientApplication : IDisposable
         OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
         OpenGLRenderer? renderer = null;
         MainHudChromeRenderer? mainHudChromeRenderer = null;
+        MainHudVitalsRenderer? mainHudVitalsRenderer = null;
 
         try
         {
             DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
             LogicalRenderSize logicalRenderSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
-            MainHudChromeAssets mainHudChromeAssets = _mainHudChromeAssets ?? throw new InvalidOperationException("The main HUD assets have not been initialized.");
+            MainHudChromeAssets mainHudChromeAssets = _mainHudChromeAssets ?? throw new InvalidOperationException("The main HUD chrome assets have not been initialized.");
+            MainHudVitalsAssets mainHudVitalsAssets = _mainHudVitalsAssets ?? throw new InvalidOperationException("The main HUD vitals assets have not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
             renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
             mainHudChromeRenderer = new MainHudChromeRenderer(graphicsDevice, mainHudChromeAssets, logicalRenderSize);
+            mainHudVitalsRenderer = new MainHudVitalsRenderer(graphicsDevice, mainHudVitalsAssets, logicalRenderSize);
 
             _renderer = renderer;
             _mainHudChromeRenderer = mainHudChromeRenderer;
+            _mainHudVitalsRenderer = mainHudVitalsRenderer;
             _graphicsDevice = graphicsDevice;
         }
         catch
         {
+            try
+            {
+                mainHudVitalsRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the renderer/context initialization failure.
+            }
+
             try
             {
                 mainHudChromeRenderer?.Dispose();
@@ -194,6 +212,7 @@ internal sealed class ClientApplication : IDisposable
 
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
         _mainHudChromeAssets = MainHudChromeAssets.Load(contentSource);
+        _mainHudVitalsAssets = MainHudVitalsAssets.Load(contentSource);
     }
 
     private void OnRendering(double elapsedSeconds)
@@ -212,6 +231,7 @@ internal sealed class ClientApplication : IDisposable
         try
         {
             _mainHudChromeRenderer?.DrawBackground(renderer);
+            _mainHudVitalsRenderer?.Draw(renderer, _mainHudVitalsState);
 
             if (_mainHudChromeRenderer is { } mainHudChromeRenderer)
             {
@@ -242,10 +262,12 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReleaseRenderingResources()
     {
+        MainHudVitalsRenderer? mainHudVitalsRenderer = _mainHudVitalsRenderer;
         MainHudChromeRenderer? mainHudChromeRenderer = _mainHudChromeRenderer;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
+        _mainHudVitalsRenderer = null;
         _mainHudChromeRenderer = null;
         _renderer = null;
         _graphicsDevice = null;
@@ -254,11 +276,20 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            mainHudChromeRenderer?.Dispose();
+            mainHudVitalsRenderer?.Dispose();
         }
         catch (Exception exception)
         {
             firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            mainHudChromeRenderer?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
         try

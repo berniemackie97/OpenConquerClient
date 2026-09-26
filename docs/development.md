@@ -2,15 +2,14 @@
 
 OpenConquer Client targets the SDK pinned by [`global.json`](../global.json).
 
-Architecture rules: [`architecture/architecture.md`](architecture/architecture.md) Native graphics
-contracts: [`compatibility/native-graphics.md`](compatibility/native-graphics.md) Native text
-contracts: [`compatibility/native-text.md`](compatibility/native-text.md) Launcher/install
-contracts:
-[`architecture/launcher-managed-installation.md`](architecture/launcher-managed-installation.md)
+Reference:
+
+- [`architecture/architecture.md`](architecture/architecture.md)
+- [`compatibility/native-graphics.md`](compatibility/native-graphics.md)
+- [`compatibility/native-text.md`](compatibility/native-text.md)
+- [`architecture/launcher-managed-installation.md`](architecture/launcher-managed-installation.md)
 
 ## Quality Gate
-
-Before committing:
 
 ```bash
 dotnet restore OpenConquer.Client.slnx --locked-mode
@@ -22,8 +21,7 @@ dotnet run --project tools/OpenConquer.Content.Tool -c Release --no-build -- \
 git diff --check
 ```
 
-Repository builds use warnings as errors and the analyzer configuration in `Directory.Build.props`
-and `.editorconfig`.
+Builds use warnings as errors and repository analyzer configuration.
 
 ## Run Client
 
@@ -31,7 +29,7 @@ and `.editorconfig`.
 dotnet run --project src/OpenConquer.Client/OpenConquer.Client.csproj
 ```
 
-Desktop options:
+Options:
 
 ```text
 --window-size WIDTHxHEIGHT
@@ -40,18 +38,19 @@ Desktop options:
 --content-root /path/to/client
 ```
 
-`ini/GameSetUp.ini` selects the retail-compatible logical render size. Physical window size, window
-mode, and presentation are separate desktop-host concerns.
+`ini/GameSetUp.ini` selects the logical render size. Desktop size and presentation are independent.
 
 ## Rendering Conformance
 
-Build first:
+Build:
 
 ```bash
-dotnet build tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj -c Release --no-restore
+dotnet build tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj \
+  -c Release \
+  --no-restore
 ```
 
-Run against an exact retail 5517 client root:
+Run against an exact retail 5517 root:
 
 ```bash
 dotnet run \
@@ -63,82 +62,112 @@ dotnet run \
   --content-root /path/to/retail-5517-root
 ```
 
-The supplied path must be the complete retail root. Content resolution uses the production
-loose-file/WDF lookup path.
+Coverage:
 
-Current conformance covers:
+```text
+800×600 and 1024×768 logical targets
+RGB565 / RGB555 logical color
+D16 depth
 
-- 800×600 and 1024×768 logical targets;
-- production OpenGL context and renderer;
-- retail-compatible RGB565/RGB555 logical color precision;
-- exact D16 depth allocation;
-- ANI lookup through verified retail ANI files;
-- verified TGA and DXT3 asset identities and decoding;
-- byte-exact production DXT3 output against an independent reference decoder;
-- default alpha blending and explicit RGBA sprite modulation;
-- exact synthetic `ONE / ONE` additive-blend behavior;
-- verified retail DXT3 firework additive rendering;
-- whole-texture natural-size drawing and stretching;
-- source-region stretching;
-- integer-degree sprite rotation;
-- native-text placement, coverage, interpolation, batching, and atlas synchronization;
-- static main-HUD `Progress45` and `Dialog4` asset resolution;
-- verified HUD loose/package source provenance;
-- production HUD rendering against an independently specified native draw sequence;
-- exact HUD framebuffer comparison at both supported logical resolutions;
-- exact framebuffer comparison on a real driver.
+TGA and DXT3 decoding
+production DXT3 decode vs independent reference
+alpha and additive blending
+RGBA modulation
+stretching and source cropping
+integer rotation
+repeated and degenerate source sampling
 
-Expected graphics contracts, fixture identities, and verified framebuffer hashes are documented in
+native-text placement
+coverage
+interpolation
+batching
+atlas synchronization
+
+Progress45 HUD background
+Dialog4 HUD panels
+Progress40 life
+Progress41 mana
+Progress46 stamina
+Progress47 extended stamina
+
+retail asset hashes
+loose/package provenance
+independent HUD reference geometry
+exact real-driver framebuffer comparison
+```
+
+Graphics contracts and driver evidence are maintained in
 [`compatibility/native-graphics.md`](compatibility/native-graphics.md).
 
-Native text configuration, encoded-text, font, rasterization, layout, batching, and OpenGL rendering
-contracts are documented in [`compatibility/native-text.md`](compatibility/native-text.md).
-
-Deterministic native-text CPU behavior is covered by unit tests. GFX-TEXT-004 additionally uses
-synthetic deterministic glyph coverage for real-driver OpenGL conformance so rendering behavior can
-be verified without making framebuffer goldens depend on host font selection, physical font
-revision, or FreeType rasterization differences.
+Text contracts are maintained in
+[`compatibility/native-text.md`](compatibility/native-text.md).
 
 ## Content
 
-Runtime retail content is resolved beneath:
+Runtime content:
 
 ```text
 content/retail-5517/payload
 ```
 
-Current managed runtime closure:
+Current runtime closure: 19 files.
 
 ```text
 Data/Main/Logo1.bmp
 Data/Main/Logo2.bmp
 ani/Control.ani
+
 data/main/ProgressBk.dds
+
+data/main/ProgressForce.dds
+data/main/ProgressForce2.dds
+data/main/ProgressForce2A.dds
+data/main/ProgressForceA.dds
+
+data/main/ProgressHP.dds
+data/main/ProgressHPA.dds
+data/main/ProgressHPH.dds
+
+data/main/ProgressMP.dds
+data/main/ProgressMPA.dds
+data/main/ProgressMPH.dds
+
 data/main/mainDialog1.dds
 data/main/mainDialog2.dds
+
 ini/GameSetUp.ini
 ini/info.ini
 ini/package.ini
 ```
 
-The Syndicate and weather/firework assets used only by rendering conformance remain compatibility
-evidence and do not expand the packaged runtime closure.
+Manifest source casing may differ from logical ANI casing when a loose retail file wins lookup. Current example:
 
-Retail `Server.dat` is offline compatibility evidence and must not ship with the client.
+```text
+ANI path:    data/main/ProgressForce2A.dds
+source path: data/main/ProgressForce2a.dds
+```
 
-Inspect one with:
+Compatibility-only assets do not expand the runtime closure.
+
+`Server.dat` remains offline tooling evidence and must not ship with the client.
+
+### Import Retail Content
 
 ```bash
 dotnet run \
   --project tools/OpenConquer.Content.Tool \
+  -c Release \
   -- \
-  inspect-server-dat \
-  --file /path/to/Server.dat
+  import-retail-5517 \
+  --source /path/to/retail-5517-root \
+  --destination /path/to/content-set
 ```
+
+The destination must not already exist.
 
 ### Verify Content Set
 
-Repository content:
+Repository set:
 
 ```bash
 dotnet run \
@@ -151,7 +180,7 @@ dotnet run \
   --content-set content/retail-5517
 ```
 
-Published content:
+Published set:
 
 ```bash
 dotnet run \
@@ -164,11 +193,29 @@ dotnet run \
   --content-set /path/to/client-publish/content/retail-5517
 ```
 
-Tracked content, runtime closure, and published content must remain consistent.
+Required invariant:
+
+```text
+ClientContentClosure
+        ==
+manifest
+        ==
+payload
+```
+
+### Inspect Server.dat
+
+```bash
+dotnet run \
+  --project tools/OpenConquer.Content.Tool \
+  -- \
+  inspect-server-dat \
+  --file /path/to/Server.dat
+```
 
 ## Local Managed Product
 
-Create or refresh the local managed product:
+Create or refresh:
 
 ```bash
 dotnet run \
@@ -187,72 +234,64 @@ artifacts/local-product/
 └── product.previous/
 ```
 
-- `product/` — active installation
-- `product.previous/` — rollback generation
-- `work/` — transient composition state
-
-Run on macOS/Linux:
+Run:
 
 ```bash
 ./artifacts/local-product/product/OpenConquer.Launcher
 ```
 
-Run on Windows:
+Windows:
 
 ```powershell
 .\artifacts\local-product\product\OpenConquer.Launcher.exe
 ```
 
-A healthy installation reports:
-
-```text
-OpenConquer is ready
-Release local-N is verified for this device.
-```
-
-Development signing keys, release-sequence state, and coordination locks must remain outside the
-repository and managed-product output.
-
 Run `create-local-product` when changes affect:
 
-- launcher resolution;
-- release integrity;
-- packaged content;
-- installation layout;
-- activation;
-- update;
-- repair;
-- rollback.
-
-## Tests
-
 ```text
-tests/
-├── Conformance/
-│   └── OpenConquer.Rendering.Conformance/
-├── OpenConquer.Client.Tests/
-├── OpenConquer.Content.Tests/
-├── OpenConquer.Content.Tool.Tests/
-├── OpenConquer.Launcher.Tests/
-├── OpenConquer.Platform.Tests/
-├── OpenConquer.Product.Tool.Tests/
-└── OpenConquer.Rendering.Tests/
+launcher resolution
+release integrity
+packaged content
+installation layout
+activation
+update
+repair
+rollback
 ```
 
-Ownership:
+Development signing keys, release sequence state, and coordination locks remain outside repository and product output.
 
-- **Client** — startup and runtime composition.
-- **Content** — runtime content and legacy formats.
-- **Content Tool** — content inspection and verification.
-- **Launcher** — launcher lifecycle, settings, releases, and product boundaries.
-- **Platform** — desktop host mechanics.
-- **Product Tool** — local product composition and activation.
-- **Rendering** — graphics and rendering-facing text behavior not requiring a native driver.
-- **Rendering Conformance** — real-driver rendering and exact framebuffer behavior.
+## Test Ownership
+
+```text
+OpenConquer.Client.Tests
+→ client composition and UI state
+
+OpenConquer.Content.Tests
+→ runtime content behavior
+
+OpenConquer.Content.Tool.Tests
+→ import, verification, and compatibility tooling
+
+OpenConquer.Launcher.Tests
+→ launcher lifecycle and installation
+
+OpenConquer.Platform.Tests
+→ desktop/platform behavior
+
+OpenConquer.Product.Tool.Tests
+→ product composition
+
+OpenConquer.Rendering.Tests
+→ deterministic rendering behavior
+
+OpenConquer.Rendering.Conformance
+→ real-driver rendering parity
+```
 
 ## CI
 
-### Linux
+Linux:
 
 ```text
 locked restore
@@ -265,7 +304,7 @@ publish verification
 authenticated product composition
 ```
 
-### Windows
+Windows/macOS:
 
 ```text
 locked restore
@@ -273,26 +312,19 @@ Release build
 tests
 ```
 
-### macOS
-
-```text
-locked restore
-Release build
-tests
-```
-
-The rendering conformance project builds in CI but requires a desktop OpenGL driver and exact retail
-content for execution.
+Real-driver rendering conformance runs separately on supported desktop hardware with exact retail content.
 
 GitHub Actions dependencies must remain pinned to immutable commit SHAs.
 
 ## Commit Rule
 
-Commit only when the slice has:
+A slice is complete only after:
 
-1. completed implementation;
-2. completed relevant tests;
-3. updated relevant documentation;
-4. passed applicable native/real-driver verification;
-5. passed the full quality gate;
-6. passed final slice re-audit.
+```text
+implementation
+focused tests
+documentation
+native / real-driver verification when applicable
+full quality gate
+final re-audit
+```

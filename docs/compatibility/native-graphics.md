@@ -1,225 +1,183 @@
 # Native Graphics Compatibility
 
-Current compatibility contract for reconstructed Conquer Online 5517 graphics behavior. Detailed
-native addresses, decompilation traces, and unresolved reverse-engineering evidence belong in the
-native analysis notes.
+Verified Conquer Online 5517 graphics behavior implemented by OpenConquer Client. Detailed reverse-engineering evidence remains outside this document.
 
 ## Logical Frame
 
 Retail `ini/GameSetUp.ini` maps screen modes to:
 
 | Modes | Logical size |
-| ----- | -----------: |
-| 0, 1  |      800×600 |
-| 2, 3  |     1024×768 |
+| --- | ---: |
+| 0, 1 | 800×600 |
+| 2, 3 | 1024×768 |
 
-Desktop window size, fullscreen state, and presentation scaling do not change logical game
-coordinates.
-
-Retail prefers:
+Logical rendering uses:
 
 ```text
-D3DFMT_R5G6B5
-D3DFMT_X1R5G5B5
+RGB565 or RGB555-compatible color
+D16 depth
+opaque black clear
+depth clear = 1.0
 ```
 
-OpenConquer requires an equivalent alpha-less 16-bit RGB logical target:
-
-```text
-RGB565 → R5 G6 B5
-RGB5   → R5 G5 B5
-```
-
-Dithering is disabled.
-
-Verified retail callers use `D3DFMT_D16`. OpenConquer therefore requires 16-bit depth with no
-stencil.
-
-Each logical frame starts with opaque black color and depth `1.0`.
+Desktop size and presentation scaling do not change logical coordinates.
 
 ## Presentation
 
-Retail presentation uses one discard backbuffer, windowed presentation, and no presentation
-interval.
-
-OpenConquer separates logical rendering from the desktop framebuffer:
-
 ```text
 logical target
-    ↓
-presentation transform
-    ↓
-desktop framebuffer
+→ presentation transform
+→ host framebuffer
 ```
 
-The verified outer client cadence is approximately 25 ms / 40 FPS.
-
-OpenConquer preserves:
+Verified outer cadence is approximately 25 ms / 40 FPS.
 
 ```text
 wait only for remaining frame time
 recheck after waiting
 do not replay missed frames
 overruns establish the next cadence anchor
-gameplay/network/animation clocks remain independent
 ```
 
-Retail can request multisampling. Logical-target multisampling remains unimplemented; the current
-desktop host is single-sampled.
+Logical-target multisampling remains unimplemented.
 
 ## Sprite Rendering
 
 ### Content Boundary
 
-Verified ANI image dispatch currently supports:
+Supported verified ANI image formats:
 
 ```text
-.tga → retail TGA decoder
-.dds → verified single-level DXT3 decoder
+.tga
+.dds / single-level DXT3
 ```
 
-Decoded content crosses into Rendering as top-left RGBA:
+Images cross into Rendering as top-left RGBA.
 
-```text
-retail TGA / DXT3 DDS
-        ↓
-OpenConquer.Content
-        ↓
-top-left RGBA
-        ↓
-OpenConquer.Rendering
-        ↓
-RGBA8 OpenGL texture
-```
-
-GPU sprite textures use:
+GPU textures use:
 
 ```text
 RGBA8
 nearest filtering
-clamp-to-edge
 single mip level
 ```
 
-Compressed DXT3 residency is native implementation machinery, not an observable compatibility
-requirement.
+### DDS
 
-### DDS Contract
-
-The implemented DDS subset is:
+Implemented subset:
 
 ```text
-standard DDS header
-2D texture
+2D
 single level
 DXT3 / BC2
 explicit 4-bit alpha
 RGB565 color endpoints
-DXT3 four-color interpolation
-partial edge-block clipping
 no cubemaps
 no volume textures
 no mip chains
 no trailing payload
 ```
 
-Unsupported variants remain deferred until a verified consumer requires them.
+### State
 
-### Default State
-
-Sprite drawing uses:
+Default sprite state:
 
 ```text
-blend       = enabled
+blend       = alpha
 depth test  = disabled
 depth write = disabled
 culling     = disabled
 ```
 
-Supported blend intent:
+Supported blending:
 
-| Mode     | Source       | Destination            |
-| -------- | ------------ | ---------------------- |
-| Alpha    | source alpha | one minus source alpha |
-| Additive | one          | one                    |
-
-`Alpha` is the normal sprite default.
-
-`Additive` is implemented for verified retail mode-1 consumers. The native `SRCCOLOR / ONE` branch
-and draw-parameter-2 behavior remain outside the modern API until a production consumer is
-established.
+| Mode | Source | Destination |
+| --- | --- | --- |
+| Alpha | source alpha | one minus source alpha |
+| Additive | one | one |
 
 ### Coordinates
 
-Retail applies a Direct3D 8 half-pixel correction. OpenGL does not require it.
-
-OpenConquer maps pixel edges directly:
+OpenGL uses pixel-edge coordinates directly:
 
 ```text
-xNdc =  2 * x / width - 1
-yNdc =  1 - 2 * y / height
+xNdc = 2 * x / width - 1
+yNdc = 1 - 2 * y / height
 ```
 
-Coordinates are top-left oriented. Geometry outside the logical target is clipped by the graphics
-pipeline.
+Coordinates are top-left oriented.
 
-### Geometry
+### Source Geometry
 
-Supported sprite geometry:
+Ordinary sprite draws use `SpriteSourceRectangle`:
 
 ```text
-full texture → natural size
-full texture → explicit size
-source rectangle → explicit size
+non-negative coordinates
+positive width and height
+fully contained within texture
+clamp-to-edge
 ```
 
-`SpriteSourceRectangle` must have non-negative coordinates, positive dimensions, and remain inside
-the source texture.
+Verified compatibility draws use `SpriteSourceBounds`:
 
-Native pointer/sentinel APIs are represented by explicit modern operations.
+```text
+non-negative edges
+right >= left
+bottom >= top
+degenerate spans allowed
+out-of-range right/bottom allowed
+nearest filtering
+REPEAT addressing
+```
+
+The repeated-source path is restricted to verified compatibility consumers. Ordinary sprite validation remains bounded.
 
 ### Color
 
-`SpriteColor` is per-draw RGBA modulation:
+`SpriteColor` performs RGBA modulation:
 
 ```text
-sampled texture × normalized SpriteColor
+sampled texture × normalized color
 ```
-
-`SpriteColor.White` is `(255, 255, 255, 255)`.
 
 ### Rotation
 
-Verified retail rotation uses:
+Verified rotation:
 
 ```text
-input              = signed integer degrees
-reduction          = angle % 360
-positive direction = clockwise in screen coordinates
-pivot              = destination center
+signed integer degrees
+angle % 360
+clockwise in screen coordinates
+pivot at destination center
 ```
 
-Ordering is:
+## Main HUD
+
+Verified major draw order:
 
 ```text
-source rectangle
-    ↓
-destination size
-    ↓
-rotation
-    ↓
-logical coordinate transform
+background
+vitals
+panels
+skill / XP
+controls / overlays
 ```
 
-Native mutable sprite state is not reproduced.
+Current implementation covers background, vitals, and panels.
 
-## Static Main HUD Chrome
+For logical height `H`:
 
-GFX-UI-001 implements the verified static background and panel chrome from the retail main HUD.
+```text
+originY = H - 141
+```
+
+HUD coordinates are not resolution-scaled.
+
+## Main HUD Chrome
 
 ### Assets
 
-`ani/Control.ani` contains:
+`Control.ani`:
 
 ```text
 [Progress45]
@@ -232,302 +190,303 @@ Frame0=data/main/mainDialog1.dds
 Frame1=data/main/mainDialog2.dds
 ```
 
-Verified retail identities:
+Verified identities:
+
+| Asset | Size | SHA-256 |
+| --- | ---: | --- |
+| `Control.Ani` | 317837 bytes | `a1db47baaeb2f75eea3b5216378f97d713c2afeaefe05ec02e6f584794532d27` |
+| `ProgressBk.dds` | 256×256 | `9b91a28e0170142a48dc03332691959eca01c179b9d8c592aa5b11af4f5d966c` |
+| `mainDialog1.dds` | 256×256 | `505a4655c398e41bd25698b57caa50f48376cff713e1c8c6f287a03866038fe1` |
+| `MainDialog2.dds` | 256×128 | `818d13f62509ac859fb0ed72d36ec6aeb2b12f9ed3dee3c6172171d99ba86f41` |
+
+Verified provenance:
 
 ```text
-ani/Control.Ani
-SHA-256 a1db47baaeb2f75eea3b5216378f97d713c2afeaefe05ec02e6f584794532d27
-
-data/main/ProgressBk.dds
-256×256
-SHA-256 9b91a28e0170142a48dc03332691959eca01c179b9d8c592aa5b11af4f5d966c
-
-data/main/mainDialog1.dds
-256×256
-SHA-256 505a4655c398e41bd25698b57caa50f48376cff713e1c8c6f287a03866038fe1
-
-data/main/MainDialog2.dds
-256×128
-SHA-256 818d13f62509ac859fb0ed72d36ec6aeb2b12f9ed3dee3c6172171d99ba86f41
+Control.Ani     → loose
+ProgressBk      → data.wdf
+mainDialog1     → data.wdf
+mainDialog2     → loose
 ```
-
-Verified source lookup:
-
-```text
-Control.Ani       → loose
-ProgressBk.dds    → data.wdf
-mainDialog1.dds   → data.wdf
-mainDialog2.dds   → loose MainDialog2.dds override
-```
-
-Runtime import materializes the selected bytes into the curated content set; original WDF provenance
-is not preserved in deployment.
 
 ### Layout
 
-For logical height `H`:
-
-```text
-HUD origin Y = H - 141
-```
-
-Background:
-
 ```text
 Progress45 frame 0
-source: full 256×256
-destination: (0, H - 141)
+destination (0, originY)
 ```
-
-Panels:
 
 ```text
-A
-texture: Dialog4 frame 0
-source:  (0, 112, 256, 144)
-dest:    (0, H - 144)
-
-B
-texture: Dialog4 frame 0
-source:  (0, 0, 256, 54)
-dest:    (256, H - 53)
-
-C
-texture: Dialog4 frame 1
-source:  (0, 0, 256, 54)
-dest:    (512, H - 53)
-
-D
-texture: Dialog4 frame 1
-source:  (0, 64, 256, 54)
-dest:    (768, H - 53)
+A: frame 0, source (0,112,256,144), destination (0, originY-3)
+B: frame 0, source (0,0,256,54),    destination (256, originY+88)
+C: frame 1, source (0,0,256,54),    destination (512, originY+88)
+D: frame 1, source (0,64,256,54),   destination (768, originY+88)
 ```
 
-At `800×600`, panel D extends beyond the logical target and is clipped. It is not shrunk and no
-HUD-specific scissor is applied.
+Panel D naturally clips at 800×600.
 
-All five draws use:
+## Main HUD Vitals
+
+### Assets
+
+`Control.ani`:
 
 ```text
-color    = white
-blend    = alpha
-rotation = 0
+[Progress40]
+FrameAmount=3
+Frame0=data/main/ProgressHP.dds
+Frame1=data/main/ProgressHPA.dds
+Frame2=data/main/ProgressHPH.dds
+
+[Progress41]
+FrameAmount=3
+Frame0=data/main/ProgressMP.dds
+Frame1=data/main/ProgressMPA.dds
+Frame2=data/main/ProgressMPH.dds
+
+[Progress46]
+FrameAmount=2
+Frame0=data/main/ProgressForce.dds
+Frame1=data/main/ProgressForceA.dds
+
+[Progress47]
+FrameAmount=2
+Frame0=data/main/ProgressForce2.dds
+Frame1=data/main/ProgressForce2A.dds
 ```
 
-No resolution scaling is applied to HUD coordinates.
+Verified identities:
 
-### Ordering
+| Asset | Size | SHA-256 |
+| --- | ---: | --- |
+| `ProgressHP.dds` | 128×128 | `ecd40dbdebc5e582860c91deeb28a29b8adaaf9dbc8285e8c5404a5f1ab6be2d` |
+| `ProgressHPA.dds` | 128×128 | `2ad8122875e02d25ff53ed281b9214fcbde1689a773fdb59e0bba355bde0c54d` |
+| `ProgressHPH.dds` | 128×128 | `f85e3d2287f9f3cda60b3494dcb36359479d738c34030d3266530026080d2679` |
+| `ProgressMP.dds` | 128×128 | `01fbd1e55d5266a823ffb2347a96721f8e9b7ec18c4393f18ee4488ccac605be` |
+| `ProgressMPA.dds` | 128×128 | `324ddfd751ec47123285a26905d00d56694ffd7461f38f6b3e6e3125095952e1` |
+| `ProgressMPH.dds` | 128×128 | `b8dfdad6025fbd28201d92d9fe95f8ff504450209d43feeec57aaa0a30f4ebc6` |
+| `ProgressForce.dds` | 128×128 | `f030dbbd0823b08d12901ebf803adee687df015d3d017793f67959db9d9e8192` |
+| `ProgressForceA.dds` | 128×128 | `3b7177b3bb0405e3c7f0a68aaaa3e6ca5b054ff63d798887eec5687adc76154b` |
+| `ProgressForce2.dds` | 32×32 | `9a67c108613cdf5440a40708bcbd3573ef9b3782da6d997c435b654a7fbbada9` |
+| `ProgressForce2a.dds` | 32×32 | `77ebf0be6f6f4621ecfb28f1e04f39f6f95bce647fc0d27af44bcf4b2c13c789` |
 
-The verified native HUD pass orders major groups as:
+Verified provenance:
 
 ```text
-ranges / Flash
-background
-HP / MP / stamina
-static panels
-skill / XP
-controls / overlays
+ProgressHP       → data.wdf
+ProgressHPA      → data.wdf
+ProgressHPH      → data.wdf
+ProgressMP       → data.wdf
+ProgressMPA      → data.wdf
+ProgressMPH      → data.wdf
+ProgressForce    → data.wdf
+ProgressForceA   → data.wdf
+ProgressForce2   → loose
+ProgressForce2A  → loose ProgressForce2a.dds
 ```
 
-GFX-UI-001 implements only the background and static-panel slots. The renderer intentionally exposes
-them separately so later slices can preserve native interleaving.
+All ten frames are required and validated. Eight verified reachable frames are uploaded to the GPU.
 
-### Failure Behavior
+### Layout
 
-Verified native behavior distinguishes the two asset groups:
+| Gauge | X | Y |
+| --- | ---: | ---: |
+| Life | 4 | `originY + 54` |
+| Mana | 52 | `originY + 54` |
+| Stamina | 42 | `originY + 58` |
+| Extended stamina | 42 | `originY + 52` |
 
-```text
-Progress45 unavailable
-→ skip background
-→ continue HUD pass
-
-Dialog4 unavailable
-→ stop the remaining HUD pass
-```
-
-Malformed ANI or decoded image data is rejected rather than silently accepted.
-
-The native outer HUD gate has not yet been reconstructed separately and is outside this static
-slice.
-
-## Real-Driver Conformance
-
-Conformance uses the production OpenGL path on a real graphics driver.
-
-Verified development driver:
-
-```text
-OpenGL:   4.1 Metal - 90.5
-GLSL:     4.10
-Vendor:   Apple
-Renderer: Apple M4
-Target:   RGB565
-```
-
-### Sprite Baselines
-
-| Case                         | SHA-256                                                            |
-| ---------------------------- | ------------------------------------------------------------------ |
-| Natural RGB565               | `93939cf5e51ea6298b729836b80561627550505e6f0771588082c5a33142833c` |
-| Natural RGB555               | `313ec6083e2eb72c7e3e63594859225c09bee573d155afa9e24d0399fd203ed7` |
-| Whole-texture stretch RGB565 | `45098e61451897bda7b976fc8d55b749ac5d327c1739e9e5fcbc249848b37340` |
-| Source-region stretch RGB565 | `f4d724a2e3703eec53fa10df55f64da31c59b706db5db41a00bd8592eb9cbbfd` |
-| RGBA modulation RGB565       | `3fc3d1e606877135ff6296dd684e01d77756917cf05cbc7a756765f6e50eb1b7` |
-| Additive blend RGB565        | `f7f9e13d8ace3958b3fee2a2cbfa1d16dc90523b4ea4fd124c8e3aba6a872401` |
-| Rotation RGB565              | `56f3bd55bec37797ec2e6b30f9db8daf8a8347417ee8a09fb86d59cb952e17f7` |
-
-### Retail DXT3 Probe
-
-Verified fixture:
-
-```text
-ani/weather.ani
-    ↓
-[YinFa1] Frame0
-    ↓
-data.wdf / data/firework/yinfa1/1.dds
-```
-
-Encoded SHA-256:
-
-```text
-1a79bb1faf0c94b759d723a18b9ef6908e38a0c7f5e600ceadb3675ecb7ea2df
-```
-
-Decoded RGBA SHA-256:
-
-```text
-883de947994f7866531817efc02f2aedd8dfeb0ac7489683d21ec9dea3f05624
-```
-
-Observed Apple M4 RGB565 framebuffers:
-
-```text
-additive:
-286c83f89306b178692db40f6fa26c3cc2220b7cfd727a69986efb38949f2cdb
-
-alpha:
-cd6f0b1244ce58dfce7c2e705f17dc491b84f2e98d367edee5bce1cbc83765bc
-```
-
-Production DDS decode is compared byte-for-byte with an independent DXT3 reference decoder.
-
-### Main HUD Probe
-
-HUD conformance verifies:
-
-```text
-exact retail asset hashes
-verified loose/package provenance
-production DDS decode == independent DXT3 decode
-production MainHudChromeRenderer
-        ==
-independently specified native draw sequence
-```
-
-The reference draw path does not use `MainHudChromeLayout`.
-
-Observed Apple M4 RGB565 logical framebuffer hashes:
+Supported logical resolutions:
 
 ```text
 800×600
-bf905c1d0fdadf486303ba4849221bec836b8a6f52f6b23a4d91b09244cd8cf1
-
 1024×768
-dbdaa4cd332fda6661d438ad5b29b97d051ec2d51cc8149b92a2e4aede4fb629
 ```
 
-These hashes document the verified driver result. The portable conformance requirement is equality
-between the production HUD renderer and the independently specified draw sequence on the active
-supported logical target.
+### Fill Dimensions
 
-## Host Framebuffer
+| Gauge | Width | Height | Alternate width |
+| --- | ---: | ---: | ---: |
+| Life | 36 | 74 | 86 |
+| Mana | 34 | 74 | 34 |
+| Stamina | 8 | 70 | 8 |
+| Extended stamina | 8 | 35 | 8 |
 
-The host framebuffer is presentation-only:
+Fills grow bottom-up.
 
 ```text
-logical RGB565/RGB5 + D16
-    ↓
-framebuffer blit
-    ↓
-desktop framebuffer
-    ↓
-platform swap
+pixelsPerUnit = height / range
+cappedPixelsPerUnit = range >= 100 ? height * 0.01 : pixelsPerUnit
 ```
 
-Requirements:
+Compatibility calculations use C# `float`.
+
+### Subvariants
+
+Subvariant 0:
 
 ```text
-single-sampled host framebuffer
-sRGB conversion disabled before blit
-scissor cannot clip presentation
-zero-sized framebuffer allowed while minimized
-host resize does not alter logical coordinates
+current <= follower
+→ frame 0
+
+current > follower
+→ frame 1 current
+→ frame 0 biased follower
 ```
 
-Rendering owns presentation. Platform owns the window, OpenGL context, physical framebuffer state,
-and swap.
+Subvariant 1:
+
+```text
+current <= follower
+→ frame 2 current
+
+current > follower
+→ frame 2 follower only
+```
+
+Life starts at subvariant 1 and permanently switches to 0 after positive clamped mana is observed.
+
+Mana starts at subvariant 0 and exposes the verified alternate-state toggle.
+
+### Stamina
+
+Regular stamina uses `Progress46` frame 0.
+
+Extended stamina renders when:
+
+```text
+HasExtendedStaminaGauge
+Stamina >= 100
+```
+
+Range:
+
+```text
+0..50
+```
+
+Value:
+
+```text
+Stamina - 100
+```
+
+### Progress47 Compatibility
+
+`ProgressForce2.dds` is 32×32 while the configured fill height is 35.
+
+Verified behavior:
+
+```text
+source bottom = 35
+texture height = 32
+sampling = point + wrap
+```
+
+Examples:
+
+```text
+value 25 → source top 18, destination height 17
+value 50 → source top 0,  destination height 35
+```
+
+A positive value may truncate to destination height 0. Native behavior interprets zero destination height as natural texture height.
+
+OpenConquer preserves this only inside the HUD-gauge compatibility path.
+
+Zero value remains no draw.
+
+### Missing Content
+
+A missing section or declared frame disables only that gauge.
+
+Malformed content is rejected:
+
+```text
+unexpected frame count
+invalid DDS
+unexpected dimensions
+```
+
+## Real-Driver Conformance
+
+Verified environment:
+
+```text
+OpenGL   4.1 Metal - 90.5
+GLSL     4.10
+Vendor   Apple
+Renderer Apple M4
+Target   RGB565
+```
+
+### Repeated Sampling
+
+| Case | SHA-256 |
+| --- | --- |
+| Out-of-range source | `c684f3e8afed2d1748d26c3c81c5000c8234896153c21e6587f3e4242fad0343` |
+| Degenerate source | `ea984d551906587c2b0c3d62abf81e05c7103258bba2d97973c401899a0aa46b` |
+
+### HUD Chrome
+
+| Resolution | SHA-256 |
+| --- | --- |
+| 800×600 | `bf905c1d0fdadf486303ba4849221bec836b8a6f52f6b23a4d91b09244cd8cf1` |
+| 1024×768 | `dbdaa4cd332fda6661d438ad5b29b97d051ec2d51cc8149b92a2e4aede4fb629` |
+
+### HUD Vitals
+
+| Case | 800×600 | 1024×768 |
+| --- | --- | --- |
+| HP normal dual | `d8c78f9d71e330ba0e992102a715a01416a15ccc8e3eb2d9164e0fcd5ce64320` | `541583eada1a2129f172772090a3fb24a6c1261e708b4bb7264acec6b7c4e221` |
+| HP startup frame 2 | `ac25430ae00fae6a1664fdbb9ed1ba58cf230e0433dc8784856a2cbf839a9095` | `3919458824463798e757336acce23a0e2e2e8ad26c1b6d88d05217962985d304` |
+| MP normal dual | `c097586a338a14814bddeccb692620223419ef52e3ae429bcd84a3e5f04e9c82` | `b0b5eb854cd8de698e7a87a7a0fb079e50dada2d510550f4a43d56665f71f212` |
+| MP frame 2 | `a63f35172830231baa873afb8bac91bd0f94a88b2fc5c87aef9ee5712cc19689` | `8ae10d0d8fc43b7995f8474e6942b9398bd6bbad38e4550d3914dadee2a73a73` |
+| Stamina | `d669a69119f5ca847bfc04757cf0eb5f4a542e4f47bbc26ea5803a08e0974f63` | `a5832031373f367ece08d2c3a73d8d10277c20975bc54cbf1c40fcd4cc5c4abe` |
+| Overflow 25 | `9b55557a33a2be64cd05889fafea48e8b2cfb9010de746b41ca12b4c7923056d` | `b70960f21268d25ad5cc7deca68e0cbdca7818da59be211465d025cb30f05da0` |
+| Overflow 50 | `5110a75dc5aed6aa232afe9921ff8072cb200f652713d7f673a9342fd1cec222` | `87b955846e713cb394c9e264bd38bd85e42a0429bd9d4dec097f6393a883b537` |
+| Positive zero-pixel | `554f17f77f7eeaa11afdc8c7455bfd3edfc05c5add2d0be4e40f23e3f478158d` | `3f990c179b5f064543233693d6a76377133767f3940d6a9cde0f162b8eb06e0f` |
+
+Portable conformance requires production output to equal the independently specified reference. Driver hashes are evidence, not portable goldens.
 
 ## Current Scope
 
-Implemented and verified:
+Implemented:
 
 ```text
 800×600 and 1024×768 logical rendering
-RGB565 / RGB555-compatible logical color
+RGB565 / RGB555-compatible logical target
 D16 depth
-25 ms outer frame cadence
 
-TGA and single-level DXT3 ANI frame decoding
-WDF-backed DDS lookup
-top-left RGBA Content-to-Rendering boundary
-
-natural-size sprites
-stretching
-source rectangles
-nearest filtering
+TGA
+DXT3 DDS
+bounded sprites
+repeated compatibility sprites
 RGBA modulation
 alpha blending
-verified additive blending
-integer-degree rotation
-logical-target clipping
+additive blending
+integer rotation
 
-static Progress45 HUD background
-static Dialog4 HUD panel chrome
-native HUD placement at both supported resolutions
-native background/panel ordering slots
-real-driver HUD framebuffer conformance
+Progress45 HUD background
+Dialog4 HUD panels
+Progress40 life
+Progress41 mana
+Progress46 stamina
+Progress47 extended stamina
 
-real-driver sprite framebuffer conformance
-independent retail DXT3 decode conformance
+background → vitals → panels ordering
+real-driver HUD conformance
 ```
 
-Remaining:
+Deferred:
 
 ```text
 logical-target multisampling
-ANI runtime progression/timing
-unverified SRCCOLOR/ONE consumer behavior
-native draw-parameter-2 consumer verification
+ANI runtime progression
 sprite batching
 higher-level texture caching
-remaining HUD gauges, skill/XP, controls, overlays, and HUD gate
+live hero-state producer
+skill / XP HUD
+HUD controls and overlays
+outer HUD gate
 map, role, effect, and animation integration
-additional image variants only when required by verified consumers
-```
-
-## Modernization Boundary
-
-Preserve observable 5517 behavior, not obsolete implementation machinery:
-
-```text
-preserve logical coordinates and framebuffer precision
-use correct OpenGL pixel-edge mapping instead of D3D8 half-pixel correction
-replace pointer/sentinel APIs with explicit operations
-replace packed mutable sprite color with SpriteColor
-replace native draw integers with verified rendering semantics
-normalize supported retail images to RGBA at the Content boundary
-preserve HUD draw order without building a monolithic HUD renderer
-do not preserve WDF deployment topology when curated bytes preserve behavior
-do not implement unverified image formats or sprite modes speculatively
 ```

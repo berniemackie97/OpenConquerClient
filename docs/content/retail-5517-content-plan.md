@@ -1,217 +1,187 @@
 # Retail 5517 Content Plan
 
-## Status
+## Contract
 
-Active and consumer-led.
-
-OpenConquer does not bulk-import the retail client. Runtime content is added only when implemented
-client code requires it and the corresponding native behavior has been established.
-
-The runtime invariant is:
+Runtime content is consumer-led.
 
 ```text
 ClientContentClosure
         ==
 manifest path keys
         ==
-physical payload path keys
+payload path keys
 ```
 
-Path-key comparison is case-insensitive. Manifest source paths preserve the casing selected during
-import.
+Path-key comparison is case-insensitive. Manifest source paths preserve imported source casing.
 
-## Goals
-
-The content boundary must:
-
-- preserve compatibility-sensitive retail paths;
-- support verified loose and WDF-backed lookup behavior;
-- treat retail data as untrusted input;
-- keep runtime content separate from compatibility-only fixtures;
-- produce deterministic curated content sets;
-- expand only with implemented runtime consumers.
-
-Native evidence defines compatibility behavior. The modern architecture does not need to reproduce
-obsolete native deployment mechanisms when the observable behavior can be preserved more safely.
+Retail assets enter the runtime set only when an implemented consumer requires them and the native dependency has been verified.
 
 ## Runtime Closure
 
-The current `retail-5517` closure contains nine requirements:
+Current closure: 19 files.
 
-```text
-Data/Main/Logo1.bmp                 LooseOnly
-Data/Main/Logo2.bmp                 LooseOnly
-ani/Control.ani                     LooseOnly
-data/main/ProgressBk.dds            LooseThenPackage
-data/main/mainDialog1.dds           LooseThenPackage
-data/main/mainDialog2.dds           LooseThenPackage
-ini/GameSetUp.ini                   LooseOnly
-ini/info.ini                        LooseOnly
-ini/package.ini                     LooseOnly
-```
+| Path | Lookup |
+| --- | --- |
+| `Data/Main/Logo1.bmp` | `LooseOnly` |
+| `Data/Main/Logo2.bmp` | `LooseOnly` |
+| `ani/Control.ani` | `LooseOnly` |
+| `data/main/ProgressBk.dds` | `LooseThenPackage` |
+| `data/main/ProgressForce.dds` | `LooseThenPackage` |
+| `data/main/ProgressForce2.dds` | `LooseThenPackage` |
+| `data/main/ProgressForce2A.dds` | `LooseThenPackage` |
+| `data/main/ProgressForceA.dds` | `LooseThenPackage` |
+| `data/main/ProgressHP.dds` | `LooseThenPackage` |
+| `data/main/ProgressHPA.dds` | `LooseThenPackage` |
+| `data/main/ProgressHPH.dds` | `LooseThenPackage` |
+| `data/main/ProgressMP.dds` | `LooseThenPackage` |
+| `data/main/ProgressMPA.dds` | `LooseThenPackage` |
+| `data/main/ProgressMPH.dds` | `LooseThenPackage` |
+| `data/main/mainDialog1.dds` | `LooseThenPackage` |
+| `data/main/mainDialog2.dds` | `LooseThenPackage` |
+| `ini/GameSetUp.ini` | `LooseOnly` |
+| `ini/info.ini` | `LooseOnly` |
+| `ini/package.ini` | `LooseOnly` |
 
-The checked-in payload is:
+The curated set contains exactly these resolved dependencies. WDF archives are not shipped.
 
-```text
-payload/
-├── ani/
-│   └── Control.Ani
-├── data/
-│   └── main/
-│       ├── Logo1.bmp
-│       ├── Logo2.bmp
-│       ├── MainDialog2.dds
-│       ├── ProgressBk.dds
-│       └── mainDialog1.dds
-└── ini/
-    ├── GameSetUp.ini
-    ├── info.ini
-    └── package.ini
-```
-
-These files support:
-
-- logical screen-mode configuration;
-- startup-logo configuration and decoding;
-- WDF package registration;
-- static `Progress45` main-HUD background rendering;
-- static `Dialog4` main-HUD panel rendering.
-
-## HUD Content Lookup
-
-The verified 5517 HUD dependency chain is:
+## HUD Dependency Chain
 
 ```text
 ani/Control.ani
-    ├── [Progress45]
-    │       └── Frame0=data/main/ProgressBk.dds
-    └── [Dialog4]
-            ├── Frame0=data/main/mainDialog1.dds
-            └── Frame1=data/main/mainDialog2.dds
+├── Progress40
+│   ├── ProgressHP.dds
+│   ├── ProgressHPA.dds
+│   └── ProgressHPH.dds
+├── Progress41
+│   ├── ProgressMP.dds
+│   ├── ProgressMPA.dds
+│   └── ProgressMPH.dds
+├── Progress45
+│   └── ProgressBk.dds
+├── Progress46
+│   ├── ProgressForce.dds
+│   └── ProgressForceA.dds
+├── Progress47
+│   ├── ProgressForce2.dds
+│   └── ProgressForce2A.dds
+└── Dialog4
+    ├── mainDialog1.dds
+    └── mainDialog2.dds
 ```
 
-`Control.ani` is required through `LooseOnly`.
-
-The three DDS frame paths use `LooseThenPackage`.
-
-In the audited clean retail source:
+Verified retail provenance:
 
 ```text
-ProgressBk.dds      -> data.wdf
-mainDialog1.dds     -> data.wdf
-mainDialog2.dds     -> loose MainDialog2.dds
+ProgressBk.dds      → data.wdf
+mainDialog1.dds     → data.wdf
+mainDialog2.dds     → loose MainDialog2.dds
+
+ProgressHP.dds      → data.wdf
+ProgressHPA.dds     → data.wdf
+ProgressHPH.dds     → data.wdf
+ProgressMP.dds      → data.wdf
+ProgressMPA.dds     → data.wdf
+ProgressMPH.dds     → data.wdf
+ProgressForce.dds   → data.wdf
+ProgressForceA.dds  → data.wdf
+
+ProgressForce2.dds  → loose
+ProgressForce2A.dds → loose ProgressForce2a.dds
 ```
 
-Import resolves those requirements through the production content source and materializes the
-selected bytes into the curated payload.
+The importer materializes selected bytes into the curated payload. Package provenance is not preserved after import.
 
-Package provenance is therefore an import-time compatibility concern. The shipped curated set does
-not preserve WDF storage merely to preserve WDF storage.
+All ANI-declared HUD frames in the closure are required, including frames not currently uploaded to the GPU.
 
-Detailed native rendering evidence belongs in
-[`../compatibility/native-graphics.md`](../compatibility/native-graphics.md).
-
-## Content Boundary
-
-Runtime lookup is composed from:
+## Content Resolution
 
 ```text
 ClientContentRoot
-        │
-        └── contained case-insensitive loose lookup
-
+        +
 PackagedClientContentSource
-        │
-        ├── LooseOnly
-        ├── PackageOnly
-        └── LooseThenPackage
+        ↓
+LooseOnly
+PackageOnly
+LooseThenPackage
 ```
 
-Consumers declare the lookup behavior they require. There is no universal loose/package precedence
-outside that requirement.
+Consumers declare lookup mode explicitly.
 
-`ClientContentClosure` describes the exact set needed by implemented runtime consumers.
+`ClientContentClosure` defines the shipped dependency set.
 
-The importer resolves that closure against an authorized retail root and writes a self-contained
-curated set.
-
-## Import Policy
+## Import
 
 `import-retail-5517`:
 
-- validates the retail version marker;
-- resolves the runtime closure;
-- honors each requirement's lookup mode;
-- rejects unsafe host paths, links, and case-insensitive ambiguity;
-- reads package-backed content without extracting whole WDF archives;
-- preserves the actual source casing when a loose file wins;
-- materializes package-backed entries under their virtual content paths;
-- hashes bytes while copying;
-- writes the manifest deterministically;
-- publishes only after the complete import succeeds.
-
-The importer does not bulk-copy retail directories or WDF archives.
-
-A failed import must not leave a published partial content set.
-
-## WDF Policy
-
-`ini/package.ini` is interpreted using the verified native package-registration behavior.
-
-The runtime WDF boundary preserves the compatibility behavior required by current consumers:
-
 ```text
-package declaration
-        ↓
-normalized prefix
-        ↓
-native prefix hash
-        ↓
-registered WDF
-        ↓
-virtual-path hash
-        ↓
-bounded entry stream
+validate retail version
+resolve runtime closure
+apply declared lookup modes
+reject unsafe host paths and ambiguity
+read required WDF entries only
+preserve winning loose-file casing
+materialize selected bytes
+record length, SHA-256, signature
+write deterministic manifest
+publish only after complete success
 ```
 
-Important invariants are:
+The importer does not bulk-copy retail directories or archives.
 
-- registration is first-wins by native prefix hash;
-- a missing or unavailable first package still owns its routing hash;
-- later colliding declarations do not replace it;
-- archive headers and entry tables are bounded and validated;
-- entry UIDs must be strictly ascending and unique;
-- entry streams cannot escape their declared payload range.
+Failed imports leave no published partial set.
 
-Modern resource limits are allowed when they do not reject valid audited retail content.
+## WDF
 
-## Image and ANI Policy
+`ini/package.ini` defines package registration.
 
-ANI files are parsed as compatibility data, not application configuration.
-
-Frame paths remain retail virtual paths and are resolved through an explicit lookup mode.
-
-The production image boundary currently supports the formats required by implemented and verified
-consumers, including:
+Verified compatibility rules:
 
 ```text
-ANI frame
-    ├── TGA
-    └── DDS / DXT3
-            ↓
-        top-left RGBA
+normalize declaration
+derive package prefix
+hash prefix
+first registration wins
+route virtual path by prefix hash
+hash full virtual path for entry UID
+read bounded WDF entry
 ```
 
-DDS decoding validates the supported single-level DXT3 contract before allocation and rejects
-unsupported or malformed structures.
+Runtime validation additionally requires:
 
-Production decoder correctness is tested separately from real-driver rendering conformance.
+```text
+bounded archive/index arithmetic
+maximum 100000 entries
+complete entry records
+reserved DWORD = 0
+strictly ascending unique UIDs
+payload contained before index
+no host-path links or reparse traversal
+```
 
-## Compatibility-Only Content
+Missing or unusable declared packages remain non-fatal registrations where required by verified behavior.
 
-A retail artifact does not enter `ClientContentClosure` merely because tooling can read it.
+## ANI and Images
 
-`Server.dat` is the current explicit example.
+ANI files are compatibility data.
+
+Current production image support required by the closure:
+
+```text
+TGA
+DDS / single-level DXT3
+```
+
+Decoders validate format structure before allocation and reject unsupported variants.
+
+## Excluded Content
+
+Compatibility evidence does not enter the runtime closure unless a production consumer requires it.
+
+`Server.dat` remains tooling-only evidence:
+
+```text
+tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
+```
 
 It is excluded from:
 
@@ -222,18 +192,9 @@ runtime manifest
 published client content
 ```
 
-Its audited fixture is owned by offline tooling tests:
-
-```text
-tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
-```
-
-Detailed `Server.dat` behavior and preservation policy belong in
-[`../compatibility/server-dat.md`](../compatibility/server-dat.md).
-
 ## Verification
 
-`verify-content-set` requires agreement between:
+`verify-content-set` requires:
 
 ```text
 runtime closure
@@ -243,99 +204,53 @@ manifest
 payload
 ```
 
-It also verifies declared length, signature, and SHA-256 identity.
+It verifies:
 
-The verifier rejects:
-
-- missing required files;
-- undeclared payload files;
-- manifest entries outside the closure;
-- path-key inconsistencies;
-- changed lengths;
-- changed bytes;
-- changed format signatures;
-- unsupported manifest versions.
+```text
+required paths
+no undeclared payload files
+no manifest entries outside closure
+path-key consistency
+length
+signature
+SHA-256
+manifest schema
+```
 
 ## Expansion Rule
 
-Every runtime content expansion follows:
-
 ```text
-audit native consumer
-        ↓
-establish retail dependency and lookup mode
-        ↓
-implement typed production consumer
-        ↓
-define malformed and missing-input behavior
-        ↓
-add focused tests
-        ↓
-extend ClientContentClosure
-        ↓
-import exact selected dependencies
-        ↓
-verify closure == manifest == payload
-        ↓
-run relevant real-driver conformance
-        ↓
-run release gate
+verify native consumer
+→ establish path and lookup mode
+→ implement typed consumer
+→ define malformed/missing behavior
+→ add tests
+→ extend ClientContentClosure
+→ import exact dependencies
+→ verify closure == manifest == payload
+→ run relevant real-driver conformance
+→ run release gate
 ```
 
-Content is not imported speculatively for future features.
+No speculative bulk imports.
 
 ## Release Gate
 
-A content-affecting slice must pass:
-
 ```bash
 dotnet restore OpenConquer.Client.slnx --locked-mode
-
-dotnet format OpenConquer.Client.slnx \
-  --verify-no-changes \
-  --no-restore
-
-dotnet build OpenConquer.Client.slnx \
-  --configuration Release \
-  --no-restore
-
-dotnet test OpenConquer.Client.slnx \
-  --configuration Release \
-  --no-build \
-  --no-restore
+dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
+dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
+dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 
 dotnet run \
   --project tools/OpenConquer.Content.Tool \
   --configuration Release \
   --no-build \
+  --no-restore \
   -- verify-content-set \
   --content-set content/retail-5517
 
 git diff --check
 ```
 
-Graphics slices that change compatibility-sensitive rendering or content must also run the
-real-driver conformance suite against an authorized retail root:
-
-```bash
-dotnet run \
-  --project tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Rendering.Conformance.csproj \
-  --configuration Release \
-  --no-build \
-  --no-restore \
-  -- \
-  --content-root <authorized-retail-5517-root>
-```
-
-## Non-Goals
-
-The content system is not:
-
-- a retail-client mirror;
-- a general extraction tool;
-- a place to retain unused assets;
-- a reason to copy native architecture;
-- a runtime home for compatibility-only historical data.
-
-Its job is to provide the smallest deterministic content boundary required by implemented
-OpenConquer client behavior.
+Graphics slices also require real-driver conformance against an authorized retail 5517 root.

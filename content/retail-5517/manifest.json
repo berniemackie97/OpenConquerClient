@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 9,
-  "length": 1624504,
+  "fileCount": 19,
+  "length": 1758904,
   "entries": [
     {
       "sourcePath": "ani/Control.Ani",
@@ -39,6 +39,76 @@
       "pathKey": "data/main/progressbk.dds",
       "length": 65664,
       "sha256": "9b91a28e0170142a48dc03332691959eca01c179b9d8c592aa5b11af4f5d966c",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressForce.dds",
+      "pathKey": "data/main/progressforce.dds",
+      "length": 16512,
+      "sha256": "f030dbbd0823b08d12901ebf803adee687df015d3d017793f67959db9d9e8192",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressForce2.dds",
+      "pathKey": "data/main/progressforce2.dds",
+      "length": 1152,
+      "sha256": "9a67c108613cdf5440a40708bcbd3573ef9b3782da6d997c435b654a7fbbada9",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressForce2a.dds",
+      "pathKey": "data/main/progressforce2a.dds",
+      "length": 1152,
+      "sha256": "77ebf0be6f6f4621ecfb28f1e04f39f6f95bce647fc0d27af44bcf4b2c13c789",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressForceA.dds",
+      "pathKey": "data/main/progressforcea.dds",
+      "length": 16512,
+      "sha256": "3b7177b3bb0405e3c7f0a68aaaa3e6ca5b054ff63d798887eec5687adc76154b",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressHP.dds",
+      "pathKey": "data/main/progresshp.dds",
+      "length": 16512,
+      "sha256": "ecd40dbdebc5e582860c91deeb28a29b8adaaf9dbc8285e8c5404a5f1ab6be2d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressHPA.dds",
+      "pathKey": "data/main/progresshpa.dds",
+      "length": 16512,
+      "sha256": "2ad8122875e02d25ff53ed281b9214fcbde1689a773fdb59e0bba355bde0c54d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressHPH.dds",
+      "pathKey": "data/main/progresshph.dds",
+      "length": 16512,
+      "sha256": "f85e3d2287f9f3cda60b3494dcb36359479d738c34030d3266530026080d2679",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressMP.dds",
+      "pathKey": "data/main/progressmp.dds",
+      "length": 16512,
+      "sha256": "01fbd1e55d5266a823ffb2347a96721f8e9b7ec18c4393f18ee4488ccac605be",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressMPA.dds",
+      "pathKey": "data/main/progressmpa.dds",
+      "length": 16512,
+      "sha256": "324ddfd751ec47123285a26905d00d56694ffd7461f38f6b3e6e3125095952e1",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ProgressMPH.dds",
+      "pathKey": "data/main/progressmph.dds",
+      "length": 16512,
+      "sha256": "b8dfdad6025fbd28201d92d9fe95f8ff504450209d43feeec57aaa0a30f4ebc6",
       "signature": "dds"
     },
     {
