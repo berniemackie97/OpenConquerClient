@@ -162,6 +162,15 @@ public sealed class OpenGLRenderer : IDisposable
         _spriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, x, y, width, height, color, rotationDegrees);
     }
 
+    public void DrawRepeatedSprite(OpenGLTexture2D texture, SpriteSourceBounds sourceBounds, int x, int y, int width, int height)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(texture);
+        EnsureFrameActiveForDrawing();
+
+        _spriteRenderer.DrawRepeated(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceBounds, x, y, width, height);
+    }
+
     internal void DrawText(OpenGLTextResource resource, NativeTextLayout layout, NativeTextRenderOptions options, int x, int y)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

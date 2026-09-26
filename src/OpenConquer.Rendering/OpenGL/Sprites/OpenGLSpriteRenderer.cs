@@ -18,6 +18,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
     private uint _vertexArray;
     private uint _vertexBuffer;
     private uint _indexBuffer;
+    private uint _nearestRepeatSampler;
     private int _textureUniform;
     private int _colorUniform;
     private bool _disposed;
@@ -61,9 +62,8 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
     {
         ValidateCommonDrawArguments(texture, targetWidth, targetHeight);
 
-        SpriteSourceRectangle sourceRectangle = new(x: 0, y: 0, texture.Width, texture.Height);
-
-        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, texture.Width, texture.Height, color, blendMode, rotationDegrees: 0);
+        DrawCore(texture, targetWidth, targetHeight, 0, 0, texture.Width, texture.Height,
+            x, y, texture.Width, texture.Height, color, blendMode, rotationDegrees: 0, sampler: 0);
     }
 
     public void Draw(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height)
@@ -83,7 +83,18 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        DrawCore(texture, targetWidth, targetHeight, sourceRectangle, x, y, width, height, color, SpriteBlendMode.Alpha, rotationDegrees);
+        DrawCore(texture, targetWidth, targetHeight, sourceRectangle.X, sourceRectangle.Y, sourceRectangle.Right, sourceRectangle.Bottom,
+            x, y, width, height, color, SpriteBlendMode.Alpha, rotationDegrees, sampler: 0);
+    }
+
+    public void DrawRepeated(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceBounds sourceBounds, int x, int y, int width, int height)
+    {
+        ValidateCommonDrawArguments(texture, targetWidth, targetHeight);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+
+        DrawCore(texture, targetWidth, targetHeight, sourceBounds.Left, sourceBounds.Top, sourceBounds.Right, sourceBounds.Bottom,
+            x, y, width, height, SpriteColor.White, SpriteBlendMode.Alpha, rotationDegrees: 0, _nearestRepeatSampler);
     }
 
     public void Dispose()
@@ -103,7 +114,8 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         }
     }
 
-    private void DrawCore(OpenGLTexture2D texture, int targetWidth, int targetHeight, SpriteSourceRectangle sourceRectangle, int x, int y, int width, int height, SpriteColor color, SpriteBlendMode blendMode, int rotationDegrees)
+    private void DrawCore(OpenGLTexture2D texture, int targetWidth, int targetHeight, long sourceLeftPixel, long sourceTopPixel, long sourceRightPixel, long sourceBottomPixel,
+        int x, int y, int width, int height, SpriteColor color, SpriteBlendMode blendMode, int rotationDegrees, uint sampler)
     {
         (BlendingFactor sourceBlend, BlendingFactor destinationBlend) = GetBlendFactors(blendMode);
 
@@ -122,12 +134,18 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
             WriteRotatedNormalizedPositions(positions, targetWidth, targetHeight, x, y, width, height, rotationDegrees);
         }
 
-        float sourceLeft = ToNormalizedTextureCoordinate(sourceRectangle.X, texture.Width);
-        float sourceRight = ToNormalizedTextureCoordinate(sourceRectangle.Right, texture.Width);
-        float sourceTop = ToNormalizedTextureCoordinate(sourceRectangle.Y, texture.Height);
-        float sourceBottom = ToNormalizedTextureCoordinate(sourceRectangle.Bottom, texture.Height);
+        float sourceLeft = ToNormalizedTextureCoordinate(sourceLeftPixel, texture.Width);
+        float sourceRight = ToNormalizedTextureCoordinate(sourceRightPixel, texture.Width);
+        float sourceTop = ToNormalizedTextureCoordinate(sourceTopPixel, texture.Height);
+        float sourceBottom = ToNormalizedTextureCoordinate(sourceBottomPixel, texture.Height);
 
-        Span<float> vertices = [positions[0], positions[1], sourceLeft, sourceTop, positions[2], positions[3], sourceRight, sourceTop, positions[4], positions[5], sourceRight, sourceBottom, positions[6], positions[7], sourceLeft, sourceBottom];
+        Span<float> vertices =
+        [
+            positions[0], positions[1], sourceLeft, sourceTop,
+            positions[2], positions[3], sourceRight, sourceTop,
+            positions[4], positions[5], sourceRight, sourceBottom,
+            positions[6], positions[7], sourceLeft, sourceBottom,
+        ];
 
         OpenGLProgram program = _program ?? throw new InvalidOperationException("The OpenGL sprite program is unavailable.");
 
@@ -152,10 +170,12 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 
         _gl.ActiveTexture(TextureUnit.Texture0);
         texture.Bind();
+        _gl.BindSampler(0, sampler);
         _gl.Uniform1(_textureUniform, 0);
         _gl.Uniform4(_colorUniform, ToNormalizedColorChannel(color.Red), ToNormalizedColorChannel(color.Green), ToNormalizedColorChannel(color.Blue), ToNormalizedColorChannel(color.Alpha));
         _gl.DrawElements(PrimitiveType.Triangles, (uint)s_indices.Length, DrawElementsType.UnsignedInt, null);
 
+        _gl.BindSampler(0, 0);
         _gl.BindTexture(TextureTarget.Texture2D, texture: 0);
         _gl.BindVertexArray(0);
         _gl.Disable(EnableCap.Blend);
@@ -257,6 +277,12 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         _gl.EnableVertexAttribArray(1);
         _gl.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)(2 * sizeof(float)));
 
+        _nearestRepeatSampler = _gl.GenSampler();
+        _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.MinFilter, (int)GLEnum.Nearest);
+        _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.MagFilter, (int)GLEnum.Nearest);
+        _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.WrapS, (int)GLEnum.Repeat);
+        _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.WrapT, (int)GLEnum.Repeat);
+
         _gl.BindVertexArray(0);
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, buffer: 0);
     }
@@ -264,6 +290,21 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
     private void DestroyResources()
     {
         ExceptionDispatchInfo? firstFailure = null;
+
+        uint nearestRepeatSampler = _nearestRepeatSampler;
+        _nearestRepeatSampler = 0;
+
+        if (nearestRepeatSampler != 0)
+        {
+            try
+            {
+                _gl.DeleteSampler(nearestRepeatSampler);
+            }
+            catch (Exception exception)
+            {
+                firstFailure = ExceptionDispatchInfo.Capture(exception);
+            }
+        }
 
         uint indexBuffer = _indexBuffer;
         _indexBuffer = 0;
@@ -276,7 +317,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
             }
             catch (Exception exception)
             {
-                firstFailure = ExceptionDispatchInfo.Capture(exception);
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
             }
         }
 
