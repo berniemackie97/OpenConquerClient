@@ -10,6 +10,14 @@ internal sealed class TemporarySourceTree : IDisposable
 {
     private const uint ProgressBackgroundUid = 0x0561D7F3;
     private const uint MainDialog1Uid = 0xCAE8016F;
+    private const uint ProgressHpUid = 0x1311773C;
+    private const uint ProgressHpAlternateUid = 0xE8F5223B;
+    private const uint ProgressHpHighlightUid = 0xF1020E31;
+    private const uint ProgressMpUid = 0xF4284E3C;
+    private const uint ProgressMpAlternateUid = 0xAE67606C;
+    private const uint ProgressMpHighlightUid = 0xA5D8EB93;
+    private const uint ProgressForceUid = 0xF29FAED2;
+    private const uint ProgressForceAlternateUid = 0xC3DAFD40;
 
     public TemporarySourceTree()
     {
@@ -50,25 +58,63 @@ internal sealed class TemporarySourceTree : IDisposable
     /// Writes a synthetic retail-shaped source containing every dependency in the implemented runtime content closure.
     /// </summary>
     /// <remarks>
-    /// HUD provenance mirrors verified 5517 behavior: Control.ani is loose, ProgressBk.dds and mainDialog1.dds are package-backed,
-    /// and MainDialog2.dds is a loose override whose filesystem casing differs from the ANI reference.
+    /// Control.ani is loose. ProgressBk, Dialog4 frame 0, HP, MP, and Progress46 frames are package-backed.
+    /// Dialog4 frame 1, ProgressForce2, and ProgressForce2a are loose overrides/assets using verified retail casing behavior.
     /// Historical Server.dat is deliberately absent because it is not runtime content.
     /// </remarks>
     public void WriteStartupSnapshot(string backgroundFormat = "Data/Main/Logo%d.bmp")
     {
         byte[] progressBackground = CreateSyntheticDds("ProgressBk");
         byte[] mainDialog1 = CreateSyntheticDds("mainDialog1");
+        byte[] progressHp = CreateSyntheticDds("ProgressHP");
+        byte[] progressHpAlternate = CreateSyntheticDds("ProgressHPA");
+        byte[] progressHpHighlight = CreateSyntheticDds("ProgressHPH");
+        byte[] progressMp = CreateSyntheticDds("ProgressMP");
+        byte[] progressMpAlternate = CreateSyntheticDds("ProgressMPA");
+        byte[] progressMpHighlight = CreateSyntheticDds("ProgressMPH");
+        byte[] progressForce = CreateSyntheticDds("ProgressForce");
+        byte[] progressForceAlternate = CreateSyntheticDds("ProgressForceA");
 
         WriteText("version.dat", "5517");
         WriteText("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=2\n");
         WriteText("ini/info.ini", $"[DlgLogo]\nBgFormat={backgroundFormat}\n");
         WriteText("ini/package.ini", "data.wdf\nc3.wdf\ndata3.wdf\n");
-        WriteText("ani/Control.ani", "[Dialog4]\nFrameAmount=2\nFrame0=data/main/mainDialog1.dds\nFrame1=data/main/mainDialog2.dds\n[Progress45]\nFrameAmount=1\nFrame0=data/main/ProgressBk.dds\n");
+        WriteText("ani/Control.ani", "[Dialog4]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/mainDialog1.dds\n"
+                                     + "Frame1=data/main/mainDialog2.dds\n"
+                                     + "[Progress40]\n"
+                                     + "FrameAmount=3\n"
+                                     + "Frame0=data/main/ProgressHP.dds\n"
+                                     + "Frame1=data/main/ProgressHPA.dds\n"
+                                     + "Frame2=data/main/ProgressHPH.dds\n"
+                                     + "[Progress41]\n"
+                                     + "FrameAmount=3\n"
+                                     + "Frame0=data/main/ProgressMP.dds\n"
+                                     + "Frame1=data/main/ProgressMPA.dds\n"
+                                     + "Frame2=data/main/ProgressMPH.dds\n"
+                                     + "[Progress45]\n"
+                                     + "FrameAmount=1\n"
+                                     + "Frame0=data/main/ProgressBk.dds\n"
+                                     + "[Progress46]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/ProgressForce.dds\n"
+                                     + "Frame1=data/main/ProgressForceA.dds\n"
+                                     + "[Progress47]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/ProgressForce2.dds\n"
+                                     + "Frame1=data/main/ProgressForce2A.dds\n");
 
         WriteBytes("data/main/Logo1.bmp", TestBitmap.CreateTwoByTwo());
         WriteBytes("data/main/Logo2.bmp", TestBitmap.CreateTwoByTwo());
         WriteBytes("data/main/MainDialog2.dds", CreateSyntheticDds("MainDialog2 loose"));
-        WriteBytes("data.wdf", CreateWdf((ProgressBackgroundUid, progressBackground), (MainDialog1Uid, mainDialog1)));
+        WriteBytes("data/main/ProgressForce2.dds", CreateSyntheticDds("ProgressForce2 loose"));
+        WriteBytes("data/main/ProgressForce2a.dds", CreateSyntheticDds("ProgressForce2a loose"));
+
+        WriteBytes("data.wdf", CreateWdf((ProgressBackgroundUid, progressBackground), (MainDialog1Uid, mainDialog1),
+            (ProgressHpUid, progressHp), (ProgressHpAlternateUid, progressHpAlternate), (ProgressHpHighlightUid, progressHpHighlight),
+            (ProgressMpUid, progressMp), (ProgressMpAlternateUid, progressMpAlternate), (ProgressMpHighlightUid, progressMpHighlight),
+            (ProgressForceUid, progressForce), (ProgressForceAlternateUid, progressForceAlternate)));
     }
 
     public void Dispose()
