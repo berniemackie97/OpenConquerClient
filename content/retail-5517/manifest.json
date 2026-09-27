@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 19,
-  "length": 1758904,
+  "fileCount": 18,
+  "length": 1758875,
   "entries": [
     {
       "sourcePath": "ani/Control.Ani",
@@ -130,13 +130,6 @@
       "pathKey": "ini/info.ini",
       "length": 17145,
       "sha256": "da9400900fc84898b428f302723c7949197bb1e94b00475010d72ff937e6790a",
-      "signature": "unknown"
-    },
-    {
-      "sourcePath": "ini/package.ini",
-      "pathKey": "ini/package.ini",
-      "length": 29,
-      "sha256": "511028e125d43635d90f777806b0f0fee65895b5b1a604cf278001fee536a8f2",
       "signature": "unknown"
     }
   ]

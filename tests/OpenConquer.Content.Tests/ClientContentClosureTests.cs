@@ -32,7 +32,6 @@ public sealed class ClientContentClosureTests
             new ClientContentRequirement("data/main/mainDialog2.dds", ContentLookupMode.LooseThenPackage),
             new ClientContentRequirement("ini/GameSetUp.ini", ContentLookupMode.LooseOnly),
             new ClientContentRequirement("ini/info.ini", ContentLookupMode.LooseOnly),
-            new ClientContentRequirement("ini/package.ini", ContentLookupMode.LooseOnly),
         ], closure);
     }
 

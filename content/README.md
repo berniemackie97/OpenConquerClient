@@ -16,7 +16,7 @@ Content enters the runtime set only for an implemented, verified consumer.
 
 ## retail-5517
 
-Current runtime closure: 19 files.
+Current runtime closure: 18 files.
 
 ```text
 payload/
@@ -41,8 +41,7 @@ payload/
 │       └── mainDialog1.dds
 └── ini/
     ├── GameSetUp.ini
-    ├── info.ini
-    └── package.ini
+    └── info.ini
 ```
 
 `manifest.json` records deterministic identity and integrity metadata for the complete closure.
@@ -52,7 +51,6 @@ Current consumers:
 ```text
 screen-mode configuration
 startup logos
-WDF package registration
 
 Progress45 HUD background
 Dialog4 HUD panels
@@ -65,9 +63,14 @@ Progress47 extended stamina
 
 `Control.Ani` is loose retail content.
 
-HUD frame requirements use `LooseThenPackage` during import. The selected bytes are materialized into the curated payload regardless of retail loose/WDF provenance.
+HUD frame requirements use `LooseThenPackage` during import. The selected bytes are materialized
+into the curated payload regardless of retail loose/WDF provenance.
 
-Actual winning loose-file casing is preserved. `Progress47` references `ProgressForce2A.dds`; the verified retail loose file is `ProgressForce2a.dds`.
+Actual winning loose-file casing is preserved. `Progress47` references `ProgressForce2A.dds`; the
+verified retail loose file is `ProgressForce2a.dds`.
+
+`ini/package.ini` is retail import configuration used to resolve WDF-backed requirements from the
+authorized source tree. It is not part of the curated runtime closure.
 
 WDF archives are import sources and are not shipped.
 

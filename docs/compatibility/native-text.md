@@ -1540,7 +1540,7 @@ GFX-UI-001
 first native UI consumer
 ```
 
-The intended first UI consumer remains the verified status-hint panel.
+The intended first text-bearing UI consumer remains the verified status-hint panel.
 
 ## Conformance Boundary
 
