@@ -43,15 +43,15 @@ OpenConquer.Networking
 
 High-level ownership:
 
-| Project | Responsibility |
-| --- | --- |
-| `OpenConquer.Launcher` | launcher process, UI, diagnostics, installation/readiness state, display preferences, trusted installed-release transaction, future release acquisition and controlled launch orchestration |
-| `OpenConquer.Client` | game-runtime composition root, game-process lifetime, and client-specific UI/runtime semantics |
-| `OpenConquer.Platform` | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, and desktop input |
-| `OpenConquer.Gameplay` | game state and gameplay behavior |
-| `OpenConquer.Rendering` | OpenGL integration, logical rendering, presentation, GPU resources, rendering-facing text semantics, host font-resource discovery, and glyph rasterization |
-| `OpenConquer.Content` | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup |
-| `OpenConquer.Networking` | native-compatible game transport and protocol behavior when implemented |
+| Project                  | Responsibility                                                                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OpenConquer.Launcher`   | launcher process, UI, diagnostics, installation/readiness state, display preferences, trusted installed-release transaction, future release acquisition and controlled launch orchestration |
+| `OpenConquer.Client`     | game-runtime composition root, game-process lifetime, and client-specific UI/runtime semantics                                                                                              |
+| `OpenConquer.Platform`   | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, and desktop input                                                                                  |
+| `OpenConquer.Gameplay`   | game state and gameplay behavior                                                                                                                                                            |
+| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, presentation, GPU resources, rendering-facing text semantics, host font-resource discovery, and glyph rasterization                                  |
+| `OpenConquer.Content`    | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup                                                                                                            |
+| `OpenConquer.Networking` | native-compatible game transport and protocol behavior when implemented                                                                                                                     |
 
 The game runtime dependency direction is:
 
@@ -261,7 +261,7 @@ Detailed compatibility behavior belongs in
 
 `OpenConquer.Content` owns runtime content access and evidence-backed legacy format boundaries.
 
-The current verified retail runtime closure contains 19 files:
+The current verified retail runtime closure contains 18 files:
 
 ```text
 Data/Main/Logo1.bmp
@@ -288,7 +288,6 @@ data/main/mainDialog2.dds
 
 ini/GameSetUp.ini
 ini/info.ini
-ini/package.ini
 ```
 
 Current runtime consumers cover:
@@ -296,7 +295,6 @@ Current runtime consumers cover:
 ```text
 screen-mode configuration
 startup logos
-WDF package registration
 
 Progress45 HUD background
 Dialog4 HUD panels
@@ -322,6 +320,10 @@ runtime payload
 Production format support does not itself expand the runtime closure. Runtime content is added only
 when an implemented consumer requires the dependency and the corresponding compatibility behavior
 has been verified.
+
+Retail `ini/package.ini` is import configuration used to register WDF archives while resolving
+package-backed requirements from an authorized retail source. It is not part of the curated runtime
+closure.
 
 Retail WDF archives are source containers. Required package-backed entries are materialized into the
 curated content set and the archives themselves are not shipped.
@@ -437,11 +439,13 @@ When adding code:
 5. keep protocol behavior behind Networking;
 6. keep launcher product behavior inside Launcher;
 7. keep client-specific runtime semantics that coordinate subsystems inside Client;
-8. keep subsystem projects independent unless a concrete ownership requirement justifies a dependency;
+8. keep subsystem projects independent unless a concrete ownership requirement justifies a
+   dependency;
 9. do not create shared/common utility projects without a concrete ownership need;
 10. do not introduce speculative abstractions for future features;
 11. keep native and managed resource ownership and lifetime explicit;
-12. use authoritative host resource systems rather than guessed filesystem topology when platform APIs provide the required truth;
+12. use authoritative host resource systems rather than guessed filesystem topology when platform
+    APIs provide the required truth;
 13. treat tests and documentation as part of each completed work slice.
 
 A green build is necessary but not sufficient. Each slice must also be architecturally coherent,

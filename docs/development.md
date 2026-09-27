@@ -99,8 +99,7 @@ exact real-driver framebuffer comparison
 Graphics contracts and driver evidence are maintained in
 [`compatibility/native-graphics.md`](compatibility/native-graphics.md).
 
-Text contracts are maintained in
-[`compatibility/native-text.md`](compatibility/native-text.md).
+Text contracts are maintained in [`compatibility/native-text.md`](compatibility/native-text.md).
 
 ## Content
 
@@ -110,7 +109,7 @@ Runtime content:
 content/retail-5517/payload
 ```
 
-Current runtime closure: 19 files.
+Current runtime closure: 18 files.
 
 ```text
 Data/Main/Logo1.bmp
@@ -137,15 +136,18 @@ data/main/mainDialog2.dds
 
 ini/GameSetUp.ini
 ini/info.ini
-ini/package.ini
 ```
 
-Manifest source casing may differ from logical ANI casing when a loose retail file wins lookup. Current example:
+Manifest source casing may differ from logical ANI casing when a loose retail file wins lookup.
+Current example:
 
 ```text
 ANI path:    data/main/ProgressForce2A.dds
 source path: data/main/ProgressForce2a.dds
 ```
+
+Retail `ini/package.ini` remains import configuration for resolving WDF-backed requirements from an
+authorized retail source. It is not part of the curated runtime closure.
 
 Compatibility-only assets do not expand the runtime closure.
 
@@ -259,7 +261,8 @@ repair
 rollback
 ```
 
-Development signing keys, release sequence state, and coordination locks remain outside repository and product output.
+Development signing keys, release sequence state, and coordination locks remain outside repository
+and product output.
 
 ## Test Ownership
 
@@ -312,7 +315,8 @@ Release build
 tests
 ```
 
-Real-driver rendering conformance runs separately on supported desktop hardware with exact retail content.
+Real-driver rendering conformance runs separately on supported desktop hardware with exact retail
+content.
 
 GitHub Actions dependencies must remain pinned to immutable commit SHAs.
 

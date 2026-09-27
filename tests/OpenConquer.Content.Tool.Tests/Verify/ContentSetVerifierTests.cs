@@ -16,7 +16,7 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(19, manifest.FileCount);
+        Assert.Equal(18, manifest.FileCount);
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressHP.dds");
@@ -35,11 +35,11 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        File.Delete(Path.Combine(contentSet, "payload", "ini", "package.ini"));
+        File.Delete(Path.Combine(contentSet, "payload", "ini", "info.ini"));
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
 
-        Assert.Contains("ini/package.ini", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("ini/info.ini", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        File.AppendAllText(Path.Combine(contentSet, "payload", "ini", "package.ini"), "extra.wdf\n");
+        File.AppendAllText(Path.Combine(contentSet, "payload", "ini", "info.ini"), "\nextra\n");
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
 
@@ -121,11 +121,11 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        string packagePath = Path.Combine(contentSet, "payload", "ini", "package.ini");
-        byte[] bytes = File.ReadAllBytes(packagePath);
+        string infoPath = Path.Combine(contentSet, "payload", "ini", "info.ini");
+        byte[] bytes = File.ReadAllBytes(infoPath);
 
-        bytes[0] = (byte)'D';
-        File.WriteAllBytes(packagePath, bytes);
+        bytes[0] ^= 0x01;
+        File.WriteAllBytes(infoPath, bytes);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
 
@@ -177,7 +177,7 @@ public sealed class ContentSetVerifierTests
         string manifestPath = Path.Combine(contentSet, "manifest.json");
 
         File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 19", "\"fileCount\": 18", StringComparison.Ordinal),
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 18", "\"fileCount\": 17", StringComparison.Ordinal),
             Encoding.UTF8);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
@@ -194,7 +194,7 @@ public sealed class ContentSetVerifierTests
         string manifestPath = Path.Combine(contentSet, "manifest.json");
 
         File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"pathKey\": \"ini/package.ini\"", "\"pathKey\": \"ini/Package.ini\"", StringComparison.Ordinal),
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"pathKey\": \"ini/info.ini\"", "\"pathKey\": \"ini/Info.ini\"", StringComparison.Ordinal),
             Encoding.UTF8);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
@@ -211,7 +211,7 @@ public sealed class ContentSetVerifierTests
         string manifestPath = Path.Combine(contentSet, "manifest.json");
 
         File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"sourcePath\": \"ini/package.ini\"", "\"sourcePath\": \"../escape.ini\"", StringComparison.Ordinal),
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"sourcePath\": \"ini/info.ini\"", "\"sourcePath\": \"../escape.ini\"", StringComparison.Ordinal),
             Encoding.UTF8);
 
         Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));

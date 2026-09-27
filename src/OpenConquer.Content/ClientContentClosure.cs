@@ -28,7 +28,6 @@ public static class ClientContentClosure
         [
             new(GameSetupConfiguration.RelativePath, ContentLookupMode.LooseOnly),
             new(StartupLogoConfiguration.RelativePath, ContentLookupMode.LooseOnly),
-            new(PackagedClientContentSource.PackageConfigurationPath, ContentLookupMode.LooseOnly),
             new(ControlAniPath, ContentLookupMode.LooseOnly),
         ];
 

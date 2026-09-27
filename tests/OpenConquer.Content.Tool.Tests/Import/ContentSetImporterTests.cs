@@ -39,7 +39,6 @@ public sealed class ContentSetImporterTests
             "data/main/mainDialog1.dds",
             "ini/GameSetUp.ini",
             "ini/info.ini",
-            "ini/package.ini",
         ], manifest.Entries.Select(static entry => entry.SourcePath));
 
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data.wdf", StringComparison.OrdinalIgnoreCase));
@@ -151,7 +150,7 @@ public sealed class ContentSetImporterTests
         ContentManifestEntry progressBackground = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressBk.dds");
         ContentManifestEntry progressForce2Alternate = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressForce2a.dds");
 
-        Assert.Equal(19, manifest.FileCount);
+        Assert.Equal(18, manifest.FileCount);
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
         Assert.Equal(64, logo.Sha256.Length);

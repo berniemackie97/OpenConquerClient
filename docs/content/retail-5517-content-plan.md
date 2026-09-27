@@ -14,35 +14,36 @@ payload path keys
 
 Path-key comparison is case-insensitive. Manifest source paths preserve imported source casing.
 
-Retail assets enter the runtime set only when an implemented consumer requires them and the native dependency has been verified.
+Retail assets enter the runtime set only when an implemented consumer requires them and the native
+dependency has been verified.
 
 ## Runtime Closure
 
-Current closure: 19 files.
+Current closure: 18 files.
 
-| Path | Lookup |
-| --- | --- |
-| `Data/Main/Logo1.bmp` | `LooseOnly` |
-| `Data/Main/Logo2.bmp` | `LooseOnly` |
-| `ani/Control.ani` | `LooseOnly` |
-| `data/main/ProgressBk.dds` | `LooseThenPackage` |
-| `data/main/ProgressForce.dds` | `LooseThenPackage` |
-| `data/main/ProgressForce2.dds` | `LooseThenPackage` |
+| Path                            | Lookup             |
+| ------------------------------- | ------------------ |
+| `Data/Main/Logo1.bmp`           | `LooseOnly`        |
+| `Data/Main/Logo2.bmp`           | `LooseOnly`        |
+| `ani/Control.ani`               | `LooseOnly`        |
+| `data/main/ProgressBk.dds`      | `LooseThenPackage` |
+| `data/main/ProgressForce.dds`   | `LooseThenPackage` |
+| `data/main/ProgressForce2.dds`  | `LooseThenPackage` |
 | `data/main/ProgressForce2A.dds` | `LooseThenPackage` |
-| `data/main/ProgressForceA.dds` | `LooseThenPackage` |
-| `data/main/ProgressHP.dds` | `LooseThenPackage` |
-| `data/main/ProgressHPA.dds` | `LooseThenPackage` |
-| `data/main/ProgressHPH.dds` | `LooseThenPackage` |
-| `data/main/ProgressMP.dds` | `LooseThenPackage` |
-| `data/main/ProgressMPA.dds` | `LooseThenPackage` |
-| `data/main/ProgressMPH.dds` | `LooseThenPackage` |
-| `data/main/mainDialog1.dds` | `LooseThenPackage` |
-| `data/main/mainDialog2.dds` | `LooseThenPackage` |
-| `ini/GameSetUp.ini` | `LooseOnly` |
-| `ini/info.ini` | `LooseOnly` |
-| `ini/package.ini` | `LooseOnly` |
+| `data/main/ProgressForceA.dds`  | `LooseThenPackage` |
+| `data/main/ProgressHP.dds`      | `LooseThenPackage` |
+| `data/main/ProgressHPA.dds`     | `LooseThenPackage` |
+| `data/main/ProgressHPH.dds`     | `LooseThenPackage` |
+| `data/main/ProgressMP.dds`      | `LooseThenPackage` |
+| `data/main/ProgressMPA.dds`     | `LooseThenPackage` |
+| `data/main/ProgressMPH.dds`     | `LooseThenPackage` |
+| `data/main/mainDialog1.dds`     | `LooseThenPackage` |
+| `data/main/mainDialog2.dds`     | `LooseThenPackage` |
+| `ini/GameSetUp.ini`             | `LooseOnly`        |
+| `ini/info.ini`                  | `LooseOnly`        |
 
-The curated set contains exactly these resolved dependencies. WDF archives are not shipped.
+The curated set contains exactly these resolved dependencies. WDF archives and `ini/package.ini` are
+not shipped.
 
 ## HUD Dependency Chain
 
@@ -89,9 +90,11 @@ ProgressForce2.dds  → loose
 ProgressForce2A.dds → loose ProgressForce2a.dds
 ```
 
-The importer materializes selected bytes into the curated payload. Package provenance is not preserved after import.
+The importer materializes selected bytes into the curated payload. Package provenance is not
+preserved after import.
 
-All ANI-declared HUD frames in the closure are required, including frames not currently uploaded to the GPU.
+All ANI-declared HUD frames in the closure are required, including frames not currently uploaded to
+the GPU.
 
 ## Content Resolution
 
@@ -126,13 +129,17 @@ write deterministic manifest
 publish only after complete success
 ```
 
+The importer opens `ini/package.ini` from the authorized retail source to register WDF archives
+before resolving package-backed requirements. That file is import configuration, not a runtime
+dependency, and is not copied into the curated content set.
+
 The importer does not bulk-copy retail directories or archives.
 
 Failed imports leave no published partial set.
 
 ## WDF
 
-`ini/package.ini` defines package registration.
+Retail `ini/package.ini` defines package registration for import-time resolution.
 
 Verified compatibility rules:
 
@@ -146,7 +153,7 @@ hash full virtual path for entry UID
 read bounded WDF entry
 ```
 
-Runtime validation additionally requires:
+Import validation additionally requires:
 
 ```text
 bounded archive/index arithmetic
@@ -158,7 +165,11 @@ payload contained before index
 no host-path links or reparse traversal
 ```
 
-Missing or unusable declared packages remain non-fatal registrations where required by verified behavior.
+Missing or unusable declared packages remain non-fatal registrations where required by verified
+behavior.
+
+The curated runtime set contains the resolved asset bytes as loose files and therefore does not
+require `ini/package.ini` or the source WDF archives.
 
 ## ANI and Images
 
