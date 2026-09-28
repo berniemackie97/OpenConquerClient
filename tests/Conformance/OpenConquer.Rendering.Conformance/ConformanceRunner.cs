@@ -33,8 +33,9 @@ internal static class ConformanceRunner
             MainHudChromeConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudVitalsConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudSkillExperienceConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
+            MainHudOrganiseButtonConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
         });
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, solid rectangle, sprite rotation, native text, main HUD chrome, main HUD vitals, and main HUD skill/experience conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, solid rectangle, sprite rotation, native text, main HUD chrome, main HUD vitals, main HUD skill/experience, and main HUD organise-button conformance passed.");
     }
 }
