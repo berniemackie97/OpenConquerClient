@@ -16,11 +16,13 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(18, manifest.FileCount);
+        Assert.Equal(20, manifest.FileCount);
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressHP.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressMP.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressPower.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressPowerH.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForceA.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2.dds");
@@ -177,7 +179,7 @@ public sealed class ContentSetVerifierTests
         string manifestPath = Path.Combine(contentSet, "manifest.json");
 
         File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 18", "\"fileCount\": 17", StringComparison.Ordinal),
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 20", "\"fileCount\": 19", StringComparison.Ordinal),
             Encoding.UTF8);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));

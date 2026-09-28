@@ -24,6 +24,7 @@ internal static class ConformanceRunner
 
             SpriteColorConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
             SpriteBlendConformance.Run(graphicsDevice, framebufferSize);
+            SolidRectangleConformance.Run(graphicsDevice, framebufferSize);
             FireworkDxt3Conformance.Run(graphicsDevice, fireworkImage, framebufferSize);
             SpriteGeometryConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
             SpriteRepeatedSamplingConformance.Run(graphicsDevice, framebufferSize);
@@ -31,8 +32,9 @@ internal static class ConformanceRunner
             NativeTextConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudChromeConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudVitalsConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
+            MainHudSkillExperienceConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
         });
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, sprite rotation, native text, main HUD chrome, and main HUD vitals conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, solid rectangle, sprite rotation, native text, main HUD chrome, main HUD vitals, and main HUD skill/experience conformance passed.");
     }
 }

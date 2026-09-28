@@ -11,6 +11,7 @@ public static class ClientContentClosure
     private const string ControlAniPath = "ani/Control.ani";
     private const string LifeSectionName = "Progress40";
     private const string ManaSectionName = "Progress41";
+    private const string SkillSectionName = "Progress42";
     private const string ProgressSectionName = "Progress45";
     private const string StaminaSectionName = "Progress46";
     private const string ExtendedStaminaSectionName = "Progress47";
@@ -40,6 +41,7 @@ public static class ClientContentClosure
 
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(LifeSectionName), expectedFrameCount: 3);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(ManaSectionName), expectedFrameCount: 3);
+        AddFrameRequirements(requirements, controlAni.GetRequiredSection(SkillSectionName), expectedFrameCount: 3);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(ProgressSectionName), expectedFrameCount: 1);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(StaminaSectionName), expectedFrameCount: 2);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(ExtendedStaminaSectionName), expectedFrameCount: 2);
