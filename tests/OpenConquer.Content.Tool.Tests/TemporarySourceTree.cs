@@ -61,7 +61,7 @@ internal sealed class TemporarySourceTree : IDisposable
     /// </summary>
     /// <remarks>
     /// Control.ani is loose. ProgressBk, Dialog4 frame 0, HP, MP, Progress42, and Progress46 frames are package-backed.
-    /// Dialog4 frame 1, ProgressForce2, and ProgressForce2a are loose overrides/assets using verified retail casing behavior.
+    /// Dialog4 frame 1, ProgressForce2, ProgressForce2a, and Main3_OrganiseBtn frames are loose assets using verified retail casing behavior.
     /// Historical Server.dat is deliberately absent because it is not runtime content.
     /// </remarks>
     public void WriteStartupSnapshot(string backgroundFormat = "Data/Main/Logo%d.bmp")
@@ -112,13 +112,23 @@ internal sealed class TemporarySourceTree : IDisposable
                                      + "[Progress47]\n"
                                      + "FrameAmount=2\n"
                                      + "Frame0=data/main/ProgressForce2.dds\n"
-                                     + "Frame1=data/main/ProgressForce2A.dds\n");
+                                     + "Frame1=data/main/ProgressForce2A.dds\n"
+                                     + "[Main3_OrganiseBtn]\n"
+                                     + "FrameAmount=4\n"
+                                     + "Frame0=data/main/OrganiseBtnNormal.dds\n"
+                                     + "Frame1=data/main/OrganiseBtnClick.dds\n"
+                                     + "Frame2=data/main/OrganiseBtnUnClick.dds\n"
+                                     + "Frame3=data/main/OrganiseBtnEmboss.dds\n");
 
         WriteBytes("data/main/Logo1.bmp", TestBitmap.CreateTwoByTwo());
         WriteBytes("data/main/Logo2.bmp", TestBitmap.CreateTwoByTwo());
         WriteBytes("data/main/MainDialog2.dds", CreateSyntheticDds("MainDialog2 loose"));
         WriteBytes("data/main/ProgressForce2.dds", CreateSyntheticDds("ProgressForce2 loose"));
         WriteBytes("data/main/ProgressForce2a.dds", CreateSyntheticDds("ProgressForce2a loose"));
+        WriteBytes("data/main/OrganiseBtnNormal.dds", CreateSyntheticDds("OrganiseBtnNormal loose"));
+        WriteBytes("data/main/OrganiseBtnClick.dds", CreateSyntheticDds("OrganiseBtnClick loose"));
+        WriteBytes("data/main/OrganiseBtnUnClick.dds", CreateSyntheticDds("OrganiseBtnUnClick loose"));
+        WriteBytes("data/main/OrganiseBtnEmboss.dds", CreateSyntheticDds("OrganiseBtnEmboss loose"));
 
         WriteBytes("data.wdf", CreateWdf((ProgressBackgroundUid, progressBackground), (MainDialog1Uid, mainDialog1),
             (ProgressHpUid, progressHp), (ProgressHpAlternateUid, progressHpAlternate), (ProgressHpHighlightUid, progressHpHighlight),

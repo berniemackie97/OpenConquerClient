@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 20,
-  "length": 1791899,
+  "fileCount": 24,
+  "length": 1800603,
   "entries": [
     {
       "sourcePath": "ani/Control.Ani",
@@ -32,6 +32,34 @@
       "pathKey": "data/main/maindialog2.dds",
       "length": 32896,
       "sha256": "818d13f62509ac859fb0ed72d36ec6aeb2b12f9ed3dee3c6172171d99ba86f41",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/OrganiseBtnClick.dds",
+      "pathKey": "data/main/organisebtnclick.dds",
+      "length": 2176,
+      "sha256": "d6291032e2fc79aa6ca3a1715f32c2f3e73dc402b9fb927c9100dc7cae98b03a",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/OrganiseBtnEmboss.dds",
+      "pathKey": "data/main/organisebtnemboss.dds",
+      "length": 2176,
+      "sha256": "276d5d92563a4ae97825a0a2dafb7910788e2902c87ca7a96af2b2b7acdc2e16",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/OrganiseBtnNormal.dds",
+      "pathKey": "data/main/organisebtnnormal.dds",
+      "length": 2176,
+      "sha256": "0b4f52919c0506bf86881e4201859459128df5736552189737751118aa66b360",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/OrganiseBtnUnClick.dds",
+      "pathKey": "data/main/organisebtnunclick.dds",
+      "length": 2176,
+      "sha256": "f9382f214d194c56e320933d69d00a637621b015b757401e29e260dbc818aaa3",
       "signature": "dds"
     },
     {

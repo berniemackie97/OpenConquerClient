@@ -16,7 +16,7 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(20, manifest.FileCount);
+        Assert.Equal(24, manifest.FileCount);
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressHP.dds");
@@ -29,6 +29,10 @@ public sealed class ContentSetVerifierTests
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2a.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/mainDialog1.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainDialog2.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnNormal.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnClick.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnUnClick.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnEmboss.dds");
     }
 
     [Fact]
@@ -86,9 +90,9 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        const string omittedSourcePath = "data/main/ProgressHP.dds";
+        const string omittedSourcePath = "data/main/OrganiseBtnNormal.dds";
 
-        File.Delete(Path.Combine(contentSet, "payload", "data", "main", "ProgressHP.dds"));
+        File.Delete(Path.Combine(contentSet, "payload", "data", "main", "OrganiseBtnNormal.dds"));
 
         ContentManifest manifest = ReadManifest(contentSet);
 
@@ -179,7 +183,7 @@ public sealed class ContentSetVerifierTests
         string manifestPath = Path.Combine(contentSet, "manifest.json");
 
         File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 20", "\"fileCount\": 19", StringComparison.Ordinal),
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 24", "\"fileCount\": 23", StringComparison.Ordinal),
             Encoding.UTF8);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
