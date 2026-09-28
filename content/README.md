@@ -16,7 +16,7 @@ Content enters the runtime set only for an implemented, verified consumer.
 
 ## retail-5517
 
-Current runtime closure: 18 files.
+Current runtime closure: 20 files.
 
 ```text
 payload/
@@ -38,6 +38,8 @@ payload/
 │       ├── ProgressMP.dds
 │       ├── ProgressMPA.dds
 │       ├── ProgressMPH.dds
+│       ├── ProgressPower.dds
+│       ├── ProgressPowerH.dds
 │       └── mainDialog1.dds
 └── ini/
     ├── GameSetUp.ini
@@ -57,6 +59,7 @@ Dialog4 HUD panels
 
 Progress40 life
 Progress41 mana
+Progress42 skill
 Progress46 stamina
 Progress47 extended stamina
 ```

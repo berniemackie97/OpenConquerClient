@@ -22,11 +22,14 @@ internal sealed class ClientApplication : IDisposable
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
     private readonly MainHudVitalsState _mainHudVitalsState = new();
+    private readonly MainHudSkillExperienceState _mainHudSkillExperienceState = new();
 
     private MainHudChromeAssets? _mainHudChromeAssets;
     private MainHudVitalsAssets? _mainHudVitalsAssets;
+    private MainHudSkillAssets? _mainHudSkillAssets;
     private MainHudChromeRenderer? _mainHudChromeRenderer;
     private MainHudVitalsRenderer? _mainHudVitalsRenderer;
+    private MainHudSkillExperienceRenderer? _mainHudSkillExperienceRenderer;
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private DesktopWindow? _window;
@@ -105,8 +108,10 @@ internal sealed class ClientApplication : IDisposable
         finally
         {
             _window = null;
+            _mainHudSkillExperienceRenderer = null;
             _mainHudVitalsRenderer = null;
             _mainHudChromeRenderer = null;
+            _mainHudSkillAssets = null;
             _mainHudVitalsAssets = null;
             _mainHudChromeAssets = null;
             _renderer = null;
@@ -117,7 +122,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnOpenGLContextReady(IOpenGLContext context)
     {
-        if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null || _mainHudVitalsRenderer is not null)
+        if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null || _mainHudVitalsRenderer is not null || _mainHudSkillExperienceRenderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
@@ -126,6 +131,7 @@ internal sealed class ClientApplication : IDisposable
         OpenGLRenderer? renderer = null;
         MainHudChromeRenderer? mainHudChromeRenderer = null;
         MainHudVitalsRenderer? mainHudVitalsRenderer = null;
+        MainHudSkillExperienceRenderer? mainHudSkillExperienceRenderer = null;
 
         try
         {
@@ -133,19 +139,31 @@ internal sealed class ClientApplication : IDisposable
             LogicalRenderSize logicalRenderSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
             MainHudChromeAssets mainHudChromeAssets = _mainHudChromeAssets ?? throw new InvalidOperationException("The main HUD chrome assets have not been initialized.");
             MainHudVitalsAssets mainHudVitalsAssets = _mainHudVitalsAssets ?? throw new InvalidOperationException("The main HUD vitals assets have not been initialized.");
+            MainHudSkillAssets mainHudSkillAssets = _mainHudSkillAssets ?? throw new InvalidOperationException("The main HUD skill assets have not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
             renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
             mainHudChromeRenderer = new MainHudChromeRenderer(graphicsDevice, mainHudChromeAssets, logicalRenderSize);
             mainHudVitalsRenderer = new MainHudVitalsRenderer(graphicsDevice, mainHudVitalsAssets, logicalRenderSize);
+            mainHudSkillExperienceRenderer = new MainHudSkillExperienceRenderer(graphicsDevice, mainHudSkillAssets, logicalRenderSize);
 
             _renderer = renderer;
             _mainHudChromeRenderer = mainHudChromeRenderer;
             _mainHudVitalsRenderer = mainHudVitalsRenderer;
+            _mainHudSkillExperienceRenderer = mainHudSkillExperienceRenderer;
             _graphicsDevice = graphicsDevice;
         }
         catch
         {
+            try
+            {
+                mainHudSkillExperienceRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the renderer/context initialization failure.
+            }
+
             try
             {
                 mainHudVitalsRenderer?.Dispose();
@@ -213,6 +231,7 @@ internal sealed class ClientApplication : IDisposable
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
         _mainHudChromeAssets = MainHudChromeAssets.Load(contentSource);
         _mainHudVitalsAssets = MainHudVitalsAssets.Load(contentSource);
+        _mainHudSkillAssets = MainHudSkillAssets.Load(contentSource);
     }
 
     private void OnRendering(double elapsedSeconds)
@@ -233,9 +252,10 @@ internal sealed class ClientApplication : IDisposable
             _mainHudChromeRenderer?.DrawBackground(renderer);
             _mainHudVitalsRenderer?.Draw(renderer, _mainHudVitalsState);
 
-            if (_mainHudChromeRenderer is { } mainHudChromeRenderer)
+            if (_mainHudChromeRenderer is { } mainHudChromeRenderer && mainHudChromeRenderer.DrawPanels(renderer))
             {
-                _ = mainHudChromeRenderer.DrawPanels(renderer);
+                _mainHudSkillExperienceRenderer?.Draw(renderer, _mainHudSkillExperienceState);
+                _mainHudSkillExperienceState.AdvanceAfterHudDraw(unchecked((uint)Environment.TickCount64));
             }
         }
         catch (Exception exception)
@@ -262,11 +282,13 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReleaseRenderingResources()
     {
+        MainHudSkillExperienceRenderer? mainHudSkillExperienceRenderer = _mainHudSkillExperienceRenderer;
         MainHudVitalsRenderer? mainHudVitalsRenderer = _mainHudVitalsRenderer;
         MainHudChromeRenderer? mainHudChromeRenderer = _mainHudChromeRenderer;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
+        _mainHudSkillExperienceRenderer = null;
         _mainHudVitalsRenderer = null;
         _mainHudChromeRenderer = null;
         _renderer = null;
@@ -276,11 +298,20 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            mainHudVitalsRenderer?.Dispose();
+            mainHudSkillExperienceRenderer?.Dispose();
         }
         catch (Exception exception)
         {
             firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            mainHudVitalsRenderer?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
         try

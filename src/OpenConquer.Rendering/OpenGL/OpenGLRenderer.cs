@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using OpenConquer.Rendering.OpenGL.Primitives;
 using OpenConquer.Rendering.OpenGL.Resources;
 using OpenConquer.Rendering.OpenGL.Sprites;
 using OpenConquer.Rendering.OpenGL.Text;
@@ -16,6 +17,7 @@ public sealed class OpenGLRenderer : IDisposable
     private readonly LogicalRenderSize _logicalRenderSize;
     private readonly OpenGLRenderTarget _renderTarget;
     private readonly OpenGLSpriteRenderer _spriteRenderer;
+    private readonly OpenGLSolidRectangleRenderer _solidRectangleRenderer;
     private readonly OpenGLTextRenderer _textRenderer;
     private readonly PresentationPolicy _presentationPolicy;
 
@@ -38,28 +40,47 @@ public sealed class OpenGLRenderer : IDisposable
 
         OpenGLRenderTarget renderTarget = new(gl, logicalRenderSize.Width, logicalRenderSize.Height);
         OpenGLSpriteRenderer? spriteRenderer = null;
+        OpenGLSolidRectangleRenderer? solidRectangleRenderer = null;
+        OpenGLTextRenderer? textRenderer = null;
 
         try
         {
             spriteRenderer = new OpenGLSpriteRenderer(gl);
-            OpenGLTextRenderer textRenderer = new(gl);
+            solidRectangleRenderer = new OpenGLSolidRectangleRenderer(gl);
+            textRenderer = new OpenGLTextRenderer(gl);
 
             _renderTarget = renderTarget;
             _spriteRenderer = spriteRenderer;
+            _solidRectangleRenderer = solidRectangleRenderer;
             _textRenderer = textRenderer;
         }
         catch
         {
-            if (spriteRenderer is not null)
+            try
             {
-                try
-                {
-                    spriteRenderer.Dispose();
-                }
-                catch
-                {
-                    // Preserve the original renderer-resource creation failure.
-                }
+                textRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the original renderer-resource creation failure.
+            }
+
+            try
+            {
+                solidRectangleRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the original renderer-resource creation failure.
+            }
+
+            try
+            {
+                spriteRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the original renderer-resource creation failure.
             }
 
             try
@@ -171,6 +192,14 @@ public sealed class OpenGLRenderer : IDisposable
         _spriteRenderer.DrawRepeated(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceBounds, x, y, width, height);
     }
 
+    public void DrawSolidRectangle(int x, int y, int width, int height, SpriteColor color)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureFrameActiveForDrawing();
+
+        _solidRectangleRenderer.Draw(_logicalRenderSize.Width, _logicalRenderSize.Height, x, y, width, height, color);
+    }
+
     internal void DrawText(OpenGLTextResource resource, NativeTextLayout layout, NativeTextRenderOptions options, int x, int y)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -234,6 +263,15 @@ public sealed class OpenGLRenderer : IDisposable
         catch (Exception exception)
         {
             firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            _solidRectangleRenderer.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
         try

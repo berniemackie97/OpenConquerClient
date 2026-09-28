@@ -28,6 +28,8 @@ public sealed class ClientContentClosureTests
             new ClientContentRequirement("data/main/ProgressMP.dds", ContentLookupMode.LooseThenPackage),
             new ClientContentRequirement("data/main/ProgressMPA.dds", ContentLookupMode.LooseThenPackage),
             new ClientContentRequirement("data/main/ProgressMPH.dds", ContentLookupMode.LooseThenPackage),
+            new ClientContentRequirement("data/main/ProgressPower.dds", ContentLookupMode.LooseThenPackage),
+            new ClientContentRequirement("data/main/ProgressPowerH.dds", ContentLookupMode.LooseThenPackage),
             new ClientContentRequirement("data/main/mainDialog1.dds", ContentLookupMode.LooseThenPackage),
             new ClientContentRequirement("data/main/mainDialog2.dds", ContentLookupMode.LooseThenPackage),
             new ClientContentRequirement("ini/GameSetUp.ini", ContentLookupMode.LooseOnly),
@@ -69,6 +71,7 @@ public sealed class ClientContentClosureTests
     [Theory]
     [InlineData("Progress40")]
     [InlineData("Progress41")]
+    [InlineData("Progress42")]
     [InlineData("Progress45")]
     [InlineData("Progress46")]
     [InlineData("Progress47")]
@@ -87,6 +90,7 @@ public sealed class ClientContentClosureTests
     [Theory]
     [InlineData("Progress40", 2, 3)]
     [InlineData("Progress41", 2, 3)]
+    [InlineData("Progress42", 2, 3)]
     [InlineData("Progress45", 2, 1)]
     [InlineData("Progress46", 1, 2)]
     [InlineData("Progress47", 1, 2)]
@@ -121,6 +125,7 @@ public sealed class ClientContentClosureTests
         temporaryDirectory.WriteFile("ani/Control.ani",
             Section("Progress40", 3, ["data/main/ProgressHP.dds", "data/main/ProgressHPA.dds", "data/main/ProgressHPH.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
             + Section("Progress41", 3, ["data/main/ProgressMP.dds", "data/main/ProgressMPA.dds", "data/main/ProgressMPH.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Progress42", 3, ["data/main/ProgressPower.dds", "data/main/ProgressPower.dds", "data/main/ProgressPowerH.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
             + Section("Progress45", 1, ["data/main/ProgressBk.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
             + Section("Progress46", 2, ["data/main/ProgressForce.dds", "data/main/ProgressForceA.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
             + Section("Progress47", 2, ["data/main/ProgressForce2.dds", "data/main/ProgressForce2A.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)

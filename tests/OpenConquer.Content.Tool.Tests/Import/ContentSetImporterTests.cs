@@ -36,6 +36,8 @@ public sealed class ContentSetImporterTests
             "data/main/ProgressMP.dds",
             "data/main/ProgressMPA.dds",
             "data/main/ProgressMPH.dds",
+            "data/main/ProgressPower.dds",
+            "data/main/ProgressPowerH.dds",
             "data/main/mainDialog1.dds",
             "ini/GameSetUp.ini",
             "ini/info.ini",
@@ -71,6 +73,8 @@ public sealed class ContentSetImporterTests
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressMP.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressMPA.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressMPH.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressPower.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressPowerH.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForceA.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2.dds" && entry.Signature == "dds");
@@ -80,6 +84,8 @@ public sealed class ContentSetImporterTests
         Assert.Equal("DDS mainDialog1", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "mainDialog1.dds"))));
         Assert.Equal("DDS MainDialog2 loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "MainDialog2.dds"))));
         Assert.Equal("DDS ProgressHP", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressHP.dds"))));
+        Assert.Equal("DDS ProgressPower", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressPower.dds"))));
+        Assert.Equal("DDS ProgressPowerH", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressPowerH.dds"))));
         Assert.Equal("DDS ProgressForceA", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressForceA.dds"))));
         Assert.Equal("DDS ProgressForce2 loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressForce2.dds"))));
         Assert.Equal("DDS ProgressForce2a loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressForce2a.dds"))));
@@ -103,6 +109,8 @@ public sealed class ContentSetImporterTests
         Assert.DoesNotContain("data/main/Logo1.bmp", manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.Contains("data/main/ProgressBk.dds", manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.Contains("data/main/ProgressHP.dds", manifest.Entries.Select(static entry => entry.SourcePath));
+        Assert.Contains("data/main/ProgressPower.dds", manifest.Entries.Select(static entry => entry.SourcePath));
+        Assert.Contains("data/main/ProgressPowerH.dds", manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.Contains("data/main/ProgressForce2a.dds", manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.Contains("data/main/MainDialog2.dds", manifest.Entries.Select(static entry => entry.SourcePath));
     }
@@ -148,9 +156,11 @@ public sealed class ContentSetImporterTests
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"));
         ContentManifestEntry logo = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/Logo1.bmp");
         ContentManifestEntry progressBackground = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressBk.dds");
+        ContentManifestEntry progressPower = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressPower.dds");
+        ContentManifestEntry progressPowerHighlight = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressPowerH.dds");
         ContentManifestEntry progressForce2Alternate = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressForce2a.dds");
 
-        Assert.Equal(18, manifest.FileCount);
+        Assert.Equal(20, manifest.FileCount);
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
         Assert.Equal(64, logo.Sha256.Length);
@@ -159,6 +169,14 @@ public sealed class ContentSetImporterTests
         Assert.Equal("dds", progressBackground.Signature);
         Assert.Equal("data/main/progressbk.dds", progressBackground.PathKey);
         Assert.Equal(64, progressBackground.Sha256.Length);
+
+        Assert.Equal("dds", progressPower.Signature);
+        Assert.Equal("data/main/progresspower.dds", progressPower.PathKey);
+        Assert.Equal(64, progressPower.Sha256.Length);
+
+        Assert.Equal("dds", progressPowerHighlight.Signature);
+        Assert.Equal("data/main/progresspowerh.dds", progressPowerHighlight.PathKey);
+        Assert.Equal(64, progressPowerHighlight.Sha256.Length);
 
         Assert.Equal("dds", progressForce2Alternate.Signature);
         Assert.Equal("data/main/progressforce2a.dds", progressForce2Alternate.PathKey);

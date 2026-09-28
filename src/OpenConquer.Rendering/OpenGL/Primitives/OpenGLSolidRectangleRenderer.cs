@@ -47,7 +47,7 @@ internal sealed unsafe class OpenGLSolidRectangleRenderer : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetWidth);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(targetHeight);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegative(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
         long rightPixel = (long)x + width;

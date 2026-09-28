@@ -16,6 +16,8 @@ internal sealed class TemporarySourceTree : IDisposable
     private const uint ProgressMpUid = 0xF4284E3C;
     private const uint ProgressMpAlternateUid = 0xAE67606C;
     private const uint ProgressMpHighlightUid = 0xA5D8EB93;
+    private const uint ProgressPowerUid = 0x3BEA48E0;
+    private const uint ProgressPowerHighlightUid = 0x9B8E4823;
     private const uint ProgressForceUid = 0xF29FAED2;
     private const uint ProgressForceAlternateUid = 0xC3DAFD40;
 
@@ -58,7 +60,7 @@ internal sealed class TemporarySourceTree : IDisposable
     /// Writes a synthetic retail-shaped source containing every dependency in the implemented runtime content closure.
     /// </summary>
     /// <remarks>
-    /// Control.ani is loose. ProgressBk, Dialog4 frame 0, HP, MP, and Progress46 frames are package-backed.
+    /// Control.ani is loose. ProgressBk, Dialog4 frame 0, HP, MP, Progress42, and Progress46 frames are package-backed.
     /// Dialog4 frame 1, ProgressForce2, and ProgressForce2a are loose overrides/assets using verified retail casing behavior.
     /// Historical Server.dat is deliberately absent because it is not runtime content.
     /// </remarks>
@@ -72,6 +74,8 @@ internal sealed class TemporarySourceTree : IDisposable
         byte[] progressMp = CreateSyntheticDds("ProgressMP");
         byte[] progressMpAlternate = CreateSyntheticDds("ProgressMPA");
         byte[] progressMpHighlight = CreateSyntheticDds("ProgressMPH");
+        byte[] progressPower = CreateSyntheticDds("ProgressPower");
+        byte[] progressPowerHighlight = CreateSyntheticDds("ProgressPowerH");
         byte[] progressForce = CreateSyntheticDds("ProgressForce");
         byte[] progressForceAlternate = CreateSyntheticDds("ProgressForceA");
 
@@ -93,6 +97,11 @@ internal sealed class TemporarySourceTree : IDisposable
                                      + "Frame0=data/main/ProgressMP.dds\n"
                                      + "Frame1=data/main/ProgressMPA.dds\n"
                                      + "Frame2=data/main/ProgressMPH.dds\n"
+                                     + "[Progress42]\n"
+                                     + "FrameAmount=3\n"
+                                     + "Frame0=data/main/ProgressPower.dds\n"
+                                     + "Frame1=data/main/ProgressPower.dds\n"
+                                     + "Frame2=data/main/ProgressPowerH.dds\n"
                                      + "[Progress45]\n"
                                      + "FrameAmount=1\n"
                                      + "Frame0=data/main/ProgressBk.dds\n"
@@ -114,6 +123,7 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteBytes("data.wdf", CreateWdf((ProgressBackgroundUid, progressBackground), (MainDialog1Uid, mainDialog1),
             (ProgressHpUid, progressHp), (ProgressHpAlternateUid, progressHpAlternate), (ProgressHpHighlightUid, progressHpHighlight),
             (ProgressMpUid, progressMp), (ProgressMpAlternateUid, progressMpAlternate), (ProgressMpHighlightUid, progressMpHighlight),
+            (ProgressPowerUid, progressPower), (ProgressPowerHighlightUid, progressPowerHighlight),
             (ProgressForceUid, progressForce), (ProgressForceAlternateUid, progressForceAlternate)));
     }
 
