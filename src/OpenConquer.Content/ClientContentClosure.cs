@@ -16,6 +16,7 @@ public static class ClientContentClosure
     private const string StaminaSectionName = "Progress46";
     private const string ExtendedStaminaSectionName = "Progress47";
     private const string DialogSectionName = "Dialog4";
+    private const string OrganiseButtonSectionName = "Main3_OrganiseBtn";
 
     private static readonly int[] s_startupLogoVariantIndexes = [1, 2];
 
@@ -46,6 +47,7 @@ public static class ClientContentClosure
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(StaminaSectionName), expectedFrameCount: 2);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(ExtendedStaminaSectionName), expectedFrameCount: 2);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(DialogSectionName), expectedFrameCount: 2);
+        AddFrameRequirements(requirements, controlAni.GetRequiredSection(OrganiseButtonSectionName), expectedFrameCount: 4);
 
         return Normalize(requirements);
     }

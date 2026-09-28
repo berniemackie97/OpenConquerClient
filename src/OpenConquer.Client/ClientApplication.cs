@@ -23,13 +23,17 @@ internal sealed class ClientApplication : IDisposable
     private readonly PixelSize _windowSize;
     private readonly MainHudVitalsState _mainHudVitalsState = new();
     private readonly MainHudSkillExperienceState _mainHudSkillExperienceState = new();
+    private readonly MainHudOrganiseButtonState _mainHudOrganiseButtonState = new();
 
     private MainHudChromeAssets? _mainHudChromeAssets;
     private MainHudVitalsAssets? _mainHudVitalsAssets;
     private MainHudSkillAssets? _mainHudSkillAssets;
+    private MainHudOrganiseButtonAssets? _mainHudOrganiseButtonAssets;
     private MainHudChromeRenderer? _mainHudChromeRenderer;
     private MainHudVitalsRenderer? _mainHudVitalsRenderer;
     private MainHudSkillExperienceRenderer? _mainHudSkillExperienceRenderer;
+    private MainHudOrganiseButtonRenderer? _mainHudOrganiseButtonRenderer;
+    private MainHudOrganiseButtonLayout? _mainHudOrganiseButtonLayout;
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private DesktopWindow? _window;
@@ -83,6 +87,9 @@ internal sealed class ClientApplication : IDisposable
         _window = window;
 
         window.FramebufferResized += OnFramebufferResized;
+        window.PointerMoved += OnPointerMoved;
+        window.PrimaryPointerPressed += OnPrimaryPointerPressed;
+        window.PrimaryPointerReleased += OnPrimaryPointerReleased;
         window.Rendering += OnRendering;
         window.OpenGLContextReady += OnOpenGLContextReady;
         window.OpenGLContextReleasing += OnOpenGLContextReleasing;
@@ -108,9 +115,12 @@ internal sealed class ClientApplication : IDisposable
         finally
         {
             _window = null;
+            _mainHudOrganiseButtonRenderer = null;
             _mainHudSkillExperienceRenderer = null;
             _mainHudVitalsRenderer = null;
             _mainHudChromeRenderer = null;
+            _mainHudOrganiseButtonLayout = null;
+            _mainHudOrganiseButtonAssets = null;
             _mainHudSkillAssets = null;
             _mainHudVitalsAssets = null;
             _mainHudChromeAssets = null;
@@ -122,7 +132,12 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnOpenGLContextReady(IOpenGLContext context)
     {
-        if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null || _mainHudVitalsRenderer is not null || _mainHudSkillExperienceRenderer is not null)
+        if (_graphicsDevice is not null ||
+            _renderer is not null ||
+            _mainHudChromeRenderer is not null ||
+            _mainHudVitalsRenderer is not null ||
+            _mainHudSkillExperienceRenderer is not null ||
+            _mainHudOrganiseButtonRenderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
@@ -132,6 +147,7 @@ internal sealed class ClientApplication : IDisposable
         MainHudChromeRenderer? mainHudChromeRenderer = null;
         MainHudVitalsRenderer? mainHudVitalsRenderer = null;
         MainHudSkillExperienceRenderer? mainHudSkillExperienceRenderer = null;
+        MainHudOrganiseButtonRenderer? mainHudOrganiseButtonRenderer = null;
 
         try
         {
@@ -140,21 +156,33 @@ internal sealed class ClientApplication : IDisposable
             MainHudChromeAssets mainHudChromeAssets = _mainHudChromeAssets ?? throw new InvalidOperationException("The main HUD chrome assets have not been initialized.");
             MainHudVitalsAssets mainHudVitalsAssets = _mainHudVitalsAssets ?? throw new InvalidOperationException("The main HUD vitals assets have not been initialized.");
             MainHudSkillAssets mainHudSkillAssets = _mainHudSkillAssets ?? throw new InvalidOperationException("The main HUD skill assets have not been initialized.");
+            MainHudOrganiseButtonAssets mainHudOrganiseButtonAssets = _mainHudOrganiseButtonAssets ?? throw new InvalidOperationException("The main HUD organise-button assets have not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
             renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
             mainHudChromeRenderer = new MainHudChromeRenderer(graphicsDevice, mainHudChromeAssets, logicalRenderSize);
             mainHudVitalsRenderer = new MainHudVitalsRenderer(graphicsDevice, mainHudVitalsAssets, logicalRenderSize);
             mainHudSkillExperienceRenderer = new MainHudSkillExperienceRenderer(graphicsDevice, mainHudSkillAssets, logicalRenderSize);
+            mainHudOrganiseButtonRenderer = new MainHudOrganiseButtonRenderer(graphicsDevice, mainHudOrganiseButtonAssets, logicalRenderSize);
 
             _renderer = renderer;
             _mainHudChromeRenderer = mainHudChromeRenderer;
             _mainHudVitalsRenderer = mainHudVitalsRenderer;
             _mainHudSkillExperienceRenderer = mainHudSkillExperienceRenderer;
+            _mainHudOrganiseButtonRenderer = mainHudOrganiseButtonRenderer;
             _graphicsDevice = graphicsDevice;
         }
         catch
         {
+            try
+            {
+                mainHudOrganiseButtonRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the renderer/context initialization failure.
+            }
+
             try
             {
                 mainHudSkillExperienceRenderer?.Dispose();
@@ -209,6 +237,72 @@ internal sealed class ClientApplication : IDisposable
         _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
     }
 
+    private void OnPointerMoved(PixelPoint point)
+    {
+        if (!CanInteractWithOrganiseButton() || _mainHudOrganiseButtonLayout is not { } layout)
+        {
+            return;
+        }
+
+        if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
+        {
+            _mainHudOrganiseButtonState.HandlePointerMoved(logicalX, logicalY, layout);
+        }
+        else
+        {
+            _mainHudOrganiseButtonState.HandlePointerMoved(-1, -1, layout);
+        }
+    }
+
+    private void OnPrimaryPointerPressed(PixelPoint point)
+    {
+        if (!CanInteractWithOrganiseButton() ||
+            _mainHudOrganiseButtonLayout is not { } layout ||
+            !TryMapPointerToLogical(point, out int logicalX, out int logicalY))
+        {
+            return;
+        }
+
+        _mainHudOrganiseButtonState.HandleLeftButtonDown(logicalX, logicalY, layout);
+    }
+
+    private void OnPrimaryPointerReleased(PixelPoint point)
+    {
+        if (!CanInteractWithOrganiseButton() || _mainHudOrganiseButtonLayout is not { } layout)
+        {
+            return;
+        }
+
+        if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
+        {
+            _mainHudOrganiseButtonState.HandleLeftButtonUp(logicalX, logicalY, layout, out _);
+        }
+        else
+        {
+            _mainHudOrganiseButtonState.HandleLeftButtonUp(-1, -1, layout, out _);
+        }
+    }
+
+    private bool TryMapPointerToLogical(PixelPoint point, out int logicalX, out int logicalY)
+    {
+        OpenGLRenderer? renderer = _renderer;
+
+        if (renderer is null)
+        {
+            logicalX = 0;
+            logicalY = 0;
+            return false;
+        }
+
+        return renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out logicalX, out logicalY);
+    }
+
+    private bool CanInteractWithOrganiseButton()
+    {
+        return _mainHudChromeAssets?.HasDialogPanels == true &&
+            _mainHudOrganiseButtonAssets?.IsAvailable == true;
+    }
+
     private static void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
     {
         foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
@@ -227,11 +321,14 @@ internal sealed class ClientApplication : IDisposable
         ArgumentNullException.ThrowIfNull(contentSource);
 
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
+        LogicalRenderSize logicalRenderSize = new(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
 
-        _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
+        _logicalRenderSize = logicalRenderSize;
         _mainHudChromeAssets = MainHudChromeAssets.Load(contentSource);
         _mainHudVitalsAssets = MainHudVitalsAssets.Load(contentSource);
         _mainHudSkillAssets = MainHudSkillAssets.Load(contentSource);
+        _mainHudOrganiseButtonAssets = MainHudOrganiseButtonAssets.Load(contentSource);
+        _mainHudOrganiseButtonLayout = MainHudOrganiseButtonLayout.Create(logicalRenderSize);
     }
 
     private void OnRendering(double elapsedSeconds)
@@ -255,6 +352,7 @@ internal sealed class ClientApplication : IDisposable
             if (_mainHudChromeRenderer is { } mainHudChromeRenderer && mainHudChromeRenderer.DrawPanels(renderer))
             {
                 _mainHudSkillExperienceRenderer?.Draw(renderer, _mainHudSkillExperienceState);
+                _mainHudOrganiseButtonRenderer?.Draw(renderer, _mainHudOrganiseButtonState);
                 _mainHudSkillExperienceState.AdvanceAfterHudDraw(unchecked((uint)Environment.TickCount64));
             }
         }
@@ -282,12 +380,14 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReleaseRenderingResources()
     {
+        MainHudOrganiseButtonRenderer? mainHudOrganiseButtonRenderer = _mainHudOrganiseButtonRenderer;
         MainHudSkillExperienceRenderer? mainHudSkillExperienceRenderer = _mainHudSkillExperienceRenderer;
         MainHudVitalsRenderer? mainHudVitalsRenderer = _mainHudVitalsRenderer;
         MainHudChromeRenderer? mainHudChromeRenderer = _mainHudChromeRenderer;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
+        _mainHudOrganiseButtonRenderer = null;
         _mainHudSkillExperienceRenderer = null;
         _mainHudVitalsRenderer = null;
         _mainHudChromeRenderer = null;
@@ -298,11 +398,20 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            mainHudSkillExperienceRenderer?.Dispose();
+            mainHudOrganiseButtonRenderer?.Dispose();
         }
         catch (Exception exception)
         {
             firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            mainHudSkillExperienceRenderer?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
         try

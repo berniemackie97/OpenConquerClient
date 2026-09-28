@@ -17,6 +17,10 @@ public sealed class ClientContentClosureTests
             new ClientContentRequirement("Data/Main/Logo1.bmp", ContentLookupMode.LooseOnly),
             new ClientContentRequirement("Data/Main/Logo2.bmp", ContentLookupMode.LooseOnly),
             new ClientContentRequirement("ani/Control.ani", ContentLookupMode.LooseOnly),
+            new ClientContentRequirement("data/main/OrganiseBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new ClientContentRequirement("data/main/OrganiseBtnEmboss.dds", ContentLookupMode.LooseThenPackage),
+            new ClientContentRequirement("data/main/OrganiseBtnNormal.dds", ContentLookupMode.LooseThenPackage),
+            new ClientContentRequirement("data/main/OrganiseBtnUnClick.dds", ContentLookupMode.LooseThenPackage),
             new ClientContentRequirement("data/main/ProgressBk.dds", ContentLookupMode.LooseThenPackage),
             new ClientContentRequirement("data/main/ProgressForce.dds", ContentLookupMode.LooseThenPackage),
             new ClientContentRequirement("data/main/ProgressForce2.dds", ContentLookupMode.LooseThenPackage),
@@ -76,6 +80,7 @@ public sealed class ClientContentClosureTests
     [InlineData("Progress46")]
     [InlineData("Progress47")]
     [InlineData("Dialog4")]
+    [InlineData("Main3_OrganiseBtn")]
     public void Resolve_RequiresEveryVerifiedHudSectionForTheShippedClosure(string omittedSectionName)
     {
         using TemporaryContentDirectory temporaryDirectory = new();
@@ -95,6 +100,7 @@ public sealed class ClientContentClosureTests
     [InlineData("Progress46", 1, 2)]
     [InlineData("Progress47", 1, 2)]
     [InlineData("Dialog4", 1, 2)]
+    [InlineData("Main3_OrganiseBtn", 3, 4)]
     public void Resolve_RejectsUnexpectedVerifiedHudFrameCounts(string sectionName, int actualFrameCount, int expectedFrameCount)
     {
         using TemporaryContentDirectory temporaryDirectory = new();
@@ -120,6 +126,21 @@ public sealed class ClientContentClosureTests
         Assert.Contains(new ClientContentRequirement("data/main/ProgressForce2A.dds", ContentLookupMode.LooseThenPackage), closure);
     }
 
+    [Fact]
+    public void Resolve_IncludesAllNativeOrganiseButtonFrames()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        WriteVerifiedControlAni(temporaryDirectory);
+
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+
+        Assert.Contains(new ClientContentRequirement("data/main/OrganiseBtnNormal.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/OrganiseBtnClick.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/OrganiseBtnUnClick.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/OrganiseBtnEmboss.dds", ContentLookupMode.LooseThenPackage), closure);
+    }
+
     private static void WriteVerifiedControlAni(TemporaryContentDirectory temporaryDirectory, string? omittedSectionName = null, string? overriddenSectionName = null, int overriddenFrameCount = -1)
     {
         temporaryDirectory.WriteFile("ani/Control.ani",
@@ -129,7 +150,8 @@ public sealed class ClientContentClosureTests
             + Section("Progress45", 1, ["data/main/ProgressBk.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
             + Section("Progress46", 2, ["data/main/ProgressForce.dds", "data/main/ProgressForceA.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
             + Section("Progress47", 2, ["data/main/ProgressForce2.dds", "data/main/ProgressForce2A.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
-            + Section("Dialog4", 2, ["data/main/mainDialog1.dds", "data/main/mainDialog2.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount));
+            + Section("Dialog4", 2, ["data/main/mainDialog1.dds", "data/main/mainDialog2.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Main3_OrganiseBtn", 4, ["data/main/OrganiseBtnNormal.dds", "data/main/OrganiseBtnClick.dds", "data/main/OrganiseBtnUnClick.dds", "data/main/OrganiseBtnEmboss.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount));
     }
 
     private static string Section(string sectionName, int verifiedFrameCount, string[] framePaths, string? omittedSectionName, string? overriddenSectionName, int overriddenFrameCount)

@@ -52,6 +52,8 @@ public sealed class DesktopWindow : IDisposable
 
     public event Action<PixelSize>? FramebufferResized;
     public event Action<PixelPoint>? PointerMoved;
+    public event Action<PixelPoint>? PrimaryPointerPressed;
+    public event Action<PixelPoint>? PrimaryPointerReleased;
     public event Action<double>? Rendering;
     public event Action<IOpenGLContext>? OpenGLContextReady;
     public event Action? OpenGLContextReleasing;
@@ -183,6 +185,11 @@ public sealed class DesktopWindow : IDisposable
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(windowSize.Width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(windowSize.Height);
 
+        if (!Enum.IsDefined(windowMode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(windowMode), windowMode, "Unsupported desktop window mode.");
+        }
+
         (WindowState windowState, WindowBorder windowBorder) = windowMode switch
         {
             DesktopWindowMode.Resizable => (WindowState.Normal, WindowBorder.Resizable),
@@ -251,6 +258,8 @@ public sealed class DesktopWindow : IDisposable
 
             IMouse mouse = inputContext.Mice[0];
             mouse.MouseMove += OnMouseMove;
+            mouse.MouseDown += OnMouseDown;
+            mouse.MouseUp += OnMouseUp;
 
             _mouse = mouse;
             _inputContext = inputContext;
@@ -315,17 +324,47 @@ public sealed class DesktopWindow : IDisposable
         OpenGLContextReady?.Invoke(openGLContext);
     }
 
-    private void OnMouseMove(IMouse _, Vector2 position)
+    private void OnMouseMove(IMouse mouse, Vector2 position)
     {
-        Vector2D<int> windowSize = _window.Size;
-        Vector2D<int> framebufferSize = _window.FramebufferSize;
+        if (TryMapPointerToFramebuffer(position, out PixelPoint framebufferPoint))
+        {
+            PointerMoved?.Invoke(framebufferPoint);
+        }
+    }
 
-        if (!TryMapWindowPointToFramebuffer(position.X, position.Y, windowSize.X, windowSize.Y, framebufferSize.X, framebufferSize.Y, out PixelPoint framebufferPoint))
+    private void OnMouseDown(IMouse mouse, MouseButton button)
+    {
+        if (button != MouseButton.Left || !TryMapPointerToFramebuffer(mouse.Position, out PixelPoint framebufferPoint))
         {
             return;
         }
 
-        PointerMoved?.Invoke(framebufferPoint);
+        PrimaryPointerPressed?.Invoke(framebufferPoint);
+    }
+
+    private void OnMouseUp(IMouse mouse, MouseButton button)
+    {
+        if (button != MouseButton.Left || !TryMapPointerToFramebuffer(mouse.Position, out PixelPoint framebufferPoint))
+        {
+            return;
+        }
+
+        PrimaryPointerReleased?.Invoke(framebufferPoint);
+    }
+
+    private bool TryMapPointerToFramebuffer(Vector2 position, out PixelPoint framebufferPoint)
+    {
+        Vector2D<int> windowSize = _window.Size;
+        Vector2D<int> framebufferSize = _window.FramebufferSize;
+
+        return TryMapWindowPointToFramebuffer(
+            position.X,
+            position.Y,
+            windowSize.X,
+            windowSize.Y,
+            framebufferSize.X,
+            framebufferSize.Y,
+            out framebufferPoint);
     }
 
     private void OnFramebufferResize(Vector2D<int> size)
@@ -385,6 +424,8 @@ public sealed class DesktopWindow : IDisposable
             try
             {
                 mouse.MouseMove -= OnMouseMove;
+                mouse.MouseDown -= OnMouseDown;
+                mouse.MouseUp -= OnMouseUp;
             }
             catch (Exception exception)
             {
