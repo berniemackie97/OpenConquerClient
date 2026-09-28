@@ -344,9 +344,14 @@ public sealed class DesktopWindow : IDisposable
 
     private void OnMouseUp(IMouse mouse, MouseButton button)
     {
-        if (button != MouseButton.Left || !TryMapPointerToFramebuffer(mouse.Position, out PixelPoint framebufferPoint))
+        if (button != MouseButton.Left)
         {
             return;
+        }
+
+        if (!TryMapPointerToFramebuffer(mouse.Position, out PixelPoint framebufferPoint))
+        {
+            framebufferPoint = new PixelPoint(-1, -1);
         }
 
         PrimaryPointerReleased?.Invoke(framebufferPoint);
