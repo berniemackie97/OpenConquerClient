@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using OpenConquer.Client.UI.Hud;
 using OpenConquer.Content;
 using OpenConquer.Platform.Geometry;
@@ -297,31 +298,24 @@ internal static class MainHudSkillExperienceConformance
                 return;
             }
 
-            Exception? firstFailure = null;
+            ExceptionDispatchInfo? firstFailure = null;
 
-            try
-            {
-                SkillFrame2.Dispose();
-            }
-            catch (Exception exception)
-            {
-                firstFailure = exception;
-            }
-
-            try
-            {
-                SkillFrame0.Dispose();
-            }
-            catch (Exception exception)
-            {
-                firstFailure ??= exception;
-            }
+            DisposeTexture(SkillFrame2, ref firstFailure);
+            DisposeTexture(SkillFrame0, ref firstFailure);
 
             _disposed = true;
+            firstFailure?.Throw();
+        }
 
-            if (firstFailure is not null)
+        private static void DisposeTexture(OpenGLTexture2D texture, ref ExceptionDispatchInfo? firstFailure)
+        {
+            try
             {
-                throw firstFailure;
+                texture.Dispose();
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
             }
         }
 
