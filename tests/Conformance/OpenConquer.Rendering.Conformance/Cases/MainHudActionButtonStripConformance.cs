@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using OpenConquer.Client.UI.Hud;
 using OpenConquer.Content;
 using OpenConquer.Platform.Geometry;
@@ -362,7 +363,7 @@ internal static class MainHudActionButtonStripConformance
                 return;
             }
 
-            Exception? firstFailure = null;
+            ExceptionDispatchInfo? firstFailure = null;
 
             for (int index = _ownedTextures.Count - 1; index >= 0; index--)
             {
@@ -370,14 +371,11 @@ internal static class MainHudActionButtonStripConformance
                 {
                     _ownedTextures[index].Dispose();
                 }
-                catch (Exception exception) { firstFailure ??= exception; }
+                catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
             }
 
             _disposed = true;
-            if (firstFailure is not null)
-            {
-                throw firstFailure;
-            }
+            firstFailure?.Throw();
         }
 
         private void DisposeCreatedTextures()

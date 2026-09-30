@@ -11,7 +11,7 @@ C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for Window
 | Product | Implemented | Remaining |
 | --- | --- | --- |
 | Launcher | Managed installation resolution, authenticated releases, integrity verification, update/repair/rollback transaction, single-instance activation, saved display preferences | Production release origin, launcher self-update, player-facing maintenance flow, controlled client startup |
-| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina HUD vitals | Live gameplay state, networking, remaining HUD/UI, maps, roles, effects, animation |
+| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina vitals, skill/experience HUD, native 10-button action strip with pointer interaction and PK/Organise animation state | Live gameplay state, action-button side effects, remaining HUD/UI, networking, maps, roles, effects, animation |
 
 ## Architecture
 
@@ -127,13 +127,16 @@ logical rendering
 content paths and lookup behavior
 sprite behavior
 HUD geometry and ordering
+native UI state and input behavior
 ```
 
 Do not preserve obsolete implementation machinery when observable behavior can be reproduced safely.
 
 ### Runtime Content
 
-The managed runtime closure currently contains 19 files:
+The managed runtime closure currently contains 50 files totaling 1,857,179 bytes.
+
+It covers:
 
 ```text
 startup configuration
@@ -145,8 +148,14 @@ Dialog4 HUD panels
 
 Progress40 life frames
 Progress41 mana frames
+Progress42 skill frames
 Progress46 stamina frames
 Progress47 extended-stamina frames
+
+10-button main-HUD action strip
+Mission button frames
+Organise button frames
+four PK button skins
 ```
 
 Required invariant:
@@ -176,7 +185,29 @@ Progress41 mana
 Progress46 stamina
 Progress47 extended stamina
 Dialog4 panels
+Progress42 skill / experience
+main action-button strip
 ```
+
+The action strip currently reconstructs the native visual, state, timing, hit-test, capture, and release behavior of its ten `CMyButton` controls.
+
+Implemented action-strip behavior includes:
+
+```text
+native control IDs and draw order
+46×22 logical hit rectangles
+64×32 natural-size button sprites
+ANI frame modulo behavior
+enabled / pressed / disabled frame state
+single-control pointer capture
+inside-release activation
+outside-release cancellation
+PK skin selection
+PK timed blinking
+Organise timed blinking
+```
+
+Action-button activation results are not yet connected to downstream gameplay dialogs, networking, or other feature behavior. Those dependencies are implemented only after their own native contracts are verified.
 
 Remaining HUD groups are implemented only after native behavior and dependencies are verified.
 

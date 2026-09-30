@@ -19,28 +19,60 @@ dependency has been verified.
 
 ## Runtime Closure
 
-Current closure: 18 files.
+Current closure: 50 files totaling 1,857,179 bytes.
 
-| Path                            | Lookup             |
-| ------------------------------- | ------------------ |
-| `Data/Main/Logo1.bmp`           | `LooseOnly`        |
-| `Data/Main/Logo2.bmp`           | `LooseOnly`        |
-| `ani/Control.ani`               | `LooseOnly`        |
-| `data/main/ProgressBk.dds`      | `LooseThenPackage` |
-| `data/main/ProgressForce.dds`   | `LooseThenPackage` |
-| `data/main/ProgressForce2.dds`  | `LooseThenPackage` |
+| Path | Lookup |
+| --- | --- |
+| `Data/Main/Logo1.bmp` | `LooseOnly` |
+| `Data/Main/Logo2.bmp` | `LooseOnly` |
+| `ani/Control.ani` | `LooseOnly` |
+| `data/interface/Style01/Action/MissionBtnClick.dds` | `LooseThenPackage` |
+| `data/interface/Style01/Action/MissionBtnEmboss.dds` | `LooseThenPackage` |
+| `data/interface/Style01/Action/MissionBtnNormal.dds` | `LooseThenPackage` |
+| `data/main/ChatBtn.dds` | `LooseThenPackage` |
+| `data/main/ChatBtnClick.dds` | `LooseThenPackage` |
+| `data/main/GoodBtn.dds` | `LooseThenPackage` |
+| `data/main/GoodBtnClick.dds` | `LooseThenPackage` |
+| `data/main/GroupBtn.dds` | `LooseThenPackage` |
+| `data/main/GroupBtnClick.dds` | `LooseThenPackage` |
+| `data/main/LevWordBtn.dds` | `LooseThenPackage` |
+| `data/main/LevWordBtnClick.dds` | `LooseThenPackage` |
+| `data/main/ProgressBk.dds` | `LooseThenPackage` |
+| `data/main/ProgressForce.dds` | `LooseThenPackage` |
+| `data/main/ProgressForce2.dds` | `LooseThenPackage` |
 | `data/main/ProgressForce2A.dds` | `LooseThenPackage` |
-| `data/main/ProgressForceA.dds`  | `LooseThenPackage` |
-| `data/main/ProgressHP.dds`      | `LooseThenPackage` |
-| `data/main/ProgressHPA.dds`     | `LooseThenPackage` |
-| `data/main/ProgressHPH.dds`     | `LooseThenPackage` |
-| `data/main/ProgressMP.dds`      | `LooseThenPackage` |
-| `data/main/ProgressMPA.dds`     | `LooseThenPackage` |
-| `data/main/ProgressMPH.dds`     | `LooseThenPackage` |
-| `data/main/mainDialog1.dds`     | `LooseThenPackage` |
-| `data/main/mainDialog2.dds`     | `LooseThenPackage` |
-| `ini/GameSetUp.ini`             | `LooseOnly`        |
-| `ini/info.ini`                  | `LooseOnly`        |
+| `data/main/ProgressForceA.dds` | `LooseThenPackage` |
+| `data/main/ProgressHP.dds` | `LooseThenPackage` |
+| `data/main/ProgressHPA.dds` | `LooseThenPackage` |
+| `data/main/ProgressHPH.dds` | `LooseThenPackage` |
+| `data/main/ProgressMP.dds` | `LooseThenPackage` |
+| `data/main/ProgressMPA.dds` | `LooseThenPackage` |
+| `data/main/ProgressMPH.dds` | `LooseThenPackage` |
+| `data/main/ProgressPower.dds` | `LooseThenPackage` |
+| `data/main/ProgressPowerH.dds` | `LooseThenPackage` |
+| `data/main/OrganiseBtnClick.dds` | `LooseThenPackage` |
+| `data/main/OrganiseBtnEmboss.dds` | `LooseThenPackage` |
+| `data/main/OrganiseBtnNormal.dds` | `LooseThenPackage` |
+| `data/main/OrganiseBtnUnClick.dds` | `LooseThenPackage` |
+| `data/main/PkArre.dds` | `LooseThenPackage` |
+| `data/main/PkArreClick.dds` | `LooseThenPackage` |
+| `data/main/PkFree.dds` | `LooseThenPackage` |
+| `data/main/PkFreeClick.dds` | `LooseThenPackage` |
+| `data/main/PkGroup.dds` | `LooseThenPackage` |
+| `data/main/PkGroupClick.dds` | `LooseThenPackage` |
+| `data/main/PkSafe.dds` | `LooseThenPackage` |
+| `data/main/PkSafeClick.dds` | `LooseThenPackage` |
+| `data/main/QueryBtn.dds` | `LooseThenPackage` |
+| `data/main/QueryBtnClick.dds` | `LooseThenPackage` |
+| `data/main/SetBtn.dds` | `LooseThenPackage` |
+| `data/main/SetBtnClick.dds` | `LooseThenPackage` |
+| `data/main/SkillBtn.dds` | `LooseThenPackage` |
+| `data/main/SkillBtnClick.dds` | `LooseThenPackage` |
+| `data/main/SkillBtnL.dds` | `LooseThenPackage` |
+| `data/main/mainDialog1.dds` | `LooseThenPackage` |
+| `data/main/mainDialog2.dds` | `LooseThenPackage` |
+| `ini/GameSetUp.ini` | `LooseOnly` |
+| `ini/info.ini` | `LooseOnly` |
 
 The curated set contains exactly these resolved dependencies. WDF archives and `ini/package.ini` are
 not shipped.
@@ -57,6 +89,10 @@ ani/Control.ani
 │   ├── ProgressMP.dds
 │   ├── ProgressMPA.dds
 │   └── ProgressMPH.dds
+├── Progress42
+│   ├── ProgressPower.dds
+│   ├── ProgressPower.dds
+│   └── ProgressPowerH.dds
 ├── Progress45
 │   └── ProgressBk.dds
 ├── Progress46
@@ -65,14 +101,62 @@ ani/Control.ani
 ├── Progress47
 │   ├── ProgressForce2.dds
 │   └── ProgressForce2A.dds
-└── Dialog4
-    ├── mainDialog1.dds
-    └── mainDialog2.dds
+├── Dialog4
+│   ├── mainDialog1.dds
+│   └── mainDialog2.dds
+├── Button40
+│   ├── QueryBtn.dds
+│   └── QueryBtnClick.dds
+├── Button410
+│   ├── LevWordBtn.dds
+│   └── LevWordBtnClick.dds
+├── Button42
+│   ├── GoodBtn.dds
+│   └── GoodBtnClick.dds
+├── Button43
+│   ├── SetBtn.dds
+│   └── SetBtnClick.dds
+├── Main3_MissionBtn
+│   ├── MissionBtnNormal.dds
+│   ├── MissionBtnClick.dds
+│   └── MissionBtnEmboss.dds
+├── Button45
+│   ├── ChatBtn.dds
+│   └── ChatBtnClick.dds
+├── Button46
+│   ├── GroupBtn.dds
+│   └── GroupBtnClick.dds
+├── Button47
+│   ├── PkFree.dds
+│   └── PkFreeClick.dds
+├── Button49
+│   ├── PkSafe.dds
+│   └── PkSafeClick.dds
+├── Button48
+│   ├── PkGroup.dds
+│   └── PkGroupClick.dds
+├── Button412
+│   ├── PkArre.dds
+│   └── PkArreClick.dds
+├── Main3_OrganiseBtn
+│   ├── OrganiseBtnNormal.dds
+│   ├── OrganiseBtnClick.dds
+│   ├── OrganiseBtnUnClick.dds
+│   └── OrganiseBtnEmboss.dds
+└── Button41
+    ├── SkillBtn.dds
+    ├── SkillBtnClick.dds
+    └── SkillBtnL.dds
 ```
+
+The experience bar is rendered from native solid-rectangle behavior and therefore adds no retail
+image dependency.
 
 Verified retail provenance:
 
 ```text
+Control.Ani         → loose
+
 ProgressBk.dds      → data.wdf
 mainDialog1.dds     → data.wdf
 mainDialog2.dds     → loose MainDialog2.dds
@@ -88,13 +172,34 @@ ProgressForceA.dds  → data.wdf
 
 ProgressForce2.dds  → loose
 ProgressForce2A.dds → loose ProgressForce2a.dds
+
+ProgressPower.dds   → data.wdf
+ProgressPowerH.dds  → data.wdf
+
+Button40 frames     → data.wdf
+Button410 frames    → data.wdf
+Button42 frames     → data.wdf
+Button43 frames     → data.wdf
+Button45 frames     → data.wdf
+Button46 frames     → data.wdf
+Button47 frames     → data.wdf
+Button49 frames     → data.wdf
+Button48 frames     → data.wdf
+Button412 frames    → data.wdf
+Button41 frames     → data.wdf
+
+Main3_MissionBtn frames  → loose
+Main3_OrganiseBtn frames → loose
 ```
+
+The action-strip provenance assertions are independent conformance requirements. Production import
+still resolves ANI frame requirements through `LooseThenPackage`.
 
 The importer materializes selected bytes into the curated payload. Package provenance is not
 preserved after import.
 
-All ANI-declared HUD frames in the closure are required, including frames not currently uploaded to
-the GPU.
+All ANI-declared HUD frames in the closure are required, including repeated paths and frames not
+currently uploaded to the GPU.
 
 ## Content Resolution
 
@@ -184,6 +289,32 @@ DDS / single-level DXT3
 
 Decoders validate format structure before allocation and reject unsupported variants.
 
+Current HUD ANI consumers include:
+
+```text
+Progress40
+Progress41
+Progress42
+Progress45
+Progress46
+Progress47
+Dialog4
+
+Button40
+Button410
+Button42
+Button43
+Main3_MissionBtn
+Button45
+Button46
+Button47
+Button49
+Button48
+Button412
+Main3_OrganiseBtn
+Button41
+```
+
 ## Excluded Content
 
 Compatibility evidence does not enter the runtime closure unless a production consumer requires it.
@@ -226,6 +357,22 @@ length
 signature
 SHA-256
 manifest schema
+```
+
+Rendering conformance separately verifies exact retail identities and provenance for the implemented
+HUD consumers.
+
+Current graphics conformance covers:
+
+```text
+HUD chrome
+HUD vitals
+skill / experience HUD
+10-button action strip
+alternate PK skins
+ANI frame modulo behavior
+independent DXT3 reference decoding
+exact framebuffer comparison
 ```
 
 ## Expansion Rule
