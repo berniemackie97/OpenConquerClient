@@ -61,7 +61,7 @@ internal sealed class TemporarySourceTree : IDisposable
     /// </summary>
     /// <remarks>
     /// Control.ani is loose. ProgressBk, Dialog4 frame 0, HP, MP, Progress42, and Progress46 frames are package-backed.
-    /// Dialog4 frame 1, ProgressForce2, ProgressForce2a, and Main3_OrganiseBtn frames are loose assets using verified retail casing behavior.
+    /// Dialog4 frame 1, ProgressForce2, ProgressForce2a, and action-strip frames are loose synthetic assets.
     /// Historical Server.dat is deliberately absent because it is not runtime content.
     /// </remarks>
     public void WriteStartupSnapshot(string backgroundFormat = "Data/Main/Logo%d.bmp")
@@ -113,22 +113,98 @@ internal sealed class TemporarySourceTree : IDisposable
                                      + "FrameAmount=2\n"
                                      + "Frame0=data/main/ProgressForce2.dds\n"
                                      + "Frame1=data/main/ProgressForce2A.dds\n"
+                                     + "[Button40]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/QueryBtn.dds\n"
+                                     + "Frame1=data/main/QueryBtnClick.dds\n"
+                                     + "[Button410]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/LevWordBtn.dds\n"
+                                     + "Frame1=data/main/LevWordBtnClick.dds\n"
+                                     + "[Button42]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/GoodBtn.dds\n"
+                                     + "Frame1=data/main/GoodBtnClick.dds\n"
+                                     + "[Button43]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/SetBtn.dds\n"
+                                     + "Frame1=data/main/SetBtnClick.dds\n"
+                                     + "[Main3_MissionBtn]\n"
+                                     + "FrameAmount=3\n"
+                                     + "Frame0=data/interface/Style01/Action/MissionBtnNormal.dds\n"
+                                     + "Frame1=data/interface/Style01/Action/MissionBtnClick.dds\n"
+                                     + "Frame2=data/interface/Style01/Action/MissionBtnEmboss.dds\n"
+                                     + "[Button45]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/ChatBtn.dds\n"
+                                     + "Frame1=data/main/ChatBtnClick.dds\n"
+                                     + "[Button46]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/GroupBtn.dds\n"
+                                     + "Frame1=data/main/GroupBtnClick.dds\n"
+                                     + "[Button47]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/PkFree.dds\n"
+                                     + "Frame1=data/main/PkFreeClick.dds\n"
+                                     + "[Button49]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/PkSafe.dds\n"
+                                     + "Frame1=data/main/PkSafeClick.dds\n"
+                                     + "[Button48]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/PkGroup.dds\n"
+                                     + "Frame1=data/main/PkGroupClick.dds\n"
+                                     + "[Button412]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/PkArre.dds\n"
+                                     + "Frame1=data/main/PkArreClick.dds\n"
                                      + "[Main3_OrganiseBtn]\n"
                                      + "FrameAmount=4\n"
                                      + "Frame0=data/main/OrganiseBtnNormal.dds\n"
                                      + "Frame1=data/main/OrganiseBtnClick.dds\n"
                                      + "Frame2=data/main/OrganiseBtnUnClick.dds\n"
-                                     + "Frame3=data/main/OrganiseBtnEmboss.dds\n");
+                                     + "Frame3=data/main/OrganiseBtnEmboss.dds\n"
+                                     + "[Button41]\n"
+                                     + "FrameAmount=3\n"
+                                     + "Frame0=data/main/SkillBtn.dds\n"
+                                     + "Frame1=data/main/SkillBtnClick.dds\n"
+                                     + "Frame2=data/main/SkillBtnL.dds\n");
 
         WriteBytes("data/main/Logo1.bmp", TestBitmap.CreateTwoByTwo());
         WriteBytes("data/main/Logo2.bmp", TestBitmap.CreateTwoByTwo());
         WriteBytes("data/main/MainDialog2.dds", CreateSyntheticDds("MainDialog2 loose"));
         WriteBytes("data/main/ProgressForce2.dds", CreateSyntheticDds("ProgressForce2 loose"));
         WriteBytes("data/main/ProgressForce2a.dds", CreateSyntheticDds("ProgressForce2a loose"));
+        WriteBytes("data/main/QueryBtn.dds", CreateSyntheticDds("QueryBtn loose"));
+        WriteBytes("data/main/QueryBtnClick.dds", CreateSyntheticDds("QueryBtnClick loose"));
+        WriteBytes("data/main/LevWordBtn.dds", CreateSyntheticDds("LevWordBtn loose"));
+        WriteBytes("data/main/LevWordBtnClick.dds", CreateSyntheticDds("LevWordBtnClick loose"));
+        WriteBytes("data/main/GoodBtn.dds", CreateSyntheticDds("GoodBtn loose"));
+        WriteBytes("data/main/GoodBtnClick.dds", CreateSyntheticDds("GoodBtnClick loose"));
+        WriteBytes("data/main/SetBtn.dds", CreateSyntheticDds("SetBtn loose"));
+        WriteBytes("data/main/SetBtnClick.dds", CreateSyntheticDds("SetBtnClick loose"));
+        WriteBytes("data/interface/Style01/Action/MissionBtnNormal.dds", CreateSyntheticDds("MissionBtnNormal loose"));
+        WriteBytes("data/interface/Style01/Action/MissionBtnClick.dds", CreateSyntheticDds("MissionBtnClick loose"));
+        WriteBytes("data/interface/Style01/Action/MissionBtnEmboss.dds", CreateSyntheticDds("MissionBtnEmboss loose"));
+        WriteBytes("data/main/ChatBtn.dds", CreateSyntheticDds("ChatBtn loose"));
+        WriteBytes("data/main/ChatBtnClick.dds", CreateSyntheticDds("ChatBtnClick loose"));
+        WriteBytes("data/main/GroupBtn.dds", CreateSyntheticDds("GroupBtn loose"));
+        WriteBytes("data/main/GroupBtnClick.dds", CreateSyntheticDds("GroupBtnClick loose"));
+        WriteBytes("data/main/PkFree.dds", CreateSyntheticDds("PkFree loose"));
+        WriteBytes("data/main/PkFreeClick.dds", CreateSyntheticDds("PkFreeClick loose"));
+        WriteBytes("data/main/PkSafe.dds", CreateSyntheticDds("PkSafe loose"));
+        WriteBytes("data/main/PkSafeClick.dds", CreateSyntheticDds("PkSafeClick loose"));
+        WriteBytes("data/main/PkGroup.dds", CreateSyntheticDds("PkGroup loose"));
+        WriteBytes("data/main/PkGroupClick.dds", CreateSyntheticDds("PkGroupClick loose"));
+        WriteBytes("data/main/PkArre.dds", CreateSyntheticDds("PkArre loose"));
+        WriteBytes("data/main/PkArreClick.dds", CreateSyntheticDds("PkArreClick loose"));
         WriteBytes("data/main/OrganiseBtnNormal.dds", CreateSyntheticDds("OrganiseBtnNormal loose"));
         WriteBytes("data/main/OrganiseBtnClick.dds", CreateSyntheticDds("OrganiseBtnClick loose"));
         WriteBytes("data/main/OrganiseBtnUnClick.dds", CreateSyntheticDds("OrganiseBtnUnClick loose"));
         WriteBytes("data/main/OrganiseBtnEmboss.dds", CreateSyntheticDds("OrganiseBtnEmboss loose"));
+        WriteBytes("data/main/SkillBtn.dds", CreateSyntheticDds("SkillBtn loose"));
+        WriteBytes("data/main/SkillBtnClick.dds", CreateSyntheticDds("SkillBtnClick loose"));
+        WriteBytes("data/main/SkillBtnL.dds", CreateSyntheticDds("SkillBtnL loose"));
 
         WriteBytes("data.wdf", CreateWdf((ProgressBackgroundUid, progressBackground), (MainDialog1Uid, mainDialog1),
             (ProgressHpUid, progressHp), (ProgressHpAlternateUid, progressHpAlternate), (ProgressHpHighlightUid, progressHpHighlight),

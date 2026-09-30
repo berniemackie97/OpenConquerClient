@@ -27,10 +27,7 @@ internal static partial class UnixRuntimeNative
     private static SafeFileHandle OwnDirectory(int descriptor)
     {
         if (descriptor < 0)
-        {
             ThrowLastError();
-        }
-
         return new SafeFileHandle(descriptor, ownsHandle: true);
     }
 
@@ -38,9 +35,7 @@ internal static partial class UnixRuntimeNative
     {
         // mkdirat applies 0700 atomically. Never chmod or repair a pre-existing directory.
         if (MkdirAt(parent, name, 0x1c0) != 0 && Marshal.GetLastPInvokeError() != 17)
-        {
             ThrowLastError();
-        }
     }
 
     internal static Metadata ReadDirectory(SafeFileHandle descriptor)
@@ -48,10 +43,7 @@ internal static partial class UnixRuntimeNative
         if (OperatingSystem.IsLinux())
         {
             if (Statx(descriptor, "", 0x1000, 0xb, out LinuxStat status) != 0)
-            {
                 ThrowLastError();
-            }
-
             return FromLinux(status);
         }
 
@@ -59,10 +51,7 @@ internal static partial class UnixRuntimeNative
             ? DarwinFStat64(descriptor, out DarwinStat darwin)
             : DarwinFStat(descriptor, out darwin);
         if (result != 0)
-        {
             ThrowLastError();
-        }
-
         RejectDarwinAccessGrants(descriptor);
         return new(darwin.UserId, darwin.Mode);
     }
@@ -72,9 +61,7 @@ internal static partial class UnixRuntimeNative
         if (OperatingSystem.IsLinux())
         {
             if (Statx(parent, name, 0x100, 0xb, out LinuxStat status) == 0)
-            {
                 return FromLinux(status);
-            }
         }
         else
         {
@@ -82,16 +69,11 @@ internal static partial class UnixRuntimeNative
                 ? DarwinFStatAt64(parent, name, out DarwinStat darwin, 0x20)
                 : DarwinFStatAt(parent, name, out darwin, 0x20);
             if (result == 0)
-            {
                 return new(darwin.UserId, darwin.Mode);
-            }
         }
 
         if (Marshal.GetLastPInvokeError() == 2)
-        {
             return null;
-        }
-
         ThrowLastError();
         return null;
     }
@@ -99,10 +81,7 @@ internal static partial class UnixRuntimeNative
     private static Metadata FromLinux(LinuxStat status)
     {
         if ((status.Mask & 0xb) != 0xb)
-        {
             throw new IOException("Runtime filesystem did not provide ownership and mode metadata.");
-        }
-
         return new(status.UserId, status.Mode);
     }
 
@@ -112,10 +91,7 @@ internal static partial class UnixRuntimeNative
         byte[] buffer = new byte[1024];
         nuint length = Confstr(65537, buffer, (nuint)buffer.Length); // _CS_DARWIN_USER_TEMP_DIR
         if (length == 0 || length > (nuint)buffer.Length)
-        {
             throw new IOException("The OS did not provide a bounded user runtime directory.");
-        }
-
         string path = Encoding.UTF8.GetString(buffer, 0, checked((int)length - 1));
         // Apple's system /var alias is canonicalized explicitly; user-supplied links are rejected.
         return path.StartsWith("/var/", StringComparison.Ordinal) ? "/private" + path : path;
@@ -126,15 +102,9 @@ internal static partial class UnixRuntimeNative
         nint acl = AclGetFd(descriptor, 0x100); // ACL_TYPE_EXTENDED
         // For an already-open descriptor, Darwin FILESEC_ACL reports ENOENT when no ACL is set.
         if (acl == 0 && Marshal.GetLastPInvokeError() == 2)
-        {
             return;
-        }
-
         if (acl == 0)
-        {
             ThrowLastError();
-        }
-
         try
         {
             // Darwin ACL grants can bypass mode bits. Deny entries (e.g. home deny-delete) are safe.
@@ -142,21 +112,13 @@ internal static partial class UnixRuntimeNative
             while (AclGetEntry(acl, position, out nint entry) == 0)
             {
                 if (AclGetTag(entry, out int tag) != 0)
-                {
                     ThrowLastError();
-                }
-
                 if (tag != 2)
-                {
                     throw new UnauthorizedAccessException("Runtime directory ancestry contains an extended access grant.");
-                }
-
                 position = -1; // ACL_NEXT_ENTRY
             }
             if (Marshal.GetLastPInvokeError() != 22)
-            {
                 ThrowLastError(); // Darwin signals end with EINVAL.
-            }
         }
         finally { _ = AclFree(acl); }
     }
@@ -165,10 +127,7 @@ internal static partial class UnixRuntimeNative
     {
         int error = Marshal.GetLastPInvokeError();
         if (error == 2)
-        {
             throw new DirectoryNotFoundException("The runtime directory is unavailable.");
-        }
-
         throw new IOException("Cannot securely access the runtime namespace.", new Win32Exception(error));
     }
 
