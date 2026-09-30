@@ -23,8 +23,8 @@ internal sealed class MainHudActionButtonAssets
 
     public RgbaImage? GetFrame(MainHudActionButtonId id, int frameIndex)
     {
+        ValidateButtonFrameIndex(frameIndex);
         MainHudActionButtonDefinition definition = MainHudActionButtonDefinitions.Get(id);
-        ValidateFrameIndex(frameIndex, definition.ExpectedFrameCount);
         return _frameSets.GetValueOrDefault(definition.AniSectionName)?.GetFrame((uint)frameIndex);
     }
 
@@ -32,7 +32,7 @@ internal sealed class MainHudActionButtonAssets
 
     public RgbaImage? GetPkFrame(MainHudPkButtonSkin skin, int frameIndex)
     {
-        ValidateFrameIndex(frameIndex, PkFrameCount);
+        ValidateButtonFrameIndex(frameIndex);
         return _frameSets.GetValueOrDefault(MainHudPkButtonSkins.GetAniSectionName(skin))?.GetFrame((uint)frameIndex);
     }
 
@@ -54,7 +54,9 @@ internal sealed class MainHudActionButtonAssets
         Dictionary<string, AniFrameSet?> frameSets = new(StringComparer.Ordinal);
 
         foreach (MainHudActionButtonDefinition definition in MainHudActionButtonDefinitions.NativeDrawOrder)
+        {
             frameSets[definition.AniSectionName] = LoadSection(contentSource, controlAni, definition.AniSectionName, definition.ExpectedFrameCount);
+        }
 
         foreach (MainHudPkButtonSkin skin in Enum.GetValues<MainHudPkButtonSkin>())
         {
@@ -103,11 +105,11 @@ internal sealed class MainHudActionButtonAssets
         return frames;
     }
 
-    private static void ValidateFrameIndex(int frameIndex, int frameCount)
+    private static void ValidateButtonFrameIndex(int frameIndex)
     {
-        if ((uint)frameIndex >= (uint)frameCount)
+        if ((uint)frameIndex > MainHudActionButtonState.HoverFrame)
         {
-            throw new ArgumentOutOfRangeException(nameof(frameIndex), frameIndex, $"Frame index must be between 0 and {frameCount - 1}.");
+            throw new ArgumentOutOfRangeException(nameof(frameIndex), frameIndex, $"Frame index must be between {MainHudActionButtonState.NormalFrame} and {MainHudActionButtonState.HoverFrame}.");
         }
     }
 }

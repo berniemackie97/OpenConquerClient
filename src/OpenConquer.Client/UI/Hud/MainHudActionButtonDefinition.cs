@@ -16,23 +16,11 @@ internal enum MainHudActionButtonId
 
 internal readonly record struct MainHudActionButtonDefinition
 {
-    public MainHudActionButtonDefinition(
-        MainHudActionButtonId id,
-        string aniSectionName,
-        int localX,
-        int localY,
-        int hitWidth,
-        int hitHeight,
-        int expectedFrameCount
-    )
+    public MainHudActionButtonDefinition(MainHudActionButtonId id, string aniSectionName, int localX, int localY, int hitWidth, int hitHeight, int expectedFrameCount)
     {
         if (!Enum.IsDefined(id))
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(id),
-                id,
-                "Unknown native main HUD action-button identifier."
-            );
+            throw new ArgumentOutOfRangeException(nameof(id), id, "Unknown native main HUD action-button identifier.");
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(aniSectionName);
@@ -51,117 +39,64 @@ internal readonly record struct MainHudActionButtonDefinition
         ExpectedFrameCount = expectedFrameCount;
     }
 
-    public MainHudActionButtonId Id { get; }
+    public MainHudActionButtonId Id
+    {
+        get;
+    }
     public int ControlId => (int)Id;
-    public string AniSectionName { get; }
-    public int LocalX { get; }
-    public int LocalY { get; }
-    public int HitWidth { get; }
-    public int HitHeight { get; }
-    public int ExpectedFrameCount { get; }
+
+    public string AniSectionName
+    {
+        get;
+    }
+
+    public int LocalX
+    {
+        get;
+    }
+
+    public int LocalY
+    {
+        get;
+    }
+
+    public int HitWidth
+    {
+        get;
+    }
+
+    public int HitHeight
+    {
+        get;
+    }
+
+    public int ExpectedFrameCount
+    {
+        get;
+    }
 }
 
 internal static class MainHudActionButtonDefinitions
 {
-    private static readonly MainHudActionButtonDefinition s_button40 = new(
-        MainHudActionButtonId.Button40,
-        "Button40",
-        502,
-        94,
-        46,
-        22,
-        2
-    );
+    private static readonly MainHudActionButtonDefinition s_button40 = new(MainHudActionButtonId.Button40, "Button40", 502, 94, 46, 22, 2);
 
-    private static readonly MainHudActionButtonDefinition s_button410 = new(
-        MainHudActionButtonId.Button410,
-        "Button410",
-        702,
-        119,
-        46,
-        22,
-        2
-    );
+    private static readonly MainHudActionButtonDefinition s_button410 = new(MainHudActionButtonId.Button410, "Button410", 702, 119, 46, 22, 2);
 
-    private static readonly MainHudActionButtonDefinition s_button42 = new(
-        MainHudActionButtonId.Button42,
-        "Button42",
-        552,
-        94,
-        46,
-        22,
-        2
-    );
+    private static readonly MainHudActionButtonDefinition s_button42 = new(MainHudActionButtonId.Button42, "Button42", 552, 94, 46, 22, 2);
 
-    private static readonly MainHudActionButtonDefinition s_button43 = new(
-        MainHudActionButtonId.Button43,
-        "Button43",
-        652,
-        119,
-        46,
-        22,
-        2
-    );
+    private static readonly MainHudActionButtonDefinition s_button43 = new(MainHudActionButtonId.Button43, "Button43", 652, 119, 46, 22, 2);
 
-    private static readonly MainHudActionButtonDefinition s_main3MissionBtn = new(
-        MainHudActionButtonId.Main3MissionBtn,
-        "Main3_MissionBtn",
-        502,
-        119,
-        46,
-        22,
-        3
-    );
+    private static readonly MainHudActionButtonDefinition s_main3MissionBtn = new(MainHudActionButtonId.Main3MissionBtn, "Main3_MissionBtn", 502, 119, 46, 22, 3);
 
-    private static readonly MainHudActionButtonDefinition s_button45 = new(
-        MainHudActionButtonId.Button45,
-        "Button45",
-        552,
-        119,
-        46,
-        22,
-        2
-    );
+    private static readonly MainHudActionButtonDefinition s_button45 = new(MainHudActionButtonId.Button45, "Button45", 552, 119, 46, 22, 2);
 
-    private static readonly MainHudActionButtonDefinition s_button46 = new(
-        MainHudActionButtonId.Button46,
-        "Button46",
-        602,
-        119,
-        46,
-        22,
-        2
-    );
+    private static readonly MainHudActionButtonDefinition s_button46 = new(MainHudActionButtonId.Button46, "Button46", 602, 119, 46, 22, 2);
 
-    private static readonly MainHudActionButtonDefinition s_button47 = new(
-        MainHudActionButtonId.Button47,
-        "Button47",
-        652,
-        94,
-        46,
-        22,
-        2
-    );
+    private static readonly MainHudActionButtonDefinition s_button47 = new(MainHudActionButtonId.Button47, "Button47", 652, 94, 46, 22, 2);
 
-    private static readonly MainHudActionButtonDefinition s_main3OrganiseBtn = new(
-        MainHudActionButtonId.Main3OrganiseBtn,
-        "Main3_OrganiseBtn",
-        702,
-        94,
-        46,
-        22,
-        4
-    );
+    private static readonly MainHudActionButtonDefinition s_main3OrganiseBtn = new(MainHudActionButtonId.Main3OrganiseBtn, "Main3_OrganiseBtn", 702, 94, 46, 22, 4);
 
-    private static readonly MainHudActionButtonDefinition s_button41 = new(
-        MainHudActionButtonId.Button41,
-        "Button41",
-        602,
-        94,
-        46,
-        22,
-        3
-    );
+    private static readonly MainHudActionButtonDefinition s_button41 = new(MainHudActionButtonId.Button41, "Button41", 602, 94, 46, 22, 3);
 
     private static readonly MainHudActionButtonDefinition[] s_nativeDrawOrder =
     [
@@ -193,11 +128,7 @@ internal static class MainHudActionButtonDefinitions
             MainHudActionButtonId.Button47 => s_button47,
             MainHudActionButtonId.Main3OrganiseBtn => s_main3OrganiseBtn,
             MainHudActionButtonId.Button41 => s_button41,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(id),
-                id,
-                "Unknown native main HUD action-button identifier."
-            ),
+            _ => throw new ArgumentOutOfRangeException(nameof(id), id, "Unknown native main HUD action-button identifier."),
         };
     }
 }

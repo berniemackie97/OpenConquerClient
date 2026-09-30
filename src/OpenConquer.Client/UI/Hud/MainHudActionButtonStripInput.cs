@@ -6,10 +6,7 @@ internal sealed class MainHudActionButtonStripInput
     private readonly MainHudActionButtonLayout _layout;
     private readonly Func<MainHudActionButtonId, bool> _isAvailable;
 
-    public MainHudActionButtonStripInput(
-        MainHudActionButtonStripState state,
-        MainHudActionButtonLayout layout,
-        Func<MainHudActionButtonId, bool> isAvailable)
+    public MainHudActionButtonStripInput(MainHudActionButtonStripState state, MainHudActionButtonLayout layout, Func<MainHudActionButtonId, bool> isAvailable)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(isAvailable);

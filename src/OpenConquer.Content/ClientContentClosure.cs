@@ -16,9 +16,25 @@ public static class ClientContentClosure
     private const string StaminaSectionName = "Progress46";
     private const string ExtendedStaminaSectionName = "Progress47";
     private const string DialogSectionName = "Dialog4";
-    private const string OrganiseButtonSectionName = "Main3_OrganiseBtn";
 
     private static readonly int[] s_startupLogoVariantIndexes = [1, 2];
+
+    private static readonly (string SectionName, int FrameCount)[] s_actionButtonSections =
+    [
+        ("Button40", 2),
+        ("Button410", 2),
+        ("Button42", 2),
+        ("Button43", 2),
+        ("Main3_MissionBtn", 3),
+        ("Button45", 2),
+        ("Button46", 2),
+        ("Button47", 2),
+        ("Button49", 2),
+        ("Button48", 2),
+        ("Button412", 2),
+        ("Main3_OrganiseBtn", 4),
+        ("Button41", 3),
+    ];
 
     public static IReadOnlyList<ClientContentRequirement> Resolve(IClientContentSource contentSource)
     {
@@ -47,7 +63,11 @@ public static class ClientContentClosure
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(StaminaSectionName), expectedFrameCount: 2);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(ExtendedStaminaSectionName), expectedFrameCount: 2);
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(DialogSectionName), expectedFrameCount: 2);
-        AddFrameRequirements(requirements, controlAni.GetRequiredSection(OrganiseButtonSectionName), expectedFrameCount: 4);
+
+        foreach ((string sectionName, int frameCount) in s_actionButtonSections)
+        {
+            AddFrameRequirements(requirements, controlAni.GetRequiredSection(sectionName), frameCount);
+        }
 
         return Normalize(requirements);
     }

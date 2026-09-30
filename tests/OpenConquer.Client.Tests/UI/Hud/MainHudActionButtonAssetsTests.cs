@@ -15,10 +15,14 @@ public sealed class MainHudActionButtonAssetsTests
         MainHudActionButtonAssets assets = MainHudActionButtonAssets.Load(new ClientContentRoot(content.RootPath));
 
         foreach (MainHudActionButtonDefinition definition in MainHudActionButtonDefinitions.NativeDrawOrder)
+        {
             Assert.False(assets.IsAvailable(definition.Id));
+        }
 
         foreach (MainHudPkButtonSkin skin in Enum.GetValues<MainHudPkButtonSkin>())
+        {
             Assert.False(assets.IsPkSkinAvailable(skin));
+        }
     }
 
     [Fact]
@@ -108,7 +112,30 @@ public sealed class MainHudActionButtonAssetsTests
     }
 
     [Fact]
-    public void FrameAccess_RejectsIndicesOutsideNativeFrameCounts()
+    public void GetFrame_UsesNativeAniModuloWrappingForLogicalButtonFrames()
+    {
+        using TemporaryContentDirectory content = new();
+        WriteCompleteContent(content);
+
+        MainHudActionButtonAssets assets = MainHudActionButtonAssets.Load(new ClientContentRoot(content.RootPath));
+
+        Assert.Same(assets.GetFrame(MainHudActionButtonId.Button40, 0), assets.GetFrame(MainHudActionButtonId.Button40, 2));
+        Assert.Same(assets.GetFrame(MainHudActionButtonId.Button40, 1), assets.GetFrame(MainHudActionButtonId.Button40, 3));
+        Assert.Same(assets.GetFrame(MainHudActionButtonId.Button41, 0), assets.GetFrame(MainHudActionButtonId.Button41, 3));
+        Assert.Same(assets.GetFrame(MainHudActionButtonId.Main3MissionBtn, 0), assets.GetFrame(MainHudActionButtonId.Main3MissionBtn, 3));
+
+        Assert.NotSame(assets.GetFrame(MainHudActionButtonId.Main3OrganiseBtn, 0), assets.GetFrame(MainHudActionButtonId.Main3OrganiseBtn, 2));
+        Assert.NotSame(assets.GetFrame(MainHudActionButtonId.Main3OrganiseBtn, 1), assets.GetFrame(MainHudActionButtonId.Main3OrganiseBtn, 3));
+
+        foreach (MainHudPkButtonSkin skin in Enum.GetValues<MainHudPkButtonSkin>())
+        {
+            Assert.Same(assets.GetPkFrame(skin, 0), assets.GetPkFrame(skin, 2));
+            Assert.Same(assets.GetPkFrame(skin, 1), assets.GetPkFrame(skin, 3));
+        }
+    }
+
+    [Fact]
+    public void FrameAccess_RejectsLogicalFramesOutsideCMyButtonRange()
     {
         using TemporaryContentDirectory content = new();
         WriteCompleteContent(content);
@@ -116,10 +143,10 @@ public sealed class MainHudActionButtonAssetsTests
         MainHudActionButtonAssets assets = MainHudActionButtonAssets.Load(new ClientContentRoot(content.RootPath));
 
         Assert.Throws<ArgumentOutOfRangeException>(() => assets.GetFrame(MainHudActionButtonId.Button40, -1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => assets.GetFrame(MainHudActionButtonId.Button40, 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => assets.GetFrame(MainHudActionButtonId.Button40, 4));
         Assert.Throws<ArgumentOutOfRangeException>(() => assets.GetFrame(MainHudActionButtonId.Main3OrganiseBtn, 4));
         Assert.Throws<ArgumentOutOfRangeException>(() => assets.GetPkFrame(MainHudPkButtonSkin.Button47, -1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => assets.GetPkFrame(MainHudPkButtonSkin.Button47, 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => assets.GetPkFrame(MainHudPkButtonSkin.Button47, 4));
     }
 
     private static void WriteCompleteContent(
@@ -137,10 +164,14 @@ public sealed class MainHudActionButtonAssetsTests
         Dictionary<string, int> sections = new(StringComparer.Ordinal);
 
         foreach (MainHudActionButtonDefinition definition in MainHudActionButtonDefinitions.NativeDrawOrder)
+        {
             sections[definition.AniSectionName] = definition.ExpectedFrameCount;
+        }
 
         foreach (MainHudPkButtonSkin skin in Enum.GetValues<MainHudPkButtonSkin>())
+        {
             sections.TryAdd(MainHudPkButtonSkins.GetAniSectionName(skin), 2);
+        }
 
         StringBuilder ani = new();
 

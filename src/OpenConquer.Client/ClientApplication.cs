@@ -16,6 +16,7 @@ namespace OpenConquer.Client;
 internal sealed class ClientApplication : IDisposable
 {
     private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
+    private static readonly Func<uint> s_readTickCount = static () => unchecked((uint)Environment.TickCount64);
 
     private readonly string _contentRootPath;
     private readonly PresentationPolicy _presentationPolicy;
@@ -23,17 +24,17 @@ internal sealed class ClientApplication : IDisposable
     private readonly PixelSize _windowSize;
     private readonly MainHudVitalsState _mainHudVitalsState = new();
     private readonly MainHudSkillExperienceState _mainHudSkillExperienceState = new();
-    private readonly MainHudOrganiseButtonState _mainHudOrganiseButtonState = new();
+    private readonly MainHudActionButtonStripState _mainHudActionButtonStripState = new();
 
     private MainHudChromeAssets? _mainHudChromeAssets;
     private MainHudVitalsAssets? _mainHudVitalsAssets;
     private MainHudSkillAssets? _mainHudSkillAssets;
-    private MainHudOrganiseButtonAssets? _mainHudOrganiseButtonAssets;
+    private MainHudActionButtonAssets? _mainHudActionButtonAssets;
     private MainHudChromeRenderer? _mainHudChromeRenderer;
     private MainHudVitalsRenderer? _mainHudVitalsRenderer;
     private MainHudSkillExperienceRenderer? _mainHudSkillExperienceRenderer;
-    private MainHudOrganiseButtonRenderer? _mainHudOrganiseButtonRenderer;
-    private MainHudOrganiseButtonLayout? _mainHudOrganiseButtonLayout;
+    private MainHudActionButtonStripRenderer? _mainHudActionButtonStripRenderer;
+    private MainHudActionButtonStripInput? _mainHudActionButtonStripInput;
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private DesktopWindow? _window;
@@ -72,7 +73,6 @@ internal sealed class ClientApplication : IDisposable
         _runStarted = true;
 
         PackagedClientContentSource contentSource = PackagedClientContentSource.Open(_contentRootPath);
-
         ReportPackageRegistrationWarnings(contentSource);
 
         StartupLogo startupLogo = StartupLogo.Load(contentSource, Environment.TickCount64);
@@ -82,7 +82,9 @@ internal sealed class ClientApplication : IDisposable
             Console.Error.WriteLine($"OpenConquer: startup logo unavailable; {unavailableReason}");
         }
 
-        DesktopWindow window = StartupWindowSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo), () => InitializeRuntimeConfiguration(contentSource), () => new DesktopWindow(_windowSize, _windowMode, s_frameInterval));
+        DesktopWindow window = StartupWindowSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
+            () => InitializeRuntimeConfiguration(contentSource),
+            () => new DesktopWindow(_windowSize, _windowMode, s_frameInterval));
 
         _window = window;
 
@@ -95,7 +97,6 @@ internal sealed class ClientApplication : IDisposable
         window.OpenGLContextReleasing += OnOpenGLContextReleasing;
 
         window.Run();
-
         return 0;
     }
 
@@ -115,12 +116,12 @@ internal sealed class ClientApplication : IDisposable
         finally
         {
             _window = null;
-            _mainHudOrganiseButtonRenderer = null;
+            _mainHudActionButtonStripInput = null;
+            _mainHudActionButtonStripRenderer = null;
             _mainHudSkillExperienceRenderer = null;
             _mainHudVitalsRenderer = null;
             _mainHudChromeRenderer = null;
-            _mainHudOrganiseButtonLayout = null;
-            _mainHudOrganiseButtonAssets = null;
+            _mainHudActionButtonAssets = null;
             _mainHudSkillAssets = null;
             _mainHudVitalsAssets = null;
             _mainHudChromeAssets = null;
@@ -132,12 +133,9 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnOpenGLContextReady(IOpenGLContext context)
     {
-        if (_graphicsDevice is not null ||
-            _renderer is not null ||
-            _mainHudChromeRenderer is not null ||
-            _mainHudVitalsRenderer is not null ||
-            _mainHudSkillExperienceRenderer is not null ||
-            _mainHudOrganiseButtonRenderer is not null)
+        if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null
+            || _mainHudVitalsRenderer is not null || _mainHudSkillExperienceRenderer is not null
+            || _mainHudActionButtonStripRenderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
@@ -147,7 +145,7 @@ internal sealed class ClientApplication : IDisposable
         MainHudChromeRenderer? mainHudChromeRenderer = null;
         MainHudVitalsRenderer? mainHudVitalsRenderer = null;
         MainHudSkillExperienceRenderer? mainHudSkillExperienceRenderer = null;
-        MainHudOrganiseButtonRenderer? mainHudOrganiseButtonRenderer = null;
+        MainHudActionButtonStripRenderer? mainHudActionButtonStripRenderer = null;
 
         try
         {
@@ -156,31 +154,31 @@ internal sealed class ClientApplication : IDisposable
             MainHudChromeAssets mainHudChromeAssets = _mainHudChromeAssets ?? throw new InvalidOperationException("The main HUD chrome assets have not been initialized.");
             MainHudVitalsAssets mainHudVitalsAssets = _mainHudVitalsAssets ?? throw new InvalidOperationException("The main HUD vitals assets have not been initialized.");
             MainHudSkillAssets mainHudSkillAssets = _mainHudSkillAssets ?? throw new InvalidOperationException("The main HUD skill assets have not been initialized.");
-            MainHudOrganiseButtonAssets mainHudOrganiseButtonAssets = _mainHudOrganiseButtonAssets ?? throw new InvalidOperationException("The main HUD organise-button assets have not been initialized.");
+            MainHudActionButtonAssets mainHudActionButtonAssets = _mainHudActionButtonAssets ?? throw new InvalidOperationException("The main HUD action-button assets have not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
             renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
             mainHudChromeRenderer = new MainHudChromeRenderer(graphicsDevice, mainHudChromeAssets, logicalRenderSize);
             mainHudVitalsRenderer = new MainHudVitalsRenderer(graphicsDevice, mainHudVitalsAssets, logicalRenderSize);
             mainHudSkillExperienceRenderer = new MainHudSkillExperienceRenderer(graphicsDevice, mainHudSkillAssets, logicalRenderSize);
-            mainHudOrganiseButtonRenderer = new MainHudOrganiseButtonRenderer(graphicsDevice, mainHudOrganiseButtonAssets, logicalRenderSize);
+            mainHudActionButtonStripRenderer = new MainHudActionButtonStripRenderer(graphicsDevice, mainHudActionButtonAssets, logicalRenderSize);
 
             _renderer = renderer;
             _mainHudChromeRenderer = mainHudChromeRenderer;
             _mainHudVitalsRenderer = mainHudVitalsRenderer;
             _mainHudSkillExperienceRenderer = mainHudSkillExperienceRenderer;
-            _mainHudOrganiseButtonRenderer = mainHudOrganiseButtonRenderer;
+            _mainHudActionButtonStripRenderer = mainHudActionButtonStripRenderer;
             _graphicsDevice = graphicsDevice;
         }
         catch
         {
             try
             {
-                mainHudOrganiseButtonRenderer?.Dispose();
+                mainHudActionButtonStripRenderer?.Dispose();
             }
             catch
             {
-                // Preserve the renderer/context initialization failure.
+                // ignored
             }
 
             try
@@ -189,7 +187,7 @@ internal sealed class ClientApplication : IDisposable
             }
             catch
             {
-                // Preserve the renderer/context initialization failure.
+                // ignored
             }
 
             try
@@ -198,7 +196,7 @@ internal sealed class ClientApplication : IDisposable
             }
             catch
             {
-                // Preserve the renderer/context initialization failure.
+                // ignored
             }
 
             try
@@ -207,7 +205,7 @@ internal sealed class ClientApplication : IDisposable
             }
             catch
             {
-                // Preserve the renderer/context initialization failure.
+                // ignored
             }
 
             try
@@ -216,7 +214,7 @@ internal sealed class ClientApplication : IDisposable
             }
             catch
             {
-                // Preserve the renderer/context initialization failure.
+                // ignored
             }
 
             try
@@ -225,7 +223,7 @@ internal sealed class ClientApplication : IDisposable
             }
             catch
             {
-                // Preserve the renderer/context initialization failure.
+                // ignored
             }
 
             throw;
@@ -239,47 +237,45 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerMoved(PixelPoint point)
     {
-        if (!CanInteractWithOrganiseButton() || _mainHudOrganiseButtonLayout is not { } layout)
+        if (!CanInteractWithActionButtonStrip() || _mainHudActionButtonStripInput is not { } input)
         {
             return;
         }
 
         if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
         {
-            _mainHudOrganiseButtonState.HandlePointerMoved(logicalX, logicalY, layout);
+            input.HandlePointerMoved(logicalX, logicalY);
         }
         else
         {
-            _mainHudOrganiseButtonState.HandlePointerMoved(-1, -1, layout);
+            input.HandlePointerMoved(-1, -1);
         }
     }
 
     private void OnPrimaryPointerPressed(PixelPoint point)
     {
-        if (!CanInteractWithOrganiseButton() ||
-            _mainHudOrganiseButtonLayout is not { } layout ||
-            !TryMapPointerToLogical(point, out int logicalX, out int logicalY))
+        if (!CanInteractWithActionButtonStrip() || _mainHudActionButtonStripInput is not { } input || !TryMapPointerToLogical(point, out int logicalX, out int logicalY))
         {
             return;
         }
 
-        _mainHudOrganiseButtonState.HandleLeftButtonDown(logicalX, logicalY, layout);
+        input.HandleLeftButtonDown(logicalX, logicalY);
     }
 
     private void OnPrimaryPointerReleased(PixelPoint point)
     {
-        if (!CanInteractWithOrganiseButton() || _mainHudOrganiseButtonLayout is not { } layout)
+        if (!CanInteractWithActionButtonStrip() || _mainHudActionButtonStripInput is not { } input)
         {
             return;
         }
 
         if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
         {
-            _mainHudOrganiseButtonState.HandleLeftButtonUp(logicalX, logicalY, layout, out _);
+            input.HandleLeftButtonUp(logicalX, logicalY, out _);
         }
         else
         {
-            _mainHudOrganiseButtonState.HandleLeftButtonUp(-1, -1, layout, out _);
+            input.HandleLeftButtonUp(-1, -1, out _);
         }
     }
 
@@ -297,10 +293,19 @@ internal sealed class ClientApplication : IDisposable
         return renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out logicalX, out logicalY);
     }
 
-    private bool CanInteractWithOrganiseButton()
+    private bool CanInteractWithActionButtonStrip() => _mainHudChromeAssets?.HasDialogPanels == true;
+
+    private bool IsActionButtonAvailable(MainHudActionButtonId id)
     {
-        return _mainHudChromeAssets?.HasDialogPanels == true &&
-            _mainHudOrganiseButtonAssets?.IsAvailable == true;
+        MainHudActionButtonAssets? assets = _mainHudActionButtonAssets;
+        if (assets is null)
+        {
+            return false;
+        }
+
+        return id == MainHudActionButtonId.Button47
+            ? assets.IsPkSkinAvailable(_mainHudActionButtonStripState.PkSkin)
+            : assets.IsAvailable(id);
     }
 
     private static void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
@@ -327,21 +332,21 @@ internal sealed class ClientApplication : IDisposable
         _mainHudChromeAssets = MainHudChromeAssets.Load(contentSource);
         _mainHudVitalsAssets = MainHudVitalsAssets.Load(contentSource);
         _mainHudSkillAssets = MainHudSkillAssets.Load(contentSource);
-        _mainHudOrganiseButtonAssets = MainHudOrganiseButtonAssets.Load(contentSource);
-        _mainHudOrganiseButtonLayout = MainHudOrganiseButtonLayout.Create(logicalRenderSize);
+        _mainHudActionButtonAssets = MainHudActionButtonAssets.Load(contentSource);
+
+        MainHudActionButtonLayout actionButtonLayout = MainHudActionButtonLayout.Create(logicalRenderSize);
+        _mainHudActionButtonStripInput = new MainHudActionButtonStripInput(_mainHudActionButtonStripState, actionButtonLayout, IsActionButtonAvailable);
     }
 
     private void OnRendering(double elapsedSeconds)
     {
         OpenGLRenderer? renderer = _renderer;
-
         if (renderer is null)
         {
             return;
         }
 
         renderer.BeginFrame();
-
         ExceptionDispatchInfo? firstFailure = null;
 
         try
@@ -352,7 +357,11 @@ internal sealed class ClientApplication : IDisposable
             if (_mainHudChromeRenderer is { } mainHudChromeRenderer && mainHudChromeRenderer.DrawPanels(renderer))
             {
                 _mainHudSkillExperienceRenderer?.Draw(renderer, _mainHudSkillExperienceState);
-                _mainHudOrganiseButtonRenderer?.Draw(renderer, _mainHudOrganiseButtonState);
+
+                _mainHudActionButtonStripState.AdvancePkBeforeDraw(s_readTickCount);
+                _mainHudActionButtonStripState.AdvanceOrganiseBeforeDraw(s_readTickCount);
+                _mainHudActionButtonStripRenderer?.Draw(renderer, _mainHudActionButtonStripState);
+
                 _mainHudSkillExperienceState.AdvanceAfterHudDraw(unchecked((uint)Environment.TickCount64));
             }
         }
@@ -373,21 +382,18 @@ internal sealed class ClientApplication : IDisposable
         firstFailure?.Throw();
     }
 
-    private void OnOpenGLContextReleasing()
-    {
-        ReleaseRenderingResources();
-    }
+    private void OnOpenGLContextReleasing() => ReleaseRenderingResources();
 
     private void ReleaseRenderingResources()
     {
-        MainHudOrganiseButtonRenderer? mainHudOrganiseButtonRenderer = _mainHudOrganiseButtonRenderer;
+        MainHudActionButtonStripRenderer? mainHudActionButtonStripRenderer = _mainHudActionButtonStripRenderer;
         MainHudSkillExperienceRenderer? mainHudSkillExperienceRenderer = _mainHudSkillExperienceRenderer;
         MainHudVitalsRenderer? mainHudVitalsRenderer = _mainHudVitalsRenderer;
         MainHudChromeRenderer? mainHudChromeRenderer = _mainHudChromeRenderer;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
-        _mainHudOrganiseButtonRenderer = null;
+        _mainHudActionButtonStripRenderer = null;
         _mainHudSkillExperienceRenderer = null;
         _mainHudVitalsRenderer = null;
         _mainHudChromeRenderer = null;
@@ -398,57 +404,39 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            mainHudOrganiseButtonRenderer?.Dispose();
+            mainHudActionButtonStripRenderer?.Dispose();
         }
-        catch (Exception exception)
-        {
-            firstFailure = ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
             mainHudSkillExperienceRenderer?.Dispose();
         }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
             mainHudVitalsRenderer?.Dispose();
         }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
             mainHudChromeRenderer?.Dispose();
         }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
             renderer?.Dispose();
         }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
             graphicsDevice?.Dispose();
         }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         firstFailure?.Throw();
     }

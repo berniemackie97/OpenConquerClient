@@ -16,7 +16,9 @@ internal static class LinuxCrossUidVerification
     internal static async Task RunAsync()
     {
         if (UnixRuntimeNative.UserId != 0)
+        {
             throw new InvalidOperationException("Cross-UID verification requires root in an isolated Linux runner.");
+        }
 
         string root = Directory.CreateTempSubdirectory("oc-uid-").FullName;
         string? ownedLegacyPath = null;
@@ -81,7 +83,9 @@ internal static class LinuxCrossUidVerification
                 // Children have exited before cleanup, including failures. Only remove the legacy
                 // socket after a successful bind acknowledgement; preserve pre-existing objects.
                 if (ownedLegacyPath is not null)
+                {
                     File.Delete(ownedLegacyPath);
+                }
             }
             finally { Directory.Delete(root, recursive: true); }
         }
@@ -141,7 +145,9 @@ internal static class LinuxCrossUidVerification
     private static void Require(bool condition, string message)
     {
         if (!condition)
+        {
             throw new InvalidOperationException(message);
+        }
     }
 
     private sealed class Child : IDisposable
@@ -172,7 +178,10 @@ internal static class LinuxCrossUidVerification
                 start.Environment["XDG_RUNTIME_DIR"] = runtimeRoot;
             }
             foreach (string argument in arguments)
+            {
                 start.ArgumentList.Add(argument);
+            }
+
             return new Child(Process.Start(start) ?? throw new InvalidOperationException("Verification process did not start."));
         }
 
@@ -214,7 +223,9 @@ internal static class LinuxCrossUidVerification
                 {
                     _process.Kill(entireProcessTree: true);
                     if (!_process.WaitForExit(5000))
+                    {
                         throw new TimeoutException("Verification process did not terminate during cleanup.");
+                    }
                 }
             }
             finally

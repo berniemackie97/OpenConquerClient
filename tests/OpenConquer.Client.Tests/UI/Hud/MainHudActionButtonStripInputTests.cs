@@ -21,7 +21,9 @@ public sealed class MainHudActionButtonStripInputTests
         foreach (MainHudActionButtonDefinition definition in MainHudActionButtonDefinitions.NativeDrawOrder)
         {
             if (definition.Id != MainHudActionButtonId.Button42)
+            {
                 Assert.False(state.GetButton(definition.Id).IsCursorInside);
+            }
         }
     }
 

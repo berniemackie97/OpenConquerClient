@@ -5,37 +5,36 @@ namespace OpenConquer.Client.Tests.UI.Hud;
 
 public sealed class MainHudActionButtonLayoutTests
 {
-    public static TheoryData<int, int, MainHudActionButtonId, int, int> VerifiedBounds => new()
+    public static TheoryData<int, int, int, int, int> VerifiedBounds => new()
     {
-        { 800, 600, MainHudActionButtonId.Button40, 502, 553 },
-        { 800, 600, MainHudActionButtonId.Button410, 702, 578 },
-        { 800, 600, MainHudActionButtonId.Button42, 552, 553 },
-        { 800, 600, MainHudActionButtonId.Button43, 652, 578 },
-        { 800, 600, MainHudActionButtonId.Main3MissionBtn, 502, 578 },
-        { 800, 600, MainHudActionButtonId.Button45, 552, 578 },
-        { 800, 600, MainHudActionButtonId.Button46, 602, 578 },
-        { 800, 600, MainHudActionButtonId.Button47, 652, 553 },
-        { 800, 600, MainHudActionButtonId.Main3OrganiseBtn, 702, 553 },
-        { 800, 600, MainHudActionButtonId.Button41, 602, 553 },
-        { 1024, 768, MainHudActionButtonId.Button40, 502, 721 },
-        { 1024, 768, MainHudActionButtonId.Button410, 702, 746 },
-        { 1024, 768, MainHudActionButtonId.Button42, 552, 721 },
-        { 1024, 768, MainHudActionButtonId.Button43, 652, 746 },
-        { 1024, 768, MainHudActionButtonId.Main3MissionBtn, 502, 746 },
-        { 1024, 768, MainHudActionButtonId.Button45, 552, 746 },
-        { 1024, 768, MainHudActionButtonId.Button46, 602, 746 },
-        { 1024, 768, MainHudActionButtonId.Button47, 652, 721 },
-        { 1024, 768, MainHudActionButtonId.Main3OrganiseBtn, 702, 721 },
-        { 1024, 768, MainHudActionButtonId.Button41, 602, 721 },
+        { 800, 600, 0x5DF, 502, 553 },
+        { 800, 600, 0x3EE, 702, 578 },
+        { 800, 600, 0x3EF, 552, 553 },
+        { 800, 600, 0x3F0, 652, 578 },
+        { 800, 600, 0x3F1, 502, 578 },
+        { 800, 600, 0x3F2, 552, 578 },
+        { 800, 600, 0x3F3, 602, 578 },
+        { 800, 600, 0x3F5, 652, 553 },
+        { 800, 600, 0x400, 702, 553 },
+        { 800, 600, 0x402, 602, 553 },
+        { 1024, 768, 0x5DF, 502, 721 },
+        { 1024, 768, 0x3EE, 702, 746 },
+        { 1024, 768, 0x3EF, 552, 721 },
+        { 1024, 768, 0x3F0, 652, 746 },
+        { 1024, 768, 0x3F1, 502, 746 },
+        { 1024, 768, 0x3F2, 552, 746 },
+        { 1024, 768, 0x3F3, 602, 746 },
+        { 1024, 768, 0x3F5, 652, 721 },
+        { 1024, 768, 0x400, 702, 721 },
+        { 1024, 768, 0x402, 602, 721 },
     };
 
     [Theory]
     [MemberData(nameof(VerifiedBounds))]
-    public void GetBounds_ReturnsVerifiedNativeControlBounds(
-        int width, int height, MainHudActionButtonId id, int expectedX, int expectedY)
+    public void GetBounds_ReturnsVerifiedNativeControlBounds(int width, int height, int controlId, int expectedX, int expectedY)
     {
         MainHudActionButtonLayout layout = MainHudActionButtonLayout.Create(new LogicalRenderSize(width, height));
-        MainHudActionButtonBounds bounds = layout.GetBounds(id);
+        MainHudActionButtonBounds bounds = layout.GetBounds((MainHudActionButtonId)controlId);
 
         Assert.Equal(expectedX, bounds.X);
         Assert.Equal(expectedY, bounds.Y);
@@ -49,8 +48,7 @@ public sealed class MainHudActionButtonLayoutTests
     [InlineData(1920, 1080)]
     public void Create_RejectsUnverifiedLogicalRenderSizes(int width, int height)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            MainHudActionButtonLayout.Create(new LogicalRenderSize(width, height)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => MainHudActionButtonLayout.Create(new LogicalRenderSize(width, height)));
     }
 
     [Fact]

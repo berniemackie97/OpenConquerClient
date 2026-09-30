@@ -71,9 +71,14 @@ internal sealed class MainHudActionButtonState
             return false;
         }
 
-        activated = IsEnabled && _currentFrame == PressedFrame && bounds.Contains(logicalX, logicalY);
+        activated = IsEnabled && bounds.Contains(logicalX, logicalY);
         _pointerCaptured = false;
-        _currentFrame = IsEnabled ? NormalFrame : DisabledFrame;
+
+        if (_currentFrame == PressedFrame)
+        {
+            _currentFrame = NormalFrame;
+        }
+
         HandlePointerMoved(logicalX, logicalY, bounds);
         return true;
     }
