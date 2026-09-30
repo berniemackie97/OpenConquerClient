@@ -41,6 +41,6 @@ jobs:
           global-json-file: global.json
 
       - name: Submit NuGet dependency graph
-        uses: advanced-security/component-detection-dependency-submission-action@ce792dce44c6e59487bcd862f3917f2c2b9a7fb0
+        uses: advanced-security/component-detection-dependency-submission-action@ac3bac2b456be2edf020ca3affa35abe15cecae3
         with:
           detectorsCategories: NuGet
