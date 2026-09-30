@@ -7,6 +7,7 @@ Reference:
 - [`architecture/architecture.md`](architecture/architecture.md)
 - [`compatibility/native-graphics.md`](compatibility/native-graphics.md)
 - [`compatibility/native-text.md`](compatibility/native-text.md)
+- [`content/retail-5517-content-plan.md`](content/retail-5517-content-plan.md)
 - [`architecture/launcher-managed-installation.md`](architecture/launcher-managed-installation.md)
 
 ## Quality Gate
@@ -76,6 +77,7 @@ RGBA modulation
 stretching and source cropping
 integer rotation
 repeated and degenerate source sampling
+solid-rectangle rendering
 
 native-text placement
 coverage
@@ -87,14 +89,23 @@ Progress45 HUD background
 Dialog4 HUD panels
 Progress40 life
 Progress41 mana
+Progress42 skill
 Progress46 stamina
 Progress47 extended stamina
+experience-bar rendering
+
+10-button main-HUD action strip
+all logical CMyButton frame states
+alternate PK button skins
 
 retail asset hashes
-loose/package provenance
+exact loose/package provenance where established
 independent HUD reference geometry
 exact real-driver framebuffer comparison
 ```
+
+Current real-driver verification covers both supported logical resolutions against exact retail 5517
+content on Apple M4 hardware using the OpenGL 4.1 Metal driver and an RGB565 logical target.
 
 Graphics contracts and driver evidence are maintained in
 [`compatibility/native-graphics.md`](compatibility/native-graphics.md).
@@ -109,34 +120,33 @@ Runtime content:
 content/retail-5517/payload
 ```
 
-Current runtime closure: 18 files.
+Current runtime closure: 50 files totaling 1,857,179 bytes.
+
+It covers:
 
 ```text
-Data/Main/Logo1.bmp
-Data/Main/Logo2.bmp
-ani/Control.ani
-
-data/main/ProgressBk.dds
-
-data/main/ProgressForce.dds
-data/main/ProgressForce2.dds
-data/main/ProgressForce2A.dds
-data/main/ProgressForceA.dds
-
-data/main/ProgressHP.dds
-data/main/ProgressHPA.dds
-data/main/ProgressHPH.dds
-
-data/main/ProgressMP.dds
-data/main/ProgressMPA.dds
-data/main/ProgressMPH.dds
-
-data/main/mainDialog1.dds
-data/main/mainDialog2.dds
-
 ini/GameSetUp.ini
 ini/info.ini
+
+startup logos
+ani/Control.ani
+
+Progress45 HUD background
+Dialog4 HUD panels
+
+Progress40 life
+Progress41 mana
+Progress42 skill
+Progress46 stamina
+Progress47 extended stamina
+
+10-button main-HUD action strip
+Mission frames
+Organise frames
+four PK button skins
 ```
+
+The experience bar uses solid-rectangle rendering and adds no image asset to the runtime closure.
 
 Manifest source casing may differ from logical ANI casing when a loose retail file wins lookup.
 Current example:
@@ -148,6 +158,10 @@ source path: data/main/ProgressForce2a.dds
 
 Retail `ini/package.ini` remains import configuration for resolving WDF-backed requirements from an
 authorized retail source. It is not part of the curated runtime closure.
+
+Production ANI frame requirements use `LooseThenPackage`. Rendering conformance may enforce a stricter
+known retail provenance contract for a verified asset when native evidence establishes that the
+specific file is loose-only or package-only in the audited 5517 source.
 
 Compatibility-only assets do not expand the runtime closure.
 
@@ -205,6 +219,8 @@ manifest
 payload
 ```
 
+The current checked-in retail-5517 manifest records exactly 50 files and 1,857,179 bytes.
+
 ### Inspect Server.dat
 
 ```bash
@@ -214,6 +230,64 @@ dotnet run \
   inspect-server-dat \
   --file /path/to/Server.dat
 ```
+
+## HUD Development Boundary
+
+Current implemented main-HUD composition is:
+
+```text
+Progress45 background
+Progress40 life
+Progress41 mana
+Progress46 stamina
+Progress47 extended stamina
+Dialog4 panels
+Progress42 skill / experience
+10-button action strip
+```
+
+The action strip currently implements the verified native visual and interaction boundary:
+
+```text
+10 CMyButton controls
+native control IDs
+native draw order
+46×22 logical hit regions
+64×32 natural-size artwork
+ANI frame modulo behavior
+enabled / pressed / disabled state
+single-button pointer capture
+inside-release activation
+outside-release cancellation
+PK skin selection
+PK timed state
+Organise timed state
+```
+
+The returned activation identities are intentionally not wired to downstream dialogs, gameplay, or
+network operations until those feature boundaries are implemented from their own native evidence.
+
+Do not infer unimplemented side effects from ANI artwork names.
+
+## Native Compatibility Discipline
+
+Native 5517 evidence is authoritative for observable compatibility behavior.
+
+When a verified native behavior is unusual, do not normalize it solely because a more conventional
+modern implementation appears safer or cleaner.
+
+Current examples include:
+
+```text
+skill-highlight DWORD timer sentinel and wrap behavior
+signed negative experience-bar behavior
+style-0 gauge source geometry and compatibility sampling
+CMyButton release behavior after an external frame overwrite
+ANI frame modulo behavior
+```
+
+A deliberate deviation from verified native behavior must be explicit and documented rather than
+introduced by a generic cleanup.
 
 ## Local Managed Product
 

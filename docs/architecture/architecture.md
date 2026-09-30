@@ -43,15 +43,15 @@ OpenConquer.Networking
 
 High-level ownership:
 
-| Project                  | Responsibility                                                                                                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenConquer.Launcher`   | launcher process, UI, diagnostics, installation/readiness state, display preferences, trusted installed-release transaction, future release acquisition and controlled launch orchestration |
-| `OpenConquer.Client`     | game-runtime composition root, game-process lifetime, and client-specific UI/runtime semantics                                                                                              |
-| `OpenConquer.Platform`   | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, and desktop input                                                                                  |
-| `OpenConquer.Gameplay`   | game state and gameplay behavior                                                                                                                                                            |
-| `OpenConquer.Rendering`  | OpenGL integration, logical rendering, presentation, GPU resources, rendering-facing text semantics, host font-resource discovery, and glyph rasterization                                  |
-| `OpenConquer.Content`    | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup                                                                                                            |
-| `OpenConquer.Networking` | native-compatible game transport and protocol behavior when implemented                                                                                                                     |
+| Project | Responsibility |
+| --- | --- |
+| `OpenConquer.Launcher` | launcher process, UI, diagnostics, installation/readiness state, display preferences, trusted installed-release transaction, future release acquisition and controlled launch orchestration |
+| `OpenConquer.Client` | game-runtime composition root, game-process lifetime, and client-specific UI/runtime semantics |
+| `OpenConquer.Platform` | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, and desktop input |
+| `OpenConquer.Gameplay` | game state and gameplay behavior |
+| `OpenConquer.Rendering` | OpenGL integration, logical rendering, presentation, GPU resources, rendering-facing text semantics, host font-resource discovery, and glyph rasterization |
+| `OpenConquer.Content` | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup |
+| `OpenConquer.Networking` | native-compatible game transport and protocol behavior when implemented |
 
 The game runtime dependency direction is:
 
@@ -171,9 +171,32 @@ OpenConquer.Client
 The client owns composition and lifecycle. Individual subsystems own their own mechanisms.
 
 Client-specific runtime semantics that coordinate multiple subsystems remain in
-`OpenConquer.Client`. The main HUD is one such boundary: HUD layout and availability semantics live
-under `OpenConquer.Client/UI/Hud`, while Content owns ANI/image decoding and Rendering owns the
-generic texture/sprite mechanisms used to draw it.
+`OpenConquer.Client`. The main HUD is one such boundary: HUD layout, state, availability, and
+interaction semantics live under `OpenConquer.Client/UI/Hud`, while Content owns ANI/image decoding
+and Rendering owns the generic texture, sprite, primitive, and presentation mechanisms used to draw
+it.
+
+Current main-HUD composition is:
+
+```text
+Progress45 background
+Progress40 life
+Progress41 mana
+Progress46 stamina
+Progress47 extended stamina
+Dialog4 panels
+Progress42 skill / experience
+10-button action strip
+```
+
+The action strip is a Client-owned UI composition because it coordinates native control state,
+logical hit testing, pointer capture, ANI-backed assets, timing, and rendering.
+
+Platform emits physical pointer input. Client maps it through Rendering's presentation transform
+into logical coordinates before passing it to HUD input state.
+
+Activation results remain client-level identities until the downstream feature that owns each action
+is implemented. Client does not infer gameplay, dialog, or network side effects from ANI artwork.
 
 ### Platform and Rendering
 
@@ -217,6 +240,8 @@ Rendering owns:
 - logical rendering;
 - presentation transforms;
 - GPU resources;
+- sprite rendering;
+- solid-rectangle rendering;
 - rendering-facing encoded-text semantics;
 - host font-resource discovery;
 - deterministic font resolution;
@@ -225,8 +250,8 @@ Rendering owns:
 
 `PresentationViewport` owns conversion from host-framebuffer positions into logical render
 coordinates, including rejection of positions outside the presented logical surface. Client
-composition is responsible for connecting Platform pointer input to that Rendering-owned transform
-when an implemented UI consumer requires it.
+composition connects Platform pointer input to that Rendering-owned transform for implemented UI
+consumers.
 
 Platform therefore does not clamp pointer positions to the window or logical render surface.
 Positions outside those areas remain outside so the owning presentation or UI layer can reject them
@@ -251,8 +276,8 @@ and text rasterization.
 
 Rendering similarly does not depend on Platform to discover fonts.
 
-Text configuration remains owned by Content. The Client composition root will eventually supply
-Content-derived configuration to Rendering when an implemented runtime text consumer requires it.
+Text configuration remains owned by Content. The Client composition root will supply Content-derived
+configuration to Rendering when an implemented runtime text-bearing UI consumer requires it.
 
 Detailed compatibility behavior belongs in
 [`../compatibility/native-text.md`](../compatibility/native-text.md).
@@ -261,34 +286,7 @@ Detailed compatibility behavior belongs in
 
 `OpenConquer.Content` owns runtime content access and evidence-backed legacy format boundaries.
 
-The current verified retail runtime closure contains 18 files:
-
-```text
-Data/Main/Logo1.bmp
-Data/Main/Logo2.bmp
-ani/Control.ani
-
-data/main/ProgressBk.dds
-
-data/main/ProgressForce.dds
-data/main/ProgressForce2.dds
-data/main/ProgressForce2A.dds
-data/main/ProgressForceA.dds
-
-data/main/ProgressHP.dds
-data/main/ProgressHPA.dds
-data/main/ProgressHPH.dds
-
-data/main/ProgressMP.dds
-data/main/ProgressMPA.dds
-data/main/ProgressMPH.dds
-
-data/main/mainDialog1.dds
-data/main/mainDialog2.dds
-
-ini/GameSetUp.ini
-ini/info.ini
-```
+The current verified retail runtime closure contains 50 files totaling 1,857,179 bytes.
 
 Current runtime consumers cover:
 
@@ -301,9 +299,20 @@ Dialog4 HUD panels
 
 Progress40 life
 Progress41 mana
+Progress42 skill
 Progress46 stamina
 Progress47 extended stamina
+
+10-button main-HUD action strip
+Mission button frames
+Organise button frames
+four PK button skins
 ```
+
+The experience bar uses solid-rectangle rendering and therefore adds no retail image dependency.
+
+The full path-level closure is maintained in
+[`../content/retail-5517-content-plan.md`](../content/retail-5517-content-plan.md).
 
 `ClientContentClosure` is the production dependency boundary.
 
@@ -320,6 +329,10 @@ runtime payload
 Production format support does not itself expand the runtime closure. Runtime content is added only
 when an implemented consumer requires the dependency and the corresponding compatibility behavior
 has been verified.
+
+Runtime ANI frame requirements use `LooseThenPackage`. Exact retail provenance may be enforced more
+strictly by conformance when evidence establishes that a specific asset is loose-only or
+package-only in the audited 5517 source.
 
 Retail `ini/package.ini` is import configuration used to register WDF archives while resolving
 package-backed requirements from an authorized retail source. It is not part of the curated runtime

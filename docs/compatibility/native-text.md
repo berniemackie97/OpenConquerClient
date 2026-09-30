@@ -1512,8 +1512,9 @@ exact native final page traversal order: unresolved
 OpenConquer ascending page-index order: deterministic modern policy
 ```
 
-GFX-TEXT-004 deliberately does not add the first runtime HUD/UI consumer. That composition belongs
-to GFX-UI-001.
+GFX-TEXT-004 itself does not add a runtime HUD/UI consumer. Subsequent GFX-UI slices now provide
+non-text main-HUD consumers, while the text pipeline still awaits its first runtime text-bearing UI
+consumer.
 
 ## Text Reconstruction Roadmap
 
@@ -1536,8 +1537,8 @@ GFX-TEXT-004
 OpenGL text rendering
 + real-driver conformance
         ↓
-GFX-UI-001
-first native UI consumer
+runtime text-bearing UI consumer
+status-hint panel (planned)
 ```
 
 The intended first text-bearing UI consumer remains the verified status-hint panel.
