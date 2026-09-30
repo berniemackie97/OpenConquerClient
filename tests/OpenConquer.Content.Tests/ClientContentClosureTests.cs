@@ -2,6 +2,30 @@ namespace OpenConquer.Content.Tests;
 
 public sealed class ClientContentClosureTests
 {
+    private static readonly (string Name, int Frames)[] s_hudSections =
+    [
+        ("Progress40", 3),
+        ("Progress41", 3),
+        ("Progress42", 3),
+        ("Progress45", 1),
+        ("Progress46", 2),
+        ("Progress47", 2),
+        ("Dialog4", 2),
+        ("Button40", 2),
+        ("Button410", 2),
+        ("Button42", 2),
+        ("Button43", 2),
+        ("Main3_MissionBtn", 3),
+        ("Button45", 2),
+        ("Button46", 2),
+        ("Button47", 2),
+        ("Button49", 2),
+        ("Button48", 2),
+        ("Button412", 2),
+        ("Main3_OrganiseBtn", 4),
+        ("Button41", 3),
+    ];
+
     [Fact]
     public void Resolve_ReturnsTheImplementedRuntimeRequirementsInOrdinalOrder()
     {
@@ -12,33 +36,61 @@ public sealed class ClientContentClosureTests
 
         IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
 
-        Assert.Equal(
+        ClientContentRequirement[] expected =
         [
-            new ClientContentRequirement("Data/Main/Logo1.bmp", ContentLookupMode.LooseOnly),
-            new ClientContentRequirement("Data/Main/Logo2.bmp", ContentLookupMode.LooseOnly),
-            new ClientContentRequirement("ani/Control.ani", ContentLookupMode.LooseOnly),
-            new ClientContentRequirement("data/main/OrganiseBtnClick.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/OrganiseBtnEmboss.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/OrganiseBtnNormal.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/OrganiseBtnUnClick.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressBk.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressForce.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressForce2.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressForce2A.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressForceA.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressHP.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressHPA.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressHPH.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressMP.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressMPA.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressMPH.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressPower.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/ProgressPowerH.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/mainDialog1.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("data/main/mainDialog2.dds", ContentLookupMode.LooseThenPackage),
-            new ClientContentRequirement("ini/GameSetUp.ini", ContentLookupMode.LooseOnly),
-            new ClientContentRequirement("ini/info.ini", ContentLookupMode.LooseOnly),
-        ], closure);
+            new("Data/Main/Logo1.bmp", ContentLookupMode.LooseOnly),
+            new("Data/Main/Logo2.bmp", ContentLookupMode.LooseOnly),
+            new("ani/Control.ani", ContentLookupMode.LooseOnly),
+            new("data/interface/Style01/Action/MissionBtnNormal.dds", ContentLookupMode.LooseThenPackage),
+            new("data/interface/Style01/Action/MissionBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/interface/Style01/Action/MissionBtnEmboss.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ChatBtn.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ChatBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/GoodBtn.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/GoodBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/GroupBtn.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/GroupBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/LevWordBtn.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/LevWordBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/OrganiseBtnNormal.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/OrganiseBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/OrganiseBtnUnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/OrganiseBtnEmboss.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/PkArre.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/PkArreClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/PkFree.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/PkFreeClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/PkGroup.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/PkGroupClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/PkSafe.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/PkSafeClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressBk.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressForce.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressForce2.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressForce2A.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressForceA.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressHP.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressHPA.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressHPH.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressMP.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressMPA.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressMPH.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressPower.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ProgressPowerH.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/QueryBtn.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/QueryBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/SetBtn.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/SetBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/SkillBtn.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/SkillBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/SkillBtnL.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/mainDialog1.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/mainDialog2.dds", ContentLookupMode.LooseThenPackage),
+            new("ini/GameSetUp.ini", ContentLookupMode.LooseOnly),
+            new("ini/info.ini", ContentLookupMode.LooseOnly),
+        ];
+
+        Assert.Equal(expected.OrderBy(static requirement => requirement.ContentPath, StringComparer.Ordinal).ToArray(), closure);
     }
 
     [Fact]
@@ -73,41 +125,29 @@ public sealed class ClientContentClosureTests
     }
 
     [Theory]
-    [InlineData("Progress40")]
-    [InlineData("Progress41")]
-    [InlineData("Progress42")]
-    [InlineData("Progress45")]
-    [InlineData("Progress46")]
-    [InlineData("Progress47")]
-    [InlineData("Dialog4")]
-    [InlineData("Main3_OrganiseBtn")]
-    public void Resolve_RequiresEveryVerifiedHudSectionForTheShippedClosure(string omittedSectionName)
+    [MemberData(nameof(VerifiedHudSections))]
+    public void Resolve_RequiresEveryVerifiedHudSectionForTheShippedClosure(string sectionName, int _)
     {
         using TemporaryContentDirectory temporaryDirectory = new();
+        WriteVerifiedControlAni(temporaryDirectory, omittedSectionName: sectionName);
 
-        WriteVerifiedControlAni(temporaryDirectory, omittedSectionName);
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(
+            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
 
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
-
-        Assert.Contains($"[{omittedSectionName}]", exception.Message, StringComparison.Ordinal);
+        Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
     }
 
     [Theory]
-    [InlineData("Progress40", 2, 3)]
-    [InlineData("Progress41", 2, 3)]
-    [InlineData("Progress42", 2, 3)]
-    [InlineData("Progress45", 2, 1)]
-    [InlineData("Progress46", 1, 2)]
-    [InlineData("Progress47", 1, 2)]
-    [InlineData("Dialog4", 1, 2)]
-    [InlineData("Main3_OrganiseBtn", 3, 4)]
-    public void Resolve_RejectsUnexpectedVerifiedHudFrameCounts(string sectionName, int actualFrameCount, int expectedFrameCount)
+    [MemberData(nameof(VerifiedHudSections))]
+    public void Resolve_RejectsUnexpectedVerifiedHudFrameCounts(string sectionName, int expectedFrameCount)
     {
         using TemporaryContentDirectory temporaryDirectory = new();
 
+        int actualFrameCount = expectedFrameCount == 1 ? 2 : expectedFrameCount - 1;
         WriteVerifiedControlAni(temporaryDirectory, overriddenSectionName: sectionName, overriddenFrameCount: actualFrameCount);
 
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(
+            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
 
         Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
         Assert.Contains($"exactly {expectedFrameCount} frame(s)", exception.Message, StringComparison.Ordinal);
@@ -117,7 +157,6 @@ public sealed class ClientContentClosureTests
     public void Resolve_IncludesUnusedNativeStaminaAlternateFrames()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
-
         WriteVerifiedControlAni(temporaryDirectory);
 
         IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
@@ -127,41 +166,74 @@ public sealed class ClientContentClosureTests
     }
 
     [Fact]
-    public void Resolve_IncludesAllNativeOrganiseButtonFrames()
+    public void Resolve_IncludesEveryVerifiedPkSkin()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
-
         WriteVerifiedControlAni(temporaryDirectory);
 
         IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
 
-        Assert.Contains(new ClientContentRequirement("data/main/OrganiseBtnNormal.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/main/OrganiseBtnClick.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/main/OrganiseBtnUnClick.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/main/OrganiseBtnEmboss.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/PkFree.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/PkFreeClick.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/PkSafe.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/PkSafeClick.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/PkGroup.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/PkGroupClick.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/PkArre.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/PkArreClick.dds", ContentLookupMode.LooseThenPackage), closure);
+    }
+
+    public static TheoryData<string, int> VerifiedHudSections
+    {
+        get
+        {
+            TheoryData<string, int> data = new();
+
+            foreach ((string name, int frames) in s_hudSections)
+            {
+                data.Add(name, frames);
+            }
+
+            return data;
+        }
     }
 
     private static void WriteVerifiedControlAni(TemporaryContentDirectory temporaryDirectory, string? omittedSectionName = null, string? overriddenSectionName = null, int overriddenFrameCount = -1)
     {
         temporaryDirectory.WriteFile("ani/Control.ani",
-            Section("Progress40", 3, ["data/main/ProgressHP.dds", "data/main/ProgressHPA.dds", "data/main/ProgressHPH.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
-            + Section("Progress41", 3, ["data/main/ProgressMP.dds", "data/main/ProgressMPA.dds", "data/main/ProgressMPH.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
-            + Section("Progress42", 3, ["data/main/ProgressPower.dds", "data/main/ProgressPower.dds", "data/main/ProgressPowerH.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
-            + Section("Progress45", 1, ["data/main/ProgressBk.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
-            + Section("Progress46", 2, ["data/main/ProgressForce.dds", "data/main/ProgressForceA.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
-            + Section("Progress47", 2, ["data/main/ProgressForce2.dds", "data/main/ProgressForce2A.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
-            + Section("Dialog4", 2, ["data/main/mainDialog1.dds", "data/main/mainDialog2.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
-            + Section("Main3_OrganiseBtn", 4, ["data/main/OrganiseBtnNormal.dds", "data/main/OrganiseBtnClick.dds", "data/main/OrganiseBtnUnClick.dds", "data/main/OrganiseBtnEmboss.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount));
+            Section("Progress40", ["data/main/ProgressHP.dds", "data/main/ProgressHPA.dds", "data/main/ProgressHPH.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Progress41", ["data/main/ProgressMP.dds", "data/main/ProgressMPA.dds", "data/main/ProgressMPH.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Progress42", ["data/main/ProgressPower.dds", "data/main/ProgressPower.dds", "data/main/ProgressPowerH.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Progress45", ["data/main/ProgressBk.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Progress46", ["data/main/ProgressForce.dds", "data/main/ProgressForceA.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Progress47", ["data/main/ProgressForce2.dds", "data/main/ProgressForce2A.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Dialog4", ["data/main/mainDialog1.dds", "data/main/mainDialog2.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button40", ["data/main/QueryBtn.dds", "data/main/QueryBtnClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button410", ["data/main/LevWordBtn.dds", "data/main/LevWordBtnClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button42", ["data/main/GoodBtn.dds", "data/main/GoodBtnClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button43", ["data/main/SetBtn.dds", "data/main/SetBtnClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Main3_MissionBtn", ["data/interface/Style01/Action/MissionBtnNormal.dds", "data/interface/Style01/Action/MissionBtnClick.dds", "data/interface/Style01/Action/MissionBtnEmboss.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button45", ["data/main/ChatBtn.dds", "data/main/ChatBtnClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button46", ["data/main/GroupBtn.dds", "data/main/GroupBtnClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button47", ["data/main/PkFree.dds", "data/main/PkFreeClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button49", ["data/main/PkSafe.dds", "data/main/PkSafeClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button48", ["data/main/PkGroup.dds", "data/main/PkGroupClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button412", ["data/main/PkArre.dds", "data/main/PkArreClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Main3_OrganiseBtn", ["data/main/OrganiseBtnNormal.dds", "data/main/OrganiseBtnClick.dds", "data/main/OrganiseBtnUnClick.dds", "data/main/OrganiseBtnEmboss.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button41", ["data/main/SkillBtn.dds", "data/main/SkillBtnClick.dds", "data/main/SkillBtnL.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount));
     }
 
-    private static string Section(string sectionName, int verifiedFrameCount, string[] framePaths, string? omittedSectionName, string? overriddenSectionName, int overriddenFrameCount)
+    private static string Section(string sectionName, string[] framePaths, string? omittedSectionName, string? overriddenSectionName, int overriddenFrameCount)
     {
         if (string.Equals(sectionName, omittedSectionName, StringComparison.Ordinal))
         {
             return string.Empty;
         }
 
-        int frameCount = string.Equals(sectionName, overriddenSectionName, StringComparison.Ordinal) ? overriddenFrameCount : verifiedFrameCount;
+        int frameCount = string.Equals(sectionName, overriddenSectionName, StringComparison.Ordinal)
+            ? overriddenFrameCount
+            : framePaths.Length;
+
         string section = $"[{sectionName}]\nFrameAmount={frameCount}\n";
 
         for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)

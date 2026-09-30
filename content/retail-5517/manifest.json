@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 24,
-  "length": 1800603,
+  "fileCount": 50,
+  "length": 1857179,
   "entries": [
     {
       "sourcePath": "ani/Control.Ani",
@@ -12,6 +12,83 @@
       "length": 317837,
       "sha256": "a1db47baaeb2f75eea3b5216378f97d713c2afeaefe05ec02e6f584794532d27",
       "signature": "unknown"
+    },
+    {
+      "sourcePath": "data/interface/Style01/Action/MissionBtnClick.dds",
+      "pathKey": "data/interface/style01/action/missionbtnclick.dds",
+      "length": 2176,
+      "sha256": "8b5d4fea6621ea46711018bf33ad60b346340cb181108c388922283b75e6cc29",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/interface/Style01/Action/MissionBtnEmboss.dds",
+      "pathKey": "data/interface/style01/action/missionbtnemboss.dds",
+      "length": 2176,
+      "sha256": "152b11d5239b22b4992d85e8b4526c478f4b72c34bba277d52b8613764fe9eb0",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/interface/Style01/Action/MissionBtnNormal.dds",
+      "pathKey": "data/interface/style01/action/missionbtnnormal.dds",
+      "length": 2176,
+      "sha256": "e22897c47610ab53c8a40fb8b8fc2d096a754deedf264f4694a47bb17dc75e6e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ChatBtn.dds",
+      "pathKey": "data/main/chatbtn.dds",
+      "length": 2176,
+      "sha256": "a4f63e5d6c3041d0b2b80031aa6cf36dc052ce65549ba9958b1f91927f932517",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ChatBtnClick.dds",
+      "pathKey": "data/main/chatbtnclick.dds",
+      "length": 2176,
+      "sha256": "0ee1172fb56963a3fdd77beddba91d32d73645dbfe8f516ebd4c0f2697de89ef",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/GoodBtn.dds",
+      "pathKey": "data/main/goodbtn.dds",
+      "length": 2176,
+      "sha256": "40f86b049069750334dba62bf186ba8436e5f94223dd436bdd4ac5960c37991f",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/GoodBtnClick.dds",
+      "pathKey": "data/main/goodbtnclick.dds",
+      "length": 2176,
+      "sha256": "5b79b1afec4a75c2b49529fc43e4bab06d7c284bbd2f0f87e0a3d985a8e1888e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/GroupBtn.dds",
+      "pathKey": "data/main/groupbtn.dds",
+      "length": 2176,
+      "sha256": "5e2a9a8d60daf06c6a3f12b295611b0a12433b92481d4acecfe92d3fc5e438f3",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/GroupBtnClick.dds",
+      "pathKey": "data/main/groupbtnclick.dds",
+      "length": 2176,
+      "sha256": "b9749ddbcf025e8777a176e70dce507124e7d43bfda9bb77eb9902c72d77c109",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/LevWordBtn.dds",
+      "pathKey": "data/main/levwordbtn.dds",
+      "length": 2176,
+      "sha256": "43b1f295d5a5c6ce459aee2ba9a9e1eaad0b99f95ff657b3d167e33cd6ec6426",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/LevWordBtnClick.dds",
+      "pathKey": "data/main/levwordbtnclick.dds",
+      "length": 2176,
+      "sha256": "43c7a289ba014b9a839eae158e02bf60c1f7e14f0cea713c6e87c08bb9ebe35d",
+      "signature": "dds"
     },
     {
       "sourcePath": "data/main/Logo1.bmp",
@@ -60,6 +137,62 @@
       "pathKey": "data/main/organisebtnunclick.dds",
       "length": 2176,
       "sha256": "f9382f214d194c56e320933d69d00a637621b015b757401e29e260dbc818aaa3",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/PkArre.dds",
+      "pathKey": "data/main/pkarre.dds",
+      "length": 2176,
+      "sha256": "b76d5cb6f912557c53f5400b4c2521c5299a05adcd5ddb1e3d4356aa41b4b37f",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/PkArreClick.dds",
+      "pathKey": "data/main/pkarreclick.dds",
+      "length": 2176,
+      "sha256": "374842c513a49a198ee9e67f7bb1543ad541b19eb8e249ed0bf769e9385c5224",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/PkFree.dds",
+      "pathKey": "data/main/pkfree.dds",
+      "length": 2176,
+      "sha256": "daa715ebbd96119a8977ff82e0fde8abaac87633dac55f340231f6b33b994a08",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/PkFreeClick.dds",
+      "pathKey": "data/main/pkfreeclick.dds",
+      "length": 2176,
+      "sha256": "651f6acd3db42f07278608752737d6b713d58e0a8e496d6b263c74d8b70e6e4b",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/PkGroup.dds",
+      "pathKey": "data/main/pkgroup.dds",
+      "length": 2176,
+      "sha256": "779db2abffe0803ddc4e0ad9373c7de59ef565643a2daf89fff4f92d949d3a8e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/PkGroupClick.dds",
+      "pathKey": "data/main/pkgroupclick.dds",
+      "length": 2176,
+      "sha256": "f1a71c88d3cda9dd74c141467b269bf3af1e20d7ff246b91daaae8d160a310c0",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/PkSafe.dds",
+      "pathKey": "data/main/pksafe.dds",
+      "length": 2176,
+      "sha256": "b4a08b57138750cb2df7f654c039994dde3e6889597303a206dac6ca0d388bbd",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/PkSafeClick.dds",
+      "pathKey": "data/main/pksafeclick.dds",
+      "length": 2176,
+      "sha256": "3c0bbf942e62d6e0aef98a6ef3a1284e39eaff309ebcc3abea7479d4dd053969",
       "signature": "dds"
     },
     {
@@ -151,6 +284,55 @@
       "pathKey": "data/main/progresspowerh.dds",
       "length": 16512,
       "sha256": "e4d10a40d7ead3d91a3b29cf5339baca487df1f41a40c8afa8c892c80f351868",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/QueryBtn.dds",
+      "pathKey": "data/main/querybtn.dds",
+      "length": 2176,
+      "sha256": "53bf14f30d91a6771e2b3545444461b9597cd491960677b9b9178844c647f7ef",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/QueryBtnClick.dds",
+      "pathKey": "data/main/querybtnclick.dds",
+      "length": 2176,
+      "sha256": "b89ebf6d68b9f28350d10996a3d4d9af1204a02404498f2e4d035b165a4ca475",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/SetBtn.dds",
+      "pathKey": "data/main/setbtn.dds",
+      "length": 2176,
+      "sha256": "f6d62cbfa76a1e3050ff5a4fe1538449d2e78da4fe2fa5250f463da3e7129639",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/SetBtnClick.dds",
+      "pathKey": "data/main/setbtnclick.dds",
+      "length": 2176,
+      "sha256": "00bbafdab160f15cd0bea5ae180031fc8d672bf8e43ed0c3a4cfa52d5ad8fc75",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/SkillBtn.dds",
+      "pathKey": "data/main/skillbtn.dds",
+      "length": 2176,
+      "sha256": "db5a32f59014e65403402003f403c76bcce7e934c8442f7f760d48279a1e0f4a",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/SkillBtnClick.dds",
+      "pathKey": "data/main/skillbtnclick.dds",
+      "length": 2176,
+      "sha256": "5a2f7810b5a99b8a5c0a8ee01c8da2a7bfc167b511bf90f782cbe220f4cb361a",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/SkillBtnL.dds",
+      "pathKey": "data/main/skillbtnl.dds",
+      "length": 2176,
+      "sha256": "d04c0e8c75a3809ac7c27046a818fa2d0510cd8d414cc2a0e5590911f1a5d19a",
       "signature": "dds"
     },
     {

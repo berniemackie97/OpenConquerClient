@@ -1,6 +1,6 @@
 namespace OpenConquer.Client.UI.Hud;
 
-internal sealed class MainHudOrganiseButtonState
+internal sealed class MainHudActionButtonState
 {
     public const int NormalFrame = 0;
     public const int PressedFrame = 1;
@@ -17,25 +17,19 @@ internal sealed class MainHudOrganiseButtonState
     public bool IsEnabled { get; private set; } = true;
     public bool IsCursorInside => _cursorInside;
     public bool IsPointerCaptured => _pointerCaptured;
-
-    public int RenderFrame => _hoverFrameEnabled && _cursorTrackingActive && _currentFrame != PressedFrame && IsEnabled
-        ? HoverFrame : _currentFrame;
+    public int RenderFrame => _hoverFrameEnabled && _cursorTrackingActive && _currentFrame != PressedFrame && IsEnabled ? HoverFrame : _currentFrame;
 
     public void SetEnabled(bool enabled)
     {
         IsEnabled = enabled;
         _currentFrame = enabled ? NormalFrame : DisabledFrame;
-
         if (!enabled)
         {
             _pointerCaptured = false;
         }
     }
 
-    public void SetHoverFrameEnabled(bool enabled)
-    {
-        _hoverFrameEnabled = enabled;
-    }
+    public void SetHoverFrameEnabled(bool enabled) => _hoverFrameEnabled = enabled;
 
     public void SetCurrentFrame(int frameIndex)
     {
@@ -47,19 +41,17 @@ internal sealed class MainHudOrganiseButtonState
         _currentFrame = frameIndex;
     }
 
-    public bool HandlePointerMoved(int logicalX, int logicalY, MainHudOrganiseButtonLayout layout)
+    public bool HandlePointerMoved(int logicalX, int logicalY, MainHudActionButtonBounds bounds)
     {
-        bool inside = Contains(layout, logicalX, logicalY);
-
+        bool inside = bounds.Contains(logicalX, logicalY);
         _cursorTrackingActive = inside;
         _cursorInside = inside;
-
         return inside || _pointerCaptured;
     }
 
-    public bool HandleLeftButtonDown(int logicalX, int logicalY, MainHudOrganiseButtonLayout layout)
+    public bool HandleLeftButtonDown(int logicalX, int logicalY, MainHudActionButtonBounds bounds)
     {
-        if (!IsEnabled || !Contains(layout, logicalX, logicalY))
+        if (!IsEnabled || !bounds.Contains(logicalX, logicalY))
         {
             return false;
         }
@@ -68,30 +60,26 @@ internal sealed class MainHudOrganiseButtonState
         _pointerCaptured = true;
         _cursorTrackingActive = true;
         _cursorInside = true;
-
         return true;
     }
 
-    public bool HandleLeftButtonUp(int logicalX, int logicalY, MainHudOrganiseButtonLayout layout, out bool activated)
+    public bool HandleLeftButtonUp(int logicalX, int logicalY, MainHudActionButtonBounds bounds, out bool activated)
     {
         activated = false;
-
         if (!_pointerCaptured)
         {
             return false;
         }
 
-        activated = IsEnabled && _currentFrame == PressedFrame && Contains(layout, logicalX, logicalY);
-
+        activated = IsEnabled && bounds.Contains(logicalX, logicalY);
         _pointerCaptured = false;
-        _currentFrame = IsEnabled ? NormalFrame : DisabledFrame;
-        HandlePointerMoved(logicalX, logicalY, layout);
 
+        if (_currentFrame == PressedFrame)
+        {
+            _currentFrame = NormalFrame;
+        }
+
+        HandlePointerMoved(logicalX, logicalY, bounds);
         return true;
-    }
-
-    private static bool Contains(MainHudOrganiseButtonLayout layout, int x, int y)
-    {
-        return x >= layout.X && y >= layout.Y && (long)x < (long)layout.X + layout.HitWidth && (long)y < (long)layout.Y + layout.HitHeight;
     }
 }
