@@ -11,7 +11,7 @@ C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for Window
 | Product | Implemented | Remaining |
 | --- | --- | --- |
 | Launcher | Managed installation resolution, authenticated releases, integrity verification, update/repair/rollback transaction, single-instance activation, saved display preferences | Production release origin, launcher self-update, player-facing maintenance flow, controlled client startup |
-| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina vitals, skill/experience HUD, native 10-button action strip with pointer interaction and PK/Organise animation state | Live gameplay state, action-button side effects, remaining HUD/UI, networking, maps, roles, effects, animation |
+| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina vitals, skill/experience HUD, native 10-button action strip with pointer interaction and PK/Organise animation state, four native main-HUD CMyCheck controls | Live gameplay state, downstream HUD-control side effects, remaining HUD/UI, networking, maps, roles, effects, animation |
 
 ## Architecture
 
@@ -134,7 +134,7 @@ Do not preserve obsolete implementation machinery when observable behavior can b
 
 ### Runtime Content
 
-The managed runtime closure currently contains 50 files totaling 1,857,179 bytes.
+The managed runtime closure currently contains 58 files totaling 1,866,395 bytes.
 
 It covers:
 
@@ -156,6 +156,11 @@ Progress47 extended-stamina frames
 Mission button frames
 Organise button frames
 four PK button skins
+
+Check40 walk/run frames
+Check43 map frames
+Check46 screen-shift frames
+Button411 equipment-view frames
 ```
 
 Required invariant:
@@ -187,6 +192,7 @@ Progress47 extended stamina
 Dialog4 panels
 Progress42 skill / experience
 main action-button strip
+main check controls
 ```
 
 The action strip currently reconstructs the native visual, state, timing, hit-test, capture, and release behavior of its ten `CMyButton` controls.
@@ -208,6 +214,24 @@ Organise timed blinking
 ```
 
 Action-button activation results are not yet connected to downstream gameplay dialogs, networking, or other feature behavior. Those dependencies are implemented only after their own native contracts are verified.
+
+The neighboring native `CMyCheck` group currently reconstructs:
+
+```text
+Check40   0x3F4  walk/run
+Check43   0x3F7  map
+Check46   0x3FF  screen shift
+Button411 0x3F8  equipment view
+
+22×22 logical hit rectangles
+32×32 natural-size ANI sprites
+state 0 / state 1 rendering
+state transition on delivered left-button down
+left/top inclusive, right/bottom exclusive hit testing
+native draw order after the ten CMyButton controls
+```
+
+The check-control slice deliberately does not invent downstream map, screen-shift, equipment-view, or other feature effects. Native USER32 release/`BN_CLICKED` behavior outside the proven state-transition boundary also remains deferred.
 
 Remaining HUD groups are implemented only after native behavior and dependencies are verified.
 

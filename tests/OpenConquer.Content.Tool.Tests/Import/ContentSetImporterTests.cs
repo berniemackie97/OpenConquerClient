@@ -36,6 +36,10 @@ public sealed class ContentSetImporterTests
             "data/main/Logo1.bmp",
             "data/main/Logo2.bmp",
             "data/main/MainDialog2.dds",
+            "data/main/MapChk1.dds",
+            "data/main/MapChk2.dds",
+            "data/main/NpcEquip.dds",
+            "data/main/NpcEquipClick.dds",
             "data/main/OrganiseBtnClick.dds",
             "data/main/OrganiseBtnEmboss.dds",
             "data/main/OrganiseBtnNormal.dds",
@@ -63,6 +67,10 @@ public sealed class ContentSetImporterTests
             "data/main/ProgressPowerH.dds",
             "data/main/QueryBtn.dds",
             "data/main/QueryBtnClick.dds",
+            "data/main/RunChk1.dds",
+            "data/main/RunChk2.dds",
+            "data/main/ScreenMoveChk1.dds",
+            "data/main/ScreenMoveChk2.dds",
             "data/main/SetBtn.dds",
             "data/main/SetBtnClick.dds",
             "data/main/SkillBtn.dds",
@@ -142,6 +150,14 @@ public sealed class ContentSetImporterTests
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SkillBtn.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SkillBtnClick.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SkillBtnL.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/RunChk1.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/RunChk2.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MapChk1.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MapChk2.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ScreenMoveChk1.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ScreenMoveChk2.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/NpcEquip.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/NpcEquipClick.dds" && entry.Signature == "dds");
 
         Assert.Equal("DDS ProgressBk", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressBk.dds"))));
         Assert.Equal("DDS mainDialog1", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "mainDialog1.dds"))));
@@ -244,7 +260,7 @@ public sealed class ContentSetImporterTests
         ContentManifestEntry organiseNormal = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/OrganiseBtnNormal.dds");
         ContentManifestEntry skillNormal = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/SkillBtn.dds");
 
-        Assert.Equal(50, manifest.FileCount);
+        Assert.Equal(58, manifest.FileCount);
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
         Assert.Equal(64, logo.Sha256.Length);

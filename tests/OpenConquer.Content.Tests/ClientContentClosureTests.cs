@@ -24,6 +24,10 @@ public sealed class ClientContentClosureTests
         ("Button412", 2),
         ("Main3_OrganiseBtn", 4),
         ("Button41", 3),
+        ("Check40", 2),
+        ("Check43", 2),
+        ("Check46", 2),
+        ("Button411", 2),
     ];
 
     [Fact]
@@ -52,6 +56,10 @@ public sealed class ClientContentClosureTests
             new("data/main/GroupBtnClick.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/LevWordBtn.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/LevWordBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/MapChk1.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/MapChk2.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/NpcEquip.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/NpcEquipClick.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/OrganiseBtnNormal.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/OrganiseBtnClick.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/OrganiseBtnUnClick.dds", ContentLookupMode.LooseThenPackage),
@@ -79,6 +87,10 @@ public sealed class ClientContentClosureTests
             new("data/main/ProgressPowerH.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/QueryBtn.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/QueryBtnClick.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/RunChk1.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/RunChk2.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ScreenMoveChk1.dds", ContentLookupMode.LooseThenPackage),
+            new("data/main/ScreenMoveChk2.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/SetBtn.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/SetBtnClick.dds", ContentLookupMode.LooseThenPackage),
             new("data/main/SkillBtn.dds", ContentLookupMode.LooseThenPackage),
@@ -183,6 +195,24 @@ public sealed class ClientContentClosureTests
         Assert.Contains(new ClientContentRequirement("data/main/PkArreClick.dds", ContentLookupMode.LooseThenPackage), closure);
     }
 
+    [Fact]
+    public void Resolve_IncludesEveryVerifiedMainHudCheckControlFrame()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+        WriteVerifiedControlAni(temporaryDirectory);
+
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+
+        Assert.Contains(new ClientContentRequirement("data/main/RunChk1.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/RunChk2.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/MapChk2.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/MapChk1.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/ScreenMoveChk1.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/ScreenMoveChk2.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/NpcEquip.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/NpcEquipClick.dds", ContentLookupMode.LooseThenPackage), closure);
+    }
+
     public static TheoryData<string, int> VerifiedHudSections
     {
         get
@@ -220,7 +250,11 @@ public sealed class ClientContentClosureTests
             + Section("Button48", ["data/main/PkGroup.dds", "data/main/PkGroupClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
             + Section("Button412", ["data/main/PkArre.dds", "data/main/PkArreClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
             + Section("Main3_OrganiseBtn", ["data/main/OrganiseBtnNormal.dds", "data/main/OrganiseBtnClick.dds", "data/main/OrganiseBtnUnClick.dds", "data/main/OrganiseBtnEmboss.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
-            + Section("Button41", ["data/main/SkillBtn.dds", "data/main/SkillBtnClick.dds", "data/main/SkillBtnL.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount));
+            + Section("Button41", ["data/main/SkillBtn.dds", "data/main/SkillBtnClick.dds", "data/main/SkillBtnL.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Check40", ["data/main/RunChk1.dds", "data/main/RunChk2.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Check43", ["data/main/MapChk2.dds", "data/main/MapChk1.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Check46", ["data/main/ScreenMoveChk1.dds", "data/main/ScreenMoveChk2.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount)
+            + Section("Button411", ["data/main/NpcEquip.dds", "data/main/NpcEquipClick.dds"], omittedSectionName, overriddenSectionName, overriddenFrameCount));
     }
 
     private static string Section(string sectionName, string[] framePaths, string? omittedSectionName, string? overriddenSectionName, int overriddenFrameCount)
