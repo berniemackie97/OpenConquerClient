@@ -16,7 +16,7 @@ Content enters the runtime set only for an implemented, verified consumer.
 
 ## retail-5517
 
-Current runtime closure: 50 files totaling 1,857,179 bytes.
+Current runtime closure: 58 files totaling 1,866,395 bytes.
 
 ```text
 payload/
@@ -41,6 +41,10 @@ payload/
 │       ├── Logo1.bmp
 │       ├── Logo2.bmp
 │       ├── MainDialog2.dds
+│       ├── MapChk1.dds
+│       ├── MapChk2.dds
+│       ├── NpcEquip.dds
+│       ├── NpcEquipClick.dds
 │       ├── OrganiseBtnClick.dds
 │       ├── OrganiseBtnEmboss.dds
 │       ├── OrganiseBtnNormal.dds
@@ -68,6 +72,10 @@ payload/
 │       ├── ProgressPowerH.dds
 │       ├── QueryBtn.dds
 │       ├── QueryBtnClick.dds
+│       ├── RunChk1.dds
+│       ├── RunChk2.dds
+│       ├── ScreenMoveChk1.dds
+│       ├── ScreenMoveChk2.dds
 │       ├── SetBtn.dds
 │       ├── SetBtnClick.dds
 │       ├── SkillBtn.dds
@@ -101,6 +109,11 @@ main-HUD experience rendering
 PK-mode button skins
 PK timed blinking
 Organise timed blinking
+
+Check40 walk/run check control
+Check43 map check control
+Check46 screen-shift check control
+Button411 equipment-view check control
 ```
 
 `Control.Ani` is loose retail content.
@@ -131,6 +144,33 @@ Button48
 Button412
 Button41
 → package
+```
+
+Main-HUD check-control conformance independently verifies:
+
+```text
+Check40
+→ RunChk1.dds
+→ RunChk2.dds
+
+Check43
+→ MapChk2.dds
+→ MapChk1.dds
+
+Check46
+→ ScreenMoveChk1.dds
+→ ScreenMoveChk2.dds
+
+Button411
+→ NpcEquip.dds
+→ NpcEquipClick.dds
+
+all eight frames
+→ exact retail SHA-256 identity
+→ exactly one resolving retail source
+→ independent DXT3 decoding
+→ natural 32×32 rendering
+→ native geometry and draw order
 ```
 
 Actual winning loose-file casing is preserved. `Progress47` references `ProgressForce2A.dds`; the verified retail loose file is `ProgressForce2a.dds`.
