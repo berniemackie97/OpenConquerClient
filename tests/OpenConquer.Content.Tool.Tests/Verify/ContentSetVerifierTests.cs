@@ -16,7 +16,7 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(50, manifest.FileCount);
+        Assert.Equal(58, manifest.FileCount);
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressHP.dds");
@@ -29,6 +29,14 @@ public sealed class ContentSetVerifierTests
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2a.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/mainDialog1.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainDialog2.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MapChk1.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MapChk2.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/NpcEquip.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/NpcEquipClick.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/RunChk1.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/RunChk2.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ScreenMoveChk1.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ScreenMoveChk2.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/QueryBtn.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/QueryBtnClick.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/LevWordBtn.dds");
@@ -209,7 +217,7 @@ public sealed class ContentSetVerifierTests
         string manifestPath = Path.Combine(contentSet, "manifest.json");
 
         File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 50", "\"fileCount\": 49", StringComparison.Ordinal),
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 58", "\"fileCount\": 57", StringComparison.Ordinal),
             Encoding.UTF8);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));

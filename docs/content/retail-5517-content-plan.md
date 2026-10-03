@@ -19,7 +19,7 @@ dependency has been verified.
 
 ## Runtime Closure
 
-Current closure: 50 files totaling 1,857,179 bytes.
+Current closure: 58 files totaling 1,866,395 bytes.
 
 | Path | Lookup |
 | --- | --- |
@@ -37,6 +37,10 @@ Current closure: 50 files totaling 1,857,179 bytes.
 | `data/main/GroupBtnClick.dds` | `LooseThenPackage` |
 | `data/main/LevWordBtn.dds` | `LooseThenPackage` |
 | `data/main/LevWordBtnClick.dds` | `LooseThenPackage` |
+| `data/main/MapChk1.dds` | `LooseThenPackage` |
+| `data/main/MapChk2.dds` | `LooseThenPackage` |
+| `data/main/NpcEquip.dds` | `LooseThenPackage` |
+| `data/main/NpcEquipClick.dds` | `LooseThenPackage` |
 | `data/main/ProgressBk.dds` | `LooseThenPackage` |
 | `data/main/ProgressForce.dds` | `LooseThenPackage` |
 | `data/main/ProgressForce2.dds` | `LooseThenPackage` |
@@ -64,6 +68,10 @@ Current closure: 50 files totaling 1,857,179 bytes.
 | `data/main/PkSafeClick.dds` | `LooseThenPackage` |
 | `data/main/QueryBtn.dds` | `LooseThenPackage` |
 | `data/main/QueryBtnClick.dds` | `LooseThenPackage` |
+| `data/main/RunChk1.dds` | `LooseThenPackage` |
+| `data/main/RunChk2.dds` | `LooseThenPackage` |
+| `data/main/ScreenMoveChk1.dds` | `LooseThenPackage` |
+| `data/main/ScreenMoveChk2.dds` | `LooseThenPackage` |
 | `data/main/SetBtn.dds` | `LooseThenPackage` |
 | `data/main/SetBtnClick.dds` | `LooseThenPackage` |
 | `data/main/SkillBtn.dds` | `LooseThenPackage` |
@@ -104,6 +112,18 @@ ani/Control.ani
 ├── Dialog4
 │   ├── mainDialog1.dds
 │   └── mainDialog2.dds
+├── Check40
+│   ├── RunChk1.dds
+│   └── RunChk2.dds
+├── Check43
+│   ├── MapChk2.dds
+│   └── MapChk1.dds
+├── Check46
+│   ├── ScreenMoveChk1.dds
+│   └── ScreenMoveChk2.dds
+├── Button411
+│   ├── NpcEquip.dds
+│   └── NpcEquipClick.dds
 ├── Button40
 │   ├── QueryBtn.dds
 │   └── QueryBtnClick.dds
@@ -192,8 +212,11 @@ Main3_MissionBtn frames  → loose
 Main3_OrganiseBtn frames → loose
 ```
 
-The action-strip provenance assertions are independent conformance requirements. Production import
-still resolves ANI frame requirements through `LooseThenPackage`.
+The action-strip provenance assertions are independent conformance requirements.
+
+For the four main-HUD check controls, production import remains `LooseThenPackage`. Rendering
+conformance independently requires each of the eight verified frame paths to resolve from exactly
+one retail source and verifies its exact encoded SHA-256 before reference decoding.
 
 The importer materializes selected bytes into the curated payload. Package provenance is not
 preserved after import.
@@ -313,6 +336,11 @@ Button48
 Button412
 Main3_OrganiseBtn
 Button41
+
+Check40
+Check43
+Check46
+Button411
 ```
 
 ## Excluded Content
@@ -371,6 +399,13 @@ skill / experience HUD
 10-button action strip
 alternate PK skins
 ANI frame modulo behavior
+
+four main-HUD CMyCheck controls
+two-state CMyCheck frame selection
+native check-control geometry and draw order
+natural 32×32 check-control rendering
+exact check-control retail frame hashes
+
 independent DXT3 reference decoding
 exact framebuffer comparison
 ```

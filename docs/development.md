@@ -98,6 +98,11 @@ experience-bar rendering
 all logical CMyButton frame states
 alternate PK button skins
 
+four main-HUD CMyCheck controls
+both CMyCheck states
+native check-control geometry and draw order
+natural 32×32 check-control sprites
+
 retail asset hashes
 exact loose/package provenance where established
 independent HUD reference geometry
@@ -120,7 +125,7 @@ Runtime content:
 content/retail-5517/payload
 ```
 
-Current runtime closure: 50 files totaling 1,857,179 bytes.
+Current runtime closure: 58 files totaling 1,866,395 bytes.
 
 It covers:
 
@@ -144,6 +149,11 @@ Progress47 extended stamina
 Mission frames
 Organise frames
 four PK button skins
+
+Check40 frames
+Check43 frames
+Check46 frames
+Button411 frames
 ```
 
 The experience bar uses solid-rectangle rendering and adds no image asset to the runtime closure.
@@ -219,7 +229,7 @@ manifest
 payload
 ```
 
-The current checked-in retail-5517 manifest records exactly 50 files and 1,857,179 bytes.
+The current checked-in retail-5517 manifest records exactly 58 files and 1,866,395 bytes.
 
 ### Inspect Server.dat
 
@@ -244,6 +254,7 @@ Progress47 extended stamina
 Dialog4 panels
 Progress42 skill / experience
 10-button action strip
+four main-HUD CMyCheck controls
 ```
 
 The action strip currently implements the verified native visual and interaction boundary:
@@ -264,8 +275,28 @@ PK timed state
 Organise timed state
 ```
 
-The returned activation identities are intentionally not wired to downstream dialogs, gameplay, or
-network operations until those feature boundaries are implemented from their own native evidence.
+The returned action-button activation identities are intentionally not wired to downstream dialogs,
+gameplay, or network operations until those feature boundaries are implemented from their own
+native evidence.
+
+The four implemented `CMyCheck` controls use the verified native boundary:
+
+```text
+Check40   0x3F4
+Check43   0x3F7
+Check46   0x3FF
+Button411 0x3F8
+
+22×22 logical hit rectangles
+32×32 natural-size artwork
+initial state 0
+state/frame 0 ↔ 1
+left-button down performs the state transition
+no managed release rollback
+```
+
+The downstream map, screen-shift, equipment-view, and other parent-handler effects remain outside
+this slice. The unresolved USER32 release/`BN_CLICKED` boundary must not be guessed.
 
 Do not infer unimplemented side effects from ANI artwork names.
 
@@ -284,6 +315,8 @@ signed negative experience-bar behavior
 style-0 gauge source geometry and compatibility sampling
 CMyButton release behavior after an external frame overwrite
 ANI frame modulo behavior
+CMyCheck state transition on mouse-down rather than mouse-up
+CMyCheck low-byte setter truncation and bounds rejection
 ```
 
 A deliberate deviation from verified native behavior must be explicit and documented rather than

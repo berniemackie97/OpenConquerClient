@@ -630,7 +630,8 @@ That behavior is evidence-backed and must not be replaced with a symmetric
 
 GFX-UI-004 reconstructs the ten native `CMyButton` controls drawn by `CDlgMain`.
 
-The neighboring `CMyCheck` controls are a separate slice and are not part of this contract.
+GFX-UI-005 reconstructs the four neighboring native `CMyCheck` controls documented separately
+below.
 
 ### Native Controls and Draw Order
 
@@ -886,6 +887,122 @@ behavior of each action.
 
 Artwork names are not used to invent downstream semantics.
 
+## Main HUD Check Controls
+
+GFX-UI-005 reconstructs the four native `CMyCheck` controls drawn by `CDlgMain` immediately after
+the ten GFX-UI-004 `CMyButton` controls.
+
+### Native Controls and Draw Order
+
+| Draw | ANI section | Control ID | Local X | Local Y | Final 800×600 | Final 1024×768 |
+| ---: | --- | ---: | ---: | ---: | --- | --- |
+| 1 | `Check40` | `0x3F4` | 0 | 23 | `(0,482)` | `(0,650)` |
+| 2 | `Check43` | `0x3F7` | 72 | 23 | `(72,482)` | `(72,650)` |
+| 3 | `Check46` | `0x3FF` | 50 | 11 | `(50,470)` | `(50,638)` |
+| 4 | `Button411` | `0x3F8` | 22 | 11 | `(22,470)` | `(22,638)` |
+
+The parent HUD origin is:
+
+```text
+Y = logicalHeight - 141
+```
+
+There is no screen-width multiplier.
+
+Each control has a 22×22 logical HWND-equivalent hit rectangle.
+
+Hit testing uses:
+
+```text
+left/top     inclusive
+right/bottom exclusive
+```
+
+The ANI artwork is 32×32 and is rendered at natural size. Artwork outside the 22×22 logical control
+rectangle does not enlarge the interactive region.
+
+### ANI State Frames
+
+| Control | State 0 | State 1 |
+| --- | --- | --- |
+| `Check40` | `RunChk1.dds` | `RunChk2.dds` |
+| `Check43` | `MapChk2.dds` | `MapChk1.dds` |
+| `Check46` | `ScreenMoveChk1.dds` | `ScreenMoveChk2.dds` |
+| `Button411` | `NpcEquip.dds` | `NpcEquipClick.dds` |
+
+All eight frames are verified 32×32 single-level DXT3 DDS images.
+
+Verified encoded SHA-256:
+
+| Asset | SHA-256 |
+| --- | --- |
+| `RunChk1.dds` | `d4e5ee9cfc3afb45f803bcb589f21a6b10ec65d8295e2554171e3e40dd8dcf58` |
+| `RunChk2.dds` | `70b01df50ab75f0cc3f7ecc8958844171924b80d7993e7c81c22a0ca134b03cb` |
+| `MapChk1.dds` | `f11580826bad44a032f67a622e728448957dd648588b005c0afebb90627a835f` |
+| `MapChk2.dds` | `1662cc91c12d3c8b7fdf193c7855374f84b6fa9fd522e778e38c8fd6fa721e2e` |
+| `ScreenMoveChk1.dds` | `a9a6fa6e7ab47211f52074b524a2f4044a16cc0c07dd05867755b8384b62911e` |
+| `ScreenMoveChk2.dds` | `6f06ef1bbf0a1f4a0cdb0b759fea78289bc55773897215e71d460f6c99ca927f` |
+| `NpcEquip.dds` | `ce4605c39ad53462db6d62ee16d26d9481e50eacf85513d6cbbae61abe3fc45c` |
+| `NpcEquipClick.dds` | `0c2b8b6f9e2fc330a056a36b1021d7f67866bae5cee6066df741d92ad1ce6b80` |
+
+Production import resolves these frame requirements with `LooseThenPackage`.
+
+Conformance does not guess a fixed package-vs-loose origin for these frames. Instead each verified
+retail frame must resolve from exactly one source in the audited retail root, after which its encoded
+SHA-256 is checked.
+
+### Shared CMyCheck State
+
+All four controls initialize to state 0.
+
+The native state byte and render frame advance together.
+
+For the two-state controls:
+
+```text
+left-button down
+state 0 → state 1
+state 1 → state 0
+```
+
+The transition occurs on `WM_LBUTTONDOWN`, not mouse-up.
+
+The state object therefore does not use the GFX-UI-004 CMyButton capture/release state machine and
+does not perform a mouse-up visual rollback.
+
+The native setter truncates its input to the low byte before checking the state-count bound:
+
+```text
+requested = low byte of input
+
+requested < 2
+→ update state and render frame
+
+requested >= 2
+→ preserve current state and frame
+```
+
+The setter itself does not notify the parent.
+
+### Native Parent Handlers
+
+Verified parent mappings are:
+
+```text
+Check40   0x3F4 → empty parent handler
+Check43   0x3F7 → radar visibility transition
+Check46   0x3FF → shell screen-shift state
+Button411 0x3F8 → equipment-inspection target mode
+```
+
+GFX-UI-005 implements the verified reusable control boundary and local state/rendering behavior.
+
+It deliberately does not recursively implement those downstream parent feature effects.
+
+The exact USER32 capture/release and `BN_CLICKED` behavior for an outside release after native
+`CMyCheck` mouse-move handling remains unresolved. That boundary is not required for the proven
+mouse-down state transition and is not fabricated by the managed implementation.
+
 ## Missing Content Behavior
 
 For HUD ANI-backed controls:
@@ -909,7 +1026,7 @@ invalid DDS
 unexpected decoded dimensions
 ```
 
-One missing action-button section does not disable unrelated controls.
+One missing action-button or check-control section does not disable unrelated controls.
 
 ## Real-Driver Conformance
 
@@ -997,6 +1114,33 @@ exact production framebuffer vs independent reference framebuffer
 
 The action-strip suite covers 52 logical frame/skin cases per supported resolution.
 
+### HUD Check Controls
+
+Real-driver conformance independently verifies at both logical sizes:
+
+```text
+all four native CMyCheck controls
+state 0 composition
+state 1 for each individual control
+native Check40 → Check43 → Check46 → Button411 draw order
+verified final geometry
+natural 32×32 sprite size
+exact retail asset hashes
+single-source retail resolution
+production DXT3 decode vs independent reference decode
+exact production framebuffer vs independent reference framebuffer
+```
+
+Verified Apple M4 / OpenGL 4.1 Metal framebuffer hashes:
+
+| Case | 800×600 | 1024×768 |
+| --- | --- | --- |
+| all state 0 | `e7b429c0728e4dbba90163b87b8b88fb5e4df2b4cd3067f41d95bb4b49cf7eff` | `b7e43a9f94a46a9074decbc33cdfe2c32b8aba30f9a18373782520fd33c79391` |
+| Check40 state 1 | `edcea1b6e8d556c065809630ddd434bb84cd30d11a4ac6d832987ec79c916547` | `cec1baa25100e329871e37c59881f00420d8618709b5b2b035b2dbe3a79a9413` |
+| Check43 state 1 | `e46124f0610d1e71fd35def2ce72caa645af1b70965cbdcf28cd4fbc36043a03` | `04b6576e734e36c7bcdba5292c3a83c63fa8f90e40e7d0b2fc82bac840976b6f` |
+| Check46 state 1 | `ca89ff3de0649132f5c486777e78d8fa16013071c3eeecf387507ae1372be748` | `68474c0463781a65e979332cb0253cde257faad1eb0696ef37cd8a58741a872d` |
+| Button411 state 1 | `283600632ef49fbe68654fefcfe213030173378c9f332bb4b08a275f269aa97e` | `853a7d7677750583aa27dee5694935e3accd3666bbe7b0a18c71f7d7e6aae7fe` |
+
 Portable conformance requires production output to equal the independently specified reference.
 
 Driver hashes are evidence for the tested hardware/driver combination, not portable goldens.
@@ -1040,7 +1184,13 @@ four PK skins
 PK blink state
 Organise blink state
 
-background → vitals → panels → skill/XP → controls ordering
+four main-HUD CMyCheck controls
+22×22 native check-control hit regions
+32×32 natural-size check-control artwork
+two-state mouse-down toggling
+native check-control draw order
+
+background → vitals → panels → skill/XP → action buttons → check controls ordering
 real-driver HUD conformance
 ```
 
@@ -1053,7 +1203,6 @@ sprite batching
 higher-level texture caching
 live hero-state producer
 
-neighboring main-HUD CMyCheck controls
 quickbar / grid
 Magic0 selected-skill image
 status hints / tooltips

@@ -187,10 +187,16 @@ Progress47 extended stamina
 Dialog4 panels
 Progress42 skill / experience
 10-button action strip
+four main-HUD CMyCheck controls
 ```
 
 The action strip is a Client-owned UI composition because it coordinates native control state,
 logical hit testing, pointer capture, ANI-backed assets, timing, and rendering.
+
+The neighboring `CMyCheck` controls are also Client-owned UI composition. Client owns their native
+identities, final logical geometry, availability, two-state model, immediate left-button-down state
+transition, ANI-backed assets, and draw order. Their 32×32 artwork is rendered independently from
+their 22×22 logical hit rectangles.
 
 Platform emits physical pointer input. Client maps it through Rendering's presentation transform
 into logical coordinates before passing it to HUD input state.
@@ -286,7 +292,7 @@ Detailed compatibility behavior belongs in
 
 `OpenConquer.Content` owns runtime content access and evidence-backed legacy format boundaries.
 
-The current verified retail runtime closure contains 50 files totaling 1,857,179 bytes.
+The current verified retail runtime closure contains 58 files totaling 1,866,395 bytes.
 
 Current runtime consumers cover:
 
@@ -307,6 +313,9 @@ Progress47 extended stamina
 Mission button frames
 Organise button frames
 four PK button skins
+
+four main-HUD CMyCheck controls
+eight check-control frames
 ```
 
 The experience bar uses solid-rectangle rendering and therefore adds no retail image dependency.
