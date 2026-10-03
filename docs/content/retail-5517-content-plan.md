@@ -216,8 +216,7 @@ The action-strip provenance assertions are independent conformance requirements.
 
 For the four main-HUD check controls, production import remains `LooseThenPackage`. Rendering
 conformance independently requires each of the eight verified frame paths to resolve from exactly
-one retail source and verifies its exact encoded SHA-256 before reference decoding. Production import
-still resolves ANI frame requirements through `LooseThenPackage`.
+one retail source and verifies its exact encoded SHA-256 before reference decoding.
 
 The importer materializes selected bytes into the curated payload. Package provenance is not
 preserved after import.

@@ -61,7 +61,7 @@ internal sealed class TemporarySourceTree : IDisposable
     /// </summary>
     /// <remarks>
     /// Control.ani is loose. ProgressBk, Dialog4 frame 0, HP, MP, Progress42, and Progress46 frames are package-backed.
-    /// Dialog4 frame 1, ProgressForce2, ProgressForce2a, and action-strip frames are loose synthetic assets.
+    /// Dialog4 frame 1, ProgressForce2, ProgressForce2a, action-strip frames, and check-control frames are loose synthetic assets.
     /// Historical Server.dat is deliberately absent because it is not runtime content.
     /// </remarks>
     public void WriteStartupSnapshot(string backgroundFormat = "Data/Main/Logo%d.bmp")
@@ -168,7 +168,23 @@ internal sealed class TemporarySourceTree : IDisposable
                                      + "FrameAmount=3\n"
                                      + "Frame0=data/main/SkillBtn.dds\n"
                                      + "Frame1=data/main/SkillBtnClick.dds\n"
-                                     + "Frame2=data/main/SkillBtnL.dds\n");
+                                     + "Frame2=data/main/SkillBtnL.dds\n"
+                                     + "[Check40]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/RunChk1.dds\n"
+                                     + "Frame1=data/main/RunChk2.dds\n"
+                                     + "[Check43]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/MapChk2.dds\n"
+                                     + "Frame1=data/main/MapChk1.dds\n"
+                                     + "[Check46]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/ScreenMoveChk1.dds\n"
+                                     + "Frame1=data/main/ScreenMoveChk2.dds\n"
+                                     + "[Button411]\n"
+                                     + "FrameAmount=2\n"
+                                     + "Frame0=data/main/NpcEquip.dds\n"
+                                     + "Frame1=data/main/NpcEquipClick.dds\n");
 
         WriteBytes("data/main/Logo1.bmp", TestBitmap.CreateTwoByTwo());
         WriteBytes("data/main/Logo2.bmp", TestBitmap.CreateTwoByTwo());
@@ -205,6 +221,14 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteBytes("data/main/SkillBtn.dds", CreateSyntheticDds("SkillBtn loose"));
         WriteBytes("data/main/SkillBtnClick.dds", CreateSyntheticDds("SkillBtnClick loose"));
         WriteBytes("data/main/SkillBtnL.dds", CreateSyntheticDds("SkillBtnL loose"));
+        WriteBytes("data/main/RunChk1.dds", CreateSyntheticDds("RunChk1 loose"));
+        WriteBytes("data/main/RunChk2.dds", CreateSyntheticDds("RunChk2 loose"));
+        WriteBytes("data/main/MapChk1.dds", CreateSyntheticDds("MapChk1 loose"));
+        WriteBytes("data/main/MapChk2.dds", CreateSyntheticDds("MapChk2 loose"));
+        WriteBytes("data/main/ScreenMoveChk1.dds", CreateSyntheticDds("ScreenMoveChk1 loose"));
+        WriteBytes("data/main/ScreenMoveChk2.dds", CreateSyntheticDds("ScreenMoveChk2 loose"));
+        WriteBytes("data/main/NpcEquip.dds", CreateSyntheticDds("NpcEquip loose"));
+        WriteBytes("data/main/NpcEquipClick.dds", CreateSyntheticDds("NpcEquipClick loose"));
 
         WriteBytes("data.wdf", CreateWdf((ProgressBackgroundUid, progressBackground), (MainDialog1Uid, mainDialog1),
             (ProgressHpUid, progressHp), (ProgressHpAlternateUid, progressHpAlternate), (ProgressHpHighlightUid, progressHpHighlight),
