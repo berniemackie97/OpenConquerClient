@@ -36,6 +36,14 @@ public static class ClientContentClosure
         ("Button41", 3),
     ];
 
+    private static readonly (string SectionName, int FrameCount)[] s_checkControlSections =
+    [
+        ("Check40", 2),
+        ("Check43", 2),
+        ("Check46", 2),
+        ("Button411", 2),
+    ];
+
     public static IReadOnlyList<ClientContentRequirement> Resolve(IClientContentSource contentSource)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
@@ -65,6 +73,11 @@ public static class ClientContentClosure
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(DialogSectionName), expectedFrameCount: 2);
 
         foreach ((string sectionName, int frameCount) in s_actionButtonSections)
+        {
+            AddFrameRequirements(requirements, controlAni.GetRequiredSection(sectionName), frameCount);
+        }
+
+        foreach ((string sectionName, int frameCount) in s_checkControlSections)
         {
             AddFrameRequirements(requirements, controlAni.GetRequiredSection(sectionName), frameCount);
         }

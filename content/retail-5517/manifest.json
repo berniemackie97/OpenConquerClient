@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 50,
-  "length": 1857179,
+  "fileCount": 58,
+  "length": 1866395,
   "entries": [
     {
       "sourcePath": "ani/Control.Ani",
@@ -109,6 +109,34 @@
       "pathKey": "data/main/maindialog2.dds",
       "length": 32896,
       "sha256": "818d13f62509ac859fb0ed72d36ec6aeb2b12f9ed3dee3c6172171d99ba86f41",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/MapChk1.dds",
+      "pathKey": "data/main/mapchk1.dds",
+      "length": 1152,
+      "sha256": "f11580826bad44a032f67a622e728448957dd648588b005c0afebb90627a835f",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/MapChk2.dds",
+      "pathKey": "data/main/mapchk2.dds",
+      "length": 1152,
+      "sha256": "1662cc91c12d3c8b7fdf193c7855374f84b6fa9fd522e778e38c8fd6fa721e2e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/NpcEquip.dds",
+      "pathKey": "data/main/npcequip.dds",
+      "length": 1152,
+      "sha256": "ce4605c39ad53462db6d62ee16d26d9481e50eacf85513d6cbbae61abe3fc45c",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/NpcEquipClick.dds",
+      "pathKey": "data/main/npcequipclick.dds",
+      "length": 1152,
+      "sha256": "0c2b8b6f9e2fc330a056a36b1021d7f67866bae5cee6066df741d92ad1ce6b80",
       "signature": "dds"
     },
     {
@@ -298,6 +326,34 @@
       "pathKey": "data/main/querybtnclick.dds",
       "length": 2176,
       "sha256": "b89ebf6d68b9f28350d10996a3d4d9af1204a02404498f2e4d035b165a4ca475",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/RunChk1.dds",
+      "pathKey": "data/main/runchk1.dds",
+      "length": 1152,
+      "sha256": "d4e5ee9cfc3afb45f803bcb589f21a6b10ec65d8295e2554171e3e40dd8dcf58",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/RunChk2.dds",
+      "pathKey": "data/main/runchk2.dds",
+      "length": 1152,
+      "sha256": "70b01df50ab75f0cc3f7ecc8958844171924b80d7993e7c81c22a0ca134b03cb",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ScreenMoveChk1.dds",
+      "pathKey": "data/main/screenmovechk1.dds",
+      "length": 1152,
+      "sha256": "a9a6fa6e7ab47211f52074b524a2f4044a16cc0c07dd05867755b8384b62911e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/ScreenMoveChk2.dds",
+      "pathKey": "data/main/screenmovechk2.dds",
+      "length": 1152,
+      "sha256": "6f06ef1bbf0a1f4a0cdb0b759fea78289bc55773897215e71d460f6c99ca927f",
       "signature": "dds"
     },
     {
