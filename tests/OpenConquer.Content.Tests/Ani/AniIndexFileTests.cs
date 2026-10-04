@@ -26,7 +26,7 @@ public sealed class AniIndexFileTests
     }
 
     [Fact]
-    public void TryGetSection_UsesOrdinalCaseSensitiveLookup()
+    public void TryGetSection_UsesCaseSensitiveNativeHashLookup()
     {
         using MemoryStream stream = CreateStream("[Syndicate]\nFrameAmount=0\n");
 
@@ -35,6 +35,48 @@ public sealed class AniIndexFileTests
         Assert.True(index.TryGetSection("Syndicate", out _));
         Assert.False(index.TryGetSection("syndicate", out AniIndexSection? section));
         Assert.Null(section);
+    }
+
+    [Fact]
+    public void Load_LastEqualNativeHashDefinitionWinsEvenWhenNamesDiffer()
+    {
+        using MemoryStream stream = CreateStream(
+            "[AB]\n"
+            + "FrameAmount=1\n"
+            + "Frame0=data/pic/first.tga\n"
+            + "[B!]\n"
+            + "FrameAmount=1\n"
+            + "Frame0=data/pic/second.tga\n");
+
+        AniIndexFile index = AniIndexFile.Load(stream, "ani/Common.Ani");
+
+        AniIndexSection firstLookup = index.GetRequiredSection("AB");
+        AniIndexSection secondLookup = index.GetRequiredSection("B!");
+
+        Assert.Equal("B!", firstLookup.Name);
+        Assert.Equal("data/pic/second.tga", firstLookup.FramePaths[0]);
+        Assert.Same(firstLookup, secondLookup);
+    }
+
+    [Fact]
+    public void Load_NativeHashTreatsLatin1BytesAsSigned()
+    {
+        using MemoryStream stream = CreateStream(
+            "[A ]\n"
+            + "FrameAmount=1\n"
+            + "Frame0=data/pic/first.tga\n"
+            + "[Bÿ]\n"
+            + "FrameAmount=1\n"
+            + "Frame0=data/pic/second.tga\n");
+
+        AniIndexFile index = AniIndexFile.Load(stream, "ani/Common.Ani");
+
+        AniIndexSection firstLookup = index.GetRequiredSection("A ");
+        AniIndexSection secondLookup = index.GetRequiredSection("Bÿ");
+
+        Assert.Equal("Bÿ", firstLookup.Name);
+        Assert.Equal("data/pic/second.tga", firstLookup.FramePaths[0]);
+        Assert.Same(firstLookup, secondLookup);
     }
 
     [Fact]

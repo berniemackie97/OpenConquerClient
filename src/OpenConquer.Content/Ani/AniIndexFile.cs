@@ -12,11 +12,11 @@ public sealed class AniIndexFile
     private const int MaximumEncodedLength = 16 * 1024 * 1024;
     private const int MaximumFrameCount = 64;
 
-    private readonly Dictionary<string, AniIndexSection> _sections;
+    private readonly Dictionary<uint, AniIndexSection> _sectionsByHash;
 
-    private AniIndexFile(Dictionary<string, AniIndexSection> sections)
+    private AniIndexFile(Dictionary<uint, AniIndexSection> sectionsByHash)
     {
-        _sections = sections;
+        _sectionsByHash = sectionsByHash;
     }
 
     public static AniIndexFile Load(IClientContentSource contentSource, string contentPath, ContentLookupMode mode)
@@ -43,7 +43,7 @@ public sealed class AniIndexFile
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
 
-        return _sections.TryGetValue(name, out section);
+        return _sectionsByHash.TryGetValue(ComputeSectionHash(name), out section);
     }
 
     public AniIndexSection GetRequiredSection(string name)
@@ -61,7 +61,7 @@ public sealed class AniIndexFile
     private static AniIndexFile Parse(ReadOnlySpan<byte> payload, string contentPath)
     {
         string text = Encoding.Latin1.GetString(payload);
-        Dictionary<string, AniIndexSection> sections = new(StringComparer.Ordinal);
+        Dictionary<uint, AniIndexSection> sectionsByHash = [];
 
         using StringReader reader = new(text);
 
@@ -100,10 +100,27 @@ public sealed class AniIndexFile
                 framePaths[frameIndex] = framePath;
             }
 
-            sections[sectionName] = new AniIndexSection(sectionName, framePaths);
+            sectionsByHash[ComputeSectionHash(sectionName)] = new AniIndexSection(sectionName, framePaths);
         }
 
-        return new AniIndexFile(sections);
+        return new AniIndexFile(sectionsByHash);
+    }
+
+    private static uint ComputeSectionHash(string name)
+    {
+        uint hash = 0;
+
+        foreach (char character in name)
+        {
+            if (character > byte.MaxValue)
+            {
+                throw new ArgumentException("ANI section names must contain only Latin-1 characters.", nameof(name));
+            }
+
+            hash = unchecked(hash * 33 + (uint)(int)(sbyte)(byte)character);
+        }
+
+        return hash;
     }
 
     private static string? ReadLine(StringReader reader, ref int lineNumber)
