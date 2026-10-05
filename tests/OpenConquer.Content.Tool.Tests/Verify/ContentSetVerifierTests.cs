@@ -16,57 +16,19 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(58, manifest.FileCount);
+        Assert.Equal(97, manifest.FileCount);
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Magic.ani");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/ItemMinIcon.Ani");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/effect.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressHP.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressMP.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressPower.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressPowerH.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForceA.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2a.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/mainDialog1.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainDialog2.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MapChk1.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MapChk2.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/NpcEquip.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/NpcEquipClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/RunChk1.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/RunChk2.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ScreenMoveChk1.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ScreenMoveChk2.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/QueryBtn.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/QueryBtnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/LevWordBtn.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/LevWordBtnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/GoodBtn.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/GoodBtnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SetBtn.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SetBtnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/Style01/Action/MissionBtnNormal.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/Style01/Action/MissionBtnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/Style01/Action/MissionBtnEmboss.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ChatBtn.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ChatBtnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/GroupBtn.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/GroupBtnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkFree.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkFreeClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkSafe.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkSafeClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkGroup.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkGroupClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkArre.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkArreClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnNormal.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnUnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnEmboss.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SkillBtn.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SkillBtnClick.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SkillBtnL.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/compose/CoverPic.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MagicSkillType1000.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/ItemMinIcon/Default.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/Pic/FireLight/01.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/Pic/YellowLight/01.dds");
+        Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/Pic/CustomGlow/01.dds");
+        Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data/main3/skill38.dds", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -88,11 +50,11 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        File.WriteAllText(Path.Combine(contentSet, "payload", "ini", "Extra.ini"), "[Section]\n");
+        File.WriteAllText(Path.Combine(contentSet, "payload", "ini", "extra.ini"), "[Section]\n");
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
 
-        Assert.Contains("ini/Extra.ini", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("ini/extra.ini", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -101,8 +63,8 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        string extraSourcePath = "data/main/Unused.bin";
-        string extraFilePath = Path.Combine(contentSet, "payload", "data", "main", "Unused.bin");
+        string extraSourcePath = "data/main/unused.bin";
+        string extraFilePath = Path.Combine(contentSet, "payload", "data", "main", "unused.bin");
 
         File.WriteAllBytes(extraFilePath, [1, 2, 3, 4]);
 
@@ -126,7 +88,28 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         const string omittedSourcePath = "data/main/QueryBtn.dds";
 
-        File.Delete(Path.Combine(contentSet, "payload", "data", "main", "QueryBtn.dds"));
+        File.Delete(Path.Combine(contentSet, "payload", "data", "main", "querybtn.dds"));
+
+        ContentManifest manifest = ReadManifest(contentSet);
+
+        RewriteManifest(contentSet, new ContentManifest(manifest.ClientVersion, manifest.VersionMarkerSha256,
+            manifest.Entries.Where(entry => !string.Equals(entry.SourcePath, omittedSourcePath, StringComparison.Ordinal)).ToArray()));
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+
+        Assert.Contains("missing from manifest", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(omittedSourcePath, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Verify_RejectsManifestAndPayloadThatBothOmitQuickbarClosureAsset()
+    {
+        using TemporarySourceTree fixture = new();
+
+        string contentSet = ImportContentSet(fixture);
+        const string omittedSourcePath = "data/interface/compose/CoverPic.dds";
+
+        File.Delete(Path.Combine(contentSet, "payload", "data", "interface", "compose", "coverpic.dds"));
 
         ContentManifest manifest = ReadManifest(contentSet);
 
@@ -152,9 +135,6 @@ public sealed class ContentSetVerifierTests
         Assert.Contains("bytes; the manifest declares", exception.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// A same-length replacement is the case a length check alone would miss.
-    /// </summary>
     [Fact]
     public void Verify_RejectsAPayloadFileWithChangedBytesAtTheSameLength()
     {
@@ -178,7 +158,7 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        string logoPath = Path.Combine(contentSet, "payload", "data", "main", "Logo1.bmp");
+        string logoPath = Path.Combine(contentSet, "payload", "data", "main", "logo1.bmp");
         byte[] bytes = File.ReadAllBytes(logoPath);
 
         bytes[0] = (byte)'D';
@@ -215,9 +195,13 @@ public sealed class ContentSetVerifierTests
 
         string contentSet = ImportContentSet(fixture);
         string manifestPath = Path.Combine(contentSet, "manifest.json");
+        ContentManifest manifest = ReadManifest(contentSet);
 
         File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"fileCount\": 58", "\"fileCount\": 57", StringComparison.Ordinal),
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace(
+                $"\"fileCount\": {manifest.FileCount}",
+                $"\"fileCount\": {manifest.FileCount - 1}",
+                StringComparison.Ordinal),
             Encoding.UTF8);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));

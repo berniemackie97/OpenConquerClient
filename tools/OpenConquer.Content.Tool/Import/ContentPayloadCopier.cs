@@ -3,21 +3,30 @@ using System.Security.Cryptography;
 namespace OpenConquer.Content.Tool.Import;
 
 /// <summary>
-/// Copies one retail content payload into a content-set tree while fingerprinting it.
+/// Copies one retail content payload into the canonical content-set tree while fingerprinting it.
 /// </summary>
 internal static class ContentPayloadCopier
 {
     private const int BufferLength = 1024 * 1024;
 
-    public static string CopyAndHash(Stream source, string payloadRootPath, string sourcePath, long expectedLength)
+    public static string CopyAndHash(Stream source, string payloadRootPath, string payloadPath, long expectedLength)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(payloadRootPath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(payloadPath);
         ArgumentOutOfRangeException.ThrowIfNegative(expectedLength);
 
-        string destinationPath = Path.Combine(payloadRootPath, ContentPath.ToHostRelativePath(sourcePath));
-        string destinationDirectoryPath = Path.GetDirectoryName(destinationPath) ?? throw new InvalidOperationException($"Payload path '{sourcePath}' has no parent directory.");
+        ContentPath.Validate(payloadPath);
+
+        string canonicalPath = ContentPath.ToKey(payloadPath);
+
+        if (!string.Equals(payloadPath, canonicalPath, StringComparison.Ordinal))
+        {
+            throw new ArgumentException($"Payload path '{payloadPath}' is not canonical; expected '{canonicalPath}'.", nameof(payloadPath));
+        }
+
+        string destinationPath = Path.Combine(payloadRootPath, ContentPath.ToHostRelativePath(canonicalPath));
+        string destinationDirectoryPath = Path.GetDirectoryName(destinationPath) ?? throw new InvalidOperationException($"Payload path '{canonicalPath}' has no parent directory.");
 
         Directory.CreateDirectory(destinationDirectoryPath);
 
@@ -43,7 +52,7 @@ internal static class ContentPayloadCopier
 
         if (copiedLength != expectedLength)
         {
-            throw new IOException($"Retail content '{sourcePath}' was expected to contain {expectedLength} bytes but {copiedLength} bytes were copied.");
+            throw new IOException($"Content payload '{canonicalPath}' was expected to contain {expectedLength} bytes but {copiedLength} bytes were copied.");
         }
 
         return Convert.ToHexStringLower(hash.GetHashAndReset());

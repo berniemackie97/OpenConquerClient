@@ -60,7 +60,7 @@ internal static class ContentSetImporter
 
     private static ContentManifest BuildContentSet(ImportSourceRoot sourceRoot, string stagingRoot)
     {
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(sourceRoot.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(sourceRoot.ContentSource);
 
         if (closure.Count == 0)
         {
@@ -90,7 +90,7 @@ internal static class ContentSetImporter
 
             long length = source.Length;
             string signature = ClassifySignature(source);
-            string sha256 = ContentPayloadCopier.CopyAndHash(source, payloadRoot, sourcePath, length);
+            string sha256 = ContentPayloadCopier.CopyAndHash(source, payloadRoot, pathKey, length);
 
             entriesByPathKey.Add(pathKey, new ContentManifestEntry(sourcePath, pathKey, length, sha256, signature));
         }
@@ -115,7 +115,6 @@ internal static class ContentSetImporter
     private static void WriteManifest(string manifestPath, ContentManifest manifest)
     {
         using FileStream stream = new(manifestPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-
         ContentManifestWriter.Write(stream, manifest);
     }
 }

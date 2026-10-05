@@ -82,6 +82,8 @@ public static class ClientContentClosure
             AddFrameRequirements(requirements, controlAni.GetRequiredSection(sectionName), frameCount);
         }
 
+        MainHudQuickbarContentRequirements.Add(requirements, contentSource, controlAni);
+
         return Normalize(requirements);
     }
 

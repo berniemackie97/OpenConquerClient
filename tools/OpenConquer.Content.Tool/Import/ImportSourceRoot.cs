@@ -38,6 +38,7 @@ internal sealed class ImportSourceRoot
     {
         get;
     }
+    public IClientContentSource ContentSource => _packagedContentSource;
 
     /// <summary>
     /// Validates <paramref name="rootPath"/> and reads its identity marker.
@@ -92,12 +93,9 @@ internal sealed class ImportSourceRoot
         }
 
         sourcePath = requirement.ContentPath.Replace('\\', '/');
-
         return _packagedContentSource.OpenRequiredRead(requirement.ContentPath, ContentLookupMode.PackageOnly);
     }
 
-    private string GetSourceRelativePath(FileInfo file)
-    {
-        return Path.GetRelativePath(RootPath, file.FullName).Replace('\\', '/');
-    }
+    private string GetSourceRelativePath(FileInfo file) =>
+        Path.GetRelativePath(RootPath, file.FullName).Replace('\\', '/');
 }
