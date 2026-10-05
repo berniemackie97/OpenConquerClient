@@ -65,7 +65,7 @@ internal sealed class MainHudQuickbarAssets
     {
         AniIndexFile? index = GetIndex(aniPath);
 
-        if (index is null || !index.TryGetSection(sectionName, out AniIndexSection? section))
+        if (index is null || !index.TryGetSection(sectionName, out AniIndexSection? section) || section.FrameCount == 0)
         {
             return null;
         }

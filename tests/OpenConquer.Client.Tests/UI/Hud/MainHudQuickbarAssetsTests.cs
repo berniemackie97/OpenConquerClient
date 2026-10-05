@@ -33,6 +33,18 @@ public sealed class MainHudQuickbarAssetsTests
     }
 
     [Fact]
+    public void ZeroFrameMagicSection_ReturnsMissingFrame()
+    {
+        using TemporaryContentDirectory content = new();
+
+        content.WriteText("ani/Magic.ani", "[MagicSkillType1270]\nFrameAmount=0\nFrame0=data/main/Relive01.dds\nFrame1=data/main/Relive02.dds\n");
+
+        MainHudQuickbarAssets assets = new(new ClientContentRoot(content.RootPath));
+
+        Assert.Null(assets.GetMagicFrame0("MagicSkillType1270"));
+    }
+
+    [Fact]
     public void SectionFramesAreNotRetainedAcrossLookups()
     {
         using TemporaryContentDirectory content = new();
