@@ -21,7 +21,23 @@ internal sealed class MainHudQuickbarAssets
         _contentSource = contentSource;
     }
 
-    public RgbaImage? GetCoverFrame() => GetFrame0(ControlAniPath, MainHudQuickbarDefinition.CoverAniSectionName);
+    public RgbaImage? GetCoverFrame()
+    {
+        AniFrameSet? frames = GetFrames(ControlAniPath, MainHudQuickbarDefinition.CoverAniSectionName);
+
+        if (frames is null)
+        {
+            return null;
+        }
+
+        if (frames.FrameCount != MainHudQuickbarDefinition.CoverFrameCount)
+        {
+            throw new InvalidDataException($"ANI section [{MainHudQuickbarDefinition.CoverAniSectionName}] must contain exactly {MainHudQuickbarDefinition.CoverFrameCount} frame; found {frames.FrameCount}.");
+        }
+
+        return frames.GetFrame(0);
+    }
+
     public RgbaImage? GetControlFrame0(string sectionName) => GetFrame0(ControlAniPath, sectionName);
     public RgbaImage? GetMagicFrame0(string sectionName) => GetFrame0(MagicAniPath, sectionName);
     public AniFrameSet? GetEffectFrames(string sectionName) => GetFrames(EffectAniPath, sectionName);
@@ -59,7 +75,7 @@ internal sealed class MainHudQuickbarAssets
 
         try
         {
-            frames = AniFrameSetLoader.Load(_contentSource, section, GetLookupMode(aniPath));
+            frames = AniFrameSetLoader.Load(_contentSource, section, ContentLookupMode.LooseThenPackage);
         }
         catch (FileNotFoundException)
         {
@@ -81,7 +97,7 @@ internal sealed class MainHudQuickbarAssets
 
         try
         {
-            index = AniIndexFile.Load(_contentSource, aniPath, GetLookupMode(aniPath));
+            index = AniIndexFile.Load(_contentSource, aniPath, GetIndexLookupMode(aniPath));
         }
         catch (FileNotFoundException)
         {
@@ -92,8 +108,6 @@ internal sealed class MainHudQuickbarAssets
         return index;
     }
 
-    private static ContentLookupMode GetLookupMode(string aniPath)
-    {
-        return aniPath == ControlAniPath ? ContentLookupMode.LooseOnly : ContentLookupMode.LooseThenPackage;
-    }
+    private static ContentLookupMode GetIndexLookupMode(string aniPath) =>
+        aniPath == ControlAniPath ? ContentLookupMode.LooseOnly : ContentLookupMode.LooseThenPackage;
 }

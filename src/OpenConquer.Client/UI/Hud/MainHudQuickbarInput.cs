@@ -39,7 +39,7 @@ internal sealed class MainHudQuickbarInput
         }
 
         MainHudQuickbarSlotSnapshot slot = _state.Slots.GetSlot(slotIndex);
-        int column = slotIndex + 1;
+        int columnOneBased = slotIndex + 1;
 
         if (!slot.IsOccupied)
         {
@@ -54,16 +54,16 @@ internal sealed class MainHudQuickbarInput
 
         if (slot.ContentKind == (byte)MainHudQuickbarContentKind.Action)
         {
-            _state.SetHoveredCoordinates(column, 1);
+            _state.SetHoveredCoordinates(columnOneBased, 1);
             return true;
         }
 
-        if (_state.IsHoverActive && _state.HoveredColumnOneBased == column && _state.HoveredRowOneBased == 1)
+        if (_state.IsHoverActive && _state.HoveredColumnOneBased == columnOneBased && _state.HoveredRowOneBased == 1)
         {
             return true;
         }
 
-        _state.SetHover(column, 1, slot.Payload, slot.ContentId);
+        _state.SetHover(columnOneBased, 1, slot.Payload, slot.ContentId);
 
         MainHudQuickbarBounds bounds = _layout.GetBounds();
         int anchorX = bounds.X + MainHudQuickbarDefinition.CellWidth * slotIndex;

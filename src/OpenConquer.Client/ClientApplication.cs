@@ -24,19 +24,23 @@ internal sealed class ClientApplication : IDisposable
     private readonly PixelSize _windowSize;
     private readonly MainHudVitalsState _mainHudVitalsState = new();
     private readonly MainHudSkillExperienceState _mainHudSkillExperienceState = new();
+    private readonly MainHudQuickbarState _mainHudQuickbarState = new();
     private readonly MainHudActionButtonStripState _mainHudActionButtonStripState = new();
     private readonly MainHudCheckControlsState _mainHudCheckControlsState = new();
 
     private MainHudChromeAssets? _mainHudChromeAssets;
     private MainHudVitalsAssets? _mainHudVitalsAssets;
     private MainHudSkillAssets? _mainHudSkillAssets;
+    private MainHudQuickbarAssets? _mainHudQuickbarAssets;
     private MainHudActionButtonAssets? _mainHudActionButtonAssets;
     private MainHudCheckControlAssets? _mainHudCheckControlAssets;
     private MainHudChromeRenderer? _mainHudChromeRenderer;
     private MainHudVitalsRenderer? _mainHudVitalsRenderer;
     private MainHudSkillExperienceRenderer? _mainHudSkillExperienceRenderer;
+    private MainHudQuickbarRenderer? _mainHudQuickbarRenderer;
     private MainHudActionButtonStripRenderer? _mainHudActionButtonStripRenderer;
     private MainHudCheckControlRenderer? _mainHudCheckControlRenderer;
+    private MainHudQuickbarInput? _mainHudQuickbarInput;
     private MainHudActionButtonStripInput? _mainHudActionButtonStripInput;
     private MainHudCheckControlsInput? _mainHudCheckControlsInput;
     private OpenGLGraphicsDevice? _graphicsDevice;
@@ -122,13 +126,16 @@ internal sealed class ClientApplication : IDisposable
             _window = null;
             _mainHudCheckControlsInput = null;
             _mainHudActionButtonStripInput = null;
+            _mainHudQuickbarInput = null;
             _mainHudCheckControlRenderer = null;
             _mainHudActionButtonStripRenderer = null;
+            _mainHudQuickbarRenderer = null;
             _mainHudSkillExperienceRenderer = null;
             _mainHudVitalsRenderer = null;
             _mainHudChromeRenderer = null;
             _mainHudCheckControlAssets = null;
             _mainHudActionButtonAssets = null;
+            _mainHudQuickbarAssets = null;
             _mainHudSkillAssets = null;
             _mainHudVitalsAssets = null;
             _mainHudChromeAssets = null;
@@ -140,9 +147,10 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnOpenGLContextReady(IOpenGLContext context)
     {
-        if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null
-            || _mainHudVitalsRenderer is not null || _mainHudSkillExperienceRenderer is not null
-            || _mainHudActionButtonStripRenderer is not null || _mainHudCheckControlRenderer is not null)
+        if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null ||
+            _mainHudVitalsRenderer is not null || _mainHudSkillExperienceRenderer is not null ||
+            _mainHudQuickbarRenderer is not null || _mainHudActionButtonStripRenderer is not null ||
+            _mainHudCheckControlRenderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
@@ -152,6 +160,7 @@ internal sealed class ClientApplication : IDisposable
         MainHudChromeRenderer? mainHudChromeRenderer = null;
         MainHudVitalsRenderer? mainHudVitalsRenderer = null;
         MainHudSkillExperienceRenderer? mainHudSkillExperienceRenderer = null;
+        MainHudQuickbarRenderer? mainHudQuickbarRenderer = null;
         MainHudActionButtonStripRenderer? mainHudActionButtonStripRenderer = null;
         MainHudCheckControlRenderer? mainHudCheckControlRenderer = null;
 
@@ -162,6 +171,7 @@ internal sealed class ClientApplication : IDisposable
             MainHudChromeAssets mainHudChromeAssets = _mainHudChromeAssets ?? throw new InvalidOperationException("The main HUD chrome assets have not been initialized.");
             MainHudVitalsAssets mainHudVitalsAssets = _mainHudVitalsAssets ?? throw new InvalidOperationException("The main HUD vitals assets have not been initialized.");
             MainHudSkillAssets mainHudSkillAssets = _mainHudSkillAssets ?? throw new InvalidOperationException("The main HUD skill assets have not been initialized.");
+            MainHudQuickbarAssets mainHudQuickbarAssets = _mainHudQuickbarAssets ?? throw new InvalidOperationException("The main HUD quickbar assets have not been initialized.");
             MainHudActionButtonAssets mainHudActionButtonAssets = _mainHudActionButtonAssets ?? throw new InvalidOperationException("The main HUD action-button assets have not been initialized.");
             MainHudCheckControlAssets mainHudCheckControlAssets = _mainHudCheckControlAssets ?? throw new InvalidOperationException("The main HUD check-control assets have not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
@@ -170,6 +180,7 @@ internal sealed class ClientApplication : IDisposable
             mainHudChromeRenderer = new MainHudChromeRenderer(graphicsDevice, mainHudChromeAssets, logicalRenderSize);
             mainHudVitalsRenderer = new MainHudVitalsRenderer(graphicsDevice, mainHudVitalsAssets, logicalRenderSize);
             mainHudSkillExperienceRenderer = new MainHudSkillExperienceRenderer(graphicsDevice, mainHudSkillAssets, logicalRenderSize);
+            mainHudQuickbarRenderer = new MainHudQuickbarRenderer(graphicsDevice, mainHudQuickbarAssets, logicalRenderSize, readTickCount: s_readTickCount);
             mainHudActionButtonStripRenderer = new MainHudActionButtonStripRenderer(graphicsDevice, mainHudActionButtonAssets, logicalRenderSize);
             mainHudCheckControlRenderer = new MainHudCheckControlRenderer(graphicsDevice, mainHudCheckControlAssets, logicalRenderSize);
 
@@ -177,6 +188,7 @@ internal sealed class ClientApplication : IDisposable
             _mainHudChromeRenderer = mainHudChromeRenderer;
             _mainHudVitalsRenderer = mainHudVitalsRenderer;
             _mainHudSkillExperienceRenderer = mainHudSkillExperienceRenderer;
+            _mainHudQuickbarRenderer = mainHudQuickbarRenderer;
             _mainHudActionButtonStripRenderer = mainHudActionButtonStripRenderer;
             _mainHudCheckControlRenderer = mainHudCheckControlRenderer;
             _graphicsDevice = graphicsDevice;
@@ -187,88 +199,72 @@ internal sealed class ClientApplication : IDisposable
             {
                 mainHudCheckControlRenderer?.Dispose();
             }
-            catch
-            {
-                // ignored
-            }
+            catch { }
 
             try
             {
                 mainHudActionButtonStripRenderer?.Dispose();
             }
-            catch
+            catch { }
+
+            try
             {
-                // ignored
+                mainHudQuickbarRenderer?.Dispose();
             }
+            catch { }
 
             try
             {
                 mainHudSkillExperienceRenderer?.Dispose();
             }
-            catch
-            {
-                // ignored
-            }
+            catch { }
 
             try
             {
                 mainHudVitalsRenderer?.Dispose();
             }
-            catch
-            {
-                // ignored
-            }
+            catch { }
 
             try
             {
                 mainHudChromeRenderer?.Dispose();
             }
-            catch
-            {
-                // ignored
-            }
+            catch { }
 
             try
             {
                 renderer?.Dispose();
             }
-            catch
-            {
-                // ignored
-            }
+            catch { }
 
             try
             {
                 graphicsDevice.Dispose();
             }
-            catch
-            {
-                // ignored
-            }
+            catch { }
 
             throw;
         }
     }
 
-    private void OnFramebufferResized(PixelSize size)
-    {
-        _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
-    }
+    private void OnFramebufferResized(PixelSize size) => _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
 
     private void OnPointerMoved(PixelPoint point)
     {
-        if (!CanInteractWithMainHudControls() || _mainHudActionButtonStripInput is not { } input)
+        if (!CanInteractWithMainHudControls())
         {
             return;
         }
 
         if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
         {
-            input.HandlePointerMoved(logicalX, logicalY);
+            _mainHudActionButtonStripInput?.HandlePointerMoved(logicalX, logicalY);
+            _mainHudQuickbarInput?.HandlePointerMoved(logicalX, logicalY, out _);
         }
         else
         {
-            input.HandlePointerMoved(-1, -1);
+            _mainHudActionButtonStripInput?.HandlePointerMoved(-1, -1);
+            _mainHudQuickbarInput?.HandlePointerMoved(-1, -1, out _);
         }
     }
 
@@ -314,11 +310,32 @@ internal sealed class ClientApplication : IDisposable
         return renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out logicalX, out logicalY);
     }
 
+    private void PollMainHudQuickbarPointer()
+    {
+        DesktopWindow? window = _window;
+        MainHudQuickbarInput? input = _mainHudQuickbarInput;
+
+        if (window is null || input is null || !window.TryGetPointerPosition(out PixelPoint point))
+        {
+            return;
+        }
+
+        if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
+        {
+            input.PollPointer(logicalX, logicalY, out _);
+        }
+        else
+        {
+            input.PollPointer(-1, -1, out _);
+        }
+    }
+
     private bool CanInteractWithMainHudControls() => _mainHudChromeAssets?.HasDialogPanels == true;
 
     private bool IsActionButtonAvailable(MainHudActionButtonId id)
     {
         MainHudActionButtonAssets? assets = _mainHudActionButtonAssets;
+
         if (assets is null)
         {
             return false;
@@ -355,12 +372,15 @@ internal sealed class ClientApplication : IDisposable
         _mainHudChromeAssets = MainHudChromeAssets.Load(contentSource);
         _mainHudVitalsAssets = MainHudVitalsAssets.Load(contentSource);
         _mainHudSkillAssets = MainHudSkillAssets.Load(contentSource);
+        _mainHudQuickbarAssets = new MainHudQuickbarAssets(contentSource);
         _mainHudActionButtonAssets = MainHudActionButtonAssets.Load(contentSource);
         _mainHudCheckControlAssets = MainHudCheckControlAssets.Load(contentSource);
 
+        MainHudQuickbarLayout quickbarLayout = MainHudQuickbarLayout.Create(logicalRenderSize);
         MainHudActionButtonLayout actionButtonLayout = MainHudActionButtonLayout.Create(logicalRenderSize);
         MainHudCheckControlLayout checkControlLayout = MainHudCheckControlLayout.Create(logicalRenderSize);
 
+        _mainHudQuickbarInput = new MainHudQuickbarInput(_mainHudQuickbarState, quickbarLayout);
         _mainHudActionButtonStripInput = new MainHudActionButtonStripInput(_mainHudActionButtonStripState, actionButtonLayout, IsActionButtonAvailable);
         _mainHudCheckControlsInput = new MainHudCheckControlsInput(_mainHudCheckControlsState, checkControlLayout, IsCheckControlAvailable);
     }
@@ -368,6 +388,7 @@ internal sealed class ClientApplication : IDisposable
     private void OnRendering(double elapsedSeconds)
     {
         OpenGLRenderer? renderer = _renderer;
+
         if (renderer is null)
         {
             return;
@@ -384,6 +405,9 @@ internal sealed class ClientApplication : IDisposable
             if (_mainHudChromeRenderer is { } mainHudChromeRenderer && mainHudChromeRenderer.DrawPanels(renderer))
             {
                 _mainHudSkillExperienceRenderer?.Draw(renderer, _mainHudSkillExperienceState);
+
+                _mainHudQuickbarRenderer?.Draw(renderer, _mainHudQuickbarState);
+                PollMainHudQuickbarPointer();
 
                 _mainHudActionButtonStripState.AdvancePkBeforeDraw(s_readTickCount);
                 _mainHudActionButtonStripState.AdvanceOrganiseBeforeDraw(s_readTickCount);
@@ -416,6 +440,7 @@ internal sealed class ClientApplication : IDisposable
     {
         MainHudCheckControlRenderer? mainHudCheckControlRenderer = _mainHudCheckControlRenderer;
         MainHudActionButtonStripRenderer? mainHudActionButtonStripRenderer = _mainHudActionButtonStripRenderer;
+        MainHudQuickbarRenderer? mainHudQuickbarRenderer = _mainHudQuickbarRenderer;
         MainHudSkillExperienceRenderer? mainHudSkillExperienceRenderer = _mainHudSkillExperienceRenderer;
         MainHudVitalsRenderer? mainHudVitalsRenderer = _mainHudVitalsRenderer;
         MainHudChromeRenderer? mainHudChromeRenderer = _mainHudChromeRenderer;
@@ -424,6 +449,7 @@ internal sealed class ClientApplication : IDisposable
 
         _mainHudCheckControlRenderer = null;
         _mainHudActionButtonStripRenderer = null;
+        _mainHudQuickbarRenderer = null;
         _mainHudSkillExperienceRenderer = null;
         _mainHudVitalsRenderer = null;
         _mainHudChromeRenderer = null;
@@ -441,6 +467,12 @@ internal sealed class ClientApplication : IDisposable
         try
         {
             mainHudActionButtonStripRenderer?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            mainHudQuickbarRenderer?.Dispose();
         }
         catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 

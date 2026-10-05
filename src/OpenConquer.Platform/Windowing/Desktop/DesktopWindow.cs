@@ -103,6 +103,19 @@ public sealed class DesktopWindow : IDisposable
         return framebufferPoint;
     }
 
+    public bool TryGetPointerPosition(out PixelPoint framebufferPoint)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (_mouse is not { } mouse)
+        {
+            framebufferPoint = default;
+            return false;
+        }
+
+        return TryMapPointerToFramebuffer(mouse.Position, out framebufferPoint);
+    }
+
     public void Run()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

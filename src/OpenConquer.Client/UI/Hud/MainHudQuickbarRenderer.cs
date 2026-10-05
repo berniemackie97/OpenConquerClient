@@ -44,6 +44,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
     private readonly Func<bool> _useAlternateSwapIcon;
     private readonly Func<uint> _readTickCount;
     private readonly Dictionary<string, OpenGLTexture2D> _textures = new(StringComparer.Ordinal);
+    private readonly List<OpenGLTexture2D> _ownedTextures = [];
     private bool _disposed;
 
     public MainHudQuickbarRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudQuickbarAssets assets, LogicalRenderSize logicalRenderSize, IMainHudQuickbarItemIconKeyResolver? itemIconKeyResolver = null, IMainHudQuickbarCooldownSource? cooldownSource = null, IMainHudQuickbarCooldownTextRenderer? cooldownTextRenderer = null, IMainHudQuickbarGlowSectionResolver? glowSectionResolver = null, Func<bool>? useAlternateSwapIcon = null, Func<uint>? readTickCount = null)
@@ -63,8 +64,8 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         _cooldownSource = cooldownSource;
         _cooldownTextRenderer = cooldownTextRenderer;
         _glowSectionResolver = glowSectionResolver;
-        _useAlternateSwapIcon = useAlternateSwapIcon ?? static () => false;
-        _readTickCount = readTickCount ?? static () => unchecked((uint)Environment.TickCount64);
+        _useAlternateSwapIcon = useAlternateSwapIcon ?? (static () => false);
+        _readTickCount = readTickCount ?? (static () => unchecked((uint)Environment.TickCount64));
     }
 
     public void Draw(OpenGLRenderer renderer, MainHudQuickbarState state)
@@ -72,8 +73,6 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(state);
-
-        uint now = _readTickCount();
 
         for (int slotIndex = 0; slotIndex < MainHudQuickbarDefinition.SlotCount; slotIndex++)
         {
@@ -84,6 +83,8 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
             if (slot.IsOccupied)
             {
+                uint now = _readTickCount();
+
                 DrawGlow(renderer, state, slotIndex, bounds, slot, now);
                 itemIconDrawn = DrawContent(renderer, bounds, slot, now, out cooldown);
 
@@ -94,9 +95,10 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
                 }
             }
 
-            bool covered = slot.CoverFlag != 0 ||
-                slot.IsOccupied && slot.ContentKind == (byte)MainHudQuickbarContentKind.Item && slot.AggregateQuantity == 0 ||
-                slot.IsOccupied && slot.ContentKind is (byte)MainHudQuickbarContentKind.Magic or (byte)MainHudQuickbarContentKind.XpMagic && cooldown != 0;
+            bool covered =
+                slot.CoverFlag != 0 ||
+                slot.IsOccupied && slot.ContentKind == (byte)MainHudQuickbarContentKind.Item && unchecked((int)slot.AggregateQuantity) <= 0 ||
+                slot.IsOccupied && (slot.ContentKind is (byte)MainHudQuickbarContentKind.Magic or (byte)MainHudQuickbarContentKind.XpMagic) && cooldown != 0;
 
             if (covered)
             {
@@ -120,16 +122,17 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
         ExceptionDispatchInfo? firstFailure = null;
 
-        foreach (OpenGLTexture2D texture in _textures.Values.Reverse())
+        for (int index = _ownedTextures.Count - 1; index >= 0; index--)
         {
             try
             {
-                texture.Dispose();
+                _ownedTextures[index].Dispose();
             }
             catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
         }
 
         _textures.Clear();
+        _ownedTextures.Clear();
         _disposed = true;
         firstFailure?.Throw();
     }
@@ -218,7 +221,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         }
 
         uint start = slot.GlowStartTime;
-        int frameIndex;
+        uint frameIndex;
 
         if (start == 0)
         {
@@ -227,10 +230,10 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         }
         else
         {
-            frameIndex = (int)(unchecked(now - start) / 100 % (uint)frames.FrameCount);
+            frameIndex = unchecked(now - start) / 100 % (uint)frames.FrameCount;
         }
 
-        OpenGLTexture2D? texture = GetTexture($"effect:{section}:{frameIndex}", () => frames.GetFrame((uint)frameIndex), exactWidth: 64, exactHeight: 64);
+        OpenGLTexture2D? texture = GetTexture($"effect:{section}:{frameIndex}", () => frames.GetFrame(frameIndex), exactWidth: 64, exactHeight: 64);
 
         if (texture is not null)
         {
@@ -238,13 +241,14 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         }
     }
 
-    private void DrawQuantity(OpenGLRenderer renderer, MainHudQuickbarSlotBounds bounds, uint quantity)
+    private void DrawQuantity(OpenGLRenderer renderer, MainHudQuickbarSlotBounds bounds, uint rawQuantity)
     {
-        string text = quantity.ToString(CultureInfo.InvariantCulture);
+        string text = unchecked((int)rawQuantity).ToString(CultureInfo.InvariantCulture);
         int x = bounds.X + 2;
 
-        foreach (char digit in text)
+        foreach (char character in text)
         {
+            int digit = character - '0';
             string section = $"Main3_Num{digit}Pic";
             OpenGLTexture2D? texture = GetTexture($"control:{section}", () => _assets.GetControlFrame0(section), exactWidth: 16, exactHeight: 16);
 
@@ -260,9 +264,9 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
     private void DrawAddLevel(OpenGLRenderer renderer, MainHudQuickbarSlotBounds bounds, MainHudQuickbarSlotSnapshot slot)
     {
-        uint addLevel = slot.Metadata.AddLevel;
+        int addLevel = unchecked((int)slot.Metadata.AddLevel);
 
-        if (addLevel == 0 || slot.ContentId / 10000 % 100 == 73)
+        if (addLevel <= 0 || slot.ContentId / 10000 % 100 == 73)
         {
             return;
         }
@@ -273,7 +277,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         for (int index = text.Length - 1; index >= 0; index--)
         {
             string section = $"Equip_Num{text[index]}";
-            OpenGLTexture2D? digit = GetTexture($"control:{section}", () => _assets.GetControlFrame0(section));
+            OpenGLTexture2D? digit = GetTexture($"control:{section}", () => _assets.GetControlFrame0(section), exactWidth: 16, exactHeight: 16);
 
             if (digit is null)
             {
@@ -284,7 +288,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
             x -= 9;
         }
 
-        OpenGLTexture2D? plus = GetTexture("control:Equip_AddPic", () => _assets.GetControlFrame0("Equip_AddPic"));
+        OpenGLTexture2D? plus = GetTexture("control:Equip_AddPic", () => _assets.GetControlFrame0("Equip_AddPic"), exactWidth: 16, exactHeight: 16);
 
         if (plus is not null)
         {
@@ -326,18 +330,19 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
             return null;
         }
 
-        if (exactWidth is not null && image.Width != exactWidth || exactHeight is not null && image.Height != exactHeight)
+        if ((exactWidth is not null && image.Width != exactWidth) || (exactHeight is not null && image.Height != exactHeight))
         {
             throw new InvalidDataException($"Quickbar asset '{key}' decoded as {image.Width}x{image.Height}; expected {exactWidth}x{exactHeight}.");
         }
 
-        if (minimumWidth is not null && image.Width < minimumWidth || minimumHeight is not null && image.Height < minimumHeight)
+        if ((minimumWidth is not null && image.Width < minimumWidth) || (minimumHeight is not null && image.Height < minimumHeight))
         {
             throw new InvalidDataException($"Quickbar asset '{key}' decoded as {image.Width}x{image.Height}; expected at least {minimumWidth}x{minimumHeight}.");
         }
 
         OpenGLTexture2D texture = _graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
         _textures.Add(key, texture);
+        _ownedTextures.Add(texture);
         return texture;
     }
 }

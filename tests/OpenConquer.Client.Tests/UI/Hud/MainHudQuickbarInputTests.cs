@@ -39,6 +39,7 @@ public sealed class MainHudQuickbarInputTests
     {
         MainHudQuickbarState state = CreateState(MainHudQuickbarContentKind.Item);
         state.SetInteractionEnabled(false);
+
         Assert.False(new MainHudQuickbarInput(state, s_layout).HandleRightButtonDown(90, 557, out _));
     }
 
@@ -68,20 +69,33 @@ public sealed class MainHudQuickbarInputTests
     }
 
     [Theory]
-    [InlineData(MainHudQuickbarContentKind.Magic, MainHudQuickbarHoverNotificationKind.Skill)]
-    [InlineData(MainHudQuickbarContentKind.XpMagic, MainHudQuickbarHoverNotificationKind.Skill)]
-    [InlineData(MainHudQuickbarContentKind.Dance, MainHudQuickbarHoverNotificationKind.Dance)]
-    [InlineData(MainHudQuickbarContentKind.WeaponSwap, MainHudQuickbarHoverNotificationKind.WeaponSwap)]
-    public void PointerMove_NewOccupiedSlotReturnsNativeNotificationKind(MainHudQuickbarContentKind kind, MainHudQuickbarHoverNotificationKind expected)
+    [InlineData(3, 3)]
+    [InlineData(4, 3)]
+    [InlineData(5, 4)]
+    [InlineData(6, 5)]
+    public void PointerMove_NewOccupiedSlotReturnsNativeNotificationKind(int contentKindValue, int expectedKindValue)
     {
-        MainHudQuickbarState state = CreateState(kind);
+        MainHudQuickbarContentKind contentKind = (MainHudQuickbarContentKind)contentKindValue;
+        MainHudQuickbarHoverNotificationKind expectedKind = (MainHudQuickbarHoverNotificationKind)expectedKindValue;
+        MainHudQuickbarState state = CreateState(contentKind);
         MainHudQuickbarInput input = new(state, s_layout);
 
         Assert.True(input.HandlePointerMoved(90, 557, out MainHudQuickbarHoverNotification notification));
-        Assert.Equal(expected, notification.Kind);
+        Assert.Equal(expectedKind, notification.Kind);
         Assert.Equal(123u, notification.ContentId);
         Assert.Equal(90, notification.AnchorX);
         Assert.Equal(557, notification.AnchorY);
+    }
+
+    [Fact]
+    public void ItemHoverReturnsItemNotificationWithInstanceUid()
+    {
+        MainHudQuickbarState state = CreateState(MainHudQuickbarContentKind.Item);
+        MainHudQuickbarInput input = new(state, s_layout);
+
+        Assert.True(input.HandlePointerMoved(90, 557, out MainHudQuickbarHoverNotification notification));
+        Assert.Equal(MainHudQuickbarHoverNotificationKind.Item, notification.Kind);
+        Assert.Equal(789u, notification.ItemUid);
     }
 
     [Fact]
@@ -95,6 +109,23 @@ public sealed class MainHudQuickbarInputTests
         Assert.False(state.IsHoverActive);
         Assert.Equal(1, state.HoveredColumnOneBased);
         Assert.Equal(1, state.HoveredRowOneBased);
+    }
+
+    [Fact]
+    public void ActionHoverPreservesExistingHoverCacheWhileUpdatingCoordinates()
+    {
+        MainHudQuickbarState state = CreateState(MainHudQuickbarContentKind.Magic);
+        state.Slots.Populate(2, 1, 999, 888, 3, (byte)MainHudQuickbarContentKind.Action, 0, s_metadata);
+        MainHudQuickbarInput input = new(state, s_layout);
+
+        input.HandlePointerMoved(90, 557, out _);
+        input.HandlePointerMoved(131, 557, out _);
+
+        Assert.True(state.IsHoverActive);
+        Assert.Equal(2, state.HoveredColumnOneBased);
+        Assert.Equal(1, state.HoveredRowOneBased);
+        Assert.Equal(456u, state.HoveredPayload);
+        Assert.Equal(123u, state.HoveredContentId);
     }
 
     [Fact]
@@ -112,6 +143,18 @@ public sealed class MainHudQuickbarInputTests
     }
 
     [Fact]
+    public void GenericContentKindUsesGridContext()
+    {
+        MainHudQuickbarState state = new();
+        state.Slots.Populate(1, 1, 123, 456, 3, 7, 0, s_metadata);
+        MainHudQuickbarInput input = new(state, s_layout);
+
+        Assert.True(input.HandlePointerMoved(90, 557, out MainHudQuickbarHoverNotification notification));
+        Assert.Equal(MainHudQuickbarHoverNotificationKind.Generic, notification.Kind);
+        Assert.Equal(3u, notification.Context);
+    }
+
+    [Fact]
     public void PickupRequestDoesNotRemoveSlotUntilDragStartSucceeds()
     {
         MainHudQuickbarState state = CreateState(MainHudQuickbarContentKind.Item);
@@ -125,6 +168,19 @@ public sealed class MainHudQuickbarInputTests
 
         input.CompletePickup(request.Value, dragStarted: true);
         Assert.False(state.Slots.GetSlot(0).IsOccupied);
+    }
+
+    [Fact]
+    public void HoverNotificationAnchorOmitsNativeOnePixelSlotSpacing()
+    {
+        MainHudQuickbarState state = new();
+        state.Slots.Populate(2, 1, 123, 456, 3, (byte)MainHudQuickbarContentKind.Magic, 0, s_metadata);
+        MainHudQuickbarInput input = new(state, s_layout);
+
+        Assert.True(input.HandlePointerMoved(131, 557, out MainHudQuickbarHoverNotification notification));
+        Assert.Equal(1, notification.SlotIndex);
+        Assert.Equal(130, notification.AnchorX);
+        Assert.Equal(557, notification.AnchorY);
     }
 
     private static MainHudQuickbarState CreateState(MainHudQuickbarContentKind kind)

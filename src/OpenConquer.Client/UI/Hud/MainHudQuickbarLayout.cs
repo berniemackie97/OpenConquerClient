@@ -73,8 +73,7 @@ internal readonly record struct MainHudQuickbarLayout
         return new MainHudQuickbarLayout(logicalRenderSize.Height - DialogHeight);
     }
 
-    public MainHudQuickbarBounds GetBounds() =>
-        new(MainHudQuickbarDefinition.LocalX, _dialogOriginY + MainHudQuickbarDefinition.LocalY);
+    public MainHudQuickbarBounds GetBounds() => new(MainHudQuickbarDefinition.LocalX, _dialogOriginY + MainHudQuickbarDefinition.LocalY);
 
     public MainHudQuickbarSlotBounds GetSlotBounds(int slotIndex)
     {

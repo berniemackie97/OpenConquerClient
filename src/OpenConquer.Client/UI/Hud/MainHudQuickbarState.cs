@@ -3,16 +3,8 @@ namespace OpenConquer.Client.UI.Hud;
 internal sealed class MainHudQuickbarState
 {
     public MainHudQuickbarSlotsState Slots { get; } = new();
-
-    public bool InteractionEnabled
-    {
-        get; private set;
-    } = true;
-
-    public bool PickupEnabled
-    {
-        get; private set;
-    } = true;
+    public bool InteractionEnabled { get; private set; } = true;
+    public bool PickupEnabled { get; private set; } = true;
 
     public bool IsHoverActive
     {
