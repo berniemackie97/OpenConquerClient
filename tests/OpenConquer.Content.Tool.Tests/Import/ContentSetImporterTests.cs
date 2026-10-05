@@ -18,71 +18,17 @@ public sealed class ContentSetImporterTests
 
         string destination = destinationParent.ChildPath("set");
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destination);
+        string[] expectedPaths = ExpectedImportedPaths();
 
-        Assert.Equal(
-        [
-            "ani/Control.ani",
-            "data/interface/Style01/Action/MissionBtnClick.dds",
-            "data/interface/Style01/Action/MissionBtnEmboss.dds",
-            "data/interface/Style01/Action/MissionBtnNormal.dds",
-            "data/main/ChatBtn.dds",
-            "data/main/ChatBtnClick.dds",
-            "data/main/GoodBtn.dds",
-            "data/main/GoodBtnClick.dds",
-            "data/main/GroupBtn.dds",
-            "data/main/GroupBtnClick.dds",
-            "data/main/LevWordBtn.dds",
-            "data/main/LevWordBtnClick.dds",
-            "data/main/Logo1.bmp",
-            "data/main/Logo2.bmp",
-            "data/main/MainDialog2.dds",
-            "data/main/MapChk1.dds",
-            "data/main/MapChk2.dds",
-            "data/main/NpcEquip.dds",
-            "data/main/NpcEquipClick.dds",
-            "data/main/OrganiseBtnClick.dds",
-            "data/main/OrganiseBtnEmboss.dds",
-            "data/main/OrganiseBtnNormal.dds",
-            "data/main/OrganiseBtnUnClick.dds",
-            "data/main/PkArre.dds",
-            "data/main/PkArreClick.dds",
-            "data/main/PkFree.dds",
-            "data/main/PkFreeClick.dds",
-            "data/main/PkGroup.dds",
-            "data/main/PkGroupClick.dds",
-            "data/main/PkSafe.dds",
-            "data/main/PkSafeClick.dds",
-            "data/main/ProgressBk.dds",
-            "data/main/ProgressForce.dds",
-            "data/main/ProgressForce2.dds",
-            "data/main/ProgressForce2a.dds",
-            "data/main/ProgressForceA.dds",
-            "data/main/ProgressHP.dds",
-            "data/main/ProgressHPA.dds",
-            "data/main/ProgressHPH.dds",
-            "data/main/ProgressMP.dds",
-            "data/main/ProgressMPA.dds",
-            "data/main/ProgressMPH.dds",
-            "data/main/ProgressPower.dds",
-            "data/main/ProgressPowerH.dds",
-            "data/main/QueryBtn.dds",
-            "data/main/QueryBtnClick.dds",
-            "data/main/RunChk1.dds",
-            "data/main/RunChk2.dds",
-            "data/main/ScreenMoveChk1.dds",
-            "data/main/ScreenMoveChk2.dds",
-            "data/main/SetBtn.dds",
-            "data/main/SetBtnClick.dds",
-            "data/main/SkillBtn.dds",
-            "data/main/SkillBtnClick.dds",
-            "data/main/SkillBtnL.dds",
-            "data/main/mainDialog1.dds",
-            "ini/GameSetUp.ini",
-            "ini/info.ini",
-        ], manifest.Entries.Select(static entry => entry.SourcePath));
-
+        Assert.Equal(97, expectedPaths.Length);
+        Assert.Equal(expectedPaths, manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data.wdf", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "Server.dat", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/main/UnusedControl.dds");
+        Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/main/MagicOther.dds");
+        Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/ItemMinIcon/Preview.dds");
+        Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/Pic/CustomGlow/01.dds");
+        Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data/main3/skill38.dds", StringComparison.OrdinalIgnoreCase));
 
         string payloadRoot = Path.Combine(destination, "payload");
         string[] payloadFiles = Directory.EnumerateFiles(payloadRoot, "*", SearchOption.AllDirectories)
@@ -90,11 +36,12 @@ public sealed class ContentSetImporterTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(manifest.Entries.Select(static entry => entry.SourcePath), payloadFiles);
+        Assert.Equal(manifest.Entries.Select(static entry => entry.PathKey).Order(StringComparer.Ordinal), payloadFiles);
+        Assert.All(payloadFiles, static path => Assert.Equal(path.ToLowerInvariant(), path));
     }
 
     [Fact]
-    public void Import_MaterializesPackagedHudFramesAndPreservesLooseOverrideCasing()
+    public void Import_MaterializesPackagedHudFramesAndQuickbarCatalogAssets()
     {
         using TemporarySourceTree source = new();
         using TemporarySourceTree destinationParent = new();
@@ -108,74 +55,19 @@ public sealed class ContentSetImporterTests
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/mainDialog1.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainDialog2.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressHP.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressHPA.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressHPH.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressMP.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressMPA.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressMPH.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressPower.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressPowerH.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForceA.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressForce2a.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/QueryBtn.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/QueryBtnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/LevWordBtn.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/LevWordBtnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/GoodBtn.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/GoodBtnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SetBtn.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SetBtnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/Style01/Action/MissionBtnNormal.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/Style01/Action/MissionBtnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/Style01/Action/MissionBtnEmboss.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ChatBtn.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ChatBtnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/GroupBtn.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/GroupBtnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkFree.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkFreeClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkSafe.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkSafeClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkGroup.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkGroupClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkArre.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/PkArreClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnNormal.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnUnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/OrganiseBtnEmboss.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SkillBtn.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SkillBtnClick.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/SkillBtnL.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/RunChk1.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/RunChk2.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MapChk1.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MapChk2.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ScreenMoveChk1.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ScreenMoveChk2.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/NpcEquip.dds" && entry.Signature == "dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/NpcEquipClick.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Magic.ani");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/ItemMinIcon.Ani");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/effect.ani");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/compose/CoverPic.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MagicSkillType1000.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/ItemMinIcon/Default.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/Pic/FireLight/01.dds" && entry.Signature == "dds");
 
-        Assert.Equal("DDS ProgressBk", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressBk.dds"))));
-        Assert.Equal("DDS mainDialog1", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "mainDialog1.dds"))));
-        Assert.Equal("DDS MainDialog2 loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "MainDialog2.dds"))));
-        Assert.Equal("DDS ProgressHP", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressHP.dds"))));
-        Assert.Equal("DDS ProgressPower", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressPower.dds"))));
-        Assert.Equal("DDS ProgressPowerH", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressPowerH.dds"))));
-        Assert.Equal("DDS ProgressForceA", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressForceA.dds"))));
-        Assert.Equal("DDS ProgressForce2 loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressForce2.dds"))));
-        Assert.Equal("DDS ProgressForce2a loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "ProgressForce2a.dds"))));
-        Assert.Equal("DDS QueryBtn loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "QueryBtn.dds"))));
-        Assert.Equal("DDS MissionBtnNormal loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "interface", "Style01", "Action", "MissionBtnNormal.dds"))));
-        Assert.Equal("DDS PkFree loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "PkFree.dds"))));
-        Assert.Equal("DDS OrganiseBtnNormal loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "OrganiseBtnNormal.dds"))));
-        Assert.Equal("DDS OrganiseBtnClick loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "OrganiseBtnClick.dds"))));
-        Assert.Equal("DDS OrganiseBtnUnClick loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "OrganiseBtnUnClick.dds"))));
-        Assert.Equal("DDS OrganiseBtnEmboss loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "OrganiseBtnEmboss.dds"))));
-        Assert.Equal("DDS SkillBtnL loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "SkillBtnL.dds"))));
+        Assert.Equal("DDS ProgressBk", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "progressbk.dds"))));
+        Assert.Equal("DDS mainDialog1", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "maindialog1.dds"))));
+        Assert.Equal("DDS MainDialog2 loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "maindialog2.dds"))));
+        Assert.Equal("DDS MagicSkillType1000", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "magicskilltype1000.dds"))));
+        Assert.Equal("DDS ItemDefault", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "itemminicon", "default.dds"))));
         Assert.False(File.Exists(Path.Combine(payloadRoot, "data.wdf")));
     }
 
@@ -195,19 +87,8 @@ public sealed class ContentSetImporterTests
         Assert.Contains("data/main/Splash02.bmp", manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.DoesNotContain("data/main/Logo1.bmp", manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.Contains("data/main/ProgressBk.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/ProgressHP.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/ProgressPower.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/ProgressPowerH.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/ProgressForce2a.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/MainDialog2.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/QueryBtn.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/interface/Style01/Action/MissionBtnNormal.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/PkFree.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/OrganiseBtnNormal.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/OrganiseBtnClick.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/OrganiseBtnUnClick.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/OrganiseBtnEmboss.dds", manifest.Entries.Select(static entry => entry.SourcePath));
-        Assert.Contains("data/main/SkillBtnL.dds", manifest.Entries.Select(static entry => entry.SourcePath));
+        Assert.Contains("data/interface/compose/CoverPic.dds", manifest.Entries.Select(static entry => entry.SourcePath));
+        Assert.Contains("ani/Magic.ani", manifest.Entries.Select(static entry => entry.SourcePath));
     }
 
     [Fact]
@@ -221,7 +102,9 @@ public sealed class ContentSetImporterTests
         ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("first"));
         ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("second"));
 
-        Assert.Equal(File.ReadAllBytes(Path.Combine(destinationParent.ChildPath("first"), "manifest.json")), File.ReadAllBytes(Path.Combine(destinationParent.ChildPath("second"), "manifest.json")));
+        Assert.Equal(
+            File.ReadAllBytes(Path.Combine(destinationParent.ChildPath("first"), "manifest.json")),
+            File.ReadAllBytes(Path.Combine(destinationParent.ChildPath("second"), "manifest.json")));
     }
 
     [Fact]
@@ -251,16 +134,11 @@ public sealed class ContentSetImporterTests
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"));
         ContentManifestEntry logo = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/Logo1.bmp");
         ContentManifestEntry progressBackground = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressBk.dds");
-        ContentManifestEntry progressPower = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressPower.dds");
-        ContentManifestEntry progressPowerHighlight = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressPowerH.dds");
-        ContentManifestEntry progressForce2Alternate = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/ProgressForce2a.dds");
-        ContentManifestEntry queryNormal = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/QueryBtn.dds");
-        ContentManifestEntry missionNormal = manifest.Entries.Single(static entry => entry.SourcePath == "data/interface/Style01/Action/MissionBtnNormal.dds");
-        ContentManifestEntry pkFree = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/PkFree.dds");
-        ContentManifestEntry organiseNormal = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/OrganiseBtnNormal.dds");
-        ContentManifestEntry skillNormal = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/SkillBtn.dds");
+        ContentManifestEntry quickbarCover = manifest.Entries.Single(static entry => entry.SourcePath == "data/interface/compose/CoverPic.dds");
+        ContentManifestEntry magic = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MagicSkillType1000.dds");
 
-        Assert.Equal(58, manifest.FileCount);
+        Assert.Equal(97, manifest.FileCount);
+
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
         Assert.Equal(64, logo.Sha256.Length);
@@ -270,37 +148,13 @@ public sealed class ContentSetImporterTests
         Assert.Equal("data/main/progressbk.dds", progressBackground.PathKey);
         Assert.Equal(64, progressBackground.Sha256.Length);
 
-        Assert.Equal("dds", progressPower.Signature);
-        Assert.Equal("data/main/progresspower.dds", progressPower.PathKey);
-        Assert.Equal(64, progressPower.Sha256.Length);
+        Assert.Equal("dds", quickbarCover.Signature);
+        Assert.Equal("data/interface/compose/coverpic.dds", quickbarCover.PathKey);
+        Assert.Equal(64, quickbarCover.Sha256.Length);
 
-        Assert.Equal("dds", progressPowerHighlight.Signature);
-        Assert.Equal("data/main/progresspowerh.dds", progressPowerHighlight.PathKey);
-        Assert.Equal(64, progressPowerHighlight.Sha256.Length);
-
-        Assert.Equal("dds", progressForce2Alternate.Signature);
-        Assert.Equal("data/main/progressforce2a.dds", progressForce2Alternate.PathKey);
-        Assert.Equal(64, progressForce2Alternate.Sha256.Length);
-
-        Assert.Equal("dds", queryNormal.Signature);
-        Assert.Equal("data/main/querybtn.dds", queryNormal.PathKey);
-        Assert.Equal(64, queryNormal.Sha256.Length);
-
-        Assert.Equal("dds", missionNormal.Signature);
-        Assert.Equal("data/interface/style01/action/missionbtnnormal.dds", missionNormal.PathKey);
-        Assert.Equal(64, missionNormal.Sha256.Length);
-
-        Assert.Equal("dds", pkFree.Signature);
-        Assert.Equal("data/main/pkfree.dds", pkFree.PathKey);
-        Assert.Equal(64, pkFree.Sha256.Length);
-
-        Assert.Equal("dds", organiseNormal.Signature);
-        Assert.Equal("data/main/organisebtnnormal.dds", organiseNormal.PathKey);
-        Assert.Equal(64, organiseNormal.Sha256.Length);
-
-        Assert.Equal("dds", skillNormal.Signature);
-        Assert.Equal("data/main/skillbtn.dds", skillNormal.PathKey);
-        Assert.Equal(64, skillNormal.Sha256.Length);
+        Assert.Equal("dds", magic.Signature);
+        Assert.Equal("data/main/magicskilltype1000.dds", magic.PathKey);
+        Assert.Equal(64, magic.Sha256.Length);
 
         Assert.Equal(manifest.Entries.Sum(static entry => entry.Length), manifest.Length);
     }
@@ -327,39 +181,50 @@ public sealed class ContentSetImporterTests
 
         source.WriteStartupSnapshot();
 
-        ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set"));
-        string[] paths = manifest.Entries.Select(static entry => entry.SourcePath).ToArray();
+        string[] paths = ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set")).Entries
+            .Select(static entry => entry.SourcePath)
+            .ToArray();
 
-        Assert.Contains("data/main/QueryBtn.dds", paths);
-        Assert.Contains("data/main/QueryBtnClick.dds", paths);
-        Assert.Contains("data/main/LevWordBtn.dds", paths);
-        Assert.Contains("data/main/LevWordBtnClick.dds", paths);
-        Assert.Contains("data/main/GoodBtn.dds", paths);
-        Assert.Contains("data/main/GoodBtnClick.dds", paths);
-        Assert.Contains("data/main/SetBtn.dds", paths);
-        Assert.Contains("data/main/SetBtnClick.dds", paths);
-        Assert.Contains("data/interface/Style01/Action/MissionBtnNormal.dds", paths);
-        Assert.Contains("data/interface/Style01/Action/MissionBtnClick.dds", paths);
-        Assert.Contains("data/interface/Style01/Action/MissionBtnEmboss.dds", paths);
-        Assert.Contains("data/main/ChatBtn.dds", paths);
-        Assert.Contains("data/main/ChatBtnClick.dds", paths);
-        Assert.Contains("data/main/GroupBtn.dds", paths);
-        Assert.Contains("data/main/GroupBtnClick.dds", paths);
-        Assert.Contains("data/main/PkFree.dds", paths);
-        Assert.Contains("data/main/PkFreeClick.dds", paths);
-        Assert.Contains("data/main/PkSafe.dds", paths);
-        Assert.Contains("data/main/PkSafeClick.dds", paths);
-        Assert.Contains("data/main/PkGroup.dds", paths);
-        Assert.Contains("data/main/PkGroupClick.dds", paths);
-        Assert.Contains("data/main/PkArre.dds", paths);
-        Assert.Contains("data/main/PkArreClick.dds", paths);
-        Assert.Contains("data/main/OrganiseBtnNormal.dds", paths);
-        Assert.Contains("data/main/OrganiseBtnClick.dds", paths);
-        Assert.Contains("data/main/OrganiseBtnUnClick.dds", paths);
-        Assert.Contains("data/main/OrganiseBtnEmboss.dds", paths);
-        Assert.Contains("data/main/SkillBtn.dds", paths);
-        Assert.Contains("data/main/SkillBtnClick.dds", paths);
-        Assert.Contains("data/main/SkillBtnL.dds", paths);
+        foreach (string path in new[]
+        {
+            "data/main/QueryBtn.dds", "data/main/QueryBtnClick.dds",
+            "data/main/LevWordBtn.dds", "data/main/LevWordBtnClick.dds",
+            "data/main/GoodBtn.dds", "data/main/GoodBtnClick.dds",
+            "data/main/SetBtn.dds", "data/main/SetBtnClick.dds",
+            "data/interface/Style01/Action/MissionBtnNormal.dds",
+            "data/interface/Style01/Action/MissionBtnClick.dds",
+            "data/interface/Style01/Action/MissionBtnEmboss.dds",
+            "data/main/ChatBtn.dds", "data/main/ChatBtnClick.dds",
+            "data/main/GroupBtn.dds", "data/main/GroupBtnClick.dds",
+            "data/main/PkFree.dds", "data/main/PkFreeClick.dds",
+            "data/main/PkSafe.dds", "data/main/PkSafeClick.dds",
+            "data/main/PkGroup.dds", "data/main/PkGroupClick.dds",
+            "data/main/PkArre.dds", "data/main/PkArreClick.dds",
+            "data/main/OrganiseBtnNormal.dds", "data/main/OrganiseBtnClick.dds",
+            "data/main/OrganiseBtnUnClick.dds", "data/main/OrganiseBtnEmboss.dds",
+            "data/main/SkillBtn.dds", "data/main/SkillBtnClick.dds", "data/main/SkillBtnL.dds",
+        })
+        {
+            Assert.Contains(path, paths);
+        }
+    }
+
+    [Fact]
+    public void Import_IncludesEverySyntheticQuickbarFamily()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destinationParent = new();
+
+        source.WriteStartupSnapshot();
+
+        string[] paths = ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set")).Entries
+            .Select(static entry => entry.SourcePath)
+            .ToArray();
+
+        foreach (string path in ExpectedQuickbarPaths())
+        {
+            Assert.Contains(path, paths);
+        }
     }
 
     [Fact]
@@ -420,5 +285,102 @@ public sealed class ContentSetImporterTests
         Directory.CreateDirectory(destinationParent.ChildPath("set"));
 
         Assert.Throws<IOException>(() => ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set")));
+    }
+
+    private static string[] ExpectedImportedPaths()
+    {
+        string[] basePaths =
+        [
+            "ani/Control.ani",
+            "data/interface/Style01/Action/MissionBtnClick.dds",
+            "data/interface/Style01/Action/MissionBtnEmboss.dds",
+            "data/interface/Style01/Action/MissionBtnNormal.dds",
+            "data/main/ChatBtn.dds",
+            "data/main/ChatBtnClick.dds",
+            "data/main/GoodBtn.dds",
+            "data/main/GoodBtnClick.dds",
+            "data/main/GroupBtn.dds",
+            "data/main/GroupBtnClick.dds",
+            "data/main/LevWordBtn.dds",
+            "data/main/LevWordBtnClick.dds",
+            "data/main/Logo1.bmp",
+            "data/main/Logo2.bmp",
+            "data/main/MainDialog2.dds",
+            "data/main/MapChk1.dds",
+            "data/main/MapChk2.dds",
+            "data/main/NpcEquip.dds",
+            "data/main/NpcEquipClick.dds",
+            "data/main/OrganiseBtnClick.dds",
+            "data/main/OrganiseBtnEmboss.dds",
+            "data/main/OrganiseBtnNormal.dds",
+            "data/main/OrganiseBtnUnClick.dds",
+            "data/main/PkArre.dds",
+            "data/main/PkArreClick.dds",
+            "data/main/PkFree.dds",
+            "data/main/PkFreeClick.dds",
+            "data/main/PkGroup.dds",
+            "data/main/PkGroupClick.dds",
+            "data/main/PkSafe.dds",
+            "data/main/PkSafeClick.dds",
+            "data/main/ProgressBk.dds",
+            "data/main/ProgressForce.dds",
+            "data/main/ProgressForce2.dds",
+            "data/main/ProgressForce2a.dds",
+            "data/main/ProgressForceA.dds",
+            "data/main/ProgressHP.dds",
+            "data/main/ProgressHPA.dds",
+            "data/main/ProgressHPH.dds",
+            "data/main/ProgressMP.dds",
+            "data/main/ProgressMPA.dds",
+            "data/main/ProgressMPH.dds",
+            "data/main/ProgressPower.dds",
+            "data/main/ProgressPowerH.dds",
+            "data/main/QueryBtn.dds",
+            "data/main/QueryBtnClick.dds",
+            "data/main/RunChk1.dds",
+            "data/main/RunChk2.dds",
+            "data/main/ScreenMoveChk1.dds",
+            "data/main/ScreenMoveChk2.dds",
+            "data/main/SetBtn.dds",
+            "data/main/SetBtnClick.dds",
+            "data/main/SkillBtn.dds",
+            "data/main/SkillBtnClick.dds",
+            "data/main/SkillBtnL.dds",
+            "data/main/mainDialog1.dds",
+            "ini/GameSetUp.ini",
+            "ini/info.ini",
+        ];
+
+        return basePaths.Concat(ExpectedQuickbarPaths()).Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private static IEnumerable<string> ExpectedQuickbarPaths()
+    {
+        yield return "ani/Magic.ani";
+        yield return "ani/ItemMinIcon.Ani";
+        yield return "ani/effect.ani";
+        yield return "data/interface/compose/CoverPic.dds";
+        yield return "data/main/UsemainbBtnNormal.dds";
+        yield return "data/main/SwapmainbBtnNormal.dds";
+        yield return "data/interface/Style01/Equip/Num/AddPic.dds";
+
+        for (int digit = 0; digit <= 9; digit++)
+        {
+            yield return $"data/main/Num{digit}Pic.dds";
+            yield return $"data/interface/Style01/Equip/Num/{digit}.dds";
+        }
+
+        yield return "data/main/Act1.dds";
+        yield return "data/interface/Style01/Action/Dance2BtnNormal.dds";
+        yield return "data/main/MagicSkillType1000.dds";
+        yield return "data/main/XpSkillType2000.dds";
+        yield return "data/ItemMinIcon/Default.dds";
+        yield return "data/ItemMinIcon/100.dds";
+        yield return "data/Pic/FireLight/01.dds";
+        yield return "data/Pic/FireLight/02.dds";
+        yield return "data/Pic/RedLight/01.dds";
+        yield return "data/Pic/BlueLight/01.dds";
+        yield return "data/Pic/RoyalBlueLight/01.dds";
+        yield return "data/Pic/YellowLight/01.dds";
     }
 }

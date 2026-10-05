@@ -13,11 +13,15 @@ public sealed class AniIndexFile
     private const int MaximumFrameCount = 64;
 
     private readonly Dictionary<uint, AniIndexSection> _sectionsByHash;
+    private readonly IReadOnlyList<AniIndexSection> _sections;
 
     private AniIndexFile(Dictionary<uint, AniIndexSection> sectionsByHash)
     {
         _sectionsByHash = sectionsByHash;
+        _sections = Array.AsReadOnly(sectionsByHash.Values.OrderBy(static section => section.Name, StringComparer.Ordinal).ToArray());
     }
+
+    public IReadOnlyList<AniIndexSection> Sections => _sections;
 
     public static AniIndexFile Load(IClientContentSource contentSource, string contentPath, ContentLookupMode mode)
     {
@@ -25,7 +29,6 @@ public sealed class AniIndexFile
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
 
         byte[] payload = ContentReader.ReadRequiredBytes(contentSource, contentPath, mode, MaximumEncodedLength);
-
         return Parse(payload, contentPath);
     }
 
@@ -35,14 +38,12 @@ public sealed class AniIndexFile
         ArgumentException.ThrowIfNullOrWhiteSpace(contentPath);
 
         byte[] payload = ContentReader.ReadBytes(stream, contentPath, MaximumEncodedLength);
-
         return Parse(payload, contentPath);
     }
 
     public bool TryGetSection(string name, [NotNullWhen(true)] out AniIndexSection? section)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
-
         return _sectionsByHash.TryGetValue(ComputeSectionHash(name), out section);
     }
 
@@ -200,7 +201,6 @@ public sealed class AniIndexFile
 
     private static int NormalizeFrameCount(int rawFrameCount)
     {
-        // Preserve the ANI frame count wrapping semantics while retaining the sign of negative values.
         int normalized = rawFrameCount & unchecked((int)0x8000003F);
 
         if (normalized < 0)

@@ -41,12 +41,8 @@ public sealed class AniIndexFileTests
     public void Load_LastEqualNativeHashDefinitionWinsEvenWhenNamesDiffer()
     {
         using MemoryStream stream = CreateStream(
-            "[AB]\n"
-            + "FrameAmount=1\n"
-            + "Frame0=data/pic/first.tga\n"
-            + "[B!]\n"
-            + "FrameAmount=1\n"
-            + "Frame0=data/pic/second.tga\n");
+            "[AB]\nFrameAmount=1\nFrame0=data/pic/first.tga\n"
+            + "[B!]\nFrameAmount=1\nFrame0=data/pic/second.tga\n");
 
         AniIndexFile index = AniIndexFile.Load(stream, "ani/Common.Ani");
 
@@ -59,15 +55,38 @@ public sealed class AniIndexFileTests
     }
 
     [Fact]
+    public void Sections_ContainsOnlyTheSurvivingNativeHashWinner()
+    {
+        using MemoryStream stream = CreateStream(
+            "[AB]\nFrameAmount=1\nFrame0=data/pic/first.tga\n"
+            + "[B!]\nFrameAmount=1\nFrame0=data/pic/second.tga\n");
+
+        AniIndexFile index = AniIndexFile.Load(stream, "ani/Common.Ani");
+
+        AniIndexSection section = Assert.Single(index.Sections);
+        Assert.Equal("B!", section.Name);
+        Assert.Equal("data/pic/second.tga", section.FramePaths[0]);
+    }
+
+    [Fact]
+    public void Sections_IsDeterministicOrdinalOrder()
+    {
+        using MemoryStream stream = CreateStream(
+            "[Zulu]\nFrameAmount=0\n"
+            + "[Alpha]\nFrameAmount=0\n"
+            + "[Middle]\nFrameAmount=0\n");
+
+        AniIndexFile index = AniIndexFile.Load(stream, "ani/Common.Ani");
+
+        Assert.Equal(["Alpha", "Middle", "Zulu"], index.Sections.Select(static section => section.Name));
+    }
+
+    [Fact]
     public void Load_NativeHashTreatsLatin1BytesAsSigned()
     {
         using MemoryStream stream = CreateStream(
-            "[A ]\n"
-            + "FrameAmount=1\n"
-            + "Frame0=data/pic/first.tga\n"
-            + "[Bÿ]\n"
-            + "FrameAmount=1\n"
-            + "Frame0=data/pic/second.tga\n");
+            "[A ]\nFrameAmount=1\nFrame0=data/pic/first.tga\n"
+            + "[Bÿ]\nFrameAmount=1\nFrame0=data/pic/second.tga\n");
 
         AniIndexFile index = AniIndexFile.Load(stream, "ani/Common.Ani");
 
@@ -150,10 +169,12 @@ public sealed class AniIndexFileTests
     {
         using MemoryStream stream = CreateStream("[Syndicate]\nFrameAmount=0\n[Syndicate]\nFrameAmount=1\nFrame0=data/pic/Syndicate.tga\n");
 
-        AniIndexSection section = AniIndexFile.Load(stream, "ani/Common.Ani").GetRequiredSection("Syndicate");
+        AniIndexFile index = AniIndexFile.Load(stream, "ani/Common.Ani");
+        AniIndexSection section = index.GetRequiredSection("Syndicate");
 
         Assert.Equal(1, section.FrameCount);
         Assert.Equal("data/pic/Syndicate.tga", section.FramePaths[0]);
+        Assert.Single(index.Sections);
     }
 
     [Fact]
