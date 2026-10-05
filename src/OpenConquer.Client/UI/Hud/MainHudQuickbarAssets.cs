@@ -12,8 +12,15 @@ internal sealed class MainHudQuickbarAssets
     public const string EffectAniPath = "ani/effect.ani";
 
     private readonly IClientContentSource _contentSource;
-    private readonly Dictionary<string, AniIndexFile?> _indexes = new(StringComparer.Ordinal);
-    private readonly Dictionary<(string AniPath, string Section), AniFrameSet?> _sections = [];
+
+    private AniIndexFile? _controlIndex;
+    private AniIndexFile? _magicIndex;
+    private AniIndexFile? _itemMinIconIndex;
+    private AniIndexFile? _effectIndex;
+    private bool _controlIndexLoaded;
+    private bool _magicIndexLoaded;
+    private bool _itemMinIconIndexLoaded;
+    private bool _effectIndexLoaded;
 
     public MainHudQuickbarAssets(IClientContentSource contentSource)
     {
@@ -56,58 +63,50 @@ internal sealed class MainHudQuickbarAssets
 
     private AniFrameSet? GetFrames(string aniPath, string sectionName)
     {
-        (string AniPath, string Section) key = (aniPath, sectionName);
-
-        if (_sections.TryGetValue(key, out AniFrameSet? cached))
-        {
-            return cached;
-        }
-
         AniIndexFile? index = GetIndex(aniPath);
 
         if (index is null || !index.TryGetSection(sectionName, out AniIndexSection? section))
         {
-            _sections[key] = null;
             return null;
         }
 
-        AniFrameSet? frames;
-
         try
         {
-            frames = AniFrameSetLoader.Load(_contentSource, section, ContentLookupMode.LooseThenPackage);
+            return AniFrameSetLoader.Load(_contentSource, section, ContentLookupMode.LooseThenPackage);
         }
         catch (FileNotFoundException)
         {
-            frames = null;
+            return null;
         }
-
-        _sections[key] = frames;
-        return frames;
     }
 
-    private AniIndexFile? GetIndex(string aniPath)
-    {
-        if (_indexes.TryGetValue(aniPath, out AniIndexFile? cached))
+    private AniIndexFile? GetIndex(string aniPath) =>
+        aniPath switch
         {
-            return cached;
-        }
+            ControlAniPath => GetOrLoadIndex(ref _controlIndexLoaded, ref _controlIndex, ControlAniPath, ContentLookupMode.LooseOnly),
+            MagicAniPath => GetOrLoadIndex(ref _magicIndexLoaded, ref _magicIndex, MagicAniPath, ContentLookupMode.LooseThenPackage),
+            ItemMinIconAniPath => GetOrLoadIndex(ref _itemMinIconIndexLoaded, ref _itemMinIconIndex, ItemMinIconAniPath, ContentLookupMode.LooseThenPackage),
+            EffectAniPath => GetOrLoadIndex(ref _effectIndexLoaded, ref _effectIndex, EffectAniPath, ContentLookupMode.LooseThenPackage),
+            _ => throw new ArgumentOutOfRangeException(nameof(aniPath), aniPath, "Unknown quickbar ANI index."),
+        };
 
-        AniIndexFile? index;
+    private AniIndexFile? GetOrLoadIndex(ref bool loaded, ref AniIndexFile? index, string aniPath, ContentLookupMode lookupMode)
+    {
+        if (loaded)
+        {
+            return index;
+        }
 
         try
         {
-            index = AniIndexFile.Load(_contentSource, aniPath, GetIndexLookupMode(aniPath));
+            index = AniIndexFile.Load(_contentSource, aniPath, lookupMode);
         }
         catch (FileNotFoundException)
         {
             index = null;
         }
 
-        _indexes[aniPath] = index;
+        loaded = true;
         return index;
     }
-
-    private static ContentLookupMode GetIndexLookupMode(string aniPath) =>
-        aniPath == ControlAniPath ? ContentLookupMode.LooseOnly : ContentLookupMode.LooseThenPackage;
 }

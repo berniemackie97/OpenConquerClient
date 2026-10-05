@@ -33,6 +33,24 @@ public sealed class MainHudQuickbarAssetsTests
     }
 
     [Fact]
+    public void SectionFramesAreNotRetainedAcrossLookups()
+    {
+        using TemporaryContentDirectory content = new();
+
+        content.WriteText("ani/Control.ani", "[ButtonA1]\nFrameAmount=1\nFrame0=data/test/a.dds\n");
+        content.WriteBytes("data/test/a.dds", CreateDxt3Dds(64, 64));
+
+        MainHudQuickbarAssets assets = new(new ClientContentRoot(content.RootPath));
+
+        object? first = assets.GetControlFrame0("ButtonA1");
+        object? second = assets.GetControlFrame0("ButtonA1");
+
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+        Assert.NotSame(first, second);
+    }
+
+    [Fact]
     public void ItemLookupFallsBackToItemDefault()
     {
         using TemporaryContentDirectory content = new();
