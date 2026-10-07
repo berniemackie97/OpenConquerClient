@@ -176,7 +176,7 @@ public sealed class ClientFontSettingsConfigurationTests
         using TemporaryContentDirectory temporaryDirectory = new();
 
         temporaryDirectory.WriteFile(GameFontConfiguration.RelativePath, "Arial 12");
-        temporaryDirectory.WriteFile("INI/fOnTsEtTiNg.InI",
+        temporaryDirectory.WriteFile(ClientFontSettingsConfiguration.RelativePath,
             """
             gUiFoNtShAdOw=1
             gUiFoNtShAdOwCoLoR=FF010203
