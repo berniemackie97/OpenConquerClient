@@ -13,20 +13,13 @@ internal static class UnixActivationNamespace
     internal static string ForCurrentUser()
     {
         if (OperatingSystem.IsMacOS())
-        {
             return Create(UnixRuntimeNative.DarwinTemporaryDirectory());
-        }
-
         if (!OperatingSystem.IsLinux())
-        {
             throw new PlatformNotSupportedException();
-        }
 
         string? configured = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
         if (!string.IsNullOrEmpty(configured))
-        {
             return Create(configured);
-        }
 
         string standard = "/run/user/" + UnixRuntimeNative.UserId.ToString(CultureInfo.InvariantCulture);
         try
@@ -96,27 +89,20 @@ internal static class UnixActivationNamespace
         bool writableByOthers = (status.Mode & 0x12) != 0; // group/other write
         bool protectedStickyRoot = status.UserId == 0 && (status.Mode & 0x200) != 0;
         if (!trustedOwner || (status.Mode & 0xf000) != 0x4000 || (writableByOthers && !protectedStickyRoot))
-        {
             throw new UnauthorizedAccessException("Runtime directory ancestry is writable or owned by another user.");
-        }
     }
 
     private static void ValidateOwnerAndMode(UnixRuntimeNative.Metadata status, bool requirePrivate)
     {
         if (status.UserId != UnixRuntimeNative.UserId || (requirePrivate && (status.Mode & 0xfff) != 0x1c0))
-        {
             throw new UnauthorizedAccessException("The runtime directory must be owned by the current user with private access.");
-        }
     }
 
     private static string ValidatePath(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         if (!Path.IsPathFullyQualified(path) || path.Contains('\0') || path.Split('/').Any(part => part is "." or ".."))
-        {
             throw new ArgumentException("The runtime path must be absolute and contain no traversal or NUL characters.", nameof(path));
-        }
-
         return Path.TrimEndingDirectorySeparator(path);
     }
 
@@ -125,17 +111,13 @@ internal static class UnixActivationNamespace
         // sun_path includes its NUL terminator: Darwin 104 bytes, Linux 108 bytes.
         int maximum = OperatingSystem.IsMacOS() ? 103 : 107;
         if (Encoding.UTF8.GetByteCount(pipe) > maximum)
-        {
             throw new PathTooLongException("The private activation endpoint exceeds the OS socket path limit.");
-        }
     }
 
     private static void ValidatePlatform()
     {
         if ((!OperatingSystem.IsMacOS() && !OperatingSystem.IsLinux()) ||
             RuntimeInformation.ProcessArchitecture is not (Architecture.X64 or Architecture.Arm64))
-        {
             throw new PlatformNotSupportedException("Unsupported Unix launcher platform.");
-        }
     }
 }

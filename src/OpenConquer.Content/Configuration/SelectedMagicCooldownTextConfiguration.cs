@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace OpenConquer.Content.Configuration;
 
 /// <summary>
@@ -50,32 +48,128 @@ public sealed class SelectedMagicCooldownTextConfiguration
 
         IniDocument document = IniDocument.LoadRequired(contentSource, RelativePath, MaximumFileLength);
 
-        return new SelectedMagicCooldownTextConfiguration(ReadInt32(document, "OffsetX", DefaultOffsetX), ReadInt32(document, "OffsetY", DefaultOffsetY), ReadInt32(document, "FontSize", DefaultFontSizePixels), ReadColorArgb(document));
+        return new SelectedMagicCooldownTextConfiguration(
+            ReadInt32(document, "OffsetX", DefaultOffsetX),
+            ReadInt32(document, "OffsetY", DefaultOffsetY),
+            ReadInt32(document, "FontSize", DefaultFontSizePixels),
+            unchecked((uint)ReadInt32(document, "Color", unchecked((int)DefaultColorArgb))));
     }
 
     private static int ReadInt32(IniDocument document, string keyName, int defaultValue)
     {
-        return document.TryGetValue(SectionName, keyName, out string? value) && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed)
-            ? parsed
-            : defaultValue;
+        if (!document.TryGetValue(SectionName, keyName, out string? value) || string.IsNullOrEmpty(value))
+        {
+            return defaultValue;
+        }
+
+        return ParseNativeInt32(value, defaultValue);
     }
 
-    private static uint ReadColorArgb(IniDocument document)
+    private static int ParseNativeInt32(ReadOnlySpan<char> value, int defaultValue)
     {
-        if (!document.TryGetValue(SectionName, "Color", out string? value))
+        if (value.Length > 2 && value[0] == '0' && value[1] is 'x' or 'X')
         {
-            return DefaultColorArgb;
+            return ParseHexadecimal(value[2..], defaultValue);
         }
 
-        ReadOnlySpan<char> text = value.AsSpan().Trim();
-
-        if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase) && uint.TryParse(text[2..], NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out uint hex))
-        {
-            return hex;
-        }
-
-        return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int signed)
-            ? unchecked((uint)signed)
-            : DefaultColorArgb;
+        return ParseDecimal(value);
     }
+
+    private static int ParseDecimal(ReadOnlySpan<char> value)
+    {
+        int index = 0;
+
+        while (index < value.Length && IsAsciiWhiteSpace(value[index]))
+        {
+            index++;
+        }
+
+        bool negative = false;
+
+        if (index < value.Length)
+        {
+            if (value[index] == '+')
+            {
+                index++;
+            }
+            else if (value[index] == '-')
+            {
+                negative = true;
+                index++;
+            }
+        }
+
+        long limit = negative ? 2147483648L : int.MaxValue;
+        long result = 0;
+
+        while (index < value.Length && value[index] is >= '0' and <= '9')
+        {
+            int digit = value[index] - '0';
+
+            if (result > (limit - digit) / 10)
+            {
+                return negative ? int.MinValue : int.MaxValue;
+            }
+
+            result = (result * 10) + digit;
+            index++;
+        }
+
+        if (!negative)
+        {
+            return (int)result;
+        }
+
+        return result == 2147483648L ? int.MinValue : -(int)result;
+    }
+
+    private static int ParseHexadecimal(ReadOnlySpan<char> value, int defaultValue)
+    {
+        uint result = 0;
+        bool hasDigits = false;
+
+        foreach (char character in value)
+        {
+            int digit = HexadecimalDigit(character);
+
+            if (digit < 0)
+            {
+                break;
+            }
+
+            hasDigits = true;
+
+            if (result > (uint.MaxValue - (uint)digit) / 16)
+            {
+                return -1;
+            }
+
+            result = (result * 16) + (uint)digit;
+        }
+
+        return hasDigits ? unchecked((int)result) : defaultValue;
+    }
+
+    private static int HexadecimalDigit(char character)
+    {
+        if (character is >= '0' and <= '9')
+        {
+            return character - '0';
+        }
+
+        if (character is >= 'a' and <= 'f')
+        {
+            return character - 'a' + 10;
+        }
+
+        if (character is >= 'A' and <= 'F')
+        {
+            return character - 'A' + 10;
+        }
+
+        return -1;
+    }
+
+    private static bool IsAsciiWhiteSpace(char character) =>
+        character is ' ' or '\t' or '\n' or '\v' or '\f' or '\r';
 }

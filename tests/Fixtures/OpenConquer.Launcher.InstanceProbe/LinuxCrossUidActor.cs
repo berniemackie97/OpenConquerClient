@@ -15,10 +15,7 @@ internal static partial class LinuxCrossUidActor
     internal static int Run(string[] args)
     {
         if (args.Length < 2)
-        {
             return 64;
-        }
-
         VerifyIdentity(uint.Parse(args[0], CultureInfo.InvariantCulture));
         switch (args[1])
         {
@@ -44,9 +41,7 @@ internal static partial class LinuxCrossUidActor
     private static void VerifyIdentity(uint userId)
     {
         if (userId == 0 || UnixRuntimeNative.UserId != userId)
-        {
             throw new InvalidOperationException("The actor must run as the requested unprivileged UID.");
-        }
 
         Dictionary<string, string[]> status = File.ReadLines("/proc/self/status")
             .Select(line => line.Split(':', 2))
@@ -55,21 +50,14 @@ internal static partial class LinuxCrossUidActor
         foreach (string field in new[] { "Uid", "Gid" })
         {
             if (status[field].Length != 4 || status[field].Any(value => value != expected))
-            {
                 throw new InvalidOperationException("Real, effective, saved and filesystem identities must agree.");
-            }
         }
         if (status["Groups"].Length != 0 || status["NoNewPrivs"] is not ["1"])
-        {
             throw new InvalidOperationException("Actor retained supplementary groups or privilege escalation rights.");
-        }
-
         foreach (string field in new[] { "CapInh", "CapPrm", "CapEff", "CapBnd", "CapAmb" })
         {
             if (status[field].Length != 1 || ulong.Parse(status[field][0], NumberStyles.HexNumber, CultureInfo.InvariantCulture) != 0)
-            {
                 throw new InvalidOperationException("Actor retained Linux capabilities.");
-            }
         }
     }
 
@@ -157,9 +145,7 @@ internal static partial class LinuxCrossUidActor
     private static void NativeSuccess(int result)
     {
         if (result != 0)
-        {
             throw new Win32Exception(Marshal.GetLastPInvokeError());
-        }
     }
 
     private static void NativeDenied(string operation, Func<int> action)
@@ -168,9 +154,7 @@ internal static partial class LinuxCrossUidActor
         int error = Marshal.GetLastPInvokeError();
         // Linux EACCES. Generic IOException, ENOENT, EEXIST and other failures are not proof.
         if (result != -1 || error != 13)
-        {
             throw new InvalidOperationException($"Expected EACCES for {operation}, received result {result}, errno {error}.");
-        }
     }
 
     [LibraryImport("libc", EntryPoint = "rmdir", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]

@@ -33,9 +33,7 @@ public sealed class DisplaySettingsTests : IDisposable
         Assert.NotNull(loaded.Revision);
         Assert.Single(Directory.EnumerateFiles(_root));
         if (!OperatingSystem.IsWindows())
-        {
             Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(FilePath));
-        }
     }
 
     [Theory]
@@ -100,10 +98,7 @@ public sealed class DisplaySettingsTests : IDisposable
         Assert.Equal(SettingsIssue.Unavailable, await store.SaveAsync(DisplayPreferences.Default, null, true, TestContext.Current.CancellationToken));
         Assert.Equal(bytes, await File.ReadAllBytesAsync(FilePath, TestContext.Current.CancellationToken));
         if (OperatingSystem.IsWindows())
-        {
             return; // Symlink creation requires privileges not granted to all Windows test users.
-        }
-
         File.Delete(FilePath);
         string target = Path.Combine(_root, "target");
         File.WriteAllText(target, "preserve");
@@ -197,10 +192,7 @@ public sealed class DisplaySettingsTests : IDisposable
     public async Task UnixFifo_IsRejectedWithoutWaitingForAWriter()
     {
         if (OperatingSystem.IsWindows())
-        {
             return;
-        }
-
         ProcessStartInfo start = new("mkfifo")
         {
             UseShellExecute = false
@@ -220,8 +212,6 @@ public sealed class DisplaySettingsTests : IDisposable
     public void LinuxConfiguration_UsesAbsoluteXdgOrHomeFallback(string? configured, string home, string expected)
     {
         if (!OperatingSystem.IsWindows())
-        {
             Assert.Equal(expected, DisplaySettingsStore.LinuxConfigurationHome(configured, home));
-        }
     }
 }
