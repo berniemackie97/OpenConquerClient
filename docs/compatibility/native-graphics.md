@@ -185,18 +185,14 @@ background
 vitals
 panels
 skill / XP
-controls / overlays
+quickbar
+action buttons
+check controls
+selected-skill image / previously armed cover
+selected-skill cooldown text
 ```
 
-Current implementation covers:
-
-```text
-background
-vitals
-panels
-skill / XP
-10-button action strip
-```
+Current implementation covers all of those boundaries.
 
 For logical height `H`:
 
@@ -1003,6 +999,196 @@ The exact USER32 capture/release and `BN_CLICKED` behavior for an outside releas
 `CMyCheck` mouse-move handling remains unresolved. That boundary is not required for the proven
 mouse-down state transition and is not fabricated by the managed implementation.
 
+## Main HUD Quickbar
+
+GFX-UI-006 reconstructs the native ten-slot main-HUD quickbar/grid.
+
+### Geometry
+
+```text
+control ID         0x3FD
+native context     3
+rows               1
+columns            10
+local X            90
+local Y            98
+visual cell        40×40
+horizontal stride  41
+logical width      410
+logical height     40
+```
+
+The parent HUD origin remains:
+
+```text
+Y = logicalHeight - 141
+```
+
+Slot input bounds use the 41×40 stride region. Visual content occupies the verified 40×40 cell.
+
+### Content Kinds
+
+The implemented native content-kind boundary includes:
+
+```text
+1  item
+2  action
+3  magic
+4  XP magic
+5  dance
+6  weapon swap
+```
+
+GFX-UI-006 preserves the verified distinction between fixed control artwork and parametric ANI
+families. Runtime dependencies are resolved from:
+
+```text
+ani/Control.ani
+ani/Magic.ani
+ani/ItemMinIcon.Ani
+ani/effect.ani
+```
+
+Implemented rendering/state behavior includes:
+
+```text
+slot content
+item quantities
+upgrade markers
+covers
+cooldown state
+animated glow families
+weapon-swap controls
+hover state
+activation
+pickup state
+```
+
+The Client owns the consumer-facing quickbar state. Live Gameplay population and downstream
+activation side effects remain deferred.
+
+## Main HUD Selected Skill
+
+GFX-UI-007 reconstructs the selected-skill `CMyImage` boundary and its cooldown text consumer.
+
+### Image Geometry
+
+```text
+control ID          0x3FE
+native image kind   3
+native context      3
+local X             753
+local Y             96
+destination         47×46
+
+initial section     Magic0
+selected source     (0,0,50,50)
+
+cover section       Image0
+cover source        (0,0,64,64)
+```
+
+The selected image is resolved through `ani/Magic.ani`. The cover is resolved through
+`ani/Control.ani`.
+
+`SetSectionAndContent` activates the image and updates native content/blocking state before ANI
+lookup. A failed later lookup therefore does not roll those state mutations back.
+
+`ClearLoadedImage` clears only:
+
+```text
+image active
+content ID
+blocked-cover state
+```
+
+It preserves the selected ANI section and independent cover flag.
+
+### Cooldown Text
+
+`ini/info.ini` section `[SelectMagicNum]` supplies:
+
+```text
+OffsetX
+OffsetY
+FontSize
+Color
+```
+
+Clean/default values are:
+
+```text
+OffsetX   = 0
+OffsetY   = 0
+FontSize  = 20
+Color     = 0xFFFFFFFF
+```
+
+The cooldown text uses the production native-text façade and the GUI font settings described in
+`native-text.md`.
+
+Displayed seconds preserve the verified unsigned ceiling conversion:
+
+```text
+0 ms       → no text
+1..1000    → 1
+1001..2000 → 2
+...
+```
+
+Equivalent managed expression:
+
+```text
+remaining == 0 ? 0 : ((remaining - 1) / 1000) + 1
+```
+
+### Cover Ordering
+
+The observable native ordering is stateful:
+
+```text
+selected-image Show
+    ↓
+draw selected image
+draw cover if cover flag was already armed
+    ↓
+cooldown routine
+    ↓
+clear cover flag
+draw cooldown number when active
+re-arm cover flag when cooldown continues
+```
+
+Therefore a continuing cooldown does not behave like a stateless `icon → text → cover` composition.
+The cover used by the current image draw comes from the state armed by the previous cooldown pass.
+
+The managed implementation preserves that ordering by drawing the selected image first and running
+the cooldown renderer afterward.
+
+The selected-skill identity and cooldown time are separate Client-owned state seams. Live Gameplay
+producers remain deferred.
+
+### GFX-UI-006 / GFX-UI-007 Conformance
+
+Real-driver conformance covers both supported logical resolutions and verifies:
+
+```text
+quickbar production rendering against independent reference composition
+selected-skill image decode and geometry
+selected-skill cover decode and geometry
+cleared selected-skill state
+selected-only state
+previously armed cover state
+first cooldown frame
+continuing cooldown frame
+expired cooldown state
+post-draw cover-flag transition
+production text-context GPU path
+```
+
+The selected-skill retail DDS inputs are independently decoded and compared against production decode
+before framebuffer comparison.
+
 ## Missing Content Behavior
 
 For HUD ANI-backed controls:
@@ -1026,7 +1212,7 @@ invalid DDS
 unexpected decoded dimensions
 ```
 
-One missing action-button or check-control section does not disable unrelated controls.
+One missing action-button, check-control, quickbar, or selected-skill section does not disable unrelated consumers outside that dependency boundary.
 
 ## Real-Driver Conformance
 
@@ -1176,6 +1362,11 @@ Progress42 skill
 English-style experience bar
 skill highlight state/timing
 
+10-slot quickbar/grid
+quickbar item/action/magic/XP-magic/dance/weapon-swap content
+quickbar hover / activation / pickup state
+quickbar quantity / upgrade / cover / cooldown / glow rendering
+
 10-button CMyButton action strip
 native action-button hit regions
 pointer capture/release behavior
@@ -1190,7 +1381,13 @@ four main-HUD CMyCheck controls
 two-state mouse-down toggling
 native check-control draw order
 
-background → vitals → panels → skill/XP → action buttons → check controls ordering
+Magic0 selected-skill image
+Image0 selected-skill cover
+selected-skill native state boundary
+selected-skill cooldown text
+stateful cooldown/cover frame ordering
+
+background → vitals → panels → skill/XP → quickbar → action buttons → check controls → selected skill → cooldown text ordering
 real-driver HUD conformance
 ```
 
@@ -1201,13 +1398,15 @@ logical-target multisampling
 general ANI runtime progression
 sprite batching
 higher-level texture caching
-live hero-state producer
 
-quickbar / grid
-Magic0 selected-skill image
+live hero-state producer
+live quickbar producer
+live selected-skill / cooldown producer
+
 status hints / tooltips
 outer HUD gate
 downstream action-button dialogs and side effects
+downstream check-control feature effects
 
 map rendering
 role rendering

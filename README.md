@@ -11,7 +11,7 @@ C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for Window
 | Product | Implemented | Remaining |
 | --- | --- | --- |
 | Launcher | Managed installation resolution, authenticated releases, integrity verification, update/repair/rollback transaction, single-instance activation, saved display preferences | Production release origin, launcher self-update, player-facing maintenance flow, controlled client startup |
-| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina vitals, skill/experience HUD, native 10-button action strip with pointer interaction and PK/Organise animation state, four native main-HUD CMyCheck controls | Live gameplay state, downstream HUD-control side effects, remaining HUD/UI, networking, maps, roles, effects, animation |
+| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina vitals, skill/experience HUD, native 10-button action strip, four native main-HUD CMyCheck controls, 10-slot quickbar/grid, selected-skill image/cover, selected-skill cooldown text | Live gameplay state, downstream HUD-control side effects, status hints/tooltips, outer HUD gate, remaining UI, networking, maps, roles, effects, animation |
 
 ## Architecture
 
@@ -134,13 +134,21 @@ Do not preserve obsolete implementation machinery when observable behavior can b
 
 ### Runtime Content
 
-The managed runtime closure currently contains 58 files totaling 1,866,395 bytes.
+The managed runtime closure currently contains 3,775 files totaling 20,633,919 bytes.
 
-It covers:
+The exact path set is authoritative in:
+
+```text
+content/retail-5517/manifest.json
+content/retail-5517/payload
+```
+
+It currently covers:
 
 ```text
 startup configuration
 startup logos
+ini/Font.ini
 Control.ani
 
 Progress45 HUD background
@@ -153,14 +161,18 @@ Progress46 stamina frames
 Progress47 extended-stamina frames
 
 10-button main-HUD action strip
-Mission button frames
-Organise button frames
-four PK button skins
+four native main-HUD CMyCheck controls
 
-Check40 walk/run frames
-Check43 map frames
-Check46 screen-shift frames
-Button411 equipment-view frames
+10-slot main-HUD quickbar/grid
+fixed quickbar control artwork
+action and dance families
+magic and XP-magic families
+item-min-icon families
+verified glow families
+
+Magic0 selected-skill image
+Image0 selected-skill cover
+selected-skill cooldown text configuration
 ```
 
 Required invariant:
@@ -175,13 +187,17 @@ tracked payload
 published client content
 ```
 
+The large closure is intentional: GFX-UI-006 introduced verified parametric quickbar consumers whose
+ANI catalogs reference broad action, magic, item-icon, and glow families. The manifest, rather than a
+hand-maintained Markdown file list, is the exact closure authority.
+
 Retail WDF archives are import sources and are not shipped in the curated content set.
 
 Retail `Server.dat` remains offline compatibility evidence and is not runtime content.
 
 ### HUD
 
-Implemented native HUD order:
+Implemented main-HUD composition is:
 
 ```text
 Progress45 background
@@ -191,11 +207,15 @@ Progress46 stamina
 Progress47 extended stamina
 Dialog4 panels
 Progress42 skill / experience
-main action-button strip
-main check controls
+10-slot quickbar/grid
+10-button action strip
+four main-HUD CMyCheck controls
+selected-skill image / previously armed cover
+selected-skill cooldown text
 ```
 
-The action strip currently reconstructs the native visual, state, timing, hit-test, capture, and release behavior of its ten `CMyButton` controls.
+The action strip reconstructs the verified native visual, state, timing, hit-test, capture, and
+release behavior of its ten `CMyButton` controls.
 
 Implemented action-strip behavior includes:
 
@@ -213,7 +233,9 @@ PK timed blinking
 Organise timed blinking
 ```
 
-Action-button activation results are not yet connected to downstream gameplay dialogs, networking, or other feature behavior. Those dependencies are implemented only after their own native contracts are verified.
+Action-button activation results are not yet connected to downstream gameplay dialogs, networking,
+or other feature behavior. Those dependencies are implemented only after their own native contracts
+are verified.
 
 The neighboring native `CMyCheck` group currently reconstructs:
 
@@ -231,9 +253,58 @@ left/top inclusive, right/bottom exclusive hit testing
 native draw order after the ten CMyButton controls
 ```
 
-The check-control slice deliberately does not invent downstream map, screen-shift, equipment-view, or other feature effects. Native USER32 release/`BN_CLICKED` behavior outside the proven state-transition boundary also remains deferred.
+GFX-UI-006 adds the native ten-slot quickbar/grid boundary:
 
-Remaining HUD groups are implemented only after native behavior and dependencies are verified.
+```text
+control ID 0x3FD
+1 row × 10 columns
+local origin (90,98)
+40×40 visual cells
+41-pixel horizontal input stride
+
+item
+action
+magic
+XP magic
+dance
+weapon swap
+
+hover / activation / pickup state
+quantities and upgrade markers
+covers and cooldown state
+animated glow families
+```
+
+GFX-UI-007 adds the selected-skill boundary:
+
+```text
+control ID 0x3FE
+initial ANI section Magic0
+local origin (753,96)
+47×46 destination
+50×50 selected-image source
+64×64 Image0 cover source
+
+selected image
+previously armed cover
+cooldown text
+```
+
+The cooldown routine intentionally mutates the selected-image cover flag after the image draw. A
+continuing cooldown therefore renders the currently armed cover, draws the cooldown number, and
+re-arms the cover for the following frame. This one-frame state behavior is preserved rather than
+normalized into a stateless overlay.
+
+Quickbar contents, selected-skill identity, and cooldown time currently expose Client-owned consumer
+state seams. Live Gameplay producers remain deferred.
+
+The check controls likewise do not invent downstream map, screen-shift, equipment-view, or other
+feature effects. Native USER32 release/`BN_CLICKED` behavior outside the proven state-transition
+boundary remains deferred.
+
+The next unimplemented main-HUD visual slice is status hints/tooltips, followed by the outer HUD
+gate. Those features are implemented only after their own native behavior and dependencies are
+verified.
 
 ## Repository
 
