@@ -103,6 +103,16 @@ both CMyCheck states
 native check-control geometry and draw order
 natural 32×32 check-control sprites
 
+10-slot quickbar/grid
+quickbar fixed and parametric content families
+quickbar hover / activation / pickup state
+
+Magic0 selected-skill image
+Image0 selected-skill cover
+selected-skill cooldown text
+stateful cooldown/cover ordering
+production OpenGL text-context façade
+
 retail asset hashes
 exact loose/package provenance where established
 independent HUD reference geometry
@@ -125,13 +135,14 @@ Runtime content:
 content/retail-5517/payload
 ```
 
-Current runtime closure: 58 files totaling 1,866,395 bytes.
+Current runtime closure: 3,775 files totaling 20,633,919 bytes.
 
 It covers:
 
 ```text
 ini/GameSetUp.ini
 ini/info.ini
+ini/Font.ini
 
 startup logos
 ani/Control.ani
@@ -154,6 +165,18 @@ Check40 frames
 Check43 frames
 Check46 frames
 Button411 frames
+
+ani/Magic.ani
+ani/ItemMinIcon.Ani
+ani/effect.ani
+10-slot quickbar/grid fixed artwork
+action / dance families
+magic / XP-magic families
+item-min-icon families
+verified glow families
+
+Magic0 selected-skill image
+Image0 selected-skill cover
 ```
 
 The experience bar uses solid-rectangle rendering and adds no image asset to the runtime closure.
@@ -253,11 +276,14 @@ Progress46 stamina
 Progress47 extended stamina
 Dialog4 panels
 Progress42 skill / experience
+10-slot quickbar/grid
 10-button action strip
 four main-HUD CMyCheck controls
+selected-skill image / previously armed cover
+selected-skill cooldown text
 ```
 
-The action strip currently implements the verified native visual and interaction boundary:
+The action strip implements the verified native `CMyButton` boundary:
 
 ```text
 10 CMyButton controls
@@ -295,8 +321,55 @@ left-button down performs the state transition
 no managed release rollback
 ```
 
-The downstream map, screen-shift, equipment-view, and other parent-handler effects remain outside
-this slice. The unresolved USER32 release/`BN_CLICKED` boundary must not be guessed.
+GFX-UI-006 implements the ten-slot quickbar/grid boundary:
+
+```text
+control ID 0x3FD
+1×10 slots
+local origin (90,98)
+40×40 visual cells
+41-pixel horizontal input stride
+
+item
+action
+magic
+XP magic
+dance
+weapon swap
+
+hover / activation / pickup state
+quantity / upgrade / cover / cooldown / glow rendering
+```
+
+The quickbar content closure intentionally includes broad parametric ANI families. Do not replace
+that consumer-led expansion with a hand-selected asset subset.
+
+GFX-UI-007 implements the selected-skill boundary:
+
+```text
+control ID 0x3FE
+initial section Magic0
+local origin (753,96)
+47×46 destination
+50×50 selected source
+64×64 Image0 cover source
+```
+
+Selected-skill cooldown rendering is a separate Client-owned consumer seam. The image draw observes
+the previously armed cover flag; the cooldown routine then clears that flag, draws the cooldown
+number when active, and re-arms the flag for the next image draw.
+
+Do not collapse that stateful behavior into a stateless overlay order.
+
+The production cooldown text path uses Content-derived font/code-page configuration and a Rendering-
+owned `OpenGLTextContext`. Rendering owns host font discovery, FreeType, rasterizer, layout/cache,
+CPU atlas, and GPU atlas lifetimes.
+
+Live Gameplay producers for quickbar contents, selected-skill identity, and cooldown time remain
+deferred. The downstream map, screen-shift, equipment-view, action-dialog, and network effects also
+remain outside the implemented boundary.
+
+The next native HUD slice is status hints/tooltips. The outer HUD gate remains after that.
 
 Do not infer unimplemented side effects from ANI artwork names.
 
@@ -317,6 +390,10 @@ CMyButton release behavior after an external frame overwrite
 ANI frame modulo behavior
 CMyCheck state transition on mouse-down rather than mouse-up
 CMyCheck low-byte setter truncation and bounds rejection
+quickbar parametric ANI-family closure expansion
+selected-skill mutation before later ANI lookup
+selected-skill cover flag surviving image clear
+cooldown cover flag applying to the following image draw
 ```
 
 A deliberate deviation from verified native behavior must be explicit and documented rather than

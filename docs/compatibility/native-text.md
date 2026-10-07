@@ -43,8 +43,71 @@ The face token is preserved exactly at the Content boundary.
 OpenConquer limits the file to 256 bytes and rejects larger inputs instead of reproducing native
 fixed-buffer truncation.
 
-The file is not added to the managed runtime content closure until an implemented runtime consumer
-requires it.
+`Font.ini` is now part of the managed runtime content closure because GFX-UI-007 selected-skill
+cooldown rendering is the first production HUD consumer of the native font pipeline.
+
+### GUI Font Settings
+
+Retail optionally reads loose `ini/FontSetting.ini` as a GUI/chat font override layer.
+
+Clean 5517 does not contain this file.
+
+Native initial state represented by `ClientFontSettingsConfiguration`:
+
+```text
+chat font height       14
+render style           0
+antialias               false
+GUI shadow              false
+chat shadow color       0x00000000
+corner color            0x00000000
+corner offset           (1,1)
+GUI face                Font.ini face
+chat face               inherited GUI face when empty
+```
+
+Recognized keys:
+
+```text
+GUIFontShadow
+GUIFontShadowColor
+ChatFont
+ChatFontSize
+ChatFontShadowColor
+Antialias
+GUIFont
+```
+
+Verified quirks:
+
+```text
+keys are case-insensitive
+key/value whitespace is not normalized
+
+GUIFontShadow=1
+→ GUI shadow true
+→ render style becomes 1
+
+later GUIFontShadow=0
+→ GUI shadow false
+→ render style remains 1
+
+Antialias is true only when atoi(value) == 1
+
+ChatFontSize=0
+→ 16
+
+initial missing ChatFontSize
+→ 14
+
+shadow colors use base-16 unsigned parsing
+
+empty ChatFont after parsing
+→ inherit GUIFont
+```
+
+OpenConquer does not claim native-compatible CRT overflow behavior for malformed extreme numeric
+inputs. Compatibility coverage is intentionally limited to the verified value domain.
 
 ### Native Font Tokens
 
@@ -1267,6 +1330,14 @@ GameFontConfiguration
     face token
     nominal pixel height
 
+ClientFontSettingsConfiguration
+    optional ini/FontSetting.ini
+    GUI/chat face settings
+    render style
+    antialias policy
+    shadow/corner colors
+    native corner offset
+
 ClientFontSizeConfiguration
     ini/info.ini
     [FontSize] Size
@@ -1340,6 +1411,18 @@ OpenGLTextVertexStagingBuffer
 OpenGLTextVertexBuffer
 OpenGLTextPipeline
 OpenGLTextRenderer
+
+OpenGLTextContext
+    production ownership façade
+    host font discovery
+    FreeType library
+    rasterizer / face
+    layout engine / glyph cache
+    CPU atlas
+    OpenGL atlas resource
+
+OpenGLTextLayout
+    opaque caller-facing measured layout
 ```
 
 Content and Rendering remain independent sibling projects.
@@ -1347,8 +1430,9 @@ Content and Rendering remain independent sibling projects.
 Host font APIs are rendering-resource discovery mechanisms and remain inside Rendering. They do not
 introduce a Rendering → Platform dependency.
 
-The Client composition root will connect Content-derived configuration to Rendering when a runtime
-text consumer exists.
+The Client composition root now connects Content-derived font/code-page configuration to Rendering
+for GFX-UI-007 selected-skill cooldown text. Rendering retains ownership of host font discovery,
+FreeType objects, glyph/layout state, and OpenGL atlas resources.
 
 ## GFX-TEXT-002 Scope
 
@@ -1512,9 +1596,8 @@ exact native final page traversal order: unresolved
 OpenConquer ascending page-index order: deterministic modern policy
 ```
 
-GFX-TEXT-004 itself does not add a runtime HUD/UI consumer. Subsequent GFX-UI slices now provide
-non-text main-HUD consumers, while the text pipeline still awaits its first runtime text-bearing UI
-consumer.
+GFX-TEXT-004 itself did not add a runtime HUD/UI consumer. GFX-UI-007 now supplies the first
+production text-bearing HUD consumer: selected-skill cooldown text through `OpenGLTextContext`.
 
 ## Text Reconstruction Roadmap
 
@@ -1537,11 +1620,16 @@ GFX-TEXT-004
 OpenGL text rendering
 + real-driver conformance
         ↓
-runtime text-bearing UI consumer
-status-hint panel (planned)
+GFX-UI-007
+production OpenGLTextContext façade
++ selected-skill cooldown text
+        ↓
+GFX-UI-008
+status hints / tooltips
 ```
 
-The intended first text-bearing UI consumer remains the verified status-hint panel.
+Selected-skill cooldown text is therefore the first production text-bearing UI consumer. The
+status-hint/tooltip slice remains the next planned expansion of the text system.
 
 ## Conformance Boundary
 
@@ -1564,8 +1652,15 @@ native per-corner TR-BL triangle diagonal
 CPU atlas revision → existing GPU texture synchronization
 ```
 
-The synthetic fixture populates `GlyphAtlas` directly. It does not invoke FreeType or depend on host
-font discovery.
+The original synthetic GFX-TEXT-004 fixture populates `GlyphAtlas` directly. It does not invoke
+FreeType or depend on host font discovery.
+
+GFX-UI-007 adds a second deterministic real-driver path through the production `OpenGLTextContext`
+façade using an injected synthetic rasterizer. That verifies façade ownership, layout, lazy atlas
+page creation/synchronization, and GPU drawing without introducing host-font pixel variability.
+
+Selected-skill conformance then composes deterministic cooldown glyphs with the verified retail
+selected-skill image/cover path and checks the native stateful cover ordering.
 
 This separation is intentional.
 

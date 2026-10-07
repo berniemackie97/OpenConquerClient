@@ -19,71 +19,45 @@ dependency has been verified.
 
 ## Runtime Closure
 
-Current closure: 58 files totaling 1,866,395 bytes.
+Current closure:
 
-| Path | Lookup |
-| --- | --- |
-| `Data/Main/Logo1.bmp` | `LooseOnly` |
-| `Data/Main/Logo2.bmp` | `LooseOnly` |
-| `ani/Control.ani` | `LooseOnly` |
-| `data/interface/Style01/Action/MissionBtnClick.dds` | `LooseThenPackage` |
-| `data/interface/Style01/Action/MissionBtnEmboss.dds` | `LooseThenPackage` |
-| `data/interface/Style01/Action/MissionBtnNormal.dds` | `LooseThenPackage` |
-| `data/main/ChatBtn.dds` | `LooseThenPackage` |
-| `data/main/ChatBtnClick.dds` | `LooseThenPackage` |
-| `data/main/GoodBtn.dds` | `LooseThenPackage` |
-| `data/main/GoodBtnClick.dds` | `LooseThenPackage` |
-| `data/main/GroupBtn.dds` | `LooseThenPackage` |
-| `data/main/GroupBtnClick.dds` | `LooseThenPackage` |
-| `data/main/LevWordBtn.dds` | `LooseThenPackage` |
-| `data/main/LevWordBtnClick.dds` | `LooseThenPackage` |
-| `data/main/MapChk1.dds` | `LooseThenPackage` |
-| `data/main/MapChk2.dds` | `LooseThenPackage` |
-| `data/main/NpcEquip.dds` | `LooseThenPackage` |
-| `data/main/NpcEquipClick.dds` | `LooseThenPackage` |
-| `data/main/ProgressBk.dds` | `LooseThenPackage` |
-| `data/main/ProgressForce.dds` | `LooseThenPackage` |
-| `data/main/ProgressForce2.dds` | `LooseThenPackage` |
-| `data/main/ProgressForce2A.dds` | `LooseThenPackage` |
-| `data/main/ProgressForceA.dds` | `LooseThenPackage` |
-| `data/main/ProgressHP.dds` | `LooseThenPackage` |
-| `data/main/ProgressHPA.dds` | `LooseThenPackage` |
-| `data/main/ProgressHPH.dds` | `LooseThenPackage` |
-| `data/main/ProgressMP.dds` | `LooseThenPackage` |
-| `data/main/ProgressMPA.dds` | `LooseThenPackage` |
-| `data/main/ProgressMPH.dds` | `LooseThenPackage` |
-| `data/main/ProgressPower.dds` | `LooseThenPackage` |
-| `data/main/ProgressPowerH.dds` | `LooseThenPackage` |
-| `data/main/OrganiseBtnClick.dds` | `LooseThenPackage` |
-| `data/main/OrganiseBtnEmboss.dds` | `LooseThenPackage` |
-| `data/main/OrganiseBtnNormal.dds` | `LooseThenPackage` |
-| `data/main/OrganiseBtnUnClick.dds` | `LooseThenPackage` |
-| `data/main/PkArre.dds` | `LooseThenPackage` |
-| `data/main/PkArreClick.dds` | `LooseThenPackage` |
-| `data/main/PkFree.dds` | `LooseThenPackage` |
-| `data/main/PkFreeClick.dds` | `LooseThenPackage` |
-| `data/main/PkGroup.dds` | `LooseThenPackage` |
-| `data/main/PkGroupClick.dds` | `LooseThenPackage` |
-| `data/main/PkSafe.dds` | `LooseThenPackage` |
-| `data/main/PkSafeClick.dds` | `LooseThenPackage` |
-| `data/main/QueryBtn.dds` | `LooseThenPackage` |
-| `data/main/QueryBtnClick.dds` | `LooseThenPackage` |
-| `data/main/RunChk1.dds` | `LooseThenPackage` |
-| `data/main/RunChk2.dds` | `LooseThenPackage` |
-| `data/main/ScreenMoveChk1.dds` | `LooseThenPackage` |
-| `data/main/ScreenMoveChk2.dds` | `LooseThenPackage` |
-| `data/main/SetBtn.dds` | `LooseThenPackage` |
-| `data/main/SetBtnClick.dds` | `LooseThenPackage` |
-| `data/main/SkillBtn.dds` | `LooseThenPackage` |
-| `data/main/SkillBtnClick.dds` | `LooseThenPackage` |
-| `data/main/SkillBtnL.dds` | `LooseThenPackage` |
-| `data/main/mainDialog1.dds` | `LooseThenPackage` |
-| `data/main/mainDialog2.dds` | `LooseThenPackage` |
-| `ini/GameSetUp.ini` | `LooseOnly` |
-| `ini/info.ini` | `LooseOnly` |
+```text
+files: 3,775
+bytes: 20,633,919
+```
 
-The curated set contains exactly these resolved dependencies. WDF archives and `ini/package.ini` are
-not shipped.
+The exact path set is maintained by:
+
+```text
+content/retail-5517/manifest.json
+content/retail-5517/payload
+```
+
+The Markdown plan intentionally does not duplicate all 3,775 manifest entries. GFX-UI-006
+introduced verified parametric quickbar consumers whose ANI catalogs expand into broad action,
+magic, item-icon, and glow families; manually mirroring that path set here would create a second,
+drift-prone source of truth.
+
+Current consumer groups are:
+
+| Consumer | Configuration / catalogs | Asset lookup |
+| --- | --- | --- |
+| Startup | `ini/GameSetUp.ini`, `ini/info.ini`, startup logos | configuration/logo-specific |
+| Native GUI font | `ini/Font.ini` | `LooseOnly` |
+| Main HUD fixed controls | `ani/Control.ani` | `LooseThenPackage` frames |
+| Quickbar fixed controls | `ani/Control.ani` | `LooseThenPackage` frames |
+| Quickbar magic / XP magic | `ani/Magic.ani` | `LooseThenPackage` |
+| Quickbar item icons | `ani/ItemMinIcon.Ani` | `LooseThenPackage` |
+| Quickbar glows | `ani/effect.ani` | `LooseThenPackage` |
+| Selected skill | `Magic0` from `ani/Magic.ani`, `Image0` from `ani/Control.ani` | `LooseThenPackage` |
+| Selected-skill cooldown | `[SelectMagicNum]` in `ini/info.ini` plus font/code-page configuration | configuration only |
+
+`ini/FontSetting.ini` and `ini/CodePage.ini` are optional native configuration inputs. They are
+absent from the clean retail 5517 root and therefore are not copied into the curated runtime set.
+Their managed loaders preserve the verified missing-file defaults.
+
+The curated set contains exactly the closure resolved by `ClientContentClosure`. WDF archives and
+`ini/package.ini` are import-time sources/configuration and are not shipped.
 
 ## HUD Dependency Chain
 
@@ -224,6 +198,89 @@ preserved after import.
 All ANI-declared HUD frames in the closure are required, including repeated paths and frames not
 currently uploaded to the GPU.
 
+### Quickbar Dependency Expansion
+
+GFX-UI-006 adds fixed and parametric quickbar dependencies.
+
+Fixed `Control.ani` requirements include:
+
+```text
+Compose_CoverPic
+Swapuse_UsemainbBtn
+Swapuse_SwapmainbBtn
+Equip_AddPic
+
+Main3_Num0Pic .. Main3_Num9Pic
+Equip_Num0 .. Equip_Num9
+```
+
+The importer also follows verified parametric `Control.ani` families:
+
+```text
+ButtonA<decimal>
+Action_Dance<decimal>Btn
+```
+
+Additional catalogs are runtime requirements:
+
+```text
+ani/Magic.ani
+ani/ItemMinIcon.Ani
+ani/effect.ani
+```
+
+From `Magic.ani`, the closure includes sections matching:
+
+```text
+MagicSkillType<decimal>
+XpSkillType<decimal>
+```
+
+From `ItemMinIcon.Ani`, the closure includes:
+
+```text
+ItemDefault
+Item<decimal>
+```
+
+From `effect.ani`, the verified glow families are:
+
+```text
+FireLight
+RedLight
+BlueLight
+RoyalBlueLight
+YellowLight
+```
+
+`data/main3/skill38.dds` is a verified missing retail frame and is explicitly excluded rather than
+turning the known retail defect into an import failure.
+
+This parametric dependency expansion is why the exact closure is tracked in the manifest instead of
+being duplicated as a Markdown path table.
+
+### Selected-Skill Dependencies
+
+GFX-UI-007 adds:
+
+```text
+ani/Magic.ani
+    └── Magic0
+        └── data/main/MainImgMagic.dds
+
+ani/Control.ani
+    └── Image0
+        └── data/main/ImageDisable.dds
+
+ini/Font.ini
+ini/info.ini [SelectMagicNum]
+```
+
+`FontSetting.ini` remains an optional loose override and is absent from clean retail 5517.
+
+The selected-skill DDS frames use the same `LooseThenPackage` resolution and deterministic
+materialization rules as the other ANI-backed HUD assets.
+
 ## Content Resolution
 
 ```text
@@ -341,7 +398,37 @@ Check40
 Check43
 Check46
 Button411
+
+Compose_CoverPic
+Swapuse_UsemainbBtn
+Swapuse_SwapmainbBtn
+Equip_AddPic
+Main3_Num<0..9>Pic
+Equip_Num<0..9>
+ButtonA<decimal>
+Action_Dance<decimal>Btn
+
+MagicSkillType<decimal>
+XpSkillType<decimal>
+ItemDefault
+Item<decimal>
+
+FireLight
+RedLight
+BlueLight
+RoyalBlueLight
+YellowLight
+
+Magic0
+Image0
 ```
+
+The parametric forms above describe section-selection contracts, not synthetic ANI names generated at
+runtime. Only sections actually present in the verified retail catalogs contribute frames to the
+closure.
+
+The known missing retail `data/main3/skill38.dds` frame is excluded explicitly from quickbar closure
+materialization.
 
 ## Excluded Content
 
