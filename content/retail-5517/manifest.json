@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 3772,
-  "length": 20625463,
+  "fileCount": 3775,
+  "length": 20633919,
   "entries": [
     {
       "sourcePath": "Data/Pic/BlueLight/01.dds",
@@ -25431,6 +25431,13 @@
       "signature": "dds"
     },
     {
+      "sourcePath": "data/main/ImageDisable.dds",
+      "pathKey": "data/main/imagedisable.dds",
+      "length": 4224,
+      "sha256": "f12c8e2ae84fc5ed7b8527a64dc9942b1ab807102e9ef5c24b9c14c5be68e494",
+      "signature": "dds"
+    },
+    {
       "sourcePath": "data/main/LevWordBtn.dds",
       "pathKey": "data/main/levwordbtn.dds",
       "length": 2176,
@@ -25491,6 +25498,13 @@
       "pathKey": "data/main/maindialog2.dds",
       "length": 32896,
       "sha256": "818d13f62509ac859fb0ed72d36ec6aeb2b12f9ed3dee3c6172171d99ba86f41",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/main/MainImgMagic.dds",
+      "pathKey": "data/main/mainimgmagic.dds",
+      "length": 4224,
+      "sha256": "601f604e28138c0e4d15c262d7448613703585a1f3b20b1999acc2c257b99a99",
       "signature": "dds"
     },
     {
@@ -26395,6 +26409,13 @@
       "length": 4224,
       "sha256": "15c8f4c6bedb7a5598624bd8b41cba886d80932354fb5a763ae8d6cdeff2a4ec",
       "signature": "dds"
+    },
+    {
+      "sourcePath": "ini/Font.ini",
+      "pathKey": "ini/font.ini",
+      "length": 8,
+      "sha256": "a8bc4c8523360dd55fea61a4f1c908fe1e70cce00c9962a263968765ef47e8bb",
+      "signature": "unknown"
     },
     {
       "sourcePath": "ini/GameSetUp.ini",

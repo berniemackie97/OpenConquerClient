@@ -53,6 +53,7 @@ public static class ClientContentClosure
         List<ClientContentRequirement> requirements =
         [
             new(GameSetupConfiguration.RelativePath, ContentLookupMode.LooseOnly),
+            new(GameFontConfiguration.RelativePath, ContentLookupMode.LooseOnly),
             new(StartupLogoConfiguration.RelativePath, ContentLookupMode.LooseOnly),
             new(ControlAniPath, ContentLookupMode.LooseOnly),
         ];
@@ -83,6 +84,7 @@ public static class ClientContentClosure
         }
 
         MainHudQuickbarContentRequirements.Add(requirements, contentSource, controlAni);
+        MainHudSelectedSkillContentRequirements.Add(requirements, contentSource, controlAni);
 
         return Normalize(requirements);
     }

@@ -19,6 +19,31 @@ public static class AniFrameLoader
         return LoadFrame(contentSource, section, frameIndex, mode);
     }
 
+    public static RgbaImage LoadWrappedFrame(IClientContentSource contentSource, string aniContentPath, string sectionName, uint frameIndex, ContentLookupMode mode)
+    {
+        ArgumentNullException.ThrowIfNull(contentSource);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aniContentPath);
+        ArgumentException.ThrowIfNullOrEmpty(sectionName);
+
+        AniIndexSection section = AniIndexFile.Load(contentSource, aniContentPath, mode).GetRequiredSection(sectionName);
+
+        return LoadWrappedFrame(contentSource, section, frameIndex, mode);
+    }
+
+    public static RgbaImage LoadWrappedFrame(IClientContentSource contentSource, AniIndexSection section, uint frameIndex, ContentLookupMode mode)
+    {
+        ArgumentNullException.ThrowIfNull(contentSource);
+        ArgumentNullException.ThrowIfNull(section);
+
+        if (section.FrameCount == 0)
+        {
+            throw new InvalidDataException($"ANI section [{section.Name}] contains no frames.");
+        }
+
+        int normalizedFrameIndex = (int)(frameIndex % (uint)section.FrameCount);
+        return LoadFrame(contentSource, section, normalizedFrameIndex, mode);
+    }
+
     internal static RgbaImage LoadFrame(IClientContentSource contentSource, AniIndexSection section, int frameIndex, ContentLookupMode mode)
     {
         ArgumentNullException.ThrowIfNull(contentSource);

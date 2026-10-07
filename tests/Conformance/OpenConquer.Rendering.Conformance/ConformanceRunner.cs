@@ -30,14 +30,16 @@ internal static class ConformanceRunner
             SpriteRepeatedSamplingConformance.Run(graphicsDevice, framebufferSize);
             SpriteRotationConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
             NativeTextConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
+            OpenGLTextContextConformance.Run(graphicsDevice, framebufferSize);
             MainHudChromeConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudVitalsConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudSkillExperienceConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudQuickbarConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudActionButtonStripConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudCheckControlsConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
+            MainHudSelectedSkillConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
         });
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, solid rectangle, sprite rotation, native text, main HUD chrome, main HUD vitals, main HUD skill/experience, main HUD quickbar, main HUD action-strip, and main HUD check-control conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, solid rectangle, sprite rotation, native text, text-context façade, main HUD chrome, main HUD vitals, main HUD skill/experience, main HUD quickbar, main HUD action-strip, main HUD check-control, and main HUD selected-skill conformance passed.");
     }
 }
