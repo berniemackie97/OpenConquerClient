@@ -252,7 +252,7 @@ manifest
 payload
 ```
 
-The current checked-in retail-5517 manifest records exactly 58 files and 1,866,395 bytes.
+The current checked-in retail-5517 manifest records exactly 3,775 files and 20,633,919 bytes.
 
 ### Inspect Server.dat
 
