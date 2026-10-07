@@ -13,7 +13,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public void HomeFallback_CreatesPrivateDirectoryUnderProtectedUserOwnedParent()
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         File.SetUnixFileMode(_namespace.Root, (UnixFileMode)0x1ed);
         string pipe = UnixActivationNamespace.Create(_namespace.Root, requirePrivateRoot: false);
         Assert.Equal(Path.Combine(_namespace.Root, ".openconquer-runtime", "activate"), pipe);
@@ -25,7 +28,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public async Task PrivateNamespace_CreatesReusableRestrictedEndpoint()
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         string pipe = _namespace.NewPipeName();
         Assert.Equal(pipe, _namespace.NewPipeName());
         Assert.Equal((UnixFileMode)0x1c0, File.GetUnixFileMode(Path.GetDirectoryName(pipe)!));
@@ -43,7 +49,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public void RuntimeRoot_RejectsIncorrectPermissionsWithoutRepair(int mode)
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         File.SetUnixFileMode(_namespace.Root, (UnixFileMode)mode);
         Assert.Throws<UnauthorizedAccessException>(() => _namespace.NewPipeName());
         Assert.Equal((UnixFileMode)mode, File.GetUnixFileMode(_namespace.Root));
@@ -54,7 +63,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public void ApplicationDirectory_RejectsInsecureExistingModeWithoutRepair()
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         string pipe = _namespace.NewPipeName();
         string parent = Path.GetDirectoryName(pipe)!;
         File.SetUnixFileMode(parent, (UnixFileMode)0x1ed);
@@ -67,7 +79,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public void RuntimeRoot_RejectsFinalAndIntermediateSymlinks()
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         string real = Path.Combine(_namespace.Root, "real");
         Directory.CreateDirectory(Path.Combine(real, "child"), (UnixFileMode)0x1c0);
         string link = Path.Combine(_namespace.Root, "link");
@@ -81,7 +96,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public void ApplicationDirectory_RejectsSymlinkAndPreservesTarget()
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         string target = Path.Combine(_namespace.Root, "target");
         Directory.CreateDirectory(target, (UnixFileMode)0x1c0);
         Directory.CreateSymbolicLink(Path.Combine(_namespace.Root, "openconquer"), target);
@@ -93,7 +111,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public void Endpoint_RejectsRegularFileAndSymlinkWithoutDeletingEither()
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         string pipe = _namespace.NewPipeName();
         File.WriteAllText(pipe, "keep");
         Assert.Throws<UnauthorizedAccessException>(() => new LauncherActivationServer(pipe));
@@ -115,7 +136,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public void RuntimePath_RejectsUnsafeSyntax(string path)
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         Assert.Throws<ArgumentException>(() => UnixActivationNamespace.Create(path));
     }
 
@@ -123,7 +147,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public async Task SocketLength_IsCheckedAsUtf8BeforeFilesystemMutation()
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         int maximum = OperatingSystem.IsMacOS() ? 103 : 107;
         string suffix = "/openconquer/activate";
         int available = maximum - Encoding.UTF8.GetByteCount(_namespace.Root + "/" + suffix);
@@ -144,7 +171,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public void WritableAncestor_IsRejectedEvenWhenRuntimeLeafIsPrivate()
     {
         if (OperatingSystem.IsWindows())
+        {
             return;
+        }
+
         string child = Path.Combine(_namespace.Root, "child");
         Directory.CreateDirectory(child, (UnixFileMode)0x1c0);
         File.SetUnixFileMode(_namespace.Root, (UnixFileMode)0x1ff);
@@ -155,7 +185,10 @@ public sealed class UnixActivationNamespaceTests : IDisposable
     public void MacOs_UsesValidatedOsLocationAndRejectsAclAccessGrants()
     {
         if (!OperatingSystem.IsMacOS())
+        {
             return;
+        }
+
         string pipe = UnixActivationNamespace.ForCurrentUser();
         Assert.StartsWith("/private/var/folders/", pipe, StringComparison.Ordinal);
         UnixActivationNamespace.ValidateEndpoint(pipe);

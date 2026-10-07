@@ -20,7 +20,7 @@ public sealed class ContentSetImporterTests
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destination);
         string[] expectedPaths = ExpectedImportedPaths();
 
-        Assert.Equal(99, expectedPaths.Length);
+        Assert.Equal(100, expectedPaths.Length);
         Assert.Equal(expectedPaths, manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data.wdf", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "Server.dat", StringComparison.OrdinalIgnoreCase));
@@ -52,6 +52,7 @@ public sealed class ContentSetImporterTests
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destination);
         string payloadRoot = Path.Combine(destination, "payload");
 
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/Font.ini");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/mainDialog1.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainDialog2.dds" && entry.Signature == "dds");
@@ -65,6 +66,7 @@ public sealed class ContentSetImporterTests
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainImgMagic.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ImageDisable.dds" && entry.Signature == "dds");
 
+        Assert.Equal("Arial 12", Encoding.Latin1.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "ini", "font.ini"))));
         Assert.Equal("DDS ProgressBk", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "progressbk.dds"))));
         Assert.Equal("DDS mainDialog1", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "maindialog1.dds"))));
         Assert.Equal("DDS MainDialog2 loose", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "maindialog2.dds"))));
@@ -144,7 +146,7 @@ public sealed class ContentSetImporterTests
         ContentManifestEntry magic = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MagicSkillType1000.dds");
         ContentManifestEntry selectedSkill = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MainImgMagic.dds");
 
-        Assert.Equal(99, manifest.FileCount);
+        Assert.Equal(100, manifest.FileCount);
 
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
@@ -376,6 +378,7 @@ public sealed class ContentSetImporterTests
             "data/main/SkillBtnClick.dds",
             "data/main/SkillBtnL.dds",
             "data/main/mainDialog1.dds",
+            "ini/Font.ini",
             "ini/GameSetUp.ini",
             "ini/info.ini",
         ];

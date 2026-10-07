@@ -5,7 +5,7 @@ namespace OpenConquer.Rendering.Text.Rendering;
 /// <summary>
 /// Defines immutable caller-controlled settings for one native text render operation.
 /// </summary>
-internal readonly record struct NativeTextRenderOptions
+public readonly record struct NativeTextRenderOptions
 {
     public NativeTextRenderOptions(NativeTextRenderStyle style, SpriteColor textColor, SpriteColor cornerColor, int cornerOffsetXPixels, int cornerOffsetYPixels, NativeTextVertexColors perCornerColors)
     {

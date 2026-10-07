@@ -16,11 +16,12 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(99, manifest.FileCount);
+        Assert.Equal(100, manifest.FileCount);
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Magic.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/ItemMinIcon.Ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/effect.ani");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/Font.ini");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/compose/CoverPic.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MagicSkillType1000.dds");

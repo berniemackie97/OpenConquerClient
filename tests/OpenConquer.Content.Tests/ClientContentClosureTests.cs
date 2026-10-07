@@ -82,7 +82,7 @@ public sealed class ClientContentClosureTests
         IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
 
         Assert.Equal(CreateExpectedRequirements(), closure);
-        Assert.Equal(99, closure.Count);
+        Assert.Equal(100, closure.Count);
     }
 
     [Fact]
@@ -254,6 +254,18 @@ public sealed class ClientContentClosureTests
     }
 
     [Fact]
+    public void Resolve_IncludesNativeFontConfiguration()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        WriteVerifiedIndexes(temporaryDirectory);
+
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+
+        Assert.Contains(new ClientContentRequirement("ini/Font.ini", ContentLookupMode.LooseOnly), closure);
+    }
+
+    [Fact]
     public void Resolve_ExcludesUnreachableCatalogSectionsAndVerifiedMissingRetailFrame()
     {
         using TemporaryContentDirectory temporaryDirectory = new();
@@ -377,6 +389,7 @@ public sealed class ClientContentClosureTests
             new("ani/Magic.ani", ContentLookupMode.LooseThenPackage),
             new("ani/ItemMinIcon.Ani", ContentLookupMode.LooseThenPackage),
             new("ani/effect.ani", ContentLookupMode.LooseThenPackage),
+            new("ini/Font.ini", ContentLookupMode.LooseOnly),
             new("ini/GameSetUp.ini", ContentLookupMode.LooseOnly),
             new("ini/info.ini", ContentLookupMode.LooseOnly),
         ];

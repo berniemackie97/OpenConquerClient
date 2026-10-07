@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 3774,
-  "length": 20633911,
+  "fileCount": 3775,
+  "length": 20633919,
   "entries": [
     {
       "sourcePath": "Data/Pic/BlueLight/01.dds",
@@ -26409,6 +26409,13 @@
       "length": 4224,
       "sha256": "15c8f4c6bedb7a5598624bd8b41cba886d80932354fb5a763ae8d6cdeff2a4ec",
       "signature": "dds"
+    },
+    {
+      "sourcePath": "ini/Font.ini",
+      "pathKey": "ini/font.ini",
+      "length": 8,
+      "sha256": "a8bc4c8523360dd55fea61a4f1c908fe1e70cce00c9962a263968765ef47e8bb",
+      "signature": "unknown"
     },
     {
       "sourcePath": "ini/GameSetUp.ini",

@@ -69,6 +69,7 @@ internal sealed class TemporarySourceTree : IDisposable
         byte[] progressForceAlternate = CreateSyntheticDds("ProgressForceA");
 
         WriteText("version.dat", "5517");
+        WriteText("ini/Font.ini", "Arial 12");
         WriteText("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=2\n");
         WriteText("ini/info.ini", $"[DlgLogo]\nBgFormat={backgroundFormat}\n");
         WriteText("ini/package.ini", "data.wdf\nc3.wdf\ndata3.wdf\n");

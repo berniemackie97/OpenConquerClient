@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using System.Text;
 using OpenConquer.Client.UI.Hud;
 using OpenConquer.Content;
 using OpenConquer.Platform.Geometry;
@@ -6,8 +7,11 @@ using OpenConquer.Rendering.Conformance.Reference;
 using OpenConquer.Rendering.Conformance.Support;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;
+using OpenConquer.Rendering.OpenGL.Text;
 using OpenConquer.Rendering.Presentation;
 using OpenConquer.Rendering.Sprites;
+using OpenConquer.Rendering.Text.Glyphs;
+using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Rendering.Conformance.Cases;
 
@@ -28,10 +32,13 @@ internal static class MainHudSelectedSkillConformance
 
     private static readonly RenderCase[] s_cases =
     [
-        new("cleared", false, false),
-        new("selected", true, false),
-        new("selected-covered", true, true),
-        new("cleared-covered", false, true),
+        new("cleared", false, 0, 0, 0, 0),
+        new("selected", true, 0, 0, 0, 0),
+        new("selected-covered-expired", true, 1, 0, 0, 0),
+        new("cleared-covered-expired", false, 1, 0, 0, 0),
+        new("selected-cooldown-1ms-first-frame", true, 0, 1, 1, 1),
+        new("selected-cooldown-1000ms-continuing", true, 1, 1000, 1, 1),
+        new("selected-cooldown-1001ms-first-frame", true, 0, 1001, 2, 1),
     ];
 
     public static void Run(OpenGLGraphicsDevice graphicsDevice, PackagedClientContentSource contentSource, PixelSize framebufferSize, string colorFormat)
@@ -50,48 +57,54 @@ internal static class MainHudSelectedSkillConformance
         foreach (LogicalRenderSize logicalRenderSize in s_logicalRenderSizes)
         {
             using MainHudSelectedSkillRenderer selectedSkillRenderer = new(graphicsDevice, assets, logicalRenderSize);
+            OpenGLTextContext textContext = new(graphicsDevice, new CooldownGlyphRasterizer(), nominalPixelHeight: 1, effectiveCodePage: 936);
+
+            NativeTextRenderOptions textOptions = new(
+                NativeTextRenderStyle.Normal,
+                SpriteColor.White,
+                SpriteColor.White,
+                cornerOffsetXPixels: 1,
+                cornerOffsetYPixels: 1,
+                NativeTextVertexColors.Solid(SpriteColor.White));
+
+            using MainHudSelectedSkillCooldownRenderer cooldownRenderer = new(textContext, logicalRenderSize, offsetX: 0, offsetY: 0, textOptions);
 
             foreach (RenderCase testCase in s_cases)
-                RunRenderCase(graphicsDevice, selectedSkillRenderer, referenceTextures, logicalRenderSize, framebufferSize, colorFormat, testCase);
+                RunRenderCase(graphicsDevice, selectedSkillRenderer, cooldownRenderer, referenceTextures, logicalRenderSize, framebufferSize, colorFormat, testCase);
         }
     }
 
-    private static void RunRenderCase(OpenGLGraphicsDevice graphicsDevice, MainHudSelectedSkillRenderer selectedSkillRenderer, ReferenceTextures referenceTextures, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, string colorFormat, RenderCase testCase)
+    private static void RunRenderCase(OpenGLGraphicsDevice graphicsDevice, MainHudSelectedSkillRenderer selectedSkillRenderer, MainHudSelectedSkillCooldownRenderer cooldownRenderer, ReferenceTextures referenceTextures, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, string colorFormat, RenderCase testCase)
     {
-        MainHudSelectedSkillState state = CreateState(testCase);
-        byte[] actual = RenderProduction(graphicsDevice, selectedSkillRenderer, state, logicalRenderSize, framebufferSize);
+        MainHudSelectedSkillState selectedSkillState = new();
+        MainHudSelectedSkillCooldownState cooldownState = new();
+
+        if (testCase.ImageActive)
+            selectedSkillState.SetSectionAndContent(MainHudSelectedSkillDefinition.InitialSectionName, contentId: 0, blockedCover: 0);
+
+        selectedSkillState.SetCoverFlag(testCase.InitialCoverFlag);
+        cooldownState.SetRemainingMilliseconds(testCase.CooldownRemainingMilliseconds);
+
+        byte[] actual = RenderProduction(graphicsDevice, selectedSkillRenderer, cooldownRenderer, selectedSkillState, cooldownState, logicalRenderSize, framebufferSize);
         byte[] expected = RenderReference(graphicsDevice, referenceTextures, logicalRenderSize, framebufferSize, testCase);
         string label = $"Main HUD selected skill {testCase.Name} {logicalRenderSize.Width}x{logicalRenderSize.Height}";
 
         FramebufferVerifier.VerifyExact(label, expected, actual);
 
+        if (selectedSkillState.CoverFlag != testCase.ExpectedFinalCoverFlag)
+            throw new InvalidDataException($"{label} left selected-skill cover flag {selectedSkillState.CoverFlag}; expected {testCase.ExpectedFinalCoverFlag}.");
+
         Console.WriteLine($"{label}, {colorFormat}");
         Console.WriteLine($"Main HUD selected-skill framebuffer SHA256: {ConformanceHash.Sha256(actual)}");
     }
 
-    private static MainHudSelectedSkillState CreateState(RenderCase testCase)
-    {
-        MainHudSelectedSkillState state = new();
-
-        if (testCase.ImageActive)
-        {
-            state.SetSectionAndContent(MainHudSelectedSkillDefinition.InitialSectionName, contentId: 0, blockedCover: 0);
-        }
-
-        if (testCase.Covered)
-        {
-            state.SetCoverFlag(1);
-        }
-
-        return state;
-    }
-
-    private static byte[] RenderProduction(OpenGLGraphicsDevice graphicsDevice, MainHudSelectedSkillRenderer selectedSkillRenderer, MainHudSelectedSkillState state, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize)
+    private static byte[] RenderProduction(OpenGLGraphicsDevice graphicsDevice, MainHudSelectedSkillRenderer selectedSkillRenderer, MainHudSelectedSkillCooldownRenderer cooldownRenderer, MainHudSelectedSkillState selectedSkillState, MainHudSelectedSkillCooldownState cooldownState, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize)
     {
         using OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
 
         renderer.BeginFrame();
-        selectedSkillRenderer.Draw(renderer, state);
+        selectedSkillRenderer.Draw(renderer, selectedSkillState);
+        cooldownRenderer.DrawAfterSelectedImage(renderer, selectedSkillState, cooldownState);
         byte[] framebuffer = renderer.ReadFrameTopLeftRgba();
         renderer.EndFrame();
 
@@ -106,14 +119,13 @@ internal static class MainHudSelectedSkillConformance
         renderer.BeginFrame();
 
         if (testCase.ImageActive)
-        {
             renderer.DrawSprite(referenceTextures.Selected, new SpriteSourceRectangle(0, 0, MainHudSelectedSkillDefinition.SourceWidth, MainHudSelectedSkillDefinition.SourceHeight), bounds.X, bounds.Y, MainHudSelectedSkillBounds.Width, MainHudSelectedSkillBounds.Height);
-        }
 
-        if (testCase.Covered)
-        {
+        if (testCase.InitialCoverFlag != 0)
             renderer.DrawSprite(referenceTextures.Cover, new SpriteSourceRectangle(0, 0, MainHudSelectedSkillDefinition.CoverSourceWidth, MainHudSelectedSkillDefinition.CoverSourceHeight), bounds.X, bounds.Y, MainHudSelectedSkillBounds.Width, MainHudSelectedSkillBounds.Height);
-        }
+
+        if (testCase.ExpectedCooldownWidthPixels > 0)
+            renderer.DrawSolidRectangle(bounds.X, bounds.Y, testCase.ExpectedCooldownWidthPixels, 1, SpriteColor.White);
 
         byte[] framebuffer = renderer.ReadFrameTopLeftRgba();
         renderer.EndFrame();
@@ -162,9 +174,7 @@ internal static class MainHudSelectedSkillConformance
             string actualSha256 = ConformanceHash.Sha256(bytes);
 
             if (!string.Equals(actualSha256, expectedSha256, StringComparison.Ordinal))
-            {
                 throw new InvalidDataException($"Retail selected-skill asset '{contentPath}' has SHA256 {actualSha256}; expected {expectedSha256}.");
-            }
 
             return bytes;
         }
@@ -178,20 +188,43 @@ internal static class MainHudSelectedSkillConformance
     private static void VerifyPixels(string assetName, ReadOnlyMemory<byte>? productionPixels, ReadOnlySpan<byte> referencePixels)
     {
         if (!productionPixels.HasValue)
-        {
             throw new InvalidDataException($"Verified retail selected-skill asset '{assetName}' was unavailable through the production loader.");
-        }
 
         ReadOnlySpan<byte> pixels = productionPixels.Value.Span;
 
         if (!pixels.SequenceEqual(referencePixels))
-        {
             throw new InvalidDataException($"{assetName} production RGBA SHA256 {ConformanceHash.Sha256(pixels)} does not match independent DXT3 reference SHA256 {ConformanceHash.Sha256(referencePixels)}.");
-        }
     }
 
     private readonly record struct FrameFixture(string Path, string Sha256);
-    private readonly record struct RenderCase(string Name, bool ImageActive, bool Covered);
+    private readonly record struct RenderCase(string Name, bool ImageActive, byte InitialCoverFlag, uint CooldownRemainingMilliseconds, int ExpectedCooldownWidthPixels, byte ExpectedFinalCoverFlag);
+
+    private sealed class CooldownGlyphRasterizer : IGlyphRasterizer
+    {
+        private bool _disposed;
+
+        public bool AntialiasEnabled => true;
+
+        public bool TryRasterizeGlyph(Rune rune, out RasterizedGlyph? glyph)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            if (rune.Value is < '0' or > '9')
+            {
+                glyph = null;
+                return false;
+            }
+
+            int widthPixels = rune.Value == '0' ? 1 : rune.Value - '0';
+            byte[] coverage = new byte[widthPixels];
+            Array.Fill(coverage, byte.MaxValue);
+
+            glyph = new RasterizedGlyph(widthPixels, heightPixels: 1, bearingLeftPixels: 0, topOffsetPixels: 0, advancePixels: widthPixels, coverage);
+            return true;
+        }
+
+        public void Dispose() => _disposed = true;
+    }
 
     private sealed class ReferenceTextures : IDisposable
     {
@@ -252,9 +285,7 @@ internal static class MainHudSelectedSkillConformance
         public void Dispose()
         {
             if (_disposed)
-            {
                 return;
-            }
 
             ExceptionDispatchInfo? firstFailure = null;
 

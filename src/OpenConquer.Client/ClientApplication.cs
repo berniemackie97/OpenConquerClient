@@ -28,6 +28,7 @@ internal sealed class ClientApplication : IDisposable
     private readonly MainHudActionButtonStripState _mainHudActionButtonStripState = new();
     private readonly MainHudCheckControlsState _mainHudCheckControlsState = new();
     private readonly MainHudSelectedSkillState _mainHudSelectedSkillState = new();
+    private readonly MainHudSelectedSkillCooldownState _mainHudSelectedSkillCooldownState = new();
 
     private MainHudChromeAssets? _mainHudChromeAssets;
     private MainHudVitalsAssets? _mainHudVitalsAssets;
@@ -36,6 +37,9 @@ internal sealed class ClientApplication : IDisposable
     private MainHudActionButtonAssets? _mainHudActionButtonAssets;
     private MainHudCheckControlAssets? _mainHudCheckControlAssets;
     private MainHudSelectedSkillAssets? _mainHudSelectedSkillAssets;
+    private SelectedMagicCooldownTextConfiguration? _mainHudSelectedSkillCooldownTextConfiguration;
+    private ClientFontSettingsConfiguration? _clientFontSettingsConfiguration;
+    private ClientCodePageConfiguration? _clientCodePageConfiguration;
     private MainHudChromeRenderer? _mainHudChromeRenderer;
     private MainHudVitalsRenderer? _mainHudVitalsRenderer;
     private MainHudSkillExperienceRenderer? _mainHudSkillExperienceRenderer;
@@ -43,6 +47,7 @@ internal sealed class ClientApplication : IDisposable
     private MainHudActionButtonStripRenderer? _mainHudActionButtonStripRenderer;
     private MainHudCheckControlRenderer? _mainHudCheckControlRenderer;
     private MainHudSelectedSkillRenderer? _mainHudSelectedSkillRenderer;
+    private MainHudSelectedSkillCooldownRenderer? _mainHudSelectedSkillCooldownRenderer;
     private MainHudQuickbarInput? _mainHudQuickbarInput;
     private MainHudActionButtonStripInput? _mainHudActionButtonStripInput;
     private MainHudCheckControlsInput? _mainHudCheckControlsInput;
@@ -130,6 +135,7 @@ internal sealed class ClientApplication : IDisposable
             _mainHudCheckControlsInput = null;
             _mainHudActionButtonStripInput = null;
             _mainHudQuickbarInput = null;
+            _mainHudSelectedSkillCooldownRenderer = null;
             _mainHudSelectedSkillRenderer = null;
             _mainHudCheckControlRenderer = null;
             _mainHudActionButtonStripRenderer = null;
@@ -137,6 +143,9 @@ internal sealed class ClientApplication : IDisposable
             _mainHudSkillExperienceRenderer = null;
             _mainHudVitalsRenderer = null;
             _mainHudChromeRenderer = null;
+            _mainHudSelectedSkillCooldownTextConfiguration = null;
+            _clientFontSettingsConfiguration = null;
+            _clientCodePageConfiguration = null;
             _mainHudSelectedSkillAssets = null;
             _mainHudCheckControlAssets = null;
             _mainHudActionButtonAssets = null;
@@ -155,7 +164,8 @@ internal sealed class ClientApplication : IDisposable
         if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null ||
             _mainHudVitalsRenderer is not null || _mainHudSkillExperienceRenderer is not null ||
             _mainHudQuickbarRenderer is not null || _mainHudActionButtonStripRenderer is not null ||
-            _mainHudCheckControlRenderer is not null || _mainHudSelectedSkillRenderer is not null)
+            _mainHudCheckControlRenderer is not null || _mainHudSelectedSkillRenderer is not null ||
+            _mainHudSelectedSkillCooldownRenderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
@@ -169,6 +179,7 @@ internal sealed class ClientApplication : IDisposable
         MainHudActionButtonStripRenderer? mainHudActionButtonStripRenderer = null;
         MainHudCheckControlRenderer? mainHudCheckControlRenderer = null;
         MainHudSelectedSkillRenderer? mainHudSelectedSkillRenderer = null;
+        MainHudSelectedSkillCooldownRenderer? mainHudSelectedSkillCooldownRenderer = null;
 
         try
         {
@@ -181,6 +192,9 @@ internal sealed class ClientApplication : IDisposable
             MainHudActionButtonAssets mainHudActionButtonAssets = _mainHudActionButtonAssets ?? throw new InvalidOperationException("The main HUD action-button assets have not been initialized.");
             MainHudCheckControlAssets mainHudCheckControlAssets = _mainHudCheckControlAssets ?? throw new InvalidOperationException("The main HUD check-control assets have not been initialized.");
             MainHudSelectedSkillAssets mainHudSelectedSkillAssets = _mainHudSelectedSkillAssets ?? throw new InvalidOperationException("The main HUD selected-skill assets have not been initialized.");
+            SelectedMagicCooldownTextConfiguration cooldownTextConfiguration = _mainHudSelectedSkillCooldownTextConfiguration ?? throw new InvalidOperationException("The main HUD selected-skill cooldown configuration has not been initialized.");
+            ClientFontSettingsConfiguration fontSettingsConfiguration = _clientFontSettingsConfiguration ?? throw new InvalidOperationException("The client font settings have not been initialized.");
+            ClientCodePageConfiguration codePageConfiguration = _clientCodePageConfiguration ?? throw new InvalidOperationException("The client code-page configuration has not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
             renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
@@ -191,6 +205,7 @@ internal sealed class ClientApplication : IDisposable
             mainHudActionButtonStripRenderer = new MainHudActionButtonStripRenderer(graphicsDevice, mainHudActionButtonAssets, logicalRenderSize);
             mainHudCheckControlRenderer = new MainHudCheckControlRenderer(graphicsDevice, mainHudCheckControlAssets, logicalRenderSize);
             mainHudSelectedSkillRenderer = new MainHudSelectedSkillRenderer(graphicsDevice, mainHudSelectedSkillAssets, logicalRenderSize);
+            mainHudSelectedSkillCooldownRenderer = new MainHudSelectedSkillCooldownRenderer(graphicsDevice, cooldownTextConfiguration, fontSettingsConfiguration, codePageConfiguration, logicalRenderSize);
 
             _renderer = renderer;
             _mainHudChromeRenderer = mainHudChromeRenderer;
@@ -200,10 +215,17 @@ internal sealed class ClientApplication : IDisposable
             _mainHudActionButtonStripRenderer = mainHudActionButtonStripRenderer;
             _mainHudCheckControlRenderer = mainHudCheckControlRenderer;
             _mainHudSelectedSkillRenderer = mainHudSelectedSkillRenderer;
+            _mainHudSelectedSkillCooldownRenderer = mainHudSelectedSkillCooldownRenderer;
             _graphicsDevice = graphicsDevice;
         }
         catch
         {
+            try
+            {
+                mainHudSelectedSkillCooldownRenderer?.Dispose();
+            }
+            catch { }
+
             try
             {
                 mainHudSelectedSkillRenderer?.Dispose();
@@ -380,9 +402,15 @@ internal sealed class ClientApplication : IDisposable
         ArgumentNullException.ThrowIfNull(contentSource);
 
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
+        SelectedMagicCooldownTextConfiguration cooldownTextConfiguration = SelectedMagicCooldownTextConfiguration.Load(contentSource);
+        ClientFontSettingsConfiguration fontSettingsConfiguration = ClientFontSettingsConfiguration.Load(contentSource);
+        ClientCodePageConfiguration codePageConfiguration = ClientCodePageConfiguration.Load(contentSource);
         LogicalRenderSize logicalRenderSize = new(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
 
         _logicalRenderSize = logicalRenderSize;
+        _mainHudSelectedSkillCooldownTextConfiguration = cooldownTextConfiguration;
+        _clientFontSettingsConfiguration = fontSettingsConfiguration;
+        _clientCodePageConfiguration = codePageConfiguration;
         _mainHudChromeAssets = MainHudChromeAssets.Load(contentSource);
         _mainHudVitalsAssets = MainHudVitalsAssets.Load(contentSource);
         _mainHudSkillAssets = MainHudSkillAssets.Load(contentSource);
@@ -429,6 +457,7 @@ internal sealed class ClientApplication : IDisposable
                 _mainHudActionButtonStripRenderer?.Draw(renderer, _mainHudActionButtonStripState);
                 _mainHudCheckControlRenderer?.Draw(renderer, _mainHudCheckControlsState);
                 _mainHudSelectedSkillRenderer?.Draw(renderer, _mainHudSelectedSkillState);
+                _mainHudSelectedSkillCooldownRenderer?.DrawAfterSelectedImage(renderer, _mainHudSelectedSkillState, _mainHudSelectedSkillCooldownState);
 
                 _mainHudSkillExperienceState.AdvanceAfterHudDraw(unchecked((uint)Environment.TickCount64));
             }
@@ -448,6 +477,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReleaseRenderingResources()
     {
+        MainHudSelectedSkillCooldownRenderer? mainHudSelectedSkillCooldownRenderer = _mainHudSelectedSkillCooldownRenderer;
         MainHudSelectedSkillRenderer? mainHudSelectedSkillRenderer = _mainHudSelectedSkillRenderer;
         MainHudCheckControlRenderer? mainHudCheckControlRenderer = _mainHudCheckControlRenderer;
         MainHudActionButtonStripRenderer? mainHudActionButtonStripRenderer = _mainHudActionButtonStripRenderer;
@@ -458,6 +488,7 @@ internal sealed class ClientApplication : IDisposable
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
+        _mainHudSelectedSkillCooldownRenderer = null;
         _mainHudSelectedSkillRenderer = null;
         _mainHudCheckControlRenderer = null;
         _mainHudActionButtonStripRenderer = null;
@@ -472,9 +503,15 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            mainHudSelectedSkillRenderer?.Dispose();
+            mainHudSelectedSkillCooldownRenderer?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            mainHudSelectedSkillRenderer?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
