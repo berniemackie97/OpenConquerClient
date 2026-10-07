@@ -74,7 +74,8 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteText("ini/package.ini", "data.wdf\nc3.wdf\ndata3.wdf\n");
         WriteText("ani/Control.ani", BuildControlAni());
         WriteText("ani/Magic.ani",
-            "[MagicSkillType1000]\nFrameAmount=1\nFrame0=data/main/MagicSkillType1000.dds\n"
+            "[Magic0]\nFrameAmount=1\nFrame0=data/main/MainImgMagic.dds\n"
+            + "[MagicSkillType1000]\nFrameAmount=1\nFrame0=data/main/MagicSkillType1000.dds\n"
             + "[XpSkillType2000]\nFrameAmount=1\nFrame0=data/main/XpSkillType2000.dds\n"
             + "[MagicSkillType1415]\nFrameAmount=1\nFrame0=data/main3/skill38.dds\n"
             + "[MagicOther]\nFrameAmount=1\nFrame0=data/main/MagicOther.dds\n");
@@ -136,6 +137,7 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteLooseDds("data/main/NpcEquipClick.dds", "NpcEquipClick loose");
 
         WriteQuickbarAssets();
+        WriteSelectedSkillAssets();
 
         WriteBytes("data.wdf", CreateWdf(
             (ProgressBackgroundUid, progressBackground),
@@ -203,6 +205,7 @@ internal sealed class TemporarySourceTree : IDisposable
         AppendSection(builder, "ButtonA1", "data/main/Act1.dds");
         AppendSection(builder, "Action_Dance2Btn", "data/interface/Style01/Action/Dance2BtnNormal.dds");
         AppendSection(builder, "OtherControl", "data/main/UnusedControl.dds");
+        AppendSection(builder, "Image0", "data/main/ImageDisable.dds");
 
         return builder.ToString();
     }
@@ -237,6 +240,12 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteLooseDds("data/main/MagicOther.dds", "MagicOther");
         WriteLooseDds("data/ItemMinIcon/Preview.dds", "ItemPreview");
         WriteLooseDds("data/Pic/CustomGlow/01.dds", "CustomGlow01");
+    }
+
+    private void WriteSelectedSkillAssets()
+    {
+        WriteLooseDds("data/main/MainImgMagic.dds", "MainImgMagic");
+        WriteLooseDds("data/main/ImageDisable.dds", "ImageDisable");
     }
 
     private void WriteLooseDds(string path, string marker) => WriteBytes(path, CreateSyntheticDds(marker));

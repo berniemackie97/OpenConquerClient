@@ -82,7 +82,7 @@ public sealed class ClientContentClosureTests
         IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
 
         Assert.Equal(CreateExpectedRequirements(), closure);
-        Assert.Equal(97, closure.Count);
+        Assert.Equal(99, closure.Count);
     }
 
     [Fact]
@@ -175,6 +175,37 @@ public sealed class ClientContentClosureTests
     }
 
     [Theory]
+    [InlineData("Image0")]
+    [InlineData("Magic0")]
+    public void Resolve_RequiresEverySelectedSkillSection(string sectionName)
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        WriteVerifiedIndexes(temporaryDirectory, omittedSelectedSkillSectionName: sectionName);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(
+            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+
+        Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Image0")]
+    [InlineData("Magic0")]
+    public void Resolve_RejectsUnexpectedSelectedSkillFrameCounts(string sectionName)
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        WriteVerifiedIndexes(temporaryDirectory, overriddenSelectedSkillSectionName: sectionName, overriddenSelectedSkillFrameCount: 2);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(
+            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+
+        Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("exactly 1 frame", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("ani/Magic.ani")]
     [InlineData("ani/ItemMinIcon.Ani")]
     [InlineData("ani/effect.ani")]
@@ -207,6 +238,19 @@ public sealed class ClientContentClosureTests
         Assert.Contains(new ClientContentRequirement("data/ItemMinIcon/100.dds", ContentLookupMode.LooseThenPackage), closure);
         Assert.Contains(new ClientContentRequirement("data/Pic/FireLight/01.dds", ContentLookupMode.LooseThenPackage), closure);
         Assert.Contains(new ClientContentRequirement("data/Pic/YellowLight/01.dds", ContentLookupMode.LooseThenPackage), closure);
+    }
+
+    [Fact]
+    public void Resolve_IncludesSelectedSkillFrames()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        WriteVerifiedIndexes(temporaryDirectory);
+
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+
+        Assert.Contains(new ClientContentRequirement("data/main/MainImgMagic.dds", ContentLookupMode.LooseThenPackage), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/ImageDisable.dds", ContentLookupMode.LooseThenPackage), closure);
     }
 
     [Fact]
@@ -347,6 +391,9 @@ public sealed class ClientContentClosureTests
             expected.Add(new ClientContentRequirement(path, ContentLookupMode.LooseThenPackage));
         }
 
+        expected.Add(new ClientContentRequirement("data/main/ImageDisable.dds", ContentLookupMode.LooseThenPackage));
+        expected.Add(new ClientContentRequirement("data/main/MainImgMagic.dds", ContentLookupMode.LooseThenPackage));
+
         return expected.OrderBy(static requirement => requirement.ContentPath, StringComparer.Ordinal).ToArray();
     }
 
@@ -384,7 +431,10 @@ public sealed class ClientContentClosureTests
         int overriddenHudFrameCount = -1,
         string? omittedQuickbarControlSectionName = null,
         string? omittedCatalogPath = null,
-        string? omittedGlowSectionName = null)
+        string? omittedGlowSectionName = null,
+        string? omittedSelectedSkillSectionName = null,
+        string? overriddenSelectedSkillSectionName = null,
+        int overriddenSelectedSkillFrameCount = -1)
     {
         StringBuilder control = new();
 
@@ -428,15 +478,21 @@ public sealed class ClientContentClosureTests
         AppendQuickbarSection(control, "Action_Dance2Btn", ["data/interface/Style01/Action/Dance2BtnNormal.dds"], omittedQuickbarControlSectionName);
         AppendQuickbarSection(control, "OtherControl", ["data/main/UnusedControl.dds"], omittedQuickbarControlSectionName);
 
+        AppendSection(control, "Image0", ["data/main/ImageDisable.dds"], omittedSelectedSkillSectionName, overriddenSelectedSkillSectionName, overriddenSelectedSkillFrameCount);
+
         temporaryDirectory.WriteFile("ani/Control.ani", control.ToString());
 
         if (!string.Equals(omittedCatalogPath, "ani/Magic.ani", StringComparison.Ordinal))
         {
-            temporaryDirectory.WriteFile("ani/Magic.ani",
-                "[MagicSkillType1000]\nFrameAmount=1\nFrame0=data/main/MagicSkillType1000.dds\n"
-                + "[XpSkillType2000]\nFrameAmount=1\nFrame0=data/main/XpSkillType2000.dds\n"
-                + "[MagicSkillType1415]\nFrameAmount=1\nFrame0=data/main3/skill38.dds\n"
-                + "[MagicOther]\nFrameAmount=1\nFrame0=data/main/MagicOther.dds\n");
+            StringBuilder magic = new();
+
+            AppendSection(magic, "Magic0", ["data/main/MainImgMagic.dds"], omittedSelectedSkillSectionName, overriddenSelectedSkillSectionName, overriddenSelectedSkillFrameCount);
+            AppendSection(magic, "MagicSkillType1000", ["data/main/MagicSkillType1000.dds"], null, null, -1);
+            AppendSection(magic, "XpSkillType2000", ["data/main/XpSkillType2000.dds"], null, null, -1);
+            AppendSection(magic, "MagicSkillType1415", ["data/main3/skill38.dds"], null, null, -1);
+            AppendSection(magic, "MagicOther", ["data/main/MagicOther.dds"], null, null, -1);
+
+            temporaryDirectory.WriteFile("ani/Magic.ani", magic.ToString());
         }
 
         if (!string.Equals(omittedCatalogPath, "ani/ItemMinIcon.Ani", StringComparison.Ordinal))

@@ -27,6 +27,7 @@ internal sealed class ClientApplication : IDisposable
     private readonly MainHudQuickbarState _mainHudQuickbarState = new();
     private readonly MainHudActionButtonStripState _mainHudActionButtonStripState = new();
     private readonly MainHudCheckControlsState _mainHudCheckControlsState = new();
+    private readonly MainHudSelectedSkillState _mainHudSelectedSkillState = new();
 
     private MainHudChromeAssets? _mainHudChromeAssets;
     private MainHudVitalsAssets? _mainHudVitalsAssets;
@@ -34,12 +35,14 @@ internal sealed class ClientApplication : IDisposable
     private MainHudQuickbarAssets? _mainHudQuickbarAssets;
     private MainHudActionButtonAssets? _mainHudActionButtonAssets;
     private MainHudCheckControlAssets? _mainHudCheckControlAssets;
+    private MainHudSelectedSkillAssets? _mainHudSelectedSkillAssets;
     private MainHudChromeRenderer? _mainHudChromeRenderer;
     private MainHudVitalsRenderer? _mainHudVitalsRenderer;
     private MainHudSkillExperienceRenderer? _mainHudSkillExperienceRenderer;
     private MainHudQuickbarRenderer? _mainHudQuickbarRenderer;
     private MainHudActionButtonStripRenderer? _mainHudActionButtonStripRenderer;
     private MainHudCheckControlRenderer? _mainHudCheckControlRenderer;
+    private MainHudSelectedSkillRenderer? _mainHudSelectedSkillRenderer;
     private MainHudQuickbarInput? _mainHudQuickbarInput;
     private MainHudActionButtonStripInput? _mainHudActionButtonStripInput;
     private MainHudCheckControlsInput? _mainHudCheckControlsInput;
@@ -127,12 +130,14 @@ internal sealed class ClientApplication : IDisposable
             _mainHudCheckControlsInput = null;
             _mainHudActionButtonStripInput = null;
             _mainHudQuickbarInput = null;
+            _mainHudSelectedSkillRenderer = null;
             _mainHudCheckControlRenderer = null;
             _mainHudActionButtonStripRenderer = null;
             _mainHudQuickbarRenderer = null;
             _mainHudSkillExperienceRenderer = null;
             _mainHudVitalsRenderer = null;
             _mainHudChromeRenderer = null;
+            _mainHudSelectedSkillAssets = null;
             _mainHudCheckControlAssets = null;
             _mainHudActionButtonAssets = null;
             _mainHudQuickbarAssets = null;
@@ -150,7 +155,7 @@ internal sealed class ClientApplication : IDisposable
         if (_graphicsDevice is not null || _renderer is not null || _mainHudChromeRenderer is not null ||
             _mainHudVitalsRenderer is not null || _mainHudSkillExperienceRenderer is not null ||
             _mainHudQuickbarRenderer is not null || _mainHudActionButtonStripRenderer is not null ||
-            _mainHudCheckControlRenderer is not null)
+            _mainHudCheckControlRenderer is not null || _mainHudSelectedSkillRenderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
@@ -163,6 +168,7 @@ internal sealed class ClientApplication : IDisposable
         MainHudQuickbarRenderer? mainHudQuickbarRenderer = null;
         MainHudActionButtonStripRenderer? mainHudActionButtonStripRenderer = null;
         MainHudCheckControlRenderer? mainHudCheckControlRenderer = null;
+        MainHudSelectedSkillRenderer? mainHudSelectedSkillRenderer = null;
 
         try
         {
@@ -174,6 +180,7 @@ internal sealed class ClientApplication : IDisposable
             MainHudQuickbarAssets mainHudQuickbarAssets = _mainHudQuickbarAssets ?? throw new InvalidOperationException("The main HUD quickbar assets have not been initialized.");
             MainHudActionButtonAssets mainHudActionButtonAssets = _mainHudActionButtonAssets ?? throw new InvalidOperationException("The main HUD action-button assets have not been initialized.");
             MainHudCheckControlAssets mainHudCheckControlAssets = _mainHudCheckControlAssets ?? throw new InvalidOperationException("The main HUD check-control assets have not been initialized.");
+            MainHudSelectedSkillAssets mainHudSelectedSkillAssets = _mainHudSelectedSkillAssets ?? throw new InvalidOperationException("The main HUD selected-skill assets have not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
             renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
@@ -183,6 +190,7 @@ internal sealed class ClientApplication : IDisposable
             mainHudQuickbarRenderer = new MainHudQuickbarRenderer(graphicsDevice, mainHudQuickbarAssets, logicalRenderSize, readTickCount: s_readTickCount);
             mainHudActionButtonStripRenderer = new MainHudActionButtonStripRenderer(graphicsDevice, mainHudActionButtonAssets, logicalRenderSize);
             mainHudCheckControlRenderer = new MainHudCheckControlRenderer(graphicsDevice, mainHudCheckControlAssets, logicalRenderSize);
+            mainHudSelectedSkillRenderer = new MainHudSelectedSkillRenderer(graphicsDevice, mainHudSelectedSkillAssets, logicalRenderSize);
 
             _renderer = renderer;
             _mainHudChromeRenderer = mainHudChromeRenderer;
@@ -191,10 +199,17 @@ internal sealed class ClientApplication : IDisposable
             _mainHudQuickbarRenderer = mainHudQuickbarRenderer;
             _mainHudActionButtonStripRenderer = mainHudActionButtonStripRenderer;
             _mainHudCheckControlRenderer = mainHudCheckControlRenderer;
+            _mainHudSelectedSkillRenderer = mainHudSelectedSkillRenderer;
             _graphicsDevice = graphicsDevice;
         }
         catch
         {
+            try
+            {
+                mainHudSelectedSkillRenderer?.Dispose();
+            }
+            catch { }
+
             try
             {
                 mainHudCheckControlRenderer?.Dispose();
@@ -242,7 +257,6 @@ internal sealed class ClientApplication : IDisposable
                 graphicsDevice.Dispose();
             }
             catch { }
-
             throw;
         }
     }
@@ -375,6 +389,7 @@ internal sealed class ClientApplication : IDisposable
         _mainHudQuickbarAssets = new MainHudQuickbarAssets(contentSource);
         _mainHudActionButtonAssets = MainHudActionButtonAssets.Load(contentSource);
         _mainHudCheckControlAssets = MainHudCheckControlAssets.Load(contentSource);
+        _mainHudSelectedSkillAssets = new MainHudSelectedSkillAssets(contentSource);
 
         MainHudQuickbarLayout quickbarLayout = MainHudQuickbarLayout.Create(logicalRenderSize);
         MainHudActionButtonLayout actionButtonLayout = MainHudActionButtonLayout.Create(logicalRenderSize);
@@ -413,23 +428,18 @@ internal sealed class ClientApplication : IDisposable
                 _mainHudActionButtonStripState.AdvanceOrganiseBeforeDraw(s_readTickCount);
                 _mainHudActionButtonStripRenderer?.Draw(renderer, _mainHudActionButtonStripState);
                 _mainHudCheckControlRenderer?.Draw(renderer, _mainHudCheckControlsState);
+                _mainHudSelectedSkillRenderer?.Draw(renderer, _mainHudSelectedSkillState);
 
                 _mainHudSkillExperienceState.AdvanceAfterHudDraw(unchecked((uint)Environment.TickCount64));
             }
         }
-        catch (Exception exception)
-        {
-            firstFailure = ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
             renderer.EndFrame();
         }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         firstFailure?.Throw();
     }
@@ -438,6 +448,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReleaseRenderingResources()
     {
+        MainHudSelectedSkillRenderer? mainHudSelectedSkillRenderer = _mainHudSelectedSkillRenderer;
         MainHudCheckControlRenderer? mainHudCheckControlRenderer = _mainHudCheckControlRenderer;
         MainHudActionButtonStripRenderer? mainHudActionButtonStripRenderer = _mainHudActionButtonStripRenderer;
         MainHudQuickbarRenderer? mainHudQuickbarRenderer = _mainHudQuickbarRenderer;
@@ -447,6 +458,7 @@ internal sealed class ClientApplication : IDisposable
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
+        _mainHudSelectedSkillRenderer = null;
         _mainHudCheckControlRenderer = null;
         _mainHudActionButtonStripRenderer = null;
         _mainHudQuickbarRenderer = null;
@@ -460,9 +472,15 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            mainHudCheckControlRenderer?.Dispose();
+            mainHudSelectedSkillRenderer?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            mainHudCheckControlRenderer?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
