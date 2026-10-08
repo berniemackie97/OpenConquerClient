@@ -117,7 +117,7 @@ internal static unsafe class FreeTypeBitmapNormalizer
 
     private static byte* GetLogicalRow(nint buffer, int pitch, int row, int heightPixels)
     {
-        long rowOffset = pitch > 0 ? checked((long)row * pitch) : checked((long)(heightPixels - 1 - row) * -(long)pitch);
+        long rowOffset = pitch > 0 ? checked((long)row * pitch) : checked((heightPixels - 1 - row) * -(long)pitch);
 
         return (byte*)buffer + checked((nint)rowOffset);
     }

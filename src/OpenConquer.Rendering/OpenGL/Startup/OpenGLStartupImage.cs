@@ -125,7 +125,7 @@ internal sealed unsafe class OpenGLStartupImage : IDisposable
 
         _gl.BindVertexArray(_vertexArray);
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
-        _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(4 * FloatsPerVertex * sizeof(float)), null, BufferUsageARB.DynamicDraw);
+        _gl.BufferData(BufferTargetARB.ArrayBuffer, (4 * FloatsPerVertex * sizeof(float)), null, BufferUsageARB.DynamicDraw);
 
         _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _indexBuffer);
 

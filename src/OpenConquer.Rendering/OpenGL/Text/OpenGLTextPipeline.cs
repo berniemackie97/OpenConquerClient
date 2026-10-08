@@ -74,7 +74,7 @@ internal sealed class OpenGLTextPipeline : IDisposable
             _gl.ActiveTexture(TextureUnit.Texture0);
 
             program.Use();
-            _gl.Uniform2(_targetSizeUniform, (float)targetWidth, (float)targetHeight);
+            _gl.Uniform2(_targetSizeUniform, targetWidth, (float)targetHeight);
             _gl.Uniform1(_textureUniform, 0);
 
             _active = true;

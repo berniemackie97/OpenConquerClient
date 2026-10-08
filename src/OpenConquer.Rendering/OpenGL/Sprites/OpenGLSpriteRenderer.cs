@@ -219,14 +219,14 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
     {
         float left = x;
         float top = y;
-        float right = (float)((long)x + width);
-        float bottom = (float)((long)y + height);
+        float right = ((long)x + width);
+        float bottom = ((long)y + height);
 
         float pivotX = (right - left) / 2f + left;
         float pivotY = (bottom - top) / 2f + top;
 
         int reducedDegrees = rotationDegrees % 360;
-        float radians = (float)reducedDegrees * s_degreesToRadians;
+        float radians = reducedDegrees * s_degreesToRadians;
         (float sine, float cosine) = MathF.SinCos(radians);
 
         RotatePoint(left, top, pivotX, pivotY, sine, cosine, out positions[0], out positions[1]);

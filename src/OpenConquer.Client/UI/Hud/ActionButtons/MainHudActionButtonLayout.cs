@@ -39,7 +39,7 @@ internal readonly record struct MainHudActionButtonBounds
 
     public bool Contains(int x, int y)
     {
-        return x >= X && y >= Y && (long)x < (long)X + HitWidth && (long)y < (long)Y + HitHeight;
+        return x >= X && y >= Y && x < (long)X + HitWidth && y < (long)Y + HitHeight;
     }
 }
 

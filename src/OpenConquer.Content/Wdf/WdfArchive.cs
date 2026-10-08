@@ -67,7 +67,7 @@ internal sealed class WdfArchive
         uint tableOffset = BinaryPrimitives.ReadUInt32LittleEndian(header[8..]);
 
         long tableLength = checked((long)entryCount * EntryLength);
-        long tableEnd = checked((long)tableOffset + tableLength);
+        long tableEnd = checked(tableOffset + tableLength);
 
         if (tableOffset < HeaderLength || tableEnd > stream.Length)
         {

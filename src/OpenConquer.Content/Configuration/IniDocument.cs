@@ -72,7 +72,7 @@ internal sealed class IniDocument
 
             int nativeLineLength = line.Length + (hasLineFeed ? 1 : 0);
 
-            if (TryParseSectionName(line, out string? sectionName))
+            if (TryParseSectionName(line, out string sectionName))
             {
                 if (!sections.TryGetValue(sectionName, out currentSection))
                 {
@@ -81,7 +81,7 @@ internal sealed class IniDocument
                     sections.Add(sectionName, currentSection);
                 }
             }
-            else if (currentSection is not null && TryParseKeyValue(line, nativeLineLength, out string? keyName, out string? value))
+            else if (currentSection is not null && TryParseKeyValue(line, nativeLineLength, out string keyName, out string value))
             {
                 currentSection[keyName] = value;
             }

@@ -50,13 +50,20 @@ public sealed class OpenGLTextContext : IDisposable
             {
                 resource?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 ownedFont.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
+
             throw;
         }
     }
@@ -139,7 +146,11 @@ public sealed class OpenGLTextContext : IDisposable
             {
                 library.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
+
             throw;
         }
     }

@@ -119,7 +119,7 @@ internal sealed class ReleaseHttpTransport : IDisposable
 
             await using Stream source = await response.Content.ReadAsStreamAsync(operationToken)
                 .ConfigureAwait(false);
-            using MemoryStream destination = response.Content.Headers.ContentLength is long length
+            using MemoryStream destination = response.Content.Headers.ContentLength is { } length
                 ? new MemoryStream((int)length)
                 : new MemoryStream();
             byte[] buffer = ArrayPool<byte>.Shared.Rent(Math.Min(BufferSize, maximumLength));
@@ -210,7 +210,7 @@ internal sealed class ReleaseHttpTransport : IDisposable
                 return new ReleaseTransferResult<string>.Rejected(rejection.Value);
             }
 
-            if (response.Content.Headers.ContentLength is long contentLength &&
+            if (response.Content.Headers.ContentLength is { } contentLength &&
                 contentLength != expectedLength)
             {
                 return new ReleaseTransferResult<string>.Rejected(
@@ -350,7 +350,7 @@ internal sealed class ReleaseHttpTransport : IDisposable
         long maximumLength)
     {
         if (response.StatusCode != HttpStatusCode.OK ||
-            response.RequestMessage?.RequestUri is not Uri actualUri ||
+            response.RequestMessage?.RequestUri is not { } actualUri ||
             !ReleaseUriPolicy.EqualsExact(expectedUri, actualUri) ||
             response.Content.Headers.ContentEncoding.Count != 0)
         {

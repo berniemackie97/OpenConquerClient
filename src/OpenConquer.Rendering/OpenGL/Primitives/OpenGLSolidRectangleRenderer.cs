@@ -117,7 +117,7 @@ internal sealed unsafe class OpenGLSolidRectangleRenderer : IDisposable
 
         _gl.BindVertexArray(_vertexArray);
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
-        _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(4 * FloatsPerVertex * sizeof(float)), null, BufferUsageARB.DynamicDraw);
+        _gl.BufferData(BufferTargetARB.ArrayBuffer, size: (4 * FloatsPerVertex * sizeof(float)), data: null, BufferUsageARB.DynamicDraw);
 
         _gl.EnableVertexAttribArray(0);
         _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, normalized: false, FloatsPerVertex * sizeof(float), (void*)0);

@@ -109,8 +109,8 @@ internal sealed unsafe class FreeTypeFontInspector
 
         try
         {
-            long nativeFaceCount = (long)face->FaceCount.Value;
-            long styleFlags = (long)face->StyleFlags.Value;
+            long nativeFaceCount = face->FaceCount.Value;
+            long styleFlags = face->StyleFlags.Value;
 
             faceCount = nativeFaceCount is >= 1 and <= MaximumFaceCount ? (int)nativeFaceCount : 0;
             familyName = face->FamilyName is null ? null : Marshal.PtrToStringUTF8((nint)face->FamilyName);
