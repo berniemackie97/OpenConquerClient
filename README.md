@@ -11,7 +11,7 @@ C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for Window
 | Product | Implemented | Remaining |
 | --- | --- | --- |
 | Launcher | Managed installation resolution, authenticated releases, integrity verification, update/repair/rollback transaction, single-instance activation, saved display preferences | Production release origin, launcher self-update, player-facing maintenance flow, controlled client startup |
-| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina vitals, skill/experience HUD, native 10-button action strip, four native main-HUD CMyCheck controls, 10-slot quickbar/grid, selected-skill image/cover, selected-skill cooldown text | Live gameplay state, downstream HUD-control side effects, status hints/tooltips, outer HUD gate, remaining UI, networking, maps, roles, effects, animation |
+| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina vitals, skill/experience HUD, native 10-button action strip, four native main-HUD CMyCheck controls, 10-slot quickbar/grid, selected-skill image/cover, selected-skill cooldown text, main-HUD category-8 status hints | Live gameplay state, downstream HUD-control side effects, per-control tooltips, remaining status-hint categories, outer HUD gate, remaining UI, networking, maps, roles, effects, animation |
 
 ## Architecture
 
@@ -134,7 +134,7 @@ Do not preserve obsolete implementation machinery when observable behavior can b
 
 ### Runtime Content
 
-The managed runtime closure currently contains 3,775 files totaling 20,633,919 bytes.
+The managed runtime closure currently contains 3,780 files totaling 20,762,596 bytes.
 
 The exact path set is authoritative in:
 
@@ -302,9 +302,13 @@ The check controls likewise do not invent downstream map, screen-shift, equipmen
 feature effects. Native USER32 release/`BN_CLICKED` behavior outside the proven state-transition
 boundary remains deferred.
 
-The next unimplemented main-HUD visual slice is status hints/tooltips, followed by the outer HUD
-gate. Those features are implemented only after their own native behavior and dependencies are
-verified.
+GFX-UI-008 implements the native main-HUD category-8 status-hint panel. Its input uses
+CDlgMain-local rectangle and binary-region hotspots; its anchors remain shell-relative.
+The panel renders after selected-skill cooldown text using retail StrRes.ini strings,
+normal GUI font settings, and the Dialog21 backdrop. The MP startup guard is retained.
+
+Per-control tooltips, other status-hint categories, and the outer HUD gate remain deferred
+until their own native contracts and dependencies are verified.
 
 ## Repository
 

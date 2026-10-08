@@ -232,4 +232,121 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        string manifestPath = Path.Combine
+        string manifestPath = Path.Combine(contentSet, "manifest.json");
+
+        File.WriteAllText(manifestPath,
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"schemaVersion\": 2", "\"schemaVersion\": 3", StringComparison.Ordinal),
+            Encoding.UTF8);
+
+        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+    }
+
+    [Fact]
+    public void Verify_RejectsAManifestSummaryThatDisagreesWithItsEntries()
+    {
+        using TemporarySourceTree fixture = new();
+
+        string contentSet = ImportContentSet(fixture);
+        string manifestPath = Path.Combine(contentSet, "manifest.json");
+        ContentManifest manifest = ReadManifest(contentSet);
+
+        File.WriteAllText(manifestPath,
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace(
+                $"\"fileCount\": {manifest.FileCount}",
+                $"\"fileCount\": {manifest.FileCount - 1}",
+                StringComparison.Ordinal),
+            Encoding.UTF8);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+
+        Assert.Contains("summary does not match", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Verify_RejectsAManifestWithAnInconsistentPathKey()
+    {
+        using TemporarySourceTree fixture = new();
+
+        string contentSet = ImportContentSet(fixture);
+        string manifestPath = Path.Combine(contentSet, "manifest.json");
+
+        File.WriteAllText(manifestPath,
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"pathKey\": \"ini/info.ini\"", "\"pathKey\": \"ini/Info.ini\"", StringComparison.Ordinal),
+            Encoding.UTF8);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+
+        Assert.Contains("inconsistent path key", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Verify_RejectsAManifestEntryThatEscapesThePayloadRoot()
+    {
+        using TemporarySourceTree fixture = new();
+
+        string contentSet = ImportContentSet(fixture);
+        string manifestPath = Path.Combine(contentSet, "manifest.json");
+
+        File.WriteAllText(manifestPath,
+            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"sourcePath\": \"ini/info.ini\"", "\"sourcePath\": \"../escape.ini\"", StringComparison.Ordinal),
+            Encoding.UTF8);
+
+        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+    }
+
+    [Fact]
+    public void Verify_RejectsAContentSetWithoutAPayloadDirectory()
+    {
+        using TemporarySourceTree fixture = new();
+
+        string contentSet = ImportContentSet(fixture);
+        Directory.Delete(Path.Combine(contentSet, "payload"), recursive: true);
+
+        Assert.Throws<DirectoryNotFoundException>(() => ContentSetVerifier.Verify(contentSet));
+    }
+
+    [Fact]
+    public void Verify_RejectsAContentSetWithoutAManifest()
+    {
+        using TemporarySourceTree fixture = new();
+
+        string contentSet = ImportContentSet(fixture);
+        File.Delete(Path.Combine(contentSet, "manifest.json"));
+
+        Assert.Throws<FileNotFoundException>(() => ContentSetVerifier.Verify(contentSet));
+    }
+
+    private static string ImportContentSet(TemporarySourceTree fixture)
+    {
+        fixture.WriteStartupSnapshot();
+
+        string contentSet = fixture.ChildPath("content-set");
+
+        ContentSetImporter.Import(fixture.RootPath, contentSet);
+
+        return contentSet;
+    }
+
+    private static ContentManifest ReadManifest(string contentSet)
+    {
+        using FileStream stream = new(Path.Combine(contentSet, "manifest.json"), FileMode.Open, FileAccess.Read, FileShare.Read);
+        return ContentManifestReader.Read(stream);
+    }
+
+    private static void RewriteManifest(string contentSet, ContentManifest manifest)
+    {
+        using FileStream stream = new(Path.Combine(contentSet, "manifest.json"), FileMode.Create, FileAccess.Write, FileShare.None);
+        ContentManifestWriter.Write(stream, manifest);
+    }
+
+    private static ContentManifestEntry CreateManifestEntry(string sourcePath, string filePath)
+    {
+        FileInfo file = new(filePath);
+
+        using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        string sha256 = Convert.ToHexStringLower(SHA256.HashData(stream));
+
+        return new ContentManifestEntry(sourcePath, ContentPath.ToKey(sourcePath), file.Length, sha256, ContentSignature.ClassifyFile(filePath));
+    }
+}

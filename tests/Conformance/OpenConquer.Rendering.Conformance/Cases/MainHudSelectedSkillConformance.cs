@@ -80,9 +80,7 @@ internal static class MainHudSelectedSkillConformance
         MainHudSelectedSkillCooldownState cooldownState = new();
 
         if (testCase.ImageActive)
-        {
             selectedSkillState.SetSectionAndContent(MainHudSelectedSkillDefinition.InitialSectionName, contentId: 0, blockedCover: 0);
-        }
 
         selectedSkillState.SetCoverFlag(testCase.InitialCoverFlag);
         cooldownState.SetRemainingMilliseconds(testCase.CooldownRemainingMilliseconds);
@@ -94,9 +92,7 @@ internal static class MainHudSelectedSkillConformance
         FramebufferVerifier.VerifyExact(label, expected, actual);
 
         if (selectedSkillState.CoverFlag != testCase.ExpectedFinalCoverFlag)
-        {
             throw new InvalidDataException($"{label} left selected-skill cover flag {selectedSkillState.CoverFlag}; expected {testCase.ExpectedFinalCoverFlag}.");
-        }
 
         Console.WriteLine($"{label}, {colorFormat}");
         Console.WriteLine($"Main HUD selected-skill framebuffer SHA256: {ConformanceHash.Sha256(actual)}");
@@ -123,19 +119,13 @@ internal static class MainHudSelectedSkillConformance
         renderer.BeginFrame();
 
         if (testCase.ImageActive)
-        {
             renderer.DrawSprite(referenceTextures.Selected, new SpriteSourceRectangle(0, 0, MainHudSelectedSkillDefinition.SourceWidth, MainHudSelectedSkillDefinition.SourceHeight), bounds.X, bounds.Y, MainHudSelectedSkillBounds.Width, MainHudSelectedSkillBounds.Height);
-        }
 
         if (testCase.InitialCoverFlag != 0)
-        {
             renderer.DrawSprite(referenceTextures.Cover, new SpriteSourceRectangle(0, 0, MainHudSelectedSkillDefinition.CoverSourceWidth, MainHudSelectedSkillDefinition.CoverSourceHeight), bounds.X, bounds.Y, MainHudSelectedSkillBounds.Width, MainHudSelectedSkillBounds.Height);
-        }
 
         if (testCase.ExpectedCooldownWidthPixels > 0)
-        {
             renderer.DrawSolidRectangle(bounds.X, bounds.Y, testCase.ExpectedCooldownWidthPixels, 1, SpriteColor.White);
-        }
 
         byte[] framebuffer = renderer.ReadFrameTopLeftRgba();
         renderer.EndFrame();
@@ -184,9 +174,7 @@ internal static class MainHudSelectedSkillConformance
             string actualSha256 = ConformanceHash.Sha256(bytes);
 
             if (!string.Equals(actualSha256, expectedSha256, StringComparison.Ordinal))
-            {
                 throw new InvalidDataException($"Retail selected-skill asset '{contentPath}' has SHA256 {actualSha256}; expected {expectedSha256}.");
-            }
 
             return bytes;
         }
@@ -200,16 +188,12 @@ internal static class MainHudSelectedSkillConformance
     private static void VerifyPixels(string assetName, ReadOnlyMemory<byte>? productionPixels, ReadOnlySpan<byte> referencePixels)
     {
         if (!productionPixels.HasValue)
-        {
             throw new InvalidDataException($"Verified retail selected-skill asset '{assetName}' was unavailable through the production loader.");
-        }
 
         ReadOnlySpan<byte> pixels = productionPixels.Value.Span;
 
         if (!pixels.SequenceEqual(referencePixels))
-        {
             throw new InvalidDataException($"{assetName} production RGBA SHA256 {ConformanceHash.Sha256(pixels)} does not match independent DXT3 reference SHA256 {ConformanceHash.Sha256(referencePixels)}.");
-        }
     }
 
     private readonly record struct FrameFixture(string Path, string Sha256);
@@ -301,9 +285,7 @@ internal static class MainHudSelectedSkillConformance
         public void Dispose()
         {
             if (_disposed)
-            {
                 return;
-            }
 
             ExceptionDispatchInfo? firstFailure = null;
 

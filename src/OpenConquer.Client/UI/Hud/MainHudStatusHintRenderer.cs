@@ -104,13 +104,13 @@ internal sealed class MainHudStatusHintRenderer : IDisposable
         ArgumentNullException.ThrowIfNull(vitals);
         ArgumentNullException.ThrowIfNull(skill);
 
-        if (!state.CanRender || !TryGetLayout(state.Kind, checks, vitals, skill, out OpenGLTextLayout? textLayout))
+        if (!state.CanRender || !TryGetLayout(state.Kind, checks, vitals, skill, out OpenGLTextLayout? textLayout) || textLayout is null)
         {
             return;
         }
 
         // Native category-8 order: font lookup, text measurement, then Dialog21 resource guard.
-        if (textLayout != null && (_backdrop is null || textLayout.WidthPixels <= 0 || textLayout.HeightPixels <= 0))
+        if (_backdrop is not { } backdrop || textLayout.WidthPixels <= 0 || textLayout.HeightPixels <= 0)
         {
             return;
         }
@@ -129,7 +129,7 @@ internal sealed class MainHudStatusHintRenderer : IDisposable
             textX = backdropX + textLayout.WidthPixels;
         }
 
-        renderer.DrawSprite(_backdrop, s_backdropSource, backdropX, anchor.Y, textLayout.WidthPixels, textLayout.HeightPixels);
+        renderer.DrawSprite(backdrop, s_backdropSource, backdropX, anchor.Y, textLayout.WidthPixels, textLayout.HeightPixels);
         _textContext.Draw(renderer, textLayout, _textOptions, textX, anchor.Y);
     }
 

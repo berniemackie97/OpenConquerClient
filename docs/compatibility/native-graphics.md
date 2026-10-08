@@ -1387,7 +1387,13 @@ selected-skill native state boundary
 selected-skill cooldown text
 stateful cooldown/cover frame ordering
 
-background → vitals → panels → skill/XP → quickbar → action buttons → check controls → selected skill → cooldown text ordering
+category-8 status-hint backdrop and normal-font text
+StrRes.ini localized string resources
+CDlgMain-local hotspot rectangles and binary regions
+shell-relative status-hint anchors
+native MP startup suppression
+
+background → vitals → panels → skill/XP → quickbar → action buttons → check controls → selected skill → cooldown text → category-8 status hints ordering
 real-driver HUD conformance
 ```
 
@@ -1403,7 +1409,7 @@ live hero-state producer
 live quickbar producer
 live selected-skill / cooldown producer
 
-status hints / tooltips
+non-category-8 status hints / per-control tooltips
 outer HUD gate
 downstream action-button dialogs and side effects
 downstream check-control feature effects

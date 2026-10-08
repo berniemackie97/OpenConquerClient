@@ -135,7 +135,7 @@ Runtime content:
 content/retail-5517/payload
 ```
 
-Current runtime closure: 3,775 files totaling 20,633,919 bytes.
+Current runtime closure: 3,780 files totaling 20,762,596 bytes.
 
 It covers:
 
@@ -252,7 +252,7 @@ manifest
 payload
 ```
 
-The current checked-in retail-5517 manifest records exactly 3,775 files and 20,633,919 bytes.
+The current checked-in retail-5517 manifest records exactly 3,780 files and 20,762,596 bytes.
 
 ### Inspect Server.dat
 
@@ -369,7 +369,13 @@ Live Gameplay producers for quickbar contents, selected-skill identity, and cool
 deferred. The downstream map, screen-shift, equipment-view, action-dialog, and network effects also
 remain outside the implemented boundary.
 
-The next native HUD slice is status hints/tooltips. The outer HUD gate remains after that.
+GFX-UI-008 implements the category-8 main-HUD status-hint panel, including the
+Dialog21 backdrop, StrRes.ini string resources, Win32 RGNDATA hotspot regions,
+native hotspot selection, the MP startup guard, and normal-font text rendering.
+Region hit testing uses CDlgMain-local pixels, while hint anchors are shell-relative.
+The panel renders after selected-skill cooldown text.
+
+Per-control tooltips, non-category-8 hints, and the outer HUD gate remain deferred.
 
 Do not infer unimplemented side effects from ANI artwork names.
 

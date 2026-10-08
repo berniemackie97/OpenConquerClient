@@ -59,7 +59,7 @@ internal static class MainHudStatusHintConformance
             VerifyRetailFile(contentSource, path, sha256);
         }
 
-        byte[] encodedBackdrop = ReadVerifiedBytes(contentSource, BackdropPath, BackdropSha256);
+        byte[] encodedBackdrop = ReadVerifiedPackagedBackdrop(contentSource);
         byte[] referencePixels = Dxt3ReferenceDecoder.Decode(encodedBackdrop, TextureSize, TextureSize);
 
         MainHudStatusHintAssets assets = MainHudStatusHintAssets.Load(contentSource);
@@ -78,11 +78,11 @@ internal static class MainHudStatusHintConformance
 
         foreach (LogicalRenderSize logicalRenderSize in s_resolutions)
         {
-            RunResolution(graphicsDevice, assets, referencePixels, referenceTexture, logicalRenderSize, framebufferSize, colorFormat);
+            RunResolution(graphicsDevice, assets, referenceTexture, logicalRenderSize, framebufferSize, colorFormat);
         }
     }
 
-    private static void RunResolution(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintAssets assets, byte[] referencePixels, OpenGLTexture2D referenceTexture, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, string colorFormat)
+    private static void RunResolution(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintAssets assets, OpenGLTexture2D referenceTexture, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, string colorFormat)
     {
         OpenGLTexture2D? productionTexture = null;
         OpenGLTextContext? textContext = null;
@@ -116,6 +116,10 @@ internal static class MainHudStatusHintConformance
                 {
                     RunCase(graphicsDevice, hintRenderer, referenceTexture, logicalRenderSize, framebufferSize, colorFormat, testCase);
                 }
+
+                VerifySuppressedCase(graphicsDevice, hintRenderer, logicalRenderSize, framebufferSize, "mana-uninitialized", MainHudStatusHintKind.Mana, skillDrag: false, initializeMana: false);
+                VerifySuppressedCase(graphicsDevice, hintRenderer, logicalRenderSize, framebufferSize, "skill-drag", MainHudStatusHintKind.Life, skillDrag: true, initializeMana: true);
+                VerifySuppressedCase(graphicsDevice, hintRenderer, logicalRenderSize, framebufferSize, "zero-hotspot", MainHudStatusHintKind.None, skillDrag: false, initializeMana: true);
             }
         }
         finally
@@ -159,6 +163,32 @@ internal static class MainHudStatusHintConformance
         Console.WriteLine($"Main HUD status-hint framebuffer SHA256: {ConformanceHash.Sha256(actual)}");
     }
 
+    private static void VerifySuppressedCase(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintRenderer hintRenderer, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, string name, MainHudStatusHintKind kind, bool skillDrag, bool initializeMana)
+    {
+        MainHudStatusHintState state = new();
+        MainHudCheckControlsState checks = new();
+        MainHudVitalsState vitals = new();
+        MainHudSkillExperienceState skill = new();
+
+        state.Select((int)kind);
+        state.SetSkillDragActive(skillDrag);
+
+        vitals.SetSnapshot(new MainHudVitalsSnapshot(
+            42, 42, 100,
+            initializeMana ? 13 : 0,
+            initializeMana ? 13 : 0,
+            25, 0, 100, false));
+
+        byte[] actual = RenderProduction(graphicsDevice, hintRenderer, state, checks, vitals, skill, logicalRenderSize, framebufferSize);
+        byte[] expected = FramebufferVerifier.CreateOpaqueBlack(logicalRenderSize.Width, logicalRenderSize.Height);
+
+        string label = $"Main HUD category-8 status hint {name} {logicalRenderSize.Width}x{logicalRenderSize.Height}";
+
+        FramebufferVerifier.VerifyExact(label, expected, actual);
+
+        Console.WriteLine($"{label}: suppressed as required");
+    }
+
     private static byte[] RenderProduction(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintRenderer hintRenderer, MainHudStatusHintState state, MainHudCheckControlsState checks, MainHudVitalsState vitals, MainHudSkillExperienceState skill, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize)
     {
         using OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
@@ -199,21 +229,36 @@ internal static class MainHudStatusHintConformance
         }
     }
 
-    private static byte[] ReadVerifiedBytes(PackagedClientContentSource source, string path, string expectedSha256)
+    private static byte[] ReadVerifiedPackagedBackdrop(PackagedClientContentSource source)
     {
-        using Stream stream = source.OpenRequiredRead(path, ContentLookupMode.LooseThenPackage);
-        using MemoryStream buffer = new();
+        bool foundLoose = source.TryOpenRead(BackdropPath, ContentLookupMode.LooseOnly, out Stream? looseStream);
+        bool foundPackage = source.TryOpenRead(BackdropPath, ContentLookupMode.PackageOnly, out Stream? packageStream);
 
-        stream.CopyTo(buffer);
-        byte[] bytes = buffer.ToArray();
-        string actual = Convert.ToHexStringLower(SHA256.HashData(bytes));
-
-        if (!string.Equals(actual, expectedSha256, StringComparison.Ordinal))
+        try
         {
-            throw new InvalidDataException($"Retail status-hint frame '{path}' has SHA256 {actual}; expected {expectedSha256}.");
-        }
+            if (foundLoose || !foundPackage)
+            {
+                throw new InvalidDataException($"Retail status-hint frame '{BackdropPath}' must resolve exclusively from its declared WDF package.");
+            }
 
-        return bytes;
+            using MemoryStream buffer = new();
+            packageStream!.CopyTo(buffer);
+
+            byte[] bytes = buffer.ToArray();
+            string actual = Convert.ToHexStringLower(SHA256.HashData(bytes));
+
+            if (!string.Equals(actual, BackdropSha256, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException($"Retail status-hint frame '{BackdropPath}' has SHA256 {actual}; expected {BackdropSha256}.");
+            }
+
+            return bytes;
+        }
+        finally
+        {
+            looseStream?.Dispose();
+            packageStream?.Dispose();
+        }
     }
 
     private readonly record struct RenderCase(string Name, MainHudStatusHintKind Kind, string Text, int LocalX, int LocalY, bool ScreenShift);
