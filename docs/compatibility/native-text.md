@@ -1625,11 +1625,13 @@ production OpenGLTextContext façade
 + selected-skill cooldown text
         ↓
 GFX-UI-008
-status hints / tooltips
+category-8 main-HUD status hints
 ```
 
-Selected-skill cooldown text is therefore the first production text-bearing UI consumer. The
-status-hint/tooltip slice remains the next planned expansion of the text system.
+Selected-skill cooldown text is the first production text-bearing UI consumer.
+GFX-UI-008 adds the category-8 main-HUD status-hint panel as the next consumer, using
+retail StrRes.ini bytes, the normal GUI font height, and the existing OpenGLTextContext.
+Separate control tooltips and other status-hint categories remain deferred.
 
 ## Conformance Boundary
 

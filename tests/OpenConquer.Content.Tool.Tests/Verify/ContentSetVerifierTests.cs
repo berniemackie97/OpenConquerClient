@@ -16,7 +16,7 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(100, manifest.FileCount);
+        Assert.Equal(105, manifest.FileCount);
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Magic.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/ItemMinIcon.Ani");
@@ -30,6 +30,11 @@ public sealed class ContentSetVerifierTests
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/Pic/YellowLight/01.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainImgMagic.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ImageDisable.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MsgDlg.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/StrRes.ini");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/ProgressXp.rgn");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/ProgressMp.rgn");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/ProgressHp.rgn");
         Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/Pic/CustomGlow/01.dds");
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data/main3/skill38.dds", StringComparison.OrdinalIgnoreCase));
     }
@@ -134,6 +139,30 @@ public sealed class ContentSetVerifierTests
         const string omittedSourcePath = "data/main/MainImgMagic.dds";
 
         File.Delete(Path.Combine(contentSet, "payload", "data", "main", "mainimgmagic.dds"));
+
+        ContentManifest manifest = ReadManifest(contentSet);
+
+        RewriteManifest(contentSet, new ContentManifest(manifest.ClientVersion, manifest.VersionMarkerSha256,
+            manifest.Entries.Where(entry => !string.Equals(entry.SourcePath, omittedSourcePath, StringComparison.Ordinal)).ToArray()));
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+
+        Assert.Contains("missing from manifest", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(omittedSourcePath, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("data/main/MsgDlg.dds", "data/main/msgdlg.dds")]
+    [InlineData("ini/StrRes.ini", "ini/strres.ini")]
+    [InlineData("ini/ProgressXp.rgn", "ini/progressxp.rgn")]
+    [InlineData("ini/ProgressMp.rgn", "ini/progressmp.rgn")]
+    [InlineData("ini/ProgressHp.rgn", "ini/progresshp.rgn")]
+    public void Verify_RejectsManifestAndPayloadThatBothOmitRequiredStatusHintAsset(string omittedSourcePath, string payloadPath)
+    {
+        using TemporarySourceTree fixture = new();
+
+        string contentSet = ImportContentSet(fixture);
+        File.Delete(Path.Combine(contentSet, "payload", payloadPath.Replace('/', Path.DirectorySeparatorChar)));
 
         ContentManifest manifest = ReadManifest(contentSet);
 

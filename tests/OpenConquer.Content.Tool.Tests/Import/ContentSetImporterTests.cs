@@ -20,7 +20,7 @@ public sealed class ContentSetImporterTests
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destination);
         string[] expectedPaths = ExpectedImportedPaths();
 
-        Assert.Equal(100, expectedPaths.Length);
+        Assert.Equal(105, expectedPaths.Length);
         Assert.Equal(expectedPaths, manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data.wdf", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "Server.dat", StringComparison.OrdinalIgnoreCase));
@@ -65,6 +65,12 @@ public sealed class ContentSetImporterTests
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/Pic/FireLight/01.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainImgMagic.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ImageDisable.dds" && entry.Signature == "dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MsgDlg.dds" && entry.Signature == "dds");
+
+        foreach (string path in ExpectedStatusHintPaths())
+        {
+            Assert.Contains(manifest.Entries, entry => entry.SourcePath == path);
+        }
 
         Assert.Equal("Arial 12", Encoding.Latin1.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "ini", "font.ini"))));
         Assert.Equal("DDS ProgressBk", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "progressbk.dds"))));
@@ -74,6 +80,8 @@ public sealed class ContentSetImporterTests
         Assert.Equal("DDS ItemDefault", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "itemminicon", "default.dds"))));
         Assert.Equal("DDS MainImgMagic", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "mainimgmagic.dds"))));
         Assert.Equal("DDS ImageDisable", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "imagedisable.dds"))));
+        Assert.Equal("DDS MsgDlg", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "msgdlg.dds"))));
+        Assert.Contains("10070=Walk/Run", File.ReadAllText(Path.Combine(payloadRoot, "ini", "strres.ini")), StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(payloadRoot, "data.wdf")));
     }
 
@@ -97,6 +105,7 @@ public sealed class ContentSetImporterTests
         Assert.Contains("ani/Magic.ani", manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.Contains("data/main/MainImgMagic.dds", manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.Contains("data/main/ImageDisable.dds", manifest.Entries.Select(static entry => entry.SourcePath));
+        Assert.Contains("data/main/MsgDlg.dds", manifest.Entries.Select(static entry => entry.SourcePath));
     }
 
     [Fact]
@@ -145,8 +154,9 @@ public sealed class ContentSetImporterTests
         ContentManifestEntry quickbarCover = manifest.Entries.Single(static entry => entry.SourcePath == "data/interface/compose/CoverPic.dds");
         ContentManifestEntry magic = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MagicSkillType1000.dds");
         ContentManifestEntry selectedSkill = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MainImgMagic.dds");
+        ContentManifestEntry statusHint = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MsgDlg.dds");
 
-        Assert.Equal(100, manifest.FileCount);
+        Assert.Equal(105, manifest.FileCount);
 
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
@@ -168,6 +178,10 @@ public sealed class ContentSetImporterTests
         Assert.Equal("dds", selectedSkill.Signature);
         Assert.Equal("data/main/mainimgmagic.dds", selectedSkill.PathKey);
         Assert.Equal(64, selectedSkill.Sha256.Length);
+
+        Assert.Equal("dds", statusHint.Signature);
+        Assert.Equal("data/main/msgdlg.dds", statusHint.PathKey);
+        Assert.Equal(64, statusHint.Sha256.Length);
 
         Assert.Equal(manifest.Entries.Sum(static entry => entry.Length), manifest.Length);
     }
@@ -259,6 +273,24 @@ public sealed class ContentSetImporterTests
     }
 
     [Fact]
+    public void Import_IncludesStatusHintAssets()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destinationParent = new();
+
+        source.WriteStartupSnapshot();
+
+        string[] paths = ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set")).Entries
+            .Select(static entry => entry.SourcePath)
+            .ToArray();
+
+        foreach (string path in ExpectedStatusHintPaths())
+        {
+            Assert.Contains(path, paths);
+        }
+    }
+
+    [Fact]
     public void Import_RejectsASourceWithoutTheExpectedVersionMarker()
     {
         using TemporarySourceTree source = new();
@@ -289,6 +321,18 @@ public sealed class ContentSetImporterTests
 
         source.WriteStartupSnapshot();
         File.Delete(source.ChildPath("ani/Control.ani"));
+
+        Assert.Throws<FileNotFoundException>(() => ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set")));
+    }
+
+    [Fact]
+    public void Import_FailsWhenRequiredStatusHintStringsAreMissing()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destinationParent = new();
+
+        source.WriteStartupSnapshot();
+        File.Delete(source.ChildPath("ini/StrRes.ini"));
 
         Assert.Throws<FileNotFoundException>(() => ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set")));
     }
@@ -386,6 +430,7 @@ public sealed class ContentSetImporterTests
         return basePaths
             .Concat(ExpectedQuickbarPaths())
             .Concat(ExpectedSelectedSkillPaths())
+            .Concat(ExpectedStatusHintPaths())
             .Order(StringComparer.Ordinal)
             .ToArray();
     }
@@ -424,5 +469,14 @@ public sealed class ContentSetImporterTests
     {
         yield return "data/main/ImageDisable.dds";
         yield return "data/main/MainImgMagic.dds";
+    }
+
+    private static IEnumerable<string> ExpectedStatusHintPaths()
+    {
+        yield return "data/main/MsgDlg.dds";
+        yield return "ini/StrRes.ini";
+        yield return "ini/ProgressXp.rgn";
+        yield return "ini/ProgressMp.rgn";
+        yield return "ini/ProgressHp.rgn";
     }
 }

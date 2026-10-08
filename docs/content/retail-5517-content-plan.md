@@ -22,8 +22,8 @@ dependency has been verified.
 Current closure:
 
 ```text
-files: 3,775
-bytes: 20,633,919
+files: 3,780
+bytes: 20,762,596
 ```
 
 The exact path set is maintained by:
@@ -33,7 +33,7 @@ content/retail-5517/manifest.json
 content/retail-5517/payload
 ```
 
-The Markdown plan intentionally does not duplicate all 3,775 manifest entries. GFX-UI-006
+The Markdown plan intentionally does not duplicate all 3,780 manifest entries. GFX-UI-006
 introduced verified parametric quickbar consumers whose ANI catalogs expand into broad action,
 magic, item-icon, and glow families; manually mirroring that path set here would create a second,
 drift-prone source of truth.
@@ -51,6 +51,7 @@ Current consumer groups are:
 | Quickbar glows | `ani/effect.ani` | `LooseThenPackage` |
 | Selected skill | `Magic0` from `ani/Magic.ani`, `Image0` from `ani/Control.ani` | `LooseThenPackage` |
 | Selected-skill cooldown | `[SelectMagicNum]` in `ini/info.ini` plus font/code-page configuration | configuration only |
+| Main-HUD category-8 status hints | `ani/Control.ani` `[Dialog21]`, `ini/StrRes.ini`, three `ini/Progress*.rgn` files | `LooseThenPackage` backdrop; `LooseOnly` strings and regions |
 
 `ini/FontSetting.ini` and `ini/CodePage.ini` are optional native configuration inputs. They are
 absent from the clean retail 5517 root and therefore are not copied into the curated runtime set.
@@ -280,6 +281,14 @@ ini/info.ini [SelectMagicNum]
 
 The selected-skill DDS frames use the same `LooseThenPackage` resolution and deterministic
 materialization rules as the other ANI-backed HUD assets.
+
+### Category-8 Status-Hint Dependencies
+
+GFX-UI-008 adds `Dialog21` frame 0 (`data/main/MsgDlg.dds`) together with
+`ini/StrRes.ini`, `ini/ProgressXp.rgn`, `ini/ProgressMp.rgn`, and
+`ini/ProgressHp.rgn`. The backdrop resolves from `data.wdf`; the strings and
+regions are loose retail files. These five dependencies contribute 128,677 bytes.
+The manifest remains the authoritative source of exact runtime paths and hashes.
 
 ## Content Resolution
 

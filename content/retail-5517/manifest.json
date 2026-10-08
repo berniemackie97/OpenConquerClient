@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 3775,
-  "length": 20633919,
+  "fileCount": 3780,
+  "length": 20762596,
   "entries": [
     {
       "sourcePath": "Data/Pic/BlueLight/01.dds",
@@ -25522,6 +25522,13 @@
       "signature": "dds"
     },
     {
+      "sourcePath": "data/main/MsgDlg.dds",
+      "pathKey": "data/main/msgdlg.dds",
+      "length": 65664,
+      "sha256": "c91b686fa8e9758dd8c8825e401503825434a0ebaca3be30e8e0263b52985719",
+      "signature": "dds"
+    },
+    {
       "sourcePath": "data/main/NpcEquip.dds",
       "pathKey": "data/main/npcequip.dds",
       "length": 1152,
@@ -26422,6 +26429,34 @@
       "pathKey": "ini/gamesetup.ini",
       "length": 157,
       "sha256": "d32d919e831a52fb8942ca51492df34add95ea64530307f1fddd3ef07cfcd492",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ini/ProgressHp.rgn",
+      "pathKey": "ini/progresshp.rgn",
+      "length": 724,
+      "sha256": "b7e8ed940da85bbe09e2eb96f7a074ca29f5d29d9cd121fb326373cb5540cea1",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ini/ProgressMp.rgn",
+      "pathKey": "ini/progressmp.rgn",
+      "length": 724,
+      "sha256": "3aefd750231895a99d062276d460164d1004fbde7e3bbe3e922f1dea5bf743f4",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ini/ProgressXp.rgn",
+      "pathKey": "ini/progressxp.rgn",
+      "length": 1988,
+      "sha256": "8bbc96e993105cb97ff01d6ea5201c406d88aa0b91a5055b95617b89f28c62bc",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ini/StrRes.ini",
+      "pathKey": "ini/strres.ini",
+      "length": 59577,
+      "sha256": "efe9f5f1d3e29bb79b9970c25dcb238179e3ab6e059e94d981b37236157cd072",
       "signature": "unknown"
     },
     {
