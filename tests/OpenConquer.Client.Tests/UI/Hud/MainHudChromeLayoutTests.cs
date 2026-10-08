@@ -1,4 +1,4 @@
-using OpenConquer.Client.UI.Hud;
+using OpenConquer.Client.UI.Hud.Chrome;
 using OpenConquer.Rendering.Presentation;
 using OpenConquer.Rendering.Sprites;
 
