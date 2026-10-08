@@ -315,23 +315,23 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerMoved(PixelPoint point)
     {
-        if (!CanInteractWithMainHudControls())
+        bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
+
+        if (CanInteractWithMainHudControls())
         {
-            return;
+            if (mapped)
+            {
+                _mainHudActionButtonStripInput?.HandlePointerMoved(logicalX, logicalY);
+                _mainHudQuickbarInput?.HandlePointerMoved(logicalX, logicalY, out _);
+            }
+            else
+            {
+                _mainHudActionButtonStripInput?.HandlePointerMoved(-1, -1);
+                _mainHudQuickbarInput?.HandlePointerMoved(-1, -1, out _);
+            }
         }
 
-        if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
-        {
-            _mainHudActionButtonStripInput?.HandlePointerMoved(logicalX, logicalY);
-            _mainHudQuickbarInput?.HandlePointerMoved(logicalX, logicalY, out _);
-            _mainHudStatusHintInput?.HandlePointerMoved(logicalX, logicalY);
-        }
-        else
-        {
-            _mainHudActionButtonStripInput?.HandlePointerMoved(-1, -1);
-            _mainHudQuickbarInput?.HandlePointerMoved(-1, -1, out _);
-            _mainHudStatusHintInput?.HandlePointerMoved(-1, -1);
-        }
+        _mainHudStatusHintInput?.HandlePointerMoved(mapped ? logicalX : -1, mapped ? logicalY : -1);
     }
 
     private void OnPrimaryPointerPressed(PixelPoint point)
@@ -394,26 +394,6 @@ internal sealed class ClientApplication : IDisposable
         {
             input.PollPointer(-1, -1, out _);
         }
-    }
-
-    private void PollMainHudStatusHintPointer()
-    {
-        DesktopWindow? window = _window;
-        MainHudStatusHintInput? input = _mainHudStatusHintInput;
-
-        if (window is null || input is null)
-        {
-            return;
-        }
-
-        if (!window.TryGetPointerPosition(out PixelPoint point) ||
-            !TryMapPointerToLogical(point, out int logicalX, out int logicalY))
-        {
-            input.HandlePointerMoved(-1, -1);
-            return;
-        }
-
-        input.HandlePointerMoved(logicalX, logicalY);
     }
 
     private bool CanInteractWithMainHudControls() => _mainHudChromeAssets?.HasDialogPanels == true;
@@ -517,10 +497,9 @@ internal sealed class ClientApplication : IDisposable
                 _mainHudSelectedSkillCooldownRenderer?.DrawAfterSelectedImage(renderer, _mainHudSelectedSkillState, _mainHudSelectedSkillCooldownState);
 
                 _mainHudSkillExperienceState.AdvanceAfterHudDraw(unchecked((uint)Environment.TickCount64));
-
-                PollMainHudStatusHintPointer();
-                _mainHudStatusHintRenderer?.Draw(renderer, _mainHudStatusHintState, _mainHudCheckControlsState, _mainHudVitalsState, _mainHudSkillExperienceState);
             }
+
+            _mainHudStatusHintRenderer?.Draw(renderer, _mainHudStatusHintState, _mainHudCheckControlsState, _mainHudVitalsState, _mainHudSkillExperienceState);
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
 
