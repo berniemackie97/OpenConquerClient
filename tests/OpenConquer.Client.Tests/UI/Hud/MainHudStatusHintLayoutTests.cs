@@ -17,34 +17,34 @@ public sealed class MainHudStatusHintLayoutTests
     }
 
     [Theory]
-    [InlineData(800, 600, MainHudStatusHintKind.WalkRun, 0, 462)]
-    [InlineData(800, 600, MainHudStatusHintKind.Map, 72, 462)]
-    [InlineData(800, 600, MainHudStatusHintKind.ScreenShift, 50, 450)]
-    [InlineData(800, 600, MainHudStatusHintKind.Equipment, 22, 450)]
-    [InlineData(800, 600, MainHudStatusHintKind.Skill, 0, 489)]
-    [InlineData(800, 600, MainHudStatusHintKind.Mana, 52, 493)]
-    [InlineData(800, 600, MainHudStatusHintKind.Life, 4, 493)]
-    [InlineData(1024, 768, MainHudStatusHintKind.WalkRun, 0, 630)]
-    [InlineData(1024, 768, MainHudStatusHintKind.Map, 72, 630)]
-    [InlineData(1024, 768, MainHudStatusHintKind.ScreenShift, 50, 618)]
-    [InlineData(1024, 768, MainHudStatusHintKind.Equipment, 22, 618)]
-    [InlineData(1024, 768, MainHudStatusHintKind.Skill, 0, 657)]
-    [InlineData(1024, 768, MainHudStatusHintKind.Mana, 52, 661)]
-    [InlineData(1024, 768, MainHudStatusHintKind.Life, 4, 661)]
-    public void GetAnchor_MatchesVerifiedNativeBaseline(int width, int height, MainHudStatusHintKind kind, int x, int y)
+    [InlineData(800, 600, (int)MainHudStatusHintKind.WalkRun, 0, 462)]
+    [InlineData(800, 600, (int)MainHudStatusHintKind.Map, 72, 462)]
+    [InlineData(800, 600, (int)MainHudStatusHintKind.ScreenShift, 50, 450)]
+    [InlineData(800, 600, (int)MainHudStatusHintKind.Equipment, 22, 450)]
+    [InlineData(800, 600, (int)MainHudStatusHintKind.Skill, 0, 489)]
+    [InlineData(800, 600, (int)MainHudStatusHintKind.Mana, 52, 493)]
+    [InlineData(800, 600, (int)MainHudStatusHintKind.Life, 4, 493)]
+    [InlineData(1024, 768, (int)MainHudStatusHintKind.WalkRun, 0, 630)]
+    [InlineData(1024, 768, (int)MainHudStatusHintKind.Map, 72, 630)]
+    [InlineData(1024, 768, (int)MainHudStatusHintKind.ScreenShift, 50, 618)]
+    [InlineData(1024, 768, (int)MainHudStatusHintKind.Equipment, 22, 618)]
+    [InlineData(1024, 768, (int)MainHudStatusHintKind.Skill, 0, 657)]
+    [InlineData(1024, 768, (int)MainHudStatusHintKind.Mana, 52, 661)]
+    [InlineData(1024, 768, (int)MainHudStatusHintKind.Life, 4, 661)]
+    public void GetAnchor_MatchesVerifiedNativeBaseline(int width, int height, int kind, int x, int y)
     {
         MainHudStatusHintLayout layout = MainHudStatusHintLayout.Create(new LogicalRenderSize(width, height));
 
-        Assert.Equal(new MainHudStatusHintAnchor(x, y), layout.GetAnchor(kind));
+        Assert.Equal(new MainHudStatusHintAnchor(x, y), layout.GetAnchor((MainHudStatusHintKind)kind));
     }
 
     [Fact]
     public void GetRectangle_PreservesProgress44HotspotPaddingAndHiddenChatZeroRectangle()
     {
-        MainHudStatusHintLayout layout = MainHudStatusHintLayout.Create(new LogicalRenderSize(800, 600));
+        MainHudStatusHintLayout.Create(new LogicalRenderSize(800, 600));
 
-        Assert.Equal(new MainHudStatusHintRectangle(99, 95, 398, 12), layout.GetRectangle(0));
-        Assert.Equal(new MainHudStatusHintRectangle(0, 0, 0, 0), layout.GetRectangle(2));
+        Assert.Equal(new MainHudStatusHintRectangle(99, 95, 398, 12), MainHudStatusHintLayout.GetRectangle(0));
+        Assert.Equal(new MainHudStatusHintRectangle(0, 0, 0, 0), MainHudStatusHintLayout.GetRectangle(2));
     }
 
     [Fact]
