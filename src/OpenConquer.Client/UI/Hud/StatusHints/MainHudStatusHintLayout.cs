@@ -1,6 +1,6 @@
 using OpenConquer.Rendering.Presentation;
 
-namespace OpenConquer.Client.UI.Hud;
+namespace OpenConquer.Client.UI.Hud.StatusHints;
 
 internal readonly record struct MainHudStatusHintRectangle(int X, int Y, int Width, int Height)
 {

@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
-using OpenConquer.Client.UI.Hud;
 using OpenConquer.Client.UI.Hud.CheckControls;
 using OpenConquer.Client.UI.Hud.SkillExperience;
+using OpenConquer.Client.UI.Hud.StatusHints;
 using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Content;
 using OpenConquer.Platform.Geometry;
@@ -112,9 +112,11 @@ internal static class MainHudStatusHintConformance
 
             using (hintRenderer)
             {
+                VerifyReferenceTextSensitivity(graphicsDevice, referenceTexture, logicalRenderSize, framebufferSize, options);
+
                 foreach (RenderCase testCase in s_cases)
                 {
-                    RunCase(graphicsDevice, hintRenderer, referenceTexture, logicalRenderSize, framebufferSize, colorFormat, testCase);
+                    RunCase(graphicsDevice, hintRenderer, referenceTexture, logicalRenderSize, framebufferSize, colorFormat, options, testCase);
                 }
 
                 VerifySuppressedCase(graphicsDevice, hintRenderer, logicalRenderSize, framebufferSize, "mana-uninitialized", MainHudStatusHintKind.Mana, skillDrag: false, initializeMana: false);
@@ -135,7 +137,7 @@ internal static class MainHudStatusHintConformance
         }
     }
 
-    private static void RunCase(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintRenderer hintRenderer, OpenGLTexture2D referenceTexture, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, string colorFormat, RenderCase testCase)
+    private static void RunCase(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintRenderer hintRenderer, OpenGLTexture2D referenceTexture, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, string colorFormat, NativeTextRenderOptions textOptions, RenderCase testCase)
     {
         MainHudStatusHintState state = new();
         MainHudCheckControlsState checks = new();
@@ -153,7 +155,7 @@ internal static class MainHudStatusHintConformance
         skill.SetSnapshot(new MainHudSkillExperienceSnapshot(58, 0, 1));
 
         byte[] actual = RenderProduction(graphicsDevice, hintRenderer, state, checks, vitals, skill, logicalRenderSize, framebufferSize);
-        byte[] expected = RenderReference(graphicsDevice, referenceTexture, logicalRenderSize, framebufferSize, testCase);
+        byte[] expected = RenderReference(graphicsDevice, referenceTexture, logicalRenderSize, framebufferSize, textOptions, testCase);
 
         string label = $"Main HUD category-8 status hint {testCase.Name} {logicalRenderSize.Width}x{logicalRenderSize.Height}";
 
@@ -161,6 +163,22 @@ internal static class MainHudStatusHintConformance
 
         Console.WriteLine($"{label}, {colorFormat}");
         Console.WriteLine($"Main HUD status-hint framebuffer SHA256: {ConformanceHash.Sha256(actual)}");
+    }
+
+    private static void VerifyReferenceTextSensitivity(OpenGLGraphicsDevice graphicsDevice, OpenGLTexture2D referenceTexture, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, NativeTextRenderOptions textOptions)
+    {
+        RenderCase manaCase = s_cases.Single(static testCase => testCase.Kind == MainHudStatusHintKind.Mana);
+
+        byte[] expected = RenderReference(graphicsDevice, referenceTexture, logicalRenderSize, framebufferSize, textOptions, manaCase);
+        byte[] incorrect = RenderReference(graphicsDevice, referenceTexture, logicalRenderSize, framebufferSize, textOptions, manaCase with
+        {
+            Text = "12/25"
+        });
+
+        if (expected.AsSpan().SequenceEqual(incorrect))
+        {
+            throw new InvalidDataException("The status-hint reference renderer cannot distinguish different same-length gauge values.");
+        }
     }
 
     private static void VerifySuppressedCase(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintRenderer hintRenderer, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, string name, MainHudStatusHintKind kind, bool skillDrag, bool initializeMana)
@@ -201,17 +219,18 @@ internal static class MainHudStatusHintConformance
         return pixels;
     }
 
-    private static byte[] RenderReference(OpenGLGraphicsDevice graphicsDevice, OpenGLTexture2D backdrop, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, RenderCase testCase)
+    private static byte[] RenderReference(OpenGLGraphicsDevice graphicsDevice, OpenGLTexture2D backdrop, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, NativeTextRenderOptions textOptions, RenderCase testCase)
     {
         using OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
+        using OpenGLTextContext textContext = new(graphicsDevice, new SyntheticHintGlyphRasterizer(), nominalPixelHeight: 1, effectiveCodePage: 936);
 
         int x = testCase.LocalX;
         int y = logicalRenderSize.Height - 161 + testCase.LocalY;
-        int textWidth = Encoding.ASCII.GetByteCount(testCase.Text);
+        OpenGLTextLayout textLayout = textContext.Layout(Encoding.ASCII.GetBytes(testCase.Text));
 
         renderer.BeginFrame();
-        renderer.DrawSprite(backdrop, new SpriteSourceRectangle(0, 0, 100, 200), x, y, textWidth, 1);
-        renderer.DrawSolidRectangle(x, y, textWidth, 1, SpriteColor.White);
+        renderer.DrawSprite(backdrop, new SpriteSourceRectangle(0, 0, 100, 200), x, y, textLayout.WidthPixels, textLayout.HeightPixels);
+        textContext.Draw(renderer, textLayout, textOptions, x, y);
         byte[] pixels = renderer.ReadFrameTopLeftRgba();
         renderer.EndFrame();
 
@@ -279,10 +298,15 @@ internal static class MainHudStatusHintConformance
                 return false;
             }
 
-            glyph = new RasterizedGlyph(widthPixels: 1, heightPixels: 1, bearingLeftPixels: 0, topOffsetPixels: 0, advancePixels: 1, [byte.MaxValue]);
+            byte coverage = (byte)(64 + rune.Value * 73 % 192);
+
+            glyph = new RasterizedGlyph(widthPixels: 1, heightPixels: 1, bearingLeftPixels: 0, topOffsetPixels: 0, advancePixels: 1, [coverage]);
             return true;
         }
 
-        public void Dispose() => _disposed = true;
+        public void Dispose()
+        {
+            _disposed = true;
+        }
     }
 }

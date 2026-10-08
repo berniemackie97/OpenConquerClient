@@ -4,7 +4,7 @@ using OpenConquer.Content.Images;
 using OpenConquer.Content.Regions;
 using OpenConquer.Content.Text;
 
-namespace OpenConquer.Client.UI.Hud;
+namespace OpenConquer.Client.UI.Hud.StatusHints;
 
 internal sealed class MainHudStatusHintAssets
 {

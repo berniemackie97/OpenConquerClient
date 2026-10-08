@@ -12,7 +12,7 @@ using OpenConquer.Rendering.Presentation;
 using OpenConquer.Rendering.Sprites;
 using OpenConquer.Rendering.Text.Rendering;
 
-namespace OpenConquer.Client.UI.Hud;
+namespace OpenConquer.Client.UI.Hud.StatusHints;
 
 internal sealed class MainHudStatusHintRenderer : IDisposable
 {

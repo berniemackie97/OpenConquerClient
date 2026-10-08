@@ -1,5 +1,5 @@
 using System.Buffers.Binary;
-using OpenConquer.Client.UI.Hud;
+using OpenConquer.Client.UI.Hud.StatusHints;
 using OpenConquer.Content.Regions;
 using OpenConquer.Rendering.Presentation;
 

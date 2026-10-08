@@ -1,6 +1,6 @@
 using OpenConquer.Content.Regions;
 
-namespace OpenConquer.Client.UI.Hud;
+namespace OpenConquer.Client.UI.Hud.StatusHints;
 
 internal sealed class MainHudStatusHintInput
 {

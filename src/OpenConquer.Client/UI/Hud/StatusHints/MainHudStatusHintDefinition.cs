@@ -1,4 +1,4 @@
-namespace OpenConquer.Client.UI.Hud;
+namespace OpenConquer.Client.UI.Hud.StatusHints;
 
 internal enum MainHudStatusHintKind : byte
 {
