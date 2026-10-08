@@ -1,5 +1,5 @@
 using System.Runtime.ExceptionServices;
-using OpenConquer.Client.UI.Hud;
+using OpenConquer.Client.UI.Hud.Quickbar;
 using OpenConquer.Content;
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Rendering.Conformance.Reference;

@@ -1,6 +1,6 @@
 using System.Runtime.ExceptionServices;
 using System.Text;
-using OpenConquer.Client.UI.Hud;
+using OpenConquer.Client.UI.Hud.SelectedSkill;
 using OpenConquer.Content;
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Rendering.Conformance.Reference;

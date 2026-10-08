@@ -1,4 +1,4 @@
-using OpenConquer.Client.UI.Hud;
+using OpenConquer.Client.UI.Hud.Vitals;
 
 namespace OpenConquer.Client.Tests.UI.Hud;
 

@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Text;
-using OpenConquer.Client.UI.Hud;
+using OpenConquer.Client.UI.Hud.SkillExperience;
 using OpenConquer.Content;
 
 namespace OpenConquer.Client.Tests.UI.Hud;

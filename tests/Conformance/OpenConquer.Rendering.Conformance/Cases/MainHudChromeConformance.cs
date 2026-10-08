@@ -1,4 +1,4 @@
-using OpenConquer.Client.UI.Hud;
+using OpenConquer.Client.UI.Hud.Chrome;
 using OpenConquer.Content;
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Rendering.Conformance.Reference;

@@ -1,4 +1,4 @@
-using OpenConquer.Client.UI.Hud;
+using OpenConquer.Client.UI.Hud.SkillExperience;
 
 namespace OpenConquer.Client.Tests.UI.Hud;
 
