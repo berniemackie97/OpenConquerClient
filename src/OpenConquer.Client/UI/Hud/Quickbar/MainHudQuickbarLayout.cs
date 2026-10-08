@@ -24,8 +24,8 @@ internal readonly record struct MainHudQuickbarBounds
 
     public bool Contains(int x, int y) =>
         x >= X && y >= Y &&
-        (long)x < (long)X + MainHudQuickbarDefinition.Width &&
-        (long)y < (long)Y + MainHudQuickbarDefinition.Height;
+        x < (long)X + MainHudQuickbarDefinition.Width &&
+        y < (long)Y + MainHudQuickbarDefinition.Height;
 }
 
 internal readonly record struct MainHudQuickbarSlotBounds
@@ -50,8 +50,8 @@ internal readonly record struct MainHudQuickbarSlotBounds
 
     public bool ContainsInputPoint(int x, int y) =>
         x >= X && y >= Y &&
-        (long)x < (long)X + MainHudQuickbarDefinition.HorizontalStride &&
-        (long)y < (long)Y + MainHudQuickbarDefinition.CellHeight;
+        x < (long)X + MainHudQuickbarDefinition.HorizontalStride &&
+        y < (long)Y + MainHudQuickbarDefinition.CellHeight;
 }
 
 internal readonly record struct MainHudQuickbarLayout

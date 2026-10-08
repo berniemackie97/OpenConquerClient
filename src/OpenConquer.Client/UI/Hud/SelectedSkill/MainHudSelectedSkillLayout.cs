@@ -27,8 +27,8 @@ internal readonly record struct MainHudSelectedSkillBounds
 
     public bool Contains(int x, int y) =>
         x >= X && y >= Y &&
-        (long)x < (long)X + Width &&
-        (long)y < (long)Y + Height;
+        x < (long)X + Width &&
+        y < (long)Y + Height;
 }
 
 internal readonly record struct MainHudSelectedSkillLayout

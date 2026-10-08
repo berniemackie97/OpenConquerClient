@@ -230,61 +230,92 @@ internal sealed class ClientApplication : IDisposable
             {
                 mainHudSelectedSkillCooldownRenderer?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 mainHudSelectedSkillRenderer?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 mainHudCheckControlRenderer?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 mainHudActionButtonStripRenderer?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 mainHudQuickbarRenderer?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 mainHudSkillExperienceRenderer?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 mainHudVitalsRenderer?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 mainHudChromeRenderer?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 renderer?.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
 
             try
             {
                 graphicsDevice.Dispose();
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
+
             throw;
         }
     }

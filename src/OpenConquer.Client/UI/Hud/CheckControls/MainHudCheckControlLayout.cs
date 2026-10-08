@@ -25,7 +25,7 @@ internal readonly record struct MainHudCheckControlBounds
 
     public bool Contains(int x, int y)
     {
-        return x >= X && y >= Y && (long)x < (long)X + MainHudCheckControlDefinitions.Width && (long)y < (long)Y + MainHudCheckControlDefinitions.Height;
+        return x >= X && y >= Y && x < (long)X + MainHudCheckControlDefinitions.Width && y < (long)Y + MainHudCheckControlDefinitions.Height;
     }
 }
 
