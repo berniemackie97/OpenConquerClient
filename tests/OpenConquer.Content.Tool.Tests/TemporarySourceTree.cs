@@ -10,6 +10,7 @@ internal sealed class TemporarySourceTree : IDisposable
 {
     private const uint ProgressBackgroundUid = 0x0561D7F3;
     private const uint MainDialog1Uid = 0xCAE8016F;
+    private const uint StatusHintBackdropUid = 0x87576CFA;
     private const uint ProgressHpUid = 0x1311773C;
     private const uint ProgressHpAlternateUid = 0xE8F5223B;
     private const uint ProgressHpHighlightUid = 0xF1020E31;
@@ -57,6 +58,7 @@ internal sealed class TemporarySourceTree : IDisposable
     {
         byte[] progressBackground = CreateSyntheticDds("ProgressBk");
         byte[] mainDialog1 = CreateSyntheticDds("mainDialog1");
+        byte[] statusHintBackdrop = CreateSyntheticDds("MsgDlg");
         byte[] progressHp = CreateSyntheticDds("ProgressHP");
         byte[] progressHpAlternate = CreateSyntheticDds("ProgressHPA");
         byte[] progressHpHighlight = CreateSyntheticDds("ProgressHPH");
@@ -72,6 +74,10 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteText("ini/Font.ini", "Arial 12");
         WriteText("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=2\n");
         WriteText("ini/info.ini", $"[DlgLogo]\nBgFormat={backgroundFormat}\n");
+        WriteText("ini/StrRes.ini", "0=ERROR\n10070=Walk/Run\n10071=Chat On/Off\n10072=Map On/Off\n10073=Shift Screen: Off\n10074=Shift Screen: On\n10370=View Equipment\n10426=English\n");
+        WriteBytes("ini/ProgressXp.rgn", CreateSyntheticRegion(0, 49, 92, 141));
+        WriteBytes("ini/ProgressMp.rgn", CreateSyntheticRegion(47, 58, 84, 132));
+        WriteBytes("ini/ProgressHp.rgn", CreateSyntheticRegion(10, 58, 47, 132));
         WriteText("ini/package.ini", "data.wdf\nc3.wdf\ndata3.wdf\n");
         WriteText("ani/Control.ani", BuildControlAni());
         WriteText("ani/Magic.ani",
@@ -143,6 +149,7 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteBytes("data.wdf", CreateWdf(
             (ProgressBackgroundUid, progressBackground),
             (MainDialog1Uid, mainDialog1),
+            (StatusHintBackdropUid, statusHintBackdrop),
             (ProgressHpUid, progressHp),
             (ProgressHpAlternateUid, progressHpAlternate),
             (ProgressHpHighlightUid, progressHpHighlight),
@@ -168,6 +175,7 @@ internal sealed class TemporarySourceTree : IDisposable
         StringBuilder builder = new();
 
         AppendSection(builder, "Dialog4", "data/main/mainDialog1.dds", "data/main/mainDialog2.dds");
+        AppendSection(builder, "Dialog21", "data/main/MsgDlg.dds");
         AppendSection(builder, "Progress40", "data/main/ProgressHP.dds", "data/main/ProgressHPA.dds", "data/main/ProgressHPH.dds");
         AppendSection(builder, "Progress41", "data/main/ProgressMP.dds", "data/main/ProgressMPA.dds", "data/main/ProgressMPH.dds");
         AppendSection(builder, "Progress42", "data/main/ProgressPower.dds", "data/main/ProgressPower.dds", "data/main/ProgressPowerH.dds");
@@ -262,6 +270,31 @@ internal sealed class TemporarySourceTree : IDisposable
     }
 
     private static byte[] CreateSyntheticDds(string marker) => Encoding.ASCII.GetBytes($"DDS {marker}");
+
+    private static byte[] CreateSyntheticRegion(int left, int top, int right, int bottom)
+    {
+        byte[] encoded = new byte[sizeof(uint) + 32 + 16];
+        Span<byte> payload = encoded.AsSpan(sizeof(uint));
+
+        BinaryPrimitives.WriteUInt32LittleEndian(encoded, 48);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload, 32);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload[4..], 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload[8..], 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload[12..], 16);
+
+        WriteRectangle(payload[16..], left, top, right, bottom);
+        WriteRectangle(payload[32..], left, top, right, bottom);
+
+        return encoded;
+    }
+
+    private static void WriteRectangle(Span<byte> destination, int left, int top, int right, int bottom)
+    {
+        BinaryPrimitives.WriteInt32LittleEndian(destination, left);
+        BinaryPrimitives.WriteInt32LittleEndian(destination[4..], top);
+        BinaryPrimitives.WriteInt32LittleEndian(destination[8..], right);
+        BinaryPrimitives.WriteInt32LittleEndian(destination[12..], bottom);
+    }
 
     private static byte[] CreateWdf(params (uint Uid, byte[] Payload)[] entries)
     {

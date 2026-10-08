@@ -16,7 +16,7 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(100, manifest.FileCount);
+        Assert.Equal(105, manifest.FileCount);
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Magic.ani");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/ItemMinIcon.Ani");
@@ -30,6 +30,11 @@ public sealed class ContentSetVerifierTests
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/Pic/YellowLight/01.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainImgMagic.dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ImageDisable.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MsgDlg.dds");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/StrRes.ini");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/ProgressXp.rgn");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/ProgressMp.rgn");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/ProgressHp.rgn");
         Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/Pic/CustomGlow/01.dds");
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data/main3/skill38.dds", StringComparison.OrdinalIgnoreCase));
     }
@@ -146,6 +151,30 @@ public sealed class ContentSetVerifierTests
         Assert.Contains(omittedSourcePath, exception.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("data/main/MsgDlg.dds", "data/main/msgdlg.dds")]
+    [InlineData("ini/StrRes.ini", "ini/strres.ini")]
+    [InlineData("ini/ProgressXp.rgn", "ini/progressxp.rgn")]
+    [InlineData("ini/ProgressMp.rgn", "ini/progressmp.rgn")]
+    [InlineData("ini/ProgressHp.rgn", "ini/progresshp.rgn")]
+    public void Verify_RejectsManifestAndPayloadThatBothOmitRequiredStatusHintAsset(string omittedSourcePath, string payloadPath)
+    {
+        using TemporarySourceTree fixture = new();
+
+        string contentSet = ImportContentSet(fixture);
+        File.Delete(Path.Combine(contentSet, "payload", payloadPath.Replace('/', Path.DirectorySeparatorChar)));
+
+        ContentManifest manifest = ReadManifest(contentSet);
+
+        RewriteManifest(contentSet, new ContentManifest(manifest.ClientVersion, manifest.VersionMarkerSha256,
+            manifest.Entries.Where(entry => !string.Equals(entry.SourcePath, omittedSourcePath, StringComparison.Ordinal)).ToArray()));
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+
+        Assert.Contains("missing from manifest", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(omittedSourcePath, exception.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Verify_RejectsAPayloadFileWithAChangedLength()
     {
@@ -203,121 +232,4 @@ public sealed class ContentSetVerifierTests
         using TemporarySourceTree fixture = new();
 
         string contentSet = ImportContentSet(fixture);
-        string manifestPath = Path.Combine(contentSet, "manifest.json");
-
-        File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"schemaVersion\": 2", "\"schemaVersion\": 3", StringComparison.Ordinal),
-            Encoding.UTF8);
-
-        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
-    }
-
-    [Fact]
-    public void Verify_RejectsAManifestSummaryThatDisagreesWithItsEntries()
-    {
-        using TemporarySourceTree fixture = new();
-
-        string contentSet = ImportContentSet(fixture);
-        string manifestPath = Path.Combine(contentSet, "manifest.json");
-        ContentManifest manifest = ReadManifest(contentSet);
-
-        File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace(
-                $"\"fileCount\": {manifest.FileCount}",
-                $"\"fileCount\": {manifest.FileCount - 1}",
-                StringComparison.Ordinal),
-            Encoding.UTF8);
-
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
-
-        Assert.Contains("summary does not match", exception.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Verify_RejectsAManifestWithAnInconsistentPathKey()
-    {
-        using TemporarySourceTree fixture = new();
-
-        string contentSet = ImportContentSet(fixture);
-        string manifestPath = Path.Combine(contentSet, "manifest.json");
-
-        File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"pathKey\": \"ini/info.ini\"", "\"pathKey\": \"ini/Info.ini\"", StringComparison.Ordinal),
-            Encoding.UTF8);
-
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
-
-        Assert.Contains("inconsistent path key", exception.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Verify_RejectsAManifestEntryThatEscapesThePayloadRoot()
-    {
-        using TemporarySourceTree fixture = new();
-
-        string contentSet = ImportContentSet(fixture);
-        string manifestPath = Path.Combine(contentSet, "manifest.json");
-
-        File.WriteAllText(manifestPath,
-            File.ReadAllText(manifestPath, Encoding.UTF8).Replace("\"sourcePath\": \"ini/info.ini\"", "\"sourcePath\": \"../escape.ini\"", StringComparison.Ordinal),
-            Encoding.UTF8);
-
-        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
-    }
-
-    [Fact]
-    public void Verify_RejectsAContentSetWithoutAPayloadDirectory()
-    {
-        using TemporarySourceTree fixture = new();
-
-        string contentSet = ImportContentSet(fixture);
-        Directory.Delete(Path.Combine(contentSet, "payload"), recursive: true);
-
-        Assert.Throws<DirectoryNotFoundException>(() => ContentSetVerifier.Verify(contentSet));
-    }
-
-    [Fact]
-    public void Verify_RejectsAContentSetWithoutAManifest()
-    {
-        using TemporarySourceTree fixture = new();
-
-        string contentSet = ImportContentSet(fixture);
-        File.Delete(Path.Combine(contentSet, "manifest.json"));
-
-        Assert.Throws<FileNotFoundException>(() => ContentSetVerifier.Verify(contentSet));
-    }
-
-    private static string ImportContentSet(TemporarySourceTree fixture)
-    {
-        fixture.WriteStartupSnapshot();
-
-        string contentSet = fixture.ChildPath("content-set");
-
-        ContentSetImporter.Import(fixture.RootPath, contentSet);
-
-        return contentSet;
-    }
-
-    private static ContentManifest ReadManifest(string contentSet)
-    {
-        using FileStream stream = new(Path.Combine(contentSet, "manifest.json"), FileMode.Open, FileAccess.Read, FileShare.Read);
-        return ContentManifestReader.Read(stream);
-    }
-
-    private static void RewriteManifest(string contentSet, ContentManifest manifest)
-    {
-        using FileStream stream = new(Path.Combine(contentSet, "manifest.json"), FileMode.Create, FileAccess.Write, FileShare.None);
-        ContentManifestWriter.Write(stream, manifest);
-    }
-
-    private static ContentManifestEntry CreateManifestEntry(string sourcePath, string filePath)
-    {
-        FileInfo file = new(filePath);
-
-        using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-
-        string sha256 = Convert.ToHexStringLower(SHA256.HashData(stream));
-
-        return new ContentManifestEntry(sourcePath, ContentPath.ToKey(sourcePath), file.Length, sha256, ContentSignature.ClassifyFile(filePath));
-    }
-}
+        string manifestPath = Path.Combine

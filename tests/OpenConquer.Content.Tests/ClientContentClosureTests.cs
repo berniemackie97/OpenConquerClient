@@ -69,6 +69,7 @@ public sealed class ClientContentClosureTests
         "data/main/SkillBtnL.dds",
         "data/main/mainDialog1.dds",
         "data/main/mainDialog2.dds",
+        "data/main/MsgDlg.dds",
     ];
 
     [Fact]
@@ -82,7 +83,7 @@ public sealed class ClientContentClosureTests
         IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
 
         Assert.Equal(CreateExpectedRequirements(), closure);
-        Assert.Equal(100, closure.Count);
+        Assert.Equal(105, closure.Count);
     }
 
     [Fact]
@@ -205,6 +206,33 @@ public sealed class ClientContentClosureTests
         Assert.Contains("exactly 1 frame", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Resolve_RequiresStatusHintDialog21Section()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        WriteVerifiedIndexes(temporaryDirectory, omittedHudSectionName: "Dialog21");
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(
+            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+
+        Assert.Contains("[Dialog21]", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resolve_RejectsUnexpectedStatusHintDialog21FrameCount()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+
+        WriteVerifiedIndexes(temporaryDirectory, overriddenHudSectionName: "Dialog21", overriddenHudFrameCount: 2);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(
+            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+
+        Assert.Contains("[Dialog21]", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("exactly 1 frame", exception.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("ani/Magic.ani")]
     [InlineData("ani/ItemMinIcon.Ani")]
@@ -251,6 +279,21 @@ public sealed class ClientContentClosureTests
 
         Assert.Contains(new ClientContentRequirement("data/main/MainImgMagic.dds", ContentLookupMode.LooseThenPackage), closure);
         Assert.Contains(new ClientContentRequirement("data/main/ImageDisable.dds", ContentLookupMode.LooseThenPackage), closure);
+    }
+
+    [Fact]
+    public void Resolve_IncludesStatusHintDependencies()
+    {
+        using TemporaryContentDirectory temporaryDirectory = new();
+        WriteVerifiedIndexes(temporaryDirectory);
+
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+
+        Assert.Contains(new ClientContentRequirement("ini/StrRes.ini", ContentLookupMode.LooseOnly), closure);
+        Assert.Contains(new ClientContentRequirement("ini/ProgressXp.rgn", ContentLookupMode.LooseOnly), closure);
+        Assert.Contains(new ClientContentRequirement("ini/ProgressMp.rgn", ContentLookupMode.LooseOnly), closure);
+        Assert.Contains(new ClientContentRequirement("ini/ProgressHp.rgn", ContentLookupMode.LooseOnly), closure);
+        Assert.Contains(new ClientContentRequirement("data/main/MsgDlg.dds", ContentLookupMode.LooseThenPackage), closure);
     }
 
     [Fact]
@@ -392,6 +435,10 @@ public sealed class ClientContentClosureTests
             new("ini/Font.ini", ContentLookupMode.LooseOnly),
             new("ini/GameSetUp.ini", ContentLookupMode.LooseOnly),
             new("ini/info.ini", ContentLookupMode.LooseOnly),
+            new("ini/StrRes.ini", ContentLookupMode.LooseOnly),
+            new("ini/ProgressXp.rgn", ContentLookupMode.LooseOnly),
+            new("ini/ProgressMp.rgn", ContentLookupMode.LooseOnly),
+            new("ini/ProgressHp.rgn", ContentLookupMode.LooseOnly),
         ];
 
         foreach (string path in s_baseHudFramePaths)
@@ -458,6 +505,7 @@ public sealed class ClientContentClosureTests
         AppendSection(control, "Progress46", ["data/main/ProgressForce.dds", "data/main/ProgressForceA.dds"], omittedHudSectionName, overriddenHudSectionName, overriddenHudFrameCount);
         AppendSection(control, "Progress47", ["data/main/ProgressForce2.dds", "data/main/ProgressForce2A.dds"], omittedHudSectionName, overriddenHudSectionName, overriddenHudFrameCount);
         AppendSection(control, "Dialog4", ["data/main/mainDialog1.dds", "data/main/mainDialog2.dds"], omittedHudSectionName, overriddenHudSectionName, overriddenHudFrameCount);
+        AppendSection(control, "Dialog21", ["data/main/MsgDlg.dds"], omittedHudSectionName, overriddenHudSectionName, overriddenHudFrameCount);
         AppendSection(control, "Button40", ["data/main/QueryBtn.dds", "data/main/QueryBtnClick.dds"], omittedHudSectionName, overriddenHudSectionName, overriddenHudFrameCount);
         AppendSection(control, "Button410", ["data/main/LevWordBtn.dds", "data/main/LevWordBtnClick.dds"], omittedHudSectionName, overriddenHudSectionName, overriddenHudFrameCount);
         AppendSection(control, "Button42", ["data/main/GoodBtn.dds", "data/main/GoodBtnClick.dds"], omittedHudSectionName, overriddenHudSectionName, overriddenHudFrameCount);

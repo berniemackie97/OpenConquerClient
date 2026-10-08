@@ -38,8 +38,9 @@ internal static class ConformanceRunner
             MainHudActionButtonStripConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudCheckControlsConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
             MainHudSelectedSkillConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
+            MainHudStatusHintConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
         });
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, solid rectangle, sprite rotation, native text, text-context façade, main HUD chrome, main HUD vitals, main HUD skill/experience, main HUD quickbar, main HUD action-strip, main HUD check-control, and main HUD selected-skill conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, solid rectangle, sprite rotation, native text, text-context façade, main HUD chrome, main HUD vitals, main HUD skill/experience, main HUD quickbar, main HUD action-strip, main HUD check-control, main HUD selected-skill, and main HUD category-8 status-hint conformance passed.");
     }
 }

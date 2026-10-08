@@ -85,6 +85,7 @@ public static class ClientContentClosure
 
         MainHudQuickbarContentRequirements.Add(requirements, contentSource, controlAni);
         MainHudSelectedSkillContentRequirements.Add(requirements, contentSource, controlAni);
+        MainHudStatusHintContentRequirements.Add(requirements, controlAni);
 
         return Normalize(requirements);
     }
