@@ -502,3 +502,6 @@ $RECYCLE.BIN/
 /content/retail-5517/payload/**/.DS_Store
 /content/retail-5517/payload/**/Thumbs.db
 /content/retail-5517/payload/**/desktop.ini
+
+# Temporary retail content import staging
+/content/.gfx-ui-008-*/
