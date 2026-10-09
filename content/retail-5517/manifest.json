@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 3780,
-  "length": 20762596,
+  "fileCount": 3784,
+  "length": 21319837,
   "entries": [
     {
       "sourcePath": "Data/Pic/BlueLight/01.dds",
@@ -26418,6 +26418,13 @@
       "signature": "dds"
     },
     {
+      "sourcePath": "ini/Cn_Res.ini",
+      "pathKey": "ini/cn_res.ini",
+      "length": 138697,
+      "sha256": "23c23e12a954a97c202bb10cab86c6c7253c55232aa7491cdadbc52070db6026",
+      "signature": "unknown"
+    },
+    {
       "sourcePath": "ini/Font.ini",
       "pathKey": "ini/font.ini",
       "length": 8,
@@ -26429,6 +26436,20 @@
       "pathKey": "ini/gamesetup.ini",
       "length": 157,
       "sha256": "d32d919e831a52fb8942ca51492df34add95ea64530307f1fddd3ef07cfcd492",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ini/MagicEffect.ini",
+      "pathKey": "ini/magiceffect.ini",
+      "length": 236878,
+      "sha256": "092091f8ff22ce700e3fe7562a767baa51fde3516d9df635e7dfb1a60ad1ad0b",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ini/MagicType.dat",
+      "pathKey": "ini/magictype.dat",
+      "length": 155373,
+      "sha256": "e8b9559e640c75ed61fc859743f18bd372e6c5d9051457a639cedff9ba2a6e3d",
       "signature": "unknown"
     },
     {
@@ -26457,6 +26478,13 @@
       "pathKey": "ini/strres.ini",
       "length": 59577,
       "sha256": "efe9f5f1d3e29bb79b9970c25dcb238179e3ab6e059e94d981b37236157cd072",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ini/SubProfessionInfo.ini",
+      "pathKey": "ini/subprofessioninfo.ini",
+      "length": 26293,
+      "sha256": "a5bf8d02082f429f082c4b3ac2614b292f8eb0f2493118b07c1b16eb9152c63e",
       "signature": "unknown"
     },
     {

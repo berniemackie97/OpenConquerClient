@@ -18,6 +18,7 @@ public sealed class OpenGLRenderer : IDisposable
     private readonly OpenGLRenderTarget _renderTarget;
     private readonly OpenGLSpriteRenderer _spriteRenderer;
     private readonly OpenGLSolidRectangleRenderer _solidRectangleRenderer;
+    private readonly OpenGLLineRectangleRenderer _lineRectangleRenderer;
     private readonly OpenGLTextRenderer _textRenderer;
     private readonly PresentationPolicy _presentationPolicy;
 
@@ -41,17 +42,20 @@ public sealed class OpenGLRenderer : IDisposable
         OpenGLRenderTarget renderTarget = new(gl, logicalRenderSize.Width, logicalRenderSize.Height);
         OpenGLSpriteRenderer? spriteRenderer = null;
         OpenGLSolidRectangleRenderer? solidRectangleRenderer = null;
+        OpenGLLineRectangleRenderer? lineRectangleRenderer = null;
         OpenGLTextRenderer? textRenderer = null;
 
         try
         {
             spriteRenderer = new OpenGLSpriteRenderer(gl);
             solidRectangleRenderer = new OpenGLSolidRectangleRenderer(gl);
+            lineRectangleRenderer = new OpenGLLineRectangleRenderer(gl);
             textRenderer = new OpenGLTextRenderer(gl);
 
             _renderTarget = renderTarget;
             _spriteRenderer = spriteRenderer;
             _solidRectangleRenderer = solidRectangleRenderer;
+            _lineRectangleRenderer = lineRectangleRenderer;
             _textRenderer = textRenderer;
         }
         catch
@@ -62,7 +66,16 @@ public sealed class OpenGLRenderer : IDisposable
             }
             catch
             {
-                // Preserve the original renderer-resource creation failure.
+                // Preserve the original initialization failure.
+            }
+
+            try
+            {
+                lineRectangleRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the original initialization failure.
             }
 
             try
@@ -71,7 +84,7 @@ public sealed class OpenGLRenderer : IDisposable
             }
             catch
             {
-                // Preserve the original renderer-resource creation failure.
+                // Preserve the original initialization failure.
             }
 
             try
@@ -80,7 +93,7 @@ public sealed class OpenGLRenderer : IDisposable
             }
             catch
             {
-                // Preserve the original renderer-resource creation failure.
+                // Preserve the original initialization failure.
             }
 
             try
@@ -89,7 +102,7 @@ public sealed class OpenGLRenderer : IDisposable
             }
             catch
             {
-                // Preserve the original renderer-resource creation failure.
+                // Preserve the original initialization failure.
             }
 
             throw;
@@ -100,9 +113,6 @@ public sealed class OpenGLRenderer : IDisposable
         _viewport = PresentationViewport.Compute(logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy);
     }
 
-    /// <summary>
-    /// Where the logical frame is currently being presented inside the host framebuffer.
-    /// </summary>
     public PresentationViewport Viewport => _viewport;
 
     public void ResizeHostFramebuffer(int width, int height)
@@ -200,6 +210,14 @@ public sealed class OpenGLRenderer : IDisposable
         _solidRectangleRenderer.Draw(_logicalRenderSize.Width, _logicalRenderSize.Height, x, y, width, height, color);
     }
 
+    public void DrawLineRectangle(int left, int top, int right, int bottom, SpriteColor color)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureFrameActiveForDrawing();
+
+        _lineRectangleRenderer.Draw(_logicalRenderSize.Width, _logicalRenderSize.Height, left, top, right, bottom, color);
+    }
+
     internal void DrawText(OpenGLTextResource resource, NativeTextLayout layout, NativeTextRenderOptions options, int x, int y)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -263,6 +281,15 @@ public sealed class OpenGLRenderer : IDisposable
         catch (Exception exception)
         {
             firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            _lineRectangleRenderer.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
         try
@@ -355,9 +382,6 @@ public sealed class OpenGLRenderer : IDisposable
         firstFailure?.Throw();
     }
 
-    /// <summary>
-    /// Clears the host framebuffer when the presented rectangle does not fill it.
-    /// </summary>
     private void ClearLetterboxBars()
     {
         if (_viewport.CoversHostFramebuffer())

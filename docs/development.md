@@ -135,7 +135,7 @@ Runtime content:
 content/retail-5517/payload
 ```
 
-Current runtime closure: 3,780 files totaling 20,762,596 bytes.
+Current runtime closure: 3,784 files totaling 21,319,837 bytes.
 
 It covers:
 
@@ -252,7 +252,7 @@ manifest
 payload
 ```
 
-The current checked-in retail-5517 manifest records exactly 3,780 files and 20,762,596 bytes.
+The current checked-in retail-5517 manifest records exactly 3,784 files and 21,319,837 bytes.
 
 ### Inspect Server.dat
 

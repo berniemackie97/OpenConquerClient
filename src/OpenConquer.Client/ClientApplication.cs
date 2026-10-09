@@ -7,6 +7,7 @@ using OpenConquer.Client.UI.Hud.Quickbar;
 using OpenConquer.Client.UI.Hud.SelectedSkill;
 using OpenConquer.Client.UI.Hud.SkillExperience;
 using OpenConquer.Client.UI.Hud.StatusHints;
+using OpenConquer.Client.UI.Hud.StatusHints.Magic;
 using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
@@ -29,6 +30,7 @@ internal sealed class ClientApplication : IDisposable
     private readonly PresentationPolicy _presentationPolicy;
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
+    private readonly IMainHudMagicHintSource? _magicHintSource;
     private readonly MainHudVitalsState _mainHudVitalsState = new();
     private readonly MainHudSkillExperienceState _mainHudSkillExperienceState = new();
     private readonly MainHudQuickbarState _mainHudQuickbarState = new();
@@ -46,6 +48,7 @@ internal sealed class ClientApplication : IDisposable
     private MainHudCheckControlAssets? _mainHudCheckControlAssets;
     private MainHudSelectedSkillAssets? _mainHudSelectedSkillAssets;
     private MainHudStatusHintAssets? _mainHudStatusHintAssets;
+    private MainHudMagicHintContent? _mainHudMagicHintContent;
     private SelectedMagicCooldownTextConfiguration? _mainHudSelectedSkillCooldownTextConfiguration;
     private ClientFontSettingsConfiguration? _clientFontSettingsConfiguration;
     private ClientFontSizeConfiguration? _clientFontSizeConfiguration;
@@ -59,6 +62,7 @@ internal sealed class ClientApplication : IDisposable
     private MainHudSelectedSkillRenderer? _mainHudSelectedSkillRenderer;
     private MainHudSelectedSkillCooldownRenderer? _mainHudSelectedSkillCooldownRenderer;
     private MainHudStatusHintRenderer? _mainHudStatusHintRenderer;
+    private MainHudMagicHintRenderer? _mainHudMagicHintRenderer;
     private MainHudQuickbarInput? _mainHudQuickbarInput;
     private MainHudActionButtonStripInput? _mainHudActionButtonStripInput;
     private MainHudCheckControlsInput? _mainHudCheckControlsInput;
@@ -70,7 +74,7 @@ internal sealed class ClientApplication : IDisposable
     private bool _runStarted;
     private bool _disposed;
 
-    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null)
+    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null, IMainHudMagicHintSource? magicHintSource = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
 
@@ -82,6 +86,7 @@ internal sealed class ClientApplication : IDisposable
         _contentRootPath = contentRootPath;
         _presentationPolicy = presentationPolicy;
         _windowMode = windowMode;
+        _magicHintSource = magicHintSource;
 
         PixelSize configuredWindowSize = windowSize ?? DesktopWindow.DefaultWindowSize;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(configuredWindowSize.Width);
@@ -148,6 +153,7 @@ internal sealed class ClientApplication : IDisposable
             _mainHudCheckControlsInput = null;
             _mainHudActionButtonStripInput = null;
             _mainHudQuickbarInput = null;
+            _mainHudMagicHintRenderer = null;
             _mainHudStatusHintRenderer = null;
             _mainHudSelectedSkillCooldownRenderer = null;
             _mainHudSelectedSkillRenderer = null;
@@ -161,6 +167,7 @@ internal sealed class ClientApplication : IDisposable
             _clientFontSettingsConfiguration = null;
             _clientFontSizeConfiguration = null;
             _clientCodePageConfiguration = null;
+            _mainHudMagicHintContent = null;
             _mainHudStatusHintAssets = null;
             _mainHudSelectedSkillAssets = null;
             _mainHudCheckControlAssets = null;
@@ -181,7 +188,8 @@ internal sealed class ClientApplication : IDisposable
             _mainHudVitalsRenderer is not null || _mainHudSkillExperienceRenderer is not null ||
             _mainHudQuickbarRenderer is not null || _mainHudActionButtonStripRenderer is not null ||
             _mainHudCheckControlRenderer is not null || _mainHudSelectedSkillRenderer is not null ||
-            _mainHudSelectedSkillCooldownRenderer is not null || _mainHudStatusHintRenderer is not null)
+            _mainHudSelectedSkillCooldownRenderer is not null || _mainHudStatusHintRenderer is not null ||
+            _mainHudMagicHintRenderer is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
@@ -197,6 +205,7 @@ internal sealed class ClientApplication : IDisposable
         MainHudSelectedSkillRenderer? mainHudSelectedSkillRenderer = null;
         MainHudSelectedSkillCooldownRenderer? mainHudSelectedSkillCooldownRenderer = null;
         MainHudStatusHintRenderer? mainHudStatusHintRenderer = null;
+        MainHudMagicHintRenderer? mainHudMagicHintRenderer = null;
 
         try
         {
@@ -210,6 +219,7 @@ internal sealed class ClientApplication : IDisposable
             MainHudCheckControlAssets mainHudCheckControlAssets = _mainHudCheckControlAssets ?? throw new InvalidOperationException("The main HUD check-control assets have not been initialized.");
             MainHudSelectedSkillAssets mainHudSelectedSkillAssets = _mainHudSelectedSkillAssets ?? throw new InvalidOperationException("The main HUD selected-skill assets have not been initialized.");
             MainHudStatusHintAssets mainHudStatusHintAssets = _mainHudStatusHintAssets ?? throw new InvalidOperationException("The main HUD status-hint assets have not been initialized.");
+            MainHudMagicHintContent mainHudMagicHintContent = _mainHudMagicHintContent ?? throw new InvalidOperationException("The native magic-hint content has not been initialized.");
             SelectedMagicCooldownTextConfiguration cooldownTextConfiguration = _mainHudSelectedSkillCooldownTextConfiguration ?? throw new InvalidOperationException("The main HUD selected-skill cooldown configuration has not been initialized.");
             ClientFontSettingsConfiguration fontSettingsConfiguration = _clientFontSettingsConfiguration ?? throw new InvalidOperationException("The client font settings have not been initialized.");
             ClientFontSizeConfiguration fontSizeConfiguration = _clientFontSizeConfiguration ?? throw new InvalidOperationException("The client normal-font configuration has not been initialized.");
@@ -226,6 +236,7 @@ internal sealed class ClientApplication : IDisposable
             mainHudSelectedSkillRenderer = new MainHudSelectedSkillRenderer(graphicsDevice, mainHudSelectedSkillAssets, logicalRenderSize);
             mainHudSelectedSkillCooldownRenderer = new MainHudSelectedSkillCooldownRenderer(graphicsDevice, cooldownTextConfiguration, fontSettingsConfiguration, codePageConfiguration, logicalRenderSize);
             mainHudStatusHintRenderer = new MainHudStatusHintRenderer(graphicsDevice, mainHudStatusHintAssets, fontSettingsConfiguration, fontSizeConfiguration, codePageConfiguration, logicalRenderSize);
+            mainHudMagicHintRenderer = new MainHudMagicHintRenderer(graphicsDevice, mainHudStatusHintRenderer, mainHudMagicHintContent, mainHudStatusHintAssets.Strings, fontSettingsConfiguration, codePageConfiguration, logicalRenderSize);
 
             _renderer = renderer;
             _mainHudChromeRenderer = mainHudChromeRenderer;
@@ -237,10 +248,17 @@ internal sealed class ClientApplication : IDisposable
             _mainHudSelectedSkillRenderer = mainHudSelectedSkillRenderer;
             _mainHudSelectedSkillCooldownRenderer = mainHudSelectedSkillCooldownRenderer;
             _mainHudStatusHintRenderer = mainHudStatusHintRenderer;
+            _mainHudMagicHintRenderer = mainHudMagicHintRenderer;
             _graphicsDevice = graphicsDevice;
         }
         catch
         {
+            try
+            {
+                mainHudMagicHintRenderer?.Dispose();
+            }
+            catch { }
+
             try
             {
                 mainHudStatusHintRenderer?.Dispose();
@@ -316,22 +334,30 @@ internal sealed class ClientApplication : IDisposable
     private void OnPointerMoved(PixelPoint point)
     {
         bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
+        bool consumedByQuickbar = false;
+        MainHudQuickbarHoverNotification notification = default;
 
         if (CanInteractWithMainHudControls())
         {
             if (mapped)
             {
                 _mainHudActionButtonStripInput?.HandlePointerMoved(logicalX, logicalY);
-                _mainHudQuickbarInput?.HandlePointerMoved(logicalX, logicalY, out _);
+
+                if (_mainHudQuickbarInput is { } quickbarInput)
+                {
+                    consumedByQuickbar = quickbarInput.HandlePointerMoved(logicalX, logicalY, out notification);
+                }
             }
             else
             {
                 _mainHudActionButtonStripInput?.HandlePointerMoved(-1, -1);
-                _mainHudQuickbarInput?.HandlePointerMoved(-1, -1, out _);
+                _mainHudQuickbarInput?.HandlePointerMoved(-1, -1, out notification);
             }
         }
 
-        _mainHudStatusHintInput?.HandlePointerMoved(mapped ? logicalX : -1, mapped ? logicalY : -1);
+        _mainHudStatusHintInput?.HandlePointerMoved(mapped && !consumedByQuickbar ? logicalX : -1, mapped && !consumedByQuickbar ? logicalY : -1);
+
+        ApplyQuickbarHover(notification);
     }
 
     private void OnPrimaryPointerPressed(PixelPoint point)
@@ -386,13 +412,44 @@ internal sealed class ClientApplication : IDisposable
             return;
         }
 
+        MainHudQuickbarHoverNotification notification;
+
         if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
         {
-            input.PollPointer(logicalX, logicalY, out _);
+            input.PollPointer(logicalX, logicalY, out notification);
         }
         else
         {
-            input.PollPointer(-1, -1, out _);
+            input.PollPointer(-1, -1, out notification);
+        }
+
+        ApplyQuickbarHover(notification);
+    }
+
+    private void ApplyQuickbarHover(MainHudQuickbarHoverNotification notification)
+    {
+        switch (notification.Kind)
+        {
+            case MainHudQuickbarHoverNotificationKind.Skill:
+                _mainHudStatusHintState.SetMagicAnchor(notification.AnchorX, notification.AnchorY);
+                _mainHudStatusHintState.SelectMagic(notification.ContentId);
+                break;
+
+            case MainHudQuickbarHoverNotificationKind.Clear:
+                _mainHudStatusHintState.Clear();
+                break;
+
+            case MainHudQuickbarHoverNotificationKind.Item:
+            case MainHudQuickbarHoverNotificationKind.Dance:
+            case MainHudQuickbarHoverNotificationKind.WeaponSwap:
+            case MainHudQuickbarHoverNotificationKind.Generic:
+                if (_mainHudStatusHintState.Category == MainHudStatusHintState.MagicCategory &&
+                    _mainHudStatusHintState.IsVisible)
+                {
+                    _mainHudStatusHintState.Clear();
+                }
+
+                break;
         }
     }
 
@@ -451,6 +508,7 @@ internal sealed class ClientApplication : IDisposable
         _mainHudCheckControlAssets = MainHudCheckControlAssets.Load(contentSource);
         _mainHudSelectedSkillAssets = new MainHudSelectedSkillAssets(contentSource);
         _mainHudStatusHintAssets = MainHudStatusHintAssets.Load(contentSource);
+        _mainHudMagicHintContent = MainHudMagicHintContent.Load(contentSource);
 
         MainHudQuickbarLayout quickbarLayout = MainHudQuickbarLayout.Create(logicalRenderSize);
         MainHudActionButtonLayout actionButtonLayout = MainHudActionButtonLayout.Create(logicalRenderSize);
@@ -500,14 +558,21 @@ internal sealed class ClientApplication : IDisposable
             }
 
             _mainHudStatusHintRenderer?.Draw(renderer, _mainHudStatusHintState, _mainHudCheckControlsState, _mainHudVitalsState, _mainHudSkillExperienceState);
+            _mainHudMagicHintRenderer?.Draw(renderer, _mainHudStatusHintState, _magicHintSource?.Capture());
         }
-        catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             renderer.EndFrame();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         firstFailure?.Throw();
     }
@@ -516,6 +581,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReleaseRenderingResources()
     {
+        MainHudMagicHintRenderer? mainHudMagicHintRenderer = _mainHudMagicHintRenderer;
         MainHudStatusHintRenderer? mainHudStatusHintRenderer = _mainHudStatusHintRenderer;
         MainHudSelectedSkillCooldownRenderer? mainHudSelectedSkillCooldownRenderer = _mainHudSelectedSkillCooldownRenderer;
         MainHudSelectedSkillRenderer? mainHudSelectedSkillRenderer = _mainHudSelectedSkillRenderer;
@@ -528,6 +594,7 @@ internal sealed class ClientApplication : IDisposable
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
+        _mainHudMagicHintRenderer = null;
         _mainHudStatusHintRenderer = null;
         _mainHudSelectedSkillCooldownRenderer = null;
         _mainHudSelectedSkillRenderer = null;
@@ -544,69 +611,111 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
+            mainHudMagicHintRenderer?.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
             mainHudStatusHintRenderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             mainHudSelectedSkillCooldownRenderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             mainHudSelectedSkillRenderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             mainHudCheckControlRenderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             mainHudActionButtonStripRenderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             mainHudQuickbarRenderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             mainHudSkillExperienceRenderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             mainHudVitalsRenderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             mainHudChromeRenderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             renderer?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
             graphicsDevice?.Dispose();
         }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
 
         firstFailure?.Throw();
     }

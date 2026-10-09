@@ -31,27 +31,9 @@ public sealed class ClientKeyedStringResources
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        if (!contentSource.TryOpenRead(ConfigurationRelativePath, ContentLookupMode.LooseOnly, out Stream? configurationStream))
-        {
-            return new ClientKeyedStringResources(new Dictionary<string, byte[]>(StringComparer.Ordinal));
-        }
+        string? contentPath = ResolveConfiguredContentPath(contentSource);
 
-        IniDocument configuration;
-
-        using (configurationStream)
-        {
-            configuration = IniDocument.Load(configurationStream, ConfigurationRelativePath, MaximumConfigurationLength);
-        }
-
-        if (!configuration.TryGetValue(LanguageSectionName, StringFileKeyName, out string? configuredPath) ||
-            string.IsNullOrEmpty(configuredPath))
-        {
-            return new ClientKeyedStringResources(new Dictionary<string, byte[]>(StringComparer.Ordinal));
-        }
-
-        string contentPath = ClientContentPath.NormalizeVirtualPath(configuredPath, nameof(configuredPath), MaximumConfiguredPathLength);
-
-        if (!contentSource.TryOpenRead(contentPath, ContentLookupMode.LooseOnly, out Stream? resourceStream))
+        if (contentPath is null || !contentSource.TryOpenRead(contentPath, ContentLookupMode.LooseOnly, out Stream? resourceStream))
         {
             return new ClientKeyedStringResources(new Dictionary<string, byte[]>(StringComparer.Ordinal));
         }
@@ -60,6 +42,29 @@ public sealed class ClientKeyedStringResources
         {
             byte[] encoded = ContentReader.ReadBytes(resourceStream, contentPath, MaximumFileLength);
             return Parse(encoded);
+        }
+    }
+
+    public static string? ResolveConfiguredContentPath(IClientContentSource contentSource)
+    {
+        ArgumentNullException.ThrowIfNull(contentSource);
+
+        if (!contentSource.TryOpenRead(ConfigurationRelativePath, ContentLookupMode.LooseOnly, out Stream? configurationStream))
+        {
+            return null;
+        }
+
+        using (configurationStream)
+        {
+            IniDocument configuration = IniDocument.Load(configurationStream, ConfigurationRelativePath, MaximumConfigurationLength);
+
+            if (!configuration.TryGetValue(LanguageSectionName, StringFileKeyName, out string? configuredPath) ||
+                string.IsNullOrEmpty(configuredPath))
+            {
+                return null;
+            }
+
+            return ClientContentPath.NormalizeVirtualPath(configuredPath, nameof(configuredPath), MaximumConfiguredPathLength);
         }
     }
 

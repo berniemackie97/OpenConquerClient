@@ -20,7 +20,7 @@ public sealed class ContentSetImporterTests
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destination);
         string[] expectedPaths = ExpectedImportedPaths();
 
-        Assert.Equal(105, expectedPaths.Length);
+        Assert.Equal(108, expectedPaths.Length);
         Assert.Equal(expectedPaths, manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data.wdf", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "Server.dat", StringComparison.OrdinalIgnoreCase));
@@ -82,6 +82,10 @@ public sealed class ContentSetImporterTests
         Assert.Equal("DDS ImageDisable", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "imagedisable.dds"))));
         Assert.Equal("DDS MsgDlg", Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(payloadRoot, "data", "main", "msgdlg.dds"))));
         Assert.Contains("10070=Walk/Run", File.ReadAllText(Path.Combine(payloadRoot, "ini", "strres.ini")), StringComparison.Ordinal);
+
+        Assert.True(File.Exists(Path.Combine(payloadRoot, "ini", "magictype.dat")));
+        Assert.True(File.Exists(Path.Combine(payloadRoot, "ini", "magiceffect.ini")));
+        Assert.True(File.Exists(Path.Combine(payloadRoot, "ini", "subprofessioninfo.ini")));
         Assert.False(File.Exists(Path.Combine(payloadRoot, "data.wdf")));
     }
 
@@ -156,7 +160,7 @@ public sealed class ContentSetImporterTests
         ContentManifestEntry selectedSkill = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MainImgMagic.dds");
         ContentManifestEntry statusHint = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MsgDlg.dds");
 
-        Assert.Equal(105, manifest.FileCount);
+        Assert.Equal(108, manifest.FileCount);
 
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
@@ -287,6 +291,27 @@ public sealed class ContentSetImporterTests
         foreach (string path in ExpectedStatusHintPaths())
         {
             Assert.Contains(path, paths);
+        }
+    }
+
+    [Fact]
+    public void Import_FailsWhenAnyNewRequiredLooseMagicDependencyIsMissing()
+    {
+        foreach (string relativePath in new[]
+        {
+            "ini/MagicType.dat",
+            "ini/MagicEffect.ini",
+            "ini/SubProfessionInfo.ini",
+        })
+        {
+            using TemporarySourceTree source = new();
+            using TemporarySourceTree destinationParent = new();
+
+            source.WriteStartupSnapshot();
+            File.Delete(source.ChildPath(relativePath));
+
+            Assert.Throws<FileNotFoundException>(() =>
+                ContentSetImporter.Import(source.RootPath, destinationParent.ChildPath("set")));
         }
     }
 
@@ -478,5 +503,8 @@ public sealed class ContentSetImporterTests
         yield return "ini/ProgressXp.rgn";
         yield return "ini/ProgressMp.rgn";
         yield return "ini/ProgressHp.rgn";
+        yield return "ini/MagicType.dat";
+        yield return "ini/MagicEffect.ini";
+        yield return "ini/SubProfessionInfo.ini";
     }
 }

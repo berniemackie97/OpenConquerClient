@@ -22,8 +22,8 @@ dependency has been verified.
 Current closure:
 
 ```text
-files: 3,780
-bytes: 20,762,596
+files: 3,784
+bytes: 21,319,837
 ```
 
 The exact path set is maintained by:
@@ -33,7 +33,7 @@ content/retail-5517/manifest.json
 content/retail-5517/payload
 ```
 
-The Markdown plan intentionally does not duplicate all 3,780 manifest entries. GFX-UI-006
+The Markdown plan intentionally does not duplicate all 3,784 manifest entries. GFX-UI-006
 introduced verified parametric quickbar consumers whose ANI catalogs expand into broad action,
 magic, item-icon, and glow families; manually mirroring that path set here would create a second,
 drift-prone source of truth.
