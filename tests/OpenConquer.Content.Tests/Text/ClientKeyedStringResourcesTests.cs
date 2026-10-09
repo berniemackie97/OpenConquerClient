@@ -114,7 +114,7 @@ public sealed class ClientKeyedStringResourcesTests
     {
         using TemporaryContentDirectory directory = new();
 
-        directory.WriteFile("ini/info.ini", "[Language]\nStringFile=ini\\cn_Res.ini\n");
+        directory.WriteFile("INI/info.ini", "[Language]\nStringFile=ini\\cn_Res.ini\n");
         directory.WriteFile("INI/Cn_Res.INI", "STR_MAGIC_REQ_SUBPRO_ACCORD=Requires: P%d %s\n");
 
         ClientKeyedStringResources resources = ClientKeyedStringResources.Load(new ClientContentRoot(directory.RootPath));
