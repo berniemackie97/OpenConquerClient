@@ -75,6 +75,9 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteText("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=2\n");
         WriteText("ini/info.ini", $"[DlgLogo]\nBgFormat={backgroundFormat}\n");
         WriteText("ini/StrRes.ini", "0=ERROR\n10070=Walk/Run\n10071=Chat On/Off\n10072=Map On/Off\n10073=Shift Screen: Off\n10074=Shift Screen: On\n10370=View Equipment\n10426=English\n");
+        WriteBytes("ini/MagicType.dat", CreateSyntheticMagicType());
+        WriteText("ini/MagicEffect.ini", "[10000]\nName=Thunder\nDescEx=Magic~attack\n");
+        WriteText("ini/SubProfessionInfo.ini", "[6]\ntitle=Performer\n");
         WriteBytes("ini/ProgressXp.rgn", CreateSyntheticRegion(0, 49, 92, 141));
         WriteBytes("ini/ProgressMp.rgn", CreateSyntheticRegion(47, 58, 84, 132));
         WriteBytes("ini/ProgressHp.rgn", CreateSyntheticRegion(10, 58, 47, 132));
@@ -270,6 +273,35 @@ internal sealed class TemporarySourceTree : IDisposable
     }
 
     private static byte[] CreateSyntheticDds(string marker) => Encoding.ASCII.GetBytes($"DDS {marker}");
+
+    private static byte[] CreateSyntheticMagicType()
+    {
+        string[] fields = new string[48];
+        Array.Fill(fields, "0");
+        fields[1] = "1000";
+        fields[3] = "Thunder";
+        fields[18] = "2000";
+
+        byte[] encoded = Encoding.ASCII.GetBytes(string.Join("@@", fields) + "@@");
+        Span<byte> key = stackalloc byte[128];
+        uint state = 0x2537;
+
+        for (int index = 0; index < key.Length; index++)
+        {
+            state = unchecked(state * 214013 + 2531011);
+            key[index] = (byte)(state >> 16);
+        }
+
+        for (int index = 0; index < encoded.Length; index++)
+        {
+            int rotation = index & 7;
+            byte value = encoded[index];
+            byte rotated = unchecked((byte)((value << rotation) | (value >> (8 - rotation))));
+            encoded[index] = (byte)(rotated ^ key[index % key.Length]);
+        }
+
+        return encoded;
+    }
 
     private static byte[] CreateSyntheticRegion(int left, int top, int right, int bottom)
     {

@@ -16,25 +16,36 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(105, manifest.FileCount);
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Control.ani");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/Magic.ani");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/ItemMinIcon.Ani");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ani/effect.ani");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/Font.ini");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/interface/compose/CoverPic.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MagicSkillType1000.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/ItemMinIcon/Default.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/Pic/FireLight/01.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/Pic/YellowLight/01.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainImgMagic.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ImageDisable.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MsgDlg.dds");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/StrRes.ini");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/ProgressXp.rgn");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/ProgressMp.rgn");
-        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/ProgressHp.rgn");
+        Assert.Equal(108, manifest.FileCount);
+
+        foreach (string path in new[]
+        {
+            "ani/Control.ani",
+            "ani/Magic.ani",
+            "ani/ItemMinIcon.Ani",
+            "ani/effect.ani",
+            "ini/Font.ini",
+            "data/main/ProgressBk.dds",
+            "data/interface/compose/CoverPic.dds",
+            "data/main/MagicSkillType1000.dds",
+            "data/ItemMinIcon/Default.dds",
+            "data/Pic/FireLight/01.dds",
+            "data/Pic/YellowLight/01.dds",
+            "data/main/MainImgMagic.dds",
+            "data/main/ImageDisable.dds",
+            "data/main/MsgDlg.dds",
+            "ini/StrRes.ini",
+            "ini/ProgressXp.rgn",
+            "ini/ProgressMp.rgn",
+            "ini/ProgressHp.rgn",
+            "ini/MagicType.dat",
+            "ini/MagicEffect.ini",
+            "ini/SubProfessionInfo.ini",
+        })
+        {
+            Assert.Contains(manifest.Entries, entry => entry.SourcePath == path);
+        }
+
         Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/Pic/CustomGlow/01.dds");
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data/main3/skill38.dds", StringComparison.OrdinalIgnoreCase));
     }
@@ -157,6 +168,9 @@ public sealed class ContentSetVerifierTests
     [InlineData("ini/ProgressXp.rgn", "ini/progressxp.rgn")]
     [InlineData("ini/ProgressMp.rgn", "ini/progressmp.rgn")]
     [InlineData("ini/ProgressHp.rgn", "ini/progresshp.rgn")]
+    [InlineData("ini/MagicType.dat", "ini/magictype.dat")]
+    [InlineData("ini/MagicEffect.ini", "ini/magiceffect.ini")]
+    [InlineData("ini/SubProfessionInfo.ini", "ini/subprofessioninfo.ini")]
     public void Verify_RejectsManifestAndPayloadThatBothOmitRequiredStatusHintAsset(string omittedSourcePath, string payloadPath)
     {
         using TemporarySourceTree fixture = new();

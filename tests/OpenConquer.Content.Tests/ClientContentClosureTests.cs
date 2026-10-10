@@ -75,26 +75,57 @@ public sealed class ClientContentClosureTests
     [Fact]
     public void Resolve_ReturnsTheImplementedRuntimeRequirementsInOrdinalOrder()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        temporaryDirectory.WriteFile("ini/info.ini", "[DlgLogo]\nBgFormat=Data/Main/Logo%d.bmp\n");
-        WriteVerifiedIndexes(temporaryDirectory);
+        directory.WriteFile("ini/info.ini", "[DlgLogo]\nBgFormat=Data/Main/Logo%d.bmp\n");
+        WriteVerifiedIndexes(directory);
 
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         Assert.Equal(CreateExpectedRequirements(), closure);
-        Assert.Equal(105, closure.Count);
+        Assert.Equal(108, closure.Count);
+    }
+
+    [Fact]
+    public void Resolve_AddsConfiguredRetailKeyedLocalization()
+    {
+        using TemporaryContentDirectory directory = new();
+
+        directory.WriteFile("ini/info.ini",
+            "[DlgLogo]\nBgFormat=Data/Main/Logo%d.bmp\n[Language]\nStringFile=ini\\cn_Res.ini\n");
+
+        WriteVerifiedIndexes(directory);
+
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
+
+        Assert.Equal(109, closure.Count);
+        Assert.Contains(new ClientContentRequirement("ini/cn_Res.ini", ContentLookupMode.LooseOnly), closure);
+        Assert.Contains(new ClientContentRequirement("ini/MagicType.dat", ContentLookupMode.LooseOnly), closure);
+        Assert.Contains(new ClientContentRequirement("ini/MagicEffect.ini", ContentLookupMode.LooseOnly), closure);
+        Assert.Contains(new ClientContentRequirement("ini/SubProfessionInfo.ini", ContentLookupMode.LooseOnly), closure);
+    }
+
+    [Fact]
+    public void Resolve_RejectsUnverifiedConfiguredLocalizationPath()
+    {
+        using TemporaryContentDirectory directory = new();
+
+        directory.WriteFile("ini/info.ini", "[Language]\nStringFile=Server.dat\n");
+        WriteVerifiedIndexes(directory);
+
+        Assert.Throws<InvalidDataException>(() =>
+            ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
     }
 
     [Fact]
     public void Resolve_FollowsTheDeclaredStartupBackgroundFormat()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        temporaryDirectory.WriteFile("ini/info.ini", "[DlgLogo]\nBgFormat=data/main/Splash%02d.bmp\n");
-        WriteVerifiedIndexes(temporaryDirectory);
+        directory.WriteFile("ini/info.ini", "[DlgLogo]\nBgFormat=data/main/Splash%02d.bmp\n");
+        WriteVerifiedIndexes(directory);
 
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         Assert.Contains(new ClientContentRequirement("data/main/Splash01.bmp", ContentLookupMode.LooseOnly), closure);
         Assert.Contains(new ClientContentRequirement("data/main/Splash02.bmp", ContentLookupMode.LooseOnly), closure);
@@ -105,12 +136,12 @@ public sealed class ClientContentClosureTests
     [Fact]
     public void Resolve_UsesTheVerifiedStartupDefaultWhenInfoIsAbsent()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        temporaryDirectory.WriteFile("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=0\n");
-        WriteVerifiedIndexes(temporaryDirectory);
+        directory.WriteFile("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=0\n");
+        WriteVerifiedIndexes(directory);
 
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         Assert.Contains(new ClientContentRequirement("Data/Main/Logo1.bmp", ContentLookupMode.LooseOnly), closure);
         Assert.Contains(new ClientContentRequirement("Data/Main/Logo2.bmp", ContentLookupMode.LooseOnly), closure);
@@ -120,12 +151,12 @@ public sealed class ClientContentClosureTests
     [MemberData(nameof(VerifiedHudSections))]
     public void Resolve_RequiresEveryVerifiedHudSectionForTheShippedClosure(string sectionName, int _)
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory, omittedHudSectionName: sectionName);
+        WriteVerifiedIndexes(directory, omittedHudSectionName: sectionName);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(
-            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+            () => ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
 
         Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
     }
@@ -134,14 +165,13 @@ public sealed class ClientContentClosureTests
     [MemberData(nameof(VerifiedHudSections))]
     public void Resolve_RejectsUnexpectedVerifiedHudFrameCounts(string sectionName, int expectedFrameCount)
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
-
+        using TemporaryContentDirectory directory = new();
         int actualFrameCount = expectedFrameCount == 1 ? 2 : expectedFrameCount - 1;
 
-        WriteVerifiedIndexes(temporaryDirectory, overriddenHudSectionName: sectionName, overriddenHudFrameCount: actualFrameCount);
+        WriteVerifiedIndexes(directory, overriddenHudSectionName: sectionName, overriddenHudFrameCount: actualFrameCount);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(
-            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+            () => ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
 
         Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
         Assert.Contains($"exactly {expectedFrameCount} frame(s)", exception.Message, StringComparison.Ordinal);
@@ -151,12 +181,12 @@ public sealed class ClientContentClosureTests
     [MemberData(nameof(RequiredQuickbarControlSections))]
     public void Resolve_RequiresEveryFixedQuickbarControlSection(string sectionName)
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory, omittedQuickbarControlSectionName: sectionName);
+        WriteVerifiedIndexes(directory, omittedQuickbarControlSectionName: sectionName);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(
-            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+            () => ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
 
         Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
     }
@@ -165,12 +195,12 @@ public sealed class ClientContentClosureTests
     [MemberData(nameof(RequiredQuickbarGlowSections))]
     public void Resolve_RequiresEveryImplementedQuickbarGlowSection(string sectionName)
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory, omittedGlowSectionName: sectionName);
+        WriteVerifiedIndexes(directory, omittedGlowSectionName: sectionName);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(
-            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+            () => ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
 
         Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
     }
@@ -180,12 +210,12 @@ public sealed class ClientContentClosureTests
     [InlineData("Magic0")]
     public void Resolve_RequiresEverySelectedSkillSection(string sectionName)
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory, omittedSelectedSkillSectionName: sectionName);
+        WriteVerifiedIndexes(directory, omittedSelectedSkillSectionName: sectionName);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(
-            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+            () => ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
 
         Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
     }
@@ -195,12 +225,12 @@ public sealed class ClientContentClosureTests
     [InlineData("Magic0")]
     public void Resolve_RejectsUnexpectedSelectedSkillFrameCounts(string sectionName)
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory, overriddenSelectedSkillSectionName: sectionName, overriddenSelectedSkillFrameCount: 2);
+        WriteVerifiedIndexes(directory, overriddenSelectedSkillSectionName: sectionName, overriddenSelectedSkillFrameCount: 2);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(
-            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+            () => ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
 
         Assert.Contains($"[{sectionName}]", exception.Message, StringComparison.Ordinal);
         Assert.Contains("exactly 1 frame", exception.Message, StringComparison.Ordinal);
@@ -209,12 +239,12 @@ public sealed class ClientContentClosureTests
     [Fact]
     public void Resolve_RequiresStatusHintDialog21Section()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory, omittedHudSectionName: "Dialog21");
+        WriteVerifiedIndexes(directory, omittedHudSectionName: "Dialog21");
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(
-            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+            () => ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
 
         Assert.Contains("[Dialog21]", exception.Message, StringComparison.Ordinal);
     }
@@ -222,12 +252,12 @@ public sealed class ClientContentClosureTests
     [Fact]
     public void Resolve_RejectsUnexpectedStatusHintDialog21FrameCount()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory, overriddenHudSectionName: "Dialog21", overriddenHudFrameCount: 2);
+        WriteVerifiedIndexes(directory, overriddenHudSectionName: "Dialog21", overriddenHudFrameCount: 2);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(
-            () => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+            () => ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
 
         Assert.Contains("[Dialog21]", exception.Message, StringComparison.Ordinal);
         Assert.Contains("exactly 1 frame", exception.Message, StringComparison.Ordinal);
@@ -239,43 +269,47 @@ public sealed class ClientContentClosureTests
     [InlineData("ani/effect.ani")]
     public void Resolve_RequiresEveryQuickbarAniCatalog(string catalogPath)
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory, omittedCatalogPath: catalogPath);
+        WriteVerifiedIndexes(directory, omittedCatalogPath: catalogPath);
 
-        Assert.Throws<FileNotFoundException>(() => ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath)));
+        Assert.Throws<FileNotFoundException>(() => ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath)));
     }
 
     [Fact]
     public void Resolve_IncludesParametricQuickbarFamilies()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory);
+        WriteVerifiedIndexes(directory);
 
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
-        Assert.Contains(new ClientContentRequirement("ani/Magic.ani", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("ani/ItemMinIcon.Ani", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("ani/effect.ani", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/main/Act1.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/interface/Style01/Action/Dance2BtnNormal.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/main/MagicSkillType1000.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/main/XpSkillType2000.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/ItemMinIcon/Default.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/ItemMinIcon/100.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/Pic/FireLight/01.dds", ContentLookupMode.LooseThenPackage), closure);
-        Assert.Contains(new ClientContentRequirement("data/Pic/YellowLight/01.dds", ContentLookupMode.LooseThenPackage), closure);
+        foreach (string path in new[]
+        {
+            "ani/Magic.ani", "ani/ItemMinIcon.Ani", "ani/effect.ani",
+            "data/main/Act1.dds",
+            "data/interface/Style01/Action/Dance2BtnNormal.dds",
+            "data/main/MagicSkillType1000.dds",
+            "data/main/XpSkillType2000.dds",
+            "data/ItemMinIcon/Default.dds",
+            "data/ItemMinIcon/100.dds",
+            "data/Pic/FireLight/01.dds",
+            "data/Pic/YellowLight/01.dds",
+        })
+        {
+            Assert.Contains(closure, requirement => string.Equals(requirement.ContentPath, path, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     [Fact]
     public void Resolve_IncludesSelectedSkillFrames()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
 
-        WriteVerifiedIndexes(temporaryDirectory);
+        WriteVerifiedIndexes(directory);
 
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         Assert.Contains(new ClientContentRequirement("data/main/MainImgMagic.dds", ContentLookupMode.LooseThenPackage), closure);
         Assert.Contains(new ClientContentRequirement("data/main/ImageDisable.dds", ContentLookupMode.LooseThenPackage), closure);
@@ -284,26 +318,31 @@ public sealed class ClientContentClosureTests
     [Fact]
     public void Resolve_IncludesStatusHintDependencies()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
-        WriteVerifiedIndexes(temporaryDirectory);
+        using TemporaryContentDirectory directory = new();
 
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        WriteVerifiedIndexes(directory);
 
-        Assert.Contains(new ClientContentRequirement("ini/StrRes.ini", ContentLookupMode.LooseOnly), closure);
-        Assert.Contains(new ClientContentRequirement("ini/ProgressXp.rgn", ContentLookupMode.LooseOnly), closure);
-        Assert.Contains(new ClientContentRequirement("ini/ProgressMp.rgn", ContentLookupMode.LooseOnly), closure);
-        Assert.Contains(new ClientContentRequirement("ini/ProgressHp.rgn", ContentLookupMode.LooseOnly), closure);
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
+
+        foreach (string path in new[]
+        {
+            "ini/StrRes.ini", "ini/ProgressXp.rgn", "ini/ProgressMp.rgn", "ini/ProgressHp.rgn",
+            "ini/MagicType.dat", "ini/MagicEffect.ini", "ini/SubProfessionInfo.ini",
+        })
+        {
+            Assert.Contains(new ClientContentRequirement(path, ContentLookupMode.LooseOnly), closure);
+        }
+
         Assert.Contains(new ClientContentRequirement("data/main/MsgDlg.dds", ContentLookupMode.LooseThenPackage), closure);
     }
 
     [Fact]
     public void Resolve_IncludesNativeFontConfiguration()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
+        WriteVerifiedIndexes(directory);
 
-        WriteVerifiedIndexes(temporaryDirectory);
-
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         Assert.Contains(new ClientContentRequirement("ini/Font.ini", ContentLookupMode.LooseOnly), closure);
     }
@@ -311,11 +350,10 @@ public sealed class ClientContentClosureTests
     [Fact]
     public void Resolve_ExcludesUnreachableCatalogSectionsAndVerifiedMissingRetailFrame()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
+        using TemporaryContentDirectory directory = new();
+        WriteVerifiedIndexes(directory);
 
-        WriteVerifiedIndexes(temporaryDirectory);
-
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         Assert.DoesNotContain(closure, static requirement => requirement.ContentPath == "data/main/UnusedControl.dds");
         Assert.DoesNotContain(closure, static requirement => requirement.ContentPath == "data/main/MagicOther.dds");
@@ -327,10 +365,10 @@ public sealed class ClientContentClosureTests
     [Fact]
     public void Resolve_IncludesUnusedNativeStaminaAlternateFrames()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
-        WriteVerifiedIndexes(temporaryDirectory);
+        using TemporaryContentDirectory directory = new();
+        WriteVerifiedIndexes(directory);
 
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         Assert.Contains(new ClientContentRequirement("data/main/ProgressForceA.dds", ContentLookupMode.LooseThenPackage), closure);
         Assert.Contains(new ClientContentRequirement("data/main/ProgressForce2A.dds", ContentLookupMode.LooseThenPackage), closure);
@@ -339,10 +377,10 @@ public sealed class ClientContentClosureTests
     [Fact]
     public void Resolve_IncludesEveryVerifiedPkSkin()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
-        WriteVerifiedIndexes(temporaryDirectory);
+        using TemporaryContentDirectory directory = new();
+        WriteVerifiedIndexes(directory);
 
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         foreach (string path in new[]
         {
@@ -359,10 +397,10 @@ public sealed class ClientContentClosureTests
     [Fact]
     public void Resolve_IncludesEveryVerifiedMainHudCheckControlFrame()
     {
-        using TemporaryContentDirectory temporaryDirectory = new();
-        WriteVerifiedIndexes(temporaryDirectory);
+        using TemporaryContentDirectory directory = new();
+        WriteVerifiedIndexes(directory);
 
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(temporaryDirectory.RootPath));
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         foreach (string path in new[]
         {
@@ -436,6 +474,9 @@ public sealed class ClientContentClosureTests
             new("ini/GameSetUp.ini", ContentLookupMode.LooseOnly),
             new("ini/info.ini", ContentLookupMode.LooseOnly),
             new("ini/StrRes.ini", ContentLookupMode.LooseOnly),
+            new("ini/MagicType.dat", ContentLookupMode.LooseOnly),
+            new("ini/MagicEffect.ini", ContentLookupMode.LooseOnly),
+            new("ini/SubProfessionInfo.ini", ContentLookupMode.LooseOnly),
             new("ini/ProgressXp.rgn", ContentLookupMode.LooseOnly),
             new("ini/ProgressMp.rgn", ContentLookupMode.LooseOnly),
             new("ini/ProgressHp.rgn", ContentLookupMode.LooseOnly),
@@ -485,7 +526,7 @@ public sealed class ClientContentClosureTests
     }
 
     private static void WriteVerifiedIndexes(
-        TemporaryContentDirectory temporaryDirectory,
+        TemporaryContentDirectory directory,
         string? omittedHudSectionName = null,
         string? overriddenHudSectionName = null,
         int overriddenHudFrameCount = -1,
@@ -541,7 +582,7 @@ public sealed class ClientContentClosureTests
 
         AppendSection(control, "Image0", ["data/main/ImageDisable.dds"], omittedSelectedSkillSectionName, overriddenSelectedSkillSectionName, overriddenSelectedSkillFrameCount);
 
-        temporaryDirectory.WriteFile("ani/Control.ani", control.ToString());
+        directory.WriteFile("ani/Control.ani", control.ToString());
 
         if (!string.Equals(omittedCatalogPath, "ani/Magic.ani", StringComparison.Ordinal))
         {
@@ -553,12 +594,12 @@ public sealed class ClientContentClosureTests
             AppendSection(magic, "MagicSkillType1415", ["data/main3/skill38.dds"], null, null, -1);
             AppendSection(magic, "MagicOther", ["data/main/MagicOther.dds"], null, null, -1);
 
-            temporaryDirectory.WriteFile("ani/Magic.ani", magic.ToString());
+            directory.WriteFile("ani/Magic.ani", magic.ToString());
         }
 
         if (!string.Equals(omittedCatalogPath, "ani/ItemMinIcon.Ani", StringComparison.Ordinal))
         {
-            temporaryDirectory.WriteFile("ani/ItemMinIcon.Ani",
+            directory.WriteFile("ani/ItemMinIcon.Ani",
                 "[ItemDefault]\nFrameAmount=1\nFrame0=data/ItemMinIcon/Default.dds\n"
                 + "[Item100]\nFrameAmount=1\nFrame0=data/ItemMinIcon/100.dds\n"
                 + "[ItemPreview]\nFrameAmount=1\nFrame0=data/ItemMinIcon/Preview.dds\n");
@@ -575,7 +616,7 @@ public sealed class ClientContentClosureTests
             AppendOptionalSection(effect, "YellowLight", ["data/Pic/YellowLight/01.dds"], omittedGlowSectionName);
             AppendOptionalSection(effect, "CustomGlow", ["data/Pic/CustomGlow/01.dds"], null);
 
-            temporaryDirectory.WriteFile("ani/effect.ani", effect.ToString());
+            directory.WriteFile("ani/effect.ani", effect.ToString());
         }
     }
 

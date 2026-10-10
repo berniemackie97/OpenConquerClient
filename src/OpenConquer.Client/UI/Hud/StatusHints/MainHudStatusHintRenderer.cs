@@ -16,10 +16,7 @@ namespace OpenConquer.Client.UI.Hud.StatusHints;
 
 internal sealed class MainHudStatusHintRenderer : IDisposable
 {
-    private static readonly SpriteSourceRectangle s_backdropSource = new(
-        0, 0,
-        MainHudStatusHintDefinition.Dialog21SourceWidth,
-        MainHudStatusHintDefinition.Dialog21SourceHeight);
+    private static readonly SpriteSourceRectangle s_backdropSource = new(0, 0, MainHudStatusHintDefinition.Dialog21SourceWidth, MainHudStatusHintDefinition.Dialog21SourceHeight);
 
     private readonly MainHudStatusHintLayout _layout;
     private readonly MainHudStatusHintAssets _assets;
@@ -33,6 +30,10 @@ internal sealed class MainHudStatusHintRenderer : IDisposable
     private int _gaugeValue;
     private int _gaugeMaximum;
     private bool _disposed;
+
+    internal OpenGLTexture2D? BackdropTexture => _backdrop;
+    internal OpenGLTextContext NormalTextContext => _textContext;
+    internal NativeTextRenderOptions NormalTextOptions => _textOptions;
 
     public MainHudStatusHintRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintAssets assets, ClientFontSettingsConfiguration fontSettings, ClientFontSizeConfiguration fontSize, ClientCodePageConfiguration codePage, LogicalRenderSize logicalRenderSize)
     {
@@ -48,13 +49,7 @@ internal sealed class MainHudStatusHintRenderer : IDisposable
         SpriteColor textColor = SpriteColor.White;
         SpriteColor cornerColor = FromArgb(fontSettings.DefaultCornerColorArgb);
 
-        _textOptions = new NativeTextRenderOptions(
-            (NativeTextRenderStyle)fontSettings.DefaultRenderTextStyle,
-            textColor,
-            cornerColor,
-            ClientFontSettingsConfiguration.DefaultCornerOffsetXPixels,
-            ClientFontSettingsConfiguration.DefaultCornerOffsetYPixels,
-            NativeTextVertexColors.Solid(textColor));
+        _textOptions = new NativeTextRenderOptions((NativeTextRenderStyle)fontSettings.DefaultRenderTextStyle, textColor, cornerColor, ClientFontSettingsConfiguration.DefaultCornerOffsetXPixels, ClientFontSettingsConfiguration.DefaultCornerOffsetYPixels, NativeTextVertexColors.Solid(textColor));
 
         OpenGLTexture2D? backdrop = null;
 
@@ -192,10 +187,7 @@ internal sealed class MainHudStatusHintRenderer : IDisposable
                 return true;
             }
 
-            string formatted = string.Concat(
-                Math.Min(value, maximum).ToString(CultureInfo.InvariantCulture),
-                "/",
-                maximum.ToString(CultureInfo.InvariantCulture));
+            string formatted = string.Concat(Math.Min(value, maximum).ToString(CultureInfo.InvariantCulture), "/", maximum.ToString(CultureInfo.InvariantCulture));
 
             layout = _textContext.Layout(Encoding.ASCII.GetBytes(formatted));
             _gaugeLayout = layout;
