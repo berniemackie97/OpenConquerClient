@@ -66,6 +66,15 @@ internal sealed class MainHudMagicHintTextBuilder
         return groups;
     }
 
+    internal static double CalculateExperiencePercentage(uint currentExperience, uint requiredExperience)
+    {
+        ArgumentOutOfRangeException.ThrowIfZero(requiredExperience);
+
+        float multipliedExperience = (float)((double)currentExperience * 100.0);
+        float percentage = multipliedExperience / requiredExperience;
+        return percentage;
+    }
+
     private void AppendSubprofessionRequirement(List<MainHudMagicHintTextGroup> groups, MagicTypeRecord record, ReadOnlyMemory<byte> magicName, MainHudMagicHintRuntimeSnapshot runtime)
     {
         if (record.RequiredSubprofessionPhase == 0 || !_subprofessions.TryGetTitle(record.RequiredSubprofessionClass, out ReadOnlyMemory<byte> title))
@@ -159,10 +168,9 @@ internal sealed class MainHudMagicHintTextBuilder
             return;
         }
 
-        float multipliedExperience = (float)((double)learned.CurrentExperience * 100.0);
-        double percent = (double)multipliedExperience / record.RequiredExperience;
+        double percentage = CalculateExperiencePercentage(learned.CurrentExperience, record.RequiredExperience);
 
-        Add(groups, NativeMagicStringFormatter.Format(_numericStrings.GetEncoded(ExperienceStringId).Span, ShortFormatLimit, percent), SpriteColor.White);
+        Add(groups, NativeMagicStringFormatter.Format(_numericStrings.GetEncoded(ExperienceStringId).Span, ShortFormatLimit, percentage), SpriteColor.White);
     }
 
     private void AppendDanceWarning(List<MainHudMagicHintTextGroup> groups, MagicTypeRecord record, MainHudMagicHintRuntimeSnapshot runtime)
