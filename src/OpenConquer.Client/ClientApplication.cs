@@ -3,6 +3,7 @@ using OpenConquer.Client.Startup;
 using OpenConquer.Client.UI.Hud.ActionButtons;
 using OpenConquer.Client.UI.Hud.CheckControls;
 using OpenConquer.Client.UI.Hud.Chrome;
+using OpenConquer.Client.UI.Hud.Input;
 using OpenConquer.Client.UI.Hud.Quickbar;
 using OpenConquer.Client.UI.Hud.SelectedSkill;
 using OpenConquer.Client.UI.Hud.SkillExperience;
@@ -63,10 +64,7 @@ internal sealed class ClientApplication : IDisposable
     private MainHudSelectedSkillCooldownRenderer? _mainHudSelectedSkillCooldownRenderer;
     private MainHudStatusHintRenderer? _mainHudStatusHintRenderer;
     private MainHudMagicHintRenderer? _mainHudMagicHintRenderer;
-    private MainHudQuickbarInput? _mainHudQuickbarInput;
-    private MainHudActionButtonStripInput? _mainHudActionButtonStripInput;
-    private MainHudCheckControlsInput? _mainHudCheckControlsInput;
-    private MainHudStatusHintInput? _mainHudStatusHintInput;
+    private MainHudInputCoordinator? _mainHudInputCoordinator;
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private DesktopWindow? _window;
@@ -149,10 +147,7 @@ internal sealed class ClientApplication : IDisposable
         finally
         {
             _window = null;
-            _mainHudStatusHintInput = null;
-            _mainHudCheckControlsInput = null;
-            _mainHudActionButtonStripInput = null;
-            _mainHudQuickbarInput = null;
+            _mainHudInputCoordinator = null;
             _mainHudMagicHintRenderer = null;
             _mainHudStatusHintRenderer = null;
             _mainHudSelectedSkillCooldownRenderer = null;
@@ -334,58 +329,19 @@ internal sealed class ClientApplication : IDisposable
     private void OnPointerMoved(PixelPoint point)
     {
         bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
-        bool consumedByQuickbar = false;
-        MainHudQuickbarHoverNotification notification = default;
-
-        if (CanInteractWithMainHudControls())
-        {
-            if (mapped)
-            {
-                _mainHudActionButtonStripInput?.HandlePointerMoved(logicalX, logicalY);
-
-                if (_mainHudQuickbarInput is { } quickbarInput)
-                {
-                    consumedByQuickbar = quickbarInput.HandlePointerMoved(logicalX, logicalY, out notification);
-                }
-            }
-            else
-            {
-                _mainHudActionButtonStripInput?.HandlePointerMoved(-1, -1);
-                _mainHudQuickbarInput?.HandlePointerMoved(-1, -1, out notification);
-            }
-        }
-
-        _mainHudStatusHintInput?.HandlePointerMoved(mapped && !consumedByQuickbar ? logicalX : -1, mapped && !consumedByQuickbar ? logicalY : -1);
-
-        ApplyQuickbarHover(notification);
+        _mainHudInputCoordinator?.HandlePointerMoved(CanInteractWithMainHudControls(), mapped, logicalX, logicalY);
     }
 
     private void OnPrimaryPointerPressed(PixelPoint point)
     {
-        if (!CanInteractWithMainHudControls() || !TryMapPointerToLogical(point, out int logicalX, out int logicalY))
-        {
-            return;
-        }
-
-        _mainHudActionButtonStripInput?.HandleLeftButtonDown(logicalX, logicalY);
-        _mainHudCheckControlsInput?.HandleLeftButtonDown(logicalX, logicalY);
+        bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
+        _mainHudInputCoordinator?.HandlePrimaryPointerPressed(CanInteractWithMainHudControls(), mapped, logicalX, logicalY);
     }
 
     private void OnPrimaryPointerReleased(PixelPoint point)
     {
-        if (!CanInteractWithMainHudControls() || _mainHudActionButtonStripInput is not { } input)
-        {
-            return;
-        }
-
-        if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
-        {
-            input.HandleLeftButtonUp(logicalX, logicalY, out _);
-        }
-        else
-        {
-            input.HandleLeftButtonUp(-1, -1, out _);
-        }
+        bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
+        _mainHudInputCoordinator?.HandlePrimaryPointerReleased(CanInteractWithMainHudControls(), mapped, logicalX, logicalY);
     }
 
     private bool TryMapPointerToLogical(PixelPoint point, out int logicalX, out int logicalY)
@@ -405,29 +361,16 @@ internal sealed class ClientApplication : IDisposable
     private void PollMainHudQuickbarPointer()
     {
         DesktopWindow? window = _window;
-        MainHudQuickbarInput? input = _mainHudQuickbarInput;
+        MainHudInputCoordinator? input = _mainHudInputCoordinator;
 
         if (window is null || input is null || !window.TryGetPointerPosition(out PixelPoint point))
         {
             return;
         }
 
-        MainHudQuickbarHoverNotification notification;
-
-        if (TryMapPointerToLogical(point, out int logicalX, out int logicalY))
-        {
-            input.PollPointer(logicalX, logicalY, out notification);
-        }
-        else
-        {
-            input.PollPointer(-1, -1, out notification);
-        }
-
-        ApplyQuickbarHover(notification);
+        bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
+        input.PollQuickbarPointer(mapped, logicalX, logicalY);
     }
-
-    private void ApplyQuickbarHover(MainHudQuickbarHoverNotification notification) =>
-        MainHudQuickbarHintHandoff.Apply(_mainHudStatusHintState, notification);
 
     private bool CanInteractWithMainHudControls() => _mainHudChromeAssets?.HasDialogPanels == true;
 
@@ -491,12 +434,14 @@ internal sealed class ClientApplication : IDisposable
         MainHudCheckControlLayout checkControlLayout = MainHudCheckControlLayout.Create(logicalRenderSize);
         MainHudStatusHintLayout statusHintLayout = MainHudStatusHintLayout.Create(logicalRenderSize);
 
-        _mainHudQuickbarInput = new MainHudQuickbarInput(_mainHudQuickbarState, quickbarLayout);
-        _mainHudActionButtonStripInput = new MainHudActionButtonStripInput(_mainHudActionButtonStripState, actionButtonLayout, IsActionButtonAvailable);
-        _mainHudCheckControlsInput = new MainHudCheckControlsInput(_mainHudCheckControlsState, checkControlLayout, IsCheckControlAvailable);
-        _mainHudStatusHintInput = new MainHudStatusHintInput(_mainHudStatusHintState, statusHintLayout,
+        MainHudQuickbarInput quickbarInput = new(_mainHudQuickbarState, quickbarLayout);
+        MainHudActionButtonStripInput actionButtonInput = new(_mainHudActionButtonStripState, actionButtonLayout, IsActionButtonAvailable);
+        MainHudCheckControlsInput checkControlsInput = new(_mainHudCheckControlsState, checkControlLayout, IsCheckControlAvailable);
+        MainHudStatusHintInput statusHintInput = new(_mainHudStatusHintState, statusHintLayout,
             _mainHudStatusHintAssets.SkillRegion, _mainHudStatusHintAssets.ManaRegion, _mainHudStatusHintAssets.LifeRegion,
             _mainHudStatusHintAssets.Strings.UsesArabicLayout);
+
+        _mainHudInputCoordinator = new(actionButtonInput, quickbarInput, checkControlsInput, statusHintInput, _mainHudStatusHintState);
     }
 
     private void OnRendering(double elapsedSeconds)
