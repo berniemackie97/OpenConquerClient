@@ -56,9 +56,12 @@ internal sealed class OpenGLDrawStateCleanup
     {
         if (usesTexture)
         {
+            bool textureZeroActive = false;
+
             try
             {
                 _operations.ActivateTextureZero();
+                textureZeroActive = true;
             }
             catch (Exception exception)
             {
@@ -74,13 +77,16 @@ internal sealed class OpenGLDrawStateCleanup
                 firstFailure ??= ExceptionDispatchInfo.Capture(exception);
             }
 
-            try
+            if (textureZeroActive)
             {
-                _operations.UnbindTexture2D();
-            }
-            catch (Exception exception)
-            {
-                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+                try
+                {
+                    _operations.UnbindTexture2D();
+                }
+                catch (Exception exception)
+                {
+                    firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+                }
             }
         }
 

@@ -32,6 +32,17 @@ public sealed class OpenGLDrawStateCleanupTests
         "EnableDepthWrites",
     ];
 
+    private static readonly string[] s_spriteDrawWithoutTextureUnbind =
+    [
+        "ActivateTextureZero",
+        "UnbindSamplerZero",
+        "UnbindVertexArray",
+        "UnbindArrayBuffer",
+        "UnbindProgram",
+        "DisableBlending",
+        "EnableDepthWrites",
+    ];
+
     [Fact]
     public void InitializationSuccess_ReleasesBothVertexBindings()
     {
@@ -102,10 +113,9 @@ public sealed class OpenGLDrawStateCleanupTests
     }
 
     [Fact]
-    public void SpriteDrawFailure_AttemptsEveryCleanupOperationAndPreservesOriginalException()
+    public void SpriteDrawFailure_AttemptsEveryApplicableCleanupOperationAndPreservesOriginalException()
     {
         RecordingOperations operations = new();
-        operations.Fail("ActivateTextureZero", new InvalidOperationException("texture activation"));
         operations.Fail("UnbindSamplerZero", new InvalidOperationException("sampler"));
         operations.Fail("UnbindTexture2D", new InvalidOperationException("texture"));
         operations.Fail("UnbindVertexArray", new InvalidOperationException("vertex array"));
@@ -126,6 +136,49 @@ public sealed class OpenGLDrawStateCleanupTests
     }
 
     [Fact]
+    public void SpriteDrawFailure_TextureActivationFailureSkipsUnsafeTextureUnbind()
+    {
+        RecordingOperations operations = new();
+        operations.Fail("ActivateTextureZero", new InvalidOperationException("texture activation"));
+        operations.Fail("UnbindSamplerZero", new InvalidOperationException("sampler"));
+        operations.Fail("UnbindTexture2D", new InvalidOperationException("must not execute"));
+        operations.Fail("UnbindVertexArray", new InvalidOperationException("vertex array"));
+        operations.Fail("UnbindArrayBuffer", new InvalidOperationException("array buffer"));
+        operations.Fail("UnbindProgram", new InvalidOperationException("program"));
+        operations.Fail("DisableBlending", new InvalidOperationException("blending"));
+        operations.Fail("EnableDepthWrites", new InvalidOperationException("depth"));
+
+        OpenGLDrawStateCleanup cleanup = new(operations);
+        Exception primary = new InvalidOperationException("draw submission failed");
+
+        Exception thrown = Assert.Throws<InvalidOperationException>(() =>
+            cleanup.RestoreAfterDraw(CaptureFromThrow(primary), usesTexture: true));
+
+        Assert.Same(primary, thrown);
+        Assert.Contains(nameof(CaptureFromThrow), thrown.StackTrace);
+        Assert.Equal(s_spriteDrawWithoutTextureUnbind, operations.Calls);
+    }
+
+    [Fact]
+    public void TextureActivationFailureWithoutDrawFailure_PreservesActivationFailure()
+    {
+        RecordingOperations operations = new();
+        InvalidOperationException expected = new("texture activation failed");
+
+        operations.Fail("ActivateTextureZero", expected);
+        operations.Fail("UnbindTexture2D", new InvalidOperationException("must not execute"));
+        operations.Fail("UnbindProgram", new InvalidOperationException("program cleanup"));
+
+        OpenGLDrawStateCleanup cleanup = new(operations);
+
+        Exception thrown = Assert.Throws<InvalidOperationException>(() =>
+            cleanup.RestoreAfterDraw(null, usesTexture: true));
+
+        Assert.Same(expected, thrown);
+        Assert.Equal(s_spriteDrawWithoutTextureUnbind, operations.Calls);
+    }
+
+    [Fact]
     public void PrimitiveDrawFailure_DoesNotAttemptTextureCleanup()
     {
         RecordingOperations operations = new();
@@ -141,7 +194,6 @@ public sealed class OpenGLDrawStateCleanupTests
     }
 
     [Theory]
-    [InlineData("ActivateTextureZero")]
     [InlineData("UnbindSamplerZero")]
     [InlineData("UnbindTexture2D")]
     [InlineData("UnbindVertexArray")]
