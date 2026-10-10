@@ -62,7 +62,15 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
         }
         catch
         {
-            magicText.Dispose();
+            try
+            {
+                magicText.Dispose();
+            }
+            catch
+            {
+                // Preserve the original font-layout initialization failure.
+            }
+
             throw;
         }
     }
