@@ -1393,7 +1393,13 @@ CDlgMain-local hotspot rectangles and binary regions
 shell-relative status-hint anchors
 native MP startup suppression
 
-background → vitals → panels → skill/XP → quickbar → action buttons → check controls → selected skill → cooldown text → category-8 status hints ordering
+category-9 learned-magic and zero-magic hints
+retail magic/effect/subprofession and configured keyed-localization data
+native encoded-byte wrapping, line coloring, and 12-pixel magic font
+runtime-snapshot-based category-9 refresh
+category-9 real-driver conformance at 800×600 and 1024×768
+
+background → vitals → panels → skill/XP → quickbar → action buttons → check controls → selected skill → cooldown text → category-8 status hints → category-9 Magic hints ordering
 real-driver HUD conformance
 ```
 
@@ -1409,7 +1415,7 @@ live hero-state producer
 live quickbar producer
 live selected-skill / cooldown producer
 
-non-category-8 status hints / per-control tooltips
+other status-hint categories / per-control tooltips
 outer HUD gate
 downstream action-button dialogs and side effects
 downstream check-control feature effects

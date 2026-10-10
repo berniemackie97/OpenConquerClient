@@ -177,6 +177,14 @@ verified glow families
 
 Magic0 selected-skill image
 Image0 selected-skill cover
+
+category-8 status-hint resources
+ini/MagicType.dat
+ini/MagicEffect.ini
+ini/SubProfessionInfo.ini
+ini/Cn_Res.ini
+ini/StrRes.ini
+category-9 Magic hints
 ```
 
 The experience bar uses solid-rectangle rendering and adds no image asset to the runtime closure.
@@ -281,6 +289,8 @@ Progress42 skill / experience
 four main-HUD CMyCheck controls
 selected-skill image / previously armed cover
 selected-skill cooldown text
+category-8 main-HUD status hints
+category-9 Magic hints
 ```
 
 The action strip implements the verified native `CMyButton` boundary:
@@ -375,7 +385,13 @@ native hotspot selection, the MP startup guard, and normal-font text rendering.
 Region hit testing uses CDlgMain-local pixels, while hint anchors are shell-relative.
 The panel renders after selected-skill cooldown text.
 
-Per-control tooltips, non-category-8 hints, and the outer HUD gate remain deferred.
+Category-9 Magic hints also implement learned-magic and zero-magic branches with
+retail magic/effect/subprofession metadata, configured keyed localization, native
+encoded-byte wrapping, colored text, and a 12-pixel font. Real-driver conformance
+covers 800×600 and 1024×768. Runtime snapshots are supported, but live Gameplay
+producers have not been connected.
+
+Per-control tooltips, other status-hint categories, and the outer HUD gate remain deferred.
 
 Do not infer unimplemented side effects from ANI artwork names.
 
