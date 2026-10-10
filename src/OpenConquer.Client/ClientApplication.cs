@@ -173,8 +173,8 @@ internal sealed class ClientApplication : IDisposable
             _mainHudCheckControlAssets = null;
             _mainHudActionButtonAssets = null;
             _mainHudQuickbarAssets = null;
-            _mainHudSkillAssets = null;
             _mainHudVitalsAssets = null;
+            _mainHudSkillAssets = null;
             _mainHudChromeAssets = null;
             _renderer = null;
             _graphicsDevice = null;
@@ -426,32 +426,8 @@ internal sealed class ClientApplication : IDisposable
         ApplyQuickbarHover(notification);
     }
 
-    private void ApplyQuickbarHover(MainHudQuickbarHoverNotification notification)
-    {
-        switch (notification.Kind)
-        {
-            case MainHudQuickbarHoverNotificationKind.Skill:
-                _mainHudStatusHintState.SetMagicAnchor(notification.AnchorX, notification.AnchorY);
-                _mainHudStatusHintState.SelectMagic(notification.ContentId);
-                break;
-
-            case MainHudQuickbarHoverNotificationKind.Clear:
-                _mainHudStatusHintState.Clear();
-                break;
-
-            case MainHudQuickbarHoverNotificationKind.Item:
-            case MainHudQuickbarHoverNotificationKind.Dance:
-            case MainHudQuickbarHoverNotificationKind.WeaponSwap:
-            case MainHudQuickbarHoverNotificationKind.Generic:
-                if (_mainHudStatusHintState.Category == MainHudStatusHintState.MagicCategory &&
-                    _mainHudStatusHintState.IsVisible)
-                {
-                    _mainHudStatusHintState.Clear();
-                }
-
-                break;
-        }
-    }
+    private void ApplyQuickbarHover(MainHudQuickbarHoverNotification notification) =>
+        MainHudQuickbarHintHandoff.Apply(_mainHudStatusHintState, notification);
 
     private bool CanInteractWithMainHudControls() => _mainHudChromeAssets?.HasDialogPanels == true;
 
