@@ -292,7 +292,7 @@ Detailed compatibility behavior belongs in
 
 `OpenConquer.Content` owns runtime content access and evidence-backed legacy format boundaries.
 
-The current verified retail runtime closure contains 58 files totaling 1,866,395 bytes.
+The current verified retail runtime closure contains 3,784 files totaling 21,319,837 bytes.
 
 Current runtime consumers cover:
 
@@ -316,11 +316,17 @@ four PK button skins
 
 four main-HUD CMyCheck controls
 eight check-control frames
+
+10-slot quickbar, action, magic, item-icon and glow families
+selected-skill image, cover and cooldown text
+category-8 status hints, Dialog21 backdrop, StrRes.ini and binary hotspot regions
+category-9 Magic hints, retail magic metadata/effects and configured localization
 ```
 
 The experience bar uses solid-rectangle rendering and therefore adds no retail image dependency.
 
-The full path-level closure is maintained in
+The exact path-level closure is authoritative in `content/retail-5517/manifest.json`.
+Consumer groups and import policy are documented in
 [`../content/retail-5517-content-plan.md`](../content/retail-5517-content-plan.md).
 
 `ClientContentClosure` is the production dependency boundary.

@@ -52,6 +52,7 @@ Current consumer groups are:
 | Selected skill | `Magic0` from `ani/Magic.ani`, `Image0` from `ani/Control.ani` | `LooseThenPackage` |
 | Selected-skill cooldown | `[SelectMagicNum]` in `ini/info.ini` plus font/code-page configuration | configuration only |
 | Main-HUD category-8 status hints | `ani/Control.ani` `[Dialog21]`, `ini/StrRes.ini`, three `ini/Progress*.rgn` files | `LooseThenPackage` backdrop; `LooseOnly` strings and regions |
+| Main-HUD category-9 Magic hints | `ini/MagicType.dat`, `ini/MagicEffect.ini`, `ini/SubProfessionInfo.ini`, configured `ini/Cn_Res.ini`; shared `ini/StrRes.ini` and `[Dialog21]` | `LooseOnly` metadata/strings; shared `LooseThenPackage` backdrop |
 
 `ini/FontSetting.ini` and `ini/CodePage.ini` are optional native configuration inputs. They are
 absent from the clean retail 5517 root and therefore are not copied into the curated runtime set.
@@ -290,6 +291,19 @@ GFX-UI-008 adds `Dialog21` frame 0 (`data/main/MsgDlg.dds`) together with
 regions are loose retail files. These five dependencies contribute 128,677 bytes.
 The manifest remains the authoritative source of exact runtime paths and hashes.
 
+### Category-9 Magic-Hint Dependencies
+
+Category-9 Magic hints load `ini/MagicType.dat`, `ini/MagicEffect.ini`, and
+`ini/SubProfessionInfo.ini` through `LooseOnly`. The configured keyed client-string
+resource resolves to `ini/Cn_Res.ini` for verified retail 5517; `ini/StrRes.ini`
+and the `Dialog21` backdrop are shared with category-8 status hints.
+
+The renderer supports learned-magic details and zero-magic special branches, native
+encoded-byte wrapping, line coloring, and the 12-pixel magic font. It consumes a
+runtime snapshot rather than inventing live Gameplay producers. Independent real-driver
+conformance covers 800×600 and 1024×768. Other hint categories and control tooltips
+are not implemented.
+
 ## Content Resolution
 
 ```text
@@ -501,6 +515,11 @@ two-state CMyCheck frame selection
 native check-control geometry and draw order
 natural 32×32 check-control rendering
 exact check-control retail frame hashes
+
+category-8 HUD status hints
+category-9 learned-magic and zero-magic hints
+category-9 retail magic/effect/string provenance
+category-9 rendering at 800×600 and 1024×768
 
 independent DXT3 reference decoding
 exact framebuffer comparison

@@ -610,6 +610,13 @@ FreeType 2.x >= 2.14.3
 
 The packaged native dependency currently provides FreeType 2.14.3.
 
+OpenConquer.FreeType.Native 1.0.0 has established source/build provenance for its
+original published native binaries on all six supported platforms. This does not
+establish byte-for-byte reproducibility across later Windows build runs. The rendering
+project stages package-supplied FTL.TXT, LICENSE.TXT, PROVENANCE.md, and BDF/PCF
+notices under `third-party/freetype/` in the published client; CI checks those notices
+through the signed release package and managed installation.
+
 When `FreeTypeLibrary` initializes, it queries the loaded version and rejects:
 
 ```text
@@ -1626,11 +1633,18 @@ production OpenGLTextContext façade
         ↓
 GFX-UI-008
 category-8 main-HUD status hints
+        ↓
+category-9 Magic hints
+learned/zero-magic text, native wrapping, colors and 12-pixel font
 ```
 
 Selected-skill cooldown text is the first production text-bearing UI consumer.
 GFX-UI-008 adds the category-8 main-HUD status-hint panel as the next consumer, using
 retail StrRes.ini bytes, the normal GUI font height, and the existing OpenGLTextContext.
+Category-9 Magic hints also consume retail magic/effect metadata, subprofession
+requirements, configured keyed localization, and runtime snapshots. Native byte-oriented
+wrapping and colored text are covered by real-driver HUD conformance at 800×600 and
+1024×768. Live Gameplay producers are not connected.
 Separate control tooltips and other status-hint categories remain deferred.
 
 ## Conformance Boundary
