@@ -10,6 +10,7 @@ internal sealed unsafe class OpenGLSolidRectangleRenderer : IDisposable
     private const int FloatsPerVertex = 2;
 
     private readonly GL _gl;
+    private readonly OpenGLDrawStateCleanup _cleanup;
 
     private OpenGLProgram? _program;
     private uint _vertexArray;
@@ -22,6 +23,7 @@ internal sealed unsafe class OpenGLSolidRectangleRenderer : IDisposable
         ArgumentNullException.ThrowIfNull(gl);
 
         _gl = gl;
+        _cleanup = new OpenGLDrawStateCleanup(gl);
 
         try
         {
@@ -62,32 +64,38 @@ internal sealed unsafe class OpenGLSolidRectangleRenderer : IDisposable
         ];
 
         OpenGLProgram program = _program ?? throw new InvalidOperationException("The solid-rectangle program is unavailable.");
+        ExceptionDispatchInfo? firstFailure = null;
 
-        _gl.Disable(EnableCap.ScissorTest);
-        _gl.Disable(EnableCap.DepthTest);
-        _gl.DepthMask(false);
-        _gl.Disable(EnableCap.CullFace);
-        _gl.ColorMask(red: true, green: true, blue: true, alpha: true);
-        _gl.Enable(EnableCap.Blend);
-        _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
-        _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-
-        program.Use();
-
-        _gl.BindVertexArray(_vertexArray);
-        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
-
-        fixed (float* vertexPointer = vertices)
+        try
         {
-            _gl.BufferSubData(BufferTargetARB.ArrayBuffer, offset: 0, (nuint)(vertices.Length * sizeof(float)), vertexPointer);
+            _gl.Disable(EnableCap.ScissorTest);
+            _gl.Disable(EnableCap.DepthTest);
+            _gl.DepthMask(false);
+            _gl.Disable(EnableCap.CullFace);
+            _gl.ColorMask(red: true, green: true, blue: true, alpha: true);
+            _gl.Enable(EnableCap.Blend);
+            _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+            _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+            program.Use();
+
+            _gl.BindVertexArray(_vertexArray);
+            _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
+
+            fixed (float* vertexPointer = vertices)
+            {
+                _gl.BufferSubData(BufferTargetARB.ArrayBuffer, offset: 0, (nuint)(vertices.Length * sizeof(float)), vertexPointer);
+            }
+
+            _gl.Uniform4(_colorUniform, ToNormalizedColorChannel(color.Red), ToNormalizedColorChannel(color.Green), ToNormalizedColorChannel(color.Blue), ToNormalizedColorChannel(color.Alpha));
+            _gl.DrawArrays(PrimitiveType.TriangleStrip, first: 0, count: 4);
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
         }
 
-        _gl.Uniform4(_colorUniform, ToNormalizedColorChannel(color.Red), ToNormalizedColorChannel(color.Green), ToNormalizedColorChannel(color.Blue), ToNormalizedColorChannel(color.Alpha));
-        _gl.DrawArrays(PrimitiveType.TriangleStrip, first: 0, count: 4);
-
-        _gl.BindVertexArray(0);
-        _gl.Disable(EnableCap.Blend);
-        _gl.DepthMask(true);
+        _cleanup.RestoreAfterDraw(firstFailure, usesTexture: false);
     }
 
     public void Dispose()
@@ -109,21 +117,29 @@ internal sealed unsafe class OpenGLSolidRectangleRenderer : IDisposable
 
     private void CreateResources()
     {
-        _program = new OpenGLProgram(_gl, VertexShaderSource, FragmentShaderSource);
-        _colorUniform = _program.GetRequiredUniformLocation("uColor");
+        ExceptionDispatchInfo? firstFailure = null;
 
-        _vertexArray = _gl.GenVertexArray();
-        _vertexBuffer = _gl.GenBuffer();
+        try
+        {
+            _program = new OpenGLProgram(_gl, VertexShaderSource, FragmentShaderSource);
+            _colorUniform = _program.GetRequiredUniformLocation("uColor");
 
-        _gl.BindVertexArray(_vertexArray);
-        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
-        _gl.BufferData(BufferTargetARB.ArrayBuffer, size: (4 * FloatsPerVertex * sizeof(float)), data: null, BufferUsageARB.DynamicDraw);
+            _vertexArray = _gl.GenVertexArray();
+            _vertexBuffer = _gl.GenBuffer();
 
-        _gl.EnableVertexAttribArray(0);
-        _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, normalized: false, FloatsPerVertex * sizeof(float), (void*)0);
+            _gl.BindVertexArray(_vertexArray);
+            _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
+            _gl.BufferData(BufferTargetARB.ArrayBuffer, size: (4 * FloatsPerVertex * sizeof(float)), data: null, BufferUsageARB.DynamicDraw);
 
-        _gl.BindVertexArray(0);
-        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, buffer: 0);
+            _gl.EnableVertexAttribArray(0);
+            _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, normalized: false, FloatsPerVertex * sizeof(float), (void*)0);
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        _cleanup.RestoreAfterInitialization(firstFailure);
     }
 
     private void DestroyResources()

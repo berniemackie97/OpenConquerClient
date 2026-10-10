@@ -13,6 +13,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
     private static readonly float s_degreesToRadians = BitConverter.Int32BitsToSingle(0x3C8EFA35);
 
     private readonly GL _gl;
+    private readonly OpenGLDrawStateCleanup _cleanup;
 
     private OpenGLProgram? _program;
     private uint _vertexArray;
@@ -28,6 +29,7 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         ArgumentNullException.ThrowIfNull(gl);
 
         _gl = gl;
+        _cleanup = new OpenGLDrawStateCleanup(gl);
 
         try
         {
@@ -148,38 +150,42 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
         ];
 
         OpenGLProgram program = _program ?? throw new InvalidOperationException("The OpenGL sprite program is unavailable.");
+        ExceptionDispatchInfo? firstFailure = null;
 
-        _gl.Disable(EnableCap.ScissorTest);
-        _gl.Disable(EnableCap.DepthTest);
-        _gl.DepthMask(false);
-        _gl.Disable(EnableCap.CullFace);
-        _gl.ColorMask(red: true, green: true, blue: true, alpha: true);
-        _gl.Enable(EnableCap.Blend);
-        _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
-        _gl.BlendFunc(sourceBlend, destinationBlend);
-
-        program.Use();
-
-        _gl.BindVertexArray(_vertexArray);
-        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
-
-        fixed (float* vertexPointer = vertices)
+        try
         {
-            _gl.BufferSubData(BufferTargetARB.ArrayBuffer, offset: 0, (nuint)(vertices.Length * sizeof(float)), vertexPointer);
+            _gl.Disable(EnableCap.ScissorTest);
+            _gl.Disable(EnableCap.DepthTest);
+            _gl.DepthMask(false);
+            _gl.Disable(EnableCap.CullFace);
+            _gl.ColorMask(red: true, green: true, blue: true, alpha: true);
+            _gl.Enable(EnableCap.Blend);
+            _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+            _gl.BlendFunc(sourceBlend, destinationBlend);
+
+            program.Use();
+
+            _gl.BindVertexArray(_vertexArray);
+            _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
+
+            fixed (float* vertexPointer = vertices)
+            {
+                _gl.BufferSubData(BufferTargetARB.ArrayBuffer, offset: 0, (nuint)(vertices.Length * sizeof(float)), vertexPointer);
+            }
+
+            _gl.ActiveTexture(TextureUnit.Texture0);
+            texture.Bind();
+            _gl.BindSampler(0, sampler);
+            _gl.Uniform1(_textureUniform, 0);
+            _gl.Uniform4(_colorUniform, ToNormalizedColorChannel(color.Red), ToNormalizedColorChannel(color.Green), ToNormalizedColorChannel(color.Blue), ToNormalizedColorChannel(color.Alpha));
+            _gl.DrawElements(PrimitiveType.Triangles, (uint)s_indices.Length, DrawElementsType.UnsignedInt, null);
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
         }
 
-        _gl.ActiveTexture(TextureUnit.Texture0);
-        texture.Bind();
-        _gl.BindSampler(0, sampler);
-        _gl.Uniform1(_textureUniform, 0);
-        _gl.Uniform4(_colorUniform, ToNormalizedColorChannel(color.Red), ToNormalizedColorChannel(color.Green), ToNormalizedColorChannel(color.Blue), ToNormalizedColorChannel(color.Alpha));
-        _gl.DrawElements(PrimitiveType.Triangles, (uint)s_indices.Length, DrawElementsType.UnsignedInt, null);
-
-        _gl.BindSampler(0, 0);
-        _gl.BindTexture(TextureTarget.Texture2D, texture: 0);
-        _gl.BindVertexArray(0);
-        _gl.Disable(EnableCap.Blend);
-        _gl.DepthMask(true);
+        _cleanup.RestoreAfterDraw(firstFailure, usesTexture: true);
     }
 
     private void ValidateCommonDrawArguments(OpenGLTexture2D texture, int targetWidth, int targetHeight)
@@ -252,39 +258,47 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 
     private void CreateResources()
     {
-        _program = new OpenGLProgram(_gl, VertexShaderSource, FragmentShaderSource);
-        _textureUniform = _program.GetRequiredUniformLocation("uTexture");
-        _colorUniform = _program.GetRequiredUniformLocation("uColor");
+        ExceptionDispatchInfo? firstFailure = null;
 
-        _vertexArray = _gl.GenVertexArray();
-        _vertexBuffer = _gl.GenBuffer();
-        _indexBuffer = _gl.GenBuffer();
-
-        _gl.BindVertexArray(_vertexArray);
-        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
-        _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(4 * FloatsPerVertex * sizeof(float)), null, BufferUsageARB.DynamicDraw);
-
-        _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _indexBuffer);
-
-        fixed (uint* indexPointer = s_indices)
+        try
         {
-            _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(s_indices.Length * sizeof(uint)), indexPointer, BufferUsageARB.StaticDraw);
+            _program = new OpenGLProgram(_gl, VertexShaderSource, FragmentShaderSource);
+            _textureUniform = _program.GetRequiredUniformLocation("uTexture");
+            _colorUniform = _program.GetRequiredUniformLocation("uColor");
+
+            _vertexArray = _gl.GenVertexArray();
+            _vertexBuffer = _gl.GenBuffer();
+            _indexBuffer = _gl.GenBuffer();
+
+            _gl.BindVertexArray(_vertexArray);
+            _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
+            _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(4 * FloatsPerVertex * sizeof(float)), null, BufferUsageARB.DynamicDraw);
+
+            _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _indexBuffer);
+
+            fixed (uint* indexPointer = s_indices)
+            {
+                _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(s_indices.Length * sizeof(uint)), indexPointer, BufferUsageARB.StaticDraw);
+            }
+
+            _gl.EnableVertexAttribArray(0);
+            _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)0);
+
+            _gl.EnableVertexAttribArray(1);
+            _gl.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)(2 * sizeof(float)));
+
+            _nearestRepeatSampler = _gl.GenSampler();
+            _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.MinFilter, (int)GLEnum.Nearest);
+            _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.MagFilter, (int)GLEnum.Nearest);
+            _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.WrapS, (int)GLEnum.Repeat);
+            _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.WrapT, (int)GLEnum.Repeat);
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
         }
 
-        _gl.EnableVertexAttribArray(0);
-        _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)0);
-
-        _gl.EnableVertexAttribArray(1);
-        _gl.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)(2 * sizeof(float)));
-
-        _nearestRepeatSampler = _gl.GenSampler();
-        _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.MinFilter, (int)GLEnum.Nearest);
-        _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.MagFilter, (int)GLEnum.Nearest);
-        _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.WrapS, (int)GLEnum.Repeat);
-        _gl.SamplerParameter(_nearestRepeatSampler, SamplerParameterI.WrapT, (int)GLEnum.Repeat);
-
-        _gl.BindVertexArray(0);
-        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, buffer: 0);
+        _cleanup.RestoreAfterInitialization(firstFailure);
     }
 
     private void DestroyResources()
