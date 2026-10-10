@@ -51,9 +51,9 @@ public sealed class OpenGLDrawStateCleanupTests
         operations.Fail("UnbindArrayBuffer", new InvalidOperationException("array buffer cleanup"));
 
         OpenGLDrawStateCleanup cleanup = new(operations);
-        Exception primary = new ApplicationException("resource initialization failed");
+        Exception primary = new InvalidOperationException("resource initialization failed");
 
-        Exception thrown = Assert.Throws<ApplicationException>(() =>
+        Exception thrown = Assert.Throws<InvalidOperationException>(() =>
             cleanup.RestoreAfterInitialization(CaptureFromThrow(primary)));
 
         Assert.Same(primary, thrown);
@@ -115,9 +115,9 @@ public sealed class OpenGLDrawStateCleanupTests
         operations.Fail("EnableDepthWrites", new InvalidOperationException("depth"));
 
         OpenGLDrawStateCleanup cleanup = new(operations);
-        Exception primary = new ApplicationException("draw submission failed");
+        Exception primary = new InvalidOperationException("draw submission failed");
 
-        Exception thrown = Assert.Throws<ApplicationException>(() =>
+        Exception thrown = Assert.Throws<InvalidOperationException>(() =>
             cleanup.RestoreAfterDraw(CaptureFromThrow(primary), usesTexture: true));
 
         Assert.Same(primary, thrown);
@@ -132,10 +132,9 @@ public sealed class OpenGLDrawStateCleanupTests
         operations.Fail("UnbindVertexArray", new InvalidOperationException("vertex array"));
 
         OpenGLDrawStateCleanup cleanup = new(operations);
-        Exception primary = new ApplicationException("vertex upload failed");
+        Exception primary = new InvalidOperationException("vertex upload failed");
 
-        Exception thrown = Assert.Throws<ApplicationException>(() =>
-            cleanup.RestoreAfterDraw(CaptureFromThrow(primary), usesTexture: false));
+        Exception thrown = Assert.Throws<InvalidOperationException>(() => cleanup.RestoreAfterDraw(CaptureFromThrow(primary), usesTexture: false));
 
         Assert.Same(primary, thrown);
         Assert.Equal(s_primitiveDraw, operations.Calls);
