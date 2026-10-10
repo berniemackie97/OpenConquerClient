@@ -10,8 +10,31 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenConquer.FreeType.Native" IncludeAssets="native" />
+    <PackageReference Include="OpenConquer.FreeType.Native" IncludeAssets="native" GeneratePathProperty="true" />
     <PackageReference Include="Silk.NET.OpenGL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(PkgOpenConquer_FreeType_Native)/FTL.TXT"
+          Link="third-party/freetype/FTL.TXT"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(PkgOpenConquer_FreeType_Native)/LICENSE.TXT"
+          Link="third-party/freetype/LICENSE.TXT"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(PkgOpenConquer_FreeType_Native)/PROVENANCE.md"
+          Link="third-party/freetype/PROVENANCE.md"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(PkgOpenConquer_FreeType_Native)/licenses/bdf/README"
+          Link="third-party/freetype/licenses/bdf/README"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(PkgOpenConquer_FreeType_Native)/licenses/pcf/README"
+          Link="third-party/freetype/licenses/pcf/README"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
