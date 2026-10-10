@@ -392,6 +392,61 @@ jobs:
           test ! -e "$managed/publisher-public.der"
           test ! -e "$managed/release-trust.json"
 
+      - name: Verify FreeType redistribution notices
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          native_package_root="$(
+            dotnet msbuild \
+              src/OpenConquer.Rendering/OpenConquer.Rendering.csproj \
+              -nologo \
+              -getProperty:PkgOpenConquer_FreeType_Native
+          )"
+
+          client="${{ runner.temp }}/openconquer-client"
+          release_root="${{ runner.temp }}/openconquer-release"
+          managed="${{ runner.temp }}/openconquer-managed"
+          manifest="$release_root/openconquer.release.json"
+          package="$release_root/openconquer-client-linux-x64.zip"
+
+          test -n "$native_package_root"
+          test -d "$native_package_root"
+          test -f "$manifest"
+          test -f "$package"
+
+          active_release="$(jq -er '.activeRelease' "$managed/openconquer.installation.json")"
+          generation="$managed/releases/$active_release"
+
+          test -d "$generation/client"
+
+          for relative_path in \
+            FTL.TXT \
+            LICENSE.TXT \
+            PROVENANCE.md \
+            licenses/bdf/README \
+            licenses/pcf/README
+          do
+            published="$client/third-party/freetype/$relative_path"
+            installed="$generation/client/third-party/freetype/$relative_path"
+
+            cmp "$native_package_root/$relative_path" "$published"
+
+            jq -e \
+              --arg path "third-party/freetype/$relative_path" \
+              'any(.files[]; .path == $path)' \
+              "$manifest" > /dev/null
+
+            unzip -p \
+              "$package" \
+              "client/third-party/freetype/$relative_path" |
+              cmp - "$published"
+
+            cmp "$published" "$installed"
+          done
+
+          echo "Verified FreeType licensing and provenance through publish, signed release, and managed installation."
+
   cross-platform:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
