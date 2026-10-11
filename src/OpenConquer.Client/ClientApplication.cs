@@ -30,7 +30,6 @@ internal sealed class ClientApplication : IDisposable
     private LogicalRenderSize? _logicalRenderSize;
     private RgbaImage? _loginBackdrop;
     private RgbaImage? _loginTopDragon;
-    private RgbaImage? _loginServerSlot;
     private bool _runStarted;
     private bool _disposed;
 
@@ -108,7 +107,6 @@ internal sealed class ClientApplication : IDisposable
             _graphicsDevice = null;
             _loginBackdrop = null;
             _loginTopDragon = null;
-            _loginServerSlot = null;
             _disposed = true;
         }
     }
@@ -120,12 +118,10 @@ internal sealed class ClientApplication : IDisposable
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
         RgbaImage backdrop = LoginArtwork.LoadBackdrop();
         RgbaImage topDragon = LoginArtwork.LoadTopDragon();
-        RgbaImage serverSlot = LoginArtwork.LoadServerSlot();
 
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
         _loginBackdrop = backdrop;
         _loginTopDragon = topDragon;
-        _loginServerSlot = serverSlot;
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
@@ -145,11 +141,10 @@ internal sealed class ClientApplication : IDisposable
             LogicalRenderSize logicalSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
             RgbaImage backdrop = _loginBackdrop ?? throw new InvalidOperationException("The login artwork has not been initialized.");
             RgbaImage topDragon = _loginTopDragon ?? throw new InvalidOperationException("The top dragon artwork has not been initialized.");
-            RgbaImage serverSlot = _loginServerSlot ?? throw new InvalidOperationException("The server-slot artwork has not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
             renderer = graphicsDevice.CreateRenderer(logicalSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
-            login = new LoginPresentation(graphicsDevice, logicalSize, backdrop, topDragon, serverSlot);
+            login = new LoginPresentation(graphicsDevice, logicalSize, backdrop, topDragon);
 
             _graphicsDevice = graphicsDevice;
             _renderer = renderer;

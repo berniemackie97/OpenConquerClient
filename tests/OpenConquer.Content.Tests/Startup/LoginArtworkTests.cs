@@ -38,13 +38,4 @@ public sealed class LoginArtworkTests
         Assert.Contains(image.Pixels.Span.ToArray().Chunk(4), static pixel => pixel[3] == 0);
         Assert.Contains(image.Pixels.Span.ToArray().Chunk(4), static pixel => pixel[3] > 0);
     }
-
-    [Fact]
-    public void EmbeddedServerSlot_MatchesReferenceDimensionsAndPixels()
-    {
-        RgbaImage image = LoginArtwork.LoadServerSlot();
-        Assert.Equal(158, image.Width);
-        Assert.Equal(58, image.Height);
-        Assert.Equal("b748e63779e1d35283bbc465a2ee111537dacb0a991f345fbb7bc144370cb48c", Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(image.Pixels.Span)).ToLowerInvariant());
-    }
 }
