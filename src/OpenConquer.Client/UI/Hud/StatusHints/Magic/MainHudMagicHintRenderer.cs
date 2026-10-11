@@ -81,7 +81,22 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(state);
 
-        if (!state.CanRenderMagic || runtime is null)
+        if (runtime is null)
+        {
+            return;
+        }
+
+        if (state.CanRenderDance)
+        {
+            if (_content.Types.TryGet(state.ContextParameter, 0, out MagicTypeRecord? dance))
+            {
+                DrawLearnedMagic(renderer, state, _textBuilder.BuildCatalogPreview(dance, runtime));
+            }
+
+            return;
+        }
+
+        if (!state.CanRenderMagic)
         {
             return;
         }

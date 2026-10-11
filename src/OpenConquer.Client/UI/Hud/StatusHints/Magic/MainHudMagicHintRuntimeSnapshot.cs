@@ -17,7 +17,7 @@ internal sealed class MainHudMagicHintRuntimeSnapshot
 {
     private readonly MainHudLearnedMagic[] _learnedMagic;
 
-    public MainHudMagicHintRuntimeSnapshot(IEnumerable<MainHudLearnedMagic> learnedMagic, uint characterLevel, int activeSubprofessionClass, int activeSubprofessionPhase, long packedSubprofessionPhases, MainHudEquippedMount? equippedMount, MainHudZeroMagicState zeroMagic)
+    public MainHudMagicHintRuntimeSnapshot(IEnumerable<MainHudLearnedMagic> learnedMagic, uint characterLevel, int activeSubprofessionClass, int activeSubprofessionPhase, long packedSubprofessionPhases, MainHudEquippedMount? equippedMount, MainHudZeroMagicState zeroMagic, uint? equipmentSwitchState = null)
     {
         ArgumentNullException.ThrowIfNull(learnedMagic);
 
@@ -27,6 +27,7 @@ internal sealed class MainHudMagicHintRuntimeSnapshot
         ActiveSubprofessionPhase = activeSubprofessionPhase;
         PackedSubprofessionPhases = packedSubprofessionPhases;
         EquippedMount = equippedMount;
+        EquipmentSwitchState = equipmentSwitchState;
         ZeroMagic = zeroMagic with
         {
             TryoutItemName = zeroMagic.TryoutItemName.ToArray()
@@ -54,6 +55,11 @@ internal sealed class MainHudMagicHintRuntimeSnapshot
     }
 
     public MainHudEquippedMount? EquippedMount
+    {
+        get;
+    }
+
+    public uint? EquipmentSwitchState
     {
         get;
     }
