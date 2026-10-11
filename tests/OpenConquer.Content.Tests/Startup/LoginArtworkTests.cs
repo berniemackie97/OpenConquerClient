@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Startup;
 
@@ -6,36 +7,45 @@ namespace OpenConquer.Content.Tests.Startup;
 public sealed class LoginArtworkTests
 {
     [Fact]
-    public void EmbeddedBackdrop_DecodesIntoExpectedLogicalReferenceImage()
+    public void EmbeddedArtwork_PreservesRetailSourceDimensionsAndPixelHashes()
     {
-        RgbaImage image = LoginArtwork.LoadBackdrop();
+        LoginArtworkSet artwork = LoginArtwork.Load();
 
-        Assert.Equal(LoginArtwork.ReferenceWidth, image.Width);
-        Assert.Equal(LoginArtwork.ReferenceHeight, image.Height);
-        Assert.Equal(LoginArtwork.ReferenceWidth * LoginArtwork.ReferenceHeight * 4, image.Pixels.Length);
-        Assert.Equal(byte.MaxValue, image.Pixels.Span[3]);
-        Assert.Equal(byte.MaxValue, image.Pixels.Span[^1]);
+        AssertImage(artwork.Backdrop, 1024, 637, "e33bf0450c7a386aa28d6d90a1f71a8b7d8b64e1e4ec92fdfad48d7f3880a2b9");
+        AssertImage(artwork.Header, 1024, 116, "80fb919c05a73751f7418e26b0849f43a8a4b949dc9355f98b56aff04c68ce12");
+        AssertImage(artwork.Footer, 1024, 140, "25b59064c644823574410e2277d1fbc67bc26965224e79e97de38975f98a981c");
+        AssertImage(artwork.AccountPanel, 508, 98, "3a1e4698639f2c4af2eace1c9b48e81d4898d279831c128bbe65e76e3eb240c2");
+        AssertImage(artwork.TopDragon, 494, 140, "b1e80e39a4a91d952510e826c9e8c0f0e0f83a353c6f546f322c970f3875d6b1");
     }
 
     [Fact]
-    public void EmbeddedBackdrop_HasDistinctUpperAndLowerRegions()
+    public void HeaderFooterAndAccountPanel_PreserveTransparency()
     {
-        RgbaImage image = LoginArtwork.LoadBackdrop();
-        ReadOnlySpan<byte> pixels = image.Pixels.Span;
-        int upper = (100 * image.Width + 100) * 4;
-        int lower = (740 * image.Width + 100) * 4;
+        LoginArtworkSet artwork = LoginArtwork.Load();
 
-        Assert.NotEqual(pixels[upper], pixels[lower]);
+        Assert.True(HasTransparency(artwork.Header));
+        Assert.True(HasTransparency(artwork.Footer));
+        Assert.True(HasTransparency(artwork.AccountPanel));
     }
 
-    [Fact]
-    public void EmbeddedTopDragon_MatchesReferenceDimensionsAndPixels()
+    private static bool HasTransparency(RgbaImage image)
     {
-        RgbaImage image = LoginArtwork.LoadTopDragon();
-        Assert.Equal(494, image.Width);
-        Assert.Equal(140, image.Height);
-        Assert.Equal("b1e80e39a4a91d952510e826c9e8c0f0e0f83a353c6f546f322c970f3875d6b1", Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(image.Pixels.Span)).ToLowerInvariant());
-        Assert.Contains(image.Pixels.Span.ToArray().Chunk(4), static pixel => pixel[3] == 0);
-        Assert.Contains(image.Pixels.Span.ToArray().Chunk(4), static pixel => pixel[3] > 0);
+        for (int index = 3; index < image.Pixels.Length; index += 4)
+        {
+            if (image.Pixels.Span[index] != byte.MaxValue)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void AssertImage(RgbaImage image, int width, int height, string expectedSha256)
+    {
+        Assert.Equal(width, image.Width);
+        Assert.Equal(height, image.Height);
+        Assert.Equal(width * height * 4, image.Pixels.Length);
+        Assert.Equal(expectedSha256, Convert.ToHexString(SHA256.HashData(image.Pixels.Span)).ToLowerInvariant());
     }
 }

@@ -1,33 +1,39 @@
-# STARTUP-001D — Independent login ornament layer
+# STARTUP-001D — Login chrome and account-panel alignment
 
 ## Scope
 
-Adds the verified top-dragon ornament above the pre-world login backdrop. The account panel and parchment remain unchanged. This is visual-only: no region catalog, server rows, credentials, registration, network traffic, or world entry.
+Separates the original retail-derived background, header, footer, account panel and top dragon into independent draw layers. This corrects the vertical misalignment in PR #85's initial composited backdrop without introducing any server data, UI interaction, Flash runtime, authentication, or game-world access.
 
-## Verified placement
+## Provenance
 
-| Resource | Source | Layout reference | Dimensions |
+All artwork comes from offline-extracted `data/main/start.dat` sprites. The original composite BMP has been replaced with the original 1024×637 background. All other additional artwork is losslessly stored as Brotli-compressed, straight-alpha RGBA. Original retail imagery is derived and embedded in the content assembly, **not** represented as a fabricated exact-retail payload entry.
+
+| Layer | Sprite | Original dimensions | Reference-stage placement |
 | --- | --- | --- | --- |
-| Top dragon | `data/main/start.dat`, `start/symbol-0397.png` | `ini/flashLogin.ini [topDragon] (267,26)` | 494×140 |
+| Background | `start/symbol-0010.png` | 1024×637 | `(0,40)` |
+| Header | `start/symbol-0398.png` | 1024×116 | `(0,0)` |
+| Footer | `start/symbol-0399.png` | 1024×140 | `(0,660)` (clips at viewport edge) |
+| Account panel | `start/symbol-0327.png` | 508×98 | `(258,615)` |
+| Top dragon | `start/symbol-0397.png` | 494×140 | `(267,26)` (verified topDragon anchor) |
 
-The separately verified `(150,381)` and `(685,373)` translations are **root-timeline anchors for `sr` and `ss` submovie clips**, not coordinates for individual group/server buttons. The earlier placement of `Group1/symbol-0007.png` at these anchors has been removed. Region and server visual grids require a separate verified layout and server catalog; no placeholder rows or invented endpoints are rendered.
+Background, header, footer, and account-panel positions are **reference-screen reconstruction estimates**, not claims of exact native timeline placement. They reflect the supplied reference screenshot and must be checked at 1024×768 and 800×600. Top-dragon placement retains its native configuration anchor.
 
-The embedded image is an offline-extracted, losslessly converted RGBA image compressed with Brotli. It is first-party **derived** content, not a loose retail file. No SWF decoding or Flash runtime ships with the client, and the exact-retail content manifest remains unchanged.
+Source hashes (decoded RGBA SHA-256):
 
-## Lifetime and correctness
+- Background: `e33bf0450c7a386aa28d6d90a1f71a8b7d8b64e1e4ec92fdfad48d7f3880a2b9`
+- Header: `80fb919c05a73751f7418e26b0849f43a8a4b949dc9355f98b56aff04c68ce12`
+- Footer: `25b59064c644823574410e2277d1fbc67bc26965224e79e97de38975f98a981c`
+- Account panel: `3a1e4698639f2c4af2eace1c9b48e81d4898d279831c128bbe65e76e3eb240c2`
+- Top dragon: `b1e80e39a4a91d952510e826c9e8c0f0e0f83a353c6f546f322c970f3875d6b1`
 
-- Login texture ownership is scoped to the active OpenGL context; failed construction disposes any previously created textures in reverse order.
-- No per-frame image decoding, texture creation, or string processing.
-- Layout scales deterministically from a 1024×768 reference to the supported 4:3 logical resolutions.
-- No HUD activation, authentication, or input-routing changes.
+## Runtime contract
 
-## Evidence
+- `LoginArtworkSet` is the validated startup visual asset set; no render-loop decoding or dynamic reads.
+- `LoginVisualLayout` applies reference-stage coordinates to supported 4:3 logical resolutions.
+- `LoginPresentation` creates and releases five independently owned OpenGL textures in one context lifetime, disposing partial constructions in reverse order.
+- No HUD instantiation, login state mutation, protocol messages, placeholder regions or servers, or user-input routing.
+- Original `ClientContentClosure` and retail manifest remain unchanged.
 
-- `start/symbol-0397.png`: 494×140, source PNG SHA-256 `e3159ca601fddb006350bb9e6d2c4ad5604a98795669b3b96afc6bfc32c3df9c`.
-- Extracted RGBA SHA-256: `b1e80e39a4a91d952510e826c9e8c0f0e0f83a353c6f546f322c970f3875d6b1`.
-- Embedded Brotli bytes: 74769.
-- Native `sr`/`ss` contract: `20_notes/Architecture/03_login_flash_startup_command_contract.md`, startup `loadMovie` target-anchor section.
+## Acceptance
 
-## Verification
-
-Run locked restore, formatting, Release build/tests, retail-content verification, and desktop 1024×768 / 800×600 smoke tests. Confirm no stray selection rectangles, correct alpha blending, clean OpenGL shutdown, and unchanged HUD gate. Do not claim full native login fidelity until the missing UI and authorized catalog are implemented.
+Confirm header and footer placement, account-panel overlap with footer, correct transparency/compositing, and unchanged dragon position. Verify both 1024×768 and 800×600, Release restore/build/tests/format, retail-content closure, and native macOS/Windows OpenGL smoke test before merging.
