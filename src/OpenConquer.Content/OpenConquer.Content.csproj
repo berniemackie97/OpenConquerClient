@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets/Login/login-backdrop.bmp" LogicalName="OpenConquer.Content.Assets.Login.Backdrop.bmp" />
+    <EmbeddedResource Include="Assets/Login/top-dragon.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.TopDragon.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/server-slot.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ServerSlot.rgba.br" />
   </ItemGroup>
 
 </Project>

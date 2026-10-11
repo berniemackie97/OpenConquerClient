@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using OpenConquer.Content.Images;
 
 namespace OpenConquer.Content.Startup;
@@ -13,6 +14,38 @@ public static class LoginArtwork
 
     public const int ReferenceWidth = 1024;
     public const int ReferenceHeight = 768;
+
+
+    private const string TopDragonResourceName = "OpenConquer.Content.Assets.Login.TopDragon.rgba.br";
+    private const string ServerSlotResourceName = "OpenConquer.Content.Assets.Login.ServerSlot.rgba.br";
+
+    public static RgbaImage LoadTopDragon() => LoadEmbeddedLayer(TopDragonResourceName, width: 494, height: 140);
+
+    public static RgbaImage LoadServerSlot() => LoadEmbeddedLayer(ServerSlotResourceName, width: 158, height: 58);
+
+    private static RgbaImage LoadEmbeddedLayer(string resourceName, int width, int height)
+    {
+        using Stream source = typeof(LoginArtwork).Assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Embedded login resource '{resourceName}' is missing.");
+        using BrotliStream decoder = new(source, CompressionMode.Decompress);
+        byte[] pixels = GC.AllocateUninitializedArray<byte>(checked(width * height * 4));
+
+        try
+        {
+            decoder.ReadExactly(pixels);
+        }
+        catch (EndOfStreamException exception)
+        {
+            throw new InvalidDataException($"Embedded login resource '{resourceName}' is truncated.", exception);
+        }
+
+        if (decoder.ReadByte() != -1)
+        {
+            throw new InvalidDataException($"Embedded login resource '{resourceName}' contains trailing decoded pixels.");
+        }
+
+        return new RgbaImage(width, height, pixels);
+    }
 
     public static RgbaImage LoadBackdrop()
     {
