@@ -396,7 +396,9 @@ internal sealed class ClientApplication : IDisposable
             }
 
             hud?.StatusHints.Draw(renderer, _mainHudStatusHintState, _mainHudCheckControlsState, _mainHudVitalsState, _mainHudSkillExperienceState);
-            hud?.MagicHint.Draw(renderer, _mainHudStatusHintState, _magicHintSource?.Capture());
+            MainHudMagicHintRuntimeSnapshot? hintRuntime = _magicHintSource?.Capture();
+            hud?.MagicHint.Draw(renderer, _mainHudStatusHintState, hintRuntime);
+            hud?.EquipmentHint.Draw(renderer, _mainHudStatusHintState, hintRuntime?.EquipmentSwitchState);
         }
         catch (Exception exception)
         {

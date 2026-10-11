@@ -15,12 +15,20 @@ internal static class MainHudQuickbarHintHandoff
                 state.SelectMagic(notification.ContentId);
                 break;
 
+            case MainHudQuickbarHoverNotificationKind.Dance:
+                state.SetMagicAnchor(notification.AnchorX, notification.AnchorY);
+                state.SelectDance(notification.Context);
+                break;
+
+            case MainHudQuickbarHoverNotificationKind.WeaponSwap:
+                state.SetMagicAnchor(notification.AnchorX, notification.AnchorY);
+                state.SelectEquipmentSwitch(notification.Context);
+                break;
+
             case MainHudQuickbarHoverNotificationKind.Clear:
             case MainHudQuickbarHoverNotificationKind.Item:
-            case MainHudQuickbarHoverNotificationKind.Dance:
-            case MainHudQuickbarHoverNotificationKind.WeaponSwap:
             case MainHudQuickbarHoverNotificationKind.Generic:
-                if (state.Category == MainHudStatusHintState.MagicCategory && state.IsVisible)
+                if (state.IsVisible && state.Category is MainHudStatusHintState.MagicCategory or MainHudStatusHintState.DanceCategory or MainHudStatusHintState.EquipmentSwitchCategory)
                 {
                     state.Clear();
                 }

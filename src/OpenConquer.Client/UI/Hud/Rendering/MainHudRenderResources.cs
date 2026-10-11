@@ -6,6 +6,7 @@ using OpenConquer.Client.UI.Hud.Quickbar;
 using OpenConquer.Client.UI.Hud.SelectedSkill;
 using OpenConquer.Client.UI.Hud.SkillExperience;
 using OpenConquer.Client.UI.Hud.StatusHints;
+using OpenConquer.Client.UI.Hud.StatusHints.Equipment;
 using OpenConquer.Client.UI.Hud.StatusHints.Magic;
 using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Content.Configuration;
@@ -136,6 +137,11 @@ internal sealed class MainHudRenderResources : IDisposable
         get;
     }
 
+    public MainHudEquipmentHintRenderer EquipmentHint
+    {
+        get;
+    }
+
     public MainHudRenderResources(OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize,
         MainHudRenderResourceDependencies dependencies, Func<uint> readTickCount)
     {
@@ -158,6 +164,8 @@ internal sealed class MainHudRenderResources : IDisposable
                 dependencies.FontSettingsConfiguration, dependencies.FontSizeConfiguration, dependencies.CodePageConfiguration, logicalRenderSize));
             MagicHint = _ownership.Track(new MainHudMagicHintRenderer(graphicsDevice, StatusHints, dependencies.MagicHintContent,
                 dependencies.StatusHintAssets.Strings, dependencies.FontSettingsConfiguration, dependencies.CodePageConfiguration, logicalRenderSize));
+            EquipmentHint = new MainHudEquipmentHintRenderer(StatusHints, dependencies.MagicHintContent.KeyedStrings,
+                dependencies.FontSizeConfiguration, logicalRenderSize, dependencies.StatusHintAssets.Strings.UsesArabicLayout);
         }
         catch
         {

@@ -38,7 +38,23 @@ internal sealed class MainHudMagicHintTextBuilder
         _subprofessions = subprofessions;
     }
 
-    public IReadOnlyList<MainHudMagicHintTextGroup> Build(MagicTypeRecord record, MainHudLearnedMagic learned, MainHudMagicHintRuntimeSnapshot runtime)
+    public IReadOnlyList<MainHudMagicHintTextGroup> Build(MagicTypeRecord record, MainHudLearnedMagic learned, MainHudMagicHintRuntimeSnapshot runtime) => BuildCore(record, learned, runtime, true);
+
+    public IReadOnlyList<MainHudMagicHintTextGroup> BuildCatalogPreview(MagicTypeRecord record, MainHudMagicHintRuntimeSnapshot runtime)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+        ArgumentNullException.ThrowIfNull(runtime);
+
+        if (record.Level != 0)
+        {
+            throw new ArgumentException("Catalog previews use the unlearned base level.", nameof(record));
+        }
+
+        MainHudLearnedMagic preview = new(record.Type, 0, 0);
+        return BuildCore(record, preview, runtime, runtime.TryFindLearnedMagic(record.Type, out _));
+    }
+
+    private List<MainHudMagicHintTextGroup> BuildCore(MagicTypeRecord record, MainHudLearnedMagic learned, MainHudMagicHintRuntimeSnapshot runtime, bool isLearned)
     {
         ArgumentNullException.ThrowIfNull(record);
         ArgumentNullException.ThrowIfNull(runtime);
@@ -61,7 +77,7 @@ internal sealed class MainHudMagicHintTextBuilder
         AppendSubprofessionRequirement(groups, record, name, runtime);
         AppendDescription(groups, record, runtime);
         AppendProgress(groups, record, learned, runtime);
-        AppendDanceWarning(groups, record, runtime);
+        AppendDanceWarning(groups, record, runtime, isLearned);
 
         return groups;
     }
@@ -173,14 +189,18 @@ internal sealed class MainHudMagicHintTextBuilder
         Add(groups, NativeMagicStringFormatter.Format(_numericStrings.GetEncoded(ExperienceStringId).Span, ShortFormatLimit, percentage), SpriteColor.White);
     }
 
-    private void AppendDanceWarning(List<MainHudMagicHintTextGroup> groups, MagicTypeRecord record, MainHudMagicHintRuntimeSnapshot runtime)
+    private void AppendDanceWarning(List<MainHudMagicHintTextGroup> groups, MagicTypeRecord record, MainHudMagicHintRuntimeSnapshot runtime, bool isLearned)
     {
         if (!IsDanceSkill(record.Type))
         {
             return;
         }
 
-        if (record.Type is >= 1415 and <= 1419 && runtime.ActiveSubprofessionClass != 6)
+        if (!isLearned)
+        {
+            Add(groups, _keyedStrings.GetEncoded("STR_NOTSTUDY_DANCE"), s_warningColor);
+        }
+        else if (record.Type is >= 1415 and <= 1419 && runtime.ActiveSubprofessionClass != 6)
         {
             Add(groups, _keyedStrings.GetEncoded("STR_NOT_COOL_DANCE_STATE"), s_warningColor);
         }

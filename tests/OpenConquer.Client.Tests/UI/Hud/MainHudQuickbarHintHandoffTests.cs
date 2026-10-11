@@ -151,7 +151,7 @@ public sealed class MainHudQuickbarHintHandoffTests
     }
 
     [Fact]
-    public void LateClearAndNonSkillNotifications_DoNotAffectCategoryEight()
+    public void LateClearAndNonSelectionNotifications_DoNotAffectCategoryEight()
     {
         MainHudStatusHintState hints = new();
         hints.Select((int)MainHudStatusHintKind.WalkRun);
@@ -160,8 +160,6 @@ public sealed class MainHudQuickbarHintHandoffTests
         [
             MainHudQuickbarHoverNotificationKind.Clear,
             MainHudQuickbarHoverNotificationKind.Item,
-            MainHudQuickbarHoverNotificationKind.Dance,
-            MainHudQuickbarHoverNotificationKind.WeaponSwap,
             MainHudQuickbarHoverNotificationKind.Generic,
             MainHudQuickbarHoverNotificationKind.None,
         ];
@@ -175,6 +173,29 @@ public sealed class MainHudQuickbarHintHandoffTests
             Assert.Equal(MainHudStatusHintDefinition.Category, hints.Category);
             Assert.Equal(MainHudStatusHintKind.WalkRun, hints.Kind);
         }
+    }
+
+    [Theory]
+    [InlineData((int)MainHudQuickbarHoverNotificationKind.Dance, MainHudStatusHintState.DanceCategory, 3u)]
+    [InlineData((int)MainHudQuickbarHoverNotificationKind.WeaponSwap, MainHudStatusHintState.EquipmentSwitchCategory, 0x5Eu)]
+    public void NewContextSelection_ReplacesCategoryEight(int notificationKind, int category, uint parameter)
+    {
+        MainHudQuickbarHoverNotificationKind kind = (MainHudQuickbarHoverNotificationKind)notificationKind;
+        MainHudStatusHintState hints = new();
+        hints.Select((int)MainHudStatusHintKind.WalkRun);
+
+        MainHudQuickbarHintHandoff.Apply(hints, new MainHudQuickbarHoverNotification(kind, 0, 1415, 0, 90, 557, parameter));
+
+        Assert.True(hints.IsVisible);
+        Assert.False(hints.CanRender);
+        Assert.Equal(category, hints.Category);
+        Assert.Equal(parameter, hints.ContextParameter);
+        Assert.Equal(MainHudStatusHintKind.None, hints.Kind);
+        Assert.Equal(MainHudStatusHintState.NoHoveredHotspot, hints.HoveredHotspot);
+        Assert.Equal(90, hints.MagicAnchorX);
+        Assert.Equal(599, hints.MagicStoredAnchorY);
+        Assert.Equal(kind == MainHudQuickbarHoverNotificationKind.Dance, hints.CanRenderDance);
+        Assert.Equal(kind == MainHudQuickbarHoverNotificationKind.WeaponSwap, hints.CanRenderEquipmentSwitch);
     }
 
     private static ClientRegionFile CreateInactiveRegion()
