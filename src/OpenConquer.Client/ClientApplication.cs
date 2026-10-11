@@ -1,18 +1,9 @@
 using System.Runtime.ExceptionServices;
 using OpenConquer.Client.Startup;
-using OpenConquer.Client.UI.Hud.ActionButtons;
-using OpenConquer.Client.UI.Hud.CheckControls;
-using OpenConquer.Client.UI.Hud.Chrome;
-using OpenConquer.Client.UI.Hud.Input;
-using OpenConquer.Client.UI.Hud.Quickbar;
-using OpenConquer.Client.UI.Hud.Rendering;
-using OpenConquer.Client.UI.Hud.SelectedSkill;
-using OpenConquer.Client.UI.Hud.SkillExperience;
-using OpenConquer.Client.UI.Hud.StatusHints;
-using OpenConquer.Client.UI.Hud.StatusHints.Magic;
-using OpenConquer.Client.UI.Hud.Vitals;
+using OpenConquer.Client.UI.Login;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
+using OpenConquer.Content.Images;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
 using OpenConquer.Platform.Geometry;
@@ -26,45 +17,22 @@ namespace OpenConquer.Client;
 internal sealed class ClientApplication : IDisposable
 {
     private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
-    private static readonly Func<uint> s_readTickCount = static () => unchecked((uint)Environment.TickCount64);
 
     private readonly string _contentRootPath;
     private readonly PresentationPolicy _presentationPolicy;
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
-    private readonly IMainHudMagicHintSource? _magicHintSource;
-    private readonly MainHudVitalsState _mainHudVitalsState = new();
-    private readonly MainHudSkillExperienceState _mainHudSkillExperienceState = new();
-    private readonly MainHudQuickbarState _mainHudQuickbarState = new();
-    private readonly MainHudActionButtonStripState _mainHudActionButtonStripState = new();
-    private readonly MainHudCheckControlsState _mainHudCheckControlsState = new();
-    private readonly MainHudSelectedSkillState _mainHudSelectedSkillState = new();
-    private readonly MainHudSelectedSkillCooldownState _mainHudSelectedSkillCooldownState = new();
-    private readonly MainHudStatusHintState _mainHudStatusHintState = new();
 
-    private MainHudChromeAssets? _mainHudChromeAssets;
-    private MainHudVitalsAssets? _mainHudVitalsAssets;
-    private MainHudSkillAssets? _mainHudSkillAssets;
-    private MainHudQuickbarAssets? _mainHudQuickbarAssets;
-    private MainHudActionButtonAssets? _mainHudActionButtonAssets;
-    private MainHudCheckControlAssets? _mainHudCheckControlAssets;
-    private MainHudSelectedSkillAssets? _mainHudSelectedSkillAssets;
-    private MainHudStatusHintAssets? _mainHudStatusHintAssets;
-    private MainHudMagicHintContent? _mainHudMagicHintContent;
-    private SelectedMagicCooldownTextConfiguration? _mainHudSelectedSkillCooldownTextConfiguration;
-    private ClientFontSettingsConfiguration? _clientFontSettingsConfiguration;
-    private ClientFontSizeConfiguration? _clientFontSizeConfiguration;
-    private ClientCodePageConfiguration? _clientCodePageConfiguration;
-    private MainHudInputCoordinator? _mainHudInputCoordinator;
-    private MainHudRenderResources? _mainHudRenderResources;
+    private DesktopWindow? _window;
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
-    private DesktopWindow? _window;
+    private LoginPresentation? _loginPresentation;
     private LogicalRenderSize? _logicalRenderSize;
+    private RgbaImage? _loginBackdrop;
     private bool _runStarted;
     private bool _disposed;
 
-    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null, IMainHudMagicHintSource? magicHintSource = null)
+    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
 
@@ -76,7 +44,6 @@ internal sealed class ClientApplication : IDisposable
         _contentRootPath = contentRootPath;
         _presentationPolicy = presentationPolicy;
         _windowMode = windowMode;
-        _magicHintSource = magicHintSource;
 
         PixelSize configuredWindowSize = windowSize ?? DesktopWindow.DefaultWindowSize;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(configuredWindowSize.Width);
@@ -106,15 +73,12 @@ internal sealed class ClientApplication : IDisposable
         }
 
         DesktopWindow window = StartupWindowSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
-            () => InitializeRuntimeConfiguration(contentSource),
+            () => InitializePreWorldContent(contentSource),
             () => new DesktopWindow(_windowSize, _windowMode, s_frameInterval));
 
         _window = window;
 
         window.FramebufferResized += OnFramebufferResized;
-        window.PointerMoved += OnPointerMoved;
-        window.PrimaryPointerPressed += OnPrimaryPointerPressed;
-        window.PrimaryPointerReleased += OnPrimaryPointerReleased;
         window.Rendering += OnRendering;
         window.OpenGLContextReady += OnOpenGLContextReady;
         window.OpenGLContextReleasing += OnOpenGLContextReleasing;
@@ -130,96 +94,62 @@ internal sealed class ClientApplication : IDisposable
             return;
         }
 
-        DesktopWindow? window = _window;
-
         try
         {
-            window?.Dispose();
+            _window?.Dispose();
         }
         finally
         {
             _window = null;
-            _mainHudInputCoordinator = null;
-            _mainHudRenderResources = null;
-            _mainHudSelectedSkillCooldownTextConfiguration = null;
-            _clientFontSettingsConfiguration = null;
-            _clientFontSizeConfiguration = null;
-            _clientCodePageConfiguration = null;
-            _mainHudMagicHintContent = null;
-            _mainHudStatusHintAssets = null;
-            _mainHudSelectedSkillAssets = null;
-            _mainHudCheckControlAssets = null;
-            _mainHudActionButtonAssets = null;
-            _mainHudQuickbarAssets = null;
-            _mainHudVitalsAssets = null;
-            _mainHudSkillAssets = null;
-            _mainHudChromeAssets = null;
+            _loginPresentation = null;
             _renderer = null;
             _graphicsDevice = null;
+            _loginBackdrop = null;
             _disposed = true;
         }
     }
 
+    private void InitializePreWorldContent(IClientContentSource contentSource)
+    {
+        ArgumentNullException.ThrowIfNull(contentSource);
+
+        GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
+        RgbaImage backdrop = LoginArtwork.LoadBackdrop();
+
+        _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
+        _loginBackdrop = backdrop;
+    }
+
     private void OnOpenGLContextReady(IOpenGLContext context)
     {
-        if (_graphicsDevice is not null || _renderer is not null || _mainHudRenderResources is not null)
+        if (_graphicsDevice is not null || _renderer is not null || _loginPresentation is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
 
         OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
         OpenGLRenderer? renderer = null;
-        MainHudRenderResources? mainHudRenderResources = null;
+        LoginPresentation? login = null;
 
         try
         {
             DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
-            LogicalRenderSize logicalRenderSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
-            MainHudChromeAssets mainHudChromeAssets = _mainHudChromeAssets ?? throw new InvalidOperationException("The main HUD chrome assets have not been initialized.");
-            MainHudVitalsAssets mainHudVitalsAssets = _mainHudVitalsAssets ?? throw new InvalidOperationException("The main HUD vitals assets have not been initialized.");
-            MainHudSkillAssets mainHudSkillAssets = _mainHudSkillAssets ?? throw new InvalidOperationException("The main HUD skill assets have not been initialized.");
-            MainHudQuickbarAssets mainHudQuickbarAssets = _mainHudQuickbarAssets ?? throw new InvalidOperationException("The main HUD quickbar assets have not been initialized.");
-            MainHudActionButtonAssets mainHudActionButtonAssets = _mainHudActionButtonAssets ?? throw new InvalidOperationException("The main HUD action-button assets have not been initialized.");
-            MainHudCheckControlAssets mainHudCheckControlAssets = _mainHudCheckControlAssets ?? throw new InvalidOperationException("The main HUD check-control assets have not been initialized.");
-            MainHudSelectedSkillAssets mainHudSelectedSkillAssets = _mainHudSelectedSkillAssets ?? throw new InvalidOperationException("The main HUD selected-skill assets have not been initialized.");
-            MainHudStatusHintAssets mainHudStatusHintAssets = _mainHudStatusHintAssets ?? throw new InvalidOperationException("The main HUD status-hint assets have not been initialized.");
-            MainHudMagicHintContent mainHudMagicHintContent = _mainHudMagicHintContent ?? throw new InvalidOperationException("The native magic-hint content has not been initialized.");
-            SelectedMagicCooldownTextConfiguration cooldownTextConfiguration = _mainHudSelectedSkillCooldownTextConfiguration ?? throw new InvalidOperationException("The main HUD selected-skill cooldown configuration has not been initialized.");
-            ClientFontSettingsConfiguration fontSettingsConfiguration = _clientFontSettingsConfiguration ?? throw new InvalidOperationException("The client font settings have not been initialized.");
-            ClientFontSizeConfiguration fontSizeConfiguration = _clientFontSizeConfiguration ?? throw new InvalidOperationException("The client normal-font configuration has not been initialized.");
-            ClientCodePageConfiguration codePageConfiguration = _clientCodePageConfiguration ?? throw new InvalidOperationException("The client code-page configuration has not been initialized.");
+            LogicalRenderSize logicalSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
+            RgbaImage backdrop = _loginBackdrop ?? throw new InvalidOperationException("The login artwork has not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
-            renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
+            renderer = graphicsDevice.CreateRenderer(logicalSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
+            login = new LoginPresentation(graphicsDevice, logicalSize, backdrop);
 
-            MainHudRenderResourceDependencies dependencies = new()
-            {
-                ChromeAssets = mainHudChromeAssets,
-                VitalsAssets = mainHudVitalsAssets,
-                SkillAssets = mainHudSkillAssets,
-                QuickbarAssets = mainHudQuickbarAssets,
-                ActionButtonAssets = mainHudActionButtonAssets,
-                CheckControlAssets = mainHudCheckControlAssets,
-                SelectedSkillAssets = mainHudSelectedSkillAssets,
-                StatusHintAssets = mainHudStatusHintAssets,
-                MagicHintContent = mainHudMagicHintContent,
-                CooldownTextConfiguration = cooldownTextConfiguration,
-                FontSettingsConfiguration = fontSettingsConfiguration,
-                FontSizeConfiguration = fontSizeConfiguration,
-                CodePageConfiguration = codePageConfiguration,
-            };
-
-            mainHudRenderResources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, dependencies, s_readTickCount);
-
-            _renderer = renderer;
-            _mainHudRenderResources = mainHudRenderResources;
             _graphicsDevice = graphicsDevice;
+            _renderer = renderer;
+            _loginPresentation = login;
         }
         catch
         {
             try
             {
-                mainHudRenderResources?.Dispose();
+                login?.Dispose();
             }
             catch { }
 
@@ -241,164 +171,17 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnFramebufferResized(PixelSize size) => _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
 
-    private void OnPointerMoved(PixelPoint point)
-    {
-        bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
-        _mainHudInputCoordinator?.HandlePointerMoved(CanInteractWithMainHudControls(), mapped, logicalX, logicalY);
-    }
-
-    private void OnPrimaryPointerPressed(PixelPoint point)
-    {
-        bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
-        _mainHudInputCoordinator?.HandlePrimaryPointerPressed(CanInteractWithMainHudControls(), mapped, logicalX, logicalY);
-    }
-
-    private void OnPrimaryPointerReleased(PixelPoint point)
-    {
-        bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
-        _mainHudInputCoordinator?.HandlePrimaryPointerReleased(CanInteractWithMainHudControls(), mapped, logicalX, logicalY);
-    }
-
-    private bool TryMapPointerToLogical(PixelPoint point, out int logicalX, out int logicalY)
-    {
-        OpenGLRenderer? renderer = _renderer;
-
-        if (renderer is null)
-        {
-            logicalX = 0;
-            logicalY = 0;
-            return false;
-        }
-
-        return renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out logicalX, out logicalY);
-    }
-
-    private void PollMainHudQuickbarPointer()
-    {
-        DesktopWindow? window = _window;
-        MainHudInputCoordinator? input = _mainHudInputCoordinator;
-
-        if (window is null || input is null || !window.TryGetPointerPosition(out PixelPoint point))
-        {
-            return;
-        }
-
-        bool mapped = TryMapPointerToLogical(point, out int logicalX, out int logicalY);
-        input.PollQuickbarPointer(mapped, logicalX, logicalY);
-    }
-
-    private bool CanInteractWithMainHudControls() => _mainHudChromeAssets?.HasDialogPanels == true;
-
-    private bool IsActionButtonAvailable(MainHudActionButtonId id)
-    {
-        MainHudActionButtonAssets? assets = _mainHudActionButtonAssets;
-
-        if (assets is null)
-        {
-            return false;
-        }
-
-        return id == MainHudActionButtonId.Button47
-            ? assets.IsPkSkinAvailable(_mainHudActionButtonStripState.PkSkin)
-            : assets.IsAvailable(id);
-    }
-
-    private bool IsCheckControlAvailable(MainHudCheckControlId id) => _mainHudCheckControlAssets?.IsAvailable(id) == true;
-
-    private static void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
-    {
-        foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
-        {
-            if (registration.Outcome == WdfPackageRegistrationOutcome.Registered)
-            {
-                continue;
-            }
-
-            Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') resolved as {registration.Outcome}.");
-        }
-    }
-
-    private void InitializeRuntimeConfiguration(IClientContentSource contentSource)
-    {
-        ArgumentNullException.ThrowIfNull(contentSource);
-
-        GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
-        SelectedMagicCooldownTextConfiguration cooldownTextConfiguration = SelectedMagicCooldownTextConfiguration.Load(contentSource);
-        ClientFontSettingsConfiguration fontSettingsConfiguration = ClientFontSettingsConfiguration.Load(contentSource);
-        ClientFontSizeConfiguration fontSizeConfiguration = ClientFontSizeConfiguration.Load(contentSource);
-        ClientCodePageConfiguration codePageConfiguration = ClientCodePageConfiguration.Load(contentSource);
-        LogicalRenderSize logicalRenderSize = new(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
-
-        _logicalRenderSize = logicalRenderSize;
-        _mainHudSelectedSkillCooldownTextConfiguration = cooldownTextConfiguration;
-        _clientFontSettingsConfiguration = fontSettingsConfiguration;
-        _clientFontSizeConfiguration = fontSizeConfiguration;
-        _clientCodePageConfiguration = codePageConfiguration;
-        _mainHudChromeAssets = MainHudChromeAssets.Load(contentSource);
-        _mainHudVitalsAssets = MainHudVitalsAssets.Load(contentSource);
-        _mainHudSkillAssets = MainHudSkillAssets.Load(contentSource);
-        _mainHudQuickbarAssets = new MainHudQuickbarAssets(contentSource);
-        _mainHudActionButtonAssets = MainHudActionButtonAssets.Load(contentSource);
-        _mainHudCheckControlAssets = MainHudCheckControlAssets.Load(contentSource);
-        _mainHudSelectedSkillAssets = new MainHudSelectedSkillAssets(contentSource);
-        _mainHudStatusHintAssets = MainHudStatusHintAssets.Load(contentSource);
-        _mainHudMagicHintContent = MainHudMagicHintContent.Load(contentSource);
-
-        MainHudQuickbarLayout quickbarLayout = MainHudQuickbarLayout.Create(logicalRenderSize);
-        MainHudActionButtonLayout actionButtonLayout = MainHudActionButtonLayout.Create(logicalRenderSize);
-        MainHudCheckControlLayout checkControlLayout = MainHudCheckControlLayout.Create(logicalRenderSize);
-        MainHudStatusHintLayout statusHintLayout = MainHudStatusHintLayout.Create(logicalRenderSize);
-
-        MainHudQuickbarInput quickbarInput = new(_mainHudQuickbarState, quickbarLayout);
-        MainHudActionButtonStripInput actionButtonInput = new(_mainHudActionButtonStripState, actionButtonLayout, IsActionButtonAvailable);
-        MainHudCheckControlsInput checkControlsInput = new(_mainHudCheckControlsState, checkControlLayout, IsCheckControlAvailable);
-        MainHudStatusHintInput statusHintInput = new(_mainHudStatusHintState, statusHintLayout,
-            _mainHudStatusHintAssets.SkillRegion, _mainHudStatusHintAssets.ManaRegion, _mainHudStatusHintAssets.LifeRegion,
-            _mainHudStatusHintAssets.Strings.UsesArabicLayout);
-
-        _mainHudInputCoordinator = new(actionButtonInput, quickbarInput, checkControlsInput, statusHintInput, _mainHudStatusHintState);
-    }
-
     private void OnRendering(double elapsedSeconds)
     {
-        OpenGLRenderer? renderer = _renderer;
-
-        if (renderer is null)
-        {
-            return;
-        }
-
-        MainHudRenderResources? hud = _mainHudRenderResources;
+        OpenGLRenderer renderer = _renderer ?? throw new InvalidOperationException("The renderer is not initialized.");
+        LoginPresentation login = _loginPresentation ?? throw new InvalidOperationException("The login presentation is not initialized.");
 
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
 
         try
         {
-            hud?.Chrome.DrawBackground(renderer);
-            hud?.Vitals.Draw(renderer, _mainHudVitalsState);
-
-            if (hud is not null && hud.Chrome.DrawPanels(renderer))
-            {
-                hud.SkillExperience.Draw(renderer, _mainHudSkillExperienceState);
-
-                hud.Quickbar.Draw(renderer, _mainHudQuickbarState);
-                PollMainHudQuickbarPointer();
-
-                _mainHudActionButtonStripState.AdvancePkBeforeDraw(s_readTickCount);
-                _mainHudActionButtonStripState.AdvanceOrganiseBeforeDraw(s_readTickCount);
-                hud.ActionButtons.Draw(renderer, _mainHudActionButtonStripState);
-                hud.CheckControls.Draw(renderer, _mainHudCheckControlsState);
-                hud.SelectedSkill.Draw(renderer, _mainHudSelectedSkillState);
-                hud.SelectedSkillCooldown.DrawAfterSelectedImage(renderer, _mainHudSelectedSkillState, _mainHudSelectedSkillCooldownState);
-
-                _mainHudSkillExperienceState.AdvanceAfterHudDraw(unchecked((uint)Environment.TickCount64));
-            }
-
-            hud?.StatusHints.Draw(renderer, _mainHudStatusHintState, _mainHudCheckControlsState, _mainHudVitalsState, _mainHudSkillExperienceState);
-            MainHudMagicHintRuntimeSnapshot? hintRuntime = _magicHintSource?.Capture();
-            hud?.MagicHint.Draw(renderer, _mainHudStatusHintState, hintRuntime);
-            hud?.EquipmentHint.Draw(renderer, _mainHudStatusHintState, hintRuntime?.EquipmentSwitchState);
+            login.Draw(renderer);
         }
         catch (Exception exception)
         {
@@ -421,11 +204,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReleaseRenderingResources()
     {
-        MainHudRenderResources? hud = _mainHudRenderResources;
+        LoginPresentation? login = _loginPresentation;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
-        _mainHudRenderResources = null;
+        _loginPresentation = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -433,31 +216,35 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            hud?.Dispose();
+            login?.Dispose();
         }
-        catch (Exception exception)
-        {
-            firstFailure = ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
             renderer?.Dispose();
         }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
             graphicsDevice?.Dispose();
         }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         firstFailure?.Throw();
+    }
+
+    private static void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
+    {
+        foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
+        {
+            if (registration.Outcome == WdfPackageRegistrationOutcome.Registered)
+            {
+                continue;
+            }
+
+            Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') resolved as {registration.Outcome}.");
+        }
     }
 }
