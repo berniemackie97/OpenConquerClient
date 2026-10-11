@@ -4,4 +4,8 @@
     <InternalsVisibleTo Include="OpenConquer.Content.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/Login/login-backdrop.bmp" LogicalName="OpenConquer.Content.Assets.Login.Backdrop.bmp" />
+  </ItemGroup>
+
 </Project>
