@@ -18,7 +18,9 @@ public sealed class DesktopWindow : IDisposable
 
     private IInputContext? _inputContext;
     private IMouse? _mouse;
+    private DesktopKeyboardInput? _keyboardInput;
     private SilkOpenGLContext? _openGLContext;
+    private bool _hasFocus = true;
     private bool _runStarted;
     private bool _openGLContextReleaseStarted;
     private bool _disposed;
@@ -47,6 +49,7 @@ public sealed class DesktopWindow : IDisposable
 
         _window.Load += OnLoad;
         _window.FramebufferResize += OnFramebufferResize;
+        _window.FocusChanged += OnFocusChanged;
         _window.Render += OnRender;
     }
 
@@ -54,6 +57,10 @@ public sealed class DesktopWindow : IDisposable
     public event Action<PixelPoint>? PointerMoved;
     public event Action<PixelPoint>? PrimaryPointerPressed;
     public event Action<PixelPoint>? PrimaryPointerReleased;
+    public event Action<DesktopKeyEvent>? KeyPressed;
+    public event Action<DesktopKeyEvent>? KeyReleased;
+    public event Action<char>? TextEntered;
+    public event Action<bool>? FocusChanged;
     public event Action<double>? Rendering;
     public event Action<IOpenGLContext>? OpenGLContextReady;
     public event Action? OpenGLContextReleasing;
@@ -172,6 +179,7 @@ public sealed class DesktopWindow : IDisposable
 
         _window.Load -= OnLoad;
         _window.FramebufferResize -= OnFramebufferResize;
+        _window.FocusChanged -= OnFocusChanged;
         _window.Render -= OnRender;
 
         try
@@ -185,6 +193,7 @@ public sealed class DesktopWindow : IDisposable
         finally
         {
             _mouse = null;
+            _keyboardInput = null;
             _inputContext = null;
             _openGLContext = null;
             _disposed = true;
@@ -208,7 +217,7 @@ public sealed class DesktopWindow : IDisposable
             DesktopWindowMode.Resizable => (WindowState.Normal, WindowBorder.Resizable),
             DesktopWindowMode.Fixed => (WindowState.Normal, WindowBorder.Fixed),
             DesktopWindowMode.Fullscreen => (WindowState.Fullscreen, WindowBorder.Hidden),
-            _ => throw new ArgumentOutOfRangeException(nameof(windowMode), windowMode, "Unsupported desktop window mode."),
+            _ => throw new ArgumentOutOfRangeException(nameof(windowMode), windowMode, "Unknown desktop window mode."),
         };
 
         Vector2D<int> hostSize = new(windowSize.Width, windowSize.Height);
@@ -255,30 +264,58 @@ public sealed class DesktopWindow : IDisposable
 
     private void InitializeInput()
     {
-        if (_inputContext is not null || _mouse is not null)
+        if (_inputContext is not null || _mouse is not null || _keyboardInput is not null)
         {
             throw new InvalidOperationException("Desktop input has already been initialized.");
         }
 
         IInputContext inputContext = _window.CreateInput();
+        IMouse? mouse = null;
+        DesktopKeyboardInput? keyboardInput = null;
 
         try
         {
-            if (inputContext.Mice.Count == 0)
+            if (inputContext.Mice.Count == 0 || inputContext.Keyboards.Count == 0)
             {
-                throw new NotSupportedException("The desktop input backend did not provide a mouse device.");
+                throw new NotSupportedException("The desktop input backend must provide both mouse and keyboard devices.");
             }
 
-            IMouse mouse = inputContext.Mice[0];
+            mouse = inputContext.Mice[0];
             mouse.MouseMove += OnMouseMove;
             mouse.MouseDown += OnMouseDown;
             mouse.MouseUp += OnMouseUp;
 
+            keyboardInput = new DesktopKeyboardInput(inputContext.Keyboards[0], _hasFocus, OnKeyPressed, OnKeyReleased, OnTextEntered);
+
             _mouse = mouse;
+            _keyboardInput = keyboardInput;
             _inputContext = inputContext;
         }
         catch
         {
+            try
+            {
+                keyboardInput?.Dispose();
+            }
+            catch
+            {
+                // Preserve the input-initialization failure.
+            }
+
+            try
+            {
+                if (mouse is not null)
+                {
+                    mouse.MouseUp -= OnMouseUp;
+                    mouse.MouseDown -= OnMouseDown;
+                    mouse.MouseMove -= OnMouseMove;
+                }
+            }
+            catch
+            {
+                // Preserve the input-initialization failure.
+            }
+
             try
             {
                 inputContext.Dispose();
@@ -302,6 +339,13 @@ public sealed class DesktopWindow : IDisposable
         }
 
         _framePacer.WaitForNextFrame();
+
+        if (_window.IsClosing)
+        {
+            return;
+        }
+
+        _keyboardInput?.Advance();
 
         if (_window.IsClosing)
         {
@@ -370,6 +414,19 @@ public sealed class DesktopWindow : IDisposable
         PrimaryPointerReleased?.Invoke(framebufferPoint);
     }
 
+    private void OnKeyPressed(DesktopKeyEvent key) => KeyPressed?.Invoke(key);
+
+    private void OnKeyReleased(DesktopKeyEvent key) => KeyReleased?.Invoke(key);
+
+    private void OnTextEntered(char character) => TextEntered?.Invoke(character);
+
+    private void OnFocusChanged(bool hasFocus)
+    {
+        _hasFocus = hasFocus;
+        _keyboardInput?.SetFocus(hasFocus);
+        FocusChanged?.Invoke(hasFocus);
+    }
+
     private bool TryMapPointerToFramebuffer(Vector2 position, out PixelPoint framebufferPoint)
     {
         Vector2D<int> windowSize = _window.Size;
@@ -430,12 +487,26 @@ public sealed class DesktopWindow : IDisposable
     private void ReleaseInput()
     {
         IMouse? mouse = _mouse;
+        DesktopKeyboardInput? keyboardInput = _keyboardInput;
         IInputContext? inputContext = _inputContext;
 
         _mouse = null;
+        _keyboardInput = null;
         _inputContext = null;
 
         ExceptionDispatchInfo? firstFailure = null;
+
+        if (keyboardInput is not null)
+        {
+            try
+            {
+                keyboardInput.Dispose();
+            }
+            catch (Exception exception)
+            {
+                firstFailure = ExceptionDispatchInfo.Capture(exception);
+            }
+        }
 
         if (mouse is not null)
         {
@@ -447,7 +518,7 @@ public sealed class DesktopWindow : IDisposable
             }
             catch (Exception exception)
             {
-                firstFailure = ExceptionDispatchInfo.Capture(exception);
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
             }
         }
 
