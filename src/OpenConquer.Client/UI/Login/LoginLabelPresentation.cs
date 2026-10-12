@@ -11,8 +11,12 @@ internal sealed class LoginLabelPresentation : IDisposable
     private const int ReferenceWidth = 1024;
     private const int ReferenceFontHeight = 13;
     private const int ReferenceHorizontalPadding = 8;
-    private static readonly SpriteColor s_labelColor = new(245, 230, 194, 255);
-    private static readonly NativeTextRenderOptions s_labelStyle = new(NativeTextRenderStyle.Normal, s_labelColor, s_labelColor, 0, 0, NativeTextVertexColors.Solid(s_labelColor));
+    private static readonly SpriteColor s_regionColor = new(73, 42, 26, 255);
+    private static readonly SpriteColor s_selectedRegionColor = new(139, 45, 22, 255);
+    private static readonly SpriteColor s_serverColor = new(51, 41, 31, 255);
+    private static readonly NativeTextRenderOptions s_regionStyle = Style(s_regionColor);
+    private static readonly NativeTextRenderOptions s_selectedRegionStyle = Style(s_selectedRegionColor);
+    private static readonly NativeTextRenderOptions s_serverStyle = Style(s_serverColor);
     private readonly OpenGLGraphicsDevice _graphicsDevice;
     private readonly LoginVisualLayout _layout;
     private readonly Label?[] _regionLabels = new Label?[LoginServerSelection.RegionsPerPage];
@@ -66,8 +70,16 @@ internal sealed class LoginLabelPresentation : IDisposable
             PrepareVisibleLabels(text, selection);
         }
 
-        DrawLabels(text, renderer, _regionLabels);
-        DrawLabels(text, renderer, _serverLabels);
+        for (int index = 0; index < _regionLabels.Length; index++)
+        {
+            if (_regionLabels[index] is { } label)
+            {
+                NativeTextRenderOptions style = selection.SelectedRegionSlot == index ? s_selectedRegionStyle : s_regionStyle;
+                text.Draw(renderer, label.Layout, style, label.X, label.Y);
+            }
+        }
+
+        DrawLabels(text, renderer, _serverLabels, s_serverStyle);
     }
 
     public void Dispose()
@@ -170,13 +182,15 @@ internal sealed class LoginLabelPresentation : IDisposable
         return new Label(layout, x, y);
     }
 
-    private static void DrawLabels(OpenGLTextContext text, OpenGLRenderer renderer, Label?[] labels)
+    private static NativeTextRenderOptions Style(SpriteColor color) => new(NativeTextRenderStyle.Normal, color, color, 0, 0, NativeTextVertexColors.Solid(color));
+
+    private static void DrawLabels(OpenGLTextContext text, OpenGLRenderer renderer, Label?[] labels, NativeTextRenderOptions style)
     {
         foreach (Label? label in labels)
         {
             if (label is { } visible)
             {
-                text.Draw(renderer, visible.Layout, s_labelStyle, visible.X, visible.Y);
+                text.Draw(renderer, visible.Layout, style, visible.X, visible.Y);
             }
         }
     }
