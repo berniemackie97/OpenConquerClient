@@ -1,0 +1,18 @@
+{
+  "regions": [
+    {
+      "id": "north",
+      "name": "North",
+      "servers": [
+        {
+          "id": "realm-one",
+          "name": "Realm One",
+          "protocolServerName": "RealmOne",
+          "accountHost": "login.example.org",
+          "accountPort": 9958,
+          "iconId": "g01s01"
+        }
+      ]
+    }
+  ]
+}
