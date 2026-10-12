@@ -49,8 +49,7 @@ internal static class LoginCatalogJson
     {
         JsonElement value = parent.GetProperty(property);
 
-        if (value.ValueKind != JsonValueKind.String || value.GetString() is not { } text ||
-            text.Length is 0 || > maxLength)
+        if (value.ValueKind != JsonValueKind.String || value.GetString() is not { } text || text.Length is 0 or > maxLength)
         {
             throw new InvalidDataException($"Catalog property '{property}' is invalid.");
         }
