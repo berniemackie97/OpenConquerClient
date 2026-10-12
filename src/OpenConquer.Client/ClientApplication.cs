@@ -31,6 +31,7 @@ internal sealed class ClientApplication : IDisposable
     private LoginArtworkSet? _loginArtwork;
     private LoginServerSelection? _loginSelection;
     private LoginSelectionInput? _loginSelectionInput;
+    private LoginCredentialInput? _loginCredentials;
     private LoginCatalogRefresh? _catalogRefresh;
     private bool _catalogUnavailableReported;
     private bool _runStarted;
@@ -86,6 +87,7 @@ internal sealed class ClientApplication : IDisposable
         window.PrimaryPointerPressed += OnPrimaryPointerPressed;
         window.PrimaryPointerReleased += OnPrimaryPointerReleased;
         window.KeyPressed += OnKeyPressed;
+        window.TextEntered += OnTextEntered;
         window.FocusChanged += OnFocusChanged;
         window.Rendering += OnRendering;
         window.OpenGLContextReady += OnOpenGLContextReady;
@@ -109,6 +111,7 @@ internal sealed class ClientApplication : IDisposable
         }
         finally
         {
+            _loginCredentials?.Dispose();
             _catalogRefresh?.Dispose();
         }
     }
@@ -135,6 +138,8 @@ internal sealed class ClientApplication : IDisposable
             finally
             {
                 _catalogRefresh = null;
+                _loginCredentials?.Dispose();
+                _loginCredentials = null;
                 _window = null;
                 _loginPresentation = null;
                 _renderer = null;
@@ -157,7 +162,9 @@ internal sealed class ClientApplication : IDisposable
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
         _loginArtwork = artwork;
         _loginSelection = new LoginServerSelection();
-        _loginSelectionInput = new LoginSelectionInput(LoginVisualLayout.Create(_logicalRenderSize.Value), _loginSelection);
+        LoginVisualLayout layout = LoginVisualLayout.Create(_logicalRenderSize.Value);
+        _loginSelectionInput = new LoginSelectionInput(layout, _loginSelection);
+        _loginCredentials = new LoginCredentialInput(_loginSelection, LoginCredentialLayout.Create(layout));
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
@@ -215,13 +222,22 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPrimaryPointerReleased(PixelPoint point) => RoutePointer(point, pressed: false);
 
-    private void OnKeyPressed(DesktopKeyEvent key) => _loginSelectionInput?.KeyPressed(key);
+    private void OnKeyPressed(DesktopKeyEvent key)
+    {
+        if (_loginCredentials?.KeyPressed(key) != true)
+        {
+            _loginSelectionInput?.KeyPressed(key);
+        }
+    }
+
+    private void OnTextEntered(char character) => _loginCredentials?.TextEntered(character);
 
     private void OnFocusChanged(bool focused)
     {
         if (!focused)
         {
             _loginSelectionInput?.FocusLost();
+            _loginCredentials?.FocusLost();
         }
     }
 
@@ -239,7 +255,13 @@ internal sealed class ClientApplication : IDisposable
 
         if (pressed)
         {
-            input.PointerPressed(mapped, x, y);
+            bool captured = _loginCredentials?.PointerPressed(mapped, x, y) == true;
+            input.PointerPressed(!captured && mapped, x, y);
+
+            if (captured)
+            {
+                input.FocusLost();
+            }
         }
         else
         {
@@ -255,13 +277,15 @@ internal sealed class ClientApplication : IDisposable
         LoginPresentation login = _loginPresentation ?? throw new InvalidOperationException("The login presentation is not initialized.");
         LoginServerSelection selection = _loginSelection ?? throw new InvalidOperationException("The login selection state is not initialized.");
         LoginSelectionInput input = _loginSelectionInput ?? throw new InvalidOperationException("The login input handler is not initialized.");
+        LoginCredentialInput credentials = _loginCredentials ?? throw new InvalidOperationException("The login credentials handler is not initialized.");
+        credentials.Synchronize();
 
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
 
         try
         {
-            login.Draw(renderer, selection, input);
+            login.Draw(renderer, selection, input, credentials);
         }
         catch (Exception exception)
         {
@@ -284,6 +308,7 @@ internal sealed class ClientApplication : IDisposable
     {
         _catalogRefresh?.Cancel();
         _loginSelectionInput?.FocusLost();
+        _loginCredentials?.FocusLost();
         ReleaseRenderingResources();
     }
 
@@ -336,6 +361,7 @@ internal sealed class ClientApplication : IDisposable
         if (refresh.Advance(DateTimeOffset.UtcNow))
         {
             _loginSelectionInput?.ReplaceCatalog(refresh.Current?.View ?? LoginServerCatalog.Empty);
+            _loginCredentials?.Synchronize();
         }
 
         if (refresh.LastAttemptFailed && !_catalogUnavailableReported)
