@@ -7,7 +7,7 @@ using OpenConquer.Rendering.Sprites;
 
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Owns pre-world login textures for one active OpenGL context.</summary>
+/// <summary>Owns pre-world login textures and text for one active OpenGL context.</summary>
 internal sealed class LoginPresentation : IDisposable
 {
     private readonly OpenGLTexture2D _backdrop;
@@ -18,6 +18,7 @@ internal sealed class LoginPresentation : IDisposable
     private readonly OpenGLTexture2D _regionCell;
     private readonly OpenGLTexture2D _serverCell;
     private readonly LoginVisualLayout _layout;
+    private readonly LoginLabelPresentation _labels;
     private static readonly SpriteColor s_selectedBorder = new(218, 161, 52, 255);
     private static readonly SpriteColor s_focusBorder = new(255, 231, 135, 255);
     private bool _disposed;
@@ -106,6 +107,7 @@ internal sealed class LoginPresentation : IDisposable
         _regionCell = regionCell;
         _serverCell = serverCell;
         _layout = layout;
+        _labels = new LoginLabelPresentation(graphicsDevice, layout);
     }
 
     public void Draw(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input)
@@ -132,6 +134,8 @@ internal sealed class LoginPresentation : IDisposable
         DrawLayer(renderer, _accountPanel, _layout.AccountPanel);
         DrawLayer(renderer, _topDragon, _layout.TopDragon);
 
+        _labels.Draw(renderer, selection);
+
         DrawSelectionBorder(renderer, _layout.RegionCells, selection.SelectedRegionSlot, s_selectedBorder);
         DrawSelectionBorder(renderer, _layout.ServerCells, selection.SelectedServerSlot, s_selectedBorder);
 
@@ -154,6 +158,15 @@ internal sealed class LoginPresentation : IDisposable
 
         _disposed = true;
         ExceptionDispatchInfo? firstFailure = null;
+
+        try
+        {
+            _labels.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
 
         DisposeTexture(_serverCell, ref firstFailure);
         DisposeTexture(_regionCell, ref firstFailure);

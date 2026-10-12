@@ -1,3 +1,5 @@
+using OpenConquer.Rendering.Text.Atlas;
+
 namespace OpenConquer.Rendering.Text.Layout;
 
 /// <summary>
@@ -7,7 +9,7 @@ internal sealed class NativeTextLayout
 {
     private readonly NativeTextLayoutItem[] _items;
 
-    public NativeTextLayout(NativeTextLayoutSource source, int widthPixels, int heightPixels, IEnumerable<NativeTextLayoutItem> items)
+    public NativeTextLayout(NativeTextLayoutSource source, int widthPixels, int heightPixels, IEnumerable<NativeTextLayoutItem> items, bool hasMissingGlyphs = false)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentOutOfRangeException.ThrowIfNegative(widthPixels);
@@ -16,6 +18,7 @@ internal sealed class NativeTextLayout
         Source = source;
         WidthPixels = widthPixels;
         HeightPixels = heightPixels;
+        HasMissingGlyphs = hasMissingGlyphs;
         _items = items.ToArray();
     }
 
@@ -34,5 +37,44 @@ internal sealed class NativeTextLayout
         get;
     }
 
+    public bool HasMissingGlyphs
+    {
+        get;
+    }
+
     public ReadOnlyMemory<NativeTextLayoutItem> Items => _items;
+
+    public bool TryGetInkBounds(out int left, out int top, out int right, out int bottom)
+    {
+        long minimumX = long.MaxValue;
+        long minimumY = long.MaxValue;
+        long maximumX = long.MinValue;
+        long maximumY = long.MinValue;
+
+        foreach (NativeTextLayoutItem item in _items)
+        {
+            if (item.Kind != NativeTextLayoutItemKind.Glyph)
+            {
+                continue;
+            }
+
+            GlyphAtlasRegion region = item.AtlasRegion;
+            minimumX = Math.Min(minimumX, item.XPixels);
+            minimumY = Math.Min(minimumY, item.YPixels);
+            maximumX = Math.Max(maximumX, (long)item.XPixels + region.WidthPixels);
+            maximumY = Math.Max(maximumY, (long)item.YPixels + region.HeightPixels);
+        }
+
+        if (minimumX == long.MaxValue)
+        {
+            left = top = right = bottom = 0;
+            return false;
+        }
+
+        left = checked((int)minimumX);
+        top = checked((int)minimumY);
+        right = checked((int)maximumX);
+        bottom = checked((int)maximumY);
+        return true;
+    }
 }

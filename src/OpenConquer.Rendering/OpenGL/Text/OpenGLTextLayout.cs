@@ -20,11 +20,16 @@ public sealed class OpenGLTextLayout
 
     public int WidthPixels => NativeLayout.WidthPixels;
     public int HeightPixels => NativeLayout.HeightPixels;
+    public bool HasMissingGlyphs => NativeLayout.HasMissingGlyphs;
 
     internal NativeTextLayout NativeLayout
     {
         get;
     }
+
+    /// <summary>Gets the exact axis-aligned glyph bitmap bounds relative to the layout origin.</summary>
+    public bool TryGetInkBounds(out int left, out int top, out int right, out int bottom) =>
+        NativeLayout.TryGetInkBounds(out left, out top, out right, out bottom);
 
     internal void ValidateOwner(OpenGLTextContext owner, string parameterName)
     {
