@@ -1,5 +1,7 @@
+using System.Buffers;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text;
 
 namespace OpenConquer.Client.UI.Login;
 
@@ -23,7 +25,7 @@ internal sealed class LoginServer
     {
         Id = LoginCatalogText.ValidateId(id, nameof(id));
         DisplayName = LoginCatalogText.ValidateDisplayName(displayName, nameof(displayName));
-        ProtocolServerName = LoginCatalogText.ValidateName(protocolServerName, nameof(protocolServerName), maxLength: 64);
+        ProtocolServerName = LoginCatalogText.ValidateProtocolServerName(protocolServerName, nameof(protocolServerName));
     }
 }
 
@@ -150,6 +152,21 @@ internal static class LoginCatalogText
 
     public static string ValidateDisplayName(string value, string parameterName) => ValidateName(value, parameterName, maxLength: 48);
 
+    public static string ValidateProtocolServerName(string value, string parameterName)
+    {
+        ValidateName(value, parameterName, maxLength: 64);
+
+        foreach (char character in value)
+        {
+            if (char.IsSurrogate(character))
+            {
+                throw new ArgumentException("The native protocol server name does not support supplementary characters.", parameterName);
+            }
+        }
+
+        return value;
+    }
+
     public static string ValidateName(string value, string parameterName, int maxLength)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value, parameterName);
@@ -159,14 +176,23 @@ internal static class LoginCatalogText
             throw new ArgumentException("Catalog name has an invalid length or surrounding whitespace.", parameterName);
         }
 
-        foreach (char character in value)
-        {
-            UnicodeCategory category = CharUnicodeInfo.GetUnicodeCategory(character);
+        ReadOnlySpan<char> text = value.AsSpan();
 
-            if (category is UnicodeCategory.Control or UnicodeCategory.Format or UnicodeCategory.Surrogate or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator)
+        for (int index = 0; index < text.Length;)
+        {
+            if (Rune.DecodeFromUtf16(text[index..], out Rune rune, out int consumed) != OperationStatus.Done)
+            {
+                throw new ArgumentException("Catalog name contains malformed UTF-16.", parameterName);
+            }
+
+            UnicodeCategory category = Rune.GetUnicodeCategory(rune);
+
+            if (category is UnicodeCategory.Control or UnicodeCategory.Format or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator)
             {
                 throw new ArgumentException("Catalog name contains a prohibited control or directional character.", parameterName);
             }
+
+            index += consumed;
         }
 
         return value;

@@ -106,6 +106,7 @@ internal sealed class NativeTextLayoutEngine
         }
 
         List<NativeTextLayoutItem> items = new(Math.Min(text.Length, 256));
+        bool hasMissingGlyphs = false;
         int penXPixels = 0;
         int penYPixels = 0;
         int maximumWidthPixels = 0;
@@ -124,6 +125,7 @@ internal sealed class NativeTextLayoutEngine
             }
 
             CachedGlyph glyph = _glyphCache.GetOrAdd(rune);
+            hasMissingGlyphs |= glyph.IsMissing;
 
             if (glyph.AtlasRegion is { } region)
             {
@@ -137,7 +139,7 @@ internal sealed class NativeTextLayoutEngine
         }
 
         int heightPixels = checked(penYPixels + _primaryFont.NominalPixelHeight);
-        return new NativeTextLayout(_source, maximumWidthPixels, heightPixels, items);
+        return new NativeTextLayout(_source, maximumWidthPixels, heightPixels, items, hasMissingGlyphs);
     }
 
     private int ResolveDataIconWidth(byte dataIconIndex, int explicitWidthPixels)
