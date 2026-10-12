@@ -3,6 +3,7 @@ using OpenConquer.Content.Startup;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;
 using OpenConquer.Rendering.Presentation;
+using OpenConquer.Rendering.Sprites;
 
 namespace OpenConquer.Client.UI.Login;
 
@@ -17,6 +18,8 @@ internal sealed class LoginPresentation : IDisposable
     private readonly OpenGLTexture2D _regionCell;
     private readonly OpenGLTexture2D _serverCell;
     private readonly LoginVisualLayout _layout;
+    private static readonly SpriteColor s_selectedBorder = new(218, 161, 52, 255);
+    private static readonly SpriteColor s_focusBorder = new(255, 231, 135, 255);
     private bool _disposed;
 
     public LoginPresentation(OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize size, LoginArtworkSet artwork)
@@ -105,10 +108,12 @@ internal sealed class LoginPresentation : IDisposable
         _layout = layout;
     }
 
-    public void Draw(OpenGLRenderer renderer)
+    public void Draw(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
+        ArgumentNullException.ThrowIfNull(selection);
+        ArgumentNullException.ThrowIfNull(input);
 
         DrawLayer(renderer, _backdrop, _layout.Backdrop);
         DrawLayer(renderer, _header, _layout.Header);
@@ -126,6 +131,18 @@ internal sealed class LoginPresentation : IDisposable
 
         DrawLayer(renderer, _accountPanel, _layout.AccountPanel);
         DrawLayer(renderer, _topDragon, _layout.TopDragon);
+
+        DrawSelectionBorder(renderer, _layout.RegionCells, selection.SelectedRegionSlot, s_selectedBorder);
+        DrawSelectionBorder(renderer, _layout.ServerCells, selection.SelectedServerSlot, s_selectedBorder);
+
+        if (input.Focus == LoginSelectionFocus.Region)
+        {
+            DrawSelectionBorder(renderer, _layout.RegionCells, input.FocusedRegionSlot, s_focusBorder);
+        }
+        else if (input.Focus == LoginSelectionFocus.Server)
+        {
+            DrawSelectionBorder(renderer, _layout.ServerCells, input.FocusedServerSlot, s_focusBorder);
+        }
     }
 
     public void Dispose()
@@ -159,6 +176,17 @@ internal sealed class LoginPresentation : IDisposable
         {
             firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
+    }
+
+    private static void DrawSelectionBorder(OpenGLRenderer renderer, ReadOnlySpan<LoginSpritePlacement> placements, int slot, SpriteColor color)
+    {
+        if ((uint)slot >= (uint)placements.Length)
+        {
+            return;
+        }
+
+        LoginSpritePlacement cell = placements[slot];
+        renderer.DrawLineRectangle(cell.X, cell.Y, cell.X + cell.Width - 1, cell.Y + cell.Height - 1, color);
     }
 
     private static void DrawLayer(OpenGLRenderer renderer, OpenGLTexture2D texture, LoginSpritePlacement placement) =>
