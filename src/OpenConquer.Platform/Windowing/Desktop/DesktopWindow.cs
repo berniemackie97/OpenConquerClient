@@ -159,6 +159,22 @@ public sealed class DesktopWindow : IDisposable
         ReleaseRuntimeResources();
     }
 
+    /// <summary>Requests an orderly host-window shutdown on the owning desktop event thread.</summary>
+    public void RequestClose()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!_runStarted)
+        {
+            throw new InvalidOperationException("The desktop window has not started running.");
+        }
+
+        if (!_window.IsClosing)
+        {
+            _window.Close();
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)

@@ -13,13 +13,20 @@ public static class LoginArtwork
     private const string TopDragonResourceName = "OpenConquer.Content.Assets.Login.TopDragon.rgba.br";
     private const string RegionCellResourceName = "OpenConquer.Content.Assets.Login.RegionCell.rgba.br";
     private const string ServerCellResourceName = "OpenConquer.Content.Assets.Login.ServerCell.rgba.br";
+    private const string EnterUpResourceName = "OpenConquer.Content.Assets.Login.EnterUp.rgba.br";
+    private const string EnterHoverResourceName = "OpenConquer.Content.Assets.Login.EnterHover.rgba.br";
+    private const string EnterPressedResourceName = "OpenConquer.Content.Assets.Login.EnterPressed.rgba.br";
+    private const string ExitUpResourceName = "OpenConquer.Content.Assets.Login.ExitUp.rgba.br";
+    private const string ExitHoverResourceName = "OpenConquer.Content.Assets.Login.ExitHover.rgba.br";
+    private const string ExitPressedResourceName = "OpenConquer.Content.Assets.Login.ExitPressed.rgba.br";
     private const int MaximumBackdropBytes = 4 * 1024 * 1024;
 
     public const int ReferenceWidth = 1024;
     public const int ReferenceHeight = 768;
     public const int BackdropHeight = 637;
 
-    public static LoginArtworkSet Load() => new(LoadBackdrop(), LoadHeader(), LoadFooter(), LoadAccountPanel(), LoadTopDragon(), LoadRegionCell(), LoadServerCell());
+    public static LoginArtworkSet Load() => new(LoadBackdrop(), LoadHeader(), LoadFooter(), LoadAccountPanel(), LoadTopDragon(), LoadRegionCell(), LoadServerCell(),
+        LoadEnterUp(), LoadEnterHover(), LoadEnterPressed(), LoadExitUp(), LoadExitHover(), LoadExitPressed());
 
     public static RgbaImage LoadBackdrop()
     {
@@ -48,6 +55,18 @@ public static class LoginArtwork
     public static RgbaImage LoadRegionCell() => LoadEmbeddedLayer(RegionCellResourceName, width: 154, height: 54);
 
     public static RgbaImage LoadServerCell() => LoadEmbeddedLayer(ServerCellResourceName, width: 158, height: 58);
+
+    public static RgbaImage LoadEnterUp() => LoadEmbeddedLayer(EnterUpResourceName, width: 132, height: 40);
+
+    public static RgbaImage LoadEnterHover() => LoadEmbeddedLayer(EnterHoverResourceName, width: 132, height: 40);
+
+    public static RgbaImage LoadEnterPressed() => LoadEmbeddedLayer(EnterPressedResourceName, width: 132, height: 40);
+
+    public static RgbaImage LoadExitUp() => LoadEmbeddedLayer(ExitUpResourceName, width: 132, height: 40);
+
+    public static RgbaImage LoadExitHover() => LoadEmbeddedLayer(ExitHoverResourceName, width: 132, height: 40);
+
+    public static RgbaImage LoadExitPressed() => LoadEmbeddedLayer(ExitPressedResourceName, width: 132, height: 40);
 
     private static RgbaImage LoadEmbeddedLayer(string resourceName, int width, int height)
     {
