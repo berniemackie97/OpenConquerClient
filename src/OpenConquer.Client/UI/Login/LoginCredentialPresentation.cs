@@ -5,24 +5,20 @@ using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Draws ephemeral account text and password-length masks without ever formatting a password.</summary>
+/// <summary>Places account text and password masks within the original retail input artwork.</summary>
 internal sealed class LoginCredentialPresentation : IDisposable
 {
     private const int ReferenceWidth = 1024;
     private static readonly SpriteColor s_text = new(245, 230, 194, 255);
-    private static readonly SpriteColor s_border = new(148, 123, 82, 255);
-    private static readonly SpriteColor s_focused = new(255, 231, 135, 255);
+    private static readonly SpriteColor s_caret = new(255, 231, 135, 255);
     private static readonly NativeTextRenderOptions s_style = new(NativeTextRenderStyle.Normal, s_text, s_text, 0, 0, NativeTextVertexColors.Solid(s_text));
     private readonly OpenGLGraphicsDevice _graphics;
     private readonly LoginCredentialLayout _layout;
     private readonly int _fontHeight;
     private readonly int _padding;
-    private readonly int _titleGap;
     private OpenGLTextContext? _font;
     private Label? _account;
     private Label? _password;
-    private Label? _accountTitle;
-    private Label? _passwordTitle;
     private int _lastRevision = -1;
     private bool _disposed;
 
@@ -33,8 +29,7 @@ internal sealed class LoginCredentialPresentation : IDisposable
         _graphics = graphics;
         _layout = LoginCredentialLayout.Create(layout);
         _fontHeight = Math.Max(1, Scale(12, layout.Width));
-        _padding = Math.Max(1, Scale(5, layout.Width));
-        _titleGap = Math.Max(1, Scale(12, layout.Width));
+        _padding = Math.Max(1, Scale(4, layout.Width));
     }
 
     public void Draw(OpenGLRenderer renderer, LoginCredentialInput input)
@@ -55,17 +50,22 @@ internal sealed class LoginCredentialPresentation : IDisposable
         {
             _account = FitText(text, input.AccountDisplay, _layout.AccountField);
             _password = FitText(text, input.PasswordMask, _layout.PasswordField);
-            _accountTitle ??= FitTitle(text, "Account", _layout.AccountField);
-            _passwordTitle ??= FitTitle(text, "Password", _layout.PasswordField);
             _lastRevision = input.Revision;
         }
 
-        DrawBorder(renderer, _layout.AccountField, input.Focus == LoginCredentialFocus.Account ? s_focused : s_border);
-        DrawBorder(renderer, _layout.PasswordField, input.Focus == LoginCredentialFocus.Password ? s_focused : s_border);
-        DrawText(text, renderer, _accountTitle);
-        DrawText(text, renderer, _passwordTitle);
+        // The original 508x98 panel already contains its captions, field backgrounds, and frames.
+        // Redrawing them here would obscure the retail image and introduce duplicate labels.
         DrawText(text, renderer, _account);
         DrawText(text, renderer, _password);
+
+        if (input.Focus == LoginCredentialFocus.Account)
+        {
+            DrawCaret(renderer, _layout.AccountField, _account);
+        }
+        else if (input.Focus == LoginCredentialFocus.Password)
+        {
+            DrawCaret(renderer, _layout.PasswordField, _password);
+        }
     }
 
     public void Dispose()
@@ -92,7 +92,7 @@ internal sealed class LoginCredentialPresentation : IDisposable
             return new Label(full, x, y);
         }
 
-        // Both inputs contain individual, validated ASCII code units; every suffix boundary is safe.
+        // The credential input already validates every character as individual ASCII.
         for (int start = 1; start < value.Length; start++)
         {
             OpenGLTextLayout shortened = font.LayoutUnicode("..." + value[start..]);
@@ -103,19 +103,6 @@ internal sealed class LoginCredentialPresentation : IDisposable
         }
 
         return null;
-    }
-
-    private Label? FitTitle(OpenGLTextContext font, string value, LoginSpritePlacement field)
-    {
-        OpenGLTextLayout layout = font.LayoutUnicode(value);
-        if (layout.HasMissingGlyphs || !layout.TryGetInkBounds(out int left, out int top, out int right, out int bottom))
-        {
-            return null;
-        }
-
-        int x = checked(field.X - _titleGap - (right - left) - left);
-        int y = checked(field.Y + (field.Height - (bottom - top)) / 2 - top);
-        return new Label(layout, x, y);
     }
 
     private bool TryPosition(OpenGLTextLayout text, LoginSpritePlacement field, out int x, out int y)
@@ -141,8 +128,22 @@ internal sealed class LoginCredentialPresentation : IDisposable
         }
     }
 
-    private static void DrawBorder(OpenGLRenderer renderer, LoginSpritePlacement field, SpriteColor color) =>
-        renderer.DrawLineRectangle(field.X, field.Y, field.X + field.Width - 1, field.Y + field.Height - 1, color);
+    private void DrawCaret(OpenGLRenderer renderer, LoginSpritePlacement field, Label? item)
+    {
+        int x = checked(field.X + _padding);
+
+        if (item is { } label && label.Text.TryGetInkBounds(out _, out _, out int right, out _))
+        {
+            x = checked(label.X + right + 1);
+        }
+
+        int minimum = field.X + 1;
+        int maximum = checked(field.X + field.Width - 2);
+        int y = field.Y + 2;
+        int height = field.Height - 4;
+
+        renderer.DrawSolidRectangle(Math.Clamp(x, minimum, maximum), y, 1, height, s_caret);
+    }
 
     private static int Scale(int referenceValue, int logicalWidth) => checked((int)(((long)referenceValue * logicalWidth + ReferenceWidth / 2) / ReferenceWidth));
 
@@ -152,8 +153,6 @@ internal sealed class LoginCredentialPresentation : IDisposable
         _font = null;
         _account = null;
         _password = null;
-        _accountTitle = null;
-        _passwordTitle = null;
         _lastRevision = -1;
         font?.Dispose();
     }
