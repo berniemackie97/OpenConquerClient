@@ -74,6 +74,12 @@ public sealed class OpenGLTextContext : IDisposable
         return new OpenGLTextLayout(this, _layoutEngine.Layout(encodedText, recognizeDataIcons, dataIconWidthPixels));
     }
 
+    public OpenGLTextLayout LayoutUnicode(ReadOnlySpan<char> text)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return new OpenGLTextLayout(this, _layoutEngine.LayoutUnicode(text));
+    }
+
     public void Draw(OpenGLRenderer renderer, OpenGLTextLayout layout, NativeTextRenderOptions options, int x, int y)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

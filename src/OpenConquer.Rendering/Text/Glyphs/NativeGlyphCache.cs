@@ -13,7 +13,9 @@ namespace OpenConquer.Rendering.Text.Glyphs;
 /// </remarks>
 internal sealed class NativeGlyphCache
 {
+    private const int MaximumUnicodeGlyphs = 4096;
     private readonly Dictionary<ushort, CachedGlyph> _glyphs = [];
+    private readonly Dictionary<Rune, CachedGlyph> _unicodeGlyphs = [];
     private readonly EncodedGlyphDecoder _decoder;
     private readonly NativeTextFontRecord _primaryFont;
     private readonly NativeTextFontRecord _recordZeroFont;
@@ -48,18 +50,35 @@ internal sealed class NativeGlyphCache
             return cachedGlyph;
         }
 
-        CachedGlyph glyph = CreateGlyph(glyphKey);
+        CachedGlyph glyph = CreateEncodedGlyph(glyphKey);
         _glyphs.Add(glyphKey, glyph);
         return glyph;
     }
 
-    private CachedGlyph CreateGlyph(ushort glyphKey)
+    public CachedGlyph GetOrAdd(Rune rune)
     {
-        if (!_decoder.TryDecode(glyphKey, out Rune rune))
+        if (_unicodeGlyphs.TryGetValue(rune, out CachedGlyph? cachedGlyph))
         {
-            return CachedGlyph.Missing(_primaryFont.LineHeightPixels);
+            return cachedGlyph;
         }
 
+        if (_unicodeGlyphs.Count >= MaximumUnicodeGlyphs)
+        {
+            throw new InvalidOperationException("The Unicode glyph cache has exhausted its character budget.");
+        }
+
+        CachedGlyph glyph = CreateGlyph(rune);
+        _unicodeGlyphs.Add(rune, glyph);
+        return glyph;
+    }
+
+    private CachedGlyph CreateEncodedGlyph(ushort glyphKey)
+    {
+        return _decoder.TryDecode(glyphKey, out Rune rune) ? CreateGlyph(rune) : CachedGlyph.Missing(_primaryFont.LineHeightPixels);
+    }
+
+    private CachedGlyph CreateGlyph(Rune rune)
+    {
         if (TryRasterize(_primaryFont, rune) is { } primaryGlyph)
         {
             return primaryGlyph;
