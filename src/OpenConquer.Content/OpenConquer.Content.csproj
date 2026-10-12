@@ -10,6 +10,8 @@
     <EmbeddedResource Include="Assets/Login/footer.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Footer.rgba.br" />
     <EmbeddedResource Include="Assets/Login/account-panel.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.AccountPanel.rgba.br" />
     <EmbeddedResource Include="Assets/Login/top-dragon.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.TopDragon.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/region-cell.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RegionCell.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/server-cell.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ServerCell.rgba.br" />
   </ItemGroup>
 
 </Project>

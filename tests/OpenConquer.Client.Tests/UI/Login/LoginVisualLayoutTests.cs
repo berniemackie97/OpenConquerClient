@@ -20,6 +20,20 @@ public sealed class LoginVisualLayoutTests
     }
 
     [Fact]
+    public void ReferenceStage_SelectionChromeUsesBoundedDistinctSlots()
+    {
+        LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
+        Assert.Equal(16, layout.RegionCells.Length);
+        Assert.Equal(12, layout.ServerCells.Length);
+        Assert.Equal(new LoginSpritePlacement(55, 194, 154, 50), layout.RegionCells[0]);
+        Assert.Equal(new LoginSpritePlacement(216, 194, 154, 50), layout.RegionCells[1]);
+        Assert.Equal(new LoginSpritePlacement(216, 544, 154, 50), layout.RegionCells[^1]);
+        Assert.Equal(new LoginSpritePlacement(431, 218, 158, 58), layout.ServerCells[0]);
+        Assert.Equal(new LoginSpritePlacement(767, 488, 158, 58), layout.ServerCells[^1]);
+        AssertSelectionFits(layout);
+    }
+
+    [Fact]
     public void CompactStage_ScalesAllLayersProportionally()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(800, 600));
@@ -29,6 +43,11 @@ public sealed class LoginVisualLayoutTests
         Assert.Equal(new LoginSpritePlacement(0, 516, 800, 109), layout.Footer);
         Assert.Equal(new LoginSpritePlacement(202, 498, 397, 77), layout.AccountPanel);
         Assert.Equal(new LoginSpritePlacement(209, 20, 386, 109), layout.TopDragon);
+        Assert.Equal(new LoginSpritePlacement(43, 152, 120, 39), layout.RegionCells[0]);
+        Assert.Equal(new LoginSpritePlacement(169, 425, 120, 39), layout.RegionCells[^1]);
+        Assert.Equal(new LoginSpritePlacement(337, 170, 123, 45), layout.ServerCells[0]);
+        Assert.Equal(new LoginSpritePlacement(599, 381, 123, 45), layout.ServerCells[^1]);
+        AssertSelectionFits(layout);
     }
 
     [Theory]
@@ -39,5 +58,18 @@ public sealed class LoginVisualLayoutTests
     public void UnsupportedLogicalAspectRatio_FailsClosed(int width, int height)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => LoginVisualLayout.Create(new LogicalRenderSize(width, height)));
+    }
+
+    private static void AssertSelectionFits(LoginVisualLayout layout)
+    {
+        foreach (LoginSpritePlacement placement in layout.RegionCells)
+        {
+            Assert.True(placement.X >= 0 && placement.Y >= 0 && placement.X + placement.Width <= layout.Width && placement.Y + placement.Height <= layout.Height);
+        }
+
+        foreach (LoginSpritePlacement placement in layout.ServerCells)
+        {
+            Assert.True(placement.X >= 0 && placement.Y >= 0 && placement.X + placement.Width <= layout.Width && placement.Y + placement.Height <= layout.Height);
+        }
     }
 }

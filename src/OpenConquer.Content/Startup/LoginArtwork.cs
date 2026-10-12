@@ -11,13 +11,15 @@ public static class LoginArtwork
     private const string FooterResourceName = "OpenConquer.Content.Assets.Login.Footer.rgba.br";
     private const string AccountPanelResourceName = "OpenConquer.Content.Assets.Login.AccountPanel.rgba.br";
     private const string TopDragonResourceName = "OpenConquer.Content.Assets.Login.TopDragon.rgba.br";
+    private const string RegionCellResourceName = "OpenConquer.Content.Assets.Login.RegionCell.rgba.br";
+    private const string ServerCellResourceName = "OpenConquer.Content.Assets.Login.ServerCell.rgba.br";
     private const int MaximumBackdropBytes = 4 * 1024 * 1024;
 
     public const int ReferenceWidth = 1024;
     public const int ReferenceHeight = 768;
     public const int BackdropHeight = 637;
 
-    public static LoginArtworkSet Load() => new(LoadBackdrop(), LoadHeader(), LoadFooter(), LoadAccountPanel(), LoadTopDragon());
+    public static LoginArtworkSet Load() => new(LoadBackdrop(), LoadHeader(), LoadFooter(), LoadAccountPanel(), LoadTopDragon(), LoadRegionCell(), LoadServerCell());
 
     public static RgbaImage LoadBackdrop()
     {
@@ -42,6 +44,10 @@ public static class LoginArtwork
     public static RgbaImage LoadAccountPanel() => LoadEmbeddedLayer(AccountPanelResourceName, width: 508, height: 98);
 
     public static RgbaImage LoadTopDragon() => LoadEmbeddedLayer(TopDragonResourceName, width: 494, height: 140);
+
+    public static RgbaImage LoadRegionCell() => LoadEmbeddedLayer(RegionCellResourceName, width: 154, height: 54);
+
+    public static RgbaImage LoadServerCell() => LoadEmbeddedLayer(ServerCellResourceName, width: 158, height: 58);
 
     private static RgbaImage LoadEmbeddedLayer(string resourceName, int width, int height)
     {
