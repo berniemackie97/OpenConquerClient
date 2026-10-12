@@ -18,10 +18,14 @@ internal sealed class LoginPresentation : IDisposable
     private readonly OpenGLTexture2D _regionCell;
     private readonly OpenGLTexture2D _serverCell;
     private readonly LoginVisualLayout _layout;
+    private readonly LoginPageControls _pageControls;
     private readonly LoginLabelPresentation _labels;
     private readonly LoginCredentialPresentation _credentials;
     private static readonly SpriteColor s_selectedBorder = new(218, 161, 52, 255);
     private static readonly SpriteColor s_focusBorder = new(255, 231, 135, 255);
+    private static readonly SpriteColor s_pageAvailable = new(245, 230, 194, 255);
+    private static readonly SpriteColor s_pageUnavailable = new(116, 102, 83, 255);
+    private static readonly SpriteColor s_pagePressed = new(99, 76, 42, 190);
     private bool _disposed;
 
     public LoginPresentation(OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize size, LoginArtworkSet artwork)
@@ -30,6 +34,7 @@ internal sealed class LoginPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(artwork);
 
         LoginVisualLayout layout = LoginVisualLayout.Create(size);
+        LoginPageControls pageControls = LoginPageControls.Create(layout);
 
         if (artwork.Backdrop is not { Width: 1024, Height: 637 } ||
             artwork.Header is not { Width: 1024, Height: 116 } ||
@@ -108,6 +113,7 @@ internal sealed class LoginPresentation : IDisposable
         _regionCell = regionCell;
         _serverCell = serverCell;
         _layout = layout;
+        _pageControls = pageControls;
         _labels = new LoginLabelPresentation(graphicsDevice, layout);
         _credentials = new LoginCredentialPresentation(graphicsDevice, layout);
     }
@@ -139,6 +145,7 @@ internal sealed class LoginPresentation : IDisposable
 
         _labels.Draw(renderer, selection);
         _credentials.Draw(renderer, credentials);
+        DrawPageControls(renderer, selection, input);
 
         DrawSelectionBorder(renderer, _layout.RegionCells, selection.SelectedRegionSlot, s_selectedBorder);
         DrawSelectionBorder(renderer, _layout.ServerCells, selection.SelectedServerSlot, s_selectedBorder);
@@ -201,6 +208,46 @@ internal sealed class LoginPresentation : IDisposable
         catch (Exception exception)
         {
             firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+    }
+
+    private void DrawPageControls(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input)
+    {
+        DrawPageControl(renderer, selection, input, LoginPageControl.RegionPrevious);
+        DrawPageControl(renderer, selection, input, LoginPageControl.RegionNext);
+        DrawPageControl(renderer, selection, input, LoginPageControl.ServerPrevious);
+        DrawPageControl(renderer, selection, input, LoginPageControl.ServerNext);
+    }
+
+    private void DrawPageControl(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input, LoginPageControl control)
+    {
+        if (!LoginPageControls.IsVisible(control, selection))
+        {
+            return;
+        }
+
+        LoginSpritePlacement bounds = _pageControls.Bounds(control);
+        bool enabled = LoginPageControls.IsEnabled(control, selection);
+        SpriteColor color = enabled ? s_pageAvailable : s_pageUnavailable;
+
+        if (enabled && input.PressedPageControl == control)
+        {
+            renderer.DrawSolidRectangle(bounds.X + 1, bounds.Y + 1, bounds.Width - 2, bounds.Height - 2, s_pagePressed);
+        }
+
+        renderer.DrawLineRectangle(bounds.X, bounds.Y, bounds.X + bounds.Width - 1, bounds.Y + bounds.Height - 1, color);
+
+        int step = Math.Max(1, bounds.Height / 10);
+        int triangleHeight = 5 * step;
+        int top = bounds.Y + (bounds.Height - triangleHeight) / 2;
+        bool previous = control is LoginPageControl.RegionPrevious or LoginPageControl.ServerPrevious;
+
+        for (int row = 0; row < 5; row++)
+        {
+            int extent = previous ? row : 4 - row;
+            int width = Math.Min(bounds.Width - 4, step * (extent * 2 + 1));
+            int left = bounds.X + (bounds.Width - width) / 2;
+            renderer.DrawSolidRectangle(left, top + row * step, width, step, color);
         }
     }
 

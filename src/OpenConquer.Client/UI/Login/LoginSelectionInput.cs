@@ -9,12 +9,14 @@ internal enum LoginSelectionFocus
     Server,
 }
 
-/// <summary>Owns the region/server pointer gesture and keyboard-navigation boundary.</summary>
+/// <summary>Owns region/server pointer capture, pagination and keyboard selection.</summary>
 internal sealed class LoginSelectionInput
 {
     private readonly LoginVisualLayout _layout;
+    private readonly LoginPageControls _pages;
     private readonly LoginServerSelection _selection;
     private LoginSelectionFocus _pressedArea;
+    private LoginPageControl _pressedPageControl;
     private int _pressedSlot = -1;
     private int _pressedPage = -1;
     private LoginServerCatalog? _pressedCatalog;
@@ -26,12 +28,14 @@ internal sealed class LoginSelectionInput
     }
     public int FocusedRegionSlot { get; private set; } = -1;
     public int FocusedServerSlot { get; private set; } = -1;
+    public LoginPageControl PressedPageControl => _pressedPageControl;
 
     public LoginSelectionInput(LoginVisualLayout layout, LoginServerSelection selection)
     {
         ArgumentNullException.ThrowIfNull(layout);
         ArgumentNullException.ThrowIfNull(selection);
         _layout = layout;
+        _pages = LoginPageControls.Create(layout);
         _selection = selection;
     }
 
@@ -53,6 +57,19 @@ internal sealed class LoginSelectionInput
             return;
         }
 
+        if (_pages.TryHit(x, y, out LoginPageControl control) && LoginPageControls.IsVisible(control, _selection))
+        {
+            if (LoginPageControls.IsEnabled(control, _selection))
+            {
+                _pressedPageControl = control;
+                _pressedPage = control is LoginPageControl.RegionPrevious or LoginPageControl.RegionNext ? _selection.RegionPage : _selection.ServerPage;
+                _pressedCatalog = _selection.Catalog;
+                _pressedRegion = _selection.SelectedRegion;
+            }
+
+            return;
+        }
+
         if (TryHit(_layout.RegionCells, x, y, out int regionSlot) && _selection.RegionAtSlot(regionSlot) is not null)
         {
             FocusRegion(regionSlot);
@@ -70,14 +87,29 @@ internal sealed class LoginSelectionInput
     public void PointerReleased(bool mapped, int x, int y)
     {
         LoginSelectionFocus area = _pressedArea;
+        LoginPageControl control = _pressedPageControl;
         int slot = _pressedSlot;
         int page = _pressedPage;
         LoginServerCatalog? catalog = _pressedCatalog;
         LoginRegion? region = _pressedRegion;
         CancelPointerCapture();
 
-        if (!mapped || area == LoginSelectionFocus.None || !ReferenceEquals(catalog, _selection.Catalog))
+        if (!mapped || (area == LoginSelectionFocus.None && control == LoginPageControl.None) || !ReferenceEquals(catalog, _selection.Catalog))
         {
+            return;
+        }
+
+        if (control != LoginPageControl.None)
+        {
+            bool regionControl = control is LoginPageControl.RegionPrevious or LoginPageControl.RegionNext;
+            int currentPage = regionControl ? _selection.RegionPage : _selection.ServerPage;
+
+            if (page == currentPage && (regionControl || ReferenceEquals(region, _selection.SelectedRegion)) &&
+                _pages.TryHit(x, y, out LoginPageControl releasedControl) && control == releasedControl && LoginPageControls.IsEnabled(control, _selection))
+            {
+                ChangePage(control);
+            }
+
             return;
         }
 
@@ -147,20 +179,13 @@ internal sealed class LoginSelectionInput
 
         if (key.Key is DesktopKey.PageUp or DesktopKey.PageDown)
         {
-            int direction = key.Key == DesktopKey.PageUp ? -1 : 1;
-            bool changed = Focus == LoginSelectionFocus.Region ? _selection.ChangeRegionPage(direction) : _selection.ChangeServerPage(direction);
-
-            if (changed)
+            LoginPageControl control = Focus switch
             {
-                if (Focus == LoginSelectionFocus.Region)
-                {
-                    FocusRegion(0);
-                }
-                else
-                {
-                    FocusServer(0);
-                }
-            }
+                LoginSelectionFocus.Region => key.Key == DesktopKey.PageUp ? LoginPageControl.RegionPrevious : LoginPageControl.RegionNext,
+                LoginSelectionFocus.Server => key.Key == DesktopKey.PageUp ? LoginPageControl.ServerPrevious : LoginPageControl.ServerNext,
+                _ => LoginPageControl.None,
+            };
+            ChangePage(control);
             return;
         }
 
@@ -197,6 +222,33 @@ internal sealed class LoginSelectionInput
         else
         {
             FocusServer(target);
+        }
+    }
+
+    private void ChangePage(LoginPageControl control)
+    {
+        if (!LoginPageControls.IsEnabled(control, _selection))
+        {
+            return;
+        }
+
+        bool regionControl = control is LoginPageControl.RegionPrevious or LoginPageControl.RegionNext;
+        int direction = control is LoginPageControl.RegionPrevious or LoginPageControl.ServerPrevious ? -1 : 1;
+        bool changed = regionControl ? _selection.ChangeRegionPage(direction) : _selection.ChangeServerPage(direction);
+
+        if (!changed)
+        {
+            return;
+        }
+
+        if (regionControl)
+        {
+            FocusedServerSlot = -1;
+            FocusRegion(0);
+        }
+        else
+        {
+            FocusServer(0);
         }
     }
 
@@ -255,6 +307,7 @@ internal sealed class LoginSelectionInput
     private void CancelPointerCapture()
     {
         _pressedArea = LoginSelectionFocus.None;
+        _pressedPageControl = LoginPageControl.None;
         _pressedSlot = -1;
         _pressedPage = -1;
         _pressedCatalog = null;
