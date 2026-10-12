@@ -13,10 +13,10 @@ All artwork comes from offline-extracted `data/main/start.dat` sprites. The orig
 | Background | `start/symbol-0010.png` | 1024×637 | `(0,40)` |
 | Header | `start/symbol-0398.png` | 1024×116 | `(0,0)` |
 | Footer | `start/symbol-0399.png` | 1024×140 | `(0,660)` (clips at viewport edge) |
-| Account panel | `start/symbol-0327.png` | 508×98 | `(258,615)` |
+| Account panel | `start/symbol-0327.png` | 508×98 | `(258,637)` |
 | Top dragon | `start/symbol-0397.png` | 494×140 | `(267,26)` (verified topDragon anchor) |
 
-Background, header, footer, and account-panel positions are **reference-screen reconstruction estimates**, not claims of exact native timeline placement. They reflect the supplied reference screenshot and must be checked at 1024×768 and 800×600. Top-dragon placement retains its native configuration anchor.
+Background, header, footer, and account-panel positions are **reference-screen reconstruction estimates**, not claims of exact native timeline placement. The account-panel position was visually calibrated against the supplied reference at 1024×768; the same reference-stage placement scales to 800×600. Top-dragon placement retains its native configuration anchor.
 
 Source hashes (decoded RGBA SHA-256):
 
