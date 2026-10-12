@@ -6,6 +6,10 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets/Login/login-backdrop.bmp" LogicalName="OpenConquer.Content.Assets.Login.Backdrop.bmp" />
+    <EmbeddedResource Include="Assets/Login/header.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Header.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/footer.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Footer.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/account-panel.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.AccountPanel.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/top-dragon.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.TopDragon.rgba.br" />
   </ItemGroup>
 
 </Project>

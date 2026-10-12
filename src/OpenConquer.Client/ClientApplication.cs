@@ -3,7 +3,6 @@ using OpenConquer.Client.Startup;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
-using OpenConquer.Content.Images;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
 using OpenConquer.Platform.Geometry;
@@ -28,7 +27,7 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLRenderer? _renderer;
     private LoginPresentation? _loginPresentation;
     private LogicalRenderSize? _logicalRenderSize;
-    private RgbaImage? _loginBackdrop;
+    private LoginArtworkSet? _loginArtwork;
     private bool _runStarted;
     private bool _disposed;
 
@@ -104,7 +103,7 @@ internal sealed class ClientApplication : IDisposable
             _loginPresentation = null;
             _renderer = null;
             _graphicsDevice = null;
-            _loginBackdrop = null;
+            _loginArtwork = null;
             _disposed = true;
         }
     }
@@ -114,10 +113,10 @@ internal sealed class ClientApplication : IDisposable
         ArgumentNullException.ThrowIfNull(contentSource);
 
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
-        RgbaImage backdrop = LoginArtwork.LoadBackdrop();
+        LoginArtworkSet artwork = LoginArtwork.Load();
 
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
-        _loginBackdrop = backdrop;
+        _loginArtwork = artwork;
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
@@ -135,11 +134,11 @@ internal sealed class ClientApplication : IDisposable
         {
             DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
             LogicalRenderSize logicalSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
-            RgbaImage backdrop = _loginBackdrop ?? throw new InvalidOperationException("The login artwork has not been initialized.");
+            LoginArtworkSet artwork = _loginArtwork ?? throw new InvalidOperationException("The login artwork has not been initialized.");
             PixelSize framebufferSize = window.FramebufferSize;
 
             renderer = graphicsDevice.CreateRenderer(logicalSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
-            login = new LoginPresentation(graphicsDevice, logicalSize, backdrop);
+            login = new LoginPresentation(graphicsDevice, logicalSize, artwork);
 
             _graphicsDevice = graphicsDevice;
             _renderer = renderer;
