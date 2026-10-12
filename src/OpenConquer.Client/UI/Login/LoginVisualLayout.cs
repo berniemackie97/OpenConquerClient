@@ -53,7 +53,7 @@ internal sealed class LoginVisualLayout
         Height = size.Height;
         Backdrop = Place(0, 40, 1024, 637);
         Header = Place(0, 0, 1024, 116);
-        Footer = Place(0, 660, 1024, 140);
+        Footer = Place(0, 642, 1024, 140);
         AccountPanel = Place(258, 637, 508, 98);
         TopDragon = Place(267, 26, 494, 140);
 

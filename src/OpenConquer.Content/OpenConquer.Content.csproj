@@ -12,6 +12,12 @@
     <EmbeddedResource Include="Assets/Login/top-dragon.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.TopDragon.rgba.br" />
     <EmbeddedResource Include="Assets/Login/region-cell.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RegionCell.rgba.br" />
     <EmbeddedResource Include="Assets/Login/server-cell.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ServerCell.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/enter-up.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.EnterUp.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/enter-hover.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.EnterHover.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/enter-pressed.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.EnterPressed.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/exit-up.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ExitUp.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/exit-hover.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ExitHover.rgba.br" />
+    <EmbeddedResource Include="Assets/Login/exit-pressed.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ExitPressed.rgba.br" />
   </ItemGroup>
 
 </Project>

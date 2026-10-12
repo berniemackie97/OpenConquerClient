@@ -28,6 +28,8 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLRenderer? _renderer;
     private LoginPresentation? _loginPresentation;
     private LoginDirectoryStatusPresentation? _directoryStatusPresentation;
+    private LoginActionPresentation? _actionPresentation;
+    private LoginActionInput? _actionInput;
     private LogicalRenderSize? _logicalRenderSize;
     private LoginArtworkSet? _loginArtwork;
     private LoginServerSelection? _loginSelection;
@@ -87,6 +89,7 @@ internal sealed class ClientApplication : IDisposable
         window.FramebufferResized += OnFramebufferResized;
         window.PrimaryPointerPressed += OnPrimaryPointerPressed;
         window.PrimaryPointerReleased += OnPrimaryPointerReleased;
+        window.PointerMoved += OnPointerMoved;
         window.KeyPressed += OnKeyPressed;
         window.TextEntered += OnTextEntered;
         window.FocusChanged += OnFocusChanged;
@@ -144,6 +147,8 @@ internal sealed class ClientApplication : IDisposable
                 _window = null;
                 _loginPresentation = null;
                 _directoryStatusPresentation = null;
+                _actionPresentation = null;
+                _actionInput = null;
                 _renderer = null;
                 _graphicsDevice = null;
                 _loginArtwork = null;
@@ -167,6 +172,7 @@ internal sealed class ClientApplication : IDisposable
         LoginVisualLayout layout = LoginVisualLayout.Create(_logicalRenderSize.Value);
         _loginSelectionInput = new LoginSelectionInput(layout, _loginSelection);
         _loginCredentials = new LoginCredentialInput(_loginSelection, LoginCredentialLayout.Create(layout));
+        _actionInput = new LoginActionInput(LoginActionLayout.Create(layout));
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
@@ -180,6 +186,7 @@ internal sealed class ClientApplication : IDisposable
         OpenGLRenderer? renderer = null;
         LoginPresentation? login = null;
         LoginDirectoryStatusPresentation? status = null;
+        LoginActionPresentation? actions = null;
 
         try
         {
@@ -190,15 +197,24 @@ internal sealed class ClientApplication : IDisposable
 
             renderer = graphicsDevice.CreateRenderer(logicalSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
             login = new LoginPresentation(graphicsDevice, logicalSize, artwork);
-            status = new LoginDirectoryStatusPresentation(graphicsDevice, LoginVisualLayout.Create(logicalSize));
+            LoginVisualLayout layout = LoginVisualLayout.Create(logicalSize);
+            status = new LoginDirectoryStatusPresentation(graphicsDevice, layout);
+            actions = new LoginActionPresentation(graphicsDevice, LoginActionLayout.Create(layout), artwork);
 
             _graphicsDevice = graphicsDevice;
             _renderer = renderer;
             _loginPresentation = login;
             _directoryStatusPresentation = status;
+            _actionPresentation = actions;
         }
         catch
         {
+            try
+            {
+                actions?.Dispose();
+            }
+            catch { }
+
             try
             {
                 status?.Dispose();
@@ -233,6 +249,18 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPrimaryPointerReleased(PixelPoint point) => RoutePointer(point, pressed: false);
 
+    private void OnPointerMoved(PixelPoint point)
+    {
+        OpenGLRenderer? renderer = _renderer;
+        if (renderer is null || _actionInput is null)
+        {
+            return;
+        }
+
+        bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+        _actionInput.PointerMoved(mapped, x, y);
+    }
+
     private void OnKeyPressed(DesktopKeyEvent key)
     {
         if (_loginCredentials?.KeyPressed(key) != true)
@@ -249,6 +277,7 @@ internal sealed class ClientApplication : IDisposable
         {
             _loginSelectionInput?.FocusLost();
             _loginCredentials?.FocusLost();
+            _actionInput?.FocusLost();
         }
     }
 
@@ -266,16 +295,29 @@ internal sealed class ClientApplication : IDisposable
 
         if (pressed)
         {
-            bool captured = _loginCredentials?.PointerPressed(mapped, x, y) == true;
-            input.PointerPressed(!captured && mapped, x, y);
+            bool actionCaptured = _actionInput?.PointerPressed(mapped, x, y) == true;
+            bool credentialCaptured = !actionCaptured && _loginCredentials?.PointerPressed(mapped, x, y) == true;
+            input.PointerPressed(!actionCaptured && !credentialCaptured && mapped, x, y);
 
-            if (captured)
+            if (actionCaptured || credentialCaptured)
             {
                 input.FocusLost();
+            }
+
+            if (actionCaptured)
+            {
+                _loginCredentials?.FocusLost();
             }
         }
         else
         {
+            if (_actionInput?.PointerReleased(mapped, x, y) == LoginActionButton.Exit)
+            {
+                _loginCredentials?.FocusLost();
+                _window?.RequestClose();
+                return;
+            }
+
             input.PointerReleased(mapped, x, y);
         }
     }
@@ -290,6 +332,8 @@ internal sealed class ClientApplication : IDisposable
         LoginSelectionInput input = _loginSelectionInput ?? throw new InvalidOperationException("The login input handler is not initialized.");
         LoginCredentialInput credentials = _loginCredentials ?? throw new InvalidOperationException("The login credentials handler is not initialized.");
         LoginDirectoryStatusPresentation status = _directoryStatusPresentation ?? throw new InvalidOperationException("The realm directory status renderer is not initialized.");
+        LoginActionPresentation actions = _actionPresentation ?? throw new InvalidOperationException("The login action artwork is not initialized.");
+        LoginActionInput actionInput = _actionInput ?? throw new InvalidOperationException("The login action handler is not initialized.");
         credentials.Synchronize();
 
         renderer.BeginFrame();
@@ -298,6 +342,7 @@ internal sealed class ClientApplication : IDisposable
         try
         {
             login.Draw(renderer, selection, input, credentials);
+            actions.Draw(renderer, actionInput);
             status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
                 _catalogRefresh?.LastAttemptFailed ?? false, selection));
         }
@@ -323,6 +368,7 @@ internal sealed class ClientApplication : IDisposable
         _catalogRefresh?.Cancel();
         _loginSelectionInput?.FocusLost();
         _loginCredentials?.FocusLost();
+        _actionInput?.FocusLost();
         ReleaseRenderingResources();
     }
 
@@ -330,11 +376,13 @@ internal sealed class ClientApplication : IDisposable
     {
         LoginPresentation? login = _loginPresentation;
         LoginDirectoryStatusPresentation? status = _directoryStatusPresentation;
+        LoginActionPresentation? actions = _actionPresentation;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
         _loginPresentation = null;
         _directoryStatusPresentation = null;
+        _actionPresentation = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -342,9 +390,15 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            status?.Dispose();
+            actions?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            status?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
