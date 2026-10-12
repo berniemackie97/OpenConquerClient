@@ -97,7 +97,7 @@ public sealed class LoginDirectoryStatusTests
                 continue;
             }
 
-            var (textWidth, textHeight, _) = LoginDirectoryStatusRaster.Create(LoginDirectoryStatus.Text(availability));
+            (int textWidth, int textHeight, _) = LoginDirectoryStatusRaster.Create(LoginDirectoryStatus.Text(availability));
             Assert.True(LoginDirectoryStatus.Scale(textWidth * 2, width) <= bounds.Width - 12);
             Assert.True(LoginDirectoryStatus.Scale(textHeight * 2, width) <= bounds.Height - 4);
         }

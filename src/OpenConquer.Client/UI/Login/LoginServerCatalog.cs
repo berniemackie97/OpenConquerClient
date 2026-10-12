@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
+using OpenConquer.Content.Startup;
 
 namespace OpenConquer.Client.UI.Login;
 
@@ -20,12 +21,17 @@ internal sealed class LoginServer
     {
         get;
     }
+    public string? IconId
+    {
+        get;
+    }
 
-    public LoginServer(string id, string displayName, string protocolServerName)
+    public LoginServer(string id, string displayName, string protocolServerName, string? iconId = null)
     {
         Id = LoginCatalogText.ValidateId(id, nameof(id));
         DisplayName = LoginCatalogText.ValidateDisplayName(displayName, nameof(displayName));
         ProtocolServerName = LoginCatalogText.ValidateProtocolServerName(protocolServerName, nameof(protocolServerName));
+        IconId = iconId is null or "none" ? null : LoginRealmIconAssets.ValidateId(iconId);
     }
 }
 

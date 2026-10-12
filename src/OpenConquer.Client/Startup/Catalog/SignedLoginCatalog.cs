@@ -69,7 +69,9 @@ internal sealed class SignedLoginCatalog
             JsonElement root = document.RootElement;
             LoginCatalogJson.RequireObject(root, "schemaVersion", "productId", "sequence", "issuedAt", "expiresAt", "regions");
 
-            if (LoginCatalogJson.RequiredInteger(root, "schemaVersion") != 1 ||
+            int schemaVersion = LoginCatalogJson.RequiredInteger(root, "schemaVersion");
+
+            if (schemaVersion is not (1 or 2) ||
                 LoginCatalogJson.RequiredString(root, "productId", 32) != "OpenConquer")
             {
                 throw new InvalidDataException("The realm catalog schema or product is unsupported.");
@@ -110,13 +112,21 @@ internal sealed class SignedLoginCatalog
                         throw new InvalidDataException("The realm catalog exceeds the server limit.");
                     }
 
-                    LoginCatalogJson.RequireObject(serverElement, "id", "name", "protocolServerName", "accountHost", "accountPort");
+                    if (schemaVersion == 2)
+                    {
+                        LoginCatalogJson.RequireObject(serverElement, "id", "name", "protocolServerName", "accountHost", "accountPort", "iconId");
+                    }
+                    else
+                    {
+                        LoginCatalogJson.RequireObject(serverElement, "id", "name", "protocolServerName", "accountHost", "accountPort");
+                    }
                     string serverId = LoginCatalogJson.RequiredString(serverElement, "id", 64);
                     string displayName = LoginCatalogJson.RequiredString(serverElement, "name", 48);
                     string protocolName = LoginCatalogJson.RequiredString(serverElement, "protocolServerName", 64);
                     string accountHost = LoginCatalogJson.RequiredString(serverElement, "accountHost", 253);
                     int accountPort = LoginCatalogJson.RequiredInteger(serverElement, "accountPort");
-                    LoginServer server = new(serverId, displayName, protocolName);
+                    string? iconId = schemaVersion == 2 ? LoginCatalogJson.RequiredString(serverElement, "iconId", 8) : null;
+                    LoginServer server = new(serverId, displayName, protocolName, iconId);
 
                     if (!protocolNames.Add(server.ProtocolServerName) ||
                         !endpoints.TryAdd((regionId, server.Id), new LoginAccountEndpoint(accountHost, accountPort)))
