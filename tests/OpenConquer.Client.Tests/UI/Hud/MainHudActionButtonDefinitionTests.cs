@@ -27,7 +27,7 @@ public sealed class MainHudActionButtonDefinitionTests
 
         for (int index = 0; index < s_expected.Length; index++)
         {
-            var expected = s_expected[index];
+            (MainHudActionButtonId Id, string Section, int X, int Y, int Width, int Height, int Frames) expected = s_expected[index];
             MainHudActionButtonDefinition definition = actual[index];
 
             Assert.Equal(expected.Id, definition.Id);

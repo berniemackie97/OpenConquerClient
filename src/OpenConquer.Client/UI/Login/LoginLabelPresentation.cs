@@ -100,7 +100,14 @@ internal sealed class LoginLabelPresentation : IDisposable
         {
             if (selection.ServerAtSlot(index) is { } server)
             {
-                servers[index] = PrepareLabel(text, server.DisplayName, serverCells[index]);
+                LoginSpritePlacement cell = serverCells[index];
+                if (server.IconId is not null)
+                {
+                    int gap = Math.Max(1, Scale(3));
+                    cell = new LoginSpritePlacement(cell.X, checked(cell.Y + cell.Height + gap), cell.Width, Math.Max(1, Scale(21)));
+                }
+
+                servers[index] = PrepareLabel(text, server.DisplayName, cell);
             }
         }
 
@@ -191,6 +198,8 @@ internal sealed class LoginLabelPresentation : IDisposable
         _regionPage = -1;
         _serverPage = -1;
     }
+
+    private int Scale(int value) => checked((int)((value * (long)_layout.Width + 512) / 1024));
 
     private readonly record struct Label(OpenGLTextLayout Layout, int X, int Y);
 }

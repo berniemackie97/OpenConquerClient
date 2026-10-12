@@ -20,4 +20,8 @@
     <EmbeddedResource Include="Assets/Login/exit-pressed.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ExitPressed.rgba.br" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/RealmIcons/*.rgba.br" LogicalName="OpenConquer.Content.Assets.RealmIcons.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

@@ -29,6 +29,7 @@ internal sealed class ClientApplication : IDisposable
     private LoginPresentation? _loginPresentation;
     private LoginDirectoryStatusPresentation? _directoryStatusPresentation;
     private LoginActionPresentation? _actionPresentation;
+    private LoginServerIconPresentation? _serverIcons;
     private LoginActionInput? _actionInput;
     private LogicalRenderSize? _logicalRenderSize;
     private LoginArtworkSet? _loginArtwork;
@@ -148,6 +149,7 @@ internal sealed class ClientApplication : IDisposable
                 _loginPresentation = null;
                 _directoryStatusPresentation = null;
                 _actionPresentation = null;
+                _serverIcons = null;
                 _actionInput = null;
                 _renderer = null;
                 _graphicsDevice = null;
@@ -187,6 +189,7 @@ internal sealed class ClientApplication : IDisposable
         LoginPresentation? login = null;
         LoginDirectoryStatusPresentation? status = null;
         LoginActionPresentation? actions = null;
+        LoginServerIconPresentation? icons = null;
 
         try
         {
@@ -200,15 +203,23 @@ internal sealed class ClientApplication : IDisposable
             LoginVisualLayout layout = LoginVisualLayout.Create(logicalSize);
             status = new LoginDirectoryStatusPresentation(graphicsDevice, layout);
             actions = new LoginActionPresentation(graphicsDevice, LoginActionLayout.Create(layout), artwork);
+            icons = new LoginServerIconPresentation(graphicsDevice, layout);
 
             _graphicsDevice = graphicsDevice;
             _renderer = renderer;
             _loginPresentation = login;
             _directoryStatusPresentation = status;
             _actionPresentation = actions;
+            _serverIcons = icons;
         }
         catch
         {
+            try
+            {
+                icons?.Dispose();
+            }
+            catch { }
+
             try
             {
                 actions?.Dispose();
@@ -333,6 +344,7 @@ internal sealed class ClientApplication : IDisposable
         LoginCredentialInput credentials = _loginCredentials ?? throw new InvalidOperationException("The login credentials handler is not initialized.");
         LoginDirectoryStatusPresentation status = _directoryStatusPresentation ?? throw new InvalidOperationException("The realm directory status renderer is not initialized.");
         LoginActionPresentation actions = _actionPresentation ?? throw new InvalidOperationException("The login action artwork is not initialized.");
+        LoginServerIconPresentation icons = _serverIcons ?? throw new InvalidOperationException("The realm icon renderer is not initialized.");
         LoginActionInput actionInput = _actionInput ?? throw new InvalidOperationException("The login action handler is not initialized.");
         credentials.Synchronize();
 
@@ -342,6 +354,7 @@ internal sealed class ClientApplication : IDisposable
         try
         {
             login.Draw(renderer, selection, input, credentials);
+            icons.Draw(renderer, selection);
             actions.Draw(renderer, actionInput);
             status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
                 _catalogRefresh?.LastAttemptFailed ?? false, selection));
@@ -377,12 +390,14 @@ internal sealed class ClientApplication : IDisposable
         LoginPresentation? login = _loginPresentation;
         LoginDirectoryStatusPresentation? status = _directoryStatusPresentation;
         LoginActionPresentation? actions = _actionPresentation;
+        LoginServerIconPresentation? icons = _serverIcons;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
         _loginPresentation = null;
         _directoryStatusPresentation = null;
         _actionPresentation = null;
+        _serverIcons = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -390,9 +405,15 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            actions?.Dispose();
+            icons?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            actions?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {

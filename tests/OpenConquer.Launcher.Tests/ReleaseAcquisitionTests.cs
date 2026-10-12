@@ -810,7 +810,7 @@ public sealed class ReleaseAcquisitionTests
             cancellationToken.ThrowIfCancellationRequested();
             Uri uri = request.RequestUri!;
             _counts[uri] = RequestCount(uri) + 1;
-            if (!_responses.TryGetValue(uri, out var responseFactory))
+            if (!_responses.TryGetValue(uri, out Func<HttpRequestMessage, HttpResponseMessage>? responseFactory))
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
                 {
