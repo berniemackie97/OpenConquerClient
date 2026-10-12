@@ -28,6 +28,8 @@ internal sealed class ClientApplication : IDisposable
     private LoginPresentation? _loginPresentation;
     private LogicalRenderSize? _logicalRenderSize;
     private LoginArtworkSet? _loginArtwork;
+    private LoginServerSelection? _loginSelection;
+    private LoginSelectionInput? _loginSelectionInput;
     private bool _runStarted;
     private bool _disposed;
 
@@ -78,6 +80,10 @@ internal sealed class ClientApplication : IDisposable
         _window = window;
 
         window.FramebufferResized += OnFramebufferResized;
+        window.PrimaryPointerPressed += OnPrimaryPointerPressed;
+        window.PrimaryPointerReleased += OnPrimaryPointerReleased;
+        window.KeyPressed += OnKeyPressed;
+        window.FocusChanged += OnFocusChanged;
         window.Rendering += OnRendering;
         window.OpenGLContextReady += OnOpenGLContextReady;
         window.OpenGLContextReleasing += OnOpenGLContextReleasing;
@@ -104,6 +110,8 @@ internal sealed class ClientApplication : IDisposable
             _renderer = null;
             _graphicsDevice = null;
             _loginArtwork = null;
+            _loginSelectionInput = null;
+            _loginSelection = null;
             _disposed = true;
         }
     }
@@ -117,6 +125,8 @@ internal sealed class ClientApplication : IDisposable
 
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
         _loginArtwork = artwork;
+        _loginSelection = new LoginServerSelection();
+        _loginSelectionInput = new LoginSelectionInput(LoginVisualLayout.Create(_logicalRenderSize.Value), _loginSelection);
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
@@ -170,17 +180,55 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnFramebufferResized(PixelSize size) => _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
 
+    private void OnPrimaryPointerPressed(PixelPoint point) => RoutePointer(point, pressed: true);
+
+    private void OnPrimaryPointerReleased(PixelPoint point) => RoutePointer(point, pressed: false);
+
+    private void OnKeyPressed(DesktopKeyEvent key) => _loginSelectionInput?.KeyPressed(key);
+
+    private void OnFocusChanged(bool focused)
+    {
+        if (!focused)
+        {
+            _loginSelectionInput?.FocusLost();
+        }
+    }
+
+    private void RoutePointer(PixelPoint point, bool pressed)
+    {
+        LoginSelectionInput? input = _loginSelectionInput;
+        OpenGLRenderer? renderer = _renderer;
+
+        if (input is null || renderer is null)
+        {
+            return;
+        }
+
+        bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+
+        if (pressed)
+        {
+            input.PointerPressed(mapped, x, y);
+        }
+        else
+        {
+            input.PointerReleased(mapped, x, y);
+        }
+    }
+
     private void OnRendering(double elapsedSeconds)
     {
         OpenGLRenderer renderer = _renderer ?? throw new InvalidOperationException("The renderer is not initialized.");
         LoginPresentation login = _loginPresentation ?? throw new InvalidOperationException("The login presentation is not initialized.");
+        LoginServerSelection selection = _loginSelection ?? throw new InvalidOperationException("The login selection state is not initialized.");
+        LoginSelectionInput input = _loginSelectionInput ?? throw new InvalidOperationException("The login input handler is not initialized.");
 
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
 
         try
         {
-            login.Draw(renderer);
+            login.Draw(renderer, selection, input);
         }
         catch (Exception exception)
         {
@@ -199,7 +247,11 @@ internal sealed class ClientApplication : IDisposable
         firstFailure?.Throw();
     }
 
-    private void OnOpenGLContextReleasing() => ReleaseRenderingResources();
+    private void OnOpenGLContextReleasing()
+    {
+        _loginSelectionInput?.FocusLost();
+        ReleaseRenderingResources();
+    }
 
     private void ReleaseRenderingResources()
     {
