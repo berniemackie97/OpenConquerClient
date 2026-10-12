@@ -32,4 +32,8 @@
              CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(OpenConquerCatalogAuthorityFile)' != ''">
+    <EmbeddedResource Include="$(OpenConquerCatalogAuthorityFile)" LogicalName="OpenConquer.Client.Startup.Catalog.Authority.json" />
+  </ItemGroup>
+
 </Project>

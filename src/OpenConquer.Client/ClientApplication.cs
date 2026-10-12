@@ -1,5 +1,6 @@
 using System.Runtime.ExceptionServices;
 using OpenConquer.Client.Startup;
+using OpenConquer.Client.Startup.Catalog;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
@@ -30,6 +31,9 @@ internal sealed class ClientApplication : IDisposable
     private LoginArtworkSet? _loginArtwork;
     private LoginServerSelection? _loginSelection;
     private LoginSelectionInput? _loginSelectionInput;
+    private CancellationTokenSource? _catalogCancellation;
+    private Task<SignedLoginCatalog?>? _catalogTask;
+    private SignedLoginCatalog? _activeCatalog;
     private bool _runStarted;
     private bool _disposed;
 
@@ -88,7 +92,20 @@ internal sealed class ClientApplication : IDisposable
         window.OpenGLContextReady += OnOpenGLContextReady;
         window.OpenGLContextReleasing += OnOpenGLContextReleasing;
 
+        LoginCatalogAuthority? authority = LoginCatalogAuthority.LoadEmbedded();
+
+        if (authority is not null)
+        {
+            _catalogCancellation = new CancellationTokenSource();
+            _catalogTask = LoadCatalogAsync(authority, _catalogCancellation.Token);
+        }
+        else
+        {
+            Console.Error.WriteLine("OpenConquer: realm catalog authority is not configured; no servers are available.");
+        }
+
         window.Run();
+        _catalogCancellation?.Cancel();
         return 0;
     }
 
@@ -99,12 +116,18 @@ internal sealed class ClientApplication : IDisposable
             return;
         }
 
+        _catalogCancellation?.Cancel();
+
         try
         {
             _window?.Dispose();
         }
         finally
         {
+            _catalogCancellation?.Dispose();
+            _catalogCancellation = null;
+            _catalogTask = null;
+            _activeCatalog = null;
             _window = null;
             _loginPresentation = null;
             _renderer = null;
@@ -218,6 +241,8 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnRendering(double elapsedSeconds)
     {
+        AcceptCatalogIfReady();
+
         OpenGLRenderer renderer = _renderer ?? throw new InvalidOperationException("The renderer is not initialized.");
         LoginPresentation login = _loginPresentation ?? throw new InvalidOperationException("The login presentation is not initialized.");
         LoginServerSelection selection = _loginSelection ?? throw new InvalidOperationException("The login selection state is not initialized.");
@@ -249,6 +274,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnOpenGLContextReleasing()
     {
+        _catalogCancellation?.Cancel();
         _loginSelectionInput?.FocusLost();
         ReleaseRenderingResources();
     }
@@ -284,6 +310,54 @@ internal sealed class ClientApplication : IDisposable
         catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         firstFailure?.Throw();
+    }
+
+    private static async Task<SignedLoginCatalog?> LoadCatalogAsync(LoginCatalogAuthority authority, CancellationToken token)
+    {
+        using LoginCatalogClient client = new();
+        return await client.FetchAsync(authority, DateTimeOffset.UtcNow, token).ConfigureAwait(false);
+    }
+
+    private void AcceptCatalogIfReady()
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        LoginSelectionInput? input = _loginSelectionInput;
+
+        if (_activeCatalog is { } active && !active.IsCurrent(now))
+        {
+            _activeCatalog = null;
+            input?.ReplaceCatalog(LoginServerCatalog.Empty);
+        }
+
+        if (_catalogTask is not { IsCompleted: true } completed)
+        {
+            return;
+        }
+
+        _catalogTask = null;
+        SignedLoginCatalog? incoming;
+
+        try
+        {
+            incoming = completed.GetAwaiter().GetResult();
+        }
+        catch (Exception)
+        {
+            Console.Error.WriteLine("OpenConquer: authenticated realm discovery is unavailable.");
+            return;
+        }
+
+        if (incoming is not null && incoming.IsCurrent(now) && input is not null)
+        {
+            _activeCatalog = incoming;
+            input.ReplaceCatalog(incoming.View);
+        }
+        else
+        {
+            _activeCatalog = null;
+            input?.ReplaceCatalog(LoginServerCatalog.Empty);
+            Console.Error.WriteLine("OpenConquer: authenticated realm catalog is unavailable or rejected.");
+        }
     }
 
     private static void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
