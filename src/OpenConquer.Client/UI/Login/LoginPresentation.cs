@@ -19,6 +19,7 @@ internal sealed class LoginPresentation : IDisposable
     private readonly OpenGLTexture2D _serverCell;
     private readonly LoginVisualLayout _layout;
     private readonly LoginLabelPresentation _labels;
+    private readonly LoginCredentialPresentation _credentials;
     private static readonly SpriteColor s_selectedBorder = new(218, 161, 52, 255);
     private static readonly SpriteColor s_focusBorder = new(255, 231, 135, 255);
     private bool _disposed;
@@ -108,14 +109,16 @@ internal sealed class LoginPresentation : IDisposable
         _serverCell = serverCell;
         _layout = layout;
         _labels = new LoginLabelPresentation(graphicsDevice, layout);
+        _credentials = new LoginCredentialPresentation(graphicsDevice, layout);
     }
 
-    public void Draw(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input)
+    public void Draw(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input, LoginCredentialInput credentials)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(credentials);
 
         DrawLayer(renderer, _backdrop, _layout.Backdrop);
         DrawLayer(renderer, _header, _layout.Header);
@@ -135,6 +138,7 @@ internal sealed class LoginPresentation : IDisposable
         DrawLayer(renderer, _topDragon, _layout.TopDragon);
 
         _labels.Draw(renderer, selection);
+        _credentials.Draw(renderer, credentials);
 
         DrawSelectionBorder(renderer, _layout.RegionCells, selection.SelectedRegionSlot, s_selectedBorder);
         DrawSelectionBorder(renderer, _layout.ServerCells, selection.SelectedServerSlot, s_selectedBorder);
@@ -161,11 +165,20 @@ internal sealed class LoginPresentation : IDisposable
 
         try
         {
-            _labels.Dispose();
+            _credentials.Dispose();
         }
         catch (Exception exception)
         {
             firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            _labels.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
         DisposeTexture(_serverCell, ref firstFailure);
