@@ -27,6 +27,7 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private LoginPresentation? _loginPresentation;
+    private LoginDirectoryStatusPresentation? _directoryStatusPresentation;
     private LogicalRenderSize? _logicalRenderSize;
     private LoginArtworkSet? _loginArtwork;
     private LoginServerSelection? _loginSelection;
@@ -142,6 +143,7 @@ internal sealed class ClientApplication : IDisposable
                 _loginCredentials = null;
                 _window = null;
                 _loginPresentation = null;
+                _directoryStatusPresentation = null;
                 _renderer = null;
                 _graphicsDevice = null;
                 _loginArtwork = null;
@@ -177,6 +179,7 @@ internal sealed class ClientApplication : IDisposable
         OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
         OpenGLRenderer? renderer = null;
         LoginPresentation? login = null;
+        LoginDirectoryStatusPresentation? status = null;
 
         try
         {
@@ -187,13 +190,21 @@ internal sealed class ClientApplication : IDisposable
 
             renderer = graphicsDevice.CreateRenderer(logicalSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
             login = new LoginPresentation(graphicsDevice, logicalSize, artwork);
+            status = new LoginDirectoryStatusPresentation(graphicsDevice, LoginVisualLayout.Create(logicalSize));
 
             _graphicsDevice = graphicsDevice;
             _renderer = renderer;
             _loginPresentation = login;
+            _directoryStatusPresentation = status;
         }
         catch
         {
+            try
+            {
+                status?.Dispose();
+            }
+            catch { }
+
             try
             {
                 login?.Dispose();
@@ -278,6 +289,7 @@ internal sealed class ClientApplication : IDisposable
         LoginServerSelection selection = _loginSelection ?? throw new InvalidOperationException("The login selection state is not initialized.");
         LoginSelectionInput input = _loginSelectionInput ?? throw new InvalidOperationException("The login input handler is not initialized.");
         LoginCredentialInput credentials = _loginCredentials ?? throw new InvalidOperationException("The login credentials handler is not initialized.");
+        LoginDirectoryStatusPresentation status = _directoryStatusPresentation ?? throw new InvalidOperationException("The realm directory status renderer is not initialized.");
         credentials.Synchronize();
 
         renderer.BeginFrame();
@@ -286,6 +298,8 @@ internal sealed class ClientApplication : IDisposable
         try
         {
             login.Draw(renderer, selection, input, credentials);
+            status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
+                _catalogRefresh?.LastAttemptFailed ?? false, selection));
         }
         catch (Exception exception)
         {
@@ -315,10 +329,12 @@ internal sealed class ClientApplication : IDisposable
     private void ReleaseRenderingResources()
     {
         LoginPresentation? login = _loginPresentation;
+        LoginDirectoryStatusPresentation? status = _directoryStatusPresentation;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
         _loginPresentation = null;
+        _directoryStatusPresentation = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -326,9 +342,15 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            login?.Dispose();
+            status?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            login?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {
