@@ -47,17 +47,11 @@ internal static class LoginDirectoryStatus
         return selection.SelectedServer is null ? LoginDirectoryAvailability.ChooseServer : LoginDirectoryAvailability.None;
     }
 
-    public static string Text(LoginDirectoryAvailability availability) => availability switch
-    {
-        LoginDirectoryAvailability.NotConfigured => "REALM DIRECTORY NOT CONFIGURED",
-        LoginDirectoryAvailability.Checking => "CHECKING REALM DIRECTORY",
-        LoginDirectoryAvailability.Unavailable => "REALM DIRECTORY UNAVAILABLE",
-        LoginDirectoryAvailability.NoRegions => "NO REALMS PUBLISHED",
-        LoginDirectoryAvailability.ChooseRegion => "SELECT A REGION",
-        LoginDirectoryAvailability.NoServers => "NO SERVERS IN REGION",
-        LoginDirectoryAvailability.ChooseServer => "SELECT A SERVER",
-        _ => throw new ArgumentOutOfRangeException(nameof(availability), availability, "This status has no visible label."),
-    };
+    public static bool IsVisible(LoginDirectoryAvailability availability) => availability == LoginDirectoryAvailability.NotConfigured;
+
+    public static string Text(LoginDirectoryAvailability availability) => availability == LoginDirectoryAvailability.NotConfigured
+        ? "REALM DIRECTORY NOT CONFIGURED"
+        : throw new ArgumentOutOfRangeException(nameof(availability), availability, "Only a missing authority has a visible banner.");
 
     public static LoginSpritePlacement Bounds(LoginVisualLayout layout)
     {

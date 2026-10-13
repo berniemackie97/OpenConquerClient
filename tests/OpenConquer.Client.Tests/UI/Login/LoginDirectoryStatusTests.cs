@@ -63,44 +63,34 @@ public sealed class LoginDirectoryStatusTests
     }
 
     [Fact]
-    public void EveryVisibleStateHasAValidDeterministicRaster()
+    public void OnlyTheUnconfiguredAuthorityHasAStatusLabel()
     {
         foreach (LoginDirectoryAvailability availability in Enum.GetValues<LoginDirectoryAvailability>())
         {
-            if (availability == LoginDirectoryAvailability.None)
+            if (availability == LoginDirectoryAvailability.NotConfigured)
             {
+                Assert.Equal("REALM DIRECTORY NOT CONFIGURED", LoginDirectoryStatus.Text(availability));
                 continue;
             }
 
-            string label = LoginDirectoryStatus.Text(availability);
-            (int width, int height, byte[] pixels) = LoginDirectoryStatusRaster.Create(label);
-            Assert.Equal(label.Length * 6 - 1, width);
-            Assert.Equal(7, height);
-            Assert.Equal(width * height * 4, pixels.Length);
-            Assert.Contains(pixels.Where((_, index) => index % 4 == 3), alpha => alpha == 255);
-            Assert.All(pixels.Where((_, index) => index % 4 == 3), alpha => Assert.True(alpha is 0 or 255));
+            Assert.Throws<ArgumentOutOfRangeException>(() => LoginDirectoryStatus.Text(availability));
         }
     }
 
     [Theory]
     [InlineData(1024, 768)]
     [InlineData(800, 600)]
-    public void EveryMessageFitsItsReservedBounds(int width, int height)
+    public void UnconfiguredAuthorityLabelFitsReservedBounds(int width, int height)
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(width, height));
         LoginSpritePlacement bounds = LoginDirectoryStatus.Bounds(layout);
+        (int textWidth, int textHeight, byte[] pixels) = LoginDirectoryStatusRaster.Create(LoginDirectoryStatus.Text(LoginDirectoryAvailability.NotConfigured));
 
-        foreach (LoginDirectoryAvailability availability in Enum.GetValues<LoginDirectoryAvailability>())
-        {
-            if (availability == LoginDirectoryAvailability.None)
-            {
-                continue;
-            }
-
-            (int textWidth, int textHeight, _) = LoginDirectoryStatusRaster.Create(LoginDirectoryStatus.Text(availability));
-            Assert.True(LoginDirectoryStatus.Scale(textWidth * 2, width) <= bounds.Width - 12);
-            Assert.True(LoginDirectoryStatus.Scale(textHeight * 2, width) <= bounds.Height - 4);
-        }
+        Assert.True(LoginDirectoryStatus.Scale(textWidth * 2, width) <= bounds.Width - 12);
+        Assert.True(LoginDirectoryStatus.Scale(textHeight * 2, width) <= bounds.Height - 4);
+        Assert.Equal(textWidth * textHeight * 4, pixels.Length);
+        Assert.Contains(pixels.Where((_, index) => index % 4 == 3), alpha => alpha == 255);
+        Assert.All(pixels.Where((_, index) => index % 4 == 3), alpha => Assert.True(alpha is 0 or 255));
     }
 
     [Fact]
