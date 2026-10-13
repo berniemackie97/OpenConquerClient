@@ -31,6 +31,8 @@ internal sealed class ClientApplication : IDisposable
     private LoginActionPresentation? _actionPresentation;
     private LoginServerIconPresentation? _serverIcons;
     private LoginActionInput? _actionInput;
+    private LoginPointerCursor? _loginPointerCursor;
+    private bool _windowFocused = true;
     private LogicalRenderSize? _logicalRenderSize;
     private LoginArtworkSet? _loginArtwork;
     private LoginServerSelection? _loginSelection;
@@ -153,6 +155,7 @@ internal sealed class ClientApplication : IDisposable
                 _actionPresentation = null;
                 _serverIcons = null;
                 _actionInput = null;
+                _loginPointerCursor = null;
                 _renderer = null;
                 _graphicsDevice = null;
                 _loginArtwork = null;
@@ -177,6 +180,7 @@ internal sealed class ClientApplication : IDisposable
         _loginSelectionInput = new LoginSelectionInput(layout, _loginSelection);
         _loginCredentials = new LoginCredentialInput(_loginSelection, LoginCredentialLayout.Create(layout));
         _actionInput = new LoginActionInput(LoginActionLayout.Create(layout));
+        _loginPointerCursor = new LoginPointerCursor(layout);
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
@@ -286,6 +290,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnFocusChanged(bool focused)
     {
+        _windowFocused = focused;
         if (!focused)
         {
             _loginSelectionInput?.FocusLost();
@@ -349,6 +354,7 @@ internal sealed class ClientApplication : IDisposable
         LoginServerIconPresentation icons = _serverIcons ?? throw new InvalidOperationException("The realm icon renderer is not initialized.");
         LoginActionInput actionInput = _actionInput ?? throw new InvalidOperationException("The login action handler is not initialized.");
         credentials.Synchronize();
+        UpdatePointerCursor(renderer, selection);
 
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
@@ -376,6 +382,21 @@ internal sealed class ClientApplication : IDisposable
         }
 
         firstFailure?.Throw();
+    }
+
+    private void UpdatePointerCursor(OpenGLRenderer renderer, LoginServerSelection selection)
+    {
+        DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window is not initialized.");
+        LoginPointerCursor pointer = _loginPointerCursor ?? throw new InvalidOperationException("The login pointer policy is not initialized.");
+
+        if (!_windowFocused || !window.TryGetPointerPosition(out PixelPoint point))
+        {
+            window.SetPointerCursor(DesktopPointerCursor.Arrow);
+            return;
+        }
+
+        bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+        window.SetPointerCursor(pointer.Resolve(mapped, x, y, selection));
     }
 
     private void OnOpenGLContextReleasing()

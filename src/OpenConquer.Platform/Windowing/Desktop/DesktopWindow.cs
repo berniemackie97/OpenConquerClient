@@ -123,6 +123,46 @@ public sealed class DesktopWindow : IDisposable
         return TryMapPointerToFramebuffer(mouse.Position, out framebufferPoint);
     }
 
+    /// <summary>Applies a supported native operating-system cursor on the desktop event thread.</summary>
+    public void SetPointerCursor(DesktopPointerCursor style)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!Enum.IsDefined(style))
+        {
+            throw new ArgumentOutOfRangeException(nameof(style), style, "Unsupported pointer cursor.");
+        }
+
+        if (_mouse is not { } mouse)
+        {
+            return;
+        }
+
+        ICursor cursor = mouse.Cursor;
+        StandardCursor requested = style switch
+        {
+            DesktopPointerCursor.Hand => StandardCursor.Hand,
+            DesktopPointerCursor.Text => StandardCursor.IBeam,
+            _ => StandardCursor.Arrow,
+        };
+        StandardCursor supported = cursor.IsSupported(requested) ? requested : StandardCursor.Arrow;
+
+        if (cursor.Type != CursorType.Standard)
+        {
+            cursor.Type = CursorType.Standard;
+        }
+
+        if (cursor.StandardCursor != supported)
+        {
+            cursor.StandardCursor = supported;
+        }
+
+        if (cursor.CursorMode != CursorMode.Normal && cursor.IsSupported(CursorMode.Normal))
+        {
+            cursor.CursorMode = CursorMode.Normal;
+        }
+    }
+
     public void Run()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -440,6 +480,10 @@ public sealed class DesktopWindow : IDisposable
     {
         _hasFocus = hasFocus;
         _keyboardInput?.SetFocus(hasFocus);
+        if (!hasFocus)
+        {
+            SetPointerCursor(DesktopPointerCursor.Arrow);
+        }
         FocusChanged?.Invoke(hasFocus);
     }
 
