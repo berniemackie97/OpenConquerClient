@@ -29,7 +29,8 @@ internal static class LoginSelectionArtworkLayout
     {
         int width = Scale(nativeWidth, layout.Width);
         int height = Scale(nativeHeight, layout.Width);
-        LoginSpritePlacement bounds = new(checked(cell.X + (cell.Width - width) / 2), checked(cell.Y + (cell.Height - height) / 2), width, height);
+        // Arithmetic shifts floor negative half-pixel offsets instead of biasing oversized artwork down and right.
+        LoginSpritePlacement bounds = new(checked(cell.X + ((cell.Width - width) >> 1)), checked(cell.Y + ((cell.Height - height) >> 1)), width, height);
 
         if (bounds.X < 0 || bounds.Y < 0 || (long)bounds.X + bounds.Width > layout.Width || (long)bounds.Y + bounds.Height > layout.Height)
         {

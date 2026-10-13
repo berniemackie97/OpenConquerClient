@@ -19,17 +19,21 @@ public sealed class LoginSelectionArtworkLayoutTests
     [Theory]
     [InlineData(1024, 768)]
     [InlineData(800, 600)]
-    public void AllSelectionSlots_FitWithinTheirStage(int width, int height)
+    public void AllSelectionSlots_FitWithinTheirStageAndRemainCentered(int width, int height)
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(width, height));
         for (int i = 0; i < layout.RegionCells.Length; i++)
         {
-            AssertFits(LoginSelectionArtworkLayout.SelectedRegion(layout, i), layout);
+            LoginSpritePlacement image = LoginSelectionArtworkLayout.SelectedRegion(layout, i);
+            AssertFits(image, layout);
+            AssertCentered(image, layout.RegionCells[i]);
         }
 
         for (int i = 0; i < layout.ServerCells.Length; i++)
         {
-            AssertFits(LoginSelectionArtworkLayout.SelectedServer(layout, i), layout);
+            LoginSpritePlacement image = LoginSelectionArtworkLayout.SelectedServer(layout, i);
+            AssertFits(image, layout);
+            AssertCentered(image, layout.ServerCells[i]);
         }
     }
 
@@ -40,6 +44,12 @@ public sealed class LoginSelectionArtworkLayoutTests
         Assert.Throws<ArgumentOutOfRangeException>(() => LoginSelectionArtworkLayout.SelectedRegion(layout, -1));
         Assert.Throws<ArgumentOutOfRangeException>(() => LoginSelectionArtworkLayout.SelectedRegion(layout, 16));
         Assert.Throws<ArgumentOutOfRangeException>(() => LoginSelectionArtworkLayout.SelectedServer(layout, 12));
+    }
+
+    private static void AssertCentered(LoginSpritePlacement image, LoginSpritePlacement cell)
+    {
+        Assert.InRange(Math.Abs((long)image.X * 2 + image.Width - ((long)cell.X * 2 + cell.Width)), 0L, 1L);
+        Assert.InRange(Math.Abs((long)image.Y * 2 + image.Height - ((long)cell.Y * 2 + cell.Height)), 0L, 1L);
     }
 
     private static void AssertFits(LoginSpritePlacement rect, LoginVisualLayout layout)

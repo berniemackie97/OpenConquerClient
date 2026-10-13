@@ -1,6 +1,4 @@
 using OpenConquer.Client.UI.Login;
-using OpenConquer.Content.Images;
-using OpenConquer.Content.Startup;
 using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests.UI.Login;
@@ -51,28 +49,18 @@ public sealed class LoginActionInputTests
         }
     }
 
-    [Fact]
-    public void RetailEnterFootprint_OnlyOverlaysTransparentAccountPanelPixels()
+    [Theory]
+    [InlineData(1024, 768, 8)]
+    [InlineData(800, 600, 6)]
+    public void RetailEnterFootprint_ClearsTheEntireAccountPanel(int width, int height, int expectedGap)
     {
-        LoginVisualLayout visual = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
+        LoginVisualLayout visual = LoginVisualLayout.Create(new LogicalRenderSize(width, height));
         LoginSpritePlacement enter = LoginActionLayout.Create(visual).Enter;
         LoginSpritePlacement panel = visual.AccountPanel;
-        RgbaImage artwork = LoginArtwork.LoadAccountPanel();
-        int left = Math.Max(enter.X, panel.X);
-        int top = Math.Max(enter.Y, panel.Y);
-        int right = Math.Min(enter.X + enter.Width, panel.X + panel.Width);
-        int bottom = Math.Min(enter.Y + enter.Height, panel.Y + panel.Height);
 
-        Assert.True(left < right && top < bottom);
-
-        for (int y = top; y < bottom; y++)
-        {
-            for (int x = left; x < right; x++)
-            {
-                int alphaIndex = checked(((y - panel.Y) * artwork.Width + x - panel.X) * 4 + 3);
-                Assert.Equal((byte)0, artwork.Pixels.Span[alphaIndex]);
-            }
-        }
+        Assert.True(enter.X < panel.X + panel.Width);
+        Assert.Equal(expectedGap, enter.Y - (panel.Y + panel.Height));
+        Assert.False(Overlaps(enter, panel));
     }
 
     [Fact]
