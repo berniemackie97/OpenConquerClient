@@ -4,6 +4,9 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
+  <Import Project="$(HOME)/.config/openconquer/client.local.props"
+          Condition="'$(CI)' != 'true' and '$(OpenConquerCatalogAuthorityFile)' == '' and '$(HOME)' != '' and Exists('$(HOME)/.config/openconquer/client.local.props')" />
+
   <ItemGroup>
     <InternalsVisibleTo Include="OpenConquer.Client.Tests" />
     <InternalsVisibleTo Include="OpenConquer.Rendering.Conformance" />
@@ -35,5 +38,13 @@
   <ItemGroup Condition="'$(OpenConquerCatalogAuthorityFile)' != ''">
     <EmbeddedResource Include="$(OpenConquerCatalogAuthorityFile)" LogicalName="OpenConquer.Client.Startup.Catalog.Authority.json" />
   </ItemGroup>
+
+  <Target Name="ValidateOpenConquerCatalogAuthority" BeforeTargets="PrepareForBuild" Condition="'$(OpenConquerCatalogAuthorityFile)' != ''">
+    <Error Condition="!Exists('$(OpenConquerCatalogAuthorityFile)')" Text="The explicitly configured OpenConquer catalog authority file does not exist: $(OpenConquerCatalogAuthorityFile)" />
+  </Target>
+
+  <Target Name="RejectLocalRealmAuthorityPublish" BeforeTargets="ComputeFilesToPublish;Publish" Condition="'$(OpenConquerLocalRealmAuthority)' == 'true'">
+    <Error Text="Local development realm authority cannot be published. Pass an explicit production OpenConquerCatalogAuthorityFile, or remove ~/.config/openconquer/client.local.props." />
+  </Target>
 
 </Project>
