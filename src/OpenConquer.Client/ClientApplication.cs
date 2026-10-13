@@ -37,6 +37,9 @@ internal sealed class ClientApplication : IDisposable
     private LoginSelectionInput? _loginSelectionInput;
     private LoginCredentialInput? _loginCredentials;
     private LoginCatalogRefresh? _catalogRefresh;
+    private LoginAudioPlayer? _audioPlayer;
+    private LoginAudioFeedback? _audioFeedback;
+    private DesktopCursorAnimation? _cursorAnimation;
     private SignedLoginCatalog? _presentedCatalog;
     private bool _catalogUnavailableReported;
     private bool _runStarted;
@@ -87,6 +90,7 @@ internal sealed class ClientApplication : IDisposable
             () => new DesktopWindow(_windowSize, _windowMode, s_frameInterval));
 
         _window = window;
+        window.ConfigureCursor(_cursorAnimation ?? throw new InvalidOperationException("The retail cursor animation was not loaded."));
 
         window.FramebufferResized += OnFramebufferResized;
         window.PrimaryPointerPressed += OnPrimaryPointerPressed;
@@ -145,6 +149,10 @@ internal sealed class ClientApplication : IDisposable
             {
                 _catalogRefresh = null;
                 _presentedCatalog = null;
+                _audioPlayer?.Dispose();
+                _audioPlayer = null;
+                _audioFeedback = null;
+                _cursorAnimation = null;
                 _loginCredentials?.Dispose();
                 _loginCredentials = null;
                 _window = null;
@@ -177,6 +185,10 @@ internal sealed class ClientApplication : IDisposable
         _loginSelectionInput = new LoginSelectionInput(layout, _loginSelection);
         _loginCredentials = new LoginCredentialInput(_loginSelection, LoginCredentialLayout.Create(layout));
         _actionInput = new LoginActionInput(LoginActionLayout.Create(layout));
+        _audioFeedback = new LoginAudioFeedback(layout);
+        IReadOnlyList<OpenConquer.Content.Images.RgbaImage> cursorFrames = LoginCursorArtwork.Load();
+        _cursorAnimation = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
+            cursorFrames[0].Height, LoginCursorArtwork.HotspotX, LoginCursorArtwork.HotspotY, LoginCursorArtwork.FrameDuration);
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
@@ -192,6 +204,7 @@ internal sealed class ClientApplication : IDisposable
         LoginDirectoryStatusPresentation? status = null;
         LoginActionPresentation? actions = null;
         LoginServerIconPresentation? icons = null;
+        LoginAudioPlayer? audio = null;
 
         try
         {
@@ -206,6 +219,7 @@ internal sealed class ClientApplication : IDisposable
             status = new LoginDirectoryStatusPresentation(graphicsDevice, layout);
             actions = new LoginActionPresentation(graphicsDevice, LoginActionLayout.Create(layout), artwork);
             icons = new LoginServerIconPresentation(graphicsDevice, layout);
+            audio = LoginAudioPlayer.TryCreate();
 
             _graphicsDevice = graphicsDevice;
             _renderer = renderer;
@@ -213,9 +227,16 @@ internal sealed class ClientApplication : IDisposable
             _directoryStatusPresentation = status;
             _actionPresentation = actions;
             _serverIcons = icons;
+            _audioPlayer = audio;
         }
         catch
         {
+            try
+            {
+                audio?.Dispose();
+            }
+            catch { }
+
             try
             {
                 icons?.Dispose();
@@ -272,6 +293,10 @@ internal sealed class ClientApplication : IDisposable
 
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
         _actionInput.PointerMoved(mapped, x, y);
+        if (_loginSelection is { } selection)
+        {
+            _audioPlayer?.Play(_audioFeedback?.PointerMoved(mapped, x, y, selection));
+        }
     }
 
     private void OnKeyPressed(DesktopKeyEvent key)
@@ -282,7 +307,20 @@ internal sealed class ClientApplication : IDisposable
         }
     }
 
-    private void OnTextEntered(char character) => _loginCredentials?.TextEntered(character);
+    private void OnTextEntered(char character)
+    {
+        LoginCredentialInput? credentials = _loginCredentials;
+        if (credentials is null)
+        {
+            return;
+        }
+        int length = credentials.AccountLength + credentials.PasswordLength;
+        credentials.TextEntered(character);
+        if (credentials.AccountLength + credentials.PasswordLength > length)
+        {
+            _audioPlayer?.Play(_audioFeedback?.TypedCharacter());
+        }
+    }
 
     private void OnFocusChanged(bool focused)
     {
@@ -291,7 +329,9 @@ internal sealed class ClientApplication : IDisposable
             _loginSelectionInput?.FocusLost();
             _loginCredentials?.FocusLost();
             _actionInput?.FocusLost();
+            _audioFeedback?.Reset();
         }
+        _audioPlayer?.SetFocused(focused);
     }
 
     private void RoutePointer(PixelPoint point, bool pressed)
@@ -326,12 +366,33 @@ internal sealed class ClientApplication : IDisposable
         {
             if (_actionInput?.PointerReleased(mapped, x, y) == LoginActionButton.Exit)
             {
+                _audioPlayer?.Play(LoginAudioCue.ButtonClick);
                 _loginCredentials?.FocusLost();
                 _window?.RequestClose();
                 return;
             }
 
+            LoginServerSelection? selection = _loginSelection;
+            int regionPage = selection?.RegionPage ?? -1;
+            int serverPage = selection?.ServerPage ?? -1;
+            LoginRegion? region = selection?.SelectedRegion;
+            LoginServer? server = selection?.SelectedServer;
             input.PointerReleased(mapped, x, y);
+            if (selection is not null)
+            {
+                if (regionPage != selection.RegionPage || serverPage != selection.ServerPage)
+                {
+                    _audioPlayer?.Play(LoginAudioCue.Page);
+                }
+                else if (!ReferenceEquals(server, selection.SelectedServer) && selection.SelectedServer is not null)
+                {
+                    _audioPlayer?.Play(LoginAudioCue.ServerSelect);
+                }
+                else if (!ReferenceEquals(region, selection.SelectedRegion) && selection.SelectedRegion is not null)
+                {
+                    _audioPlayer?.Play(LoginAudioCue.Dragon);
+                }
+            }
         }
     }
 
@@ -384,7 +445,17 @@ internal sealed class ClientApplication : IDisposable
         _loginSelectionInput?.FocusLost();
         _loginCredentials?.FocusLost();
         _actionInput?.FocusLost();
-        ReleaseRenderingResources();
+        _audioFeedback?.Reset();
+        LoginAudioPlayer? audio = _audioPlayer;
+        _audioPlayer = null;
+        try
+        {
+            audio?.Dispose();
+        }
+        finally
+        {
+            ReleaseRenderingResources();
+        }
     }
 
     private void ReleaseRenderingResources()
@@ -466,6 +537,7 @@ internal sealed class ClientApplication : IDisposable
                 LoginVerifiedSelectionRetention.Apply(_presentedCatalog, incoming, now, input, selection);
             }
             _presentedCatalog = incoming;
+            _audioFeedback?.Reset();
             _loginCredentials?.Synchronize();
         }
 

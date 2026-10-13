@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.ExceptionServices;
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.OpenGL;
+using Silk.NET.Core;
 using Silk.NET.Core.Contexts;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -16,6 +18,9 @@ public sealed class DesktopWindow : IDisposable
     private readonly IWindow _window;
     private readonly DesktopFramePacer _framePacer;
 
+    private DesktopCursorAnimation? _cursorAnimation;
+    private int _cursorFrameIndex = -1;
+    private long _cursorStarted;
     private IInputContext? _inputContext;
     private IMouse? _mouse;
     private DesktopKeyboardInput? _keyboardInput;
@@ -121,6 +126,18 @@ public sealed class DesktopWindow : IDisposable
         }
 
         return TryMapPointerToFramebuffer(mouse.Position, out framebufferPoint);
+    }
+
+    /// <summary>Installs a trusted, predecoded animation before creating the native input context.</summary>
+    public void ConfigureCursor(DesktopCursorAnimation animation)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(animation);
+        if (_runStarted)
+        {
+            throw new InvalidOperationException("Desktop cursor animation must be configured before window startup.");
+        }
+        _cursorAnimation = animation;
     }
 
     public void Run()
@@ -306,6 +323,8 @@ public sealed class DesktopWindow : IDisposable
             _mouse = mouse;
             _keyboardInput = keyboardInput;
             _inputContext = inputContext;
+            _cursorStarted = Stopwatch.GetTimestamp();
+            ApplyCursorFrame(force: true);
         }
         catch
         {
@@ -369,6 +388,8 @@ public sealed class DesktopWindow : IDisposable
         }
 
         _window.DoUpdate();
+
+        ApplyCursorFrame(force: false);
 
         if (_window.IsClosing)
         {
@@ -440,6 +461,7 @@ public sealed class DesktopWindow : IDisposable
     {
         _hasFocus = hasFocus;
         _keyboardInput?.SetFocus(hasFocus);
+        ApplyCursorFrame(force: true);
         FocusChanged?.Invoke(hasFocus);
     }
 
@@ -456,6 +478,39 @@ public sealed class DesktopWindow : IDisposable
             framebufferSize.X,
             framebufferSize.Y,
             out framebufferPoint);
+    }
+
+    private void ApplyCursorFrame(bool force)
+    {
+        IMouse? mouse = _mouse;
+        DesktopCursorAnimation? animation = _cursorAnimation;
+        if (mouse is null || animation is null)
+        {
+            return;
+        }
+        ICursor cursor = mouse.Cursor;
+        if (!_hasFocus)
+        {
+            if (force || _cursorFrameIndex >= 0)
+            {
+                cursor.Type = CursorType.Standard;
+                _cursorFrameIndex = -1;
+            }
+            return;
+        }
+        int index = animation.FrameAt(Stopwatch.GetElapsedTime(_cursorStarted));
+        if (!force && index == _cursorFrameIndex)
+        {
+            return;
+        }
+        // GLFW destroys its old native custom cursor when the type leaves Custom.
+        // Never assign Image while Custom: doing so creates a second handle without disposing the first.
+        cursor.Type = CursorType.Standard;
+        cursor.Image = new RawImage(animation.Width, animation.Height, animation.Frame(index));
+        cursor.HotspotX = animation.HotspotX;
+        cursor.HotspotY = animation.HotspotY;
+        cursor.Type = CursorType.Custom;
+        _cursorFrameIndex = index;
     }
 
     private void OnFramebufferResize(Vector2D<int> size)
@@ -526,6 +581,14 @@ public sealed class DesktopWindow : IDisposable
 
         if (mouse is not null)
         {
+            try
+            {
+                mouse.Cursor.Type = CursorType.Standard;
+            }
+            catch (Exception error)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(error);
+            }
             try
             {
                 mouse.MouseMove -= OnMouseMove;
