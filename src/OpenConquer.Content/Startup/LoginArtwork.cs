@@ -13,6 +13,8 @@ public static class LoginArtwork
     private const string TopDragonResourceName = "OpenConquer.Content.Assets.Login.TopDragon.rgba.br";
     private const string RegionCellResourceName = "OpenConquer.Content.Assets.Login.RegionCell.rgba.br";
     private const string ServerCellResourceName = "OpenConquer.Content.Assets.Login.ServerCell.rgba.br";
+    private const string SelectedRegionResourceName = "OpenConquer.Content.Assets.Login.SelectedRegion.rgba.br";
+    private const string SelectedServerGlowResourceName = "OpenConquer.Content.Assets.Login.SelectedServerGlow.rgba.br";
     private const string EnterUpResourceName = "OpenConquer.Content.Assets.Login.EnterUp.rgba.br";
     private const string EnterHoverResourceName = "OpenConquer.Content.Assets.Login.EnterHover.rgba.br";
     private const string EnterPressedResourceName = "OpenConquer.Content.Assets.Login.EnterPressed.rgba.br";
@@ -25,7 +27,7 @@ public static class LoginArtwork
     public const int ReferenceHeight = 768;
     public const int BackdropHeight = 637;
 
-    public static LoginArtworkSet Load() => new(LoadBackdrop(), LoadHeader(), LoadFooter(), LoadAccountPanel(), LoadTopDragon(), LoadRegionCell(), LoadServerCell(),
+    public static LoginArtworkSet Load() => new(LoadBackdrop(), LoadHeader(), LoadFooter(), LoadAccountPanel(), LoadTopDragon(), LoadRegionCell(), LoadServerCell(), LoadSelectedRegion(), LoadSelectedServerGlow(),
         LoadEnterUp(), LoadEnterHover(), LoadEnterPressed(), LoadExitUp(), LoadExitHover(), LoadExitPressed());
 
     public static RgbaImage LoadBackdrop()
@@ -55,6 +57,10 @@ public static class LoginArtwork
     public static RgbaImage LoadRegionCell() => LoadEmbeddedLayer(RegionCellResourceName, width: 154, height: 54);
 
     public static RgbaImage LoadServerCell() => LoadEmbeddedLayer(ServerCellResourceName, width: 158, height: 58);
+
+    public static RgbaImage LoadSelectedRegion() => LoadEmbeddedLayer(SelectedRegionResourceName, width: 150, height: 50);
+
+    public static RgbaImage LoadSelectedServerGlow() => LoadEmbeddedLayer(SelectedServerGlowResourceName, width: 200, height: 100);
 
     public static RgbaImage LoadEnterUp() => LoadEmbeddedLayer(EnterUpResourceName, width: 132, height: 40);
 
