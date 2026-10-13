@@ -37,6 +37,7 @@ internal sealed class ClientApplication : IDisposable
     private LoginSelectionInput? _loginSelectionInput;
     private LoginCredentialInput? _loginCredentials;
     private LoginCatalogRefresh? _catalogRefresh;
+    private SignedLoginCatalog? _presentedCatalog;
     private bool _catalogUnavailableReported;
     private bool _runStarted;
     private bool _disposed;
@@ -143,6 +144,7 @@ internal sealed class ClientApplication : IDisposable
             finally
             {
                 _catalogRefresh = null;
+                _presentedCatalog = null;
                 _loginCredentials?.Dispose();
                 _loginCredentials = null;
                 _window = null;
@@ -455,9 +457,15 @@ internal sealed class ClientApplication : IDisposable
             return;
         }
 
-        if (refresh.Advance(DateTimeOffset.UtcNow))
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        if (refresh.Advance(now))
         {
-            _loginSelectionInput?.ReplaceCatalog(refresh.Current?.View ?? LoginServerCatalog.Empty);
+            SignedLoginCatalog? incoming = refresh.Current;
+            if (_loginSelectionInput is { } input && _loginSelection is { } selection)
+            {
+                LoginVerifiedSelectionRetention.Apply(_presentedCatalog, incoming, now, input, selection);
+            }
+            _presentedCatalog = incoming;
             _loginCredentials?.Synchronize();
         }
 
