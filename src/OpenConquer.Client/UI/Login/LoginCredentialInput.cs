@@ -170,25 +170,6 @@ internal sealed class LoginCredentialInput : IDisposable
         return Insert(text.AsSpan());
     }
 
-    /// <summary>Applies an explicitly selected saved name without retaining or reusing a password.</summary>
-    public bool ReplaceAccount(string account)
-    {
-        ArgumentNullException.ThrowIfNull(account);
-        Synchronize();
-        if (!Enabled || (account.Length != 0 && !LoginLocalPreferences.IsValidAccount(account)))
-            return false;
-        ClearPassword();
-        Array.Clear(_account);
-        account.AsSpan().CopyTo(_account);
-        _accountLength = account.Length;
-        Focus = LoginCredentialFocus.Account;
-        _caret = _anchor = _accountLength;
-        _dragging = false;
-        _contentRevision++;
-        _revision++;
-        return true;
-    }
-
     /// <summary>Returns account selection only. Password content is never materialized as a string.</summary>
     public string? SelectedAccountText()
     {
