@@ -1,5 +1,4 @@
 using OpenConquer.Client.UI.Login;
-using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests.UI.Login;
