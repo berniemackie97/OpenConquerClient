@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <Import Project="$(HOME)/.config/openconquer/client.local.props"
@@ -10,6 +11,11 @@
   <ItemGroup>
     <InternalsVisibleTo Include="OpenConquer.Client.Tests" />
     <InternalsVisibleTo Include="OpenConquer.Rendering.Conformance" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Silk.NET.OpenAL" />
+    <PackageReference Include="Silk.NET.OpenAL.Soft.Native" />
   </ItemGroup>
 
   <ItemGroup>
