@@ -15,10 +15,13 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
     private readonly uint[] _effects = new uint[MaximumEffectVoices];
     private readonly uint _music;
     private int _nextVoice;
+    private bool _focused = true;
+    private bool _musicEnabled = true;
     private bool _disposed;
 
-    private LoginAudioPlayer()
+    private LoginAudioPlayer(bool musicEnabled)
     {
+        _musicEnabled = musicEnabled;
         try
         {
             _alc = ALContext.GetApi(soft: true);
@@ -64,7 +67,8 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
                 voice = _al.GenSource();
                 _al.SetSourceProperty(voice, SourceFloat.Gain, 1f); // flashLogin.ini [sound] volume=100
             }
-            _al.SourcePlay(_music);
+            if (_musicEnabled)
+                _al.SourcePlay(_music);
             if (_al.GetError() != AudioError.NoError)
             {
                 throw new InvalidOperationException("OpenAL could not start the startup music source.");
@@ -81,11 +85,11 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
         }
     }
 
-    public static LoginAudioPlayer? TryCreate()
+    public static LoginAudioPlayer? TryCreate(bool musicEnabled = true)
     {
         try
         {
-            return new LoginAudioPlayer();
+            return new LoginAudioPlayer(musicEnabled);
         }
         catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException or
             BadImageFormatException or InvalidOperationException or TypeInitializationException)
@@ -113,21 +117,29 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
         _al.SourcePlay(source);
     }
 
+    public void SetMusicEnabled(bool enabled)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _musicEnabled = enabled;
+        UpdateMusic();
+    }
+
     public void SetFocused(bool focused)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (focused)
-        {
-            _al.SourcePlay(_music);
-        }
-        else
-        {
-            _al.SourcePause(_music);
+        _focused = focused;
+        UpdateMusic();
+        if (!focused)
             foreach (uint source in _effects)
-            {
                 _al.SourceStop(source);
-            }
-        }
+    }
+
+    private void UpdateMusic()
+    {
+        if (_focused && _musicEnabled)
+            _al.SourcePlay(_music);
+        else
+            _al.SourcePause(_music);
     }
 
     public void Dispose()

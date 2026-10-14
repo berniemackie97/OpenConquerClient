@@ -31,6 +31,9 @@ internal sealed class ClientApplication : IDisposable
     private LoginActionPresentation? _actionPresentation;
     private LoginServerIconPresentation? _serverIcons;
     private LoginActionInput? _actionInput;
+    private LoginPanelControls? _panelControls;
+    private LoginPanelControlsPresentation? _panelPresentation;
+    private PixelPoint _lastDragPoint;
     private LogicalRenderSize? _logicalRenderSize;
     private LoginArtworkSet? _loginArtwork;
     private LoginServerSelection? _loginSelection;
@@ -161,6 +164,8 @@ internal sealed class ClientApplication : IDisposable
                 _actionPresentation = null;
                 _serverIcons = null;
                 _actionInput = null;
+                _panelControls = null;
+                _panelPresentation = null;
                 _renderer = null;
                 _graphicsDevice = null;
                 _loginArtwork = null;
@@ -185,6 +190,7 @@ internal sealed class ClientApplication : IDisposable
         _loginSelectionInput = new LoginSelectionInput(layout, _loginSelection);
         _loginCredentials = new LoginCredentialInput(_loginSelection, LoginCredentialLayout.Create(layout));
         _actionInput = new LoginActionInput(LoginActionLayout.Create(layout));
+        _panelControls = new LoginPanelControls(layout, LoginLocalPreferencesStore.ForCurrentUser());
         _audioFeedback = new LoginAudioFeedback(layout);
         IReadOnlyList<OpenConquer.Content.Images.RgbaImage> cursorFrames = LoginCursorArtwork.Load();
         _cursorAnimation = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
@@ -204,6 +210,7 @@ internal sealed class ClientApplication : IDisposable
         LoginDirectoryStatusPresentation? status = null;
         LoginActionPresentation? actions = null;
         LoginServerIconPresentation? icons = null;
+        LoginPanelControlsPresentation? panelPresentation = null;
         LoginAudioPlayer? audio = null;
 
         try
@@ -219,7 +226,8 @@ internal sealed class ClientApplication : IDisposable
             status = new LoginDirectoryStatusPresentation(graphicsDevice, layout);
             actions = new LoginActionPresentation(graphicsDevice, LoginActionLayout.Create(layout), artwork);
             icons = new LoginServerIconPresentation(graphicsDevice, layout);
-            audio = LoginAudioPlayer.TryCreate();
+            panelPresentation = new LoginPanelControlsPresentation(graphicsDevice, layout);
+            audio = LoginAudioPlayer.TryCreate(_panelControls?.MusicEnabled ?? true);
 
             _graphicsDevice = graphicsDevice;
             _renderer = renderer;
@@ -227,6 +235,7 @@ internal sealed class ClientApplication : IDisposable
             _directoryStatusPresentation = status;
             _actionPresentation = actions;
             _serverIcons = icons;
+            _panelPresentation = panelPresentation;
             _audioPlayer = audio;
         }
         catch
@@ -237,6 +246,11 @@ internal sealed class ClientApplication : IDisposable
             }
             catch { }
 
+            try
+            {
+                panelPresentation?.Dispose();
+            }
+            catch { }
             try
             {
                 icons?.Dispose();
@@ -293,16 +307,30 @@ internal sealed class ClientApplication : IDisposable
 
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
         _actionInput.PointerMoved(mapped, x, y);
-        if (mapped && _loginCredentials is { IsSelecting: true } credentials && _loginPresentation is { } presentation)
-            credentials.PointerDragged(presentation.HitTestDraggedCredentialCaret(credentials, x));
+        _lastDragPoint = point;
+        if (_loginCredentials is { } credentials && _panelControls is { } panel &&
+            panel.PointerMoved(mapped, x, y, credentials))
+            _audioPlayer?.Play(LoginAudioCue.ButtonHover);
+        ContinueCredentialDrag();
         if (_loginSelection is { } selection)
         {
             _audioPlayer?.Play(_audioFeedback?.PointerMoved(mapped, x, y, selection));
         }
     }
 
+    private void ContinueCredentialDrag()
+    {
+        if (_loginCredentials is not { IsSelecting: true } credentials || _loginPresentation is not { } presentation ||
+            _renderer is not { } renderer || renderer.Viewport.IsEmpty)
+            return;
+        int x = renderer.Viewport.MapPointerXClamped(_lastDragPoint.X);
+        credentials.PointerDragged(presentation.HitTestDraggedCredentialCaret(credentials, x));
+    }
+
     private void OnKeyPressed(DesktopKeyEvent key)
     {
+        if (_loginCredentials is { } editor && _panelControls?.KeyPressed(key, editor) == true)
+            return;
         int revision = _loginCredentials?.EditRevision ?? 0;
         if (!TryHandleCredentialClipboard(key) && _loginCredentials?.KeyPressed(key) != true)
             _loginSelectionInput?.KeyPressed(key);
@@ -358,6 +386,7 @@ internal sealed class ClientApplication : IDisposable
             _loginSelectionInput?.FocusLost();
             _loginCredentials?.FocusLost();
             _actionInput?.FocusLost();
+            _panelControls?.FocusLost();
             _audioFeedback?.Reset();
         }
         _audioPlayer?.SetFocused(focused);
@@ -377,16 +406,21 @@ internal sealed class ClientApplication : IDisposable
 
         if (pressed)
         {
+            _lastDragPoint = point;
             bool actionCaptured = _actionInput?.PointerPressed(mapped, x, y) == true;
+            bool panelCaptured = !actionCaptured && _loginCredentials is { } panelCredentials &&
+                _panelControls?.PointerPressed(mapped, x, y, panelCredentials) == true;
             int? credentialCaret = null;
-            if (!actionCaptured && mapped && _loginCredentials is { } credentials && _loginPresentation is { } presentation &&
+            if (!actionCaptured && !panelCaptured && mapped && _loginCredentials is { } credentials && _loginPresentation is { } presentation &&
                 presentation.TryHitTestCredentialCaret(credentials, x, y, out int index))
                 credentialCaret = index;
             bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
-            bool credentialCaptured = !actionCaptured && _loginCredentials?.PointerPressed(mapped, x, y, credentialCaret, extend) == true;
-            input.PointerPressed(!actionCaptured && !credentialCaptured && mapped, x, y);
+            bool credentialCaptured = !actionCaptured && !panelCaptured && _loginCredentials?.PointerPressed(mapped, x, y, credentialCaret, extend) == true;
+            if (panelCaptured)
+                _loginCredentials?.FocusLost();
+            input.PointerPressed(!actionCaptured && !panelCaptured && !credentialCaptured && mapped, x, y);
 
-            if (actionCaptured || credentialCaptured)
+            if (actionCaptured || panelCaptured || credentialCaptured)
             {
                 input.FocusLost();
             }
@@ -399,6 +433,14 @@ internal sealed class ClientApplication : IDisposable
         else
         {
             _loginCredentials?.PointerReleased();
+            if (_loginCredentials is { } editor && _panelControls is { } panel &&
+                panel.PointerReleased(mapped, x, y, editor) is { } control && control != LoginPanelControl.None)
+            {
+                _audioPlayer?.Play(LoginAudioCue.ButtonClick);
+                if (control == LoginPanelControl.Music)
+                    _audioPlayer?.SetMusicEnabled(panel.MusicEnabled);
+                return;
+            }
             if (_actionInput?.PointerReleased(mapped, x, y) == LoginActionButton.Exit)
             {
                 _audioPlayer?.Play(LoginAudioCue.ButtonClick);
@@ -445,6 +487,7 @@ internal sealed class ClientApplication : IDisposable
         LoginServerIconPresentation icons = _serverIcons ?? throw new InvalidOperationException("The realm icon renderer is not initialized.");
         LoginActionInput actionInput = _actionInput ?? throw new InvalidOperationException("The login action handler is not initialized.");
         credentials.Synchronize();
+        ContinueCredentialDrag();
 
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
@@ -456,6 +499,8 @@ internal sealed class ClientApplication : IDisposable
             actions.Draw(renderer, actionInput);
             status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
                 _catalogRefresh?.LastAttemptFailed ?? false, selection));
+            if (_panelControls is { } panel)
+                _panelPresentation?.Draw(renderer, panel, credentials);
         }
         catch (Exception exception)
         {
@@ -480,6 +525,7 @@ internal sealed class ClientApplication : IDisposable
         _loginSelectionInput?.FocusLost();
         _loginCredentials?.FocusLost();
         _actionInput?.FocusLost();
+        _panelControls?.FocusLost();
         _audioFeedback?.Reset();
         LoginAudioPlayer? audio = _audioPlayer;
         _audioPlayer = null;
@@ -499,6 +545,7 @@ internal sealed class ClientApplication : IDisposable
         LoginDirectoryStatusPresentation? status = _directoryStatusPresentation;
         LoginActionPresentation? actions = _actionPresentation;
         LoginServerIconPresentation? icons = _serverIcons;
+        LoginPanelControlsPresentation? panelPresentation = _panelPresentation;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
@@ -506,6 +553,7 @@ internal sealed class ClientApplication : IDisposable
         _directoryStatusPresentation = null;
         _actionPresentation = null;
         _serverIcons = null;
+        _panelPresentation = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -513,9 +561,15 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            icons?.Dispose();
+            panelPresentation?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            icons?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {

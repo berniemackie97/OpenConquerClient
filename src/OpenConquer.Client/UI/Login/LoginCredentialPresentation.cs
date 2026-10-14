@@ -80,7 +80,13 @@ internal sealed class LoginCredentialPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(input);
         EnsureLayout(input);
         Line? line = input.Focus == LoginCredentialFocus.Account ? _account : input.Focus == LoginCredentialFocus.Password ? _password : null;
-        return line is null ? 0 : HitTest(line, x);
+        if (line is null)
+            return 0;
+        if (x < line.Field.X)
+            return Math.Max(0, line.Start - 1);
+        if (x >= line.Field.X + line.Field.Width)
+            return Math.Min(input.Focus == LoginCredentialFocus.Account ? input.AccountLength : input.PasswordLength, line.End + 1);
+        return HitTest(line, x);
     }
 
     public void Dispose()
@@ -158,6 +164,8 @@ internal sealed class LoginCredentialPresentation : IDisposable
     {
         if (line is null)
             return;
+        using OpenGLRenderer.ClipScope clip = renderer.Clip(line.Field.X + 1, line.Field.Y + 1,
+            line.Field.Width - 2, line.Field.Height - 2);
         if (focused && input.HasSelection)
         {
             int left = line.X + Boundary(line, input.SelectionStart);
