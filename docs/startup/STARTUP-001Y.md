@@ -1,0 +1,25 @@
+# STARTUP-001Y — Native 5517 credential editing
+
+## Baseline and limits
+
+Based on STARTUP-001X PR #105 head `0e7272df698df0e9ade3a575f46e8cc7fe004501`. Do not merge or apply the superseded PR #104. This change completes the bounded credential **editor** without enabling Enter/login networking, bypassing signed realm selection, changing the protocol, or replacing the established Silk.NET/OpenGL renderer. It is designed to be stacked on #105 until that PR is merged and retargeted.
+
+## Behavior and ownership
+
+- `LoginCredentialInput` owns per-field fixed-capacity character buffers, caret position, selection anchor, pointer-drag capture, focus, and revision tracking. Editing is restricted to the **existing** accepted ASCII alphabet (`A-Z`, `a-z`, `0-9`, `.`, `-`, `@`, `>`, `_`) with maximum 32 characters per field. This is a deliberate compatibility boundary, not a claim about arbitrary Unicode/IME input in retail 5517. Invalid characters, multiline paste, and oversized paste are rejected atomically. No unbounded text storage or arbitrary clipboard-derived filenames/URLs.
+- Left/Right, Home/End, Shift selection, Ctrl/Cmd+A, Backspace, forward Delete, insertion, and selection replacement are deterministic and unit-tested. Tab and Account Enter move focus; Enter is not authorization. Password buffers are zeroed on context invalidation, loss of desktop focus, outside click and disposal. `CryptographicOperations.ZeroMemory` protects this specific managed array but cannot guarantee eradication of copies elsewhere in the runtime.
+- `DesktopWindow` exposes event-thread clipboard access through the existing Silk.NET keyboard. Ctrl/Cmd+C/X read/cut **account** selection only, after a successful OS clipboard write. Password copy and cut are disabled; validated paste to password remains supported. OS clipboard contents are external/untrusted, never logged or stored in settings. Reading from the native clipboard may allocate before validation; inputs are bounded before copying into credential buffers.
+- `LoginCredentialPresentation` measures the actual font's glyph advances to resolve click/drag caret boundaries. It scrolls whole-glyph substrings within the narrow retail text inset, draws translucent selection behind text and a monotonic-clock blinking caret, without rebuilding text every frame. Pointer locations are mapped through the already existing framebuffer-to-logical viewport, so HiDPI/window scaling is still controlled by one mapping path. The selection fill color and blink cadence are modern presentation decisions, **not** verified original SWF colors or timing. Full RTL, grapheme, accessibility/IME composition are out of scope while the accepted credential alphabet remains ASCII.
+- `ClientApplication` maps actual successful edit revisions to existing `key_1/2/3` sounds; no sound for caret movement, invalid input, unsuccessful deletion, failed paste or selection-only changes. The available 5517 `flashLogin.ini` maps `keyboardDown_0..2` to those files; original SWF behavior on Backspace/Delete remains **unverified**. This implementation reuses the accepted-text sound sequence for successful deletions as an explicitly documented native-client policy, not claimed retail fact. An event produces at most one cue.
+
+## Verification and acceptance gates
+
+1. Use `python3 install.py --repo ... --archive ...` only on a clean branch at the exact 001X HEAD; installer checks branch, root/remote, Git SHA, original per-file blobs, anchor uniqueness, manifest checksums, ZIP members and readback checksums before reporting success. The guarded patch is not an alternative to compiling and running tests.
+2. Execute locked restore, `dotnet format --verify-no-changes`, Release build, focused client tests, all solution tests, content-set verification and `git diff --check`, followed by Windows/macOS CI and publishing checks.
+3. On an authenticated local realm (without login submission), use a 1024×768 and 800×600 window: click between letters, drag both directions, Shift+Arrow, select all, insertion/deletion/replacement, repeated Backspace, Tab, password masking, scrolling at 32 characters, clipboard restrictions, focus-out, and pointer release beyond the panel.
+4. Confirm no plaintext password rendering/logging, stale credentials after server/catalog change, live native cursor/audio regression, high-DPI pointer precision, and no scroll/scissor bleed onto the retail panel. Audio must trigger **only** on successful mutation.
+5. OpenAL and original assets remain the STARTUP-001X implementation; the developer must supply a release-approved rights/licensing plan before redistributing retail artwork or audio commercially.
+
+### Remaining retail investigation
+
+The precise Flash/AVM event path for Backspace/Delete, and actual SWF text-selection highlight/caret blink constants are not demonstrated by `flashLogin.ini` or the native `CMD_SOFTKEYDOWN` bridge alone. Investigate them only if retail-parity sign-off requires an exact rather than documented modern policy. This slice does not expand accepted credential character classes, implement IME, or enable a network submit command.

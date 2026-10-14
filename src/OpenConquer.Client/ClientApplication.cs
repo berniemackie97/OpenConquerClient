@@ -293,6 +293,8 @@ internal sealed class ClientApplication : IDisposable
 
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
         _actionInput.PointerMoved(mapped, x, y);
+        if (mapped && _loginCredentials is { IsSelecting: true } credentials && _loginPresentation is { } presentation)
+            credentials.PointerDragged(presentation.HitTestDraggedCredentialCaret(credentials, x));
         if (_loginSelection is { } selection)
         {
             _audioPlayer?.Play(_audioFeedback?.PointerMoved(mapped, x, y, selection));
@@ -301,25 +303,52 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnKeyPressed(DesktopKeyEvent key)
     {
-        if (_loginCredentials?.KeyPressed(key) != true)
-        {
+        int revision = _loginCredentials?.EditRevision ?? 0;
+        if (!TryHandleCredentialClipboard(key) && _loginCredentials?.KeyPressed(key) != true)
             _loginSelectionInput?.KeyPressed(key);
-        }
+        PlayAcceptedCredentialEdit(revision);
     }
 
     private void OnTextEntered(char character)
     {
         LoginCredentialInput? credentials = _loginCredentials;
         if (credentials is null)
-        {
             return;
-        }
-        int length = credentials.AccountLength + credentials.PasswordLength;
+        int revision = credentials.EditRevision;
         credentials.TextEntered(character);
-        if (credentials.AccountLength + credentials.PasswordLength > length)
+        PlayAcceptedCredentialEdit(revision);
+    }
+
+    private void PlayAcceptedCredentialEdit(int previousRevision)
+    {
+        if (_loginCredentials is { } input && input.EditRevision != previousRevision)
+            _audioPlayer?.Play(_audioFeedback?.AcceptedCredentialEdit());
+    }
+
+    private bool TryHandleCredentialClipboard(DesktopKeyEvent key)
+    {
+        LoginCredentialInput? credentials = _loginCredentials;
+        DesktopWindow? window = _window;
+        if (credentials is null || window is null || !credentials.Enabled || credentials.Focus == LoginCredentialFocus.None || key.IsRepeat ||
+            (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) == 0 ||
+            (key.Modifiers & DesktopKeyModifiers.Alt) != 0 || key.Key is not (DesktopKey.C or DesktopKey.X or DesktopKey.V))
+            return false;
+        try
         {
-            _audioPlayer?.Play(_audioFeedback?.TypedCharacter());
+            if (key.Key == DesktopKey.V)
+                credentials.Paste(window.ReadClipboardText());
+            else if (credentials.SelectedAccountText() is { } text)
+            {
+                window.WriteClipboardText(text);
+                if (key.Key == DesktopKey.X)
+                    credentials.CutSelectedAccount();
+            }
         }
+        catch (NotSupportedException error)
+        {
+            Console.Error.WriteLine($"OpenConquer: desktop clipboard unavailable ({error.GetType().Name}).");
+        }
+        return true;
     }
 
     private void OnFocusChanged(bool focused)
@@ -349,7 +378,12 @@ internal sealed class ClientApplication : IDisposable
         if (pressed)
         {
             bool actionCaptured = _actionInput?.PointerPressed(mapped, x, y) == true;
-            bool credentialCaptured = !actionCaptured && _loginCredentials?.PointerPressed(mapped, x, y) == true;
+            int? credentialCaret = null;
+            if (!actionCaptured && mapped && _loginCredentials is { } credentials && _loginPresentation is { } presentation &&
+                presentation.TryHitTestCredentialCaret(credentials, x, y, out int index))
+                credentialCaret = index;
+            bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
+            bool credentialCaptured = !actionCaptured && _loginCredentials?.PointerPressed(mapped, x, y, credentialCaret, extend) == true;
             input.PointerPressed(!actionCaptured && !credentialCaptured && mapped, x, y);
 
             if (actionCaptured || credentialCaptured)
@@ -364,6 +398,7 @@ internal sealed class ClientApplication : IDisposable
         }
         else
         {
+            _loginCredentials?.PointerReleased();
             if (_actionInput?.PointerReleased(mapped, x, y) == LoginActionButton.Exit)
             {
                 _audioPlayer?.Play(LoginAudioCue.ButtonClick);

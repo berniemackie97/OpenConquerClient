@@ -56,11 +56,11 @@ public sealed class LoginAudioFeedbackTests
     public void KeyboardEffectsCycleThroughOriginalThreeFilesWithoutRng()
     {
         LoginAudioFeedback sounds = new(LoginVisualLayout.Create(new LogicalRenderSize(1024, 768)));
-        Assert.Equal(LoginAudioCue.KeyOne, sounds.TypedCharacter());
-        Assert.Equal(LoginAudioCue.KeyTwo, sounds.TypedCharacter());
-        Assert.Equal(LoginAudioCue.KeyThree, sounds.TypedCharacter());
-        Assert.Equal(LoginAudioCue.KeyOne, sounds.TypedCharacter());
+        Assert.Equal(LoginAudioCue.KeyOne, sounds.AcceptedCredentialEdit());
+        Assert.Equal(LoginAudioCue.KeyTwo, sounds.AcceptedCredentialEdit());
+        Assert.Equal(LoginAudioCue.KeyThree, sounds.AcceptedCredentialEdit());
+        Assert.Equal(LoginAudioCue.KeyOne, sounds.AcceptedCredentialEdit());
         sounds.Reset();
-        Assert.Equal(LoginAudioCue.KeyTwo, sounds.TypedCharacter());
+        Assert.Equal(LoginAudioCue.KeyTwo, sounds.AcceptedCredentialEdit());
     }
 }

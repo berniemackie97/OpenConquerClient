@@ -53,7 +53,7 @@ public sealed class LoginCredentialInputTests
     }
 
     [Fact]
-    public void BothBuffersAreBoundedAndBackspaceErasesTheLastPasswordCodeUnit()
+    public void BothBuffersAreBoundedAndBackspaceAndForwardDeleteEraseOnlyTargetCharacters()
     {
         (LoginServerSelection selection, LoginCredentialLayout layout) = Setup(1024, 768);
         using LoginCredentialInput input = new(selection, layout);
@@ -67,6 +67,10 @@ public sealed class LoginCredentialInputTests
         Assert.Equal(LoginCredentialInput.MaximumPasswordLength, input.PasswordLength);
         input.KeyPressed(new DesktopKeyEvent(DesktopKey.Backspace, DesktopKeyModifiers.None, false));
         Assert.Equal(LoginCredentialInput.MaximumPasswordLength - 1, input.PasswordLength);
+        input.KeyPressed(new DesktopKeyEvent(DesktopKey.Home, DesktopKeyModifiers.None, false));
+        input.KeyPressed(new DesktopKeyEvent(DesktopKey.Delete, DesktopKeyModifiers.None, false));
+        Assert.Equal(LoginCredentialInput.MaximumPasswordLength - 2, input.PasswordLength);
+        input.KeyPressed(new DesktopKeyEvent(DesktopKey.A, DesktopKeyModifiers.Control, false));
         input.KeyPressed(new DesktopKeyEvent(DesktopKey.Delete, DesktopKeyModifiers.None, false));
         Assert.Equal(0, input.PasswordLength);
         Assert.Equal(string.Empty, input.PasswordMask);

@@ -186,6 +186,11 @@ internal sealed class LoginPresentation : IDisposable
         }
     }
 
+    public bool TryHitTestCredentialCaret(LoginCredentialInput input, int x, int y, out int index) =>
+        _credentials.TryHitTest(input, x, y, out index);
+
+    public int HitTestDraggedCredentialCaret(LoginCredentialInput input, int x) => _credentials.HitTestFocused(input, x);
+
     public void Dispose()
     {
         if (_disposed)
