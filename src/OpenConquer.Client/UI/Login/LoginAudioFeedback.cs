@@ -44,7 +44,7 @@ internal sealed class LoginAudioFeedback
         };
     }
 
-    public LoginAudioCue TypedCharacter()
+    public LoginAudioCue AcceptedCredentialEdit()
     {
         LoginAudioCue cue = _typedKeys switch
         {

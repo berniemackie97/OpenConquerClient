@@ -54,6 +54,21 @@ internal sealed class DesktopKeyboardInput : IDisposable
         }
     }
 
+    public DesktopKeyModifiers Modifiers => GetModifiers();
+
+    public string? ReadClipboardText()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _keyboard.ClipboardText;
+    }
+
+    public void WriteClipboardText(string text)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(text);
+        _keyboard.ClipboardText = text;
+    }
+
     public void SetFocus(bool hasFocus)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -177,7 +192,8 @@ internal sealed class DesktopKeyboardInput : IDisposable
 
     private void OnKeyChar(IKeyboard keyboard, char character)
     {
-        if (!_disposed && _hasFocus && ReferenceEquals(keyboard, _keyboard) && IsTextCharacter(character))
+        if (!_disposed && _hasFocus && ReferenceEquals(keyboard, _keyboard) && IsTextCharacter(character) &&
+            (GetModifiers() & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Alt | DesktopKeyModifiers.Super)) == 0)
         {
             _textEntered(character);
         }

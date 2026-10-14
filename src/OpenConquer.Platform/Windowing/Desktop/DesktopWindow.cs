@@ -128,6 +128,24 @@ public sealed class DesktopWindow : IDisposable
         return TryMapPointerToFramebuffer(mouse.Position, out framebufferPoint);
     }
 
+    public DesktopKeyModifiers KeyboardModifiers => _keyboardInput?.Modifiers ?? DesktopKeyModifiers.None;
+
+    /// <summary>Clipboard access stays on the desktop event thread; credential policy belongs to the caller.</summary>
+    public string? ReadClipboardText()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _keyboardInput?.ReadClipboardText();
+    }
+
+    public void WriteClipboardText(string text)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(text);
+        if (_keyboardInput is null)
+            throw new InvalidOperationException("The window input context has not been initialized.");
+        _keyboardInput.WriteClipboardText(text);
+    }
+
     /// <summary>Installs a trusted, predecoded animation before creating the native input context.</summary>
     public void ConfigureCursor(DesktopCursorAnimation animation)
     {
