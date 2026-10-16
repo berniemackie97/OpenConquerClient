@@ -80,7 +80,10 @@ internal sealed class LoginRetailFlashPresentation : IDisposable
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
+
         _disposed = true;
         ExceptionDispatchInfo? failure = null;
         try

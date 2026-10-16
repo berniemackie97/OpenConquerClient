@@ -209,10 +209,16 @@ public sealed class OpenGLRenderer : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         EnsureFrameActiveForDrawing();
         if (_clipActive)
+        {
             throw new InvalidOperationException("Nested renderer clips are not supported.");
+        }
+
         if (x < 0 || y < 0 || width <= 0 || height <= 0 ||
             (long)x + width > _logicalRenderSize.Width || (long)y + height > _logicalRenderSize.Height)
+        {
             throw new ArgumentOutOfRangeException(nameof(width), "Clip must be inside the logical render target.");
+        }
+
         _gl.Scissor(x, _logicalRenderSize.Height - y - height, (uint)width, (uint)height);
         _gl.Enable(EnableCap.ScissorTest);
         _clipActive = true;
@@ -222,7 +228,10 @@ public sealed class OpenGLRenderer : IDisposable
     private void EndClip()
     {
         if (!_clipActive)
+        {
             return;
+        }
+
         _gl.Disable(EnableCap.ScissorTest);
         _clipActive = false;
     }

@@ -77,9 +77,15 @@ internal sealed class LoginAudioFeedback
             return (HoverArea.Enter, 0);
         }
         if (Contains(_fields.AccountField, x, y))
+        {
             return (HoverArea.Account, 0);
+        }
+
         if (Contains(_fields.PasswordField, x, y))
+        {
             return (HoverArea.Password, 0);
+        }
+
         if (_pages.TryHit(x, y, out LoginPageControl page) && LoginPageControls.IsEnabled(page, selection))
         {
             return (HoverArea.Page, (int)page);

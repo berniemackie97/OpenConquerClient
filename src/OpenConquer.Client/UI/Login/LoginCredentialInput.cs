@@ -63,7 +63,10 @@ internal sealed class LoginCredentialInput : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         LoginServerCatalog catalog = _selection.Catalog;
         if (ReferenceEquals(_catalog, catalog))
+        {
             return;
+        }
+
         _catalog = catalog;
         ClearPassword();
     }
@@ -82,7 +85,10 @@ internal sealed class LoginCredentialInput : IDisposable
         }
         bool sameField = target == Focus;
         if (!sameField)
+        {
             SetFocus(target);
+        }
+
         MoveTo(caretIndex ?? ActiveLength, extendSelection && sameField);
         _dragging = true;
         return true;
@@ -92,7 +98,9 @@ internal sealed class LoginCredentialInput : IDisposable
     {
         Synchronize();
         if (IsSelecting && Enabled)
+        {
             MoveTo(caretIndex, extend: true);
+        }
     }
 
     public void PointerReleased() => _dragging = false;
@@ -102,12 +110,18 @@ internal sealed class LoginCredentialInput : IDisposable
     {
         Synchronize();
         if (!Enabled || Focus == LoginCredentialFocus.None)
+        {
             return false;
+        }
+
         bool shortcut = (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) != 0;
         if (shortcut || (key.Modifiers & DesktopKeyModifiers.Alt) != 0)
         {
             if (shortcut && (key.Modifiers & DesktopKeyModifiers.Alt) == 0 && key.Key == DesktopKey.A && !key.IsRepeat)
+            {
                 MoveTo(ActiveLength, extend: false, anchor: 0);
+            }
+
             return true;
         }
         bool shift = (key.Modifiers & DesktopKeyModifiers.Shift) != 0;
@@ -145,11 +159,17 @@ internal sealed class LoginCredentialInput : IDisposable
                 break;
             case DesktopKey.Backspace:
                 if (!DeleteSelection() && _caret > 0)
+                {
                     Remove(_caret - 1, 1);
+                }
+
                 break;
             case DesktopKey.Delete:
                 if (!DeleteSelection() && _caret < ActiveLength)
+                {
                     Remove(_caret, 1);
+                }
+
                 break;
         }
         return true;
@@ -159,7 +179,9 @@ internal sealed class LoginCredentialInput : IDisposable
     {
         Synchronize();
         if (Enabled && Focus != LoginCredentialFocus.None && IsSupportedCharacter(character))
+        {
             Insert(stackalloc char[] { character });
+        }
     }
 
     /// <summary>All-or-nothing paste; unsupported controls, Unicode and oversized data are rejected.</summary>
@@ -167,10 +189,16 @@ internal sealed class LoginCredentialInput : IDisposable
     {
         Synchronize();
         if (!Enabled || Focus == LoginCredentialFocus.None || string.IsNullOrEmpty(text) || text.Length > ActiveBuffer.Length)
+        {
             return false;
+        }
+
         foreach (char character in text)
             if (!IsSupportedCharacter(character))
+            {
                 return false;
+            }
+
         return Insert(text.AsSpan());
     }
 
@@ -180,7 +208,10 @@ internal sealed class LoginCredentialInput : IDisposable
         ArgumentNullException.ThrowIfNull(account);
         Synchronize();
         if (!Enabled || !LoginAccountHistory.IsValidName(account))
+        {
             return false;
+        }
+
         if (!string.Equals(AccountDisplay, account, StringComparison.Ordinal))
         {
             ClearPassword();
@@ -212,7 +243,10 @@ internal sealed class LoginCredentialInput : IDisposable
     public void FocusLost()
     {
         if (_disposed)
+        {
             return;
+        }
+
         _dragging = false;
         SetFocus(LoginCredentialFocus.None);
         ClearPassword();
@@ -221,7 +255,10 @@ internal sealed class LoginCredentialInput : IDisposable
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
+
         ClearAll();
         _disposed = true;
     }
@@ -237,7 +274,10 @@ internal sealed class LoginCredentialInput : IDisposable
         int newLength = length - (end - start) + characters.Length;
         Span<char> buffer = ActiveBuffer;
         if (newLength > buffer.Length)
+        {
             return false;
+        }
+
         buffer.Slice(end, length - end).CopyTo(buffer[(start + characters.Length)..]);
         characters.CopyTo(buffer[start..]);
         buffer[newLength..].Clear();
@@ -250,7 +290,10 @@ internal sealed class LoginCredentialInput : IDisposable
     private bool DeleteSelection()
     {
         if (!HasSelection)
+        {
             return false;
+        }
+
         Remove(SelectionStart, SelectionEnd - SelectionStart);
         return true;
     }
@@ -269,9 +312,13 @@ internal sealed class LoginCredentialInput : IDisposable
     private void SetActiveLength(int length)
     {
         if (Focus == LoginCredentialFocus.Account)
+        {
             _accountLength = length;
+        }
         else
+        {
             _passwordLength = length;
+        }
     }
 
     private void MoveTo(int position, bool extend, int? anchor = null)
@@ -289,7 +336,10 @@ internal sealed class LoginCredentialInput : IDisposable
     private void SetFocus(LoginCredentialFocus target)
     {
         if (Focus == target)
+        {
             return;
+        }
+
         Focus = target;
         _caret = _anchor = target == LoginCredentialFocus.None ? 0 : ActiveLength;
         _dragging = false;
@@ -318,14 +368,19 @@ internal sealed class LoginCredentialInput : IDisposable
             _revision++;
         }
         if (Focus == LoginCredentialFocus.Password)
+        {
             MoveTo(0, extend: false);
+        }
     }
 
     private void ChangedText()
     {
         // Retail account-name mutations invalidate the accompanying password.
         if (Focus == LoginCredentialFocus.Account)
+        {
             ClearPassword();
+        }
+
         _editRevision++;
         _contentRevision++;
         _revision++;

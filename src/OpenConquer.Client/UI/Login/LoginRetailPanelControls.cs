@@ -63,16 +63,25 @@ internal sealed class LoginRetailPanelControls
     public LoginRetailFlashArtwork.State DialogButtonState(int button)
     {
         if (button is < 0 or > 1)
+        {
             throw new ArgumentOutOfRangeException(nameof(button));
+        }
+
         if (_pressedDialog == button && _hoveredDialog == button)
+        {
             return LoginRetailFlashArtwork.State.Down;
+        }
+
         return _hoveredDialog == button ? LoginRetailFlashArtwork.State.Over : LoginRetailFlashArtwork.State.Up;
     }
 
     public LoginRetailFlashArtwork.State ButtonState(LoginRetailFlashArtwork.Button button)
     {
         if (_pressed == button && _hover == button)
+        {
             return LoginRetailFlashArtwork.State.Down;
+        }
+
         return _hover == button ? LoginRetailFlashArtwork.State.Over : LoginRetailFlashArtwork.State.Up;
     }
 
@@ -113,16 +122,28 @@ internal sealed class LoginRetailPanelControls
                 }
             }
             else
+            {
                 ClosePopup();
+            }
+
             return true;
         }
         if (Popup != LoginAccountPopupState.Closed)
+        {
             return true;
+        }
+
         if (!mapped)
+        {
             return false;
+        }
+
         LoginRetailFlashArtwork.Button? button = HitButton(x, y);
         if (button is null)
+        {
             return false;
+        }
+
         _pressed = button;
         _hover = button;
         return true;
@@ -136,7 +157,10 @@ internal sealed class LoginRetailPanelControls
             int selected = _pressedDialog;
             _pressedDialog = -1;
             if (DialogFrame != 6 || !mapped || selected < 0 || selected != DialogHit(x, y))
+            {
                 return LoginRetailPanelEvent.None;
+            }
+
             if (selected == 1)
             {
                 BeginDialogClose();
@@ -151,22 +175,36 @@ internal sealed class LoginRetailPanelControls
         LoginRetailFlashArtwork.Button? pressed = _pressed;
         _pressed = null;
         if (pressed is null || !mapped || pressed != HitButton(x, y))
+        {
             return LoginRetailPanelEvent.None;
+        }
+
         switch (pressed.Value)
         {
             case LoginRetailFlashArtwork.Button.Accounts:
                 if (Popup == LoginAccountPopupState.Closed)
+                {
                     OpenPopup();
+                }
                 else if (Popup == LoginAccountPopupState.Open)
+                {
                     ClosePopup();
+                }
+
                 return LoginRetailPanelEvent.Opened;
             case LoginRetailFlashArtwork.Button.Save:
                 if (LoginAccountHistory.IsValidName(credentials.AccountDisplay) && _history.Writable)
+                {
                     OpenDialog(LoginRetailDialog.Save, credentials.AccountDisplay);
+                }
+
                 return IsModal ? LoginRetailPanelEvent.Opened : LoginRetailPanelEvent.None;
             case LoginRetailFlashArtwork.Button.Clear:
                 if (_history.Contains(credentials.AccountDisplay) && _history.Writable)
+                {
                     OpenDialog(LoginRetailDialog.Clear, credentials.AccountDisplay);
+                }
+
                 return IsModal ? LoginRetailPanelEvent.Opened : LoginRetailPanelEvent.None;
             default:
                 // Publisher-era URLs are deliberately disabled pending a trusted allowlist.
@@ -179,13 +217,19 @@ internal sealed class LoginRetailPanelControls
         if (IsModal)
         {
             if (key.Key == DesktopKey.Escape && !key.IsRepeat && DialogFrame == 6)
+            {
                 BeginDialogClose();
+            }
+
             return true;
         }
         if (Popup != LoginAccountPopupState.Closed)
         {
             if (key.Key == DesktopKey.Escape && !key.IsRepeat)
+            {
                 ClosePopup();
+            }
+
             return true;
         }
         return false;
@@ -199,7 +243,9 @@ internal sealed class LoginRetailPanelControls
         _hover = null;
         _hoveredRow = -1;
         if (Popup == LoginAccountPopupState.Open)
+        {
             ClosePopup();
+        }
     }
 
     public void Advance(TimeSpan elapsed)
@@ -208,7 +254,10 @@ internal sealed class LoginRetailPanelControls
         if (Dialog != LoginRetailDialog.None)
         {
             if (DialogFrame == 6)
+            {
                 return;
+            }
+
             _animationElapsed += Math.Min(elapsed.TotalSeconds, 0.25);
             while (_animationElapsed >= s_dialogTick.TotalSeconds && Dialog != LoginRetailDialog.None)
             {
@@ -222,12 +271,17 @@ internal sealed class LoginRetailPanelControls
                     _animationElapsed = 0;
                 }
                 else if (DialogFrame == 6)
+                {
                     _animationElapsed = 0;
+                }
             }
             return;
         }
         if (Popup is not (LoginAccountPopupState.Opening or LoginAccountPopupState.Closing))
+        {
             return;
+        }
+
         _animationElapsed += Math.Min(elapsed.TotalSeconds, 0.25);
         int end = VisibleRowCount * 25;
         int step = 10 + 2 * VisibleRowCount;
@@ -264,7 +318,10 @@ internal sealed class LoginRetailPanelControls
     {
         for (int index = 0; index < _history.Accounts.Count; index++)
             if (Contains(RowBounds(index), x, y))
+            {
                 return index;
+            }
+
         return -1;
     }
 
@@ -272,16 +329,25 @@ internal sealed class LoginRetailPanelControls
     {
         foreach (LoginRetailFlashArtwork.Button button in Enum.GetValues<LoginRetailFlashArtwork.Button>())
             if (Contains(_layout.ButtonAt(button), x, y))
+            {
                 return button;
+            }
+
         return null;
     }
 
     private int DialogHit(int x, int y)
     {
         if (Contains(Rect(381, 415, 96, 26), x, y))
+        {
             return 0;
+        }
+
         if (Contains(Rect(541, 415, 96, 26), x, y))
+        {
             return 1;
+        }
+
         return -1;
     }
 
@@ -298,7 +364,10 @@ internal sealed class LoginRetailPanelControls
     private void BeginDialogClose()
     {
         if (DialogFrame != 6)
+        {
             return;
+        }
+
         DialogFrame = 7;
         _pressedDialog = -1;
         _hoveredDialog = -1;
@@ -315,7 +384,10 @@ internal sealed class LoginRetailPanelControls
     private void ClosePopup()
     {
         if (Popup == LoginAccountPopupState.Closed || Popup == LoginAccountPopupState.Closing)
+        {
             return;
+        }
+
         Popup = LoginAccountPopupState.Closing;
         _hoveredRow = -1;
         _animationElapsed = 0;

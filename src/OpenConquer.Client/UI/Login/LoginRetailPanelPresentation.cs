@@ -79,20 +79,28 @@ internal sealed class LoginRetailPanelPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(controls);
         DrawHistory(renderer, controls);
         if (controls.Dialog != LoginRetailDialog.None)
+        {
             DrawDialog(renderer, controls);
+        }
     }
 
     private void DrawHistory(OpenGLRenderer renderer, LoginRetailPanelControls controls)
     {
         if (controls.Popup == LoginAccountPopupState.Closed)
+        {
             return;
+        }
+
         int count = controls.VisibleRowCount;
         int left = Scale(452);
         int top = Scale(631 - 25 * count);
         int width = Scale(166);
         int bottom = Scale(631);
         if (width <= 0 || bottom <= top)
+        {
             return;
+        }
+
         EnsureLabels(controls.SavedAccounts);
         using OpenGLRenderer.ClipScope clip = renderer.Clip(left, top, width, bottom - top);
         for (int i = 0; i < count; i++)
@@ -113,10 +121,16 @@ internal sealed class LoginRetailPanelPresentation : IDisposable
         int kind = controls.Dialog == LoginRetailDialog.Save ? 0 : 1;
         int frame = controls.DialogFrame;
         if (frame is < 2 or > 9)
+        {
             return;
+        }
+
         OpenGLTexture2D? image = _dialogFrames[kind, frame];
         if (image is null)
+        {
             return;
+        }
+
         renderer.DrawSprite(image, 0, 0, Scale(1024), Scale(768));
         if (frame == 6)
         {
@@ -124,7 +138,10 @@ internal sealed class LoginRetailPanelPresentation : IDisposable
             {
                 int state = (int)controls.DialogButtonState(button);
                 if (state == 0)
+                {
                     continue; // Source frame already includes the genuine Up state.
+                }
+
                 OpenGLTexture2D overlay = _dialogButtons[button, state - 1]!;
                 renderer.DrawSprite(overlay, Scale(button == 0 ? 381 : 541), Scale(415), Scale(96), Scale(26));
             }
@@ -140,7 +157,9 @@ internal sealed class LoginRetailPanelPresentation : IDisposable
                 _confirmationLayout = GetFont().LayoutUnicode(text);
             }
             if (_confirmationLayout is { HasMissingGlyphs: false } label)
-                GetFont().Draw(renderer, label, s_confirmationText, Scale(364), Scale(291));
+            {
+                GetFont().Draw(renderer, label, s_confirmationText, Scale(365), Scale(293));
+            }
         }
     }
 
@@ -150,7 +169,10 @@ internal sealed class LoginRetailPanelPresentation : IDisposable
         for (int i = 0; i < accounts.Count; i++)
         {
             if (accounts[i] == _names[i])
+            {
                 continue;
+            }
+
             _names[i] = accounts[i];
             _labels[i] = font.LayoutUnicode(accounts[i]);
         }
@@ -161,13 +183,16 @@ internal sealed class LoginRetailPanelPresentation : IDisposable
         }
     }
 
-    private OpenGLTextContext GetFont() => _font ??= new OpenGLTextContext(_graphics, fontToken: null,
+    private OpenGLTextContext GetFont() => _font ??= new OpenGLTextContext(_graphics, fontToken: "Arial",
         nominalPixelHeight: Math.Max(1, Scale(14)), effectiveCodePage: 0, antialiasEnabled: true);
 
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
+
         _disposed = true;
         ExceptionDispatchInfo? error = null;
         try

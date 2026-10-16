@@ -73,16 +73,25 @@ public static class LoginRetailFlashArtwork
     public static RgbaImage LoadButton(Button button, State state)
     {
         if (!Enum.IsDefined(button))
+        {
             throw new ArgumentOutOfRangeException(nameof(button));
+        }
+
         if (!Enum.IsDefined(state))
+        {
             throw new ArgumentOutOfRangeException(nameof(state));
+        }
+
         return Load(s_assets[checked((int)button * 3 + (int)state)]);
     }
 
     public static RgbaImage LoadLogoFrame(int frame)
     {
         if (frame is < 0 or >= LogoFrameCount)
+        {
             throw new ArgumentOutOfRangeException(nameof(frame));
+        }
+
         return Load(s_assets[18 + frame]);
     }
 
@@ -103,7 +112,10 @@ public static class LoginRetailFlashArtwork
         }
         if (decoder.ReadByte() != -1 ||
             !SHA256.HashData(rgba).AsSpan().SequenceEqual(Convert.FromHexString(asset.Sha256)))
+        {
             throw new InvalidDataException($"Retail login resource integrity failure: {asset.Id}.");
+        }
+
         return new RgbaImage(asset.Width, asset.Height, rgba);
     }
 }

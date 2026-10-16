@@ -30,6 +30,8 @@ internal sealed class ClientApplication : IDisposable
     private LoginDirectoryStatusPresentation? _directoryStatusPresentation;
     private LoginActionPresentation? _actionPresentation;
     private LoginRetailFlashPresentation? _retailFlashPresentation;
+    private LoginRetailOpeningPresentation? _retailOpening;
+    private LoginRetailBirdPresentation? _retailBird;
     private LoginRetailPanelControls? _retailPanelControls;
     private LoginServerIconPresentation? _serverIcons;
     private LoginActionInput? _actionInput;
@@ -163,6 +165,8 @@ internal sealed class ClientApplication : IDisposable
                 _directoryStatusPresentation = null;
                 _actionPresentation = null;
                 _retailFlashPresentation = null;
+                _retailOpening = null;
+                _retailBird = null;
                 _retailPanelControls = null;
                 _serverIcons = null;
                 _actionInput = null;
@@ -212,6 +216,8 @@ internal sealed class ClientApplication : IDisposable
         LoginActionPresentation? actions = null;
         LoginServerIconPresentation? icons = null;
         LoginRetailFlashPresentation? retailFlash = null;
+        LoginRetailOpeningPresentation? opening = null;
+        LoginRetailBirdPresentation? bird = null;
         LoginAudioPlayer? audio = null;
 
         try
@@ -228,6 +234,8 @@ internal sealed class ClientApplication : IDisposable
             actions = new LoginActionPresentation(graphicsDevice, LoginActionLayout.Create(layout), artwork);
             icons = new LoginServerIconPresentation(graphicsDevice, layout);
             retailFlash = new LoginRetailFlashPresentation(graphicsDevice, layout);
+            bird = new LoginRetailBirdPresentation(graphicsDevice, layout);
+            opening = new LoginRetailOpeningPresentation(graphicsDevice, layout);
             audio = LoginAudioPlayer.TryCreate();
 
             _graphicsDevice = graphicsDevice;
@@ -237,6 +245,8 @@ internal sealed class ClientApplication : IDisposable
             _actionPresentation = actions;
             _serverIcons = icons;
             _retailFlashPresentation = retailFlash;
+            _retailOpening = opening;
+            _retailBird = bird;
             _audioPlayer = audio;
         }
         catch
@@ -244,6 +254,18 @@ internal sealed class ClientApplication : IDisposable
             try
             {
                 audio?.Dispose();
+            }
+            catch { }
+
+            try
+            {
+                opening?.Dispose();
+            }
+            catch { }
+
+            try
+            {
+                bird?.Dispose();
             }
             catch { }
 
@@ -301,6 +323,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerMoved(PixelPoint point)
     {
+        if (_retailOpening?.IsPlaying == true)
+        {
+            return;
+        }
+
         OpenGLRenderer? renderer = _renderer;
         if (renderer is null || _actionInput is null)
         {
@@ -309,7 +336,10 @@ internal sealed class ClientApplication : IDisposable
 
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
         if (_retailPanelControls?.PointerMoved(mapped, x, y) == true)
+        {
             _audioPlayer?.Play(LoginAudioCue.ButtonHover);
+        }
+
         _actionInput.PointerMoved(mapped, x, y);
         _lastDragPoint = point;
         ContinueCredentialDrag();
@@ -324,27 +354,49 @@ internal sealed class ClientApplication : IDisposable
     {
         if (_loginCredentials is not { IsSelecting: true } credentials || _loginPresentation is not { } presentation ||
             _renderer is not { } renderer || renderer.Viewport.IsEmpty)
+        {
             return;
+        }
+
         int x = renderer.Viewport.MapPointerXClamped(_lastDragPoint.X);
         credentials.PointerDragged(presentation.HitTestDraggedCredentialCaret(credentials, x));
     }
 
     private void OnKeyPressed(DesktopKeyEvent key)
     {
-        if (_retailPanelControls?.KeyPressed(key) == true)
+        if (_retailOpening?.IsPlaying == true)
+        {
             return;
+        }
+
+        if (_retailPanelControls?.KeyPressed(key) == true)
+        {
+            return;
+        }
+
         int revision = _loginCredentials?.EditRevision ?? 0;
         if (!TryHandleCredentialClipboard(key) && _loginCredentials?.KeyPressed(key) != true)
+        {
             _loginSelectionInput?.KeyPressed(key);
+        }
+
         PlayAcceptedCredentialEdit(revision);
     }
 
     private void OnTextEntered(char character)
     {
+        if (_retailOpening?.IsPlaying == true)
+        {
+            return;
+        }
+
         LoginCredentialInput? credentials = _loginCredentials;
         if (credentials is null || _retailPanelControls is { IsModal: true } ||
             _retailPanelControls is { Popup: not LoginAccountPopupState.Closed })
+        {
             return;
+        }
+
         int revision = credentials.EditRevision;
         credentials.TextEntered(character);
         PlayAcceptedCredentialEdit(revision);
@@ -353,7 +405,9 @@ internal sealed class ClientApplication : IDisposable
     private void PlayAcceptedCredentialEdit(int previousRevision)
     {
         if (_loginCredentials is { } input && input.EditRevision != previousRevision)
+        {
             _audioPlayer?.Play(_audioFeedback?.AcceptedCredentialEdit());
+        }
     }
 
     private bool TryHandleCredentialClipboard(DesktopKeyEvent key)
@@ -363,16 +417,23 @@ internal sealed class ClientApplication : IDisposable
         if (credentials is null || window is null || !credentials.Enabled || credentials.Focus == LoginCredentialFocus.None || key.IsRepeat ||
             (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) == 0 ||
             (key.Modifiers & DesktopKeyModifiers.Alt) != 0 || key.Key is not (DesktopKey.C or DesktopKey.X or DesktopKey.V))
+        {
             return false;
+        }
+
         try
         {
             if (key.Key == DesktopKey.V)
+            {
                 credentials.Paste(window.ReadClipboardText());
+            }
             else if (credentials.SelectedAccountText() is { } text)
             {
                 window.WriteClipboardText(text);
                 if (key.Key == DesktopKey.X)
+                {
                     credentials.CutSelectedAccount();
+                }
             }
         }
         catch (NotSupportedException error)
@@ -397,6 +458,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void RoutePointer(PixelPoint point, bool pressed)
     {
+        if (_retailOpening?.IsPlaying == true)
+        {
+            return;
+        }
+
         LoginSelectionInput? input = _loginSelectionInput;
         OpenGLRenderer? renderer = _renderer;
 
@@ -416,7 +482,10 @@ internal sealed class ClientApplication : IDisposable
             {
                 _loginCredentials?.PointerReleased();
                 if (_retailPanelControls is { AccountSelectedOnPress: true })
+                {
                     _audioPlayer?.Play(LoginAudioCue.ButtonClick);
+                }
+
                 _actionInput?.FocusLost();
                 input.FocusLost();
                 return;
@@ -425,7 +494,10 @@ internal sealed class ClientApplication : IDisposable
             int? credentialCaret = null;
             if (!actionCaptured && mapped && _loginCredentials is { } credentials && _loginPresentation is { } presentation &&
                 presentation.TryHitTestCredentialCaret(credentials, x, y, out int index))
+            {
                 credentialCaret = index;
+            }
+
             bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
             bool credentialCaptured = !actionCaptured && _loginCredentials?.PointerPressed(mapped, x, y, credentialCaret, extend) == true;
             input.PointerPressed(!actionCaptured && !credentialCaptured && mapped, x, y);
@@ -447,7 +519,10 @@ internal sealed class ClientApplication : IDisposable
             {
                 LoginRetailPanelEvent panelEvent = panel.PointerReleased(mapped, x, y, credentials);
                 if (panelEvent != LoginRetailPanelEvent.None)
+                {
                     _audioPlayer?.Play(LoginAudioCue.ButtonClick);
+                }
+
                 return;
             }
             LoginActionButton action = _actionInput?.PointerReleased(mapped, x, y) ?? LoginActionButton.None;
@@ -503,20 +578,26 @@ internal sealed class ClientApplication : IDisposable
         credentials.Synchronize();
         ContinueCredentialDrag();
         if (double.IsFinite(elapsedSeconds) && elapsedSeconds >= 0)
+        {
             _retailPanelControls?.Advance(TimeSpan.FromSeconds(Math.Min(elapsedSeconds, 0.25)));
+        }
 
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
 
         try
         {
-            login.Draw(renderer, selection, input, credentials);
+            login.Draw(renderer, selection, input, credentials, _retailBird);
             icons.Draw(renderer, selection);
             actions.Draw(renderer, actionInput);
             status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
                 _catalogRefresh?.LastAttemptFailed ?? false, selection));
             if (_retailFlashPresentation is { } retailFlash && _retailPanelControls is { } panel)
+            {
                 retailFlash.Draw(renderer, panel);
+            }
+
+            _retailOpening?.Draw(renderer);
         }
         catch (Exception exception)
         {
@@ -562,6 +643,8 @@ internal sealed class ClientApplication : IDisposable
         LoginActionPresentation? actions = _actionPresentation;
         LoginServerIconPresentation? icons = _serverIcons;
         LoginRetailFlashPresentation? retailFlash = _retailFlashPresentation;
+        LoginRetailOpeningPresentation? opening = _retailOpening;
+        LoginRetailBirdPresentation? bird = _retailBird;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
@@ -570,6 +653,8 @@ internal sealed class ClientApplication : IDisposable
         _actionPresentation = null;
         _serverIcons = null;
         _retailFlashPresentation = null;
+        _retailOpening = null;
+        _retailBird = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -577,9 +662,21 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            retailFlash?.Dispose();
+            opening?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            bird?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            retailFlash?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {

@@ -30,7 +30,10 @@ internal sealed class LoginRetailFlashLayout
     public LoginSpritePlacement ButtonAt(LoginRetailFlashArtwork.Button button)
     {
         if (!Enum.IsDefined(button))
+        {
             throw new ArgumentOutOfRangeException(nameof(button));
+        }
+
         return _buttons[(int)button];
     }
 

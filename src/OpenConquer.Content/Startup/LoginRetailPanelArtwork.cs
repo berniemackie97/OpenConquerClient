@@ -38,14 +38,20 @@ public static class LoginRetailPanelArtwork
     public static RgbaImage LoadDialog(int kind, int frame)
     {
         if (kind is < 0 or > 1 || frame is < 2 or > 9)
+        {
             throw new ArgumentOutOfRangeException(nameof(frame));
+        }
+
         return Load(s_assets[checked(kind * 8 + frame - 2)]);
     }
 
     public static string DialogDigest(int kind, int frame)
     {
         if (kind is < 0 or > 1 || frame is < 2 or > 9)
+        {
             throw new ArgumentOutOfRangeException(nameof(frame));
+        }
+
         return s_assets[kind * 8 + frame - 2].Sha256;
     }
 
@@ -54,7 +60,10 @@ public static class LoginRetailPanelArtwork
     public static RgbaImage LoadDialogButton(int button, int state)
     {
         if (button is < 0 or > 1 || state is < 1 or > 2)
+        {
             throw new ArgumentOutOfRangeException(nameof(state));
+        }
+
         return Load(s_assets[18 + button * 2 + state - 1]);
     }
 
@@ -70,7 +79,10 @@ public static class LoginRetailPanelArtwork
         }
         catch (EndOfStreamException ex) { throw new InvalidDataException("Truncated retail UI resource.", ex); }
         if (decoder.ReadByte() != -1 || !SHA256.HashData(rgba).AsSpan().SequenceEqual(Convert.FromHexString(asset.Sha256)))
+        {
             throw new InvalidDataException("Retail UI resource failed integrity verification.");
+        }
+
         return new RgbaImage(asset.Width, asset.Height, rgba);
     }
 }

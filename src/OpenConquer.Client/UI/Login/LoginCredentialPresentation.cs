@@ -64,11 +64,17 @@ internal sealed class LoginCredentialPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(input);
         index = 0;
         if (!input.Enabled)
+        {
             return false;
+        }
+
         EnsureLayout(input);
         Line? line = Contains(_layout.AccountField, x, y) ? _account : Contains(_layout.PasswordField, x, y) ? _password : null;
         if (line is null)
+        {
             return false;
+        }
+
         index = HitTest(line, x);
         return true;
     }
@@ -81,18 +87,30 @@ internal sealed class LoginCredentialPresentation : IDisposable
         EnsureLayout(input);
         Line? line = input.Focus == LoginCredentialFocus.Account ? _account : input.Focus == LoginCredentialFocus.Password ? _password : null;
         if (line is null)
+        {
             return 0;
+        }
+
         if (x < line.Field.X)
+        {
             return Math.Max(0, line.Start - 1);
+        }
+
         if (x >= line.Field.X + line.Field.Width)
+        {
             return Math.Min(input.Focus == LoginCredentialFocus.Account ? input.AccountLength : input.PasswordLength, line.End + 1);
+        }
+
         return HitTest(line, x);
     }
 
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
+
         _disposed = true;
         ReleaseFont();
     }
@@ -103,7 +121,10 @@ internal sealed class LoginCredentialPresentation : IDisposable
     private void EnsureLayout(LoginCredentialInput input)
     {
         if (!input.Enabled || _lastRevision == input.Revision)
+        {
             return;
+        }
+
         OpenGLTextContext font = GetFont();
         bool contentChanged = _lastContentRevision != input.ContentRevision;
         if (contentChanged)
@@ -137,7 +158,10 @@ internal sealed class LoginCredentialPresentation : IDisposable
         int start = Math.Clamp(scrollStart, 0, value.Length);
         int target = caret < 0 ? value.Length : Math.Clamp(caret, 0, value.Length);
         if (target < start)
+        {
             start = target;
+        }
+
         while (start < target && advances[target] - advances[start] > usableWidth)
             start++;
         while (start > 0 && advances[value.Length] - advances[start - 1] <= usableWidth)
@@ -147,7 +171,10 @@ internal sealed class LoginCredentialPresentation : IDisposable
             end++;
         scrollStart = start;
         if (previous is { } retained && retained.Start == start && retained.End == end && retained.Field == field)
+        {
             return retained;
+        }
+
         string visible = value[start..end];
         OpenGLTextLayout? text = visible.Length == 0 ? null : font.LayoutUnicode(visible);
         int[] boundaries = new int[visible.Length + 1];
@@ -156,14 +183,20 @@ internal sealed class LoginCredentialPresentation : IDisposable
             boundaries[i] = advances[start + i] - advances[start];
         int textY = field.Y + Math.Max(0, (field.Height - _fontHeight) / 2);
         if (text is not null && text.TryGetInkBounds(out _, out int top, out _, out int bottom))
+        {
             textY = field.Y + (field.Height - (bottom - top)) / 2 - top;
+        }
+
         return new Line(field, start, end, field.X + _padding, textY, text, boundaries);
     }
 
     private void DrawLine(OpenGLRenderer renderer, Line? line, bool focused, LoginCredentialInput input)
     {
         if (line is null)
+        {
             return;
+        }
+
         using OpenGLRenderer.ClipScope clip = renderer.Clip(line.Field.X + 1, line.Field.Y + 1,
             line.Field.Width - 2, line.Field.Height - 2);
         if (focused && input.HasSelection)
@@ -171,10 +204,15 @@ internal sealed class LoginCredentialPresentation : IDisposable
             int left = line.X + Boundary(line, input.SelectionStart);
             int right = line.X + Boundary(line, input.SelectionEnd);
             if (right > left)
+            {
                 renderer.DrawSolidRectangle(left, line.Field.Y + 2, right - left, Math.Max(1, line.Field.Height - 4), s_selection);
+            }
         }
         if (line.Text is not null && !line.Text.HasMissingGlyphs)
+        {
             GetFont().Draw(renderer, line.Text, s_style, line.X, line.Y);
+        }
+
         if (focused && Stopwatch.GetElapsedTime(_blinkStarted).TotalMilliseconds % 1000 < 530)
         {
             int x = line.X + Boundary(line, input.CaretIndex);
@@ -190,10 +228,16 @@ internal sealed class LoginCredentialPresentation : IDisposable
         int relative = x - line.X;
         ReadOnlySpan<int> boundaries = line.Boundaries;
         if (relative <= 0)
+        {
             return line.Start;
+        }
+
         for (int i = 1; i < boundaries.Length; i++)
             if (relative < (boundaries[i - 1] + boundaries[i]) / 2)
+            {
                 return line.Start + i - 1;
+            }
+
         return line.End;
     }
 

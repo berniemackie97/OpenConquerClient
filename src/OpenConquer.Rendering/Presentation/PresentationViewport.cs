@@ -161,7 +161,10 @@ public readonly record struct PresentationViewport
     public int MapPointerXClamped(int pointerX)
     {
         if (IsEmpty)
+        {
             return 0;
+        }
+
         long relativeX = (long)pointerX - OffsetX;
         return (int)Math.Clamp(relativeX * LogicalWidth / Width, 0L, LogicalWidth - 1L);
     }

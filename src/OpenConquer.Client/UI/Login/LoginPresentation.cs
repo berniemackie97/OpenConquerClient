@@ -137,7 +137,7 @@ internal sealed class LoginPresentation : IDisposable
         _credentials = new LoginCredentialPresentation(graphicsDevice, layout);
     }
 
-    public void Draw(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input, LoginCredentialInput credentials)
+    public void Draw(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input, LoginCredentialInput credentials, LoginRetailBirdPresentation? bird = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
@@ -146,6 +146,8 @@ internal sealed class LoginPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(credentials);
 
         DrawLayer(renderer, _backdrop, _layout.Backdrop);
+        // Sprite 22 is at root depth 2, above backdrop and below all login chrome.
+        bird?.Draw(renderer);
         DrawLayer(renderer, _header, _layout.Header);
         DrawLayer(renderer, _footer, _layout.Footer);
 
