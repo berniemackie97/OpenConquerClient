@@ -29,6 +29,7 @@ internal sealed class ClientApplication : IDisposable
     private LoginPresentation? _loginPresentation;
     private LoginDirectoryStatusPresentation? _directoryStatusPresentation;
     private LoginActionPresentation? _actionPresentation;
+    private LoginRetailFlashPresentation? _retailFlashPresentation;
     private LoginServerIconPresentation? _serverIcons;
     private LoginActionInput? _actionInput;
     private PixelPoint _lastDragPoint;
@@ -160,6 +161,7 @@ internal sealed class ClientApplication : IDisposable
                 _loginPresentation = null;
                 _directoryStatusPresentation = null;
                 _actionPresentation = null;
+                _retailFlashPresentation = null;
                 _serverIcons = null;
                 _actionInput = null;
                 _renderer = null;
@@ -205,6 +207,7 @@ internal sealed class ClientApplication : IDisposable
         LoginDirectoryStatusPresentation? status = null;
         LoginActionPresentation? actions = null;
         LoginServerIconPresentation? icons = null;
+        LoginRetailFlashPresentation? retailFlash = null;
         LoginAudioPlayer? audio = null;
 
         try
@@ -220,6 +223,7 @@ internal sealed class ClientApplication : IDisposable
             status = new LoginDirectoryStatusPresentation(graphicsDevice, layout);
             actions = new LoginActionPresentation(graphicsDevice, LoginActionLayout.Create(layout), artwork);
             icons = new LoginServerIconPresentation(graphicsDevice, layout);
+            retailFlash = new LoginRetailFlashPresentation(graphicsDevice, layout);
             audio = LoginAudioPlayer.TryCreate();
 
             _graphicsDevice = graphicsDevice;
@@ -228,6 +232,7 @@ internal sealed class ClientApplication : IDisposable
             _directoryStatusPresentation = status;
             _actionPresentation = actions;
             _serverIcons = icons;
+            _retailFlashPresentation = retailFlash;
             _audioPlayer = audio;
         }
         catch
@@ -235,6 +240,12 @@ internal sealed class ClientApplication : IDisposable
             try
             {
                 audio?.Dispose();
+            }
+            catch { }
+
+            try
+            {
+                retailFlash?.Dispose();
             }
             catch { }
 
@@ -467,6 +478,7 @@ internal sealed class ClientApplication : IDisposable
             login.Draw(renderer, selection, input, credentials);
             icons.Draw(renderer, selection);
             actions.Draw(renderer, actionInput);
+            _retailFlashPresentation?.Draw(renderer);
             status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
                 _catalogRefresh?.LastAttemptFailed ?? false, selection));
         }
@@ -512,6 +524,7 @@ internal sealed class ClientApplication : IDisposable
         LoginDirectoryStatusPresentation? status = _directoryStatusPresentation;
         LoginActionPresentation? actions = _actionPresentation;
         LoginServerIconPresentation? icons = _serverIcons;
+        LoginRetailFlashPresentation? retailFlash = _retailFlashPresentation;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
@@ -519,6 +532,7 @@ internal sealed class ClientApplication : IDisposable
         _directoryStatusPresentation = null;
         _actionPresentation = null;
         _serverIcons = null;
+        _retailFlashPresentation = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -526,9 +540,15 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            icons?.Dispose();
+            retailFlash?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            icons?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {

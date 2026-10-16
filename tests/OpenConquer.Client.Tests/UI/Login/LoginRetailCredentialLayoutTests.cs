@@ -11,10 +11,10 @@ public sealed class LoginRetailCredentialLayoutTests
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
         LoginCredentialLayout fields = LoginCredentialLayout.Create(layout);
 
-        Assert.Equal(new LoginSpritePlacement(472, 658, 120, 21), fields.AccountField);
-        Assert.Equal(new LoginSpritePlacement(472, 689, 142, 19), fields.PasswordField);
-        Assert.Equal(258, layout.AccountPanel.X);
-        Assert.Equal(620, layout.AccountPanel.Y);
+        Assert.Equal(new LoginSpritePlacement(470, 644, 120, 21), fields.AccountField);
+        Assert.Equal(new LoginSpritePlacement(470, 675, 142, 19), fields.PasswordField);
+        Assert.Equal(256, layout.AccountPanel.X);
+        Assert.Equal(606, layout.AccountPanel.Y);
     }
 
     [Fact]
@@ -23,9 +23,9 @@ public sealed class LoginRetailCredentialLayoutTests
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(800, 600));
         LoginCredentialLayout fields = LoginCredentialLayout.Create(layout);
 
-        Assert.Equal(new LoginSpritePlacement(369, 514, 94, 17), fields.AccountField);
-        Assert.Equal(new LoginSpritePlacement(369, 538, 111, 15), fields.PasswordField);
-        Assert.Equal(484, layout.AccountPanel.Y);
+        Assert.Equal(new LoginSpritePlacement(367, 503, 94, 17), fields.AccountField);
+        Assert.Equal(new LoginSpritePlacement(367, 527, 111, 15), fields.PasswordField);
+        Assert.Equal(473, layout.AccountPanel.Y);
     }
 
     [Theory]

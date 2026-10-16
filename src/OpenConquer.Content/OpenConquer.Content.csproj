@@ -42,6 +42,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Assets/Login/Retail/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Retail.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Assets/RealmIcons/*.rgba.br" LogicalName="OpenConquer.Content.Assets.RealmIcons.%(Filename)%(Extension)" />
   </ItemGroup>
 

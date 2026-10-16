@@ -54,7 +54,7 @@ internal sealed class LoginVisualLayout
         Backdrop = Place(0, 40, 1024, 637);
         Header = Place(0, 0, 1024, 116);
         Footer = Place(0, 642, 1024, 140);
-        AccountPanel = Place(258, 620, 508, 98);
+        AccountPanel = Place(256, 606, 508, 98); // start.dat shape 328 at (256, 605.9)
         TopDragon = Place(267, 26, 494, 140);
 
         _regionCells = new LoginSpritePlacement[RegionColumnCount * RegionRowCount];

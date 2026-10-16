@@ -6,8 +6,8 @@ namespace OpenConquer.Client.Tests.UI.Login;
 public sealed class LoginActionInputTests
 {
     [Theory]
-    [InlineData(1024, 768, 654, 726, 124, 34, 862)]
-    [InlineData(800, 600, 511, 567, 97, 27, 673)]
+    [InlineData(1024, 768, 650, 704, 132, 40, 859)]
+    [InlineData(800, 600, 508, 550, 103, 31, 671)]
     public void Layout_FollowsRetailBottomRowWithinStage(int width, int height, int enterX, int enterY, int enterWidth, int enterHeight, int exitX)
     {
         LoginVisualLayout visual = LoginVisualLayout.Create(new LogicalRenderSize(width, height));
@@ -50,8 +50,8 @@ public sealed class LoginActionInputTests
     }
 
     [Theory]
-    [InlineData(1024, 768, 8)]
-    [InlineData(800, 600, 6)]
+    [InlineData(1024, 768, 0)]
+    [InlineData(800, 600, 0)]
     public void RetailEnterFootprint_ClearsTheEntireAccountPanel(int width, int height, int expectedGap)
     {
         LoginVisualLayout visual = LoginVisualLayout.Create(new LogicalRenderSize(width, height));

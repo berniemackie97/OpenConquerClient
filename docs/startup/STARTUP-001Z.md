@@ -1,27 +1,23 @@
-# STARTUP-001Z — Credential viewport and pointer fidelity
+# STARTUP-001Z — Retail 5517 login page (in progress, not merge-ready)
 
-## Baseline and scope
+## Evidence
 
-Based on merged PR #106, `main` commit `954cd921fffcb9147ab885ab5358bde273fffc15`. PR #108 initially added provisional account-history and music controls, but those were not retail-supported visuals and were removed before acceptance. **No original Flash control artwork or behavior is claimed by this slice.**
+Clean retail SWF `data/main/start.dat` SHA-256 `db4b4550bc4b3fa91b2fd7cc173bb9a6f8109dbc65221e7f0df290610655da20`, `logo.swf` SHA-256 `7165b9ed4fc84dfd54dea8ee750ab537de522a7b19c645e2313e03c9a251c6f7`. See `20_notes/Architecture/11_login_ui_assets_and_interactions.md` (2026-10-15 closure), and the extracted/verified `OpenConquer-5517-Login-UI-Assets.zip` (SHA-256 `ff442dd0003ea9e2bbb12f45e5269d3553d9b0872ab5348a48cfd68274e5cfb0`). This note supplements previous STARTUP-001Z viewport changes on PR #108, not a declaration of completeness.
 
-The approved changes complete the bounded STARTUP-001Y credential editor presentation: text/caret/selection scissoring within the original account-panel field geometry, deterministic framebuffer-to-logical pointer mapping when dragging into letterboxing, and repeated whole-character scrolling while a captured drag is held outside the visible field. The native input whitelist, capacity, password protections, catalog trust, disabled Enter button, cursor and audio remain unchanged.
+## Restored in this change
 
-## Implementation
+- Removed realm-selection dependence from account/password editing; initial keyboard focus remains none. Tab advances Account→Password, password Tab does not cycle back, and Enter no longer changes focus or attempts network login. Region/server navigation does not invalidate editor state. Signed catalog replacement still zeroes the password in the modern client (explicit security deviation), preserving the account name.
+- The retail edit symbol 364 has `maxLength=15`, preserved as a 15-unit password bound. Account-name edits zero the previous password. The 10–14 character language-dependent native login validator is not implemented, because the client still cannot submit login requests.
+- Account-panel bitmap placement follows start.dat shape 328 origin `(256,605.9)` rounded to `(256,606)`; Enter/Exit use SWF child symbols 317/324 stage positions `(649.95,704.4)` / `(858.95,703.9)` rounded to `(650,704)` / `(859,704)` and their authentic `132×40` frame dimensions. These replace earlier screenshot-derived 5631 positions.
+- Authored SWF `DefineButton2` symbols 299,305,310,335,342,349 are rendered in their original *up* state, at stage placements recorded in `metadata/key-placements.json`. No guessed SVG/icons, placeholders or hidden hit-test art. Register/Purchase/Help remain inert because original endpoints are unsafe and no contemporary allowlisted URLs have been authorized. Account dropdown/Save/Clear command handling, dialogs and their original runtime transitions are **not yet connected**; users must not infer functionality from image presence.
+- The original `logo.swf` 25-frame held-picture sequence is embedded as verified, offline-decoded RGBA, displayed at `(776,2,248,78)`, and loops at the documented 30 fps. Runtime playback has no decoder or file I/O, and GPU textures have deterministic OpenGL-context ownership.
+- All 43 embedded resources are exact PNG-derived RGBA with a fixed length and decoded SHA-256 validation. `ASSET-PROVENANCE.json` maps each source symbol/file to its input SHA.
 
-- `OpenGLRenderer.Clip` constrains rendering within an exact logical top-left rectangle, translated to render-target OpenGL scissor coordinates. The scope cannot be nested, checks dimensions, and is disabled on exit and frame finalization. No render-time texture creation or content decoding.
-- `LoginCredentialPresentation` applies the clip to each original credential field; selection backgrounds, masked characters and caret cannot draw over panel borders or unrelated controls.
-- `PresentationViewport.MapPointerXClamped` maps the host framebuffer x-coordinate into the logical stage, including side letterboxes and outside-window positions. Only an already-captured drag uses this mapping; initial pointer hit tests continue to reject letterboxing.
-- `ClientApplication` stores the latest pointer position, resolves the captured caret through the renderer's text measurement, and advances selection while the pointer remains held beyond the visible text at normal frame cadence. Focus loss, release and server/catalog invalidation cancel selection through existing input ownership.
-- The original signed realm catalog, server display, retail-derived action assets, managed credential buffers and password zeroing are preserved. No local account-history persistence, BGM toggle, speculative account save/clear/list controls or outbound URLs are added.
+## Remaining within STARTUP-001Z before merge
 
-## Native evidence and remaining work
+1. Restore the genuine account history popup (sprite 360, attached `itemBtn` sprite 6), 20-ms list motion, bounded named-account persistence, and confirmed Save/Clear dialogs (symbols 283/285) with only explicit Save→OK recording. Do not implement automatic saving.
+2. Reconstruct exact region/server view compositions/transitions from SWF timelines and verify frame-13 selected state, 4/3 grid geometry and existing authenticated catalog icon mapping. External URL actions remain disabled until a secure allowlist is specified.
+3. Restore genuine initial opening, 602-frame flying-bird parent, 10-frame error/dialog animations and callback-driven loading only after source-backed runtime behavior is modeled. Top/bottom named dragon and poetry clips are empty; `rsDragon` is never loaded in retail 5517. Do not animate these empty holders.
+4. Execute locked restore, formatting, Release build, all tests, original content-set validation and Mac/Windows CI. Visually compare original screenshots at 1024×768 and 800×600; verify scissor, keyboard capture, catalog churn, and audio. Source-derived Flash device-font pixel parity remains an explicit Windows-GDI verification gate.
 
-The 5517 login Flash command evidence in `20_notes/Architecture/03_login_flash_startup_command_contract.md` includes account-history commands and `SELECTBGMUSIC`. Those native command names do **not** establish GUI bitmaps, click rectangles, timeline placement or standalone button behavior. The remaining original startup artwork and controls need direct investigation of the clean client's `data/main/start.dat` and nearby startup resources before implementing them. Do not infer a Save/Clear/List/BGM switch from commands or design modern substitutes.
-
-## Acceptance
-
-1. Locked restore, format check, Release build, full solution tests, content-set verification, `git diff --check`, cross-platform CI and security analysis.
-2. Compare 1024x768 and 800x600 screenshots with merged #106: no extra account-panel buttons, dialogs, banners or music widgets; no regression to authentic 5517 sprites and sounds.
-3. Enter 32 characters and drag across either field in both directions; masked password and account text remain clipped inside the original image. Holding the pointer past either field edge scrolls the selection without leaking pixels. Verify letterboxed and HiDPI layouts, and dragging beyond the window followed by release/focus loss.
-4. Verify disabled Enter does not submit or connect; account/password boundaries and catalog invalidation remain intact.
-5. Run driver-backed GL checks. CI passing does not prove image-perfect parity. Investigate real SWF timeline and control graphics before claiming page completion.
+Enter remains deliberately disabled and no account-server packets or unsafe publisher URLs are sent. Original retail media require a distribution-rights review before shipping externally.

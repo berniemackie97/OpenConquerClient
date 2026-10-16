@@ -13,7 +13,7 @@ internal readonly record struct LoginActionLayout(LoginSpritePlacement Enter, Lo
     public static LoginActionLayout Create(LoginVisualLayout layout)
     {
         ArgumentNullException.ThrowIfNull(layout);
-        LoginActionLayout result = new(Place(layout, 654, 726), Place(layout, 862, 726));
+        LoginActionLayout result = new(Place(layout, 650, 704), Place(layout, 859, 704)); // start.dat enterMC symbols 317/324
         Validate(result.Enter, layout);
         Validate(result.Exit, layout);
 
@@ -31,7 +31,7 @@ internal readonly record struct LoginActionLayout(LoginSpritePlacement Enter, Lo
     public LoginActionButton Hit(int x, int y) => Contains(Enter, x, y) ? LoginActionButton.Enter : Contains(Exit, x, y) ? LoginActionButton.Exit : LoginActionButton.None;
 
     private static LoginSpritePlacement Place(LoginVisualLayout layout, int x, int y) => new(
-        Scale(x, layout.Width), Scale(y, layout.Width), Scale(124, layout.Width), Scale(34, layout.Width));
+        Scale(x, layout.Width), Scale(y, layout.Width), Scale(132, layout.Width), Scale(40, layout.Width));
 
     private static void Validate(LoginSpritePlacement bounds, LoginVisualLayout layout)
     {

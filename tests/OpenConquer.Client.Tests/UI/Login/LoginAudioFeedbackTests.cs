@@ -24,13 +24,13 @@ public sealed class LoginAudioFeedbackTests
     }
 
     [Fact]
-    public void DisabledEnterAndCredentialFieldsCannotEmitFalseAudio()
+    public void DisabledEnterCannotEmitAudioButUnselectedCredentialFieldsCan()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
         LoginAudioFeedback sounds = new(layout);
         LoginServerSelection selection = new();
         Assert.Null(sounds.PointerMoved(true, 660, 730, selection));
-        Assert.Null(sounds.PointerMoved(true, 480, 666, selection));
+        Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 480, 650, selection));
         Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 870, 733, selection));
         Assert.Null(sounds.PointerMoved(true, 875, 735, selection));
         Assert.Null(sounds.PointerMoved(false, 870, 733, selection));
@@ -49,7 +49,7 @@ public sealed class LoginAudioFeedbackTests
         Assert.True(selection.SelectRegionSlot(0));
         Assert.True(selection.SelectServerSlot(0));
         Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 475, 663, selection));
-        Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 475, 696, selection));
+        Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 475, 681, selection));
     }
 
     [Fact]
