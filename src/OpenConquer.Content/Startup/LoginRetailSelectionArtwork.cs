@@ -16,7 +16,11 @@ public static class LoginRetailSelectionArtwork
 
     public enum Sequence
     {
-        RegionFlame, RegionHoverBorder, ServerHover, ServerSelected
+        RegionFlame,
+        RegionHoverBorder,
+        ServerHover,
+        ServerSelected,
+        RealmStatus
     }
 
     public readonly record struct Sheet(int Width, int Height, int FrameWidth, int FrameHeight, int Columns, int Count, string Sha256);
@@ -28,6 +32,7 @@ public static class LoginRetailSelectionArtwork
         new(790, 116, 158, 58, 5, 10, "9287382B9F167D36F0C6D02D2FFF1E4AAEC021DB73AF97809C5952F8715E5328"),
         new(1600, 600, 200, 120, 8, 34, "C8695D2B639DA9B12B49EC0B1786AF58E62FD392C2B9FEA9489E9605519EE4A3"),
         new(1760, 720, 220, 120, 8, 47, "C6DDCC3CE1ED6A121492763E369E534EBCBA5BD1A40EF902F5C2228A0C42938C"),
+        new(72, 18, 18, 18, 4, 4, "5FA3C29BE37231F2CB83C54440C737C45BEFFB10694687D40680224BE3A5C7E2"),
     ];
 
     public static Sheet Describe(Sequence sequence) => s_sheets[Validate(sequence)];

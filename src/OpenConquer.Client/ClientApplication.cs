@@ -48,6 +48,7 @@ internal sealed class ClientApplication : IDisposable
     private LoginAudioFeedback? _audioFeedback;
     private DesktopCursorAnimation? _cursorAnimation;
     private SignedLoginCatalog? _presentedCatalog;
+    private bool _initialRetailCatalogSelectionApplied;
     private bool _catalogUnavailableReported;
     private bool _runStarted;
     private bool _disposed;
@@ -768,6 +769,13 @@ internal sealed class ClientApplication : IDisposable
             if (_loginSelectionInput is { } input && _loginSelection is { } selection)
             {
                 LoginVerifiedSelectionRetention.Apply(_presentedCatalog, incoming, now, input, selection);
+                if (!_initialRetailCatalogSelectionApplied && incoming is not null && incoming.IsCurrent(now))
+                {
+                    // Native GameSetup.ini seeds (GroupRecord, ServerRecord) = (0, 0).
+                    // Unlike legacy Server.dat, only a current signed catalog may grant these choices.
+                    _initialRetailCatalogSelectionApplied = true;
+                    LoginRetailStartupSelection.TryApply(incoming, now, selection);
+                }
             }
             _presentedCatalog = incoming;
             _audioFeedback?.Reset();

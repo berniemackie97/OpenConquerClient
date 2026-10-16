@@ -62,7 +62,9 @@ internal sealed class LoginPresentation : IDisposable
             accountPanel = graphicsDevice.CreateTexture2D(artwork.AccountPanel.Width, artwork.AccountPanel.Height, artwork.AccountPanel.Pixels.Span);
             topDragon = graphicsDevice.CreateTexture2D(artwork.TopDragon.Width, artwork.TopDragon.Height, artwork.TopDragon.Pixels.Span);
             regionCell = graphicsDevice.CreateTexture2D(artwork.RegionCell.Width, artwork.RegionCell.Height, artwork.RegionCell.Pixels.Span);
-            serverCell = graphicsDevice.CreateTexture2D(artwork.ServerCell.Width, artwork.ServerCell.Height, artwork.ServerCell.Pixels.Span);
+            // Keep the original 5517 idle tile art separate from its independently animated light and selection layers.
+            OpenConquer.Content.Images.RgbaImage idleTile = LoginRetailRealmTileArtwork.Load();
+            serverCell = graphicsDevice.CreateTexture2D(idleTile.Width, idleTile.Height, idleTile.Pixels.Span);
         }
         catch
         {
