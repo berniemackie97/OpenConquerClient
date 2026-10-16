@@ -107,7 +107,8 @@ public sealed class LoginAccountHistoryTests
             Assert.Equal(-14, controls.PopupOffset); // 10+2*N
             controls.Advance(TimeSpan.FromMilliseconds(100));
             Assert.Equal(LoginAccountPopupState.Open, controls.Popup);
-            LoginSpritePlacement row = controls.RowBounds(0);
+            // The retail list preserves append order; the second saved name occupies row 1.
+            LoginSpritePlacement row = controls.RowBounds(1);
             Assert.True(controls.PointerPressed(true, row.X + 5, row.Y + 5, editor));
             Assert.Equal("Second", editor.AccountDisplay);
             Assert.Equal(0, editor.PasswordLength);
