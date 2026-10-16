@@ -30,6 +30,7 @@ internal sealed class ClientApplication : IDisposable
     private LoginDirectoryStatusPresentation? _directoryStatusPresentation;
     private LoginActionPresentation? _actionPresentation;
     private LoginRetailFlashPresentation? _retailFlashPresentation;
+    private LoginRetailPanelControls? _retailPanelControls;
     private LoginServerIconPresentation? _serverIcons;
     private LoginActionInput? _actionInput;
     private PixelPoint _lastDragPoint;
@@ -162,6 +163,7 @@ internal sealed class ClientApplication : IDisposable
                 _directoryStatusPresentation = null;
                 _actionPresentation = null;
                 _retailFlashPresentation = null;
+                _retailPanelControls = null;
                 _serverIcons = null;
                 _actionInput = null;
                 _renderer = null;
@@ -188,6 +190,8 @@ internal sealed class ClientApplication : IDisposable
         _loginSelectionInput = new LoginSelectionInput(layout, _loginSelection);
         _loginCredentials = new LoginCredentialInput(_loginSelection, LoginCredentialLayout.Create(layout));
         _actionInput = new LoginActionInput(LoginActionLayout.Create(layout));
+        _retailPanelControls = new LoginRetailPanelControls(LoginRetailFlashLayout.Create(layout),
+            LoginAccountHistory.ForCurrentUser(), layout.Width);
         _audioFeedback = new LoginAudioFeedback(layout);
         IReadOnlyList<OpenConquer.Content.Images.RgbaImage> cursorFrames = LoginCursorArtwork.Load();
         _cursorAnimation = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
@@ -304,10 +308,12 @@ internal sealed class ClientApplication : IDisposable
         }
 
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+        if (_retailPanelControls?.PointerMoved(mapped, x, y) == true)
+            _audioPlayer?.Play(LoginAudioCue.ButtonHover);
         _actionInput.PointerMoved(mapped, x, y);
         _lastDragPoint = point;
         ContinueCredentialDrag();
-        if (_loginSelection is { } selection)
+        if (_retailPanelControls is not { CapturesPointer: true } && _loginSelection is { } selection)
         {
             _audioPlayer?.Play(_audioFeedback?.PointerMoved(mapped, x, y, selection));
         }
@@ -325,6 +331,8 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnKeyPressed(DesktopKeyEvent key)
     {
+        if (_retailPanelControls?.KeyPressed(key) == true)
+            return;
         int revision = _loginCredentials?.EditRevision ?? 0;
         if (!TryHandleCredentialClipboard(key) && _loginCredentials?.KeyPressed(key) != true)
             _loginSelectionInput?.KeyPressed(key);
@@ -334,7 +342,8 @@ internal sealed class ClientApplication : IDisposable
     private void OnTextEntered(char character)
     {
         LoginCredentialInput? credentials = _loginCredentials;
-        if (credentials is null)
+        if (credentials is null || _retailPanelControls is { IsModal: true } ||
+            _retailPanelControls is { Popup: not LoginAccountPopupState.Closed })
             return;
         int revision = credentials.EditRevision;
         credentials.TextEntered(character);
@@ -380,6 +389,7 @@ internal sealed class ClientApplication : IDisposable
             _loginSelectionInput?.FocusLost();
             _loginCredentials?.FocusLost();
             _actionInput?.FocusLost();
+            _retailPanelControls?.FocusLost();
             _audioFeedback?.Reset();
         }
         _audioPlayer?.SetFocused(focused);
@@ -400,6 +410,17 @@ internal sealed class ClientApplication : IDisposable
         if (pressed)
         {
             _lastDragPoint = point;
+            bool panelCaptured = _loginCredentials is { } activeCredentials &&
+                _retailPanelControls?.PointerPressed(mapped, x, y, activeCredentials) == true;
+            if (panelCaptured)
+            {
+                _loginCredentials?.PointerReleased();
+                if (_retailPanelControls is { AccountSelectedOnPress: true })
+                    _audioPlayer?.Play(LoginAudioCue.ButtonClick);
+                _actionInput?.FocusLost();
+                input.FocusLost();
+                return;
+            }
             bool actionCaptured = _actionInput?.PointerPressed(mapped, x, y) == true;
             int? credentialCaret = null;
             if (!actionCaptured && mapped && _loginCredentials is { } credentials && _loginPresentation is { } presentation &&
@@ -422,6 +443,13 @@ internal sealed class ClientApplication : IDisposable
         else
         {
             _loginCredentials?.PointerReleased();
+            if (_retailPanelControls is { CapturesPointer: true } panel && _loginCredentials is { } credentials)
+            {
+                LoginRetailPanelEvent action = panel.PointerReleased(mapped, x, y, credentials);
+                if (action != LoginRetailPanelEvent.None)
+                    _audioPlayer?.Play(LoginAudioCue.ButtonClick);
+                return;
+            }
             if (_actionInput?.PointerReleased(mapped, x, y) == LoginActionButton.Exit)
             {
                 _audioPlayer?.Play(LoginAudioCue.ButtonClick);
@@ -469,6 +497,8 @@ internal sealed class ClientApplication : IDisposable
         LoginActionInput actionInput = _actionInput ?? throw new InvalidOperationException("The login action handler is not initialized.");
         credentials.Synchronize();
         ContinueCredentialDrag();
+        if (double.IsFinite(elapsedSeconds) && elapsedSeconds >= 0)
+            _retailPanelControls?.Advance(TimeSpan.FromSeconds(Math.Min(elapsedSeconds, 0.25)));
 
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
@@ -478,9 +508,10 @@ internal sealed class ClientApplication : IDisposable
             login.Draw(renderer, selection, input, credentials);
             icons.Draw(renderer, selection);
             actions.Draw(renderer, actionInput);
-            _retailFlashPresentation?.Draw(renderer);
             status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
                 _catalogRefresh?.LastAttemptFailed ?? false, selection));
+            if (_retailFlashPresentation is { } retailFlash && _retailPanelControls is { } panel)
+                retailFlash.Draw(renderer, panel);
         }
         catch (Exception exception)
         {
@@ -505,6 +536,7 @@ internal sealed class ClientApplication : IDisposable
         _loginSelectionInput?.FocusLost();
         _loginCredentials?.FocusLost();
         _actionInput?.FocusLost();
+        _retailPanelControls?.FocusLost();
         _audioFeedback?.Reset();
         LoginAudioPlayer? audio = _audioPlayer;
         _audioPlayer = null;

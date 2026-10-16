@@ -169,6 +169,28 @@ internal sealed class LoginCredentialInput : IDisposable
         return Insert(text.AsSpan());
     }
 
+    /// <summary>Applies a retail history choice, clearing secrets only when the account actually changes.</summary>
+    public bool ReplaceAccount(string account)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+        Synchronize();
+        if (!Enabled || !LoginAccountHistory.IsValidName(account))
+            return false;
+        if (!string.Equals(AccountDisplay, account, StringComparison.Ordinal))
+        {
+            ClearPassword();
+            Array.Clear(_account);
+            account.AsSpan().CopyTo(_account);
+            _accountLength = account.Length;
+            _contentRevision++;
+            _revision++;
+        }
+        SetFocus(LoginCredentialFocus.Account);
+        MoveTo(_accountLength, extend: false);
+        _dragging = false;
+        return true;
+    }
+
     /// <summary>Returns account selection only. Password content is never materialized as a string.</summary>
     public string? SelectedAccountText()
     {
