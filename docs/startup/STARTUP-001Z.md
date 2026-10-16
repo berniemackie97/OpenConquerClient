@@ -32,3 +32,11 @@ Enter remains deliberately disabled and no account-server packets or unsafe publ
 - Content resources carry exact 5517 PNG-derived decoded-RGBA hashes, validated on load. GPU textures are created once per OpenGL context and disposed deterministically. No disk or JSON I/O is performed while drawing frames.
 
 The retail movie's remaining opening, 602-frame flying-bird parent, region/server transition effects, and callback-driven loading must still be audited against live 5517 playback before declaring the entire startup page pixel/timeline complete. This continuation does not declare those unimplemented elements finished. All builds, unit tests, Windows/macOS CI and image comparisons are required before merging #108.
+
+## Post-forensics retail input corrections (Windows verified)
+
+Windows retail-client input evidence in note 11 confirms no initial edit focus and password text selection on Tab. The password Tab stays on password; Shift does not reverse the direction. Both behaviors are modeled independently of realm selection and the signed-directory authority.
+
+Enter/Exit both use the original Up/Over/Down artwork, hover audio and press/release capture. Enter now visually responds to the actual pointer, including 800x600. The production client intentionally does **not** reproduce the retail client's broken 800x600 synthetic-keyboard-click coordinates (700,720), and the click handler does not pretend to connect or send credentials. Actual login submission is a separate, unimplemented transport boundary; visual readiness does not imply network capability.
+
+Source recovery also confirms missing native playback for the 24-frame opening video, 3-frame closing transition, the flying-bird timeline and remaining region/server staged transitions. These must be implemented and driver-verified before this PR is called retail-complete. The Windows device-font pixel comparison remains an open visual evidence gate.

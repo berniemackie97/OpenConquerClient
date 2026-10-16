@@ -31,6 +31,30 @@ public sealed class LoginRetailCredentialBehaviorTests
         Assert.Null(selection.SelectedServer);
     }
 
+    [Theory]
+    [InlineData(1024, 768)]
+    [InlineData(800, 600)]
+    public void TabSelectsExistingPasswordAndShiftDoesNotReverseFocus(int width, int height)
+    {
+        LoginServerSelection selection = new();
+        LoginCredentialLayout fields = LoginCredentialLayout.Create(LoginVisualLayout.Create(new LogicalRenderSize(width, height)));
+        using LoginCredentialInput input = new(selection, fields);
+        Assert.True(input.PointerPressed(true, fields.PasswordField.X + 2, fields.PasswordField.Y + 2));
+        input.TextEntered('A');
+        input.TextEntered('B');
+        Assert.True(input.KeyPressed(new DesktopKeyEvent(DesktopKey.Tab, DesktopKeyModifiers.Shift, false)));
+        Assert.Equal(LoginCredentialFocus.Password, input.Focus);
+        Assert.Equal(0, input.SelectionStart);
+        Assert.Equal(2, input.SelectionEnd);
+        Assert.True(input.PointerPressed(true, fields.AccountField.X + 2, fields.AccountField.Y + 2));
+        Assert.True(input.KeyPressed(new DesktopKeyEvent(DesktopKey.Tab, DesktopKeyModifiers.None, false)));
+        Assert.Equal(LoginCredentialFocus.Password, input.Focus);
+        Assert.Equal(0, input.SelectionStart);
+        Assert.Equal(2, input.SelectionEnd);
+        input.TextEntered('C');
+        Assert.Equal(1, input.PasswordLength);
+    }
+
     [Fact]
     public void EditingAccountClearsPreviousPasswordAndPasswordLengthIsRetailBounded()
     {

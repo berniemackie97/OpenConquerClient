@@ -7,7 +7,7 @@ internal sealed class LoginAudioFeedback
 {
     private enum HoverArea
     {
-        None, Region, Server, Page, Account, Password, Exit
+        None, Region, Server, Page, Account, Password, Enter, Exit
     }
     private readonly LoginVisualLayout _layout;
     private readonly LoginPageControls _pages;
@@ -39,7 +39,7 @@ internal sealed class LoginAudioFeedback
         return area switch
         {
             HoverArea.Region or HoverArea.Server => LoginAudioCue.Glide,
-            HoverArea.Page or HoverArea.Account or HoverArea.Password or HoverArea.Exit => LoginAudioCue.ButtonHover,
+            HoverArea.Page or HoverArea.Account or HoverArea.Password or HoverArea.Enter or HoverArea.Exit => LoginAudioCue.ButtonHover,
             _ => null,
         };
     }
@@ -74,7 +74,7 @@ internal sealed class LoginAudioFeedback
         }
         if (_actions.Hit(x, y) == LoginActionButton.Enter)
         {
-            return (HoverArea.None, -1);
+            return (HoverArea.Enter, 0);
         }
         if (Contains(_fields.AccountField, x, y))
             return (HoverArea.Account, 0);

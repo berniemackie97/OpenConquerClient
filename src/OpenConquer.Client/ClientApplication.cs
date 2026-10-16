@@ -435,7 +435,7 @@ internal sealed class ClientApplication : IDisposable
                 input.FocusLost();
             }
 
-            if (actionCaptured)
+            if (actionCaptured && _actionInput?.Pressed == LoginActionButton.Exit)
             {
                 _loginCredentials?.FocusLost();
             }
@@ -450,11 +450,16 @@ internal sealed class ClientApplication : IDisposable
                     _audioPlayer?.Play(LoginAudioCue.ButtonClick);
                 return;
             }
-            if (_actionInput?.PointerReleased(mapped, x, y) == LoginActionButton.Exit)
+            LoginActionButton action = _actionInput?.PointerReleased(mapped, x, y) ?? LoginActionButton.None;
+            if (action != LoginActionButton.None)
             {
                 _audioPlayer?.Play(LoginAudioCue.ButtonClick);
-                _loginCredentials?.FocusLost();
-                _window?.RequestClose();
+                if (action == LoginActionButton.Exit)
+                {
+                    _loginCredentials?.FocusLost();
+                    _window?.RequestClose();
+                }
+                // Enter is a real retail button; credential submission is NOT implemented here.
                 return;
             }
 

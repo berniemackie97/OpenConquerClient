@@ -24,12 +24,13 @@ public sealed class LoginAudioFeedbackTests
     }
 
     [Fact]
-    public void DisabledEnterCannotEmitAudioButUnselectedCredentialFieldsCan()
+    public void EnterHoverUsesRetailAudioAndUnselectedCredentialFieldsRemainInteractive()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
         LoginAudioFeedback sounds = new(layout);
         LoginServerSelection selection = new();
-        Assert.Null(sounds.PointerMoved(true, 660, 730, selection));
+        Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 660, 730, selection));
+        Assert.Null(sounds.PointerMoved(true, 665, 733, selection));
         Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 480, 650, selection));
         Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 870, 733, selection));
         Assert.Null(sounds.PointerMoved(true, 875, 735, selection));

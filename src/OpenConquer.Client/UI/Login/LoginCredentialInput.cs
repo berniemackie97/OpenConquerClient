@@ -119,8 +119,13 @@ internal sealed class LoginCredentialInput : IDisposable
             case DesktopKey.Tab:
                 // Retail VAR_FOCUS=1 advances to password; VAR_FOCUS=2 asks for 3 (ignored).
                 // Shift is not consulted by the retail host's Tab bridge.
-                if (!key.IsRepeat && Focus == LoginCredentialFocus.Account)
-                    SetFocus(LoginCredentialFocus.Password);
+                if (!key.IsRepeat)
+                {
+                    if (Focus == LoginCredentialFocus.Account)
+                        SetFocus(LoginCredentialFocus.Password);
+                    if (Focus == LoginCredentialFocus.Password)
+                        MoveTo(_passwordLength, extend: false, anchor: 0);
+                }
                 break;
             case DesktopKey.Enter:
                 // Retail sends a synthetic Enter-button press, not a credential focus change.

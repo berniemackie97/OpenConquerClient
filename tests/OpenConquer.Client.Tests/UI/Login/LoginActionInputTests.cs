@@ -64,12 +64,19 @@ public sealed class LoginActionInputTests
     }
 
     [Fact]
-    public void Enter_CapturesButCannotSubmitAnAction()
+    public void Enter_UsesRetailPressAndReleaseStatesButDoesNotDispatchAuthentication()
     {
         LoginActionLayout layout = CreateLayout();
         LoginActionInput input = new(layout);
         Assert.True(input.PointerPressed(true, layout.Enter.X + 4, layout.Enter.Y + 4));
-        Assert.Equal(LoginActionButton.None, input.Pressed);
+        Assert.Equal(LoginActionButton.Enter, input.Pressed);
+        Assert.Equal(LoginActionButton.Enter, input.PointerReleased(true, layout.Enter.X + 4, layout.Enter.Y + 4));
+        Assert.Equal(LoginActionButton.None, input.PointerReleased(true, layout.Enter.X + 4, layout.Enter.Y + 4));
+
+        Assert.True(input.PointerPressed(true, layout.Enter.X + 4, layout.Enter.Y + 4));
+        Assert.Equal(LoginActionButton.None, input.PointerReleased(false, layout.Enter.X + 4, layout.Enter.Y + 4));
+        Assert.True(input.PointerPressed(true, layout.Enter.X + 4, layout.Enter.Y + 4));
+        input.FocusLost();
         Assert.Equal(LoginActionButton.None, input.PointerReleased(true, layout.Enter.X + 4, layout.Enter.Y + 4));
     }
 
