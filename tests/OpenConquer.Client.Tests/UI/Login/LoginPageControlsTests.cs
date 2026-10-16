@@ -117,7 +117,7 @@ public sealed class LoginPageControlsTests
     }
 
     [Fact]
-    public void ServerPaging_RevokesInvisibleServerAndResetsCredentialInput()
+    public void ServerPaging_RevokesInvisibleServerWithoutClearingRetailCredentialInput()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
         LoginPageControls pages = LoginPageControls.Create(layout);
@@ -144,9 +144,13 @@ public sealed class LoginPageControlsTests
         Assert.Equal(LoginSelectionFocus.Server, input.Focus);
         Assert.Equal(0, input.FocusedServerSlot);
         Assert.Null(selection.SelectedServer);
-        Assert.Equal(0, credentials.AccountLength);
-        Assert.Equal(0, credentials.PasswordLength);
-        Assert.Equal(LoginCredentialFocus.None, credentials.Focus);
+        // Paging invalidates the selected endpoint, but does not mutate account/password
+        // editor state. Submission remains disallowed without a verified selected server.
+        Assert.Equal("A", credentials.AccountDisplay);
+        Assert.Equal(1, credentials.AccountLength);
+        Assert.Equal(1, credentials.PasswordLength);
+        Assert.Equal("*", credentials.PasswordMask);
+        Assert.Equal(LoginCredentialFocus.Password, credentials.Focus);
         Assert.False(LoginPageControls.IsEnabled(LoginPageControl.ServerNext, selection));
         Assert.True(LoginPageControls.IsEnabled(LoginPageControl.ServerPrevious, selection));
     }

@@ -27,7 +27,7 @@ public sealed class LoginVerifiedSelectionRetentionTests
     }
 
     [Fact]
-    public void AuthenticatedRenewalRetainsChoiceButAlwaysWipesBothCredentialBuffers()
+    public void AuthenticatedRenewalRetainsAccountAndChoiceButZeroesPassword()
     {
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog previous = Catalog(signer, 7);
@@ -49,9 +49,12 @@ public sealed class LoginVerifiedSelectionRetentionTests
         Assert.Same(current.View, selection.Catalog);
         Assert.Same(current.View.Regions[0], selection.SelectedRegion);
         Assert.Same(current.View.Regions[0].Servers[0], selection.SelectedServer);
-        Assert.Equal(0, credentials.AccountLength);
+        // Revalidated signed-directory data may preserve the account name, never the password.
+        // Selection remains bound only when signed endpoint identity is unchanged.
+        Assert.Equal("A", credentials.AccountDisplay);
+        Assert.Equal(1, credentials.AccountLength);
         Assert.Equal(0, credentials.PasswordLength);
-        Assert.Equal(LoginCredentialFocus.None, credentials.Focus);
+        Assert.Equal(LoginCredentialFocus.Password, credentials.Focus);
         Assert.True(credentials.Enabled);
     }
 
