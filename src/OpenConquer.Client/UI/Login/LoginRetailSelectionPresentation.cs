@@ -24,7 +24,8 @@ internal sealed class LoginRetailSelectionPresentation : IDisposable
             {
                 // Group1 hover is not a generic region skin. Do not allocate or draw it
                 // for unrelated signed-directory regions.
-                if (count == (int)LoginRetailSelectionArtwork.Sequence.RegionHoverBorder)
+                if (count is (int)LoginRetailSelectionArtwork.Sequence.RegionHoverBorder or
+                    (int)LoginRetailSelectionArtwork.Sequence.RealmStatus)
                     continue;
                 LoginRetailSelectionArtwork.Sequence sequence = (LoginRetailSelectionArtwork.Sequence)count;
                 var image = LoginRetailSelectionArtwork.Load(sequence);
@@ -73,18 +74,9 @@ internal sealed class LoginRetailSelectionPresentation : IDisposable
                 rect.X - Scale(23), rect.Y - Scale(9));
         }
 
-        // DefineSprite 179 depth 6: status-light 34 at (9.3, 62.25) relative to
-        // the tile origin. This is the original startup status code 3 (green).
-        // It is a visual seed, not an authenticated live occupancy signal.
-        for (int slot = 0; slot < _layout.ServerCells.Length; slot++)
-        {
-            if (selection.ServerAtSlot(slot) is not null)
-            {
-                LoginSpritePlacement rect = _layout.ServerCells[slot];
-                DrawFrame(renderer, LoginRetailSelectionArtwork.Sequence.RealmStatus, 2,
-                    rect.X + Scale(8), rect.Y + Scale(61));
-            }
-        }
+        // The original client initially seeded code 3 before its optional status
+        // refresh. A modern live status indicator requires separately authenticated
+        // and fresh realm telemetry; do not present that seed as a current health claim.
 
         int selectedServer = selection.SelectedServerSlot;
         if ((uint)selectedServer < (uint)_layout.ServerCells.Length)

@@ -17,6 +17,8 @@ internal sealed class LoginPresentation : IDisposable
     private readonly OpenGLTexture2D _topDragon;
     private readonly OpenGLTexture2D _regionCell;
     private readonly OpenGLTexture2D _serverCell;
+    private readonly OpenGLTexture2D _unopenedRealm;
+    private readonly OpenGLTexture2D _defaultRealm;
     private readonly LoginVisualLayout _layout;
     private readonly LoginPageControls _pageControls;
     private readonly LoginLabelPresentation _labels;
@@ -53,6 +55,8 @@ internal sealed class LoginPresentation : IDisposable
         OpenGLTexture2D? topDragon = null;
         OpenGLTexture2D? regionCell = null;
         OpenGLTexture2D? serverCell = null;
+        OpenGLTexture2D? unopenedRealm = null;
+        OpenGLTexture2D? defaultRealm = null;
 
         try
         {
@@ -65,9 +69,23 @@ internal sealed class LoginPresentation : IDisposable
             // Keep the original 5517 idle tile art separate from its independently animated light and selection layers.
             OpenConquer.Content.Images.RgbaImage idleTile = LoginRetailRealmTileArtwork.Load();
             serverCell = graphicsDevice.CreateTexture2D(idleTile.Width, idleTile.Height, idleTile.Pixels.Span);
+            OpenConquer.Content.Images.RgbaImage unopened = LoginRetailRealmFallbackArtwork.LoadUnopened();
+            unopenedRealm = graphicsDevice.CreateTexture2D(unopened.Width, unopened.Height, unopened.Pixels.Span);
+            OpenConquer.Content.Images.RgbaImage fallback = LoginRetailRealmFallbackArtwork.LoadDefault();
+            defaultRealm = graphicsDevice.CreateTexture2D(fallback.Width, fallback.Height, fallback.Pixels.Span);
         }
         catch
         {
+            try
+            {
+                defaultRealm?.Dispose();
+            }
+            catch { }
+            try
+            {
+                unopenedRealm?.Dispose();
+            }
+            catch { }
             try
             {
                 serverCell?.Dispose();
@@ -113,6 +131,8 @@ internal sealed class LoginPresentation : IDisposable
         _topDragon = topDragon;
         _regionCell = regionCell;
         _serverCell = serverCell;
+        _unopenedRealm = unopenedRealm;
+        _defaultRealm = defaultRealm;
         _layout = layout;
         _pageControls = pageControls;
         _labels = new LoginLabelPresentation(graphicsDevice, layout);
@@ -120,10 +140,11 @@ internal sealed class LoginPresentation : IDisposable
     }
 
     /// <summary>Draws retail background and chrome before icon and selection-effect layers.</summary>
-    public void DrawBackdrop(OpenGLRenderer renderer, LoginRetailBirdPresentation? bird)
+    public void DrawBackdrop(OpenGLRenderer renderer, LoginServerSelection selection, LoginRetailBirdPresentation? bird)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
+        ArgumentNullException.ThrowIfNull(selection);
 
         DrawLayer(renderer, _backdrop, _layout.Backdrop);
         // Sprite 22 is at root depth 2, above backdrop and below all login chrome.
@@ -136,9 +157,23 @@ internal sealed class LoginPresentation : IDisposable
             DrawLayer(renderer, _regionCell, placement);
         }
 
-        foreach (LoginSpritePlacement placement in _layout.ServerCells)
+        ReadOnlySpan<LoginSpritePlacement> serverCells = _layout.ServerCells;
+        for (int slot = 0; slot < serverCells.Length; slot++)
         {
+            LoginSpritePlacement placement = serverCells[slot];
             DrawLayer(renderer, _serverCell, placement);
+            LoginServer? server = selection.ServerAtSlot(slot);
+            if (server is null)
+            {
+                // Original 5517 `ss.flush`: absent rows load unopenedS.swf and disable hit testing.
+                DrawRealmMovie(renderer, _unopenedRealm, placement);
+            }
+            else if (server.IconId is null)
+            {
+                // Original 5517 `ss.flush`: populated rows without `pic` load defaultS.swf.
+                DrawRealmMovie(renderer, _defaultRealm, placement);
+            }
+            // Verified named icons are composited by LoginServerIconPresentation.
         }
 
         DrawLayer(renderer, _accountPanel, _layout.AccountPanel);
@@ -201,6 +236,8 @@ internal sealed class LoginPresentation : IDisposable
             firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
+        DisposeTexture(_defaultRealm, ref firstFailure);
+        DisposeTexture(_unopenedRealm, ref firstFailure);
         DisposeTexture(_serverCell, ref firstFailure);
         DisposeTexture(_regionCell, ref firstFailure);
         DisposeTexture(_topDragon, ref firstFailure);
@@ -273,6 +310,15 @@ internal sealed class LoginPresentation : IDisposable
 
         LoginSpritePlacement cell = placements[slot];
         renderer.DrawLineRectangle(cell.X, cell.Y, cell.X + cell.Width - 1, cell.Y + cell.Height - 1, color);
+    }
+
+    private void DrawRealmMovie(OpenGLRenderer renderer, OpenGLTexture2D movie, LoginSpritePlacement holder)
+    {
+        // SWF root frame 1 places composed shape 3 at identity. The full 170x90
+        // movie includes the thumbnail chrome and the area beneath it.
+        int width = checked((int)(((long)movie.Width * _layout.Width + 512) / 1024));
+        int height = checked((int)(((long)movie.Height * _layout.Height + 384) / 768));
+        renderer.DrawSprite(movie, holder.X, holder.Y, width, height);
     }
 
     private static void DrawLayer(OpenGLRenderer renderer, OpenGLTexture2D texture, LoginSpritePlacement placement) =>

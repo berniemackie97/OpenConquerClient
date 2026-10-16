@@ -18,6 +18,21 @@ public sealed class LoginRetailMotionArtworkTests
         }
         Assert.Throws<ArgumentOutOfRangeException>(() => LoginRetailMotionArtwork.LoadOpening(27));
         Assert.Throws<ArgumentOutOfRangeException>(() => LoginRetailMotionArtwork.LoadOpening(-1));
+
+        // The opaque opening movie includes real fiery-gold dragons. Guard against
+        // accidentally packaging all-black frame placeholders in later conversions.
+        var dragons = LoginRetailMotionArtwork.LoadOpening(7);
+        ReadOnlySpan<byte> rgba = dragons.Pixels.Span;
+        bool foundGold = false;
+        for (int pixel = 0; pixel < rgba.Length; pixel += 4)
+        {
+            if (rgba[pixel] > 200 && rgba[pixel + 1] > 80 && rgba[pixel + 2] < 160)
+            {
+                foundGold = true;
+                break;
+            }
+        }
+        Assert.True(foundGold);
     }
 
     [Fact]

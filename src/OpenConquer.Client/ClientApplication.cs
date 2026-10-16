@@ -606,7 +606,7 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            login.DrawBackdrop(renderer, _retailBird);
+            login.DrawBackdrop(renderer, selection, _retailBird);
             icons.Draw(renderer, selection);
             if (_selectionPresentation is { } effects && _selectionMotion is { } motion)
             {

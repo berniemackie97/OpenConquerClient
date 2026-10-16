@@ -14,7 +14,8 @@ internal sealed class LoginRetailOpeningPresentation : IDisposable
     private readonly List<OpenGLTexture2D> _textures = [];
     private readonly int _stageWidth;
     private readonly int _stageHeight;
-    private readonly long _started;
+    private long _started;
+    private bool _startedPlaying;
     private bool _released;
 
     public LoginRetailOpeningPresentation(OpenGLGraphicsDevice graphics, LoginVisualLayout layout)
@@ -38,7 +39,6 @@ internal sealed class LoginRetailOpeningPresentation : IDisposable
                 }
                 _frames[frame] = texture;
             }
-            _started = Stopwatch.GetTimestamp();
         }
         catch
         {
@@ -51,12 +51,14 @@ internal sealed class LoginRetailOpeningPresentation : IDisposable
         }
     }
 
-    public bool IsPlaying => !_released && CurrentFrame < LoginRetailMotionArtwork.OpeningFrameCount;
+    public bool IsPlaying => !_released && (!_startedPlaying || CurrentFrame < LoginRetailMotionArtwork.OpeningFrameCount);
 
     private int CurrentFrame
     {
         get
         {
+            if (!_startedPlaying)
+                return 0;
             long frame = Stopwatch.GetElapsedTime(_started).Ticks * LoginRetailMotionArtwork.FramesPerSecond / TimeSpan.TicksPerSecond;
             return (int)Math.Min(frame, LoginRetailMotionArtwork.OpeningFrameCount);
         }
@@ -68,6 +70,14 @@ internal sealed class LoginRetailOpeningPresentation : IDisposable
         if (_released)
         {
             return;
+        }
+
+        // GPU/content initialization must not consume a one-second opening movie.
+        // Begin the real 30 fps timeline at the first rendered frame.
+        if (!_startedPlaying)
+        {
+            _started = Stopwatch.GetTimestamp();
+            _startedPlaying = true;
         }
 
         int frame = CurrentFrame;

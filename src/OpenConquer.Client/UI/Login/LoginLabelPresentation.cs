@@ -113,11 +113,10 @@ internal sealed class LoginLabelPresentation : IDisposable
             if (selection.ServerAtSlot(index) is { } server)
             {
                 LoginSpritePlacement cell = serverCells[index];
-                if (server.IconId is not null)
-                {
-                    int gap = Math.Max(1, Scale(3));
-                    cell = new LoginSpritePlacement(cell.X, checked(cell.Y + cell.Height + gap), cell.Width, Math.Max(1, Scale(21)));
-                }
+                // `ss` places the realm label under its thumbnail for both named art
+                // and the native defaultS.swf fallback. Never paint over the thumbnail.
+                int gap = Math.Max(1, Scale(3));
+                cell = new LoginSpritePlacement(cell.X, checked(cell.Y + cell.Height + gap), cell.Width, Math.Max(1, Scale(21)));
 
                 servers[index] = PrepareLabel(text, server.DisplayName, cell);
             }

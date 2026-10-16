@@ -49,6 +49,7 @@
     <EmbeddedResource Include="Assets/Login/RetailPanel/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RetailPanel.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Assets/Login/RetailMotion/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RetailMotion.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Assets/Login/RetailSelection/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RetailSelection.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Assets/Login/RetailFallback/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RetailFallback.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Assets/Login/RetailMotion/BirdFrames.bin" LogicalName="OpenConquer.Content.Assets.Login.RetailMotion.BirdFrames.bin" />
     <EmbeddedResource Include="Assets/RealmIcons/*.rgba.br" LogicalName="OpenConquer.Content.Assets.RealmIcons.%(Filename)%(Extension)" />
   </ItemGroup>
