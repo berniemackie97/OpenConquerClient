@@ -32,6 +32,8 @@ internal sealed class ClientApplication : IDisposable
     private LoginRetailFlashPresentation? _retailFlashPresentation;
     private LoginRetailOpeningPresentation? _retailOpening;
     private LoginRetailBirdPresentation? _retailBird;
+    private LoginRetailSelectionMotion? _selectionMotion;
+    private LoginRetailSelectionPresentation? _selectionPresentation;
     private LoginRetailPanelControls? _retailPanelControls;
     private LoginServerIconPresentation? _serverIcons;
     private LoginActionInput? _actionInput;
@@ -167,6 +169,8 @@ internal sealed class ClientApplication : IDisposable
                 _retailFlashPresentation = null;
                 _retailOpening = null;
                 _retailBird = null;
+                _selectionMotion = null;
+                _selectionPresentation = null;
                 _retailPanelControls = null;
                 _serverIcons = null;
                 _actionInput = null;
@@ -192,6 +196,7 @@ internal sealed class ClientApplication : IDisposable
         _loginSelection = new LoginServerSelection();
         LoginVisualLayout layout = LoginVisualLayout.Create(_logicalRenderSize.Value);
         _loginSelectionInput = new LoginSelectionInput(layout, _loginSelection);
+        _selectionMotion = new LoginRetailSelectionMotion(layout);
         _loginCredentials = new LoginCredentialInput(_loginSelection, LoginCredentialLayout.Create(layout));
         _actionInput = new LoginActionInput(LoginActionLayout.Create(layout));
         _retailPanelControls = new LoginRetailPanelControls(LoginRetailFlashLayout.Create(layout),
@@ -218,6 +223,7 @@ internal sealed class ClientApplication : IDisposable
         LoginRetailFlashPresentation? retailFlash = null;
         LoginRetailOpeningPresentation? opening = null;
         LoginRetailBirdPresentation? bird = null;
+        LoginRetailSelectionPresentation? selectionPresentation = null;
         LoginAudioPlayer? audio = null;
 
         try
@@ -235,6 +241,7 @@ internal sealed class ClientApplication : IDisposable
             icons = new LoginServerIconPresentation(graphicsDevice, layout);
             retailFlash = new LoginRetailFlashPresentation(graphicsDevice, layout);
             bird = new LoginRetailBirdPresentation(graphicsDevice, layout);
+            selectionPresentation = new LoginRetailSelectionPresentation(graphicsDevice, layout);
             opening = new LoginRetailOpeningPresentation(graphicsDevice, layout);
             audio = LoginAudioPlayer.TryCreate();
 
@@ -247,6 +254,7 @@ internal sealed class ClientApplication : IDisposable
             _retailFlashPresentation = retailFlash;
             _retailOpening = opening;
             _retailBird = bird;
+            _selectionPresentation = selectionPresentation;
             _audioPlayer = audio;
         }
         catch
@@ -260,6 +268,12 @@ internal sealed class ClientApplication : IDisposable
             try
             {
                 opening?.Dispose();
+            }
+            catch { }
+
+            try
+            {
+                selectionPresentation?.Dispose();
             }
             catch { }
 
@@ -335,6 +349,7 @@ internal sealed class ClientApplication : IDisposable
         }
 
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+        _selectionMotion?.PointerMoved(mapped, x, y);
         if (_retailPanelControls?.PointerMoved(mapped, x, y) == true)
         {
             _audioPlayer?.Play(LoginAudioCue.ButtonHover);
@@ -451,6 +466,7 @@ internal sealed class ClientApplication : IDisposable
             _loginCredentials?.FocusLost();
             _actionInput?.FocusLost();
             _retailPanelControls?.FocusLost();
+            _selectionMotion?.ClearPointer();
             _audioFeedback?.Reset();
         }
         _audioPlayer?.SetFocused(focused);
@@ -580,6 +596,8 @@ internal sealed class ClientApplication : IDisposable
         if (double.IsFinite(elapsedSeconds) && elapsedSeconds >= 0)
         {
             _retailPanelControls?.Advance(TimeSpan.FromSeconds(Math.Min(elapsedSeconds, 0.25)));
+            _selectionMotion?.Advance(elapsedSeconds, selection,
+                interactive: _retailOpening?.IsPlaying != true && _retailPanelControls is not { CapturesPointer: true });
         }
 
         renderer.BeginFrame();
@@ -587,8 +605,13 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            login.Draw(renderer, selection, input, credentials, _retailBird);
+            login.DrawBackdrop(renderer, _retailBird);
             icons.Draw(renderer, selection);
+            if (_selectionPresentation is { } effects && _selectionMotion is { } motion)
+            {
+                effects.Draw(renderer, selection, motion);
+            }
+            login.DrawForeground(renderer, selection, input, credentials);
             actions.Draw(renderer, actionInput);
             status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
                 _catalogRefresh?.LastAttemptFailed ?? false, selection));
@@ -645,6 +668,7 @@ internal sealed class ClientApplication : IDisposable
         LoginRetailFlashPresentation? retailFlash = _retailFlashPresentation;
         LoginRetailOpeningPresentation? opening = _retailOpening;
         LoginRetailBirdPresentation? bird = _retailBird;
+        LoginRetailSelectionPresentation? effects = _selectionPresentation;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
@@ -655,6 +679,7 @@ internal sealed class ClientApplication : IDisposable
         _retailFlashPresentation = null;
         _retailOpening = null;
         _retailBird = null;
+        _selectionPresentation = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -665,6 +690,12 @@ internal sealed class ClientApplication : IDisposable
             opening?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            effects?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {

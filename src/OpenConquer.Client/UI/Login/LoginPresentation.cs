@@ -17,8 +17,6 @@ internal sealed class LoginPresentation : IDisposable
     private readonly OpenGLTexture2D _topDragon;
     private readonly OpenGLTexture2D _regionCell;
     private readonly OpenGLTexture2D _serverCell;
-    private readonly OpenGLTexture2D _selectedRegion;
-    private readonly OpenGLTexture2D _selectedServerGlow;
     private readonly LoginVisualLayout _layout;
     private readonly LoginPageControls _pageControls;
     private readonly LoginLabelPresentation _labels;
@@ -43,9 +41,7 @@ internal sealed class LoginPresentation : IDisposable
             artwork.AccountPanel is not { Width: 508, Height: 98 } ||
             artwork.TopDragon is not { Width: 494, Height: 140 } ||
             artwork.RegionCell is not { Width: 154, Height: 54 } ||
-            artwork.ServerCell is not { Width: 158, Height: 58 } ||
-            artwork.SelectedRegion is not { Width: 150, Height: 50 } ||
-            artwork.SelectedServerGlow is not { Width: 200, Height: 100 })
+            artwork.ServerCell is not { Width: 158, Height: 58 })
         {
             throw new InvalidDataException("Login visual dimensions do not match the verified source artwork.");
         }
@@ -57,8 +53,6 @@ internal sealed class LoginPresentation : IDisposable
         OpenGLTexture2D? topDragon = null;
         OpenGLTexture2D? regionCell = null;
         OpenGLTexture2D? serverCell = null;
-        OpenGLTexture2D? selectedRegion = null;
-        OpenGLTexture2D? selectedServerGlow = null;
 
         try
         {
@@ -69,21 +63,9 @@ internal sealed class LoginPresentation : IDisposable
             topDragon = graphicsDevice.CreateTexture2D(artwork.TopDragon.Width, artwork.TopDragon.Height, artwork.TopDragon.Pixels.Span);
             regionCell = graphicsDevice.CreateTexture2D(artwork.RegionCell.Width, artwork.RegionCell.Height, artwork.RegionCell.Pixels.Span);
             serverCell = graphicsDevice.CreateTexture2D(artwork.ServerCell.Width, artwork.ServerCell.Height, artwork.ServerCell.Pixels.Span);
-            selectedRegion = graphicsDevice.CreateTexture2D(artwork.SelectedRegion.Width, artwork.SelectedRegion.Height, artwork.SelectedRegion.Pixels.Span);
-            selectedServerGlow = graphicsDevice.CreateTexture2D(artwork.SelectedServerGlow.Width, artwork.SelectedServerGlow.Height, artwork.SelectedServerGlow.Pixels.Span);
         }
         catch
         {
-            try
-            {
-                selectedServerGlow?.Dispose();
-            }
-            catch { }
-            try
-            {
-                selectedRegion?.Dispose();
-            }
-            catch { }
             try
             {
                 serverCell?.Dispose();
@@ -129,21 +111,17 @@ internal sealed class LoginPresentation : IDisposable
         _topDragon = topDragon;
         _regionCell = regionCell;
         _serverCell = serverCell;
-        _selectedRegion = selectedRegion;
-        _selectedServerGlow = selectedServerGlow;
         _layout = layout;
         _pageControls = pageControls;
         _labels = new LoginLabelPresentation(graphicsDevice, layout);
         _credentials = new LoginCredentialPresentation(graphicsDevice, layout);
     }
 
-    public void Draw(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input, LoginCredentialInput credentials, LoginRetailBirdPresentation? bird = null)
+    /// <summary>Draws retail background and chrome before icon and selection-effect layers.</summary>
+    public void DrawBackdrop(OpenGLRenderer renderer, LoginRetailBirdPresentation? bird)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
-        ArgumentNullException.ThrowIfNull(selection);
-        ArgumentNullException.ThrowIfNull(input);
-        ArgumentNullException.ThrowIfNull(credentials);
 
         DrawLayer(renderer, _backdrop, _layout.Backdrop);
         // Sprite 22 is at root depth 2, above backdrop and below all login chrome.
@@ -161,18 +139,18 @@ internal sealed class LoginPresentation : IDisposable
             DrawLayer(renderer, _serverCell, placement);
         }
 
-        if (selection.SelectedRegionSlot is >= 0 and < LoginServerSelection.RegionsPerPage)
-        {
-            DrawLayer(renderer, _selectedRegion, LoginSelectionArtworkLayout.SelectedRegion(_layout, selection.SelectedRegionSlot));
-        }
-
-        if (selection.SelectedServerSlot is >= 0 and < LoginServerSelection.ServersPerPage)
-        {
-            DrawLayer(renderer, _selectedServerGlow, LoginSelectionArtworkLayout.SelectedServer(_layout, selection.SelectedServerSlot));
-        }
-
         DrawLayer(renderer, _accountPanel, _layout.AccountPanel);
         DrawLayer(renderer, _topDragon, _layout.TopDragon);
+    }
+
+    /// <summary>Places trusted dynamic labels and keyboard focus above original selection effects.</summary>
+    public void DrawForeground(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input, LoginCredentialInput credentials)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(renderer);
+        ArgumentNullException.ThrowIfNull(selection);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(credentials);
 
         _labels.Draw(renderer, selection);
         _credentials.Draw(renderer, credentials);
@@ -221,8 +199,6 @@ internal sealed class LoginPresentation : IDisposable
             firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
-        DisposeTexture(_selectedServerGlow, ref firstFailure);
-        DisposeTexture(_selectedRegion, ref firstFailure);
         DisposeTexture(_serverCell, ref firstFailure);
         DisposeTexture(_regionCell, ref firstFailure);
         DisposeTexture(_topDragon, ref firstFailure);
