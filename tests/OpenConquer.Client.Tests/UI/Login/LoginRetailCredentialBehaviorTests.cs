@@ -42,17 +42,29 @@ public sealed class LoginRetailCredentialBehaviorTests
         Assert.True(input.PointerPressed(true, fields.PasswordField.X + 2, fields.PasswordField.Y + 2));
         input.TextEntered('A');
         input.TextEntered('B');
+        input.PointerReleased();
+
+        // Once password already has focus, native Tab and Shift+Tab do not move
+        // focus or change the current caret/selection.
+        Assert.True(input.KeyPressed(new DesktopKeyEvent(DesktopKey.Left, DesktopKeyModifiers.None, false)));
+        int caret = input.CaretIndex;
         Assert.True(input.KeyPressed(new DesktopKeyEvent(DesktopKey.Tab, DesktopKeyModifiers.Shift, false)));
+        Assert.True(input.KeyPressed(new DesktopKeyEvent(DesktopKey.Tab, DesktopKeyModifiers.None, false)));
         Assert.Equal(LoginCredentialFocus.Password, input.Focus);
-        Assert.Equal(0, input.SelectionStart);
-        Assert.Equal(2, input.SelectionEnd);
+        Assert.Equal(caret, input.CaretIndex);
+        Assert.False(input.HasSelection);
+
+        // Account -> Password is the single retail Tab transition, selecting
+        // the entire existing password for replacement.
         Assert.True(input.PointerPressed(true, fields.AccountField.X + 2, fields.AccountField.Y + 2));
+        input.PointerReleased();
         Assert.True(input.KeyPressed(new DesktopKeyEvent(DesktopKey.Tab, DesktopKeyModifiers.None, false)));
         Assert.Equal(LoginCredentialFocus.Password, input.Focus);
         Assert.Equal(0, input.SelectionStart);
         Assert.Equal(2, input.SelectionEnd);
         input.TextEntered('C');
         Assert.Equal(1, input.PasswordLength);
+        Assert.False(input.HasSelection);
     }
 
     [Fact]

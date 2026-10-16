@@ -445,8 +445,8 @@ internal sealed class ClientApplication : IDisposable
             _loginCredentials?.PointerReleased();
             if (_retailPanelControls is { CapturesPointer: true } panel && _loginCredentials is { } credentials)
             {
-                LoginRetailPanelEvent action = panel.PointerReleased(mapped, x, y, credentials);
-                if (action != LoginRetailPanelEvent.None)
+                LoginRetailPanelEvent panelEvent = panel.PointerReleased(mapped, x, y, credentials);
+                if (panelEvent != LoginRetailPanelEvent.None)
                     _audioPlayer?.Play(LoginAudioCue.ButtonClick);
                 return;
             }
