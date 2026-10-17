@@ -130,7 +130,7 @@ public sealed class LoginAccountSessionTests
             return await stream.ReadAsync(buffer);
         }
         catch (IOException exception) when (exception.InnerException is SocketException
-            { SocketErrorCode: SocketError.ConnectionReset or SocketError.ConnectionAborted })
+        { SocketErrorCode: SocketError.ConnectionReset or SocketError.ConnectionAborted })
         {
             // Aborting a socket with unread data may surface as a TCP reset rather than EOF.
             return 0;
