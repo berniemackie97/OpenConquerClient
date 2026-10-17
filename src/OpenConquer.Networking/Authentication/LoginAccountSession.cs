@@ -14,7 +14,10 @@ internal sealed class LoginAccountSession : IAsyncDisposable
     private readonly LoginLegacyStreamCipher _cipher = new();
     private int _disposed;
 
-    private LoginAccountSession(TcpClient client) => _client = client;
+    private LoginAccountSession(TcpClient client)
+    {
+        _client = client;
+    }
 
     internal uint Seed { get; private set; }
 
@@ -40,7 +43,10 @@ internal sealed class LoginAccountSession : IAsyncDisposable
 
         // Native AccountServer ingress is IPv4. There is no DH negotiation or trailer
         // in this legacy mode and the initial packet is server-to-client.
-        TcpClient client = new(System.Net.Sockets.AddressFamily.InterNetwork) { NoDelay = true };
+        TcpClient client = new(System.Net.Sockets.AddressFamily.InterNetwork)
+        {
+            NoDelay = true
+        };
         try
         {
             using (CancellationTokenSource connectDeadline =
