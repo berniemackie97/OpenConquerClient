@@ -14,8 +14,14 @@ internal static class LoginDecodedFrameReader
 
     /// <summary>
     /// Takes exactly one complete [length:u16][type:u16][body] frame, leaving any later bytes
-    /// in <paramref name="input"/>. Incomplete input is unchanged; invalid headers fail closed.
+    /// in <paramref name="input"/>. Incomplete input is unchanged. The returned frame is a
+    /// borrowed view into the caller's memory, valid only until that memory is reused or released.
     /// </summary>
+    /// <returns><see langword="true"/> for a complete, valid frame; <see langword="false"/> only
+    /// when more decoded bytes are required.</returns>
+    /// <exception cref="InvalidDataException">The length is outside native bounds or the packet
+    /// type is zero. This is a terminal protocol violation: the session owner must disconnect,
+    /// not treat the data as incomplete or attempt to resynchronize.</exception>
     internal static bool TryRead(ref ReadOnlySequence<byte> input, out ReadOnlySequence<byte> frame)
     {
         frame = default;

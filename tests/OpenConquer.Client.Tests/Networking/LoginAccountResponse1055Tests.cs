@@ -21,6 +21,19 @@ public sealed class LoginAccountResponse1055Tests
     }
 
     [Fact]
+    public void DiagnosticTextRedactsAuthenticationFieldsAndEndpoint()
+    {
+        byte[] successful = Response(0x12345678, 0x89ABCDEF, 5816, 77, "127.0.0.1");
+        Assert.True(LoginAccountResponse1055.TryRead(successful, out LoginAccountResponse1055 response));
+        Assert.Equal("LoginAccountResponse1055 { IsSuccess = True }", response.ToString());
+        Assert.Equal("LoginAccountResponse1055 { IsSuccess = True }", $"{response}");
+
+        byte[] failed = Response(0, 20, 5816, 77, "127.0.0.1");
+        Assert.True(LoginAccountResponse1055.TryRead(failed, out LoginAccountResponse1055 failure));
+        Assert.Equal("LoginAccountResponse1055 { IsSuccess = False }", failure.ToString());
+    }
+
+    [Fact]
     public void FailureReadsOnlyTheNativeFailureCodeNotStaleEndpointBytes()
     {
         byte[] frame = Response(session: 0, key: 20, port: 5816, additional: 9, host: "10.1.2.3");

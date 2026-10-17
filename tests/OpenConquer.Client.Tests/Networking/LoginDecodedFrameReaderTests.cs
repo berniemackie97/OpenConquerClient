@@ -35,6 +35,18 @@ public sealed class LoginDecodedFrameReaderTests
     }
 
     [Fact]
+    public void ReturnedFrameBorrowsCallerMemoryRatherThanCapturingAnImmutableSnapshot()
+    {
+        byte[] backing = Seed(42);
+        ReadOnlySequence<byte> input = new(backing);
+
+        Assert.True(LoginDecodedFrameReader.TryRead(ref input, out ReadOnlySequence<byte> frame));
+        backing[4] = 0xA5;
+
+        Assert.Equal((byte)0xA5, frame.FirstSpan[4]);
+    }
+
+    [Fact]
     public void SplitHeaderAcrossSequenceSegmentsParsesWithoutCopyingTheFrame()
     {
         byte[] seed = Seed(0x13572468);
@@ -65,6 +77,25 @@ public sealed class LoginDecodedFrameReaderTests
             LoginDecodedFrameReader.TryRead(ref candidate, out _);
         });
         Assert.Equal(4, buffer.Length);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    [InlineData(1025)]
+    [InlineData(65535)]
+    public void InvalidLengthFailsImmediatelyWhenOnlyTwoBytesHaveArrived(int length)
+    {
+        byte[] headerPrefix = new byte[2];
+        BinaryPrimitives.WriteUInt16LittleEndian(headerPrefix, checked((ushort)length));
+        ReadOnlySequence<byte> input = new(headerPrefix);
+
+        Assert.Throws<InvalidDataException>(() =>
+        {
+            ReadOnlySequence<byte> candidate = new(headerPrefix);
+            LoginDecodedFrameReader.TryRead(ref candidate, out _);
+        });
+        Assert.Equal(headerPrefix, input.ToArray());
     }
 
     [Fact]

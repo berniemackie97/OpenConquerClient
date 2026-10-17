@@ -59,7 +59,17 @@ session state and independently validate any handoff; these types never initiate
 - No per-byte heap allocations during transformation. The two static 256-byte schedules are
   non-secret legacy constants; the per-session stream positions are private.
 - Do not log raw frames, credentials, session identifiers, tickets, auth keys, or full endpoints.
-- `TryRead` returns immutable value data; it never performs network I/O or spawns tasks.
+- `LoginAccountResponse1055.TryRead` produces parsed value data containing sensitive fields.
+  Its `ToString()` emits only a safe status summary, but callers must not structurally
+  serialize or log its fields, nor log raw response frames.
+- `LoginDecodedFrameReader.TryRead` returns a borrowed `ReadOnlySequence<byte>` slice,
+  not an immutable snapshot. Its validity ends when the caller advances/releases a pipe
+  buffer or otherwise reuses or mutates its backing memory. Copy explicitly if retention
+  beyond that lifetime is required.
+- `LoginDecodedFrameReader.TryRead` returns `false` only for incomplete input. Malformed
+  lengths and zero packet types throw `InvalidDataException` without consuming the input;
+  the session owner must terminate that connection and must not resynchronize the stream.
+- Neither parser performs network I/O or spawns tasks.
 - Do not reproduce native out-of-bounds reads or permit arbitrary DNS names from a 1055 packet.
 - Do not infer live realm status from directory membership or login endpoint liveness.
 
