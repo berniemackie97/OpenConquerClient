@@ -1,6 +1,9 @@
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Fail-closed region/server selection with fixed-size pages matching the login grid.</summary>
+/// <summary>
+/// Fail-closed region/server selection over the retail grids: sixteen region holders per page, and the
+/// twelve server holders of the selected region (sprite 180 has no server paging).
+/// </summary>
 internal sealed class LoginServerSelection
 {
     public const int RegionsPerPage = 16;
@@ -11,14 +14,9 @@ internal sealed class LoginServerSelection
     {
         get; private set;
     }
-    public int ServerPage
-    {
-        get; private set;
-    }
     public int SelectedRegionIndex { get; private set; } = -1;
     public int SelectedServerIndex { get; private set; } = -1;
     public int RegionPageCount => PageCount(Catalog.Regions.Count, RegionsPerPage);
-    public int ServerPageCount => PageCount(SelectedRegion?.Servers.Count ?? 0, ServersPerPage);
 
     public LoginRegion? SelectedRegion => SelectedRegionIndex >= 0 ? Catalog.Regions[SelectedRegionIndex] : null;
     public LoginServer? SelectedServer => SelectedRegion is { } region && SelectedServerIndex >= 0 ? region.Servers[SelectedServerIndex] : null;
@@ -29,7 +27,6 @@ internal sealed class LoginServerSelection
 
         Catalog = catalog;
         RegionPage = 0;
-        ServerPage = 0;
         SelectedRegionIndex = -1;
         SelectedServerIndex = -1;
     }
@@ -52,8 +49,7 @@ internal sealed class LoginServerSelection
             return null;
         }
 
-        int index = ServerPage * ServersPerPage + slot;
-        return index < region.Servers.Count ? region.Servers[index] : null;
+        return slot < region.Servers.Count ? region.Servers[slot] : null;
     }
 
     public bool SelectRegionSlot(int slot)
@@ -69,7 +65,6 @@ internal sealed class LoginServerSelection
         {
             SelectedRegionIndex = index;
             SelectedServerIndex = -1;
-            ServerPage = 0;
         }
 
         return true;
@@ -82,7 +77,7 @@ internal sealed class LoginServerSelection
             return false;
         }
 
-        SelectedServerIndex = ServerPage * ServersPerPage + slot;
+        SelectedServerIndex = slot;
         return true;
     }
 
@@ -96,30 +91,13 @@ internal sealed class LoginServerSelection
             return false;
         }
 
+        // `sr.flush(page)` reloads the holder movies only; the selected region and its servers stay.
         RegionPage = target;
-        ServerPage = 0;
-        SelectedRegionIndex = -1;
-        SelectedServerIndex = -1;
-        return true;
-    }
-
-    public bool ChangeServerPage(int direction)
-    {
-        ValidatePageDirection(direction);
-        int target = ServerPage + direction;
-
-        if (target < 0 || target >= ServerPageCount)
-        {
-            return false;
-        }
-
-        ServerPage = target;
-        SelectedServerIndex = -1;
         return true;
     }
 
     public int SelectedRegionSlot => SelectedRegionIndex >= 0 && SelectedRegionIndex / RegionsPerPage == RegionPage ? SelectedRegionIndex % RegionsPerPage : -1;
-    public int SelectedServerSlot => SelectedServerIndex >= 0 && SelectedServerIndex / ServersPerPage == ServerPage ? SelectedServerIndex % ServersPerPage : -1;
+    public int SelectedServerSlot => SelectedServerIndex;
 
     private static int PageCount(int count, int perPage) => (count + perPage - 1) / perPage;
 

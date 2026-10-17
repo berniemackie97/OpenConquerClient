@@ -6,10 +6,10 @@ using OpenConquer.Rendering.Sprites;
 
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Original retail 5517 selection and rollover sprites, owned by one OpenGL context.</summary>
+/// <summary>Original retail 5517 server-tile rollover and selection sprites, owned by one OpenGL context.</summary>
 internal sealed class LoginRetailSelectionPresentation : IDisposable
 {
-    private readonly OpenGLTexture2D?[] _atlases = new OpenGLTexture2D?[5];
+    private readonly OpenGLTexture2D?[] _atlases = new OpenGLTexture2D?[3];
     private readonly LoginVisualLayout _layout;
     private bool _disposed;
 
@@ -22,10 +22,8 @@ internal sealed class LoginRetailSelectionPresentation : IDisposable
         {
             for (; count < _atlases.Length; count++)
             {
-                // Group1 hover is not a generic region skin. Do not allocate or draw it
-                // for unrelated signed-directory regions.
-                if (count is (int)LoginRetailSelectionArtwork.Sequence.RegionHoverBorder or
-                    (int)LoginRetailSelectionArtwork.Sequence.RealmStatus)
+                // Status lights stay unallocated until an authenticated live-status source exists.
+                if (count == (int)LoginRetailSelectionArtwork.Sequence.RealmStatus)
                     continue;
                 LoginRetailSelectionArtwork.Sequence sequence = (LoginRetailSelectionArtwork.Sequence)count;
                 var image = LoginRetailSelectionArtwork.Load(sequence);
@@ -46,6 +44,7 @@ internal sealed class LoginRetailSelectionPresentation : IDisposable
         }
     }
 
+    /// <summary>Sprite 179 frame-6 rollover (sprite 83) and frame-12 selection (sprite 178), above the son movie.</summary>
     public void Draw(OpenGLRenderer renderer, LoginServerSelection selection, LoginRetailSelectionMotion motion)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -53,25 +52,13 @@ internal sealed class LoginRetailSelectionPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(motion);
 
-        // Region movies have group-specific rollover artwork. The Group1 export is
-        // not a valid fallback for arbitrary signed catalog regions, and cannot be
-        // displayed as a generic hover state.
-
-        int selectedRegion = selection.SelectedRegionSlot;
-        if ((uint)selectedRegion < (uint)_layout.RegionCells.Length)
-        {
-            LoginSpritePlacement rect = LoginSelectionArtworkLayout.SelectedRegion(_layout, selectedRegion);
-            DrawFrame(renderer, LoginRetailSelectionArtwork.Sequence.RegionFlame, motion.RegionFlameFrame, rect.X, rect.Y);
-        }
-
+        ReadOnlySpan<LoginStagePoint> holders = _layout.ServerHolders;
         int hoveredServer = motion.HoveredServerSlot;
-        if ((uint)hoveredServer < (uint)_layout.ServerCells.Length &&
+        if ((uint)hoveredServer < (uint)holders.Length &&
             selection.ServerAtSlot(hoveredServer) is not null && hoveredServer != selection.SelectedServerSlot)
         {
-            LoginSpritePlacement rect = _layout.ServerCells[hoveredServer];
-            // Sprite 179 frame 6 nests sprite 83 at (-22.65,-9) within the server holder.
-            DrawFrame(renderer, LoginRetailSelectionArtwork.Sequence.ServerHover, motion.ServerHoverFrame,
-                rect.X - Scale(23), rect.Y - Scale(9));
+            // Sprite 179 frame 6 nests sprite 83 at (-22.65, -9) within the server holder.
+            DrawFrame(renderer, LoginRetailSelectionArtwork.Sequence.ServerHover, motion.ServerHoverFrame, holders[hoveredServer], -23, -9);
         }
 
         // The original client initially seeded code 3 before its optional status
@@ -79,12 +66,10 @@ internal sealed class LoginRetailSelectionPresentation : IDisposable
         // and fresh realm telemetry; do not present that seed as a current health claim.
 
         int selectedServer = selection.SelectedServerSlot;
-        if ((uint)selectedServer < (uint)_layout.ServerCells.Length)
+        if ((uint)selectedServer < (uint)holders.Length)
         {
-            LoginSpritePlacement rect = _layout.ServerCells[selectedServer];
-            // Sprite 179 frame 12 places sprite 178 at (-26,-29) at its own root depth 8.
-            DrawFrame(renderer, LoginRetailSelectionArtwork.Sequence.ServerSelected, motion.ServerSelectedFrame,
-                rect.X - Scale(26), rect.Y - Scale(29));
+            // Sprite 179 frame 12 places sprite 178 at (-26, -29) at its own root depth 8.
+            DrawFrame(renderer, LoginRetailSelectionArtwork.Sequence.ServerSelected, motion.ServerSelectedFrame, holders[selectedServer], -26, -29);
         }
     }
 
@@ -105,16 +90,16 @@ internal sealed class LoginRetailSelectionPresentation : IDisposable
         first?.Throw();
     }
 
-    private void DrawFrame(OpenGLRenderer renderer, LoginRetailSelectionArtwork.Sequence sequence, int frame, int x, int y)
+    private void DrawFrame(OpenGLRenderer renderer, LoginRetailSelectionArtwork.Sequence sequence, int frame, LoginStagePoint holder,
+        int offsetX, int offsetY)
     {
         LoginRetailSelectionArtwork.Sheet sheet = LoginRetailSelectionArtwork.Describe(sequence);
         if ((uint)frame >= (uint)sheet.Count)
             throw new ArgumentOutOfRangeException(nameof(frame));
         SpriteSourceRectangle source = new((frame % sheet.Columns) * sheet.FrameWidth,
             (frame / sheet.Columns) * sheet.FrameHeight, sheet.FrameWidth, sheet.FrameHeight);
+        LoginSpritePlacement target = _layout.Offset(holder, offsetX, offsetY, sheet.FrameWidth, sheet.FrameHeight);
         renderer.DrawSprite(_atlases[(int)sequence] ?? throw new InvalidOperationException("Retail selection atlas is missing."),
-            source, x, y, Scale(sheet.FrameWidth), Scale(sheet.FrameHeight));
+            source, target.X, target.Y, target.Width, target.Height);
     }
-
-    private int Scale(int value) => checked((int)(((long)value * _layout.Width + 512) / 1024));
 }

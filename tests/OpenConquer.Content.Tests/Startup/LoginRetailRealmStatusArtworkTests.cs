@@ -2,17 +2,8 @@ using OpenConquer.Content.Startup;
 
 namespace OpenConquer.Content.Tests.Startup;
 
-public sealed class LoginRetailRealmTileArtworkTests
+public sealed class LoginRetailRealmStatusArtworkTests
 {
-    [Fact]
-    public void IdleFrameUsesOriginalSourceCropAndVerifiedPixels()
-    {
-        var tile = LoginRetailRealmTileArtwork.Load();
-        Assert.Equal(155, tile.Width);
-        Assert.Equal(59, tile.Height);
-        Assert.Equal(155 * 59 * 4, tile.Pixels.Length);
-    }
-
     [Fact]
     public void NativeStatusLightsHaveExactlyFourUnmodifiedEighteenPixelFrames()
     {

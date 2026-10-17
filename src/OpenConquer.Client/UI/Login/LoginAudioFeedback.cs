@@ -10,7 +10,6 @@ internal sealed class LoginAudioFeedback
         None, Region, Server, Page, Account, Password, Enter, Exit
     }
     private readonly LoginVisualLayout _layout;
-    private readonly LoginPageControls _pages;
     private readonly LoginActionLayout _actions;
     private readonly LoginCredentialLayout _fields;
     private HoverArea _hover;
@@ -21,7 +20,6 @@ internal sealed class LoginAudioFeedback
     {
         ArgumentNullException.ThrowIfNull(layout);
         _layout = layout;
-        _pages = LoginPageControls.Create(layout);
         _actions = LoginActionLayout.Create(layout);
         _fields = LoginCredentialLayout.Create(layout);
     }
@@ -86,26 +84,33 @@ internal sealed class LoginAudioFeedback
             return (HoverArea.Password, 0);
         }
 
-        if (_pages.TryHit(x, y, out LoginPageControl page) && LoginPageControls.IsEnabled(page, selection))
+        if (selection.RegionPageCount > 1)
         {
-            return (HoverArea.Page, (int)page);
-        }
-        ReadOnlySpan<LoginSpritePlacement> regions = _layout.RegionCells;
-        for (int slot = 0; slot < regions.Length; slot++)
-        {
-            if (selection.RegionAtSlot(slot) is not null && Contains(regions[slot], x, y))
+            if (Contains(_layout.RegionPagePrevious, x, y))
             {
-                return (HoverArea.Region, slot);
+                return (HoverArea.Page, 0);
+            }
+
+            if (Contains(_layout.RegionPageNext, x, y))
+            {
+                return (HoverArea.Page, 1);
             }
         }
-        ReadOnlySpan<LoginSpritePlacement> servers = _layout.ServerCells;
-        for (int slot = 0; slot < servers.Length; slot++)
+
+        // `sr` rollover sounds only for a region other than the selected one.
+        int region = LoginVisualLayout.HitSlot(_layout.RegionHitAreas, x, y);
+        if (region >= 0 && selection.RegionAtSlot(region) is not null && region != selection.SelectedRegionSlot)
         {
-            if (selection.ServerAtSlot(slot) is not null && Contains(servers[slot], x, y))
-            {
-                return (HoverArea.Server, slot);
-            }
+            return (HoverArea.Region, region);
         }
+
+        // `ss` rollover sounds for every enabled realm holder.
+        int server = LoginVisualLayout.HitSlot(_layout.ServerHitAreas, x, y);
+        if (server >= 0 && selection.ServerAtSlot(server) is not null)
+        {
+            return (HoverArea.Server, server);
+        }
+
         return (HoverArea.None, -1);
     }
 

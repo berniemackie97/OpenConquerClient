@@ -140,8 +140,6 @@ public sealed class LoginCatalogRefreshTests
         Assert.Same(replacement.View, selection.Catalog);
         Assert.Null(selection.SelectedRegion);
         Assert.Null(selection.SelectedServer);
-        Assert.Equal(-1, input.FocusedRegionSlot);
-        Assert.Equal(-1, input.FocusedServerSlot);
     }
 
     [Fact]

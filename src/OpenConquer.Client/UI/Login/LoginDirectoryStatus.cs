@@ -53,10 +53,11 @@ internal static class LoginDirectoryStatus
         ? "REALM DIRECTORY NOT CONFIGURED"
         : throw new ArgumentOutOfRangeException(nameof(availability), availability, "Only a missing authority has a visible banner.");
 
+    /// <summary>Spans the server grid's holder columns just below its last row; a modern notice with no retail counterpart.</summary>
     public static LoginSpritePlacement Bounds(LoginVisualLayout layout)
     {
         ArgumentNullException.ThrowIfNull(layout);
-        ReadOnlySpan<LoginSpritePlacement> servers = layout.ServerCells;
+        ReadOnlySpan<LoginSpritePlacement> servers = layout.ServerHitAreas;
         LoginSpritePlacement first = servers[0];
         LoginSpritePlacement last = servers[^1];
         int y = checked(last.Y + last.Height + Scale(8, layout.Width));

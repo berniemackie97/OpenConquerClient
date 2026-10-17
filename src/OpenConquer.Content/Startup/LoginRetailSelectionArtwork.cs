@@ -4,20 +4,16 @@ using OpenConquer.Content.Images;
 
 namespace OpenConquer.Content.Startup;
 
-/// <summary>Bounded, hash-verified 5517 region and server timeline artwork; no runtime SWF decoding.</summary>
+/// <summary>Bounded, hash-verified 5517 server-tile timeline artwork (start.dat sprites 83, 178 and 34); no runtime SWF decoding.</summary>
 public static class LoginRetailSelectionArtwork
 {
     public const int FramesPerSecond = 30;
-    public const int RegionFlameFrames = 25;
-    public const int RegionHoverFrames = 10;
     public const int ServerHoverFrames = 34;
     public const int ServerSelectedFrames = 47;
     public const int ServerSelectedLoopStart = 22; // Zero-based AVM1 label "aa" at source frame 23.
 
     public enum Sequence
     {
-        RegionFlame,
-        RegionHoverBorder,
         ServerHover,
         ServerSelected,
         RealmStatus
@@ -28,8 +24,6 @@ public static class LoginRetailSelectionArtwork
     private const string Prefix = "OpenConquer.Content.Assets.Login.RetailSelection.";
     private static readonly Sheet[] s_sheets =
     [
-        new(750, 250, 150, 50, 5, 25, "5E4D2A45870C80DAA195E2F9345E6FFACC69C2B327C2E5043784FC9C05F5B3B3"),
-        new(790, 116, 158, 58, 5, 10, "9287382B9F167D36F0C6D02D2FFF1E4AAEC021DB73AF97809C5952F8715E5328"),
         new(1600, 600, 200, 120, 8, 34, "C8695D2B639DA9B12B49EC0B1786AF58E62FD392C2B9FEA9489E9605519EE4A3"),
         new(1760, 720, 220, 120, 8, 47, "C6DDCC3CE1ED6A121492763E369E534EBCBA5BD1A40EF902F5C2228A0C42938C"),
         new(72, 18, 18, 18, 4, 4, "5FA3C29BE37231F2CB83C54440C737C45BEFFB10694687D40680224BE3A5C7E2"),

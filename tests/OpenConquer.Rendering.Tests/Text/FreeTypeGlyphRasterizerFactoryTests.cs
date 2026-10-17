@@ -42,6 +42,46 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
     }
 
     [Fact]
+    public void Create_BoldFamily_SelectsTheBoldFaceBeforeTheRegularFace()
+    {
+        ResolvedFont regularFont = new("/fonts/arial.ttf", faceIndex: 0);
+        ResolvedFont boldFont = new("/fonts/arialbd.ttf", faceIndex: 0);
+        FakeFontResolver resolver = new();
+        resolver.Add("Arial", regularFont);
+        resolver.AddBold("Arial", boldFont);
+        FakeGlyphRasterizer expected = new();
+        FreeTypeGlyphRasterizerFactory factory = new(resolver, (font, _, _) =>
+        {
+            Assert.Same(boldFont, font);
+            return expected;
+        });
+
+        IGlyphRasterizer rasterizer = factory.Create("Arial", nominalPixelHeight: 14, antialiasEnabled: true, bold: true);
+
+        Assert.Same(expected, rasterizer);
+        Assert.Equal(["bold:Arial"], resolver.ResolvedTokens);
+    }
+
+    [Fact]
+    public void Create_BoldFamilyWithoutBoldFace_UsesTheRegularChain()
+    {
+        ResolvedFont regularFont = new("/fonts/arial.ttf", faceIndex: 0);
+        FakeFontResolver resolver = new();
+        resolver.Add("Arial", regularFont);
+        FakeGlyphRasterizer expected = new();
+        FreeTypeGlyphRasterizerFactory factory = new(resolver, (font, _, _) =>
+        {
+            Assert.Same(regularFont, font);
+            return expected;
+        });
+
+        IGlyphRasterizer rasterizer = factory.Create("Arial", nominalPixelHeight: 14, antialiasEnabled: true, bold: true);
+
+        Assert.Same(expected, rasterizer);
+        Assert.Equal(["bold:Arial", "Arial"], resolver.ResolvedTokens);
+    }
+
+    [Fact]
     public void Create_NullRequestedToken_StartsWithDefaultGuiFont()
     {
         ResolvedFont defaultGuiFont = new("/fonts/default.ttf", faceIndex: 1);
@@ -483,6 +523,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
     private sealed class FakeFontResolver : IFontResolver
     {
         private readonly Dictionary<string, ResolvedFont> _fonts = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ResolvedFont> _boldFonts = new(StringComparer.Ordinal);
         private readonly ResolvedFont? _defaultGuiFont;
 
         public FakeFontResolver(ResolvedFont? defaultGuiFont = null)
@@ -506,6 +547,17 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         {
             ResolvedTokens.Add(fontToken);
             return _fonts.TryGetValue(fontToken, out font);
+        }
+
+        public void AddBold(string familyName, ResolvedFont font)
+        {
+            _boldFonts.Add(familyName, font);
+        }
+
+        public bool TryResolveBold(string familyName, out ResolvedFont? font)
+        {
+            ResolvedTokens.Add("bold:" + familyName);
+            return _boldFonts.TryGetValue(familyName, out font);
         }
 
         public bool TryResolveDefaultGuiFont(out ResolvedFont? font)

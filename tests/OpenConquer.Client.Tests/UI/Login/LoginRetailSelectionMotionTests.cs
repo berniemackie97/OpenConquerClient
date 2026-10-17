@@ -66,8 +66,8 @@ public sealed class LoginRetailSelectionMotionTests
         selection.ReplaceCatalog(new LoginServerCatalog([
             new LoginRegion("region", "Region", [new LoginServer("realm", "Realm", "Protocol")])
         ]));
-        LoginSpritePlacement region = layout.RegionCells[0];
-        LoginSpritePlacement server = layout.ServerCells[0];
+        LoginSpritePlacement region = layout.RegionHitAreas[0];
+        LoginSpritePlacement server = layout.ServerHitAreas[0];
         motion.PointerMoved(true, server.X + 4, server.Y + 4);
         motion.Advance(1.0 / 30, selection, interactive: true);
         Assert.Equal(-1, motion.HoveredServerSlot); // No realm without a region.

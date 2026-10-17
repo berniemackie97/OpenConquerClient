@@ -6,12 +6,14 @@ using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Measures visible, whole ASCII glyphs for editing, selection and hit testing in the retail fields.</summary>
+/// <summary>
+/// Measures visible, whole ASCII glyphs for editing, selection and hit testing in the retail fields:
+/// device Arial 14, color #908B37, text area inside each field's 2-pixel gutter.
+/// </summary>
 internal sealed class LoginCredentialPresentation : IDisposable
 {
     private const int ReferenceWidth = 1024;
-    private static readonly SpriteColor s_text = new(245, 230, 194, 255);
-    private static readonly SpriteColor s_caret = new(255, 231, 135, 255);
+    private static readonly SpriteColor s_text = new(0x90, 0x8B, 0x37, 255);
     private static readonly SpriteColor s_selection = new(90, 117, 158, 150);
     private static readonly NativeTextRenderOptions s_style = new(NativeTextRenderStyle.Normal, s_text, s_text, 0, 0, NativeTextVertexColors.Solid(s_text));
     private readonly OpenGLGraphicsDevice _graphics;
@@ -38,8 +40,8 @@ internal sealed class LoginCredentialPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(layout);
         _graphics = graphics;
         _layout = LoginCredentialLayout.Create(layout);
-        _fontHeight = Math.Max(1, Scale(12, layout.Width));
-        _padding = Math.Max(1, Scale(4, layout.Width));
+        _fontHeight = Math.Max(1, Scale(14, layout.Width));
+        _padding = Math.Max(1, Scale(2, layout.Width));
     }
 
     public void Draw(OpenGLRenderer renderer, LoginCredentialInput input)
@@ -115,7 +117,7 @@ internal sealed class LoginCredentialPresentation : IDisposable
         ReleaseFont();
     }
 
-    private OpenGLTextContext GetFont() => _font ??= new OpenGLTextContext(_graphics, fontToken: null,
+    private OpenGLTextContext GetFont() => _font ??= new OpenGLTextContext(_graphics, fontToken: "Arial",
         nominalPixelHeight: _fontHeight, effectiveCodePage: 0, antialiasEnabled: true);
 
     private void EnsureLayout(LoginCredentialInput input)
@@ -154,7 +156,7 @@ internal sealed class LoginCredentialPresentation : IDisposable
     private Line BuildLine(OpenGLTextContext font, string value, int[] advances, LoginSpritePlacement field,
         int caret, Line? previous, ref int scrollStart)
     {
-        int usableWidth = Math.Max(1, field.Width - 2 * _padding - 2);
+        int usableWidth = Math.Max(1, field.Width - 2 * _padding);
         int start = Math.Clamp(scrollStart, 0, value.Length);
         int target = caret < 0 ? value.Length : Math.Clamp(caret, 0, value.Length);
         if (target < start)
@@ -181,13 +183,7 @@ internal sealed class LoginCredentialPresentation : IDisposable
         // NativeTextLayoutEngine advances each glyph without kerning; prefix deltas are exact.
         for (int i = 1; i < boundaries.Length; i++)
             boundaries[i] = advances[start + i] - advances[start];
-        int textY = field.Y + Math.Max(0, (field.Height - _fontHeight) / 2);
-        if (text is not null && text.TryGetInkBounds(out _, out int top, out _, out int bottom))
-        {
-            textY = field.Y + (field.Height - (bottom - top)) / 2 - top;
-        }
-
-        return new Line(field, start, end, field.X + _padding, textY, text, boundaries);
+        return new Line(field, start, end, field.X + _padding, field.Y + _padding, text, boundaries);
     }
 
     private void DrawLine(OpenGLRenderer renderer, Line? line, bool focused, LoginCredentialInput input)
@@ -217,7 +213,7 @@ internal sealed class LoginCredentialPresentation : IDisposable
         {
             int x = line.X + Boundary(line, input.CaretIndex);
             renderer.DrawSolidRectangle(Math.Clamp(x, line.Field.X + 1, line.Field.X + line.Field.Width - 2),
-                line.Field.Y + 2, 1, Math.Max(1, line.Field.Height - 4), s_caret);
+                line.Field.Y + 2, 1, Math.Max(1, line.Field.Height - 4), s_text);
         }
     }
 

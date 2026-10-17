@@ -34,6 +34,8 @@ internal sealed class ClientApplication : IDisposable
     private LoginRetailBirdPresentation? _retailBird;
     private LoginRetailSelectionMotion? _selectionMotion;
     private LoginRetailSelectionPresentation? _selectionPresentation;
+    private LoginVersionPresentation? _versionPresentation;
+    private string? _versionLabel;
     private LoginRetailPanelControls? _retailPanelControls;
     private LoginServerIconPresentation? _serverIcons;
     private LoginActionInput? _actionInput;
@@ -172,6 +174,7 @@ internal sealed class ClientApplication : IDisposable
                 _retailBird = null;
                 _selectionMotion = null;
                 _selectionPresentation = null;
+                _versionPresentation = null;
                 _retailPanelControls = null;
                 _serverIcons = null;
                 _actionInput = null;
@@ -191,6 +194,7 @@ internal sealed class ClientApplication : IDisposable
 
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
         LoginArtworkSet artwork = LoginArtwork.Load();
+        _versionLabel = ClientVersionLabel.Load(contentSource);
 
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
         _loginArtwork = artwork;
@@ -225,6 +229,7 @@ internal sealed class ClientApplication : IDisposable
         LoginRetailOpeningPresentation? opening = null;
         LoginRetailBirdPresentation? bird = null;
         LoginRetailSelectionPresentation? selectionPresentation = null;
+        LoginVersionPresentation? version = null;
         LoginAudioPlayer? audio = null;
 
         try
@@ -243,6 +248,8 @@ internal sealed class ClientApplication : IDisposable
             retailFlash = new LoginRetailFlashPresentation(graphicsDevice, layout);
             bird = new LoginRetailBirdPresentation(graphicsDevice, layout);
             selectionPresentation = new LoginRetailSelectionPresentation(graphicsDevice, layout);
+            version = new LoginVersionPresentation(graphicsDevice, layout,
+                _versionLabel ?? throw new InvalidOperationException("The client version label has not been loaded."));
             opening = new LoginRetailOpeningPresentation(graphicsDevice, layout);
             audio = LoginAudioPlayer.TryCreate();
 
@@ -256,6 +263,7 @@ internal sealed class ClientApplication : IDisposable
             _retailOpening = opening;
             _retailBird = bird;
             _selectionPresentation = selectionPresentation;
+            _versionPresentation = version;
             _audioPlayer = audio;
         }
         catch
@@ -269,6 +277,12 @@ internal sealed class ClientApplication : IDisposable
             try
             {
                 opening?.Dispose();
+            }
+            catch { }
+
+            try
+            {
+                version?.Dispose();
             }
             catch { }
 
@@ -351,6 +365,7 @@ internal sealed class ClientApplication : IDisposable
 
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
         _selectionMotion?.PointerMoved(mapped, x, y);
+        _loginSelectionInput?.PointerMoved(mapped, x, y);
         if (_retailPanelControls?.PointerMoved(mapped, x, y) == true)
         {
             _audioPlayer?.Play(LoginAudioCue.ButtonHover);
@@ -391,9 +406,9 @@ internal sealed class ClientApplication : IDisposable
         }
 
         int revision = _loginCredentials?.EditRevision ?? 0;
-        if (!TryHandleCredentialClipboard(key) && _loginCredentials?.KeyPressed(key) != true)
+        if (!TryHandleCredentialClipboard(key))
         {
-            _loginSelectionInput?.KeyPressed(key);
+            _loginCredentials?.KeyPressed(key);
         }
 
         PlayAcceptedCredentialEdit(revision);
@@ -517,12 +532,16 @@ internal sealed class ClientApplication : IDisposable
 
             bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
             bool credentialCaptured = !actionCaptured && _loginCredentials?.PointerPressed(mapped, x, y, credentialCaret, extend) == true;
-            input.PointerPressed(!actionCaptured && !credentialCaptured && mapped, x, y);
-
-            if (actionCaptured || credentialCaptured)
+            LoginSelectionEvent selectionEvent = input.PointerPressed(!actionCaptured && !credentialCaptured && mapped, x, y);
+            // flashLogin.ini [serverSelection]: click_region is empty, dragonMov follows a new region,
+            // click_server plays for every enabled realm press, the page buttons play on press.
+            _audioPlayer?.Play(selectionEvent switch
             {
-                input.FocusLost();
-            }
+                LoginSelectionEvent.RegionSelected => LoginAudioCue.Dragon,
+                LoginSelectionEvent.ServerPressed => LoginAudioCue.ServerSelect,
+                LoginSelectionEvent.PagePressed => LoginAudioCue.Page,
+                _ => null,
+            });
 
             if (actionCaptured && _actionInput?.Pressed == LoginActionButton.Exit)
             {
@@ -555,27 +574,7 @@ internal sealed class ClientApplication : IDisposable
                 return;
             }
 
-            LoginServerSelection? selection = _loginSelection;
-            int regionPage = selection?.RegionPage ?? -1;
-            int serverPage = selection?.ServerPage ?? -1;
-            LoginRegion? region = selection?.SelectedRegion;
-            LoginServer? server = selection?.SelectedServer;
             input.PointerReleased(mapped, x, y);
-            if (selection is not null)
-            {
-                if (regionPage != selection.RegionPage || serverPage != selection.ServerPage)
-                {
-                    _audioPlayer?.Play(LoginAudioCue.Page);
-                }
-                else if (!ReferenceEquals(server, selection.SelectedServer) && selection.SelectedServer is not null)
-                {
-                    _audioPlayer?.Play(LoginAudioCue.ServerSelect);
-                }
-                else if (!ReferenceEquals(region, selection.SelectedRegion) && selection.SelectedRegion is not null)
-                {
-                    _audioPlayer?.Play(LoginAudioCue.Dragon);
-                }
-            }
         }
     }
 
@@ -592,12 +591,14 @@ internal sealed class ClientApplication : IDisposable
         LoginActionPresentation actions = _actionPresentation ?? throw new InvalidOperationException("The login action artwork is not initialized.");
         LoginServerIconPresentation icons = _serverIcons ?? throw new InvalidOperationException("The realm icon renderer is not initialized.");
         LoginActionInput actionInput = _actionInput ?? throw new InvalidOperationException("The login action handler is not initialized.");
+        LoginRetailSelectionPresentation effects = _selectionPresentation ?? throw new InvalidOperationException("The retail selection artwork is not initialized.");
+        LoginRetailSelectionMotion motion = _selectionMotion ?? throw new InvalidOperationException("The retail selection timeline is not initialized.");
         credentials.Synchronize();
         ContinueCredentialDrag();
         if (double.IsFinite(elapsedSeconds) && elapsedSeconds >= 0)
         {
             _retailPanelControls?.Advance(TimeSpan.FromSeconds(Math.Min(elapsedSeconds, 0.25)));
-            _selectionMotion?.Advance(elapsedSeconds, selection,
+            motion.Advance(elapsedSeconds, selection,
                 interactive: _retailOpening?.IsPlaying != true && _retailPanelControls is not { CapturesPointer: true });
         }
 
@@ -606,21 +607,26 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            login.DrawBackdrop(renderer, selection, _retailBird);
+            // start.dat root display list: shape 11 (1), bird (2), server panel (4), region panel (138),
+            // shape 400 (216), enterMC (221), logo (274), verTxt (276).
+            login.DrawBackdrop(renderer);
+            _retailBird?.Draw(renderer);
+            login.DrawServerMovies(renderer, selection);
             icons.Draw(renderer, selection);
-            if (_selectionPresentation is { } effects && _selectionMotion is { } motion)
-            {
-                effects.Draw(renderer, selection, motion);
-            }
-            login.DrawForeground(renderer, selection, input, credentials);
-            actions.Draw(renderer, actionInput);
+            effects.Draw(renderer, selection, motion);
+            login.DrawServerLabels(renderer, selection);
             status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
                 _catalogRefresh?.LastAttemptFailed ?? false, selection));
+            login.DrawRegionPanel(renderer, selection, input, motion);
+            login.DrawStageBorder(renderer);
+            login.DrawAccountPanel(renderer, credentials);
+            actions.Draw(renderer, actionInput);
             if (_retailFlashPresentation is { } retailFlash && _retailPanelControls is { } panel)
             {
                 retailFlash.Draw(renderer, panel);
             }
 
+            _versionPresentation?.Draw(renderer);
             _retailOpening?.Draw(renderer);
         }
         catch (Exception exception)
@@ -670,6 +676,7 @@ internal sealed class ClientApplication : IDisposable
         LoginRetailOpeningPresentation? opening = _retailOpening;
         LoginRetailBirdPresentation? bird = _retailBird;
         LoginRetailSelectionPresentation? effects = _selectionPresentation;
+        LoginVersionPresentation? version = _versionPresentation;
         OpenGLRenderer? renderer = _renderer;
         OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
 
@@ -681,6 +688,7 @@ internal sealed class ClientApplication : IDisposable
         _retailOpening = null;
         _retailBird = null;
         _selectionPresentation = null;
+        _versionPresentation = null;
         _renderer = null;
         _graphicsDevice = null;
 
@@ -688,9 +696,15 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            opening?.Dispose();
+            version?.Dispose();
         }
         catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
+
+        try
+        {
+            opening?.Dispose();
+        }
+        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
 
         try
         {

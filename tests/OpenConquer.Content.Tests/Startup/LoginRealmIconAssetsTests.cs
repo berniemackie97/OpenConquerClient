@@ -21,12 +21,7 @@ public sealed class LoginRealmIconAssetsTests
                 string id = $"g{group:00}s{server:00}";
                 Assert.True(LoginRealmIconAssets.IsKnownId(id));
                 RgbaImage image = LoginRealmIconAssets.Load(id);
-                (int width, int height) = id switch
-                {
-                    "g09s01" => (164, 85),
-                    "g09s02" => (154, 54),
-                    _ => (156, 56)
-                };
+                (int width, int height) = id == "g09s01" ? (164, 85) : (170, 90);
                 Assert.Equal(width, image.Width);
                 Assert.Equal(height, image.Height);
                 Assert.Equal(width * height * 4, image.Pixels.Length);
@@ -36,7 +31,7 @@ public sealed class LoginRealmIconAssetsTests
         }
 
         Assert.Equal(LoginRealmIconAssets.IconCount, count);
-        Assert.Equal("39e3799ed5e4c274076127819ccad5b1fdac3905135db068d0b1c095765d5432", Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant());
+        Assert.Equal("c57d20964dc906cd5073f4094d1b91dd3cb7c9461fcad52cd4bb89fc4d45392c", Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant());
         Assert.Equal(count, typeof(LoginRealmIconAssets).Assembly.GetManifestResourceNames().Count(name =>
             name.StartsWith("OpenConquer.Content.Assets.RealmIcons.", StringComparison.Ordinal) && name.EndsWith(".rgba.br", StringComparison.Ordinal)));
     }

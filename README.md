@@ -134,7 +134,7 @@ Do not preserve obsolete implementation machinery when observable behavior can b
 
 ### Runtime Content
 
-The managed runtime closure currently contains 3,784 files totaling 21,319,837 bytes.
+The managed runtime closure currently contains 3,785 files totaling 21,319,841 bytes.
 
 The exact path set is authoritative in:
 

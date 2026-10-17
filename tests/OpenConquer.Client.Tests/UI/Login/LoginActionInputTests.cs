@@ -38,11 +38,11 @@ public sealed class LoginActionInputTests
             Assert.False(Overlaps(button, credentials.AccountField));
             Assert.False(Overlaps(button, credentials.PasswordField));
             Assert.False(Overlaps(button, LoginDirectoryStatus.Bounds(visual)));
-            foreach (LoginSpritePlacement cell in visual.RegionCells)
+            foreach (LoginSpritePlacement cell in visual.RegionHitAreas)
             {
                 Assert.False(Overlaps(button, cell));
             }
-            foreach (LoginSpritePlacement cell in visual.ServerCells)
+            foreach (LoginSpritePlacement cell in visual.ServerHitAreas)
             {
                 Assert.False(Overlaps(button, cell));
             }

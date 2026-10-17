@@ -59,11 +59,11 @@ public sealed class LoginVerifiedSelectionRetentionTests
     }
 
     [Fact]
-    public void StableIdentifiersCanMoveAcrossRegionAndServerPages()
+    public void StableIdentifiersCanMoveAcrossRegionPagesAndServerHolders()
     {
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog previous = Catalog(signer, 7);
-        SignedLoginCatalog current = Catalog(signer, 8, regionIndex: 16, serverIndex: 12);
+        SignedLoginCatalog current = Catalog(signer, 8, regionIndex: 16, serverIndex: 11);
         (LoginServerSelection selection, LoginSelectionInput input) = CreateInput();
         LoginVerifiedSelectionRetention.Apply(null, previous, s_now, input, selection);
         SelectFirst(selection);
@@ -71,11 +71,10 @@ public sealed class LoginVerifiedSelectionRetentionTests
         LoginVerifiedSelectionRetention.Apply(previous, current, s_now, input, selection);
 
         Assert.Equal(1, selection.RegionPage);
-        Assert.Equal(1, selection.ServerPage);
         Assert.Equal(16, selection.SelectedRegionIndex);
-        Assert.Equal(12, selection.SelectedServerIndex);
+        Assert.Equal(11, selection.SelectedServerIndex);
         Assert.Equal(0, selection.SelectedRegionSlot);
-        Assert.Equal(0, selection.SelectedServerSlot);
+        Assert.Equal(11, selection.SelectedServerSlot);
         Assert.Equal("local", selection.SelectedRegion?.Id);
         Assert.Equal("local-realm", selection.SelectedServer?.Id);
     }
@@ -192,24 +191,35 @@ public sealed class LoginVerifiedSelectionRetentionTests
     }
 
     [Fact]
-    public void RenewingCatalogCancelsPendingPointerCaptureEvenWhenChoiceIsRestored()
+    public void RealmMovedPastTheTwelveHoldersIsNotRetained()
     {
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog previous = Catalog(signer, 7);
-        SignedLoginCatalog current = Catalog(signer, 8);
+        SignedLoginCatalog current = Catalog(signer, 8, serverIndex: 12);
         (LoginServerSelection selection, LoginSelectionInput input) = CreateInput();
         LoginVerifiedSelectionRetention.Apply(null, previous, s_now, input, selection);
-        input.PointerPressed(true, 60, 200);
-        LoginVerifiedSelectionRetention.Apply(previous, current, s_now, input, selection);
-        input.PointerReleased(true, 60, 200);
-        Assert.Null(selection.SelectedRegion);
-
         SelectFirst(selection);
-        input.PointerPressed(true, 440, 225);
-        LoginVerifiedSelectionRetention.Apply(current, Catalog(signer, 9), s_now, input, selection);
-        input.PointerReleased(true, 440, 225);
-        Assert.Equal("local-realm", selection.SelectedServer?.Id);
-        Assert.Equal(LoginSelectionFocus.None, input.Focus);
+
+        LoginVerifiedSelectionRetention.Apply(previous, current, s_now, input, selection);
+
+        Assert.Equal("local", selection.SelectedRegion?.Id);
+        Assert.Null(selection.SelectedServer);
+    }
+
+    [Fact]
+    public void RenewingCatalogCancelsAPendingPageCapture()
+    {
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog previous = Catalog(signer, 7, regionIndex: 16);
+        SignedLoginCatalog current = Catalog(signer, 8, regionIndex: 16);
+        (LoginServerSelection selection, LoginSelectionInput input) = CreateInput();
+        LoginVerifiedSelectionRetention.Apply(null, previous, s_now, input, selection);
+
+        Assert.Equal(LoginSelectionEvent.PagePressed, input.PointerPressed(true, 260, 615));
+        LoginVerifiedSelectionRetention.Apply(previous, current, s_now, input, selection);
+        input.PointerReleased(true, 260, 615);
+
+        Assert.Equal(0, selection.RegionPage);
     }
 
     [Fact]

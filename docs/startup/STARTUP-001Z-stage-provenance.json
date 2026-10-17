@@ -1,0 +1,1505 @@
+{
+  "source": "OpenConquer-5517-Login-UI-Assets.zip (package/assets, package/metadata/movies)",
+  "source_zip_sha256": "920e7e33077d90985dea3b509e25bc49ece307e49a6c3af201b13d37672cc2a4",
+  "server_shape_source": "JPEXS ffdec-cli `-format shape:png -export shape` of each clean data/main/flash/Group<g>/server<s>.swf",
+  "baker": "nativeflashevidence/work/login-ui-research/bake_stage_assets.py",
+  "resampling": "premultiplied bilinear through the authored matrix chain onto the 1024x768 stage grid",
+  "assets": [
+    {
+      "name": "StageBorder",
+      "width": 1024,
+      "height": 768,
+      "rgba_sha256": "76A47E69EF101456A8925BB84A137B3D738C8BF6BCF7AD2F0DED9A0FD5CC5AA8",
+      "sources": [
+        {
+          "file": "assets/start/shapes/400.png",
+          "sha256": "A1CBC3CA1FF6268C82692694914CB6C29986C71856D872902D7C7DA44F3D7809"
+        }
+      ],
+      "note": "start.dat root frame 3 depth 216 shape 400, identity matrix",
+      "file": "src/OpenConquer.Content/Assets/Login/RetailStage/StageBorder.rgba.br"
+    },
+    {
+      "name": "RegionPanel",
+      "width": 340,
+      "height": 434,
+      "rgba_sha256": "DF314FC0B3E49BA4255E05750F72BF0F765C79DD0B71883E149AD1343342986B",
+      "sources": [
+        {
+          "file": "assets/start/sprites/DefineSprite_183/1.png",
+          "sha256": "F7FCAF758F1FED554306AB00154D88B6923A8B0553A7751568CEECEBA68850F8"
+        }
+      ],
+      "note": "sprite 259 depth 1 sprite 183, alpha 195/256, stage-baked",
+      "stage_x": 43,
+      "stage_y": 162,
+      "file": "src/OpenConquer.Content/Assets/Login/RetailStage/RegionPanel.rgba.br"
+    },
+    {
+      "name": "RegionTile",
+      "width": 151,
+      "height": 53,
+      "rgba_sha256": "466A1A4A2219102246874C9407FBC8790A4F7828C465692B8321091D241CBF38",
+      "sources": [
+        {
+          "file": "assets/defaultR/images/2.png",
+          "sha256": "037BDC92D639C298F7BF1DC81DA3CE0AF3F445D4C523CA420B4366C3C68BE251"
+        }
+      ],
+      "note": "defaultR.swf shape 3 bitmap 2 at (0,-1), panel scale",
+      "offset_x": 0,
+      "offset_y": -1,
+      "file": "src/OpenConquer.Content/Assets/Login/RetailStage/RegionTile.rgba.br"
+    },
+    {
+      "name": "RegionUnopened",
+      "width": 151,
+      "height": 53,
+      "rgba_sha256": "BBCC706CC21EFD39DAF06B306C5A8D5A185037288F8787378FD7BD86DC81424F",
+      "sources": [
+        {
+          "file": "assets/unopenedR/shapes/2.png",
+          "sha256": "A13006D16B009E3985B18B648C588AD85DA9B7A731E0740756D3D34F22527761"
+        }
+      ],
+      "note": "unopenedR.swf sprite 3 at identity, panel scale",
+      "offset_x": 0,
+      "offset_y": 0,
+      "file": "src/OpenConquer.Content/Assets/Login/RetailStage/RegionUnopened.rgba.br"
+    },
+    {
+      "name": "RegionHover",
+      "width": 850,
+      "height": 130,
+      "rgba_sha256": "B3558A7B60937C264B15D6D23EBA65E924F2DACE7374ACD7F4A0C4EE2DC233E2",
+      "sources": [
+        {
+          "file": "assets/defaultR/images/7.png",
+          "sha256": "61D9C03763B74113FA2869DAB834DAD0C719B53EA7EFBF08C5B3EAEECBEC3EA7"
+        }
+      ],
+      "note": "defaultR.swf root depth 3 sprite 9 per frame, panel scale",
+      "offset_x": -10,
+      "offset_y": -6,
+      "frame_width": 170,
+      "frame_height": 65,
+      "columns": 5,
+      "frames": [
+        {
+          "frame": 2,
+          "matrix": [
+            0.961883544921875,
+            0.0,
+            0.0,
+            0.948272705078125,
+            1.0,
+            -0.5
+          ],
+          "alpha_mult": 256
+        },
+        {
+          "frame": 3,
+          "matrix": [
+            1.0569305419921875,
+            0.0,
+            0.0,
+            1.05352783203125,
+            -6.5,
+            -3.5
+          ],
+          "alpha_mult": 256
+        },
+        {
+          "frame": 4,
+          "matrix": [
+            1.0886077880859375,
+            0.0,
+            0.0,
+            1.0886077880859375,
+            -9.0,
+            -4.6
+          ],
+          "alpha_mult": 256
+        },
+        {
+          "frame": 5,
+          "matrix": [
+            0.9941558837890625,
+            0.0,
+            0.0,
+            0.9941558837890625,
+            -1.55,
+            -1.8
+          ],
+          "alpha_mult": 256
+        },
+        {
+          "frame": 6,
+          "matrix": [
+            0.9626617431640625,
+            0.0,
+            0.0,
+            0.9626617431640625,
+            0.95,
+            -0.95
+          ],
+          "alpha_mult": 256
+        },
+        {
+          "frame": 7,
+          "matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            -2.0,
+            -2.0
+          ],
+          "alpha_mult": 256
+        },
+        {
+          "frame": 8,
+          "matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            -2.0,
+            -2.0
+          ],
+          "alpha_mult": 256
+        },
+        {
+          "frame": 10,
+          "matrix": [
+            0.961883544921875,
+            0.0,
+            0.0,
+            0.948272705078125,
+            1.0,
+            -0.5
+          ],
+          "alpha_mult": 256
+        },
+        {
+          "frame": 11,
+          "matrix": [
+            0.961883544921875,
+            0.0,
+            0.0,
+            0.948272705078125,
+            1.0,
+            -0.25
+          ],
+          "alpha_mult": 128
+        },
+        {
+          "frame": 12,
+          "matrix": [
+            0.961883544921875,
+            0.0,
+            0.0,
+            0.948272705078125,
+            1.0,
+            0.0
+          ],
+          "alpha_mult": 0
+        }
+      ],
+      "file": "src/OpenConquer.Content/Assets/Login/RetailStage/RegionHover.rgba.br"
+    },
+    {
+      "name": "RegionFlame",
+      "width": 740,
+      "height": 250,
+      "rgba_sha256": "E8480C78CB0E8E51BA83B340034B7E84CE333A009092678C1111DDC9146EE5C2",
+      "sources": [
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/1.png",
+          "sha256": "011D9D1F95AAC28F7B28AA7E7856CDBD91F6A9F8A5E3EE5E428FDEC5F30E0F77"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/2.png",
+          "sha256": "F599ABBEA5433811C0DFA97C2EA794D55945B3365568EDF314CC36A59B262225"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/3.png",
+          "sha256": "E1EC8FED3181A9853E079524C556C211486A3CB70F46F9FFF99987E261736CBA"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/4.png",
+          "sha256": "808B7BE986C5A6E4B4795BBA1D755FBAD685668E721081B535705592E84C2FF5"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/5.png",
+          "sha256": "F7F25761F6352E963CF16B42E8C8491CCFEEEEE02B9D4714083C250F8D05D3C9"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/6.png",
+          "sha256": "D7173D71769AE098DAE3AADB687B5C9E191D5526E7A165B72E70755B16E1A249"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/7.png",
+          "sha256": "4FFDCA9A6A42287D30302C65C025A4332A8E064969E965D4590FC78F889B6124"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/8.png",
+          "sha256": "C07A0BD16746A797C04838B01AB2EFD2C9EF6B2E629BF04AAA904F33D4230DC0"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/9.png",
+          "sha256": "E25663C924C7539C41436377C3569C5D38A92E276019E12B3D5778678ED513A6"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/10.png",
+          "sha256": "2816763CB666F2F3D11D86C5179A9C6AD61B4248D0CF4597D7064018FA5B2E3A"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/11.png",
+          "sha256": "349473A597EDFB2D78E39579897D67860E50E4D70AE9F00C83497BD55AECE88D"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/12.png",
+          "sha256": "354B166A4ADA74D9521B5AD5537F3A5052395CBE43B0B8606FDC0BFEB584EDBA"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/13.png",
+          "sha256": "C433D3F3D0598518CFCE2DC32E1F65CF386A9938E57450389A8A6FE013BA73E0"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/14.png",
+          "sha256": "70342BEC3A07816CB9A65BB0DB36F10FDA28103F69888C5358FAB1CC041A51F2"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/15.png",
+          "sha256": "A6634895951A93133C34DDA6B063B82200C7A02A8C8D8FA9ADED8C3AB6F26A9D"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/16.png",
+          "sha256": "CB1A0B0A497840152298FE177F7ED1A09DF0903C67A1FAADC6460A3F51E5FB89"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/17.png",
+          "sha256": "7A8205E3A8894871C1E60C8F5683668ECD722875741E735CB45D180FDD6C84AD"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/18.png",
+          "sha256": "5708A2EA89A7D392C713C82275D3B85C4866E910C214DA2CEA68C5769E7988CE"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/19.png",
+          "sha256": "89D808113747BFBC2504918F76D0D9828196191EE6B72F712CEE547D6B2D6BBF"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/20.png",
+          "sha256": "4679A094A801168A4CD8CE2C0F9CFFFCF041ACA0423337361478704B2372BE10"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/21.png",
+          "sha256": "672FFD940344C7E2C6DFB5BEB6BCB1EAE87FF64F90D5272FEDBAB1B531647F8E"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/22.png",
+          "sha256": "C456794B4D4E3C30DEB7C7FA0D5F997171B271BFD3621341C5BDF50B15A3C558"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/23.png",
+          "sha256": "49B415E65DF6407AC4BF030506D3A46A5D1999BA22E373E5EE02D5EF75DAEBD5"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/24.png",
+          "sha256": "6E0A8233EE5C4BEC5AE5768776071F6C6524FAD959BA280E47E5958315658F1D"
+        },
+        {
+          "file": "assets/defaultR/sprites/DefineSprite_60/25.png",
+          "sha256": "2985D23C28F08A8B1FA46DCF1522B397514C9CAE2A2EEAFCB6F5574AA8AE06B8"
+        }
+      ],
+      "note": "defaultR.swf sprite 61 at (3,1) / sprite 60 at (75,25), panel scale",
+      "offset_x": 2,
+      "offset_y": 0,
+      "frame_width": 148,
+      "frame_height": 50,
+      "columns": 5,
+      "file": "src/OpenConquer.Content/Assets/Login/RetailStage/RegionFlame.rgba.br"
+    },
+    {
+      "name": "RegionPageNext",
+      "width": 120,
+      "height": 34,
+      "rgba_sha256": "364E2013C86146F75C013C1828E891B348D984DFDBB1580B9D93D18541354D41",
+      "sources": [
+        {
+          "file": "assets/start/buttons/DefineButton2_192/1_up.png",
+          "sha256": "3CABE19EB5B88784554526F272E110DA726084983811550C6D51D3F4C0B36AAA"
+        },
+        {
+          "file": "assets/start/buttons/DefineButton2_192/2_over.png",
+          "sha256": "9E7E63801D3D8B5E46DD1320033AFE00ABA44F098841393CEEC43641CABCD9A9"
+        },
+        {
+          "file": "assets/start/buttons/DefineButton2_192/3_down.png",
+          "sha256": "59A84FD7E80C9BC96C39A50C74F6691FB7AF13A8E60117CA4B14DCCEA51430C0"
+        }
+      ],
+      "note": "sprite 259 DefineButton2 192 Up/Over/Down, matrix (0, -1, 1, 0, 103, 261)",
+      "stage_x": 249,
+      "stage_y": 603,
+      "frame_width": 40,
+      "frame_height": 34,
+      "columns": 3,
+      "file": "src/OpenConquer.Content/Assets/Login/RetailStage/RegionPageNext.rgba.br"
+    },
+    {
+      "name": "RegionPagePrevious",
+      "width": 114,
+      "height": 34,
+      "rgba_sha256": "EAAF849A2835277D469D498F46642E1B3D4D176AB45D737D45DE9BB6994A9B69",
+      "sources": [
+        {
+          "file": "assets/start/buttons/DefineButton2_199/1_up.png",
+          "sha256": "C00F111CD7A5DAA148218492B3ED4038AB0E5375CC34457678229DBE98115872"
+        },
+        {
+          "file": "assets/start/buttons/DefineButton2_199/2_over.png",
+          "sha256": "90C9B32F908A6E346B87FE7B54DC6F9C401CBFCB126ECCB45368EABB68859030"
+        },
+        {
+          "file": "assets/start/buttons/DefineButton2_199/3_down.png",
+          "sha256": "921835EEC2B97F13D50B7DDFCE28E92B7220B828CA70252EA9B0173ECB3E58B6"
+        }
+      ],
+      "note": "sprite 259 DefineButton2 199 Up/Over/Down, matrix (0, 1, 1, 0, 8, 244)",
+      "stage_x": 137,
+      "stage_y": 603,
+      "frame_width": 38,
+      "frame_height": 34,
+      "columns": 3,
+      "file": "src/OpenConquer.Content/Assets/Login/RetailStage/RegionPagePrevious.rgba.br"
+    }
+  ],
+  "server_movies": [
+    {
+      "id": "g01s01",
+      "source": "data/main/flash/Group1/server1.swf",
+      "source_sha256": "6AD5F92B3CA449B33AF455408683707A44BC98E2077026197501ECEF347739F8",
+      "shape": 3,
+      "render_sha256": "EEAFF74B5E03D515F45D1BB88ECC79774F4D7149E32F0F13984D66329EA8038D",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "7F5D26A42B499E6ADF5F008F413056762BDB6A420824CEC58B611AD525099028",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s01.rgba.br"
+    },
+    {
+      "id": "g01s02",
+      "source": "data/main/flash/Group1/server2.swf",
+      "source_sha256": "959CEF64B941984CDE596D051BF9122C894E3F83E79B9AA13D2C4CE1CBCDA217",
+      "shape": 3,
+      "render_sha256": "4F57D375CD4B0720761A44C1037D88678CC9392A1B1A185C5FF7518105AE52A2",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "8C2FCBB39A79016F7C8E68752BD811C21E1BE7644DD6944E336A370BC36C729D",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s02.rgba.br"
+    },
+    {
+      "id": "g01s03",
+      "source": "data/main/flash/Group1/server3.swf",
+      "source_sha256": "32ACA2630D71D0576BBCB1A74768B4DC7EBBA3A4DC11ABDDB0673EE7F86DA088",
+      "shape": 3,
+      "render_sha256": "FF0670AE17BC8B935D6AB38B195669C704789DE7BF5790B3DB249E117B174402",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "A9F06335DC5C4E44367B7713B2448C44424C74E1E074A47A8DCBFA6909D7EFA7",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s03.rgba.br"
+    },
+    {
+      "id": "g01s04",
+      "source": "data/main/flash/Group1/server4.swf",
+      "source_sha256": "3A73F9E0C77772EBEDC6A3E594CFBF36645189CF3FF8B468FC2A438427909FE3",
+      "shape": 3,
+      "render_sha256": "BD7A242181B18E1F791491DFDAFBAB8C5793B4BB66E6209F41A1226BD403205B",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "786076BEEC3C023337E229071A67C47EC5087ADF9B609D7B3089E8E33520BC65",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s04.rgba.br"
+    },
+    {
+      "id": "g01s05",
+      "source": "data/main/flash/Group1/server5.swf",
+      "source_sha256": "AB37A9ECB5E60CAEB0E5D031A31CFDA4DCC84EDA28BB4F85B7E6088DD877D89B",
+      "shape": 3,
+      "render_sha256": "DEC09118219E7A04F762B6BF60D2CCF74BC44EF645D5F73E53A6E949F86663BA",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "6CB71B50F0A101F9BB4E9FE601EE483F4CEF03758C0CDCA72880898A73D319B3",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s05.rgba.br"
+    },
+    {
+      "id": "g01s06",
+      "source": "data/main/flash/Group1/server6.swf",
+      "source_sha256": "06D491F817991CCA6405D2DB958941117E252CB8DEA9414174B47794251306EE",
+      "shape": 3,
+      "render_sha256": "52851909C525EF06D2E8CE1A2CC9A2C18357F934F3F9ABEFE31F18B8D0233E23",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "6E9FA8716BFC2FF8B443674DC393232A9347DA5CC175F451882F04361A0391A2",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s06.rgba.br"
+    },
+    {
+      "id": "g01s07",
+      "source": "data/main/flash/Group1/server7.swf",
+      "source_sha256": "3D4E60C8C77C614327E733394E69A96EFDE003356D96C2C0731B1F5D4A7ACC1F",
+      "shape": 3,
+      "render_sha256": "E3361C5F327EAE456625C0C9495149709BD2AEDBB8F5797F7006AD9339640888",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "1911AF94D7F80C6A03D4A3919BA42E05B03A4C0CAAE9EE70F368C7D4C03995DA",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s07.rgba.br"
+    },
+    {
+      "id": "g01s08",
+      "source": "data/main/flash/Group1/server8.swf",
+      "source_sha256": "3E12A68E22BDF3BD5EB21F0143125EC67CB38CB6082ED53F786EF87997994368",
+      "shape": 3,
+      "render_sha256": "991975843DF983F9E66BC6723DFE2D384EBECF3CDA9FD00EDACB1BD8F210DF65",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "FF434E415FCC7BF7F9457B1F2CE3B237BF3137EB2B523DDFC86F5F6FF586BFAB",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s08.rgba.br"
+    },
+    {
+      "id": "g01s09",
+      "source": "data/main/flash/Group1/server9.swf",
+      "source_sha256": "5E74C82F22B44753FEFB86B25E962629420F272A28720FE25512DBEF87A44928",
+      "shape": 3,
+      "render_sha256": "18160D5D17FCB9EF5D275BB61149B2CE5C3B32908CB90D8CC0E5C03A852FC9C1",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "2000A1749C5353400B1C40535CC4B00AA0187860E3CE97D8FF1C38ADDEEDDC72",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s09.rgba.br"
+    },
+    {
+      "id": "g01s10",
+      "source": "data/main/flash/Group1/server10.swf",
+      "source_sha256": "10D250B265337772270516EB5693FD3F2E5053BB9B18CF02BB7713363B45AEF7",
+      "shape": 3,
+      "render_sha256": "739700EF4B541FCDAEC34C4729931EF05A9D426482F01D6B6B718D18826C3C17",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "FCA91B0D95BC30CBCE237566AAE320AF1D5F68DC7538F5CC205B0E69CF58CF15",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s10.rgba.br"
+    },
+    {
+      "id": "g01s11",
+      "source": "data/main/flash/Group1/server11.swf",
+      "source_sha256": "8F35CE11F1CD19E771CA36A0C0BC1C324E6306BB479A5DF357C7D22FEF040F42",
+      "shape": 3,
+      "render_sha256": "AB2DEC684BA8D984B9D9F235D06DF16202B94417EAF2A94F18CECF46B6AFDC41",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "DC68380F8F2FE4A73E3F22B8A1712D963C6E03F77086F5AD4C3E831219CCFE36",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s11.rgba.br"
+    },
+    {
+      "id": "g01s12",
+      "source": "data/main/flash/Group1/server12.swf",
+      "source_sha256": "9352EEED002874B9ACD9E7B32C12D477F62A0E89753B3329D34AE3B456311991",
+      "shape": 3,
+      "render_sha256": "B4A990C454875A8F7D23CAAFB438290DB9757F391444C8021C7EA3EA934AA3A3",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "D3E6AC31CE2101645F2E04468B7B3818A1545F53E61614940F49C59F20712DEE",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g01s12.rgba.br"
+    },
+    {
+      "id": "g02s01",
+      "source": "data/main/flash/Group2/server1.swf",
+      "source_sha256": "1993D480E7AB32CA651F0CD54C77F1F5B6A2FB11C4AFCC811301A09E1D08F5A7",
+      "shape": 3,
+      "render_sha256": "3B5CB3F6B328650801EA5B404F6E96D4A8374FDD943CFDE1B8FED50911E6BC79",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "53A7C9EB4166B2F76911B565AE89030AAE793D6614DF2EC8F36AF94154739D16",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s01.rgba.br"
+    },
+    {
+      "id": "g02s02",
+      "source": "data/main/flash/Group2/server2.swf",
+      "source_sha256": "1108BCBF67B9B28365D466A2D4C22818431078BD7857275B561ED7B7DDA03806",
+      "shape": 3,
+      "render_sha256": "F9B3CCFC131A75E20157B369A549B3C2E3F52D18EF141BC26A2C6B7B68D767A1",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "2A966AA50CF98831CBAF1153A0194E476330D9D4698B123269D88CA2BA0EC408",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s02.rgba.br"
+    },
+    {
+      "id": "g02s03",
+      "source": "data/main/flash/Group2/server3.swf",
+      "source_sha256": "CBA0536587BC24CA3F26133C756450784F8651966A7CC4699EFC5A34E93B30F8",
+      "shape": 3,
+      "render_sha256": "D2497D31B0C38390EE32EBD56FD19874AD7C4FD9D7E39266E3734B9699D3A8CC",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "6DCA2B9B47932AD2ECB24ED34DE1B2CE78B6922771F6952D1890177FFBC78AFF",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s03.rgba.br"
+    },
+    {
+      "id": "g02s04",
+      "source": "data/main/flash/Group2/server4.swf",
+      "source_sha256": "FD291CEF1EEED65AC1451A24B95985A941ADF188B4E51B692F16DDE1DE749DCF",
+      "shape": 3,
+      "render_sha256": "177B580F10CC142752FB38A9876A12D7F5335BFCECE6F990252E67D214F4D895",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "8C83D7BD536E94F94A00D9207F11D63E6937AF670EB28557880B48B431628FAC",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s04.rgba.br"
+    },
+    {
+      "id": "g02s05",
+      "source": "data/main/flash/Group2/server5.swf",
+      "source_sha256": "0E8A75D7D4792E0DC6074FC1CCF347EDCC49F63971449110F40790E02E64D9B9",
+      "shape": 3,
+      "render_sha256": "A65861F7B1956C1C1910B877FF6AE7C0DBAB9B3B5AD545C4D7BE25F3CF890BAB",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "6A061C7DE67B65ECA9DD562F6CCC495EB09041066E89532640B0E5090C89D80B",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s05.rgba.br"
+    },
+    {
+      "id": "g02s06",
+      "source": "data/main/flash/Group2/server6.swf",
+      "source_sha256": "A374845A0D63F781E9FA20778F1FE8DD5DB03A81E7D33E509CC128482A504DE8",
+      "shape": 3,
+      "render_sha256": "9665110DF9C5CCA05B26283CD98769C18EA5210C2DE508134EA297D6D63C0FFE",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "58CDB30945E5A30061FA12E2A17B077CE2CA15BC1308CEDB40B4C2E7C65E8A2D",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s06.rgba.br"
+    },
+    {
+      "id": "g02s07",
+      "source": "data/main/flash/Group2/server7.swf",
+      "source_sha256": "F6D6F74A88F7BA99B37B26F5302E7DA6EE5C5F28D543713E142B22909F2F33F2",
+      "shape": 3,
+      "render_sha256": "56E09AEBFEDC51B155AC4E90C04C678C1E794FCBAFBBCBE1F80899AB8AF92E43",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "B543F0B8E4BC4505FB5055555DC4B5BB661F4E22CAD949E50100F07584A57431",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s07.rgba.br"
+    },
+    {
+      "id": "g02s08",
+      "source": "data/main/flash/Group2/server8.swf",
+      "source_sha256": "C5C41C8CB65A119F0A9435246644BFB97C7FC4ED86D7B28445721AC0FC282BEA",
+      "shape": 3,
+      "render_sha256": "25F15B314F4854C8F8004D443603B92BCBEC7EA85A383AAE3C7DDCA384E5DE1F",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "A1A8264237D18A197F3804FED4DC9FA8D43CE2E7689FDA1D462C93FB8203933C",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s08.rgba.br"
+    },
+    {
+      "id": "g02s09",
+      "source": "data/main/flash/Group2/server9.swf",
+      "source_sha256": "7C9FC9BC8BDACC071C93B60680816EA88214E484332F4A26CB3F2EEDECA1DB43",
+      "shape": 3,
+      "render_sha256": "B94883FCC721570EC1906F84E56DBA736CF2D76F122A5F4330B711F26B03AC17",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "05FF5B60F4AB86DBFCEF65777FBF1A1901F6070AB2EC790624D8EEAC06D4C6E8",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s09.rgba.br"
+    },
+    {
+      "id": "g02s10",
+      "source": "data/main/flash/Group2/server10.swf",
+      "source_sha256": "99FD4F79A45495B2FD3F9558799C3B7AC67CD454F12B3D5616F6BFA66F3CFEA7",
+      "shape": 3,
+      "render_sha256": "8EAD749D18F931F4882C209FB57B6A2A8501A4F4528D151E070A9B1893192971",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "7D1A3252862F6C80996F412C5156F09F96A620EA0044F5A0800DB54272102060",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s10.rgba.br"
+    },
+    {
+      "id": "g02s11",
+      "source": "data/main/flash/Group2/server11.swf",
+      "source_sha256": "F5D68797905C979395EE024FEED292D13278922C316391DB46B30744BDD8F7E2",
+      "shape": 3,
+      "render_sha256": "8DBB718B9C9804C7C96912C14ADA56E10FE8F56BEB1A253D4E0CF1D4A31D8D61",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "E9017D1D499A3294185511D8A297903CF50908F2ACCBEE84C12A8B5FD23D07AB",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s11.rgba.br"
+    },
+    {
+      "id": "g02s12",
+      "source": "data/main/flash/Group2/server12.swf",
+      "source_sha256": "2541ED313295DBDD846B6268B71FD8506B74D4C23131B6BA75C78A63281953A3",
+      "shape": 3,
+      "render_sha256": "D6999AF7C6809EF11578EFA1ED573B3D6DF44B3F287F8AB3ECA7303B0E89A246",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "28475F5FE72CEFF8C7E0768D76C5DD78EA6E91D0AC039E977F3C135C4174CAB8",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s12.rgba.br"
+    },
+    {
+      "id": "g02s13",
+      "source": "data/main/flash/Group2/server13.swf",
+      "source_sha256": "50ADBBA224BE211DDA259A5CBA27E73E0ADB3D452A12788BC6C95C6F697811ED",
+      "shape": 3,
+      "render_sha256": "442FF390D08F3A09EDD05447ADA644BCF8F66ACB23ED14F1B015724440C5877D",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "FFE44118A88EAC99300451ECB1C36EF9958F8A66146C2445E67388D2F32A90A7",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g02s13.rgba.br"
+    },
+    {
+      "id": "g03s01",
+      "source": "data/main/flash/Group3/server1.swf",
+      "source_sha256": "9789E56B4B2EDA45C88A291BE98BDBE9970B5A5E9AC780995753FFD268FCA3B9",
+      "shape": 3,
+      "render_sha256": "CD354203658AFF174B57B7089C3527CC763A2D3A2C80D75218BC3622808A9C47",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "6C041D2BA70AB1A3E9E175EC11616C6F1CD2EB061D62B612460DD37AB015F19E",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s01.rgba.br"
+    },
+    {
+      "id": "g03s02",
+      "source": "data/main/flash/Group3/server2.swf",
+      "source_sha256": "C48210B86FACDD3A123CA4B8FDC533D815ED2057D1E4AA06FECBA450A281A197",
+      "shape": 3,
+      "render_sha256": "61B0BB18DDC005E86D9BF7D9F4549D4760325991301C0760ACC6E781C908EDE5",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "DCECC7E00AB5FD8DA997FAD8A69CDDDDF14913582138CB737A59FB9734671272",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s02.rgba.br"
+    },
+    {
+      "id": "g03s03",
+      "source": "data/main/flash/Group3/server3.swf",
+      "source_sha256": "F507268845F4096A1E771ACBCA535331E3D73E2F1FDA1A97737E50BD6F270416",
+      "shape": 3,
+      "render_sha256": "E90091EFB26CE60CF863B0C557D6FE0C217A6F3079347069777749D3804AB0F4",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "C8D79840414A26FE0B729DB124A6244768387472796AD43622CD51AD0C33FB61",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s03.rgba.br"
+    },
+    {
+      "id": "g03s04",
+      "source": "data/main/flash/Group3/server4.swf",
+      "source_sha256": "F289A7D1564433DD3709F5024E473BB30005FC1252E459229753EE163FDB4B39",
+      "shape": 3,
+      "render_sha256": "FCB8CB0141D403463C500C5F53C3C484A7D077103CDE23127612AA50DB7A52E1",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "93B57E74867A46BF934894DA028B869B9F4B1C11443C7E562BB79C02DE165857",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s04.rgba.br"
+    },
+    {
+      "id": "g03s05",
+      "source": "data/main/flash/Group3/server5.swf",
+      "source_sha256": "A244E0A4A7A2F862D921458062132BB60133768372573FCD6D527A44719FFF60",
+      "shape": 3,
+      "render_sha256": "EB86D6E5A28C6773AF6860437DF719B4AE5C148A945365352DADC607C568912C",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "35A397D44B4D04AEFA11681F8CF565275469E8B994B62A23B9FE39020987461F",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s05.rgba.br"
+    },
+    {
+      "id": "g03s06",
+      "source": "data/main/flash/Group3/server6.swf",
+      "source_sha256": "CA81A4A12D39557BFC31329074081D5F365C336E62A985A4024357E1DA507E8D",
+      "shape": 3,
+      "render_sha256": "653BC0BBA34591448FBD1EBD544C3EF6F95547417A20C4A55E6FE9664B879C7B",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "2B767FE1FCAD807AA2A1B47604421AF32225D122F35B7A65810FD0B7F3A38DED",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s06.rgba.br"
+    },
+    {
+      "id": "g03s07",
+      "source": "data/main/flash/Group3/server7.swf",
+      "source_sha256": "CBB5883A550B1361A7F88E3903DDB9BEF7A226B58B62A81EE69108970D1F14A9",
+      "shape": 3,
+      "render_sha256": "1A9B8C286D801D7F3B650ED3B46BA7974D4FB88DF0F1C1C7C27EEF273BCEA4D6",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "6981D3E266A3258F6EF614D0EDEBEAE23B7F4F9FAF502FF2BD30A1A27004CC43",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s07.rgba.br"
+    },
+    {
+      "id": "g03s08",
+      "source": "data/main/flash/Group3/server8.swf",
+      "source_sha256": "E261C0577E9B773645EC920354583BCC2C6987179AFDB7FF02DA4E2808C7E12D",
+      "shape": 3,
+      "render_sha256": "7F1CA90B0807F2E1535603D328D013FC211B5D2AB123A4C0B7ABEA17881E11E5",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "C45F4D8A406EEB66990CEB8B37DB85A9134373E4ED128F8E47E53A57DFEFED98",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s08.rgba.br"
+    },
+    {
+      "id": "g03s09",
+      "source": "data/main/flash/Group3/server9.swf",
+      "source_sha256": "A9DFF64FC20EBC12497146CF12092BB43DC95532EA6BD96CB94AD32BE67A4E3A",
+      "shape": 3,
+      "render_sha256": "AC60003FF07E39A7E954710055743AAAE5E29FA38DF9711BFE83CF12425D69C4",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "F46233D7F366F3E0CFD8C6A3F861EC804C12862CEEADCD6015C53B9802CCFC22",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s09.rgba.br"
+    },
+    {
+      "id": "g03s10",
+      "source": "data/main/flash/Group3/server10.swf",
+      "source_sha256": "229EC6AD22302AE7D3BF1713575ED2168B36E43CD3152EAD5BAC4F67EDE1027F",
+      "shape": 3,
+      "render_sha256": "212A7F10C1DE2A41CD8206DEE87D0A9B59D25C46885D6E0649222A25B9580539",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "20C65351BDDE379C2A7AB4DB2BFA25F8C24F442707F5462FA4C82DDB6CCD599A",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s10.rgba.br"
+    },
+    {
+      "id": "g03s11",
+      "source": "data/main/flash/Group3/server11.swf",
+      "source_sha256": "A059BC88459AAC7FC5148536ACC657D139F969493CDE2446E420F8DBC2A28C29",
+      "shape": 3,
+      "render_sha256": "387D5179AF59830E95637968F277FFFEAA347C0D25996730BA8BA539ED4B2EEF",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "5451891FAC1AE3C11E77E85FA784411BF81B7C989B62254D6E1FFE59C165F466",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s11.rgba.br"
+    },
+    {
+      "id": "g03s12",
+      "source": "data/main/flash/Group3/server12.swf",
+      "source_sha256": "5F9C841AC9AFC22454D2428C34D028D9308107FDAC34F8BFDFC5EEB6445132E0",
+      "shape": 3,
+      "render_sha256": "7C6AE7BE7A6AD5BB96231E6A48647439BF62E93FFCE6A5C56DDCAA9095C5AB48",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "D661220777AF02152CEF6F46595CA17428693BE5D887AD68A528ACB052524A0D",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g03s12.rgba.br"
+    },
+    {
+      "id": "g04s01",
+      "source": "data/main/flash/Group4/server1.swf",
+      "source_sha256": "883DEB451618AEEE9E8B1F2133D64578158C4EA0D29340573923A9ACC4A030DD",
+      "shape": 3,
+      "render_sha256": "802EF5DF16A5238BAE986BEF4D90D8B26F15817109F27C4B05F28DA006A527BD",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "ABF7E41617AAB1CDBADBEDCB60DFDC7D6D1AC4E22E78AF5FE756495F0298E347",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s01.rgba.br"
+    },
+    {
+      "id": "g04s02",
+      "source": "data/main/flash/Group4/server2.swf",
+      "source_sha256": "7D1E65F4358A9F1AD0C0BE400F50EC7690602B91931966953929B0CB9D0078DF",
+      "shape": 3,
+      "render_sha256": "5353CC9BE6F3E570B1CFDFB8C4DA193A43999E24B56102C6E83411EC38096990",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "FB6DE40428C0EADE31D6905279519A6FAF7DA02EC2C0111732A43C5FF8AE5403",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s02.rgba.br"
+    },
+    {
+      "id": "g04s03",
+      "source": "data/main/flash/Group4/server3.swf",
+      "source_sha256": "D2362A1ABBF477C9DF8AF1220959DECAC831F35D76DA099C667E7B1208CAEA85",
+      "shape": 3,
+      "render_sha256": "3D6F5A942546E31AB488AC2870286962339C899FB5C806B59B3DF4D54D0DC106",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "2DC81475A545ED1C87D63AA05A913F694B0ABD747A3679C9BB75840DA6F53E04",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s03.rgba.br"
+    },
+    {
+      "id": "g04s04",
+      "source": "data/main/flash/Group4/server4.swf",
+      "source_sha256": "2678D5AC8864A972C4D2D08645F2775FAC61CDCA463B3CC21D2883A4EC83C944",
+      "shape": 3,
+      "render_sha256": "9FF983EB237B79E28D0333F7473B1C90EAD5374CD8C950B7F9EE39AD3D97A663",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "018D8F567F8323A7CA5E64EAB4F5D6B42ECE05B09787EE28D5EA2C95F92FF9D5",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s04.rgba.br"
+    },
+    {
+      "id": "g04s05",
+      "source": "data/main/flash/Group4/server5.swf",
+      "source_sha256": "6863407E5F4CA90C9CD2DA91EFDDB05DD6693999E69031B98D37C855E83E1430",
+      "shape": 3,
+      "render_sha256": "049F6A48FB4D546402BAFC5F21D648D0E5926410D5F8DBA3AAAA12257411C3E4",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "585A73C1DF99F665F0A67515CFCA7808530CDEF7C40CF44D831CFC0EE7C2D233",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s05.rgba.br"
+    },
+    {
+      "id": "g04s06",
+      "source": "data/main/flash/Group4/server6.swf",
+      "source_sha256": "B978ED771DB67F7AC29FA7D152B4BE8E150514BC1223F37B7FC05D1D3AE78155",
+      "shape": 3,
+      "render_sha256": "269AB2ED19BAB436CC0D160618CD7327DFBC8D553AF08592E0384489C7D1D682",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "63BB49A160E4BC7FD0EAD8278D8167CD42113CBD39C69BF957154FA6826F6143",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s06.rgba.br"
+    },
+    {
+      "id": "g04s07",
+      "source": "data/main/flash/Group4/server7.swf",
+      "source_sha256": "F41011030EDEF686FE9D0F213B097027478CE789F2CE527F5FD19820FA471641",
+      "shape": 3,
+      "render_sha256": "9156FBC45A42474B909E72BE350B56F016C6931F899E4E7F56314CA2078B199F",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "33A37CC35F4256C820ACDDEAD0AED3280548DBBFA0558EED885C908CA5EAC7BD",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s07.rgba.br"
+    },
+    {
+      "id": "g04s08",
+      "source": "data/main/flash/Group4/server8.swf",
+      "source_sha256": "DA68E4302D2E970626092C0BEDEAFA2AC328EA8CB7750F6E0F481A1955D58A97",
+      "shape": 3,
+      "render_sha256": "B4BC88970B822E85B94EF209CF855CAE432D9302128722B702B85FFE47EC4BA3",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "FD299E3598374BB89E00921FAE0BF544CF0ABCD176431AF966F3623B628E4243",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s08.rgba.br"
+    },
+    {
+      "id": "g04s09",
+      "source": "data/main/flash/Group4/server9.swf",
+      "source_sha256": "655C88AF9BB06D772FB19BBAB244AEFE8B8F472CF37546BF50DC5CBEA32C69B3",
+      "shape": 3,
+      "render_sha256": "BF074F08D65CCCD102CE1F5BDB19413257620F0F40A6F94C333E4626ED2CEFA9",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "BB7BC3E66706C4A53971639DC96CB488B7F8D754B0BA75DC311BED6C557BF055",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s09.rgba.br"
+    },
+    {
+      "id": "g04s10",
+      "source": "data/main/flash/Group4/server10.swf",
+      "source_sha256": "DE8C7849804767735B1EB5DCBB82A8DCA54A56920C80B0E2605E5E924C365F70",
+      "shape": 3,
+      "render_sha256": "F4376CD0EAEC62AD7E7A9605CBD68C4820C9B61988DEE4ACED3462834F67757C",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "37C06FB14DC260CA77B0FF9A1858DCEC5DBE985EDCB7812F1E9341A44EC3EEB8",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s10.rgba.br"
+    },
+    {
+      "id": "g04s11",
+      "source": "data/main/flash/Group4/server11.swf",
+      "source_sha256": "33C5851F721AE0A17586BE9F489512F0AA18012AD47A73C9803391BC7206EDD5",
+      "shape": 3,
+      "render_sha256": "CCD99065C1C36BF8373D2B96B5FD1E3E0F509AF19FDEC28F81EE39E2D2D9A174",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "EDDAF3D99687388E80AC8BBBDEB98CB49ECB3F72D505C86535FDEE383F3F8CFD",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s11.rgba.br"
+    },
+    {
+      "id": "g04s12",
+      "source": "data/main/flash/Group4/server12.swf",
+      "source_sha256": "D3A2FA5DF51A06E5CF99034885C19503B298BB1A5B0609BCDFB2D1374684FA08",
+      "shape": 3,
+      "render_sha256": "5CF593CCB5DE134743D579177A4E56114147CD9331C213D3165ED064C49A9996",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "B6F9A13969965955F7F3089640A0FA3E6EF973E69979B84A94E37FFA9F958684",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g04s12.rgba.br"
+    },
+    {
+      "id": "g05s01",
+      "source": "data/main/flash/Group5/server1.swf",
+      "source_sha256": "B44934C9B6EFF77DA0D2C1625E89F2ACD7B05C0B43211B11E20A1F03D4FCFCE2",
+      "shape": 3,
+      "render_sha256": "F45C950DCF740F95CDAD18FB4412C8942765901E2CBBCE5B824E7CF966EE6A8B",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "BABB803AE74D635AEF1DD736B13367DCE6AA64688539B6BBE147906E4C2586AC",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s01.rgba.br"
+    },
+    {
+      "id": "g05s02",
+      "source": "data/main/flash/Group5/server2.swf",
+      "source_sha256": "1AB55836DB1D0A03845621DB5D4D2F7779FD25388476065C4EFDF046CEA9CD15",
+      "shape": 3,
+      "render_sha256": "643CC4CA9E5BD1F4AF4177E94ACEDD8684720A94B21BDDFC55F66B774393467A",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "8EAE2EF9F1E5F428C8A90BBED91A828AD984D1ABE68A16933B6093AFD1262FDE",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s02.rgba.br"
+    },
+    {
+      "id": "g05s03",
+      "source": "data/main/flash/Group5/server3.swf",
+      "source_sha256": "177B92AB9A2BB3B272CC26391C649E253C551E455568E3F74D03D0A2717913EB",
+      "shape": 3,
+      "render_sha256": "9827374E2463B49FF96C21E74AE3D3DE14991E5EC374BDA84DD34B75BD058D59",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "12B5A2F6805E91E0E62FC250D26A7CE218F6099A0E08AC25FDB5E7A938B7A14D",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s03.rgba.br"
+    },
+    {
+      "id": "g05s04",
+      "source": "data/main/flash/Group5/server4.swf",
+      "source_sha256": "4FF59572C92BECDB0357D7A8C0D230088C0BAEABD0BCAC026A2C7E52AEE862D3",
+      "shape": 3,
+      "render_sha256": "CF1CF4922050B8FEB2A79B8B6D71CC94097D6850E8FE4B9536BCBB91CF044E8C",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "D426A185DB9EFF70C1B6B946E92F574844348AD1A4945D8F2DC5ECB98BE5C72D",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s04.rgba.br"
+    },
+    {
+      "id": "g05s05",
+      "source": "data/main/flash/Group5/server5.swf",
+      "source_sha256": "25BDF2DDEC202FC05BE715956A33447910581C08ED1E559778BE8F1DE0B582FD",
+      "shape": 3,
+      "render_sha256": "84278EF685140C117C7720FA2D6C456C0A3725C5B775ED5AE2BCE9DE93A4DDA1",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "F17DAD1CE399318D6CC2DDFA233D6D35E9A25F2E28970C5B3AACBCD774DD5146",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s05.rgba.br"
+    },
+    {
+      "id": "g05s06",
+      "source": "data/main/flash/Group5/server6.swf",
+      "source_sha256": "AE763C96147DED8DDAAB4992F532DC427C9F3400B42803B34A05B9F89B4DE381",
+      "shape": 3,
+      "render_sha256": "2297AF71CF6FFC73842231F31B3952116308A8E6EF04F5E78875719211B575C1",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "D4904D7153DB043B6ED6D0B3C36EA0E1F548AD8AEAD359A0ABC223BA4E021D88",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s06.rgba.br"
+    },
+    {
+      "id": "g05s07",
+      "source": "data/main/flash/Group5/server7.swf",
+      "source_sha256": "DB560DC054BFE91C371F66864104B1869651D5B944070A5F10C32AB32AF22B03",
+      "shape": 3,
+      "render_sha256": "4DC279F8079A31D9A6DA85DD7473089F1748CAEDE8170C27F03BD261CD065597",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "CFBD2799248B70E92B6D554AE4440D7FD11D2D79B2F79ED30937E03322014F93",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s07.rgba.br"
+    },
+    {
+      "id": "g05s08",
+      "source": "data/main/flash/Group5/server8.swf",
+      "source_sha256": "E4FD5AC8425C0B964F301B85FE439EAC5D53D9749F4BC4A1BF9E5F87717777B3",
+      "shape": 3,
+      "render_sha256": "1E9A54E5FDE038A5E53A4B17D2A13166F17C3F0F36B43C40CEC74245B7CBF4F7",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "5A0A8DAD34C70DE91377948E9ECD2362EE3C70AF42DC85079630158EEA2E750F",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s08.rgba.br"
+    },
+    {
+      "id": "g05s09",
+      "source": "data/main/flash/Group5/server9.swf",
+      "source_sha256": "020F137EDBF73C4D0AB895B8AECB76F02A76EF741D721F9F32119006F772B4C4",
+      "shape": 3,
+      "render_sha256": "574164EF7C60EE5DC134F4B8BC5BDA3BE9C9FAEC9E22C6D232ADFAEF9171222C",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "5A462A74630F14CF464A2432BFE5FA72EBE161E7B80C92E3D8D77322A8572BD0",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s09.rgba.br"
+    },
+    {
+      "id": "g05s10",
+      "source": "data/main/flash/Group5/server10.swf",
+      "source_sha256": "79DD353C1F955E30BAFF08933AF3300D4F56D5C73DB26D18954CA6D23A39B220",
+      "shape": 3,
+      "render_sha256": "0E46DF473AA2ABCECBE26E0D00AF3FB05F1BC454344048C6BC9BB3BD690CCCB8",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "D1A6F8DDF36BA046A13BBCD666F79AB33B23383C2613B34755D64E4E4DA7BC8E",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s10.rgba.br"
+    },
+    {
+      "id": "g05s11",
+      "source": "data/main/flash/Group5/server11.swf",
+      "source_sha256": "70B72EAFF9BDC8E0E2AA187EEF1926FCD28A20FDDC5BCBB11C39640F7A37AFFE",
+      "shape": 3,
+      "render_sha256": "DFC15A590C3FF342DE5A34E992777EFD3E62A8E7F7435C0D7263AB44FA63C5CA",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "3FAEEAF7A2A216D12DCCDD3651EF2BF73CF4C5C88EAD28760FB80B6ECE7B48F4",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s11.rgba.br"
+    },
+    {
+      "id": "g05s12",
+      "source": "data/main/flash/Group5/server12.swf",
+      "source_sha256": "57B956CD78115F97A085CD9C33EF52B785BB28B05F574F48CCA0E82CB77C044F",
+      "shape": 3,
+      "render_sha256": "D77329E9123310A7EC7CEE926DE8A10E4FD4B9509297A710EE6FD0D003551867",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "412C847E922407FAA1744D566EB065792A0E4AE28DA1174D1DF7D2345B19BA68",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g05s12.rgba.br"
+    },
+    {
+      "id": "g06s01",
+      "source": "data/main/flash/Group6/server1.swf",
+      "source_sha256": "15386DD371D16ADFFB68665AE9D01B8FAFB2A7A55BC6FF6C9BE297DAB1B03ACC",
+      "shape": 3,
+      "render_sha256": "01E626A3D6A71AC032BB417546C50A23186F3F408F7D1C296A71219DFF697AEF",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "40D3ED47DDAC9A547C8340C87DCE344609C216A8E91FA3E4B528E2D745981217",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s01.rgba.br"
+    },
+    {
+      "id": "g06s02",
+      "source": "data/main/flash/Group6/server2.swf",
+      "source_sha256": "3225E3E8DE3247A60E40CC4B3CC68B6356DECE6E0C451FF2F06C5E6635C1CB5D",
+      "shape": 3,
+      "render_sha256": "32AC93063F509265877BCCB101639E4C6A3E77013C39D696A338F5D5FC5A963D",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "728F722F3951144482F7DBD62F037F918A24C83AE1013EF6DDFB63384ED68938",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s02.rgba.br"
+    },
+    {
+      "id": "g06s03",
+      "source": "data/main/flash/Group6/server3.swf",
+      "source_sha256": "96628FF952D367404AEC132F01794F83AD877A8E88F32E79A5FAF88F4DABA4DD",
+      "shape": 3,
+      "render_sha256": "8E2218ACC96F0F63AADF50143CC78F231237E46B592343B7F8A8ED9E5B63B895",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "7EB164349976F32AC5B8396AAF53B2FDCF81200215A0351E563B8AFB041C90AB",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s03.rgba.br"
+    },
+    {
+      "id": "g06s04",
+      "source": "data/main/flash/Group6/server4.swf",
+      "source_sha256": "0F3C34C5B20B07E43C91E5D87CC706E04797E13966733335D0AB56514EB55501",
+      "shape": 3,
+      "render_sha256": "B7A749D58FE776C2F0BF86A2B50072E3A2690BD06F3C5601894225FD445C5590",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "8E0AE679CB1138A6F96EF98848BAEC4DCA623CD8B83396127A11B3DEF46D8178",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s04.rgba.br"
+    },
+    {
+      "id": "g06s05",
+      "source": "data/main/flash/Group6/server5.swf",
+      "source_sha256": "2E941092AD2D3A335CC02B5028A543796223F2FBDF1FB8A78EADA94171F97B2E",
+      "shape": 3,
+      "render_sha256": "DE02BF1946E306691F37CBE38F82CCADC9077D77EF02135C5952CC48E48D3B1E",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "8205ACD3F5883F1CC0013A5A3500C5820933FB5A78DBD801A71D55C30D8D509A",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s05.rgba.br"
+    },
+    {
+      "id": "g06s06",
+      "source": "data/main/flash/Group6/server6.swf",
+      "source_sha256": "CA9081B149469A23A7D405041C0BCCC624E16F5D33161C32DBE5003A02BF9EEF",
+      "shape": 3,
+      "render_sha256": "9004C378E719990DBFA7F751724C68B80EAA4E96FFCCE084D290DDD1674F8331",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "3E30CF1181378062BEBFF42D525FC81829EC0EF2E820DBB6910F4C54C2B3C639",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s06.rgba.br"
+    },
+    {
+      "id": "g06s07",
+      "source": "data/main/flash/Group6/server7.swf",
+      "source_sha256": "A28E57AC2962241893492D2FFEB01071F6C1F9B973F68A87834824B8BBE88F15",
+      "shape": 3,
+      "render_sha256": "6AAB889FB3FD3DCB8A4333525BFE83D6DB51BC047623232FB9E13DC3276EEDF4",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "FA18F465D6A74CAB652CDBABA8E4449731893C6BD6CECF6FC2ECBC40E7F14E59",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s07.rgba.br"
+    },
+    {
+      "id": "g06s08",
+      "source": "data/main/flash/Group6/server8.swf",
+      "source_sha256": "65D105CAD70FDC2CDE51F7913F1C5C79FB12322BC1053C63EB5EC9A8E045536A",
+      "shape": 3,
+      "render_sha256": "549473A8F1D84FD23D028681C67719F1F17C6C0D7B84D07CA400809092DE9841",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "9918CD3767D4641A7CE432187FBB2019943B3797013C22E4D500B5A0D0492092",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s08.rgba.br"
+    },
+    {
+      "id": "g06s09",
+      "source": "data/main/flash/Group6/server9.swf",
+      "source_sha256": "52E9C373FEE5EFA44430EEDAB55546D2165725CFCFBCD0909985F586D034CD2C",
+      "shape": 3,
+      "render_sha256": "B2AE54317F5DB477C2DC58D0C61E42432894E822258AA4DD704F22057AF9B60F",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "D6F94E671D1EF1455B98CB759DF8854AD71D538F146A8DB38A5A62FEBAAFD110",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s09.rgba.br"
+    },
+    {
+      "id": "g06s10",
+      "source": "data/main/flash/Group6/server10.swf",
+      "source_sha256": "DDE04716382BFD1977AC5E8C789A65A7E1EB8C98D6093C156860D921EF79D5C8",
+      "shape": 3,
+      "render_sha256": "A007AF5241547E4FDE645B5677D740FC54F613CF58EB74ACD22EE6D8AC50300B",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "2CBF066BD5D4775046722E299ABBAF54D93597D4CDA42E32C9EF0FDEFD2F32D4",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s10.rgba.br"
+    },
+    {
+      "id": "g06s11",
+      "source": "data/main/flash/Group6/server11.swf",
+      "source_sha256": "4572B4579CF41A160C13E8B72CFFA92F15C965722265C3FB4CE7F3465F02CA5A",
+      "shape": 3,
+      "render_sha256": "44D71431FF9430B3ECDDED11AA978972CD41FD10CD22F84A75D427BDD6513708",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "8CAC60A8DB60DBA9E13D7AA0F077975EA81F381F698B40D29CF585194C3A6E6C",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s11.rgba.br"
+    },
+    {
+      "id": "g06s12",
+      "source": "data/main/flash/Group6/server12.swf",
+      "source_sha256": "90FB1AE62EDF7BB3A09CD8E0954B5DAA8015772303D9DD9E8D3D9B6680ADBAD2",
+      "shape": 3,
+      "render_sha256": "980B750F05E8BEDA5A29F296F6E4F1141FD30181B7D7735AE484722B47C79119",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "3413D37FDE7BA15BD489227D52A2A6364186A433632E95636823BFB779D4EFA1",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g06s12.rgba.br"
+    },
+    {
+      "id": "g07s01",
+      "source": "data/main/flash/Group7/server1.swf",
+      "source_sha256": "954B4E79EADB59B51A460DE4E8D2C6408C55F4938E164DFB6322D4C060B69A3F",
+      "shape": 3,
+      "render_sha256": "D1786D4C9CD77BE5D7C10821BCB70AE61C7455ADC08FC0EBC961B0BC00D69079",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "A3235BFA5ECD9BBB7EC722A57E53427D619F0B67AAE4E2A34914EAD7A9E0A994",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s01.rgba.br"
+    },
+    {
+      "id": "g07s02",
+      "source": "data/main/flash/Group7/server2.swf",
+      "source_sha256": "C25BDAF09F99E280767CC0C9A332E2165262554A81CB58D012EC85E4451A1A32",
+      "shape": 3,
+      "render_sha256": "B8B0C0959AC8E3F104D41C7294D78620534F86CE1BE96559A8B577F344C582E6",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "73A3B2F8E86760BE6A9078497D3DCBB6D413B914E1CB92FF4EBFACE263F5D9E3",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s02.rgba.br"
+    },
+    {
+      "id": "g07s03",
+      "source": "data/main/flash/Group7/server3.swf",
+      "source_sha256": "440776DD74A7177E835C02B57877502A24DE610BD61AC6737EA09C560E86BB14",
+      "shape": 3,
+      "render_sha256": "A49F72F4FAA2D04FAAE1D794ED01A6F7DC62309C9F8E5E22500783E102F8907D",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "210EA243DB356DC056E8316283124EBE29EFB7157BB2E9EF494D9A7650EC9A46",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s03.rgba.br"
+    },
+    {
+      "id": "g07s04",
+      "source": "data/main/flash/Group7/server4.swf",
+      "source_sha256": "E9078D3BFC756EDB7335FF16B4F1F01936E7ED45F233784F14DA2E2BE0ECA9E1",
+      "shape": 3,
+      "render_sha256": "DCD65F600F719F9B16DE6DC43E08CF1249AF4CFE4531069B43FCAA6E46AC7E58",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "4C4B6458AB86CACEDC6F0836DB09D1903693E000A6EB6BD1DDD02573A4A8F11C",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s04.rgba.br"
+    },
+    {
+      "id": "g07s05",
+      "source": "data/main/flash/Group7/server5.swf",
+      "source_sha256": "0C16C71899B8F6BCE52CAB7C01C504584934AAFC49A859EAE0DD48D1CBDAAAE8",
+      "shape": 3,
+      "render_sha256": "ACCE8D72363C902E779DFACA1CB43AA97E597C28ED12D8555E94BA5508E73510",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "09858C30BFC645A99A0128E036E93C1BD487062B3E2A9E09C3F5B9F66C0C5E6A",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s05.rgba.br"
+    },
+    {
+      "id": "g07s06",
+      "source": "data/main/flash/Group7/server6.swf",
+      "source_sha256": "CB0D8BAB508EDF6C5BC08F0D57D8569396C8F12815DB5A1150C9CA1C01C4DDE6",
+      "shape": 3,
+      "render_sha256": "3A3225CD09D37DEBEAA64EE892351322C63706F6E738A11C0AD63078D2F83367",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "5BB0586AF91B6BDFDFB8C23E5FC9C3A8BEAA328FC88FAFEE9CE85AE34668D58C",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s06.rgba.br"
+    },
+    {
+      "id": "g07s07",
+      "source": "data/main/flash/Group7/server7.swf",
+      "source_sha256": "12C9AAAD19287A7F2D3A7499E8D68C1F46E1CA3577BBA789B99BB51F7DF54E09",
+      "shape": 3,
+      "render_sha256": "A187B03F6B5E65BCA54143E5E45DAF0D715DB9325F421CDD02E9647E44F0C485",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "77B28468F7EB23DDA8D2DEFFFBB732977019AF7426F7AFA33F29A142D347E1F6",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s07.rgba.br"
+    },
+    {
+      "id": "g07s08",
+      "source": "data/main/flash/Group7/server8.swf",
+      "source_sha256": "49ABB97CE955C169E91FA1B942F5B0B81B327E650FD445F55FC07C09B6784CF3",
+      "shape": 3,
+      "render_sha256": "F91BA91FEFC185D5B4C3E44B7D895FB1659F8460F0D9DF9C57C7010C7D97EA89",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "A1BCA1C0C7145AF5FE2A17E11B28BCDDE54754499CA7AFCCB26E4978EC4025C0",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s08.rgba.br"
+    },
+    {
+      "id": "g07s09",
+      "source": "data/main/flash/Group7/server9.swf",
+      "source_sha256": "813A655FB2032AF286BB2142F04924CCA062D2C471AB38D0EB9DFF6003D5EFD6",
+      "shape": 3,
+      "render_sha256": "3559E5967E5593856411752F8615A4E0714B826E33D44A7BC774D6FE9E6F3131",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "0883AA4FF40AF47467EE2C70F0385A6E03E7CE80610FBF3726219FC3BA37F43C",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s09.rgba.br"
+    },
+    {
+      "id": "g07s10",
+      "source": "data/main/flash/Group7/server10.swf",
+      "source_sha256": "B2035EE198DD25991575A8864B55996216FB05C2B28E9294470C0B953BD51C38",
+      "shape": 3,
+      "render_sha256": "4A91634205B8AD11DA61B097A3FC61206BEBFBCEAA9E454D0D80FB4E48E02F02",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "FE20CB630621966AA16C6BF659C9410F26325F5528E6C098501835A98FC2DEBC",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s10.rgba.br"
+    },
+    {
+      "id": "g07s11",
+      "source": "data/main/flash/Group7/server11.swf",
+      "source_sha256": "529E9E9C9F0539DFD2CAA1EC1CE8624B8E5B8BACF4558142FFBC470FE2232B7E",
+      "shape": 3,
+      "render_sha256": "E2E294DB2BF692A534DC746C59217E70E93DA71E95BA304BD06B5C74D537AEA0",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "9FD4E199C744717D7D97B76E7D006B8B53B5638F7B1A4E4F3C4E2C6260D40FC3",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s11.rgba.br"
+    },
+    {
+      "id": "g07s12",
+      "source": "data/main/flash/Group7/server12.swf",
+      "source_sha256": "AA34C846BFF333105B252A765F87853793E3B7C48474821DB9C6E2C67B66EFB1",
+      "shape": 3,
+      "render_sha256": "46BE287B00465513327A7F946C24FAAD359AA102E6E9DA4CF090206A8FCD38AA",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "233756EA191104ED9AAD5EA4FBC58772CE617B5CCF4441E69AB7DE22C34C2DFA",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g07s12.rgba.br"
+    },
+    {
+      "id": "g08s01",
+      "source": "data/main/flash/Group8/server1.swf",
+      "source_sha256": "5E57E80C56E055A87DF10971E71E004640E88CCA172C360F9D2B0172D82BDF6E",
+      "shape": 3,
+      "render_sha256": "F4C1541C45FBB8C729CA2B9A6F8755BCAB993E4F9BDF27DE572329F5799A46E1",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "0937B9621EE5544C8B4B4FD4C03007147747F0DCC548BF69E5245C775C53D58B",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s01.rgba.br"
+    },
+    {
+      "id": "g08s02",
+      "source": "data/main/flash/Group8/server2.swf",
+      "source_sha256": "252E048EE4E67B820FAC6AF173D06B128A828BE6575CE32EC064BD3E96C0EE04",
+      "shape": 3,
+      "render_sha256": "C329354ECD8D57C93CC086F10F73F352607027E210F1995AD698A067A6045623",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "26E879EE0BC822980DDA7C085B2FA86CBC4D30B1428AD4B95AA27E909FAA15A6",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s02.rgba.br"
+    },
+    {
+      "id": "g08s03",
+      "source": "data/main/flash/Group8/server3.swf",
+      "source_sha256": "A285E2C53C458465A0EC8E30A61336F4A672CB1E3339F6B67F6D06D5EEFAD3DB",
+      "shape": 3,
+      "render_sha256": "0A6006F9BD87C1A6B4F889B897B6FED788D21E61AAD19893F135FE780ED1D835",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "61E7447EB03330797DB3114F53762184F6B2C9D113A9111E7D9B1FD7B073E12D",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s03.rgba.br"
+    },
+    {
+      "id": "g08s04",
+      "source": "data/main/flash/Group8/server4.swf",
+      "source_sha256": "B09D5E947E279833474A0A4B850FDA165BC751BA76455E3FE098232E954DE860",
+      "shape": 3,
+      "render_sha256": "FDB22FFFFCA71CC76B0C068FF4B7957A64ED66A5D059B41DE47B03737CFBDD16",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "D6B12874BCDB46472A4EDA369C446A35559D8F8670496AEBC56EDF2A570A9E56",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s04.rgba.br"
+    },
+    {
+      "id": "g08s05",
+      "source": "data/main/flash/Group8/server5.swf",
+      "source_sha256": "63D763654394DCCE12BCA3EFBC8F781D5F59D7148351CECD51F163688844556E",
+      "shape": 3,
+      "render_sha256": "99EE93F1D5E0443D122CA9C309101B226A19D455E93771A574BD6EF50EC0B4EF",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "D2A5804D30CEA0C89F02F5F34EF49EF68A6AED7A46F7BB8B97B042884C6EC54E",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s05.rgba.br"
+    },
+    {
+      "id": "g08s06",
+      "source": "data/main/flash/Group8/server6.swf",
+      "source_sha256": "0102CF2DF0B88BB48BBBA050EAB31FC9EA8B337E23BB31AFFEEBC97D454ACE2A",
+      "shape": 3,
+      "render_sha256": "2986091208E15DBE4D637B7A94964E6F991247E6350E35C3035F205CDE03F8BA",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "1027C53B7FD735A3F0DB20B3F7E47588AE567478B475D9B01294F330F33212E7",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s06.rgba.br"
+    },
+    {
+      "id": "g08s07",
+      "source": "data/main/flash/Group8/server7.swf",
+      "source_sha256": "0647A093E27B1D7C64AB402D11910CADE5C9D5D345A64AEAE63A68BD6228A0B1",
+      "shape": 3,
+      "render_sha256": "7790C3856F8214E1CE8493ABFD54A16F1DEAADA037ED238D99DB519F3A6C7F55",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "DDC0F2A25D113AD0C2E02E38BBBE3C78704701FD52427065FCDC95A860BDA974",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s07.rgba.br"
+    },
+    {
+      "id": "g08s08",
+      "source": "data/main/flash/Group8/server8.swf",
+      "source_sha256": "3E0157CC32D9F3E31641508711011C4F0078648F64398F6245AD74A962266729",
+      "shape": 3,
+      "render_sha256": "03D114F02A9D5621E3C17F652B37003ABAB768FD870E9DFBF21BE925D4A32A9A",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "86EBBFC8D8B1A27F441B60449E3EB6FCB79B10962CBB52CD3FF743B7FA541CFA",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s08.rgba.br"
+    },
+    {
+      "id": "g08s09",
+      "source": "data/main/flash/Group8/server9.swf",
+      "source_sha256": "2436FD5E43E8D36368A71060A156C3C195C3F038F7BA367652A3D604C523A4E6",
+      "shape": 3,
+      "render_sha256": "5105411BCE120065376C5B2A0450AD8912A68E50E49CB4060582975CBD923272",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "4E4F6A8CF4A4A2BAADF6C6BB8DE3782C904A74DFFD0CF0B4A77A90830BF14E18",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s09.rgba.br"
+    },
+    {
+      "id": "g08s10",
+      "source": "data/main/flash/Group8/server10.swf",
+      "source_sha256": "CEF6432C594E2EF24C85D4DCD82EDE218A7DA2182A984B244512A3BB31B0E95D",
+      "shape": 3,
+      "render_sha256": "C793135C0D5923689A8BAF081ABD27EDC7256176882AF041FC18BB75E78F2F04",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "7A7F541874B6A8ACAF8BC31684ADB8D25727A291D39B37A5A3805B3F833DAEDE",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s10.rgba.br"
+    },
+    {
+      "id": "g08s11",
+      "source": "data/main/flash/Group8/server11.swf",
+      "source_sha256": "25B5AA2C0A00972477EDB8A84F3688BB3B523AB92D34687E976010F9E0161060",
+      "shape": 3,
+      "render_sha256": "F716F21C0C0DE16FAB4BE52CFFE4890968B37798C719B0D882EBA7382D3E427F",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "5CEB7285174707A2DFFAEDDBF9426AE3CEF78F3A35B82E3B28BC949B909FA1F4",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s11.rgba.br"
+    },
+    {
+      "id": "g08s12",
+      "source": "data/main/flash/Group8/server12.swf",
+      "source_sha256": "81A810AACF731B830C241BC832F5E8D4509D201DE58C619D89B36D2A79F81201",
+      "shape": 3,
+      "render_sha256": "973ECB15DE65C5A29AA47B8DF2BB5432DE40BE369770A5D48071D08E55D41DD5",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "8958ABC609FF2F593012358073305789C664FCB571395291F0BB4C286D71CD52",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g08s12.rgba.br"
+    },
+    {
+      "id": "g09s01",
+      "source": "data/main/flash/Group9/server1.swf",
+      "source_sha256": "EA4B7CEBA29CDC504B4D8976BBB44F8CA015CC6F75D2617D4966DEE02CB4787C",
+      "shape": 2,
+      "render_sha256": "D0372685289506B10C2D0757DE4387F9A39AD9AB4CA4C69B88633B9304D0C5B6",
+      "width": 164,
+      "height": 85,
+      "rgba_sha256": "A3F821CB8E9B7578D5164B103E0963A853BA49FFAF257B1825EF8DCC72131D4C",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g09s01.rgba.br"
+    },
+    {
+      "id": "g09s02",
+      "source": "data/main/flash/Group9/server2.swf",
+      "source_sha256": "6D1715E628D13D439A80E1199511399EEA04EF63BC6BC1B0BC55F7C8583734D3",
+      "shape": 3,
+      "render_sha256": "2049AAF93B2FF1B2061CE0FC2BD0E09DF17065E92C4856D6396A92500957FFCA",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "C4375F818B23317CEA04D997D52578E911544ADF0415B0D95817943469E1585A",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g09s02.rgba.br"
+    },
+    {
+      "id": "g09s03",
+      "source": "data/main/flash/Group9/server3.swf",
+      "source_sha256": "15386DD371D16ADFFB68665AE9D01B8FAFB2A7A55BC6FF6C9BE297DAB1B03ACC",
+      "shape": 3,
+      "render_sha256": "01E626A3D6A71AC032BB417546C50A23186F3F408F7D1C296A71219DFF697AEF",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "40D3ED47DDAC9A547C8340C87DCE344609C216A8E91FA3E4B528E2D745981217",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g09s03.rgba.br"
+    },
+    {
+      "id": "g09s04",
+      "source": "data/main/flash/Group9/server4.swf",
+      "source_sha256": "FD291CEF1EEED65AC1451A24B95985A941ADF188B4E51B692F16DDE1DE749DCF",
+      "shape": 3,
+      "render_sha256": "177B580F10CC142752FB38A9876A12D7F5335BFCECE6F990252E67D214F4D895",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "8C83D7BD536E94F94A00D9207F11D63E6937AF670EB28557880B48B431628FAC",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g09s04.rgba.br"
+    },
+    {
+      "id": "g09s05",
+      "source": "data/main/flash/Group9/server5.swf",
+      "source_sha256": "12C9AAAD19287A7F2D3A7499E8D68C1F46E1CA3577BBA789B99BB51F7DF54E09",
+      "shape": 3,
+      "render_sha256": "A187B03F6B5E65BCA54143E5E45DAF0D715DB9325F421CDD02E9647E44F0C485",
+      "width": 170,
+      "height": 90,
+      "rgba_sha256": "77B28468F7EB23DDA8D2DEFFFBB732977019AF7426F7AFA33F29A142D347E1F6",
+      "file": "src/OpenConquer.Content/Assets/RealmIcons/g09s05.rgba.br"
+    }
+  ]
+}

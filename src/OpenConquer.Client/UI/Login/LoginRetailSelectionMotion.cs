@@ -17,6 +17,7 @@ internal sealed class LoginRetailSelectionMotion
     private int _pointerY;
     private double _fractional;
     private int _regionTick;
+    private int _regionFadeTick;
     private int _serverTick;
     private int _regionHoverTick;
     private int _serverHoverTick;
@@ -26,6 +27,8 @@ internal sealed class LoginRetailSelectionMotion
     public int HoveredRegionSlot { get; private set; } = -1;
     public int HoveredServerSlot { get; private set; } = -1;
     public int RegionFlameFrame => _selectedRegion is null ? -1 : _regionTick % 25;
+    /// <summary>Elapsed frames of defaultR sprite 61, which stops after its five-frame fade-in.</summary>
+    public int RegionFlameFadeStep => _selectedRegion is null ? -1 : _regionFadeTick;
     public int ServerSelectedFrame => _selectedServer is null ? -1 :
         _serverTick < 47 ? _serverTick : 22 + (_serverTick - 22) % 25;
     public int ServerHoverFrame => _hoverServer is null ? -1 : Math.Min(_serverHoverTick, 33);
@@ -58,6 +61,7 @@ internal sealed class LoginRetailSelectionMotion
         {
             _selectedRegion = region;
             _regionTick = 0;
+            _regionFadeTick = 0;
         }
         if (!ReferenceEquals(_selectedServer, server))
         {
@@ -65,8 +69,9 @@ internal sealed class LoginRetailSelectionMotion
             _serverTick = 0;
         }
 
-        int regionSlot = interactive && _mapped ? Hit(_layout.RegionCells, _pointerX, _pointerY) : -1;
-        LoginRegion? hoveredRegion = regionSlot >= 0 ? selection.RegionAtSlot(regionSlot) : null;
+        // `sr` rollover ignores the selected holder; it stays on its frame-13 selected look.
+        int regionSlot = interactive && _mapped ? LoginVisualLayout.HitSlot(_layout.RegionHitAreas, _pointerX, _pointerY) : -1;
+        LoginRegion? hoveredRegion = regionSlot >= 0 && regionSlot != selection.SelectedRegionSlot ? selection.RegionAtSlot(regionSlot) : null;
         if (hoveredRegion is null)
             regionSlot = -1;
         if (!ReferenceEquals(hoveredRegion, _hoverRegion))
@@ -86,7 +91,7 @@ internal sealed class LoginRetailSelectionMotion
         }
         HoveredRegionSlot = regionSlot;
 
-        int serverSlot = interactive && _mapped && region is not null ? Hit(_layout.ServerCells, _pointerX, _pointerY) : -1;
+        int serverSlot = interactive && _mapped && region is not null ? LoginVisualLayout.HitSlot(_layout.ServerHitAreas, _pointerX, _pointerY) : -1;
         LoginServer? hoveredServer = serverSlot >= 0 ? selection.ServerAtSlot(serverSlot) : null;
         if (hoveredServer is null)
             serverSlot = -1;
@@ -103,6 +108,7 @@ internal sealed class LoginRetailSelectionMotion
         if (ticks == 0)
             return;
         _regionTick = AdvanceLoop(_regionTick, ticks, 25);
+        _regionFadeTick = Math.Min(_regionFadeTick + ticks, 5);
         // The selected server begins at frame 1, then loops the frames from the AVM1 "aa" label (23–47).
         _serverTick = _serverTick < 47 ? Math.Min(47, _serverTick + ticks) : 47 + ((_serverTick - 47 + ticks) % 25);
         _regionHoverTick = Math.Min(_regionHoverTick + ticks, 8);
@@ -115,15 +121,4 @@ internal sealed class LoginRetailSelectionMotion
     }
 
     private static int AdvanceLoop(int current, int ticks, int length) => (current + ticks) % length;
-
-    private static int Hit(ReadOnlySpan<LoginSpritePlacement> cells, int x, int y)
-    {
-        for (int i = 0; i < cells.Length; i++)
-        {
-            LoginSpritePlacement rect = cells[i];
-            if (x >= rect.X && y >= rect.Y && (long)x < (long)rect.X + rect.Width && (long)y < (long)rect.Y + rect.Height)
-                return i;
-        }
-        return -1;
-    }
 }

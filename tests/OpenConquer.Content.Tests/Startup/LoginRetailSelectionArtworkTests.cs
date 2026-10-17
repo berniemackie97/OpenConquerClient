@@ -5,8 +5,6 @@ namespace OpenConquer.Content.Tests.Startup;
 public sealed class LoginRetailSelectionArtworkTests
 {
     [Theory]
-    [InlineData(LoginRetailSelectionArtwork.Sequence.RegionFlame, 25)]
-    [InlineData(LoginRetailSelectionArtwork.Sequence.RegionHoverBorder, 10)]
     [InlineData(LoginRetailSelectionArtwork.Sequence.ServerHover, 34)]
     [InlineData(LoginRetailSelectionArtwork.Sequence.ServerSelected, 47)]
     public void RetailAtlasesDecodeWithVerifiedBoundsAndContent(LoginRetailSelectionArtwork.Sequence sequence, int expectedCount)

@@ -45,8 +45,9 @@ public sealed class LoginAudioFeedbackTests
         LoginServerSelection selection = new();
         selection.ReplaceCatalog(new LoginServerCatalog(Enumerable.Range(0, 17)
             .Select(i => new LoginRegion($"region{i}", $"Region {i}", [new LoginServer($"s{i}", $"Server {i}", $"Protocol{i}")]))));
-        Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 26, 575, selection));
-        Assert.Null(sounds.PointerMoved(true, 26, 200, selection)); // previous page unavailable
+        // Both page buttons show (and sound) whenever there is more than one page.
+        Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 260, 615, selection));
+        Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 150, 615, selection));
         Assert.True(selection.SelectRegionSlot(0));
         Assert.True(selection.SelectServerSlot(0));
         Assert.Equal(LoginAudioCue.ButtonHover, sounds.PointerMoved(true, 475, 663, selection));

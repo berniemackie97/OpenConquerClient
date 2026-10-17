@@ -16,7 +16,7 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(108, manifest.FileCount);
+        Assert.Equal(109, manifest.FileCount);
 
         foreach (string path in new[]
         {
