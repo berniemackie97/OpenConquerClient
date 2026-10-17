@@ -1,0 +1,2329 @@
+{
+  "description": "Every embedded login resource (src/OpenConquer.Content/Assets), its retail 5517 source and how it was derived.",
+  "retailSources": "paths relative to the clean 5517 install root",
+  "evidence": {
+    "archive": "OpenConquer-5517-Login-UI-Assets.zip",
+    "sha256": "920e7e33077d90985dea3b509e25bc49ece307e49a6c3af201b13d37672cc2a4",
+    "note": "evidence paths are relative to its package/ directory"
+  },
+  "stageBaker": "Evidence/nativeflashevidence/work/login-ui-research/bake_stage_assets.py",
+  "sources": {
+    "data/Cursor/Normal.ani": "c03b49c05053bf0f92200f720c9d85b9a358c50217b5c07232fac94d6b09968c",
+    "data/main/flash/Group1/server1.swf": "6ad5f92b3ca449b33af455408683707a44bc98e2077026197501ecef347739f8",
+    "data/main/flash/Group1/server10.swf": "10d250b265337772270516eb5693fd3f2e5053bb9b18cf02bb7713363b45aef7",
+    "data/main/flash/Group1/server11.swf": "8f35ce11f1cd19e771ca36a0c0bc1c324e6306bb479a5df357c7d22fef040f42",
+    "data/main/flash/Group1/server12.swf": "9352eeed002874b9acd9e7b32c12d477f62a0e89753b3329d34ae3b456311991",
+    "data/main/flash/Group1/server2.swf": "959cef64b941984cde596d051bf9122c894e3f83e79b9aa13d2c4ce1cbcda217",
+    "data/main/flash/Group1/server3.swf": "32aca2630d71d0576bbcb1a74768b4dc7ebba3a4dc11abddb0673ee7f86da088",
+    "data/main/flash/Group1/server4.swf": "3a73f9e0c77772ebedc6a3e594cfbf36645189cf3ff8b468fc2a438427909fe3",
+    "data/main/flash/Group1/server5.swf": "ab37a9ecb5e60caeb0e5d031a31cfda4dcc84eda28bb4f85b7e6088dd877d89b",
+    "data/main/flash/Group1/server6.swf": "06d491f817991cca6405d2db958941117e252cb8dea9414174b47794251306ee",
+    "data/main/flash/Group1/server7.swf": "3d4e60c8c77c614327e733394e69a96efde003356d96c2c0731b1f5d4a7acc1f",
+    "data/main/flash/Group1/server8.swf": "3e12a68e22bdf3bd5eb21f0143125ec67cb38cb6082ed53f786ef87997994368",
+    "data/main/flash/Group1/server9.swf": "5e74c82f22b44753fefb86b25e962629420f272a28720fe25512dbef87a44928",
+    "data/main/flash/Group2/server1.swf": "1993d480e7ab32ca651f0cd54c77f1f5b6a2fb11c4afcc811301a09e1d08f5a7",
+    "data/main/flash/Group2/server10.swf": "99fd4f79a45495b2fd3f9558799c3b7ac67cd454f12b3d5616f6bfa66f3cfea7",
+    "data/main/flash/Group2/server11.swf": "f5d68797905c979395ee024feed292d13278922c316391db46b30744bdd8f7e2",
+    "data/main/flash/Group2/server12.swf": "2541ed313295dbdd846b6268b71fd8506b74d4c23131b6ba75c78a63281953a3",
+    "data/main/flash/Group2/server13.swf": "50adbba224be211dda259a5cba27e73e0adb3d452a12788bc6c95c6f697811ed",
+    "data/main/flash/Group2/server2.swf": "1108bcbf67b9b28365d466a2d4c22818431078bd7857275b561ed7b7dda03806",
+    "data/main/flash/Group2/server3.swf": "cba0536587bc24ca3f26133c756450784f8651966a7cc4699efc5a34e93b30f8",
+    "data/main/flash/Group2/server4.swf": "fd291cef1eeed65ac1451a24b95985a941adf188b4e51b692f16dde1de749dcf",
+    "data/main/flash/Group2/server5.swf": "0e8a75d7d4792e0dc6074fc1ccf347edcc49f63971449110f40790e02e64d9b9",
+    "data/main/flash/Group2/server6.swf": "a374845a0d63f781e9fa20778f1fe8dd5db03a81e7d33e509cc128482a504de8",
+    "data/main/flash/Group2/server7.swf": "f6d6f74a88f7ba99b37b26f5302e7da6ee5c5f28d543713e142b22909f2f33f2",
+    "data/main/flash/Group2/server8.swf": "c5c41c8cb65a119f0a9435246644bfb97c7fc4ed86d7b28445721ac0fc282bea",
+    "data/main/flash/Group2/server9.swf": "7c9fc9bc8bdacc071c93b60680816ea88214e484332f4a26cb3f2eedeca1db43",
+    "data/main/flash/Group3/server1.swf": "9789e56b4b2eda45c88a291be98bdbe9970b5a5e9ac780995753ffd268fca3b9",
+    "data/main/flash/Group3/server10.swf": "229ec6ad22302ae7d3bf1713575ed2168b36e43cd3152ead5bac4f67ede1027f",
+    "data/main/flash/Group3/server11.swf": "a059bc88459aac7fc5148536acc657d139f969493cde2446e420f8dbc2a28c29",
+    "data/main/flash/Group3/server12.swf": "5f9c841ac9afc22454d2428c34d028d9308107fdac34f8bfdfc5eeb6445132e0",
+    "data/main/flash/Group3/server2.swf": "c48210b86facdd3a123ca4b8fdc533d815ed2057d1e4aa06fecba450a281a197",
+    "data/main/flash/Group3/server3.swf": "f507268845f4096a1e771acbca535331e3d73e2f1fda1a97737e50bd6f270416",
+    "data/main/flash/Group3/server4.swf": "f289a7d1564433dd3709f5024e473bb30005fc1252e459229753ee163fdb4b39",
+    "data/main/flash/Group3/server5.swf": "a244e0a4a7a2f862d921458062132bb60133768372573fcd6d527a44719fff60",
+    "data/main/flash/Group3/server6.swf": "ca81a4a12d39557bfc31329074081d5f365c336e62a985a4024357e1da507e8d",
+    "data/main/flash/Group3/server7.swf": "cbb5883a550b1361a7f88e3903ddb9bef7a226b58b62a81ee69108970d1f14a9",
+    "data/main/flash/Group3/server8.swf": "e261c0577e9b773645ec920354583bcc2c6987179afdb7ff02da4e2808c7e12d",
+    "data/main/flash/Group3/server9.swf": "a9dff64fc20ebc12497146cf12092bb43dc95532ea6bd96cb94ad32be67a4e3a",
+    "data/main/flash/Group4/server1.swf": "883deb451618aeee9e8b1f2133d64578158c4ea0d29340573923a9acc4a030dd",
+    "data/main/flash/Group4/server10.swf": "de8c7849804767735b1eb5dcbb82a8dca54a56920c80b0e2605e5e924c365f70",
+    "data/main/flash/Group4/server11.swf": "33c5851f721ae0a17586be9f489512f0aa18012ad47a73c9803391bc7206edd5",
+    "data/main/flash/Group4/server12.swf": "d3a2fa5df51a06e5cf99034885c19503b298bb1a5b0609bcdfb2d1374684fa08",
+    "data/main/flash/Group4/server2.swf": "7d1e65f4358a9f1ad0c0be400f50ec7690602b91931966953929b0cb9d0078df",
+    "data/main/flash/Group4/server3.swf": "d2362a1abbf477c9df8af1220959decac831f35d76da099c667e7b1208caea85",
+    "data/main/flash/Group4/server4.swf": "2678d5ac8864a972c4d2d08645f2775fac61cdca463b3cc21d2883a4ec83c944",
+    "data/main/flash/Group4/server5.swf": "6863407e5f4ca90c9cd2da91efddb05dd6693999e69031b98d37c855e83e1430",
+    "data/main/flash/Group4/server6.swf": "b978ed771db67f7ac29fa7d152b4be8e150514bc1223f37b7fc05d1d3ae78155",
+    "data/main/flash/Group4/server7.swf": "f41011030edef686fe9d0f213b097027478ce789f2ce527f5fd19820fa471641",
+    "data/main/flash/Group4/server8.swf": "da68e4302d2e970626092c0bedeafa2ac328ea8cb7750f6e0f481a1955d58a97",
+    "data/main/flash/Group4/server9.swf": "655c88af9bb06d772fb19bbab244aefe8b8f472cf37546bf50dc5cbea32c69b3",
+    "data/main/flash/Group5/server1.swf": "b44934c9b6eff77da0d2c1625e89f2acd7b05c0b43211b11e20a1f03d4fcfce2",
+    "data/main/flash/Group5/server10.swf": "79dd353c1f955e30baff08933af3300d4f56d5c73db26d18954ca6d23a39b220",
+    "data/main/flash/Group5/server11.swf": "70b72eaff9bdc8e0e2aa187eef1926fcd28a20fddc5bcbb11c39640f7a37affe",
+    "data/main/flash/Group5/server12.swf": "57b956cd78115f97a085cd9c33ef52b785bb28b05f574f48cca0e82cb77c044f",
+    "data/main/flash/Group5/server2.swf": "1ab55836db1d0a03845621db5d4d2f7779fd25388476065c4efdf046cea9cd15",
+    "data/main/flash/Group5/server3.swf": "177b92ab9a2bb3b272cc26391c649e253c551e455568e3f74d03d0a2717913eb",
+    "data/main/flash/Group5/server4.swf": "4ff59572c92becdb0357d7a8c0d230088c0baeabd0bcac026a2c7e52aee862d3",
+    "data/main/flash/Group5/server5.swf": "25bdf2ddec202fc05be715956a33447910581c08ed1e559778be8f1de0b582fd",
+    "data/main/flash/Group5/server6.swf": "ae763c96147ded8ddaab4992f532dc427c9f3400b42803b34a05b9f89b4de381",
+    "data/main/flash/Group5/server7.swf": "db560dc054bfe91c371f66864104b1869651d5b944070a5f10c32ab32af22b03",
+    "data/main/flash/Group5/server8.swf": "e4fd5ac8425c0b964f301b85fe439eac5d53d9749f4bc4a1bf9e5f87717777b3",
+    "data/main/flash/Group5/server9.swf": "020f137edbf73c4d0ab895b8aecb76f02a76ef741d721f9f32119006f772b4c4",
+    "data/main/flash/Group6/server1.swf": "15386dd371d16adffb68665ae9d01b8fafb2a7a55bc6ff6c9be297dab1b03acc",
+    "data/main/flash/Group6/server10.swf": "dde04716382bfd1977ac5e8c789a65a7e1eb8c98d6093c156860d921ef79d5c8",
+    "data/main/flash/Group6/server11.swf": "4572b4579cf41a160c13e8b72cffa92f15c965722265c3fb4ce7f3465f02ca5a",
+    "data/main/flash/Group6/server12.swf": "90fb1ae62edf7bb3a09cd8e0954b5daa8015772303d9dd9e8d3d9b6680adbad2",
+    "data/main/flash/Group6/server2.swf": "3225e3e8de3247a60e40cc4b3cc68b6356dece6e0c451ff2f06c5e6635c1cb5d",
+    "data/main/flash/Group6/server3.swf": "96628ff952d367404aec132f01794f83ad877a8e88f32e79a5faf88f4daba4dd",
+    "data/main/flash/Group6/server4.swf": "0f3c34c5b20b07e43c91e5d87cc706e04797e13966733335d0ab56514eb55501",
+    "data/main/flash/Group6/server5.swf": "2e941092ad2d3a335cc02b5028a543796223f2fbdf1fb8a78eada94171f97b2e",
+    "data/main/flash/Group6/server6.swf": "ca9081b149469a23a7d405041c0bccc624e16f5d33161c32dbe5003a02bf9eef",
+    "data/main/flash/Group6/server7.swf": "a28e57ac2962241893492d2ffeb01071f6c1f9b973f68a87834824b8bbe88f15",
+    "data/main/flash/Group6/server8.swf": "65d105cad70fdc2cde51f7913f1c5c79fb12322bc1053c63eb5ec9a8e045536a",
+    "data/main/flash/Group6/server9.swf": "52e9c373fee5efa44430eedab55546d2165725cfcfbcd0909985f586d034cd2c",
+    "data/main/flash/Group7/server1.swf": "954b4e79eadb59b51a460de4e8d2c6408c55f4938e164dfb6322d4c060b69a3f",
+    "data/main/flash/Group7/server10.swf": "b2035ee198dd25991575a8864b55996216fb05c2b28e9294470c0b953bd51c38",
+    "data/main/flash/Group7/server11.swf": "529e9e9c9f0539dfd2caa1ec1ce8624b8e5b8bacf4558142ffbc470fe2232b7e",
+    "data/main/flash/Group7/server12.swf": "aa34c846bff333105b252a765f87853793e3b7c48474821db9c6e2c67b66efb1",
+    "data/main/flash/Group7/server2.swf": "c25bdaf09f99e280767cc0c9a332e2165262554a81cb58d012ec85e4451a1a32",
+    "data/main/flash/Group7/server3.swf": "440776dd74a7177e835c02b57877502a24de610bd61ac6737ea09c560e86bb14",
+    "data/main/flash/Group7/server4.swf": "e9078d3bfc756edb7335ff16b4f1f01936e7ed45f233784f14da2e2be0eca9e1",
+    "data/main/flash/Group7/server5.swf": "0c16c71899b8f6bce52cab7c01c504584934aafc49a859eae0dd48d1cbdaaae8",
+    "data/main/flash/Group7/server6.swf": "cb0d8bab508edf6c5bc08f0d57d8569396c8f12815db5a1150c9ca1c01c4dde6",
+    "data/main/flash/Group7/server7.swf": "12c9aaad19287a7f2d3a7499e8d68c1f46e1ca3577bba789b99bb51f7df54e09",
+    "data/main/flash/Group7/server8.swf": "49abb97ce955c169e91fa1b942f5b0b81b327e650fd445f55fc07c09b6784cf3",
+    "data/main/flash/Group7/server9.swf": "813a655fb2032af286bb2142f04924cca062d2c471ab38d0eb9dff6003d5efd6",
+    "data/main/flash/Group8/server1.swf": "5e57e80c56e055a87df10971e71e004640e88cca172c360f9d2b0172d82bdf6e",
+    "data/main/flash/Group8/server10.swf": "cef6432c594e2ef24c85d4dcd82ede218a7da2182a984b244512a3bb31b0e95d",
+    "data/main/flash/Group8/server11.swf": "25b5aa2c0a00972477edb8a84f3688bb3b523ab92d34687e976010f9e0161060",
+    "data/main/flash/Group8/server12.swf": "81a810aacf731b830c241bc832f5e8d4509d201de58c619d89b36d2a79f81201",
+    "data/main/flash/Group8/server2.swf": "252e048ee4e67b820fac6af173d06b128a828be6575ce32ec064bd3e96c0ee04",
+    "data/main/flash/Group8/server3.swf": "a285e2c53c458465a0ec8e30a61336f4a672cb1e3339f6b67f6d06d5eefad3db",
+    "data/main/flash/Group8/server4.swf": "b09d5e947e279833474a0a4b850fda165bc751ba76455e3fe098232e954de860",
+    "data/main/flash/Group8/server5.swf": "63d763654394dcce12bca3efbc8f781d5f59d7148351cecd51f163688844556e",
+    "data/main/flash/Group8/server6.swf": "0102cf2df0b88bb48bbba050eab31fc9ea8b337e23bb31affeebc97d454ace2a",
+    "data/main/flash/Group8/server7.swf": "0647a093e27b1d7c64ab402d11910cade5c9d5d345a64aeae63a68bd6228a0b1",
+    "data/main/flash/Group8/server8.swf": "3e0157cc32d9f3e31641508711011c4f0078648f64398f6245ad74a962266729",
+    "data/main/flash/Group8/server9.swf": "2436fd5e43e8d36368a71060a156c3c195c3f038f7ba367652a3d604c523a4e6",
+    "data/main/flash/Group9/server1.swf": "ea4b7ceba29cdc504b4d8976bbb44f8ca015cc6f75d2617d4966dee02cb4787c",
+    "data/main/flash/Group9/server2.swf": "6d1715e628d13d439a80e1199511399eea04ef63bc6bc1b0bc55f7c8583734d3",
+    "data/main/flash/Group9/server3.swf": "15386dd371d16adffb68665ae9d01b8fafb2a7a55bc6ff6c9be297dab1b03acc",
+    "data/main/flash/Group9/server4.swf": "fd291cef1eeed65ac1451a24b95985a941adf188b4e51b692f16dde1de749dcf",
+    "data/main/flash/Group9/server5.swf": "12c9aaad19287a7f2d3a7499e8d68c1f46e1ca3577bba789b99bb51f7df54e09",
+    "data/main/flash/defaultR.swf": "e4b177bd42c047c330c882bed02ddd1082bd565a6e807d5691ffb2d7038f7c8f",
+    "data/main/flash/defaultS.swf": "2579d4cce2fdf2498e194eca1c7c9b1299bd30438c0cefb9f841df7db782e252",
+    "data/main/flash/loginFlash.swf": "8cc1d5a15d159f8b2c0d1c47109046324d34187f456710dfffbb8e0ca9fb9f6a",
+    "data/main/flash/logo.swf": "7165b9ed4fc84dfd54dea8ee750ab537de522a7b19c645e2313e03c9a251c6f7",
+    "data/main/flash/unopenedR.swf": "2556c9a21092df4e62857be5326869e562167d03e9e5fba3915f0bdd081be9ac",
+    "data/main/flash/unopenedS.swf": "0611f8a6c4f82fa1b75377eef6be9c018e7076eeb3275d3338dff4e906427f8b",
+    "data/main/start.dat": "db4b4550bc4b3fa91b2fd7cc173bb9a6f8109dbc65221e7f0df290610655da20",
+    "sound/Button_1.mp3": "05d49c1f15dd338c113e0a10f18cc361b9b2d067eb09e379d021977424a76aed",
+    "sound/Button_2.mp3": "39105b0e6e062b1c5be888298679c56079f980165db504a917e2c550b5bea878",
+    "sound/Confirm.mp3": "eeeceb5da85e4e58780afb773f4d9c35ddc68a7c0ba2f2b635cbf7ac807c97f0",
+    "sound/Dragon.mp3": "8cf787330d1d949e8885ce94b92c09859246f65939ccfb41bffaf0caae93c591",
+    "sound/Glide.mp3": "633ec93fee0f5641e92ffbe27be87e3f4fd0672c641c2d9372b7c6cf18bf34c1",
+    "sound/click_2.mp3": "c28f086b7ac553c52c8a5114989af2704f397eed848829ed828544b51122e9f9",
+    "sound/error.mp3": "d812b8502b6e143551dc6996af8d860ffa5ee2aa10cf5de17275753dadd7b3a5",
+    "sound/key_1.mp3": "7871baad00c5c7a348da8f95610bf38f5ceb0aade67d323ff73b5c16b062cded",
+    "sound/key_2.mp3": "e5229d2e0121910fae04522d9493415936311fc99861bab72c538719cd722a11",
+    "sound/key_3.mp3": "1a26e46c69f236706e0f753ca519c294e5d315082ba67a93464a492af7e91d87",
+    "sound/music.mp3": "bc811fecb49de6f3f1be2eadde17f08cac095812168cf78acad13ed7d183308a",
+    "sound/page.mp3": "0dd62e7675e50a6a28c94bae55c3b14d3d3c50687db79a9aeaca995b864d4438"
+  },
+  "resources": [
+    {
+      "path": "Login/Stage/Backdrop.rgba.br",
+      "width": 1024,
+      "height": 637,
+      "rgbaSha256": "E33BF0450C7A386AA28D6D90A1F71A8B7D8B64E1E4EC92FDFAD48D7F3880A2B9",
+      "source": "data/main/start.dat",
+      "element": "root depth 1, shape 11 (bitmap 10)",
+      "evidence": [
+        "assets/start/images/10.png"
+      ]
+    },
+    {
+      "path": "Login/Stage/Border.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "76A47E69EF101456A8925BB84A137B3D738C8BF6BCF7AD2F0DED9A0FD5CC5AA8",
+      "source": "data/main/start.dat",
+      "element": "root frame 3 depth 216, shape 400",
+      "evidence": [
+        "assets/start/shapes/400.png"
+      ]
+    },
+    {
+      "path": "Login/Stage/AccountPanel.rgba.br",
+      "width": 508,
+      "height": 98,
+      "rgbaSha256": "3A1E4698639F2C4AF2EACE1C9B48E81D4898D279831C128BBE65E76E3EB240C2",
+      "source": "data/main/start.dat",
+      "element": "enterMC shape 328 (DefineBitsJPEG3 327)",
+      "evidence": [
+        "assets/start/images/327.png"
+      ],
+      "derivation": "JPEG3 RGB with its alpha plane, straight alpha"
+    },
+    {
+      "path": "Login/Stage/RegionPanel.rgba.br",
+      "width": 340,
+      "height": 434,
+      "rgbaSha256": "DF314FC0B3E49BA4255E05750F72BF0F765C79DD0B71883E149AD1343342986B",
+      "source": "data/main/start.dat",
+      "element": "sprite 259 depth 1, sprite 183",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_183/1.png"
+      ],
+      "derivation": "alpha 195/256, baked onto the stage grid through the sprite 259 matrix"
+    },
+    {
+      "path": "Login/Region/Tile.rgba.br",
+      "width": 151,
+      "height": 53,
+      "rgbaSha256": "466A1A4A2219102246874C9407FBC8790A4F7828C465692B8321091D241CBF38",
+      "source": "data/main/flash/defaultR.swf",
+      "element": "shape 3 bitmap 2 at (0,-1)",
+      "evidence": [
+        "assets/defaultR/images/2.png"
+      ],
+      "derivation": "baked through the region panel matrix (0.98029, 0.98012)"
+    },
+    {
+      "path": "Login/Region/Unopened.rgba.br",
+      "width": 151,
+      "height": 53,
+      "rgbaSha256": "BBCC706CC21EFD39DAF06B306C5A8D5A185037288F8787378FD7BD86DC81424F",
+      "source": "data/main/flash/unopenedR.swf",
+      "element": "sprite 3 at identity",
+      "evidence": [
+        "assets/unopenedR/shapes/2.png"
+      ],
+      "derivation": "baked through the region panel matrix (0.98029, 0.98012)"
+    },
+    {
+      "path": "Login/Region/Hover.rgba.br",
+      "width": 850,
+      "height": 130,
+      "rgbaSha256": "B3558A7B60937C264B15D6D23EBA65E924F2DACE7374ACD7F4A0C4EE2DC233E2",
+      "source": "data/main/flash/defaultR.swf",
+      "element": "root depth 3 sprite 9 per frame",
+      "evidence": [
+        "assets/defaultR/images/7.png"
+      ],
+      "derivation": "baked through the region panel matrix (0.98029, 0.98012)"
+    },
+    {
+      "path": "Login/Region/Flame.rgba.br",
+      "width": 740,
+      "height": 250,
+      "rgbaSha256": "E8480C78CB0E8E51BA83B340034B7E84CE333A009092678C1111DDC9146EE5C2",
+      "source": "data/main/flash/defaultR.swf",
+      "element": "sprite 61 at (3,1) / sprite 60 at (75,25)",
+      "evidence": [
+        "assets/defaultR/sprites/DefineSprite_60/1.png",
+        "assets/defaultR/sprites/DefineSprite_60/25.png"
+      ],
+      "derivation": "baked through the region panel matrix (0.98029, 0.98012)"
+    },
+    {
+      "path": "Login/Server/Unopened.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "64511F3C4B1A4B072F7F09B243C88A22A70F19CB8441A586D4B512871DE7F9DE",
+      "source": "data/main/flash/unopenedS.swf",
+      "element": "root shape 3",
+      "evidence": [
+        "assets/unopenedS/shapes/3.png"
+      ]
+    },
+    {
+      "path": "Login/Server/Default.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "37A300257303589F9E1052D73805708807A9F1CCD466A8D927D4F491F3976C3B",
+      "source": "data/main/flash/defaultS.swf",
+      "element": "root shape 3",
+      "evidence": [
+        "assets/defaultS/shapes/3.png"
+      ]
+    },
+    {
+      "path": "Login/Server/Hover.rgba.br",
+      "width": 1600,
+      "height": 600,
+      "rgbaSha256": "C8695D2B639DA9B12B49EC0B1786AF58E62FD392C2B9FEA9489E9605519EE4A3",
+      "source": "data/main/start.dat",
+      "element": "sprite 83, 34 frames",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_83/1.png",
+        "assets/start/sprites/DefineSprite_83/34.png"
+      ],
+      "derivation": "34 frames of 200x120, 8 per row"
+    },
+    {
+      "path": "Login/Server/Selected.rgba.br",
+      "width": 1760,
+      "height": 720,
+      "rgbaSha256": "C6DDCC3CE1ED6A121492763E369E534EBCBA5BD1A40EF902F5C2228A0C42938C",
+      "source": "data/main/start.dat",
+      "element": "sprite 178, 47 frames",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_178/1.png",
+        "assets/start/sprites/DefineSprite_178/47.png"
+      ],
+      "derivation": "47 frames of 220x120, 8 per row"
+    },
+    {
+      "path": "Login/Server/Status.rgba.br",
+      "width": 72,
+      "height": 18,
+      "rgbaSha256": "5FA3C29BE37231F2CB83C54440C737C45BEFFB10694687D40680224BE3A5C7E2",
+      "source": "data/main/start.dat",
+      "element": "sprite 34 frames 1-4",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_34/1.png"
+      ],
+      "derivation": "four 18x18 frames in a row"
+    },
+    {
+      "path": "Login/ServerIcons/g01s01.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "7F5D26A42B499E6ADF5F008F413056762BDB6A420824CEC58B611AD525099028",
+      "source": "data/main/flash/Group1/server1.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s02.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "8C2FCBB39A79016F7C8E68752BD811C21E1BE7644DD6944E336A370BC36C729D",
+      "source": "data/main/flash/Group1/server2.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s03.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "A9F06335DC5C4E44367B7713B2448C44424C74E1E074A47A8DCBFA6909D7EFA7",
+      "source": "data/main/flash/Group1/server3.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s04.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "786076BEEC3C023337E229071A67C47EC5087ADF9B609D7B3089E8E33520BC65",
+      "source": "data/main/flash/Group1/server4.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s05.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "6CB71B50F0A101F9BB4E9FE601EE483F4CEF03758C0CDCA72880898A73D319B3",
+      "source": "data/main/flash/Group1/server5.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s06.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "6E9FA8716BFC2FF8B443674DC393232A9347DA5CC175F451882F04361A0391A2",
+      "source": "data/main/flash/Group1/server6.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s07.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "1911AF94D7F80C6A03D4A3919BA42E05B03A4C0CAAE9EE70F368C7D4C03995DA",
+      "source": "data/main/flash/Group1/server7.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s08.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "FF434E415FCC7BF7F9457B1F2CE3B237BF3137EB2B523DDFC86F5F6FF586BFAB",
+      "source": "data/main/flash/Group1/server8.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s09.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "2000A1749C5353400B1C40535CC4B00AA0187860E3CE97D8FF1C38ADDEEDDC72",
+      "source": "data/main/flash/Group1/server9.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s10.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "FCA91B0D95BC30CBCE237566AAE320AF1D5F68DC7538F5CC205B0E69CF58CF15",
+      "source": "data/main/flash/Group1/server10.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s11.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "DC68380F8F2FE4A73E3F22B8A1712D963C6E03F77086F5AD4C3E831219CCFE36",
+      "source": "data/main/flash/Group1/server11.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g01s12.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "D3E6AC31CE2101645F2E04468B7B3818A1545F53E61614940F49C59F20712DEE",
+      "source": "data/main/flash/Group1/server12.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s01.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "53A7C9EB4166B2F76911B565AE89030AAE793D6614DF2EC8F36AF94154739D16",
+      "source": "data/main/flash/Group2/server1.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s02.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "2A966AA50CF98831CBAF1153A0194E476330D9D4698B123269D88CA2BA0EC408",
+      "source": "data/main/flash/Group2/server2.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s03.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "6DCA2B9B47932AD2ECB24ED34DE1B2CE78B6922771F6952D1890177FFBC78AFF",
+      "source": "data/main/flash/Group2/server3.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s04.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "8C83D7BD536E94F94A00D9207F11D63E6937AF670EB28557880B48B431628FAC",
+      "source": "data/main/flash/Group2/server4.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s05.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "6A061C7DE67B65ECA9DD562F6CCC495EB09041066E89532640B0E5090C89D80B",
+      "source": "data/main/flash/Group2/server5.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s06.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "58CDB30945E5A30061FA12E2A17B077CE2CA15BC1308CEDB40B4C2E7C65E8A2D",
+      "source": "data/main/flash/Group2/server6.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s07.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "B543F0B8E4BC4505FB5055555DC4B5BB661F4E22CAD949E50100F07584A57431",
+      "source": "data/main/flash/Group2/server7.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s08.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "A1A8264237D18A197F3804FED4DC9FA8D43CE2E7689FDA1D462C93FB8203933C",
+      "source": "data/main/flash/Group2/server8.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s09.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "05FF5B60F4AB86DBFCEF65777FBF1A1901F6070AB2EC790624D8EEAC06D4C6E8",
+      "source": "data/main/flash/Group2/server9.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s10.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "7D1A3252862F6C80996F412C5156F09F96A620EA0044F5A0800DB54272102060",
+      "source": "data/main/flash/Group2/server10.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s11.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "E9017D1D499A3294185511D8A297903CF50908F2ACCBEE84C12A8B5FD23D07AB",
+      "source": "data/main/flash/Group2/server11.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s12.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "28475F5FE72CEFF8C7E0768D76C5DD78EA6E91D0AC039E977F3C135C4174CAB8",
+      "source": "data/main/flash/Group2/server12.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g02s13.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "FFE44118A88EAC99300451ECB1C36EF9958F8A66146C2445E67388D2F32A90A7",
+      "source": "data/main/flash/Group2/server13.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s01.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "6C041D2BA70AB1A3E9E175EC11616C6F1CD2EB061D62B612460DD37AB015F19E",
+      "source": "data/main/flash/Group3/server1.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s02.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "DCECC7E00AB5FD8DA997FAD8A69CDDDDF14913582138CB737A59FB9734671272",
+      "source": "data/main/flash/Group3/server2.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s03.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "C8D79840414A26FE0B729DB124A6244768387472796AD43622CD51AD0C33FB61",
+      "source": "data/main/flash/Group3/server3.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s04.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "93B57E74867A46BF934894DA028B869B9F4B1C11443C7E562BB79C02DE165857",
+      "source": "data/main/flash/Group3/server4.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s05.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "35A397D44B4D04AEFA11681F8CF565275469E8B994B62A23B9FE39020987461F",
+      "source": "data/main/flash/Group3/server5.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s06.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "2B767FE1FCAD807AA2A1B47604421AF32225D122F35B7A65810FD0B7F3A38DED",
+      "source": "data/main/flash/Group3/server6.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s07.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "6981D3E266A3258F6EF614D0EDEBEAE23B7F4F9FAF502FF2BD30A1A27004CC43",
+      "source": "data/main/flash/Group3/server7.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s08.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "C45F4D8A406EEB66990CEB8B37DB85A9134373E4ED128F8E47E53A57DFEFED98",
+      "source": "data/main/flash/Group3/server8.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s09.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "F46233D7F366F3E0CFD8C6A3F861EC804C12862CEEADCD6015C53B9802CCFC22",
+      "source": "data/main/flash/Group3/server9.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s10.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "20C65351BDDE379C2A7AB4DB2BFA25F8C24F442707F5462FA4C82DDB6CCD599A",
+      "source": "data/main/flash/Group3/server10.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s11.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "5451891FAC1AE3C11E77E85FA784411BF81B7C989B62254D6E1FFE59C165F466",
+      "source": "data/main/flash/Group3/server11.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g03s12.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "D661220777AF02152CEF6F46595CA17428693BE5D887AD68A528ACB052524A0D",
+      "source": "data/main/flash/Group3/server12.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s01.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "ABF7E41617AAB1CDBADBEDCB60DFDC7D6D1AC4E22E78AF5FE756495F0298E347",
+      "source": "data/main/flash/Group4/server1.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s02.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "FB6DE40428C0EADE31D6905279519A6FAF7DA02EC2C0111732A43C5FF8AE5403",
+      "source": "data/main/flash/Group4/server2.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s03.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "2DC81475A545ED1C87D63AA05A913F694B0ABD747A3679C9BB75840DA6F53E04",
+      "source": "data/main/flash/Group4/server3.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s04.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "018D8F567F8323A7CA5E64EAB4F5D6B42ECE05B09787EE28D5EA2C95F92FF9D5",
+      "source": "data/main/flash/Group4/server4.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s05.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "585A73C1DF99F665F0A67515CFCA7808530CDEF7C40CF44D831CFC0EE7C2D233",
+      "source": "data/main/flash/Group4/server5.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s06.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "63BB49A160E4BC7FD0EAD8278D8167CD42113CBD39C69BF957154FA6826F6143",
+      "source": "data/main/flash/Group4/server6.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s07.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "33A37CC35F4256C820ACDDEAD0AED3280548DBBFA0558EED885C908CA5EAC7BD",
+      "source": "data/main/flash/Group4/server7.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s08.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "FD299E3598374BB89E00921FAE0BF544CF0ABCD176431AF966F3623B628E4243",
+      "source": "data/main/flash/Group4/server8.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s09.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "BB7BC3E66706C4A53971639DC96CB488B7F8D754B0BA75DC311BED6C557BF055",
+      "source": "data/main/flash/Group4/server9.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s10.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "37C06FB14DC260CA77B0FF9A1858DCEC5DBE985EDCB7812F1E9341A44EC3EEB8",
+      "source": "data/main/flash/Group4/server10.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s11.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "EDDAF3D99687388E80AC8BBBDEB98CB49ECB3F72D505C86535FDEE383F3F8CFD",
+      "source": "data/main/flash/Group4/server11.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g04s12.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "B6F9A13969965955F7F3089640A0FA3E6EF973E69979B84A94E37FFA9F958684",
+      "source": "data/main/flash/Group4/server12.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s01.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "BABB803AE74D635AEF1DD736B13367DCE6AA64688539B6BBE147906E4C2586AC",
+      "source": "data/main/flash/Group5/server1.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s02.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "8EAE2EF9F1E5F428C8A90BBED91A828AD984D1ABE68A16933B6093AFD1262FDE",
+      "source": "data/main/flash/Group5/server2.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s03.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "12B5A2F6805E91E0E62FC250D26A7CE218F6099A0E08AC25FDB5E7A938B7A14D",
+      "source": "data/main/flash/Group5/server3.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s04.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "D426A185DB9EFF70C1B6B946E92F574844348AD1A4945D8F2DC5ECB98BE5C72D",
+      "source": "data/main/flash/Group5/server4.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s05.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "F17DAD1CE399318D6CC2DDFA233D6D35E9A25F2E28970C5B3AACBCD774DD5146",
+      "source": "data/main/flash/Group5/server5.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s06.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "D4904D7153DB043B6ED6D0B3C36EA0E1F548AD8AEAD359A0ABC223BA4E021D88",
+      "source": "data/main/flash/Group5/server6.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s07.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "CFBD2799248B70E92B6D554AE4440D7FD11D2D79B2F79ED30937E03322014F93",
+      "source": "data/main/flash/Group5/server7.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s08.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "5A0A8DAD34C70DE91377948E9ECD2362EE3C70AF42DC85079630158EEA2E750F",
+      "source": "data/main/flash/Group5/server8.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s09.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "5A462A74630F14CF464A2432BFE5FA72EBE161E7B80C92E3D8D77322A8572BD0",
+      "source": "data/main/flash/Group5/server9.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s10.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "D1A6F8DDF36BA046A13BBCD666F79AB33B23383C2613B34755D64E4E4DA7BC8E",
+      "source": "data/main/flash/Group5/server10.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s11.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "3FAEEAF7A2A216D12DCCDD3651EF2BF73CF4C5C88EAD28760FB80B6ECE7B48F4",
+      "source": "data/main/flash/Group5/server11.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g05s12.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "412C847E922407FAA1744D566EB065792A0E4AE28DA1174D1DF7D2345B19BA68",
+      "source": "data/main/flash/Group5/server12.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s01.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "40D3ED47DDAC9A547C8340C87DCE344609C216A8E91FA3E4B528E2D745981217",
+      "source": "data/main/flash/Group6/server1.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s02.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "728F722F3951144482F7DBD62F037F918A24C83AE1013EF6DDFB63384ED68938",
+      "source": "data/main/flash/Group6/server2.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s03.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "7EB164349976F32AC5B8396AAF53B2FDCF81200215A0351E563B8AFB041C90AB",
+      "source": "data/main/flash/Group6/server3.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s04.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "8E0AE679CB1138A6F96EF98848BAEC4DCA623CD8B83396127A11B3DEF46D8178",
+      "source": "data/main/flash/Group6/server4.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s05.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "8205ACD3F5883F1CC0013A5A3500C5820933FB5A78DBD801A71D55C30D8D509A",
+      "source": "data/main/flash/Group6/server5.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s06.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "3E30CF1181378062BEBFF42D525FC81829EC0EF2E820DBB6910F4C54C2B3C639",
+      "source": "data/main/flash/Group6/server6.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s07.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "FA18F465D6A74CAB652CDBABA8E4449731893C6BD6CECF6FC2ECBC40E7F14E59",
+      "source": "data/main/flash/Group6/server7.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s08.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "9918CD3767D4641A7CE432187FBB2019943B3797013C22E4D500B5A0D0492092",
+      "source": "data/main/flash/Group6/server8.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s09.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "D6F94E671D1EF1455B98CB759DF8854AD71D538F146A8DB38A5A62FEBAAFD110",
+      "source": "data/main/flash/Group6/server9.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s10.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "2CBF066BD5D4775046722E299ABBAF54D93597D4CDA42E32C9EF0FDEFD2F32D4",
+      "source": "data/main/flash/Group6/server10.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s11.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "8CAC60A8DB60DBA9E13D7AA0F077975EA81F381F698B40D29CF585194C3A6E6C",
+      "source": "data/main/flash/Group6/server11.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g06s12.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "3413D37FDE7BA15BD489227D52A2A6364186A433632E95636823BFB779D4EFA1",
+      "source": "data/main/flash/Group6/server12.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s01.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "A3235BFA5ECD9BBB7EC722A57E53427D619F0B67AAE4E2A34914EAD7A9E0A994",
+      "source": "data/main/flash/Group7/server1.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s02.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "73A3B2F8E86760BE6A9078497D3DCBB6D413B914E1CB92FF4EBFACE263F5D9E3",
+      "source": "data/main/flash/Group7/server2.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s03.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "210EA243DB356DC056E8316283124EBE29EFB7157BB2E9EF494D9A7650EC9A46",
+      "source": "data/main/flash/Group7/server3.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s04.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "4C4B6458AB86CACEDC6F0836DB09D1903693E000A6EB6BD1DDD02573A4A8F11C",
+      "source": "data/main/flash/Group7/server4.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s05.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "09858C30BFC645A99A0128E036E93C1BD487062B3E2A9E09C3F5B9F66C0C5E6A",
+      "source": "data/main/flash/Group7/server5.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s06.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "5BB0586AF91B6BDFDFB8C23E5FC9C3A8BEAA328FC88FAFEE9CE85AE34668D58C",
+      "source": "data/main/flash/Group7/server6.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s07.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "77B28468F7EB23DDA8D2DEFFFBB732977019AF7426F7AFA33F29A142D347E1F6",
+      "source": "data/main/flash/Group7/server7.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s08.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "A1BCA1C0C7145AF5FE2A17E11B28BCDDE54754499CA7AFCCB26E4978EC4025C0",
+      "source": "data/main/flash/Group7/server8.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s09.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "0883AA4FF40AF47467EE2C70F0385A6E03E7CE80610FBF3726219FC3BA37F43C",
+      "source": "data/main/flash/Group7/server9.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s10.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "FE20CB630621966AA16C6BF659C9410F26325F5528E6C098501835A98FC2DEBC",
+      "source": "data/main/flash/Group7/server10.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s11.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "9FD4E199C744717D7D97B76E7D006B8B53B5638F7B1A4E4F3C4E2C6260D40FC3",
+      "source": "data/main/flash/Group7/server11.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g07s12.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "233756EA191104ED9AAD5EA4FBC58772CE617B5CCF4441E69AB7DE22C34C2DFA",
+      "source": "data/main/flash/Group7/server12.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s01.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "0937B9621EE5544C8B4B4FD4C03007147747F0DCC548BF69E5245C775C53D58B",
+      "source": "data/main/flash/Group8/server1.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s02.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "26E879EE0BC822980DDA7C085B2FA86CBC4D30B1428AD4B95AA27E909FAA15A6",
+      "source": "data/main/flash/Group8/server2.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s03.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "61E7447EB03330797DB3114F53762184F6B2C9D113A9111E7D9B1FD7B073E12D",
+      "source": "data/main/flash/Group8/server3.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s04.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "D6B12874BCDB46472A4EDA369C446A35559D8F8670496AEBC56EDF2A570A9E56",
+      "source": "data/main/flash/Group8/server4.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s05.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "D2A5804D30CEA0C89F02F5F34EF49EF68A6AED7A46F7BB8B97B042884C6EC54E",
+      "source": "data/main/flash/Group8/server5.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s06.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "1027C53B7FD735A3F0DB20B3F7E47588AE567478B475D9B01294F330F33212E7",
+      "source": "data/main/flash/Group8/server6.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s07.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "DDC0F2A25D113AD0C2E02E38BBBE3C78704701FD52427065FCDC95A860BDA974",
+      "source": "data/main/flash/Group8/server7.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s08.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "86EBBFC8D8B1A27F441B60449E3EB6FCB79B10962CBB52CD3FF743B7FA541CFA",
+      "source": "data/main/flash/Group8/server8.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s09.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "4E4F6A8CF4A4A2BAADF6C6BB8DE3782C904A74DFFD0CF0B4A77A90830BF14E18",
+      "source": "data/main/flash/Group8/server9.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s10.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "7A7F541874B6A8ACAF8BC31684ADB8D25727A291D39B37A5A3805B3F833DAEDE",
+      "source": "data/main/flash/Group8/server10.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s11.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "5CEB7285174707A2DFFAEDDBF9426AE3CEF78F3A35B82E3B28BC949B909FA1F4",
+      "source": "data/main/flash/Group8/server11.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g08s12.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "8958ABC609FF2F593012358073305789C664FCB571395291F0BB4C286D71CD52",
+      "source": "data/main/flash/Group8/server12.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g09s01.rgba.br",
+      "width": 164,
+      "height": 85,
+      "rgbaSha256": "A3F821CB8E9B7578D5164B103E0963A853BA49FFAF257B1825EF8DCC72131D4C",
+      "source": "data/main/flash/Group9/server1.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g09s02.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "C4375F818B23317CEA04D997D52578E911544ADF0415B0D95817943469E1585A",
+      "source": "data/main/flash/Group9/server2.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g09s03.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "40D3ED47DDAC9A547C8340C87DCE344609C216A8E91FA3E4B528E2D745981217",
+      "source": "data/main/flash/Group9/server3.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g09s04.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "8C83D7BD536E94F94A00D9207F11D63E6937AF670EB28557880B48B431628FAC",
+      "source": "data/main/flash/Group9/server4.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/ServerIcons/g09s05.rgba.br",
+      "width": 170,
+      "height": 90,
+      "rgbaSha256": "77B28468F7EB23DDA8D2DEFFFBB732977019AF7426F7AFA33F29A142D347E1F6",
+      "source": "data/main/flash/Group9/server5.swf",
+      "element": "root shape 3, as the son holder shows it",
+      "derivation": "JPEXS shape:png export of the movie"
+    },
+    {
+      "path": "Login/Buttons/RegisterUp.rgba.br",
+      "width": 82,
+      "height": 21,
+      "rgbaSha256": "7D0C934BE3980D1D07D73706BBD4039F08BEF72892791F1BC9371952861E72C2",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 299, up state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_299/1_up.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/RegisterOver.rgba.br",
+      "width": 82,
+      "height": 21,
+      "rgbaSha256": "6DEDA0F087EC41D3BDC106FAAE8EA98254F71107904592098CA4056D6CD1CF72",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 299, over state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_299/2_over.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/RegisterDown.rgba.br",
+      "width": 82,
+      "height": 21,
+      "rgbaSha256": "97FC0FCD8B36EFA47EB0E9EF5D63D0AAA52F0B4E02228C924FEB4D8959026F8A",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 299, down state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_299/3_down.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/PurchaseUp.rgba.br",
+      "width": 109,
+      "height": 21,
+      "rgbaSha256": "3853893B9C990EAD32D942FD264061F1EF4EE836DDD04D7185F736A2719EF7E7",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 305, up state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_305/1_up.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/PurchaseOver.rgba.br",
+      "width": 109,
+      "height": 21,
+      "rgbaSha256": "48BCF7842A79254C3A12F2BED8E6106BAFCDA9D02CF1D409C27CFD739AF899CE",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 305, over state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_305/2_over.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/PurchaseDown.rgba.br",
+      "width": 109,
+      "height": 21,
+      "rgbaSha256": "AF2FC4DF4FC45FA0DB2A1095AA43C7B0CE22CCB757E0CD9D8E64CDBF39022EBF",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 305, down state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_305/3_down.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/HelpUp.rgba.br",
+      "width": 57,
+      "height": 23,
+      "rgbaSha256": "DB68CB506617B052CED2F0B2BE5C1AA07C08AC76A25A4C3664DD0FE6E2EE0795",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 310, up state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_310/1_up.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/HelpOver.rgba.br",
+      "width": 57,
+      "height": 23,
+      "rgbaSha256": "32FA32C901DD08B18B5F8CB1BCBD8F7A7BF0ACF566446AEADCA1A8484A4D8011",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 310, over state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_310/2_over.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/HelpDown.rgba.br",
+      "width": 57,
+      "height": 23,
+      "rgbaSha256": "818DE64B3668D39F0A85F29FD9B7E5C35426A0651D92B77BBBC3AC4DFC104F32",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 310, down state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_310/3_down.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/AccountsUp.rgba.br",
+      "width": 17,
+      "height": 15,
+      "rgbaSha256": "759D4152237793B1FBC15B22C4F9494E31F7F655B8B0CAA4A081D82D0C84EC9F",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 335, up state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_335/1_up.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/AccountsOver.rgba.br",
+      "width": 17,
+      "height": 15,
+      "rgbaSha256": "E955B2B76F807FAB7489F8528FB08F1C50B61ED7F0102F337B8337D0DD565F33",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 335, over state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_335/2_over.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/AccountsDown.rgba.br",
+      "width": 17,
+      "height": 15,
+      "rgbaSha256": "1B228B6C9B28352B363494FD605FBD1DE530C3F8F19DC07B4FA4657FBA2A63C5",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 335, down state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_335/3_down.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/SaveUp.rgba.br",
+      "width": 22,
+      "height": 19,
+      "rgbaSha256": "C28CBDA5B479CC4920300A97F3D298910272A32CD0CD0FB6812D9BA8F410BA3C",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 342, up state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_342/1_up.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/SaveOver.rgba.br",
+      "width": 22,
+      "height": 19,
+      "rgbaSha256": "FC22C051FE6BE55D7B108D270419D859D8E0015A52987ACF68491EA0E360B1BF",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 342, over state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_342/2_over.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/SaveDown.rgba.br",
+      "width": 22,
+      "height": 19,
+      "rgbaSha256": "19C8A36140D9661CBC0D4076E39A4928CD90C2314869CF01F05BBED0CBA133AB",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 342, down state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_342/3_down.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/ClearUp.rgba.br",
+      "width": 20,
+      "height": 21,
+      "rgbaSha256": "E52660C2AAD3072110B29FB5FF5EFC9610C54143DD928BE079B55E5F00BBE065",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 349, up state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_349/1_up.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/ClearOver.rgba.br",
+      "width": 20,
+      "height": 21,
+      "rgbaSha256": "1F09ECC6BF5212C7AB9F96DD1B015EEB3E3F7B42360EB68C7146522D06C58DED",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 349, over state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_349/2_over.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/ClearDown.rgba.br",
+      "width": 20,
+      "height": 21,
+      "rgbaSha256": "E0A05885490EFC93676455ED8691ED80179963E7C33389E3C2779CFF166733BD",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 349, down state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_349/3_down.png"
+      ]
+    },
+    {
+      "path": "Login/Buttons/EnterUp.rgba.br",
+      "width": 132,
+      "height": 40,
+      "rgbaSha256": "41FDEA3A98E653CB2C991CE9B656D41AC97D3E828CE32E1F5362174A51D3E404",
+      "source": "data/main/start.dat",
+      "element": "enterMC sprite 317, DefineBitsJPEG3 311",
+      "evidence": [
+        "assets/start/images/311.png"
+      ],
+      "derivation": "JPEG3 RGB with its alpha plane, straight alpha"
+    },
+    {
+      "path": "Login/Buttons/EnterOver.rgba.br",
+      "width": 132,
+      "height": 40,
+      "rgbaSha256": "8CA3DFFE0F2F1850EA61872E137003E54EC8C6A16D68606157AD6CBD85946B83",
+      "source": "data/main/start.dat",
+      "element": "enterMC sprite 317, DefineBitsJPEG3 313",
+      "evidence": [
+        "assets/start/images/313.png"
+      ],
+      "derivation": "JPEG3 RGB with its alpha plane, straight alpha"
+    },
+    {
+      "path": "Login/Buttons/EnterDown.rgba.br",
+      "width": 132,
+      "height": 40,
+      "rgbaSha256": "5056F3F7098A2D935AF7FAF550CD3CFF1CE5A4957832935C5FC2CDCA5DB212A8",
+      "source": "data/main/start.dat",
+      "element": "enterMC sprite 317, DefineBitsJPEG3 315",
+      "evidence": [
+        "assets/start/images/315.png"
+      ],
+      "derivation": "JPEG3 RGB with its alpha plane, straight alpha"
+    },
+    {
+      "path": "Login/Buttons/ExitUp.rgba.br",
+      "width": 132,
+      "height": 40,
+      "rgbaSha256": "57121511C04031B7CDE18EFC93A23728ADC19BAE695280F4D6A9678DE6283730",
+      "source": "data/main/start.dat",
+      "element": "enterMC sprite 324, DefineBitsJPEG3 318",
+      "evidence": [
+        "assets/start/images/318.png"
+      ],
+      "derivation": "JPEG3 RGB with its alpha plane, straight alpha"
+    },
+    {
+      "path": "Login/Buttons/ExitOver.rgba.br",
+      "width": 132,
+      "height": 40,
+      "rgbaSha256": "FE32A09DB879DDA1B73E8C5012CA8FAB5AA45B9FA845CCF4A03508660D89D794",
+      "source": "data/main/start.dat",
+      "element": "enterMC sprite 324, DefineBitsJPEG3 320",
+      "evidence": [
+        "assets/start/images/320.png"
+      ],
+      "derivation": "JPEG3 RGB with its alpha plane, straight alpha"
+    },
+    {
+      "path": "Login/Buttons/ExitDown.rgba.br",
+      "width": 132,
+      "height": 40,
+      "rgbaSha256": "37442D367079C3F6B1AD3E6C9E8FB7EABC615F10B10491AD631E4B9518A3BD1A",
+      "source": "data/main/start.dat",
+      "element": "enterMC sprite 324, DefineBitsJPEG3 322",
+      "evidence": [
+        "assets/start/images/322.png"
+      ],
+      "derivation": "JPEG3 RGB with its alpha plane, straight alpha"
+    },
+    {
+      "path": "Login/Buttons/PagePreviousUp.rgba.br",
+      "width": 38,
+      "height": 34,
+      "rgbaSha256": "E1FB515595C7AFDA502AD080CC7A6ED28E82470E6350DBD27B1029C3FDF10F17",
+      "source": "data/main/start.dat",
+      "element": "sprite 259 DefineButton2 199 up state, matrix (0, 1, 1, 0, 8, 244)",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_199/1_up.png"
+      ],
+      "derivation": "rotated onto the stage grid by the button matrix"
+    },
+    {
+      "path": "Login/Buttons/PagePreviousOver.rgba.br",
+      "width": 38,
+      "height": 34,
+      "rgbaSha256": "3CE1FE245673353A875A081AB526043CFBCF6BCAD7EBF6F8E3FD1882C0140940",
+      "source": "data/main/start.dat",
+      "element": "sprite 259 DefineButton2 199 over state, matrix (0, 1, 1, 0, 8, 244)",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_199/2_over.png"
+      ],
+      "derivation": "rotated onto the stage grid by the button matrix"
+    },
+    {
+      "path": "Login/Buttons/PagePreviousDown.rgba.br",
+      "width": 38,
+      "height": 34,
+      "rgbaSha256": "C486B81BAD06DB650ED6CDAC815EFDA70B2B51759DAAE1583B34E4B18C041CA9",
+      "source": "data/main/start.dat",
+      "element": "sprite 259 DefineButton2 199 down state, matrix (0, 1, 1, 0, 8, 244)",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_199/3_down.png"
+      ],
+      "derivation": "rotated onto the stage grid by the button matrix"
+    },
+    {
+      "path": "Login/Buttons/PageNextUp.rgba.br",
+      "width": 40,
+      "height": 34,
+      "rgbaSha256": "0FE48D296C7641580B0F11BF1C4ACA8D1D0A0ED76F7844010B3CD063BD896E04",
+      "source": "data/main/start.dat",
+      "element": "sprite 259 DefineButton2 192 up state, matrix (0, -1, 1, 0, 103, 261)",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_192/1_up.png"
+      ],
+      "derivation": "rotated onto the stage grid by the button matrix"
+    },
+    {
+      "path": "Login/Buttons/PageNextOver.rgba.br",
+      "width": 40,
+      "height": 34,
+      "rgbaSha256": "6D0121EA5B9DFE5DB32211E48028835A4CACDF53842C28ED68E89268AD4492CE",
+      "source": "data/main/start.dat",
+      "element": "sprite 259 DefineButton2 192 over state, matrix (0, -1, 1, 0, 103, 261)",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_192/2_over.png"
+      ],
+      "derivation": "rotated onto the stage grid by the button matrix"
+    },
+    {
+      "path": "Login/Buttons/PageNextDown.rgba.br",
+      "width": 40,
+      "height": 34,
+      "rgbaSha256": "5AED41328E2EAFC2575553AC973EC695B4C737FD52E0BBD92BE3BE3B358863F5",
+      "source": "data/main/start.dat",
+      "element": "sprite 259 DefineButton2 192 down state, matrix (0, -1, 1, 0, 103, 261)",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_192/3_down.png"
+      ],
+      "derivation": "rotated onto the stage grid by the button matrix"
+    },
+    {
+      "path": "Login/Logo/Picture00.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "2C2810F30A3AAB5612CCF25F1E49380B64B261C914478C44A8AB0CF16A890734",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0001.png"
+      ],
+      "derivation": "held on timeline frame 1"
+    },
+    {
+      "path": "Login/Logo/Picture01.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "5CE8C0E981FD81647D1992E6A7F7822A4FFC9C4ED40D44B15C6742911FC725A6",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0002.png"
+      ],
+      "derivation": "held on timeline frame 2"
+    },
+    {
+      "path": "Login/Logo/Picture02.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "609825FA03D007AD8D7ED5F1EB00947E0FBE26538A8D3F3E833A0448C3985519",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0003.png"
+      ],
+      "derivation": "held on timeline frame 3"
+    },
+    {
+      "path": "Login/Logo/Picture03.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "28A0AC26522448701BB8A9BB030F868E00EF7F1EF5C8510686125E5EAA976CA2",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0004.png"
+      ],
+      "derivation": "held on timeline frame 4"
+    },
+    {
+      "path": "Login/Logo/Picture04.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "A2D44ED78915537E0EB12618D0280EA107D48A6ABA13A2238A9541D264C61997",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0005.png"
+      ],
+      "derivation": "held on timeline frames 5, 6"
+    },
+    {
+      "path": "Login/Logo/Picture05.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "0195D3D343AF5CCB1C4658EE03DA749306EC38F5703D732D1B64AAB296282BAA",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0006.png"
+      ],
+      "derivation": "held on timeline frames 7, 8"
+    },
+    {
+      "path": "Login/Logo/Picture06.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "5097DEB155A6EF9BF7D968344732F019031D667AFA6EBF09E0909CA2A44D7174",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0007.png"
+      ],
+      "derivation": "held on timeline frames 9, 10"
+    },
+    {
+      "path": "Login/Logo/Picture07.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "CC5A312BF2F398A9FE9FE69C4DB9176D5825C83C4B2DFAC713D9A767FAA1912E",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0008.png"
+      ],
+      "derivation": "held on timeline frame 11"
+    },
+    {
+      "path": "Login/Logo/Picture08.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "A69ECD87E98D241EFE856197C59040FDDAD88E9DF745D39B21CEB54022B57F4F",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0009.png"
+      ],
+      "derivation": "held on timeline frame 12"
+    },
+    {
+      "path": "Login/Logo/Picture09.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "4C90C9778101E50A6B5E09E69E997A5611E1CAE5D1636AF672C141104E9BD7F5",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0010.png"
+      ],
+      "derivation": "held on timeline frame 13"
+    },
+    {
+      "path": "Login/Logo/Picture10.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "20E794478E0B5E6D6C13B1181CB46C20B26E05EDBF7BA88CD3079CF1001DF138",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0011.png"
+      ],
+      "derivation": "held on timeline frames 14, 15"
+    },
+    {
+      "path": "Login/Logo/Picture11.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "865634507BEC36AB2AC691F8F9924E50597814DBAA9298A19D1A49D925191D36",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0012.png"
+      ],
+      "derivation": "held on timeline frame 16"
+    },
+    {
+      "path": "Login/Logo/Picture12.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "F0E18EBFD4441B222DE2007160A8C3235B96A1C864F33BAE89DF0CC9D1BB8A74",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0013.png"
+      ],
+      "derivation": "held on timeline frames 17, 18"
+    },
+    {
+      "path": "Login/Logo/Picture13.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "4334EBFA072E043B9A893B7CB2EFF53C6F1A2637E07AD7BE699B6A8C4C899714",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0014.png"
+      ],
+      "derivation": "held on timeline frame 19"
+    },
+    {
+      "path": "Login/Logo/Picture14.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "449C5F770CE1ED11FE862C6A21E6CDAC87D470FCE6F43A7A95887A5461F5F1B4",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0015.png"
+      ],
+      "derivation": "held on timeline frames 20, 21"
+    },
+    {
+      "path": "Login/Logo/Picture15.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "58D64192BDD1BDCD58D802FFE20C8DA8B7955AB14C95EC5CD146CF9BED20D40A",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0016.png"
+      ],
+      "derivation": "held on timeline frame 22"
+    },
+    {
+      "path": "Login/Logo/Picture16.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "04F716C1A8AC0BC8EAB7800943954DB3925D3DA3CB50A833BD2BD1C1620AC2DA",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0017.png"
+      ],
+      "derivation": "held on timeline frames 23, 24"
+    },
+    {
+      "path": "Login/Logo/Picture17.rgba.br",
+      "width": 248,
+      "height": 78,
+      "rgbaSha256": "4A1BEDCE38970FBF3032BB2BECD3EAAC6CCDD165348BA5F6A691322FEA992282",
+      "source": "data/main/flash/logo.swf",
+      "element": "video symbol 1, decoded picture",
+      "evidence": [
+        "assets/logo/video-frames/0018.png"
+      ],
+      "derivation": "held on timeline frame 25"
+    },
+    {
+      "path": "Login/Opening/Frame01.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "873E24093D798886B99372970007A07347AFDD38E4EA7FE7240DF172C68B7DF5",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 1",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0001.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame02.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "9C2D79AE3B116159464A88C464227750876D534B8744A2472C0255757EFA5D53",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 2",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0002.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame03.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "FFFD0FAD4F283826D8DAA6ED27F777964B146DAD0F6E3CE27C47CF96BA7F6AFC",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 3",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0003.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame04.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "2FBF7D1787B2637769B7521B49102A720EA5F37E67F1DE8DB49B932F4EE0A908",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 4",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0004.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame05.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "4B218D4603EF8A2A44F8FB8335637F2658764BC8140D2BFCBEAB4BAC242E358D",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 5",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0005.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame06.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "D78B72A81E6651D6DF3D3AF961125899C1903036C19E15E3397655DF89311F6B",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 6",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0006.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame07.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "9602B88E6557E87FF093E9D062C7350B62489AE719339498DDF38E41BAAF863E",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 7",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0007.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame08.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "9A400E8EEBB44ADDBA0061AD7B081B213811D8C66B8DE0817DD23F229FC722CC",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 8",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0008.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame09.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "3CC231192582CAD161A6C28540DFFD9A42CC00D75CDB33F9B74FFA61FF847A3F",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 9",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0009.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame10.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "8CBA7F71D38E95DE8238C5C913FD2D12EA5FA4E8444BA7487DD24DC5CE948393",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 10",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0010.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame11.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "B3821A92C6472E76C2FD33C9E01FC42683BC31DE1A6CC5FFE25C540452D5528D",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 11",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0011.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame12.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "CADD52E2C5A214EEFAEB7EE68A37AB4598B4666D062ACB3CC5D04EB9AD2E5C2A",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 12",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0012.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame13.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "0C244BD53C7C4D9984103551A750387ABB6C20462B3A2D67E77B9D7AE167E44F",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 13",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0013.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame14.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "473E43616A4FCE810391CFAD23BBDCC37C3B53831FB17876409A2C704226D99A",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 14",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0014.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame15.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "989537EAEEB1177EA101F0EF39BBA617DB137C1345395F36E83333AB44CE6A35",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 15",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0015.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame16.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "B4BF0ACFFCA2CAFA1167471363309DCE283D47AEDE37956C45DFA5800C656AE4",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 16",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0016.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame17.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "4D14F9CF99926CDF225ACB2751F52A85FB66C7B7361EB7EC195FE1ADB3A38E2C",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 17",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0017.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame18.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "40D06D827A2EF240AB790EE1BA3B89512C1F106A78B23B3003A989F3D7E8962E",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 18",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0018.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame19.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "6C11DE07DBDF451964921DEAB53F7561F37AC49DB38A289703E07089FEF78DA4",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 19",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0019.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame20.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "019B29C8496837F875F297195D6DF29406EEBD34F38394F48042EC72BA71CF89",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 20",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0020.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame21.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "5E299E34AA5CFBB4B0DC0F2E30DB71A64D91E1E6657B70E83B2E1D20AB59AAC7",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 21",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0021.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame22.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "2B85782E0D8BE1DB15772D1EF2E786E019AE605E93DDF5C784D1500F7E1627EA",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 22",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0022.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame23.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "7D3CB21A03ED1C61659C736136CE74DFE44E514412E85DB6079C69D984F390E0",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 23",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0023.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame24.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "AF219FB4DD46208DF59882D38968C10DFB621F60AA27C6A79FAE548F0F6E932E",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, video frame 24",
+      "evidence": [
+        "assets/loginFlash/video-timeline/0024.png"
+      ]
+    },
+    {
+      "path": "Login/Opening/Frame25.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "FE6DDFF4B1986803578379334383CE92592AEE8420CFD22B1F10EADE71365629",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, authored frame 25",
+      "evidence": [
+        "assets/loginFlash/sprites/DefineSprite_25/25.png"
+      ],
+      "derivation": "clipped onto the 1024x768 stage at the symbol origin (-10, -336.85)"
+    },
+    {
+      "path": "Login/Opening/Frame26.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "8C334BD5CDE76C88EF9C08ED24B2B116188BA5B0EAB27EFDAE1EF49E206CAF15",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, authored frame 26",
+      "evidence": [
+        "assets/loginFlash/sprites/DefineSprite_25/26.png"
+      ],
+      "derivation": "clipped onto the 1024x768 stage at the symbol origin (-10, -336.85)"
+    },
+    {
+      "path": "Login/Opening/Frame27.rgba.br",
+      "width": 1024,
+      "height": 768,
+      "rgbaSha256": "A3B8081F84126FB1A1B11D37BCCB126E9BC96CADBEF9F25AAF7C38CD12F6BE03",
+      "source": "data/main/flash/loginFlash.swf",
+      "element": "sprite 25, authored frame 27",
+      "evidence": [
+        "assets/loginFlash/sprites/DefineSprite_25/27.png"
+      ],
+      "derivation": "clipped onto the 1024x768 stage at the symbol origin (-10, -336.85)"
+    },
+    {
+      "path": "Login/Opening/BirdAtlas.rgba.br",
+      "width": 1024,
+      "height": 1024,
+      "rgbaSha256": "30E0EF1BD8685015360C4827CC5DAA4A5560117E06A8596A064AD17557FAD624",
+      "source": "data/main/start.dat",
+      "element": "root depth 2, sprite 22 (602 frames)",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_22/{1..602}.png"
+      ],
+      "derivation": "448 distinct non-empty frames packed into one atlas"
+    },
+    {
+      "path": "Login/Opening/BirdFrames.bin",
+      "sha256": "DDE10F86E3C27EEBEF114E31387DF835B789438B4A730A9BD72C176F61AF596F",
+      "source": "data/main/start.dat",
+      "element": "sprite 22 frame table",
+      "derivation": "per frame: atlas rectangle and stage offset, root placement (49, 315.85), registration (-113.4, -168.8)"
+    },
+    {
+      "path": "Login/Account/SaveDialog.rgba.br",
+      "width": 344,
+      "height": 192,
+      "rgbaSha256": "0DFEF0C273B01298F22E65774432EC59B5D1F80C740B123DA0A158A5B8164739",
+      "source": "data/main/start.dat",
+      "element": "saveMC sprite 283 frame 6",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_283/6.png"
+      ],
+      "derivation": "frame 6 minus the maskMC band (rows 90-659), cropped to the dialog"
+    },
+    {
+      "path": "Login/Account/ClearDialog.rgba.br",
+      "width": 296,
+      "height": 192,
+      "rgbaSha256": "BE53AEE9CDC977C15BADB9E5C3D884A1E4366176A63FEB5180C3C2AE32EAD9F0",
+      "source": "data/main/start.dat",
+      "element": "clearMC sprite 285 frame 6",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_285/6.png"
+      ],
+      "derivation": "frame 6 minus the maskMC band (rows 90-659), cropped to the dialog"
+    },
+    {
+      "path": "Login/Account/Row.rgba.br",
+      "width": 166,
+      "height": 25,
+      "rgbaSha256": "81DF786E557AA0C2B044452B14D05C2174FDE84010F5E21B4E41A38DC3F0AD2B",
+      "source": "data/main/start.dat",
+      "element": "itemBtn sprite 6 frame 1",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_6_itemBtn/1.png"
+      ]
+    },
+    {
+      "path": "Login/Account/RowHighlighted.rgba.br",
+      "width": 166,
+      "height": 25,
+      "rgbaSha256": "860417D610D934DA6A8E014CB684173B8641B2CB1260F093EA039C20FC9573CA",
+      "source": "data/main/start.dat",
+      "element": "itemBtn sprite 6 frame 2",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_6_itemBtn/2.png"
+      ]
+    },
+    {
+      "path": "Login/Account/OkOver.rgba.br",
+      "width": 96,
+      "height": 26,
+      "rgbaSha256": "828D65A4FC3A999A28D0C4A582589ECDA6B3B2689E39710900DC5EFC6C840DA1",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 272, over state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_272/2_over.png"
+      ]
+    },
+    {
+      "path": "Login/Account/OkDown.rgba.br",
+      "width": 96,
+      "height": 26,
+      "rgbaSha256": "F087E1F4F6232E45C137EB112D64D5288910DCB058CE11FA44CFA2CD8E778CFA",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 272, down state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_272/3_down.png"
+      ]
+    },
+    {
+      "path": "Login/Account/CancelOver.rgba.br",
+      "width": 96,
+      "height": 26,
+      "rgbaSha256": "10629CD4129577E9D8F81234684C1EE0E108149C91A825F26DA72A789CAEE397",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 282, over state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_282/2_over.png"
+      ]
+    },
+    {
+      "path": "Login/Account/CancelDown.rgba.br",
+      "width": 96,
+      "height": 26,
+      "rgbaSha256": "84A597C866A4699F4892AE8E1031D9C4B5B3D1C53CEB5FBA4C0F758EBDDBEDD3",
+      "source": "data/main/start.dat",
+      "element": "DefineButton2 282, down state",
+      "evidence": [
+        "assets/start/buttons/DefineButton2_282/3_down.png"
+      ]
+    },
+    {
+      "path": "Login/Cursor/Normal0.rgba.br",
+      "width": 32,
+      "height": 32,
+      "rgbaSha256": "21B4788930EB5F60B1BC0B904D4724E04A828505D9A5021FC6867D28D60C47D7",
+      "source": "data/Cursor/Normal.ani",
+      "element": "RIFF ACON frame 0",
+      "derivation": "32x32 DIB with its AND mask, straight alpha; hotspot (0, 0), 10 jiffies per frame"
+    },
+    {
+      "path": "Login/Cursor/Normal1.rgba.br",
+      "width": 32,
+      "height": 32,
+      "rgbaSha256": "EB2B3DEFAB9C823C8727B61259F6C3004FD83ADB3B7813BE2B5770836BCEFC75",
+      "source": "data/Cursor/Normal.ani",
+      "element": "RIFF ACON frame 1",
+      "derivation": "32x32 DIB with its AND mask, straight alpha; hotspot (0, 0), 10 jiffies per frame"
+    },
+    {
+      "path": "Login/Cursor/Normal2.rgba.br",
+      "width": 32,
+      "height": 32,
+      "rgbaSha256": "4FDFD09BD5A4744789D255512A877C62AD4D35308E0CBC9D521FD71AE3C904DE",
+      "source": "data/Cursor/Normal.ani",
+      "element": "RIFF ACON frame 2",
+      "derivation": "32x32 DIB with its AND mask, straight alpha; hotspot (0, 0), 10 jiffies per frame"
+    },
+    {
+      "path": "Login/Cursor/Normal3.rgba.br",
+      "width": 32,
+      "height": 32,
+      "rgbaSha256": "8B7AF6A11E4B0765F227254810D389D7D3B26B838AD2CE15DF59FAABC38F6E05",
+      "source": "data/Cursor/Normal.ani",
+      "element": "RIFF ACON frame 3",
+      "derivation": "32x32 DIB with its AND mask, straight alpha; hotspot (0, 0), 10 jiffies per frame"
+    },
+    {
+      "path": "Login/Cursor/Normal4.rgba.br",
+      "width": 32,
+      "height": 32,
+      "rgbaSha256": "54C287EAA5FC69B4C9838BEBBD2215F06E95BE9EB045F470251F924E69C800BE",
+      "source": "data/Cursor/Normal.ani",
+      "element": "RIFF ACON frame 4",
+      "derivation": "32x32 DIB with its AND mask, straight alpha; hotspot (0, 0), 10 jiffies per frame"
+    },
+    {
+      "path": "Login/Audio/Music.pcm.br",
+      "sampleRate": 44100,
+      "channels": 2,
+      "pcmBytes": 5299200,
+      "pcmSha256": "9512FCB22755239FA39CE88E95A2A805BD17D5E8A5B2414754382145283A9E67",
+      "source": "sound/music.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/Glide.pcm.br",
+      "sampleRate": 22050,
+      "channels": 1,
+      "pcmBytes": 11520,
+      "pcmSha256": "E93E7BB99D8D2C9B87B696EE8247B0E45DF90D147C964C8095723D0BEB8914E3",
+      "source": "sound/Glide.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/ServerSelect.pcm.br",
+      "sampleRate": 22050,
+      "channels": 1,
+      "pcmBytes": 41472,
+      "pcmSha256": "FDD34965D059BDC27667113E9D98A1A2DAD9908C913F99AC0FF5B3AE28E2CF5E",
+      "source": "sound/click_2.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/Page.pcm.br",
+      "sampleRate": 22050,
+      "channels": 1,
+      "pcmBytes": 33408,
+      "pcmSha256": "BFC6CDD3FAB21AE4EFBD3707E96C1188B17520463999C48921577C4A355E94B3",
+      "source": "sound/page.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/Dragon.pcm.br",
+      "sampleRate": 22050,
+      "channels": 2,
+      "pcmBytes": 112896,
+      "pcmSha256": "D509867F9A57370D2A6837E31322287BD97E88A477E272C0FE23A7FBDA2C59B9",
+      "source": "sound/Dragon.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/ButtonClick.pcm.br",
+      "sampleRate": 22050,
+      "channels": 1,
+      "pcmBytes": 10368,
+      "pcmSha256": "EBFD04942ADD2F4FD32CCE06DC9224E1E7FDBCCAD7D66924321B79F74C6D9D5B",
+      "source": "sound/Button_1.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/ButtonHover.pcm.br",
+      "sampleRate": 22050,
+      "channels": 1,
+      "pcmBytes": 9216,
+      "pcmSha256": "B7D82E29DCF09DE0768B4D3D78CFA9CA3E74B3E3315C0C41A477D43CC7A0A31B",
+      "source": "sound/Button_2.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/Confirm.pcm.br",
+      "sampleRate": 22050,
+      "channels": 2,
+      "pcmBytes": 324864,
+      "pcmSha256": "E09699DA989573E077A9C0AE67D0AA3A70158AC16E439A1FC043B3A68274D04A",
+      "source": "sound/Confirm.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/KeyOne.pcm.br",
+      "sampleRate": 22050,
+      "channels": 1,
+      "pcmBytes": 23040,
+      "pcmSha256": "76E683239293F3B797EE338EAB0CD028247F79081F6EFE65B2BB00BEC413A153",
+      "source": "sound/key_1.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/KeyTwo.pcm.br",
+      "sampleRate": 22050,
+      "channels": 1,
+      "pcmBytes": 31104,
+      "pcmSha256": "B6186B1DA76A320E38E0C6490E251DEB9AF1D1A97BF4752D1D22B02AD5B4A0BB",
+      "source": "sound/key_2.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/KeyThree.pcm.br",
+      "sampleRate": 22050,
+      "channels": 1,
+      "pcmBytes": 23040,
+      "pcmSha256": "141BCC2FA5F83987B5423D259BCF637C9324A85880B78CAD1354C9DFC1B79BAE",
+      "source": "sound/key_3.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    },
+    {
+      "path": "Login/Audio/Error.pcm.br",
+      "sampleRate": 22050,
+      "channels": 1,
+      "pcmBytes": 41472,
+      "pcmSha256": "25B43D6597E9F320E6895A0363B5EFCFB9A3911DDFC45600AC66875FC5B9E067",
+      "source": "sound/error.mp3",
+      "derivation": "FFmpeg decode to signed 16-bit little-endian PCM at the source rate and channel count"
+    }
+  ]
+}

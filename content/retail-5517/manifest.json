@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 3784,
-  "length": 21319837,
+  "fileCount": 3785,
+  "length": 21319841,
   "entries": [
     {
       "sourcePath": "Data/Pic/BlueLight/01.dds",
@@ -26492,6 +26492,13 @@
       "pathKey": "ini/info.ini",
       "length": 17145,
       "sha256": "da9400900fc84898b428f302723c7949197bb1e94b00475010d72ff937e6790a",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "version.dat",
+      "pathKey": "version.dat",
+      "length": 4,
+      "sha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
       "signature": "unknown"
     }
   ]

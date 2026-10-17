@@ -1,9 +1,14 @@
 using System.Runtime.ExceptionServices;
 using OpenConquer.Client.Startup;
-using OpenConquer.Client.Startup.Catalog;
+using OpenConquer.Client.UI;
 using OpenConquer.Client.UI.Login;
+using OpenConquer.Client.UI.Login.Account;
+using OpenConquer.Client.UI.Login.Audio;
+using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
+using OpenConquer.Content.Images;
+using OpenConquer.Content.Login;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
 using OpenConquer.Platform.Geometry;
@@ -14,6 +19,10 @@ using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client;
 
+/// <summary>
+/// Hosts the client: shows the startup logo, opens the desktop window, connects the login screen to the
+/// window's input and OpenGL context, and keeps the realm catalog up to date.
+/// </summary>
 internal sealed class ClientApplication : IDisposable
 {
     private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
@@ -24,24 +33,15 @@ internal sealed class ClientApplication : IDisposable
     private readonly PixelSize _windowSize;
 
     private DesktopWindow? _window;
-    private OpenGLGraphicsDevice? _graphicsDevice;
+    private LogicalRenderSize _logicalRenderSize;
+    private DesktopCursorAnimation? _cursor;
+    private LoginScreen? _login;
+    private LoginCatalogBinding? _catalog;
+    private LoginAudioPlayer? _audio;
+    private ResourceOwnership? _graphics;
     private OpenGLRenderer? _renderer;
-    private LoginPresentation? _loginPresentation;
-    private LoginDirectoryStatusPresentation? _directoryStatusPresentation;
-    private LoginActionPresentation? _actionPresentation;
-    private LoginServerIconPresentation? _serverIcons;
-    private LoginActionInput? _actionInput;
-    private LogicalRenderSize? _logicalRenderSize;
-    private LoginArtworkSet? _loginArtwork;
-    private LoginServerSelection? _loginSelection;
-    private LoginSelectionInput? _loginSelectionInput;
-    private LoginCredentialInput? _loginCredentials;
-    private LoginCatalogRefresh? _catalogRefresh;
-    private LoginAudioPlayer? _audioPlayer;
-    private LoginAudioFeedback? _audioFeedback;
-    private DesktopCursorAnimation? _cursorAnimation;
-    private SignedLoginCatalog? _presentedCatalog;
-    private bool _catalogUnavailableReported;
+    private LoginScreenRenderer? _loginRenderer;
+    private PixelPoint _lastPointer;
     private bool _runStarted;
     private bool _disposed;
 
@@ -79,22 +79,20 @@ internal sealed class ClientApplication : IDisposable
         ReportPackageRegistrationWarnings(contentSource);
 
         StartupLogo startupLogo = StartupLogo.Load(contentSource, Environment.TickCount64);
-
         if (startupLogo.UnavailableReason is { } unavailableReason)
         {
             Console.Error.WriteLine($"OpenConquer: startup logo unavailable; {unavailableReason}");
         }
 
         DesktopWindow window = StartupWindowSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
-            () => InitializePreWorldContent(contentSource),
+            () => InitializeLogin(contentSource),
             () => new DesktopWindow(_windowSize, _windowMode, s_frameInterval));
 
         _window = window;
-        window.ConfigureCursor(_cursorAnimation ?? throw new InvalidOperationException("The retail cursor animation was not loaded."));
-
+        window.ConfigureCursor(_cursor ?? throw new InvalidOperationException("The retail cursor animation was not loaded."));
         window.FramebufferResized += OnFramebufferResized;
-        window.PrimaryPointerPressed += OnPrimaryPointerPressed;
-        window.PrimaryPointerReleased += OnPrimaryPointerReleased;
+        window.PrimaryPointerPressed += OnPointerPressed;
+        window.PrimaryPointerReleased += OnPointerReleased;
         window.PointerMoved += OnPointerMoved;
         window.KeyPressed += OnKeyPressed;
         window.TextEntered += OnTextEntered;
@@ -103,27 +101,11 @@ internal sealed class ClientApplication : IDisposable
         window.OpenGLContextReady += OnOpenGLContextReady;
         window.OpenGLContextReleasing += OnOpenGLContextReleasing;
 
-        LoginCatalogAuthority? authority = LoginCatalogAuthority.LoadEmbedded();
+        _catalog = LoginCatalogBinding.ForEmbeddedAuthority();
+        _audio = LoginAudioPlayer.TryCreate();
 
-        if (authority is not null)
-        {
-            _catalogRefresh = new LoginCatalogRefresh(token => LoadCatalogAsync(authority, token));
-        }
-        else
-        {
-            Console.Error.WriteLine("OpenConquer: realm catalog authority is not configured; no servers are available.");
-        }
-
-        try
-        {
-            window.Run();
-            return 0;
-        }
-        finally
-        {
-            _loginCredentials?.Dispose();
-            _catalogRefresh?.Dispose();
-        }
+        window.Run();
+        return 0;
     }
 
     public void Dispose()
@@ -133,7 +115,8 @@ internal sealed class ClientApplication : IDisposable
             return;
         }
 
-        _catalogRefresh?.Cancel();
+        _disposed = true;
+        _catalog?.Cancel();
 
         try
         {
@@ -143,319 +126,95 @@ internal sealed class ClientApplication : IDisposable
         {
             try
             {
-                _catalogRefresh?.Dispose();
+                _catalog?.Dispose();
+                _audio?.Dispose();
             }
             finally
             {
-                _catalogRefresh = null;
-                _presentedCatalog = null;
-                _audioPlayer?.Dispose();
-                _audioPlayer = null;
-                _audioFeedback = null;
-                _cursorAnimation = null;
-                _loginCredentials?.Dispose();
-                _loginCredentials = null;
+                _login?.Dispose();
+                _catalog = null;
+                _audio = null;
+                _login = null;
                 _window = null;
-                _loginPresentation = null;
-                _directoryStatusPresentation = null;
-                _actionPresentation = null;
-                _serverIcons = null;
-                _actionInput = null;
-                _renderer = null;
-                _graphicsDevice = null;
-                _loginArtwork = null;
-                _loginSelectionInput = null;
-                _loginSelection = null;
-                _disposed = true;
             }
         }
     }
 
-    private void InitializePreWorldContent(IClientContentSource contentSource)
+    private void InitializeLogin(IClientContentSource contentSource)
     {
-        ArgumentNullException.ThrowIfNull(contentSource);
-
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
-        LoginArtworkSet artwork = LoginArtwork.Load();
-
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
-        _loginArtwork = artwork;
-        _loginSelection = new LoginServerSelection();
-        LoginVisualLayout layout = LoginVisualLayout.Create(_logicalRenderSize.Value);
-        _loginSelectionInput = new LoginSelectionInput(layout, _loginSelection);
-        _loginCredentials = new LoginCredentialInput(_loginSelection, LoginCredentialLayout.Create(layout));
-        _actionInput = new LoginActionInput(LoginActionLayout.Create(layout));
-        _audioFeedback = new LoginAudioFeedback(layout);
-        IReadOnlyList<OpenConquer.Content.Images.RgbaImage> cursorFrames = LoginCursorArtwork.Load();
-        _cursorAnimation = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
+
+        _login = new LoginScreen(LoginStageLayout.Create(_logicalRenderSize), LoginAccountHistory.ForCurrentUser(),
+            ClientVersionLabel.Load(contentSource), cue => _audio?.Play(cue));
+        _login.ExitRequested += () => _window?.RequestClose();
+
+        IReadOnlyList<RgbaImage> cursorFrames = LoginCursorArtwork.Load();
+        _cursor = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
             cursorFrames[0].Height, LoginCursorArtwork.HotspotX, LoginCursorArtwork.HotspotY, LoginCursorArtwork.FrameDuration);
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
     {
-        if (_graphicsDevice is not null || _renderer is not null || _loginPresentation is not null)
+        if (_graphics is not null)
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
 
-        OpenGLGraphicsDevice graphicsDevice = new(context.GetProcAddress);
-        OpenGLRenderer? renderer = null;
-        LoginPresentation? login = null;
-        LoginDirectoryStatusPresentation? status = null;
-        LoginActionPresentation? actions = null;
-        LoginServerIconPresentation? icons = null;
-        LoginAudioPlayer? audio = null;
+        DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
+        LoginScreen login = _login ?? throw new InvalidOperationException("The login screen has not been initialized.");
+        ResourceOwnership graphics = new();
 
         try
         {
-            DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
-            LogicalRenderSize logicalSize = _logicalRenderSize ?? throw new InvalidOperationException("The logical render size has not been initialized.");
-            LoginArtworkSet artwork = _loginArtwork ?? throw new InvalidOperationException("The login artwork has not been initialized.");
-            PixelSize framebufferSize = window.FramebufferSize;
-
-            renderer = graphicsDevice.CreateRenderer(logicalSize, framebufferSize.Width, framebufferSize.Height, _presentationPolicy);
-            login = new LoginPresentation(graphicsDevice, logicalSize, artwork);
-            LoginVisualLayout layout = LoginVisualLayout.Create(logicalSize);
-            status = new LoginDirectoryStatusPresentation(graphicsDevice, layout);
-            actions = new LoginActionPresentation(graphicsDevice, LoginActionLayout.Create(layout), artwork);
-            icons = new LoginServerIconPresentation(graphicsDevice, layout);
-            audio = LoginAudioPlayer.TryCreate();
-
-            _graphicsDevice = graphicsDevice;
-            _renderer = renderer;
-            _loginPresentation = login;
-            _directoryStatusPresentation = status;
-            _actionPresentation = actions;
-            _serverIcons = icons;
-            _audioPlayer = audio;
+            OpenGLGraphicsDevice device = graphics.Track(new OpenGLGraphicsDevice(context.GetProcAddress));
+            PixelSize framebuffer = window.FramebufferSize;
+            _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy));
+            _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
+            login.CaretLocator = _loginRenderer.CaretLocator;
+            _graphics = graphics;
         }
         catch
         {
-            try
-            {
-                audio?.Dispose();
-            }
-            catch { }
-
-            try
-            {
-                icons?.Dispose();
-            }
-            catch { }
-
-            try
-            {
-                actions?.Dispose();
-            }
-            catch { }
-
-            try
-            {
-                status?.Dispose();
-            }
-            catch { }
-
-            try
-            {
-                login?.Dispose();
-            }
-            catch { }
-
-            try
-            {
-                renderer?.Dispose();
-            }
-            catch { }
-
-            try
-            {
-                graphicsDevice.Dispose();
-            }
-            catch { }
-
+            _renderer = null;
+            _loginRenderer = null;
+            graphics.DisposeAfterInitializationFailure();
             throw;
         }
     }
 
-    private void OnFramebufferResized(PixelSize size) => _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
-
-    private void OnPrimaryPointerPressed(PixelPoint point) => RoutePointer(point, pressed: true);
-
-    private void OnPrimaryPointerReleased(PixelPoint point) => RoutePointer(point, pressed: false);
-
-    private void OnPointerMoved(PixelPoint point)
+    private void OnOpenGLContextReleasing()
     {
-        OpenGLRenderer? renderer = _renderer;
-        if (renderer is null || _actionInput is null)
+        _catalog?.Cancel();
+        _login?.FocusLost();
+        if (_login is not null)
         {
-            return;
+            _login.CaretLocator = null;
         }
 
-        bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
-        _actionInput.PointerMoved(mapped, x, y);
-        if (mapped && _loginCredentials is { IsSelecting: true } credentials && _loginPresentation is { } presentation)
-            credentials.PointerDragged(presentation.HitTestDraggedCredentialCaret(credentials, x));
-        if (_loginSelection is { } selection)
-        {
-            _audioPlayer?.Play(_audioFeedback?.PointerMoved(mapped, x, y, selection));
-        }
-    }
-
-    private void OnKeyPressed(DesktopKeyEvent key)
-    {
-        int revision = _loginCredentials?.EditRevision ?? 0;
-        if (!TryHandleCredentialClipboard(key) && _loginCredentials?.KeyPressed(key) != true)
-            _loginSelectionInput?.KeyPressed(key);
-        PlayAcceptedCredentialEdit(revision);
-    }
-
-    private void OnTextEntered(char character)
-    {
-        LoginCredentialInput? credentials = _loginCredentials;
-        if (credentials is null)
-            return;
-        int revision = credentials.EditRevision;
-        credentials.TextEntered(character);
-        PlayAcceptedCredentialEdit(revision);
-    }
-
-    private void PlayAcceptedCredentialEdit(int previousRevision)
-    {
-        if (_loginCredentials is { } input && input.EditRevision != previousRevision)
-            _audioPlayer?.Play(_audioFeedback?.AcceptedCredentialEdit());
-    }
-
-    private bool TryHandleCredentialClipboard(DesktopKeyEvent key)
-    {
-        LoginCredentialInput? credentials = _loginCredentials;
-        DesktopWindow? window = _window;
-        if (credentials is null || window is null || !credentials.Enabled || credentials.Focus == LoginCredentialFocus.None || key.IsRepeat ||
-            (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) == 0 ||
-            (key.Modifiers & DesktopKeyModifiers.Alt) != 0 || key.Key is not (DesktopKey.C or DesktopKey.X or DesktopKey.V))
-            return false;
-        try
-        {
-            if (key.Key == DesktopKey.V)
-                credentials.Paste(window.ReadClipboardText());
-            else if (credentials.SelectedAccountText() is { } text)
-            {
-                window.WriteClipboardText(text);
-                if (key.Key == DesktopKey.X)
-                    credentials.CutSelectedAccount();
-            }
-        }
-        catch (NotSupportedException error)
-        {
-            Console.Error.WriteLine($"OpenConquer: desktop clipboard unavailable ({error.GetType().Name}).");
-        }
-        return true;
-    }
-
-    private void OnFocusChanged(bool focused)
-    {
-        if (!focused)
-        {
-            _loginSelectionInput?.FocusLost();
-            _loginCredentials?.FocusLost();
-            _actionInput?.FocusLost();
-            _audioFeedback?.Reset();
-        }
-        _audioPlayer?.SetFocused(focused);
-    }
-
-    private void RoutePointer(PixelPoint point, bool pressed)
-    {
-        LoginSelectionInput? input = _loginSelectionInput;
-        OpenGLRenderer? renderer = _renderer;
-
-        if (input is null || renderer is null)
-        {
-            return;
-        }
-
-        bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
-
-        if (pressed)
-        {
-            bool actionCaptured = _actionInput?.PointerPressed(mapped, x, y) == true;
-            int? credentialCaret = null;
-            if (!actionCaptured && mapped && _loginCredentials is { } credentials && _loginPresentation is { } presentation &&
-                presentation.TryHitTestCredentialCaret(credentials, x, y, out int index))
-                credentialCaret = index;
-            bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
-            bool credentialCaptured = !actionCaptured && _loginCredentials?.PointerPressed(mapped, x, y, credentialCaret, extend) == true;
-            input.PointerPressed(!actionCaptured && !credentialCaptured && mapped, x, y);
-
-            if (actionCaptured || credentialCaptured)
-            {
-                input.FocusLost();
-            }
-
-            if (actionCaptured)
-            {
-                _loginCredentials?.FocusLost();
-            }
-        }
-        else
-        {
-            _loginCredentials?.PointerReleased();
-            if (_actionInput?.PointerReleased(mapped, x, y) == LoginActionButton.Exit)
-            {
-                _audioPlayer?.Play(LoginAudioCue.ButtonClick);
-                _loginCredentials?.FocusLost();
-                _window?.RequestClose();
-                return;
-            }
-
-            LoginServerSelection? selection = _loginSelection;
-            int regionPage = selection?.RegionPage ?? -1;
-            int serverPage = selection?.ServerPage ?? -1;
-            LoginRegion? region = selection?.SelectedRegion;
-            LoginServer? server = selection?.SelectedServer;
-            input.PointerReleased(mapped, x, y);
-            if (selection is not null)
-            {
-                if (regionPage != selection.RegionPage || serverPage != selection.ServerPage)
-                {
-                    _audioPlayer?.Play(LoginAudioCue.Page);
-                }
-                else if (!ReferenceEquals(server, selection.SelectedServer) && selection.SelectedServer is not null)
-                {
-                    _audioPlayer?.Play(LoginAudioCue.ServerSelect);
-                }
-                else if (!ReferenceEquals(region, selection.SelectedRegion) && selection.SelectedRegion is not null)
-                {
-                    _audioPlayer?.Play(LoginAudioCue.Dragon);
-                }
-            }
-        }
+        ResourceOwnership? graphics = _graphics;
+        _graphics = null;
+        _renderer = null;
+        _loginRenderer = null;
+        graphics?.Dispose();
     }
 
     private void OnRendering(double elapsedSeconds)
     {
-        AcceptCatalogIfReady();
-
+        LoginScreen login = _login ?? throw new InvalidOperationException("The login screen is not initialized.");
         OpenGLRenderer renderer = _renderer ?? throw new InvalidOperationException("The renderer is not initialized.");
-        LoginPresentation login = _loginPresentation ?? throw new InvalidOperationException("The login presentation is not initialized.");
-        LoginServerSelection selection = _loginSelection ?? throw new InvalidOperationException("The login selection state is not initialized.");
-        LoginSelectionInput input = _loginSelectionInput ?? throw new InvalidOperationException("The login input handler is not initialized.");
-        LoginCredentialInput credentials = _loginCredentials ?? throw new InvalidOperationException("The login credentials handler is not initialized.");
-        LoginDirectoryStatusPresentation status = _directoryStatusPresentation ?? throw new InvalidOperationException("The realm directory status renderer is not initialized.");
-        LoginActionPresentation actions = _actionPresentation ?? throw new InvalidOperationException("The login action artwork is not initialized.");
-        LoginServerIconPresentation icons = _serverIcons ?? throw new InvalidOperationException("The realm icon renderer is not initialized.");
-        LoginActionInput actionInput = _actionInput ?? throw new InvalidOperationException("The login action handler is not initialized.");
-        credentials.Synchronize();
+        LoginScreenRenderer loginRenderer = _loginRenderer ?? throw new InvalidOperationException("The login renderer is not initialized.");
+
+        _catalog?.Update(login, DateTimeOffset.UtcNow);
+        login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
+        ContinueCredentialDrag();
 
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
 
         try
         {
-            login.Draw(renderer, selection, input, credentials);
-            icons.Draw(renderer, selection);
-            actions.Draw(renderer, actionInput);
-            status.Draw(renderer, LoginDirectoryStatus.Resolve(_catalogRefresh is not null, _catalogRefresh?.Current is not null,
-                _catalogRefresh?.LastAttemptFailed ?? false, selection));
+            loginRenderer.Draw(renderer, login, _catalog?.Availability(login.Selection) ?? default);
         }
         catch (Exception exception)
         {
@@ -474,129 +233,87 @@ internal sealed class ClientApplication : IDisposable
         firstFailure?.Throw();
     }
 
-    private void OnOpenGLContextReleasing()
+    private void OnFramebufferResized(PixelSize size) => _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
+
+    private void OnPointerMoved(PixelPoint point)
     {
-        _catalogRefresh?.Cancel();
-        _loginSelectionInput?.FocusLost();
-        _loginCredentials?.FocusLost();
-        _actionInput?.FocusLost();
-        _audioFeedback?.Reset();
-        LoginAudioPlayer? audio = _audioPlayer;
-        _audioPlayer = null;
-        try
+        _lastPointer = point;
+        if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
-            audio?.Dispose();
-        }
-        finally
-        {
-            ReleaseRenderingResources();
+            _login?.PointerMoved(mapped, x, y);
+            ContinueCredentialDrag();
         }
     }
 
-    private void ReleaseRenderingResources()
+    private void OnPointerPressed(PixelPoint point)
     {
-        LoginPresentation? login = _loginPresentation;
-        LoginDirectoryStatusPresentation? status = _directoryStatusPresentation;
-        LoginActionPresentation? actions = _actionPresentation;
-        LoginServerIconPresentation? icons = _serverIcons;
-        OpenGLRenderer? renderer = _renderer;
-        OpenGLGraphicsDevice? graphicsDevice = _graphicsDevice;
-
-        _loginPresentation = null;
-        _directoryStatusPresentation = null;
-        _actionPresentation = null;
-        _serverIcons = null;
-        _renderer = null;
-        _graphicsDevice = null;
-
-        ExceptionDispatchInfo? firstFailure = null;
-
-        try
+        _lastPointer = point;
+        if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
-            icons?.Dispose();
+            bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
+            _login?.PointerPressed(mapped, x, y, extend);
         }
-        catch (Exception exception) { firstFailure = ExceptionDispatchInfo.Capture(exception); }
-
-        try
-        {
-            actions?.Dispose();
-        }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
-
-        try
-        {
-            status?.Dispose();
-        }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
-
-        try
-        {
-            login?.Dispose();
-        }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
-
-        try
-        {
-            renderer?.Dispose();
-        }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
-
-        try
-        {
-            graphicsDevice?.Dispose();
-        }
-        catch (Exception exception) { firstFailure ??= ExceptionDispatchInfo.Capture(exception); }
-
-        firstFailure?.Throw();
     }
 
-    private static async Task<SignedLoginCatalog?> LoadCatalogAsync(LoginCatalogAuthority authority, CancellationToken token)
+    private void OnPointerReleased(PixelPoint point)
     {
-        using LoginCatalogClient client = new();
-        return await client.FetchAsync(authority, DateTimeOffset.UtcNow, token).ConfigureAwait(false);
+        if (TryMapPointer(point, out bool mapped, out int x, out int y))
+        {
+            _login?.PointerReleased(mapped, x, y);
+        }
     }
 
-    private void AcceptCatalogIfReady()
+    private void OnKeyPressed(DesktopKeyEvent key)
     {
-        if (_catalogRefresh is not { } refresh)
+        if (_window is { } window)
         {
-            return;
+            _login?.KeyPressed(key, window.ReadClipboardText, window.WriteClipboardText);
+        }
+    }
+
+    private void OnTextEntered(char character) => _login?.TextEntered(character);
+
+    private void OnFocusChanged(bool focused)
+    {
+        if (!focused)
+        {
+            _login?.FocusLost();
         }
 
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-        if (refresh.Advance(now))
+        _audio?.SetFocused(focused);
+    }
+
+    /// <summary>A held credential selection keeps tracking the pointer, clamped to the stage, beyond the field.</summary>
+    private void ContinueCredentialDrag()
+    {
+        if (_login is { Credentials.IsSelecting: true } login && _renderer is { Viewport.IsEmpty: false } renderer)
         {
-            SignedLoginCatalog? incoming = refresh.Current;
-            if (_loginSelectionInput is { } input && _loginSelection is { } selection)
-            {
-                LoginVerifiedSelectionRetention.Apply(_presentedCatalog, incoming, now, input, selection);
-            }
-            _presentedCatalog = incoming;
-            _audioFeedback?.Reset();
-            _loginCredentials?.Synchronize();
+            login.PointerDragged(renderer.Viewport.MapPointerXClamped(_lastPointer.X));
+        }
+    }
+
+    /// <summary>Maps a framebuffer point to the logical stage; false before a renderer exists.</summary>
+    private bool TryMapPointer(PixelPoint point, out bool mapped, out int x, out int y)
+    {
+        if (_renderer is not { } renderer)
+        {
+            mapped = false;
+            x = y = 0;
+            return false;
         }
 
-        if (refresh.LastAttemptFailed && !_catalogUnavailableReported)
-        {
-            Console.Error.WriteLine("OpenConquer: authenticated realm discovery is unavailable or rejected.");
-            _catalogUnavailableReported = true;
-        }
-        else if (!refresh.LastAttemptFailed)
-        {
-            _catalogUnavailableReported = false;
-        }
+        mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out x, out y);
+        return true;
     }
 
     private static void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
     {
         foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
         {
-            if (registration.Outcome == WdfPackageRegistrationOutcome.Registered)
+            if (registration.Outcome != WdfPackageRegistrationOutcome.Registered)
             {
-                continue;
+                Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') resolved as {registration.Outcome}.");
             }
-
-            Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') resolved as {registration.Outcome}.");
         }
     }
 }

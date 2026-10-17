@@ -242,6 +242,25 @@ public sealed class SystemFontResolverTests
     }
 
     [Fact]
+    public void TryResolveBold_ReturnsOnlyTheUprightBoldFace()
+    {
+        ResolvedFont regular = new("/fonts/arial.ttf", faceIndex: 0);
+        ResolvedFont boldItalic = new("/fonts/arialbi.ttf", faceIndex: 0);
+        ResolvedFont bold = new("/fonts/arialbd.ttf", faceIndex: 0);
+        SystemFontResolver resolver = new([], [
+            new HostFontCatalog.Entry(regular, "Arial"),
+            new HostFontCatalog.Entry(boldItalic, "Arial", isBold: true, isItalic: true),
+            new HostFontCatalog.Entry(bold, "Arial", isBold: true, isItalic: false),
+        ]);
+
+        Assert.True(resolver.TryResolveBold("arial", out ResolvedFont? font));
+        Assert.Same(bold, font);
+        Assert.True(resolver.TryResolve("Arial", out ResolvedFont? regularFont));
+        Assert.Same(regular, regularFont);
+        Assert.False(resolver.TryResolveBold("Courier New", out _));
+    }
+
+    [Fact]
     public void ProductionConstructor_NullCatalog_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new SystemFontResolver(null!));

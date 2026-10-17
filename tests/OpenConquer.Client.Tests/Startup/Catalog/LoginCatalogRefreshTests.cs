@@ -1,7 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using OpenConquer.Client.Startup.Catalog;
-using OpenConquer.Client.UI.Login;
+using OpenConquer.Client.UI.Login.Selection;
+using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests.Startup.Catalog;
@@ -90,7 +91,7 @@ public sealed class LoginCatalogRefreshTests
         Queue<Task<SignedLoginCatalog?>> responses = new([Task.FromResult<SignedLoginCatalog?>(first), pending.Task]);
         using LoginCatalogRefresh refresh = new(_ => responses.Dequeue());
         LoginServerSelection selection = new();
-        LoginSelectionInput input = new(LoginVisualLayout.Create(new LogicalRenderSize(1024, 768)), selection);
+        LoginSelectionInput input = new(LoginStageLayout.Create(new LogicalRenderSize(1024, 768)), selection);
 
         refresh.Advance(s_now);
         Assert.True(refresh.Advance(s_now));
@@ -125,7 +126,7 @@ public sealed class LoginCatalogRefreshTests
         ]);
         using LoginCatalogRefresh refresh = new(_ => responses.Dequeue());
         LoginServerSelection selection = new();
-        LoginSelectionInput input = new(LoginVisualLayout.Create(new LogicalRenderSize(1024, 768)), selection);
+        LoginSelectionInput input = new(LoginStageLayout.Create(new LogicalRenderSize(1024, 768)), selection);
 
         refresh.Advance(s_now);
         Assert.True(refresh.Advance(s_now));
@@ -140,8 +141,6 @@ public sealed class LoginCatalogRefreshTests
         Assert.Same(replacement.View, selection.Catalog);
         Assert.Null(selection.SelectedRegion);
         Assert.Null(selection.SelectedServer);
-        Assert.Equal(-1, input.FocusedRegionSlot);
-        Assert.Equal(-1, input.FocusedServerSlot);
     }
 
     [Fact]

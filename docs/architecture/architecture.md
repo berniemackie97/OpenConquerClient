@@ -292,7 +292,7 @@ Detailed compatibility behavior belongs in
 
 `OpenConquer.Content` owns runtime content access and evidence-backed legacy format boundaries.
 
-The current verified retail runtime closure contains 3,784 files totaling 21,319,837 bytes.
+The current verified retail runtime closure contains 3,785 files totaling 21,319,841 bytes.
 
 Current runtime consumers cover:
 

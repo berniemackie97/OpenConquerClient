@@ -1,4 +1,3 @@
-using System.Runtime.ExceptionServices;
 using OpenConquer.Client.UI.Hud.ActionButtons;
 using OpenConquer.Client.UI.Hud.CheckControls;
 using OpenConquer.Client.UI.Hud.Chrome;
@@ -85,7 +84,7 @@ internal sealed class MainHudRenderResourceDependencies
 
 internal sealed class MainHudRenderResources : IDisposable
 {
-    private readonly MainHudRendererOwnership _ownership = new();
+    private readonly ResourceOwnership _ownership = new();
 
     public MainHudChromeRenderer Chrome
     {
@@ -175,74 +174,4 @@ internal sealed class MainHudRenderResources : IDisposable
     }
 
     public void Dispose() => _ownership.Dispose();
-}
-
-internal sealed class MainHudRendererOwnership : IDisposable
-{
-    private readonly List<IDisposable> _renderers = new(capacity: 10);
-    private bool _disposed;
-
-    public T Track<T>(T renderer) where T : class, IDisposable
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        ArgumentNullException.ThrowIfNull(renderer);
-
-        try
-        {
-            _renderers.Add(renderer);
-        }
-        catch
-        {
-            try
-            {
-                renderer.Dispose();
-            }
-            catch
-            {
-                // Preserve the registration failure.
-            }
-
-            throw;
-        }
-
-        return renderer;
-    }
-
-    public void DisposeAfterInitializationFailure()
-    {
-        try
-        {
-            Dispose();
-        }
-        catch
-        {
-            // Preserve the renderer-construction failure.
-        }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        ExceptionDispatchInfo? firstFailure = null;
-
-        for (int index = _renderers.Count - 1; index >= 0; index--)
-        {
-            try
-            {
-                _renderers[index].Dispose();
-            }
-            catch (Exception exception)
-            {
-                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-            }
-        }
-
-        _renderers.Clear();
-        firstFailure?.Throw();
-    }
 }

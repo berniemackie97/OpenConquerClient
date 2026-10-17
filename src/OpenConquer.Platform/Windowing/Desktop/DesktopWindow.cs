@@ -142,7 +142,10 @@ public sealed class DesktopWindow : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(text);
         if (_keyboardInput is null)
+        {
             throw new InvalidOperationException("The window input context has not been initialized.");
+        }
+
         _keyboardInput.WriteClipboardText(text);
     }
 

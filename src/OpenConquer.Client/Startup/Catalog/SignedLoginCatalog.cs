@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json;
-using OpenConquer.Client.UI.Login;
+using OpenConquer.Client.UI.Login.Selection;
 
 namespace OpenConquer.Client.Startup.Catalog;
 

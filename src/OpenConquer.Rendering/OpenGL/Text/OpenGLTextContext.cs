@@ -20,7 +20,12 @@ public sealed class OpenGLTextContext : IDisposable
     private bool _disposed;
 
     public OpenGLTextContext(OpenGLGraphicsDevice graphicsDevice, string? fontToken, int nominalPixelHeight, int effectiveCodePage, bool antialiasEnabled)
-        : this(ValidateGraphicsDevice(graphicsDevice), CreateOwnedFont(fontToken, nominalPixelHeight, antialiasEnabled), effectiveCodePage)
+        : this(graphicsDevice, fontToken, nominalPixelHeight, effectiveCodePage, antialiasEnabled, bold: false)
+    {
+    }
+
+    public OpenGLTextContext(OpenGLGraphicsDevice graphicsDevice, string? fontToken, int nominalPixelHeight, int effectiveCodePage, bool antialiasEnabled, bool bold)
+        : this(ValidateGraphicsDevice(graphicsDevice), CreateOwnedFont(fontToken, nominalPixelHeight, antialiasEnabled, bold), effectiveCodePage)
     {
     }
 
@@ -127,7 +132,7 @@ public sealed class OpenGLTextContext : IDisposable
         return graphicsDevice;
     }
 
-    private static OwnedFont CreateOwnedFont(string? fontToken, int nominalPixelHeight, bool antialiasEnabled)
+    private static OwnedFont CreateOwnedFont(string? fontToken, int nominalPixelHeight, bool antialiasEnabled, bool bold)
     {
         if (nominalPixelHeight == 0)
         {
@@ -142,7 +147,7 @@ public sealed class OpenGLTextContext : IDisposable
             HostFontCatalog catalog = new(new FreeTypeFontInspector(library), discovery);
             SystemFontResolver resolver = new(catalog);
             FreeTypeGlyphRasterizerFactory factory = new(library, resolver);
-            IGlyphRasterizer rasterizer = factory.Create(fontToken, nominalPixelHeight, antialiasEnabled);
+            IGlyphRasterizer rasterizer = factory.Create(fontToken, nominalPixelHeight, antialiasEnabled, bold);
 
             return new OwnedFont(library, rasterizer, nominalPixelHeight);
         }
