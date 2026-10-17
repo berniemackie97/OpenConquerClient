@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="OpenConquer.Client.Tests" />
+    <InternalsVisibleTo Include="OpenConquer.Client" />
   </ItemGroup>
 
 </Project>
