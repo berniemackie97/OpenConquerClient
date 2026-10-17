@@ -1,6 +1,6 @@
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Hit regions inside the original 508x98 retail account-panel image.</summary>
+/// <summary>Edit-text boxes of the retail account panel (enterMC fields 363 and 364), gutter included.</summary>
 internal readonly record struct LoginCredentialLayout(LoginSpritePlacement AccountField, LoginSpritePlacement PasswordField)
 {
     public static LoginCredentialLayout Create(LoginVisualLayout layout)
@@ -8,9 +8,9 @@ internal readonly record struct LoginCredentialLayout(LoginSpritePlacement Accou
         ArgumentNullException.ThrowIfNull(layout);
         LoginSpritePlacement panel = layout.AccountPanel;
 
-        // Source: start.dat DefineBitsJPEG3 character 327. The top field's right-hand inset is
-        // part of the retail artwork and must not be covered by user-entered text.
-        LoginCredentialLayout result = new(Field(panel, 214, 38, 120, 21), Field(panel, 214, 69, 142, 19));
+        // enterMC (512.5, 720.4): userNameTxt at (-40, -75), bounds (-2,-2)-(120,20.1);
+        // passwordTxt at (-40.35, -43.95), x-scale 1.000351, bounds (-2,-2)-(138.65,20.1).
+        LoginCredentialLayout result = new(Field(layout, 470.5, 643.4, 122, 22.1), Field(layout, 470.15, 674.45, 140.7, 22.1));
         Validate(result.AccountField, panel);
         Validate(result.PasswordField, panel);
 
@@ -22,9 +22,12 @@ internal readonly record struct LoginCredentialLayout(LoginSpritePlacement Accou
         return result;
     }
 
-    private static LoginSpritePlacement Field(LoginSpritePlacement panel, int x, int y, int width, int height) => new(
-        checked(panel.X + Scale(x, panel.Width, 508)), checked(panel.Y + Scale(y, panel.Height, 98)),
-        Scale(width, panel.Width, 508), Scale(height, panel.Height, 98));
+    private static LoginSpritePlacement Field(LoginVisualLayout layout, double x, double y, double width, double height)
+    {
+        int left = Round(x, layout.Width);
+        int top = Round(y, layout.Width);
+        return new LoginSpritePlacement(left, top, Round(x + width, layout.Width) - left, Round(y + height, layout.Width) - top);
+    }
 
     private static void Validate(LoginSpritePlacement field, LoginSpritePlacement panel)
     {
@@ -36,5 +39,5 @@ internal readonly record struct LoginCredentialLayout(LoginSpritePlacement Accou
         }
     }
 
-    private static int Scale(int value, int destination, int reference) => checked((int)(((long)value * destination + reference / 2) / reference));
+    private static int Round(double referenceValue, int logicalWidth) => checked((int)Math.Floor(referenceValue * logicalWidth / 1024 + 0.5));
 }

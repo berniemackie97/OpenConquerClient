@@ -7,18 +7,23 @@ namespace OpenConquer.Client.Tests.UI.Login;
 public sealed class LoginCredentialInputTests
 {
     [Fact]
-    public void EmptyCatalogNeverAcceptsOrDisplaysCredentialData()
+    public void EmptyCatalogAllowsEditingWithoutAuthorizingAnyRealm()
     {
         LoginServerSelection selection = new();
         LoginCredentialLayout layout = LoginCredentialLayout.Create(LoginVisualLayout.Create(new LogicalRenderSize(1024, 768)));
         using LoginCredentialInput input = new(selection, layout);
 
-        Assert.False(input.PointerPressed(true, layout.AccountField.X + 2, layout.AccountField.Y + 2));
-        input.TextEntered('A');
-        Assert.False(input.Enabled);
-        Assert.Equal(0, input.AccountLength);
-        Assert.Equal(0, input.PasswordLength);
+        Assert.Null(selection.SelectedServer);
         Assert.Equal(LoginCredentialFocus.None, input.Focus);
+        Assert.True(input.PointerPressed(true, layout.AccountField.X + 2, layout.AccountField.Y + 2));
+        input.TextEntered('A');
+        Assert.True(input.Enabled);
+        Assert.Equal("A", input.AccountDisplay);
+        Assert.True(input.KeyPressed(new DesktopKeyEvent(DesktopKey.Tab, DesktopKeyModifiers.Shift, false)));
+        Assert.Equal(LoginCredentialFocus.Password, input.Focus);
+        input.TextEntered('S');
+        Assert.Equal("*", input.PasswordMask);
+        Assert.Null(selection.SelectedServer);
     }
 
     [Fact]
@@ -78,26 +83,27 @@ public sealed class LoginCredentialInputTests
     }
 
     [Fact]
-    public void RevokedCatalogAndServerChangeErasePasswordAndAccount()
+    public void CatalogReplacementClearsSecretButRealmSelectionPreservesEditing()
     {
         (LoginServerSelection selection, LoginCredentialLayout layout) = Setup(1024, 768);
         using LoginCredentialInput input = new(selection, layout);
         Populate(input, layout);
         selection.ReplaceCatalog(LoginServerCatalog.Empty);
         input.Synchronize();
-        Assert.False(input.Enabled);
+        Assert.True(input.Enabled);
         Assert.Equal(0, input.PasswordLength);
-        Assert.Equal(0, input.AccountLength);
-        Assert.Equal(LoginCredentialFocus.None, input.Focus);
+        Assert.Equal("A", input.AccountDisplay);
 
         selection.ReplaceCatalog(Catalog());
+        input.Synchronize();
         Assert.True(selection.SelectRegionSlot(0));
         Assert.True(selection.SelectServerSlot(0));
-        Populate(input, layout);
+        Assert.True(input.PointerPressed(true, layout.PasswordField.X + 2, layout.PasswordField.Y + 2));
+        input.TextEntered('P');
         Assert.True(selection.SelectServerSlot(1));
         input.Synchronize();
-        Assert.Equal(0, input.PasswordLength);
-        Assert.Equal(0, input.AccountLength);
+        Assert.Equal(1, input.PasswordLength);
+        Assert.Equal("A", input.AccountDisplay);
     }
 
     [Fact]

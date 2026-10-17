@@ -1,6 +1,6 @@
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Owns an explicit press/release gesture for Exit. Enter has no submit capability.</summary>
+/// <summary>Owns the native Enter/Exit press/release gestures. It never submits credentials or opens sockets.</summary>
 internal sealed class LoginActionInput
 {
     private readonly LoginActionLayout _layout;
@@ -22,12 +22,7 @@ internal sealed class LoginActionInput
         _pressed = LoginActionButton.None;
         Hovered = mapped ? _layout.Hit(x, y) : LoginActionButton.None;
 
-        if (Hovered == LoginActionButton.Exit)
-        {
-            _pressed = LoginActionButton.Exit;
-        }
-
-        // Enter deliberately captures input without dispatching any login or network operation.
+        _pressed = Hovered;
         return Hovered != LoginActionButton.None;
     }
 
@@ -36,7 +31,7 @@ internal sealed class LoginActionInput
         LoginActionButton pressed = _pressed;
         _pressed = LoginActionButton.None;
         Hovered = mapped ? _layout.Hit(x, y) : LoginActionButton.None;
-        return pressed == LoginActionButton.Exit && Hovered == LoginActionButton.Exit ? LoginActionButton.Exit : LoginActionButton.None;
+        return pressed != LoginActionButton.None && pressed == Hovered ? pressed : LoginActionButton.None;
     }
 
     public void FocusLost()

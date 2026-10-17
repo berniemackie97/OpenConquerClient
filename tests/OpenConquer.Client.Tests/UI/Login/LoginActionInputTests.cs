@@ -6,8 +6,8 @@ namespace OpenConquer.Client.Tests.UI.Login;
 public sealed class LoginActionInputTests
 {
     [Theory]
-    [InlineData(1024, 768, 654, 726, 124, 34, 862)]
-    [InlineData(800, 600, 511, 567, 97, 27, 673)]
+    [InlineData(1024, 768, 650, 704, 132, 40, 859)]
+    [InlineData(800, 600, 508, 550, 103, 31, 671)]
     public void Layout_FollowsRetailBottomRowWithinStage(int width, int height, int enterX, int enterY, int enterWidth, int enterHeight, int exitX)
     {
         LoginVisualLayout visual = LoginVisualLayout.Create(new LogicalRenderSize(width, height));
@@ -38,11 +38,11 @@ public sealed class LoginActionInputTests
             Assert.False(Overlaps(button, credentials.AccountField));
             Assert.False(Overlaps(button, credentials.PasswordField));
             Assert.False(Overlaps(button, LoginDirectoryStatus.Bounds(visual)));
-            foreach (LoginSpritePlacement cell in visual.RegionCells)
+            foreach (LoginSpritePlacement cell in visual.RegionHitAreas)
             {
                 Assert.False(Overlaps(button, cell));
             }
-            foreach (LoginSpritePlacement cell in visual.ServerCells)
+            foreach (LoginSpritePlacement cell in visual.ServerHitAreas)
             {
                 Assert.False(Overlaps(button, cell));
             }
@@ -50,8 +50,8 @@ public sealed class LoginActionInputTests
     }
 
     [Theory]
-    [InlineData(1024, 768, 8)]
-    [InlineData(800, 600, 6)]
+    [InlineData(1024, 768, 0)]
+    [InlineData(800, 600, 0)]
     public void RetailEnterFootprint_ClearsTheEntireAccountPanel(int width, int height, int expectedGap)
     {
         LoginVisualLayout visual = LoginVisualLayout.Create(new LogicalRenderSize(width, height));
@@ -64,12 +64,19 @@ public sealed class LoginActionInputTests
     }
 
     [Fact]
-    public void Enter_CapturesButCannotSubmitAnAction()
+    public void Enter_UsesRetailPressAndReleaseStatesButDoesNotDispatchAuthentication()
     {
         LoginActionLayout layout = CreateLayout();
         LoginActionInput input = new(layout);
         Assert.True(input.PointerPressed(true, layout.Enter.X + 4, layout.Enter.Y + 4));
-        Assert.Equal(LoginActionButton.None, input.Pressed);
+        Assert.Equal(LoginActionButton.Enter, input.Pressed);
+        Assert.Equal(LoginActionButton.Enter, input.PointerReleased(true, layout.Enter.X + 4, layout.Enter.Y + 4));
+        Assert.Equal(LoginActionButton.None, input.PointerReleased(true, layout.Enter.X + 4, layout.Enter.Y + 4));
+
+        Assert.True(input.PointerPressed(true, layout.Enter.X + 4, layout.Enter.Y + 4));
+        Assert.Equal(LoginActionButton.None, input.PointerReleased(false, layout.Enter.X + 4, layout.Enter.Y + 4));
+        Assert.True(input.PointerPressed(true, layout.Enter.X + 4, layout.Enter.Y + 4));
+        input.FocusLost();
         Assert.Equal(LoginActionButton.None, input.PointerReleased(true, layout.Enter.X + 4, layout.Enter.Y + 4));
     }
 

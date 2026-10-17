@@ -3,12 +3,15 @@ using OpenConquer.Content.Images;
 
 namespace OpenConquer.Content.Startup;
 
-/// <summary>Closed set of retail-derived server images; never resolves catalog-provided paths.</summary>
+/// <summary>
+/// Closed set of retail 5517 server movies, each its root shape as the <c>son</c> holder shows it
+/// (thumbnail, frame and lower label band); never resolves catalog-provided paths.
+/// </summary>
 public static class LoginRealmIconAssets
 {
     private const string ResourcePrefix = "OpenConquer.Content.Assets.RealmIcons.";
-    private const int StandardWidth = 156;
-    private const int StandardHeight = 56;
+    private const int StandardWidth = 170;
+    private const int StandardHeight = 90;
     private static readonly int[] s_serversPerGroup = [12, 13, 12, 12, 12, 12, 12, 12, 5];
 
     public static int IconCount => 102;
@@ -33,12 +36,8 @@ public static class LoginRealmIconAssets
     {
         ValidateId(iconId);
 
-        (int width, int height) = iconId switch
-        {
-            "g09s01" => (164, 85),
-            "g09s02" => (154, 54),
-            _ => (StandardWidth, StandardHeight),
-        };
+        // Group9/server1 is the only movie whose root shape fills its 164x85 picture directly.
+        (int width, int height) = iconId == "g09s01" ? (164, 85) : (StandardWidth, StandardHeight);
 
         string resourceName = ResourcePrefix + iconId + ".rgba.br";
         using Stream source = typeof(LoginRealmIconAssets).Assembly.GetManifestResourceStream(resourceName)

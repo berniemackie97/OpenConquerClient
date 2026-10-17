@@ -83,7 +83,7 @@ public sealed class ClientContentClosureTests
         IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
         Assert.Equal(CreateExpectedRequirements(), closure);
-        Assert.Equal(108, closure.Count);
+        Assert.Equal(109, closure.Count);
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public sealed class ClientContentClosureTests
 
         IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
 
-        Assert.Equal(109, closure.Count);
+        Assert.Equal(110, closure.Count);
         Assert.Contains(new ClientContentRequirement("ini/cn_Res.ini", ContentLookupMode.LooseOnly), closure);
         Assert.Contains(new ClientContentRequirement("ini/MagicType.dat", ContentLookupMode.LooseOnly), closure);
         Assert.Contains(new ClientContentRequirement("ini/MagicEffect.ini", ContentLookupMode.LooseOnly), closure);
@@ -473,6 +473,7 @@ public sealed class ClientContentClosureTests
             new("ini/Font.ini", ContentLookupMode.LooseOnly),
             new("ini/GameSetUp.ini", ContentLookupMode.LooseOnly),
             new("ini/info.ini", ContentLookupMode.LooseOnly),
+            new("version.dat", ContentLookupMode.LooseOnly),
             new("ini/StrRes.ini", ContentLookupMode.LooseOnly),
             new("ini/MagicType.dat", ContentLookupMode.LooseOnly),
             new("ini/MagicEffect.ini", ContentLookupMode.LooseOnly),

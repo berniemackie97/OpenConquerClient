@@ -6,26 +6,27 @@ namespace OpenConquer.Client.Tests.UI.Login;
 public sealed class LoginRetailCredentialLayoutTests
 {
     [Fact]
-    public void ReferenceStage_UsesOriginalPanelInteriorInsteadOfOverlayFrames()
+    public void ReferenceStage_UsesTheNativeEditTextBoxes()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
         LoginCredentialLayout fields = LoginCredentialLayout.Create(layout);
 
-        Assert.Equal(new LoginSpritePlacement(472, 658, 120, 21), fields.AccountField);
-        Assert.Equal(new LoginSpritePlacement(472, 689, 142, 19), fields.PasswordField);
-        Assert.Equal(258, layout.AccountPanel.X);
-        Assert.Equal(620, layout.AccountPanel.Y);
+        // enterMC fields 363 (470.5, 643.4, 122x22.1) and 364 (470.15, 674.45, 140.7x22.1).
+        Assert.Equal(new LoginSpritePlacement(471, 643, 122, 23), fields.AccountField);
+        Assert.Equal(new LoginSpritePlacement(470, 674, 141, 23), fields.PasswordField);
+        Assert.Equal(256, layout.AccountPanel.X);
+        Assert.Equal(606, layout.AccountPanel.Y);
     }
 
     [Fact]
-    public void CompactStage_ScalesTheSameNativePixelInteriors()
+    public void CompactStage_ScalesTheSameNativeEditTextBoxes()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(800, 600));
         LoginCredentialLayout fields = LoginCredentialLayout.Create(layout);
 
-        Assert.Equal(new LoginSpritePlacement(369, 514, 94, 17), fields.AccountField);
-        Assert.Equal(new LoginSpritePlacement(369, 538, 111, 15), fields.PasswordField);
-        Assert.Equal(484, layout.AccountPanel.Y);
+        Assert.Equal(new LoginSpritePlacement(368, 503, 95, 17), fields.AccountField);
+        Assert.Equal(new LoginSpritePlacement(367, 527, 110, 17), fields.PasswordField);
+        Assert.Equal(473, layout.AccountPanel.Y);
     }
 
     [Theory]

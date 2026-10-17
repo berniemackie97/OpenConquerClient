@@ -40,13 +40,13 @@ public sealed class LoginLabelFitterTests
     public void Center_PreservesActualNegativeBearingsInsideReferenceCell()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
-        LoginSpritePlacement cell = layout.RegionCells[0];
+        LoginSpritePlacement cell = layout.RegionTiles[0];
 
         bool fitted = LoginLabelFitter.TryCenter(cell, 8, inkLeft: -2, inkTop: 4, inkRight: 72, inkBottom: 16, out int x, out int y);
 
         Assert.True(fitted);
-        Assert.Equal(97, x);
-        Assert.Equal(209, y);
+        Assert.Equal(99, x);
+        Assert.Equal(191, y);
         Assert.InRange(x - 2, cell.X + 8, cell.X + cell.Width - 8);
         Assert.InRange(x + 72, cell.X + 8, cell.X + cell.Width - 8);
         Assert.InRange(y + 4, cell.Y, cell.Y + cell.Height);
@@ -57,7 +57,7 @@ public sealed class LoginLabelFitterTests
     public void Center_FitsCompactStageWithinPadding()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(800, 600));
-        LoginSpritePlacement cell = layout.ServerCells[0];
+        LoginSpritePlacement cell = layout.ServerHitAreas[0];
 
         bool fitted = LoginLabelFitter.TryCenter(cell, 6, 1, 2, 101, 13, out int x, out int y);
 

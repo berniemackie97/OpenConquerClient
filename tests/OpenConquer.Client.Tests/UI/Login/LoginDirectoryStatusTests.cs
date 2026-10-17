@@ -45,8 +45,8 @@ public sealed class LoginDirectoryStatusTests
     }
 
     [Theory]
-    [InlineData(1024, 768, 431, 554, 494, 26)]
-    [InlineData(800, 600, 337, 432, 385, 20)]
+    [InlineData(1024, 768, 432, 560, 487, 26)]
+    [InlineData(800, 600, 338, 437, 380, 20)]
     public void BoundsFitBetweenServerGridAndAccountPanel(int width, int height, int x, int y, int areaWidth, int areaHeight)
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(width, height));
@@ -56,7 +56,7 @@ public sealed class LoginDirectoryStatusTests
         Assert.True(bounds.Y + bounds.Height <= layout.AccountPanel.Y);
         Assert.True(bounds.X + bounds.Width <= layout.Width);
 
-        foreach (LoginSpritePlacement server in layout.ServerCells)
+        foreach (LoginSpritePlacement server in layout.ServerHitAreas)
         {
             Assert.True(server.Y + server.Height < bounds.Y);
         }

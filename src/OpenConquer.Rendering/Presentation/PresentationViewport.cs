@@ -157,6 +157,18 @@ public readonly record struct PresentationViewport
         return true;
     }
 
+    /// <summary>Clamped horizontal drag mapping, including letterbox margins and offscreen pointer positions.</summary>
+    public int MapPointerXClamped(int pointerX)
+    {
+        if (IsEmpty)
+        {
+            return 0;
+        }
+
+        long relativeX = (long)pointerX - OffsetX;
+        return (int)Math.Clamp(relativeX * LogicalWidth / Width, 0L, LogicalWidth - 1L);
+    }
+
     /// <summary>
     /// Converts a host framebuffer pixel to the logical pixel drawn there.
     /// </summary>

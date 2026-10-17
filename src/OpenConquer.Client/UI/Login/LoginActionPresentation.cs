@@ -9,7 +9,6 @@ namespace OpenConquer.Client.UI.Login;
 /// <summary>Owns the original retail Enter/Exit image states for one OpenGL context.</summary>
 internal sealed class LoginActionPresentation : IDisposable
 {
-    private static readonly SpriteColor s_inactive = new(116, 116, 116, 255);
     private readonly LoginActionLayout _layout;
     private readonly OpenGLTexture2D[] _textures;
     private bool _disposed;
@@ -20,14 +19,16 @@ internal sealed class LoginActionPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(artwork);
         _layout = layout;
 
-        OpenGLTexture2D?[] textures = new OpenGLTexture2D?[4];
+        OpenGLTexture2D?[] textures = new OpenGLTexture2D?[6];
 
         try
         {
             textures[0] = Create(graphicsDevice, artwork.EnterUp);
-            textures[1] = Create(graphicsDevice, artwork.ExitUp);
-            textures[2] = Create(graphicsDevice, artwork.ExitHover);
-            textures[3] = Create(graphicsDevice, artwork.ExitPressed);
+            textures[1] = Create(graphicsDevice, artwork.EnterHover);
+            textures[2] = Create(graphicsDevice, artwork.EnterPressed);
+            textures[3] = Create(graphicsDevice, artwork.ExitUp);
+            textures[4] = Create(graphicsDevice, artwork.ExitHover);
+            textures[5] = Create(graphicsDevice, artwork.ExitPressed);
             _textures = Array.ConvertAll(textures, static texture => texture!);
         }
         catch
@@ -51,12 +52,8 @@ internal sealed class LoginActionPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(input);
 
-        // Never suggest that native Enter authentication is wired when it is not.
-        DrawTexture(renderer, _textures[0], _layout.Enter, s_inactive);
-
-        int state = input.Pressed == LoginActionButton.Exit && input.Hovered == LoginActionButton.Exit ? 2 :
-            input.Hovered == LoginActionButton.Exit ? 1 : 0;
-        DrawTexture(renderer, _textures[1 + state], _layout.Exit, SpriteColor.White);
+        DrawTexture(renderer, _textures[State(input, LoginActionButton.Enter)], _layout.Enter, SpriteColor.White);
+        DrawTexture(renderer, _textures[3 + State(input, LoginActionButton.Exit)], _layout.Exit, SpriteColor.White);
     }
 
     public void Dispose()
@@ -80,6 +77,10 @@ internal sealed class LoginActionPresentation : IDisposable
 
         firstFailure?.Throw();
     }
+
+    private static int State(LoginActionInput input, LoginActionButton button) =>
+        input.Pressed == button && input.Hovered == button ? 2 :
+        input.Hovered == button ? 1 : 0;
 
     private static OpenGLTexture2D Create(OpenGLGraphicsDevice graphicsDevice, OpenConquer.Content.Images.RgbaImage image)
     {

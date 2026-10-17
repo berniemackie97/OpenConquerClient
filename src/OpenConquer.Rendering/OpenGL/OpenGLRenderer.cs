@@ -27,6 +27,7 @@ public sealed class OpenGLRenderer : IDisposable
     private PresentationViewport _viewport;
     private bool _hostFramebufferValidated;
     private bool _frameActive;
+    private bool _clipActive;
     private bool _disposed;
 
     internal OpenGLRenderer(GL gl, LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy)
@@ -202,6 +203,46 @@ public sealed class OpenGLRenderer : IDisposable
         _spriteRenderer.DrawRepeated(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceBounds, x, y, width, height);
     }
 
+    /// <summary>Clips subsequent logical-frame draws to an exact top-left pixel rectangle.</summary>
+    public ClipScope Clip(int x, int y, int width, int height)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureFrameActiveForDrawing();
+        if (_clipActive)
+        {
+            throw new InvalidOperationException("Nested renderer clips are not supported.");
+        }
+
+        if (x < 0 || y < 0 || width <= 0 || height <= 0 ||
+            (long)x + width > _logicalRenderSize.Width || (long)y + height > _logicalRenderSize.Height)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width), "Clip must be inside the logical render target.");
+        }
+
+        _gl.Scissor(x, _logicalRenderSize.Height - y - height, (uint)width, (uint)height);
+        _gl.Enable(EnableCap.ScissorTest);
+        _clipActive = true;
+        return new ClipScope(this);
+    }
+
+    private void EndClip()
+    {
+        if (!_clipActive)
+        {
+            return;
+        }
+
+        _gl.Disable(EnableCap.ScissorTest);
+        _clipActive = false;
+    }
+
+    public readonly struct ClipScope : IDisposable
+    {
+        private readonly OpenGLRenderer? _owner;
+        internal ClipScope(OpenGLRenderer owner) => _owner = owner;
+        public void Dispose() => _owner?.EndClip();
+    }
+
     public void DrawSolidRectangle(int x, int y, int width, int height, SpriteColor color)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -251,10 +292,12 @@ public sealed class OpenGLRenderer : IDisposable
 
         try
         {
+            EndClip();
             BlitToHostFramebuffer();
         }
         finally
         {
+            _clipActive = false;
             _frameActive = false;
         }
     }

@@ -27,7 +27,7 @@ internal sealed class FreeTypeGlyphRasterizerFactory
         _rasterizerCreator = rasterizerCreator;
     }
 
-    public IGlyphRasterizer Create(string? fontToken, int nominalPixelHeight, bool antialiasEnabled)
+    public IGlyphRasterizer Create(string? fontToken, int nominalPixelHeight, bool antialiasEnabled, bool bold = false)
     {
         if (nominalPixelHeight == 0)
         {
@@ -35,6 +35,14 @@ internal sealed class FreeTypeGlyphRasterizerFactory
         }
 
         Exception? lastFailure = null;
+
+        // A bold family request selects that family's bold face; file tokens and families without one take the regular chain.
+        if (bold && !string.IsNullOrEmpty(fontToken) && fontToken[0] != '$' &&
+            _fontResolver.TryResolveBold(fontToken, out ResolvedFont? boldFont) && boldFont is not null &&
+            TryCreate(boldFont, nominalPixelHeight, antialiasEnabled, ref lastFailure) is { } boldRasterizer)
+        {
+            return boldRasterizer;
+        }
 
         if (!string.IsNullOrEmpty(fontToken) && TryCreateFromToken(fontToken, nominalPixelHeight, antialiasEnabled, ref lastFailure) is { } requestedRasterizer)
         {

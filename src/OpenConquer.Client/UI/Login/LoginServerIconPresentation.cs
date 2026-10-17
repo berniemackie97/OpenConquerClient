@@ -6,7 +6,7 @@ using OpenConquer.Rendering.OpenGL.Resources;
 
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Bounded cache of trusted retail-derived server icons for one OpenGL context.</summary>
+/// <summary>Bounded cache of trusted retail server movies, drawn as each <c>son</c> holder shows them, for one OpenGL context.</summary>
 internal sealed class LoginServerIconPresentation : IDisposable
 {
     private readonly OpenGLGraphicsDevice _graphics;
@@ -26,9 +26,9 @@ internal sealed class LoginServerIconPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(selection);
 
-        ReadOnlySpan<LoginSpritePlacement> cells = _layout.ServerCells;
+        ReadOnlySpan<LoginStagePoint> holders = _layout.ServerHolders;
 
-        for (int slot = 0; slot < cells.Length; slot++)
+        for (int slot = 0; slot < holders.Length; slot++)
         {
             if (selection.ServerAtSlot(slot) is not { IconId: { } iconId })
             {
@@ -42,7 +42,8 @@ internal sealed class LoginServerIconPresentation : IDisposable
                 _textures.Add(iconId, texture);
             }
 
-            LoginSpritePlacement bounds = LoginServerIconLayout.Fit(cells[slot], texture.Width, texture.Height);
+            // The loaded movie's root shape sits at the holder origin, unscaled.
+            LoginSpritePlacement bounds = _layout.Offset(holders[slot], 0, 0, texture.Width, texture.Height);
             renderer.DrawSprite(texture, bounds.X, bounds.Y, bounds.Width, bounds.Height);
         }
     }
@@ -68,32 +69,5 @@ internal sealed class LoginServerIconPresentation : IDisposable
 
         _textures.Clear();
         firstFailure?.Throw();
-    }
-}
-
-/// <summary>Aspect-preserving fit into the existing retail server-cell interior.</summary>
-internal static class LoginServerIconLayout
-{
-    public static LoginSpritePlacement Fit(LoginSpritePlacement cell, int imageWidth, int imageHeight)
-    {
-        if (cell.Width < 3 || cell.Height < 3 || imageWidth <= 0 || imageHeight <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(cell), "The server cell or icon dimensions are invalid.");
-        }
-
-        int availableWidth = cell.Width - 2;
-        int availableHeight = cell.Height - 2;
-        int width = availableWidth;
-        int height = checked((int)((long)imageHeight * width / imageWidth));
-
-        if (height > availableHeight)
-        {
-            height = availableHeight;
-            width = checked((int)((long)imageWidth * height / imageHeight));
-        }
-
-        width = Math.Max(1, width);
-        height = Math.Max(1, height);
-        return new LoginSpritePlacement(checked(cell.X + (cell.Width - width) / 2), checked(cell.Y + (cell.Height - height) / 2), width, height);
     }
 }

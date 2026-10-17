@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using OpenConquer.Content.Images;
 using OpenConquer.Content.Startup;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;
@@ -7,26 +8,27 @@ using OpenConquer.Rendering.Sprites;
 
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Owns pre-world login textures and text for one active OpenGL context.</summary>
+/// <summary>Owns the retail login stage textures and text for one active OpenGL context.</summary>
 internal sealed class LoginPresentation : IDisposable
 {
+    // defaultR sprite 61 frames 1-5 fade sprite 60 in (alpha 26, 72, 118, 164, 210 of 256) and stop at frame 6.
+    private static readonly byte[] s_flameFadeAlpha = [26, 72, 118, 164, 210];
+    private readonly List<OpenGLTexture2D> _owned = [];
     private readonly OpenGLTexture2D _backdrop;
-    private readonly OpenGLTexture2D _header;
-    private readonly OpenGLTexture2D _footer;
+    private readonly OpenGLTexture2D _stageBorder;
+    private readonly OpenGLTexture2D _regionPanel;
+    private readonly OpenGLTexture2D _regionTile;
+    private readonly OpenGLTexture2D _regionUnopened;
+    private readonly OpenGLTexture2D _regionHover;
+    private readonly OpenGLTexture2D _regionFlame;
+    private readonly OpenGLTexture2D _regionPagePrevious;
+    private readonly OpenGLTexture2D _regionPageNext;
+    private readonly OpenGLTexture2D _serverUnopened;
+    private readonly OpenGLTexture2D _serverDefault;
     private readonly OpenGLTexture2D _accountPanel;
-    private readonly OpenGLTexture2D _topDragon;
-    private readonly OpenGLTexture2D _regionCell;
-    private readonly OpenGLTexture2D _serverCell;
-    private readonly OpenGLTexture2D _selectedRegion;
-    private readonly OpenGLTexture2D _selectedServerGlow;
     private readonly LoginVisualLayout _layout;
-    private readonly LoginPageControls _pageControls;
     private readonly LoginLabelPresentation _labels;
     private readonly LoginCredentialPresentation _credentials;
-    private static readonly SpriteColor s_focusBorder = new(255, 231, 135, 255);
-    private static readonly SpriteColor s_pageAvailable = new(245, 230, 194, 255);
-    private static readonly SpriteColor s_pageUnavailable = new(116, 102, 83, 255);
-    private static readonly SpriteColor s_pagePressed = new(99, 76, 42, 190);
     private bool _disposed;
 
     public LoginPresentation(OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize size, LoginArtworkSet artwork)
@@ -34,156 +36,127 @@ internal sealed class LoginPresentation : IDisposable
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(artwork);
 
-        LoginVisualLayout layout = LoginVisualLayout.Create(size);
-        LoginPageControls pageControls = LoginPageControls.Create(layout);
-
-        if (artwork.Backdrop is not { Width: 1024, Height: 637 } ||
-            artwork.Header is not { Width: 1024, Height: 116 } ||
-            artwork.Footer is not { Width: 1024, Height: 140 } ||
-            artwork.AccountPanel is not { Width: 508, Height: 98 } ||
-            artwork.TopDragon is not { Width: 494, Height: 140 } ||
-            artwork.RegionCell is not { Width: 154, Height: 54 } ||
-            artwork.ServerCell is not { Width: 158, Height: 58 } ||
-            artwork.SelectedRegion is not { Width: 150, Height: 50 } ||
-            artwork.SelectedServerGlow is not { Width: 200, Height: 100 })
+        if (artwork.Backdrop is not { Width: 1024, Height: 637 } || artwork.AccountPanel is not { Width: 508, Height: 98 })
         {
             throw new InvalidDataException("Login visual dimensions do not match the verified source artwork.");
         }
 
-        OpenGLTexture2D? backdrop = null;
-        OpenGLTexture2D? header = null;
-        OpenGLTexture2D? footer = null;
-        OpenGLTexture2D? accountPanel = null;
-        OpenGLTexture2D? topDragon = null;
-        OpenGLTexture2D? regionCell = null;
-        OpenGLTexture2D? serverCell = null;
-        OpenGLTexture2D? selectedRegion = null;
-        OpenGLTexture2D? selectedServerGlow = null;
+        _layout = LoginVisualLayout.Create(size);
 
         try
         {
-            backdrop = graphicsDevice.CreateTexture2D(artwork.Backdrop.Width, artwork.Backdrop.Height, artwork.Backdrop.Pixels.Span);
-            header = graphicsDevice.CreateTexture2D(artwork.Header.Width, artwork.Header.Height, artwork.Header.Pixels.Span);
-            footer = graphicsDevice.CreateTexture2D(artwork.Footer.Width, artwork.Footer.Height, artwork.Footer.Pixels.Span);
-            accountPanel = graphicsDevice.CreateTexture2D(artwork.AccountPanel.Width, artwork.AccountPanel.Height, artwork.AccountPanel.Pixels.Span);
-            topDragon = graphicsDevice.CreateTexture2D(artwork.TopDragon.Width, artwork.TopDragon.Height, artwork.TopDragon.Pixels.Span);
-            regionCell = graphicsDevice.CreateTexture2D(artwork.RegionCell.Width, artwork.RegionCell.Height, artwork.RegionCell.Pixels.Span);
-            serverCell = graphicsDevice.CreateTexture2D(artwork.ServerCell.Width, artwork.ServerCell.Height, artwork.ServerCell.Pixels.Span);
-            selectedRegion = graphicsDevice.CreateTexture2D(artwork.SelectedRegion.Width, artwork.SelectedRegion.Height, artwork.SelectedRegion.Pixels.Span);
-            selectedServerGlow = graphicsDevice.CreateTexture2D(artwork.SelectedServerGlow.Width, artwork.SelectedServerGlow.Height, artwork.SelectedServerGlow.Pixels.Span);
+            _backdrop = Create(graphicsDevice, artwork.Backdrop);
+            _stageBorder = Create(graphicsDevice, LoginRetailStageArtwork.Load(LoginRetailStageArtwork.Layer.StageBorder));
+            _regionPanel = Create(graphicsDevice, LoginRetailStageArtwork.Load(LoginRetailStageArtwork.Layer.RegionPanel));
+            _regionTile = Create(graphicsDevice, LoginRetailStageArtwork.Load(LoginRetailStageArtwork.Layer.RegionTile));
+            _regionUnopened = Create(graphicsDevice, LoginRetailStageArtwork.Load(LoginRetailStageArtwork.Layer.RegionUnopened));
+            _regionHover = Create(graphicsDevice, LoginRetailStageArtwork.Load(LoginRetailStageArtwork.Layer.RegionHover));
+            _regionFlame = Create(graphicsDevice, LoginRetailStageArtwork.Load(LoginRetailStageArtwork.Layer.RegionFlame));
+            _regionPagePrevious = Create(graphicsDevice, LoginRetailStageArtwork.Load(LoginRetailStageArtwork.Layer.RegionPagePrevious));
+            _regionPageNext = Create(graphicsDevice, LoginRetailStageArtwork.Load(LoginRetailStageArtwork.Layer.RegionPageNext));
+            _serverUnopened = Create(graphicsDevice, LoginRetailRealmFallbackArtwork.LoadUnopened());
+            _serverDefault = Create(graphicsDevice, LoginRetailRealmFallbackArtwork.LoadDefault());
+            _accountPanel = Create(graphicsDevice, artwork.AccountPanel);
+            _labels = new LoginLabelPresentation(graphicsDevice, _layout);
+            _credentials = new LoginCredentialPresentation(graphicsDevice, _layout);
         }
         catch
         {
-            try
-            {
-                selectedServerGlow?.Dispose();
-            }
-            catch { }
-            try
-            {
-                selectedRegion?.Dispose();
-            }
-            catch { }
-            try
-            {
-                serverCell?.Dispose();
-            }
-            catch { }
-            try
-            {
-                regionCell?.Dispose();
-            }
-            catch { }
-            try
-            {
-                topDragon?.Dispose();
-            }
-            catch { }
-            try
-            {
-                accountPanel?.Dispose();
-            }
-            catch { }
-            try
-            {
-                footer?.Dispose();
-            }
-            catch { }
-            try
-            {
-                header?.Dispose();
-            }
-            catch { }
-            try
-            {
-                backdrop?.Dispose();
-            }
-            catch { }
+            // Preserve the initialization failure; a release failure here would only obscure it.
+            _ = DisposeTextures();
             throw;
         }
-
-        _backdrop = backdrop;
-        _header = header;
-        _footer = footer;
-        _accountPanel = accountPanel;
-        _topDragon = topDragon;
-        _regionCell = regionCell;
-        _serverCell = serverCell;
-        _selectedRegion = selectedRegion;
-        _selectedServerGlow = selectedServerGlow;
-        _layout = layout;
-        _pageControls = pageControls;
-        _labels = new LoginLabelPresentation(graphicsDevice, layout);
-        _credentials = new LoginCredentialPresentation(graphicsDevice, layout);
     }
 
-    public void Draw(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input, LoginCredentialInput credentials)
+    /// <summary>Root depth 1: shape 11.</summary>
+    public void DrawBackdrop(OpenGLRenderer renderer)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(renderer);
+        Draw(renderer, _backdrop, _layout.Backdrop);
+    }
+
+    /// <summary>Root depth 4, sprite 180: each <c>ss</c> holder's <c>son</c> movie for empty and unpictured realms.</summary>
+    public void DrawServerMovies(OpenGLRenderer renderer, LoginServerSelection selection)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(renderer);
+        ArgumentNullException.ThrowIfNull(selection);
+
+        ReadOnlySpan<LoginStagePoint> holders = _layout.ServerHolders;
+        for (int slot = 0; slot < holders.Length; slot++)
+        {
+            LoginServer? server = selection.ServerAtSlot(slot);
+            // `ss.flush`: absent rows load unopenedS.swf, rows without `pic` load defaultS.swf.
+            // Pictured rows are composited by LoginServerIconPresentation.
+            OpenGLTexture2D? movie = server is null ? _serverUnopened : server.IconId is null ? _serverDefault : null;
+            if (movie is not null)
+            {
+                Draw(renderer, movie, _layout.Offset(holders[slot], 0, 0, movie.Width, movie.Height));
+            }
+        }
+    }
+
+    /// <summary>Sprite 179 depth 10: each holder's <c>nameTxt</c>, above its selection effects.</summary>
+    public void DrawServerLabels(OpenGLRenderer renderer, LoginServerSelection selection)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _labels.DrawServers(renderer, selection);
+    }
+
+    /// <summary>Root depth 138, sprite 259: panel, region movies with their rollover and selection frames, and paging.</summary>
+    public void DrawRegionPanel(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input, LoginRetailSelectionMotion motion)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(motion);
+
+        Draw(renderer, _regionPanel, _layout.RegionPanel);
+
+        // A rolled-over holder is swapped to depth 999, above every other region movie.
+        int raised = motion.RegionBorderSlot;
+        ReadOnlySpan<LoginStagePoint> holders = _layout.RegionHolders;
+        for (int slot = 0; slot < holders.Length; slot++)
+        {
+            if (slot != raised)
+            {
+                DrawRegionMovie(renderer, selection, motion, slot);
+            }
+        }
+
+        if ((uint)raised < (uint)holders.Length)
+        {
+            DrawRegionMovie(renderer, selection, motion, raised);
+        }
+
+        _labels.DrawRegions(renderer, selection);
+
+        if (selection.RegionPageCount > 1)
+        {
+            DrawPageButton(renderer, _regionPagePrevious, _layout.RegionPagePrevious, input.PageButtonState(LoginRegionPageButton.Previous));
+            DrawPageButton(renderer, _regionPageNext, _layout.RegionPageNext, input.PageButtonState(LoginRegionPageButton.Next));
+            _labels.DrawRegionPage(renderer, selection);
+        }
+    }
+
+    /// <summary>Root depth 216: shape 400, above both selection panels and below <c>enterMC</c>.</summary>
+    public void DrawStageBorder(OpenGLRenderer renderer)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(renderer);
+        Draw(renderer, _stageBorder, _layout.StageBorder);
+    }
+
+    /// <summary>Root depth 221 <c>enterMC</c>: shape 328 and the edit-text fields 363/364.</summary>
+    public void DrawAccountPanel(OpenGLRenderer renderer, LoginCredentialInput credentials)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(credentials);
-
-        DrawLayer(renderer, _backdrop, _layout.Backdrop);
-        DrawLayer(renderer, _header, _layout.Header);
-        DrawLayer(renderer, _footer, _layout.Footer);
-
-        foreach (LoginSpritePlacement placement in _layout.RegionCells)
-        {
-            DrawLayer(renderer, _regionCell, placement);
-        }
-
-        foreach (LoginSpritePlacement placement in _layout.ServerCells)
-        {
-            DrawLayer(renderer, _serverCell, placement);
-        }
-
-        if (selection.SelectedRegionSlot is >= 0 and < LoginServerSelection.RegionsPerPage)
-        {
-            DrawLayer(renderer, _selectedRegion, LoginSelectionArtworkLayout.SelectedRegion(_layout, selection.SelectedRegionSlot));
-        }
-
-        if (selection.SelectedServerSlot is >= 0 and < LoginServerSelection.ServersPerPage)
-        {
-            DrawLayer(renderer, _selectedServerGlow, LoginSelectionArtworkLayout.SelectedServer(_layout, selection.SelectedServerSlot));
-        }
-
-        DrawLayer(renderer, _accountPanel, _layout.AccountPanel);
-        DrawLayer(renderer, _topDragon, _layout.TopDragon);
-
-        _labels.Draw(renderer, selection);
+        Draw(renderer, _accountPanel, _layout.AccountPanel);
         _credentials.Draw(renderer, credentials);
-        DrawPageControls(renderer, selection, input);
-
-        if (input.Focus == LoginSelectionFocus.Region)
-        {
-            DrawSelectionBorder(renderer, _layout.RegionCells, input.FocusedRegionSlot, s_focusBorder);
-        }
-        else if (input.Focus == LoginSelectionFocus.Server)
-        {
-            DrawSelectionBorder(renderer, _layout.ServerCells, input.FocusedServerSlot, s_focusBorder);
-        }
     }
 
     public bool TryHitTestCredentialCaret(LoginCredentialInput input, int x, int y, out int index) =>
@@ -219,82 +192,85 @@ internal sealed class LoginPresentation : IDisposable
             firstFailure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
-        DisposeTexture(_selectedServerGlow, ref firstFailure);
-        DisposeTexture(_selectedRegion, ref firstFailure);
-        DisposeTexture(_serverCell, ref firstFailure);
-        DisposeTexture(_regionCell, ref firstFailure);
-        DisposeTexture(_topDragon, ref firstFailure);
-        DisposeTexture(_accountPanel, ref firstFailure);
-        DisposeTexture(_footer, ref firstFailure);
-        DisposeTexture(_header, ref firstFailure);
-        DisposeTexture(_backdrop, ref firstFailure);
-
+        firstFailure ??= DisposeTextures();
         firstFailure?.Throw();
     }
 
-    private static void DisposeTexture(OpenGLTexture2D texture, ref ExceptionDispatchInfo? firstFailure)
+    private void DrawRegionMovie(OpenGLRenderer renderer, LoginServerSelection selection, LoginRetailSelectionMotion motion, int slot)
     {
-        try
-        {
-            texture.Dispose();
-        }
-        catch (Exception exception)
-        {
-            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-        }
-    }
+        LoginStagePoint holder = _layout.RegionHolders[slot];
 
-    private void DrawPageControls(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input)
-    {
-        DrawPageControl(renderer, selection, input, LoginPageControl.RegionPrevious);
-        DrawPageControl(renderer, selection, input, LoginPageControl.RegionNext);
-        DrawPageControl(renderer, selection, input, LoginPageControl.ServerPrevious);
-        DrawPageControl(renderer, selection, input, LoginPageControl.ServerNext);
-    }
-
-    private void DrawPageControl(OpenGLRenderer renderer, LoginServerSelection selection, LoginSelectionInput input, LoginPageControl control)
-    {
-        if (!LoginPageControls.IsVisible(control, selection))
+        // `sr.flush`: slots past the catalog load unopenedR.swf; regions without a picture load defaultR.swf.
+        if (selection.RegionAtSlot(slot) is null)
         {
+            Draw(renderer, _regionUnopened, _layout.Offset(holder, 0, 0, _regionUnopened.Width, _regionUnopened.Height));
             return;
         }
 
-        LoginSpritePlacement bounds = _pageControls.Bounds(control);
-        bool enabled = LoginPageControls.IsEnabled(control, selection);
-        SpriteColor color = enabled ? s_pageAvailable : s_pageUnavailable;
+        Draw(renderer, _regionTile, _layout.RegionTiles[slot]);
 
-        if (enabled && input.PressedPageControl == control)
+        if (slot == selection.SelectedRegionSlot)
         {
-            renderer.DrawSolidRectangle(bounds.X + 1, bounds.Y + 1, bounds.Width - 2, bounds.Height - 2, s_pagePressed);
+            // Root frame 13 (gotoAndStop(16) clamps to the last frame): sprite 61 at depth 3.
+            int step = motion.RegionFlameFadeStep;
+            SpriteColor tint = step < s_flameFadeAlpha.Length ? new SpriteColor(255, 255, 255, s_flameFadeAlpha[step]) : SpriteColor.White;
+            DrawFrame(renderer, _regionFlame, LoginRetailStageArtwork.Describe(LoginRetailStageArtwork.Layer.RegionFlame),
+                motion.RegionFlameFrame, holder, 2, 0, tint);
         }
-
-        renderer.DrawLineRectangle(bounds.X, bounds.Y, bounds.X + bounds.Width - 1, bounds.Y + bounds.Height - 1, color);
-
-        int step = Math.Max(1, bounds.Height / 10);
-        int triangleHeight = 5 * step;
-        int top = bounds.Y + (bounds.Height - triangleHeight) / 2;
-        bool previous = control is LoginPageControl.RegionPrevious or LoginPageControl.ServerPrevious;
-
-        for (int row = 0; row < 5; row++)
+        else if (slot == motion.RegionBorderSlot)
         {
-            int extent = previous ? row : 4 - row;
-            int width = Math.Min(bounds.Width - 4, step * (extent * 2 + 1));
-            int left = bounds.X + (bounds.Width - width) / 2;
-            renderer.DrawSolidRectangle(left, top + row * step, width, step, color);
+            DrawFrame(renderer, _regionHover, LoginRetailStageArtwork.Describe(LoginRetailStageArtwork.Layer.RegionHover),
+                motion.RegionBorderFrame, holder, -10, -6, SpriteColor.White);
         }
     }
 
-    private static void DrawSelectionBorder(OpenGLRenderer renderer, ReadOnlySpan<LoginSpritePlacement> placements, int slot, SpriteColor color)
+    private void DrawFrame(OpenGLRenderer renderer, OpenGLTexture2D atlas, LoginRetailStageArtwork.Sheet sheet, int frame,
+        LoginStagePoint holder, int offsetX, int offsetY, SpriteColor tint)
     {
-        if ((uint)slot >= (uint)placements.Length)
+        if ((uint)frame >= (uint)sheet.Count)
         {
-            return;
+            throw new ArgumentOutOfRangeException(nameof(frame));
         }
 
-        LoginSpritePlacement cell = placements[slot];
-        renderer.DrawLineRectangle(cell.X, cell.Y, cell.X + cell.Width - 1, cell.Y + cell.Height - 1, color);
+        SpriteSourceRectangle source = new((frame % sheet.Columns) * sheet.FrameWidth, (frame / sheet.Columns) * sheet.FrameHeight,
+            sheet.FrameWidth, sheet.FrameHeight);
+        LoginSpritePlacement target = _layout.Offset(holder, offsetX, offsetY, sheet.FrameWidth, sheet.FrameHeight);
+        renderer.DrawSprite(atlas, source, target.X, target.Y, target.Width, target.Height, tint);
     }
 
-    private static void DrawLayer(OpenGLRenderer renderer, OpenGLTexture2D texture, LoginSpritePlacement placement) =>
+    private static void DrawPageButton(OpenGLRenderer renderer, OpenGLTexture2D atlas, LoginSpritePlacement target, int state)
+    {
+        int frameWidth = atlas.Width / LoginRetailStageArtwork.ButtonStates;
+        SpriteSourceRectangle source = new(state * frameWidth, 0, frameWidth, atlas.Height);
+        renderer.DrawSprite(atlas, source, target.X, target.Y, target.Width, target.Height);
+    }
+
+    private static void Draw(OpenGLRenderer renderer, OpenGLTexture2D texture, LoginSpritePlacement placement) =>
         renderer.DrawSprite(texture, placement.X, placement.Y, placement.Width, placement.Height);
+
+    private OpenGLTexture2D Create(OpenGLGraphicsDevice graphicsDevice, RgbaImage image)
+    {
+        OpenGLTexture2D texture = graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
+        _owned.Add(texture);
+        return texture;
+    }
+
+    private ExceptionDispatchInfo? DisposeTextures()
+    {
+        ExceptionDispatchInfo? firstFailure = null;
+        for (int index = _owned.Count - 1; index >= 0; index--)
+        {
+            try
+            {
+                _owned[index].Dispose();
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
+        }
+
+        _owned.Clear();
+        return firstFailure;
+    }
 }

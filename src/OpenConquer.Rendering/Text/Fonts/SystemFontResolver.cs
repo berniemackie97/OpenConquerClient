@@ -10,6 +10,7 @@ internal sealed class SystemFontResolver : IFontResolver
 {
     private readonly FrozenDictionary<string, string> _fontFilesByName;
     private readonly FrozenDictionary<string, ResolvedFont> _fontsByFamilyName;
+    private readonly FrozenDictionary<string, ResolvedFont> _boldFontsByFamilyName;
     private readonly ResolvedFont? _defaultGuiFont;
 
     public SystemFontResolver(HostFontCatalog catalog)
@@ -18,6 +19,7 @@ internal sealed class SystemFontResolver : IFontResolver
 
         _fontFilesByName = BuildFontFileIndex(catalog.FontFiles);
         _fontsByFamilyName = BuildFamilyIndex(catalog.Entries);
+        _boldFontsByFamilyName = BuildBoldFamilyIndex(catalog.Entries);
         _defaultGuiFont = catalog.DefaultGuiFont;
     }
 
@@ -28,6 +30,7 @@ internal sealed class SystemFontResolver : IFontResolver
 
         _fontFilesByName = BuildFontFileIndex(fontFiles);
         _fontsByFamilyName = BuildFamilyIndex(entries);
+        _boldFontsByFamilyName = BuildBoldFamilyIndex(entries);
         _defaultGuiFont = defaultGuiFont;
     }
 
@@ -47,6 +50,12 @@ internal sealed class SystemFontResolver : IFontResolver
         }
 
         return _fontsByFamilyName.TryGetValue(fontToken, out font);
+    }
+
+    public bool TryResolveBold(string familyName, out ResolvedFont? font)
+    {
+        ArgumentNullException.ThrowIfNull(familyName);
+        return _boldFontsByFamilyName.TryGetValue(familyName, out font);
     }
 
     public bool TryResolveDefaultGuiFont(out ResolvedFont? font)
@@ -113,6 +122,21 @@ internal sealed class SystemFontResolver : IFontResolver
         foreach ((string familyName, HostFontCatalog.Entry entry) in selectedEntries)
         {
             index.Add(familyName, entry.Font);
+        }
+
+        return index.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static FrozenDictionary<string, ResolvedFont> BuildBoldFamilyIndex(IReadOnlyList<HostFontCatalog.Entry> entries)
+    {
+        Dictionary<string, ResolvedFont> index = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (HostFontCatalog.Entry entry in entries)
+        {
+            if (entry.IsBold && !entry.IsItalic)
+            {
+                index.TryAdd(entry.FamilyName, entry.Font);
+            }
         }
 
         return index.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);

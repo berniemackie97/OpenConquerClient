@@ -1,41 +1,47 @@
-using OpenConquer.Platform.Windowing.Desktop;
-
 namespace OpenConquer.Client.UI.Login;
 
-internal enum LoginSelectionFocus
+internal enum LoginRegionPageButton
 {
     None,
-    Region,
-    Server,
+    Previous,
+    Next,
 }
 
-/// <summary>Owns region/server pointer capture, pagination and keyboard selection.</summary>
+/// <summary>Region/server pointer outcomes that carry a retail <c>flashLogin.ini [serverSelection]</c> sound.</summary>
+internal enum LoginSelectionEvent
+{
+    None,
+    /// <summary><c>sr.onPressItem</c> for a different region (<c>dragonMov</c>).</summary>
+    RegionSelected,
+    /// <summary><c>ss</c> hitMC press on an enabled realm, selected or not (<c>click_server</c>).</summary>
+    ServerPressed,
+    /// <summary>leftBtn/rightBtn press (<c>click_leftPage</c>/<c>click_rightPage</c>).</summary>
+    PagePressed,
+}
+
+/// <summary>
+/// Retail sprite 259/180 pointer handling: region and server holders select on press through their
+/// <c>hitMC</c>, region pages turn on release. The login movie has no keyboard path into either list.
+/// </summary>
 internal sealed class LoginSelectionInput
 {
-    private readonly LoginVisualLayout _layout;
-    private readonly LoginPageControls _pages;
-    private readonly LoginServerSelection _selection;
-    private LoginSelectionFocus _pressedArea;
-    private LoginPageControl _pressedPageControl;
-    private int _pressedSlot = -1;
-    private int _pressedPage = -1;
-    private LoginServerCatalog? _pressedCatalog;
-    private LoginRegion? _pressedRegion;
+    private const int ButtonUp = 0;
+    private const int ButtonOver = 1;
+    private const int ButtonDown = 2;
 
-    public LoginSelectionFocus Focus
-    {
-        get; private set;
-    }
-    public int FocusedRegionSlot { get; private set; } = -1;
-    public int FocusedServerSlot { get; private set; } = -1;
-    public LoginPageControl PressedPageControl => _pressedPageControl;
+    private readonly LoginVisualLayout _layout;
+    private readonly LoginServerSelection _selection;
+    private LoginRegionPageButton _pressedPageButton;
+    private LoginServerCatalog? _pressedCatalog;
+    private bool _pointerMapped;
+    private int _pointerX;
+    private int _pointerY;
 
     public LoginSelectionInput(LoginVisualLayout layout, LoginServerSelection selection)
     {
         ArgumentNullException.ThrowIfNull(layout);
         ArgumentNullException.ThrowIfNull(selection);
         _layout = layout;
-        _pages = LoginPageControls.Create(layout);
         _selection = selection;
     }
 
@@ -43,291 +49,103 @@ internal sealed class LoginSelectionInput
     {
         CancelPointerCapture();
         _selection.ReplaceCatalog(catalog);
-        Focus = LoginSelectionFocus.None;
-        FocusedRegionSlot = -1;
-        FocusedServerSlot = -1;
     }
 
-    public void PointerPressed(bool mapped, int x, int y)
+    public void PointerMoved(bool mapped, int x, int y)
+    {
+        _pointerMapped = mapped;
+        _pointerX = x;
+        _pointerY = y;
+    }
+
+    public LoginSelectionEvent PointerPressed(bool mapped, int x, int y)
     {
         CancelPointerCapture();
+        PointerMoved(mapped, x, y);
 
         if (!mapped)
         {
-            return;
+            return LoginSelectionEvent.None;
         }
 
-        if (_pages.TryHit(x, y, out LoginPageControl control) && LoginPageControls.IsVisible(control, _selection))
+        LoginRegionPageButton page = HitPageButton(x, y);
+        if (page != LoginRegionPageButton.None)
         {
-            if (LoginPageControls.IsEnabled(control, _selection))
-            {
-                _pressedPageControl = control;
-                _pressedPage = control is LoginPageControl.RegionPrevious or LoginPageControl.RegionNext ? _selection.RegionPage : _selection.ServerPage;
-                _pressedCatalog = _selection.Catalog;
-                _pressedRegion = _selection.SelectedRegion;
-            }
-
-            return;
+            _pressedPageButton = page;
+            _pressedCatalog = _selection.Catalog;
+            return LoginSelectionEvent.PagePressed;
         }
 
-        if (TryHit(_layout.RegionCells, x, y, out int regionSlot) && _selection.RegionAtSlot(regionSlot) is not null)
+        // unopenedR has no hitMC, so only populated region holders take the press.
+        int regionSlot = LoginVisualLayout.HitSlot(_layout.RegionHitAreas, x, y);
+        if (regionSlot >= 0 && _selection.RegionAtSlot(regionSlot) is not null)
         {
-            FocusRegion(regionSlot);
-            Capture(LoginSelectionFocus.Region, regionSlot, _selection.RegionPage);
-            return;
+            bool changed = regionSlot != _selection.SelectedRegionSlot;
+            _selection.SelectRegionSlot(regionSlot);
+            return changed ? LoginSelectionEvent.RegionSelected : LoginSelectionEvent.None;
         }
 
-        if (TryHit(_layout.ServerCells, x, y, out int serverSlot) && _selection.ServerAtSlot(serverSlot) is not null)
+        // `ss.flush` disables the hitMC of holders without a realm.
+        int serverSlot = LoginVisualLayout.HitSlot(_layout.ServerHitAreas, x, y);
+        if (serverSlot >= 0 && _selection.ServerAtSlot(serverSlot) is not null)
         {
-            FocusServer(serverSlot);
-            Capture(LoginSelectionFocus.Server, serverSlot, _selection.ServerPage);
+            _selection.SelectServerSlot(serverSlot);
+            return LoginSelectionEvent.ServerPressed;
         }
+
+        return LoginSelectionEvent.None;
     }
 
     public void PointerReleased(bool mapped, int x, int y)
     {
-        LoginSelectionFocus area = _pressedArea;
-        LoginPageControl control = _pressedPageControl;
-        int slot = _pressedSlot;
-        int page = _pressedPage;
+        LoginRegionPageButton pressed = _pressedPageButton;
         LoginServerCatalog? catalog = _pressedCatalog;
-        LoginRegion? region = _pressedRegion;
         CancelPointerCapture();
+        PointerMoved(mapped, x, y);
 
-        if (!mapped || (area == LoginSelectionFocus.None && control == LoginPageControl.None) || !ReferenceEquals(catalog, _selection.Catalog))
+        if (pressed == LoginRegionPageButton.None || !mapped || !ReferenceEquals(catalog, _selection.Catalog) ||
+            HitPageButton(x, y) != pressed)
         {
             return;
         }
 
-        if (control != LoginPageControl.None)
+        // leftBtn/rightBtn.onRelease: step within 1..page count; nothing happens at either end.
+        _selection.ChangeRegionPage(pressed == LoginRegionPageButton.Previous ? -1 : 1);
+    }
+
+    /// <summary>DefineButton2 Up/Over/Down state index for a visible page button.</summary>
+    public int PageButtonState(LoginRegionPageButton button)
+    {
+        bool over = _pointerMapped && HitPageButton(_pointerX, _pointerY) == button;
+        if (_pressedPageButton == button)
         {
-            bool regionControl = control is LoginPageControl.RegionPrevious or LoginPageControl.RegionNext;
-            int currentPage = regionControl ? _selection.RegionPage : _selection.ServerPage;
-
-            if (page == currentPage && (regionControl || ReferenceEquals(region, _selection.SelectedRegion)) &&
-                _pages.TryHit(x, y, out LoginPageControl releasedControl) && control == releasedControl && LoginPageControls.IsEnabled(control, _selection))
-            {
-                ChangePage(control);
-            }
-
-            return;
+            return over ? ButtonDown : ButtonUp;
         }
 
-        if (area == LoginSelectionFocus.Region && page == _selection.RegionPage && TryHit(_layout.RegionCells, x, y, out int releasedRegionSlot) && slot == releasedRegionSlot)
+        return over && _pressedPageButton == LoginRegionPageButton.None ? ButtonOver : ButtonUp;
+    }
+
+    public LoginRegionPageButton HitPageButton(int x, int y)
+    {
+        if (_selection.RegionPageCount <= 1)
         {
-            _selection.SelectRegionSlot(slot);
-            FocusedServerSlot = -1;
+            return LoginRegionPageButton.None;
         }
-        else if (area == LoginSelectionFocus.Server && ReferenceEquals(region, _selection.SelectedRegion) && page == _selection.ServerPage && TryHit(_layout.ServerCells, x, y, out int releasedServerSlot) && slot == releasedServerSlot)
-        {
-            _selection.SelectServerSlot(slot);
-        }
+
+        return LoginVisualLayout.Contains(_layout.RegionPagePrevious, x, y) ? LoginRegionPageButton.Previous
+            : LoginVisualLayout.Contains(_layout.RegionPageNext, x, y) ? LoginRegionPageButton.Next
+            : LoginRegionPageButton.None;
     }
 
     public void FocusLost()
     {
         CancelPointerCapture();
-        Focus = LoginSelectionFocus.None;
-        FocusedRegionSlot = -1;
-        FocusedServerSlot = -1;
-    }
-
-    public void KeyPressed(DesktopKeyEvent key)
-    {
-        if ((key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Alt | DesktopKeyModifiers.Super)) != 0)
-        {
-            return;
-        }
-
-        CancelPointerCapture();
-
-        if (key.Key == DesktopKey.Escape)
-        {
-            FocusLost();
-            return;
-        }
-
-        if (key.Key == DesktopKey.Tab)
-        {
-            if (!key.IsRepeat)
-            {
-                AdvanceFocus((key.Modifiers & DesktopKeyModifiers.Shift) != 0);
-            }
-            return;
-        }
-
-        if (Focus == LoginSelectionFocus.None)
-        {
-            return;
-        }
-
-        if (key.Key == DesktopKey.Enter)
-        {
-            if (!key.IsRepeat)
-            {
-                if (Focus == LoginSelectionFocus.Region && _selection.SelectRegionSlot(FocusedRegionSlot))
-                {
-                    FocusedServerSlot = -1;
-                }
-                else if (Focus == LoginSelectionFocus.Server)
-                {
-                    _selection.SelectServerSlot(FocusedServerSlot);
-                }
-            }
-            return;
-        }
-
-        if (key.Key is DesktopKey.PageUp or DesktopKey.PageDown)
-        {
-            LoginPageControl control = Focus switch
-            {
-                LoginSelectionFocus.Region => key.Key == DesktopKey.PageUp ? LoginPageControl.RegionPrevious : LoginPageControl.RegionNext,
-                LoginSelectionFocus.Server => key.Key == DesktopKey.PageUp ? LoginPageControl.ServerPrevious : LoginPageControl.ServerNext,
-                _ => LoginPageControl.None,
-            };
-            ChangePage(control);
-            return;
-        }
-
-        int columns = Focus == LoginSelectionFocus.Region ? 2 : 3;
-        int current = Focus == LoginSelectionFocus.Region ? FocusedRegionSlot : FocusedServerSlot;
-        int delta = key.Key switch
-        {
-            DesktopKey.Left => -1,
-            DesktopKey.Right => 1,
-            DesktopKey.Up => -columns,
-            DesktopKey.Down => columns,
-            _ => 0,
-        };
-
-        if (delta == 0 || current < 0 ||
-            (key.Key == DesktopKey.Left && current % columns == 0) ||
-            (key.Key == DesktopKey.Right && current % columns == columns - 1))
-        {
-            return;
-        }
-
-        int target = current + delta;
-        bool available = Focus == LoginSelectionFocus.Region ? _selection.RegionAtSlot(target) is not null : _selection.ServerAtSlot(target) is not null;
-
-        if (!available)
-        {
-            return;
-        }
-
-        if (Focus == LoginSelectionFocus.Region)
-        {
-            FocusRegion(target);
-        }
-        else
-        {
-            FocusServer(target);
-        }
-    }
-
-    private void ChangePage(LoginPageControl control)
-    {
-        if (!LoginPageControls.IsEnabled(control, _selection))
-        {
-            return;
-        }
-
-        bool regionControl = control is LoginPageControl.RegionPrevious or LoginPageControl.RegionNext;
-        int direction = control is LoginPageControl.RegionPrevious or LoginPageControl.ServerPrevious ? -1 : 1;
-        bool changed = regionControl ? _selection.ChangeRegionPage(direction) : _selection.ChangeServerPage(direction);
-
-        if (!changed)
-        {
-            return;
-        }
-
-        if (regionControl)
-        {
-            FocusedServerSlot = -1;
-            FocusRegion(0);
-        }
-        else
-        {
-            FocusServer(0);
-        }
-    }
-
-    private void AdvanceFocus(bool reverse)
-    {
-        if (_selection.RegionAtSlot(0) is null && _selection.Catalog.Regions.Count == 0)
-        {
-            FocusLost();
-            return;
-        }
-
-        bool hasServers = _selection.SelectedRegion is { Servers.Count: > 0 };
-        bool toServer = hasServers && (reverse ? Focus != LoginSelectionFocus.Server : Focus == LoginSelectionFocus.Region);
-
-        if (toServer)
-        {
-            FocusServer(_selection.SelectedServerSlot >= 0 ? _selection.SelectedServerSlot : 0);
-        }
-        else
-        {
-            FocusRegion(_selection.SelectedRegionSlot >= 0 ? _selection.SelectedRegionSlot : 0);
-        }
-    }
-
-    private void FocusRegion(int slot)
-    {
-        if (_selection.RegionAtSlot(slot) is null)
-        {
-            return;
-        }
-
-        Focus = LoginSelectionFocus.Region;
-        FocusedRegionSlot = slot;
-    }
-
-    private void FocusServer(int slot)
-    {
-        if (_selection.ServerAtSlot(slot) is null)
-        {
-            return;
-        }
-
-        Focus = LoginSelectionFocus.Server;
-        FocusedServerSlot = slot;
-    }
-
-    private void Capture(LoginSelectionFocus area, int slot, int page)
-    {
-        _pressedArea = area;
-        _pressedSlot = slot;
-        _pressedPage = page;
-        _pressedCatalog = _selection.Catalog;
-        _pressedRegion = _selection.SelectedRegion;
+        _pointerMapped = false;
     }
 
     private void CancelPointerCapture()
     {
-        _pressedArea = LoginSelectionFocus.None;
-        _pressedPageControl = LoginPageControl.None;
-        _pressedSlot = -1;
-        _pressedPage = -1;
+        _pressedPageButton = LoginRegionPageButton.None;
         _pressedCatalog = null;
-        _pressedRegion = null;
-    }
-
-    private static bool TryHit(ReadOnlySpan<LoginSpritePlacement> placements, int x, int y, out int slot)
-    {
-        for (int index = 0; index < placements.Length; index++)
-        {
-            LoginSpritePlacement placement = placements[index];
-
-            if (x >= placement.X && y >= placement.Y && (long)x < (long)placement.X + placement.Width && (long)y < (long)placement.Y + placement.Height)
-            {
-                slot = index;
-                return true;
-            }
-        }
-
-        slot = -1;
-        return false;
     }
 }

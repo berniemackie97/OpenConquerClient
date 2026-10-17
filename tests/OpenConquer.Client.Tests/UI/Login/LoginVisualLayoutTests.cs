@@ -1,6 +1,4 @@
 using OpenConquer.Client.UI.Login;
-using OpenConquer.Content.Images;
-using OpenConquer.Content.Startup;
 using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests.UI.Login;
@@ -8,91 +6,84 @@ namespace OpenConquer.Client.Tests.UI.Login;
 public sealed class LoginVisualLayoutTests
 {
     [Fact]
-    public void ReferenceStage_PreservesIndependentChromeAndAccountAnchors()
+    public void ReferenceStage_PlacesTheRetailRootDisplayList()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
 
-        Assert.Equal(new LoginSpritePlacement(0, 40, 1024, 637), layout.Backdrop);
-        Assert.Equal(new LoginSpritePlacement(0, 0, 1024, 116), layout.Header);
-        Assert.Equal(new LoginSpritePlacement(0, 642, 1024, 140), layout.Footer);
-        Assert.Equal(new LoginSpritePlacement(258, 620, 508, 98), layout.AccountPanel);
-        Assert.Equal(new LoginSpritePlacement(267, 26, 494, 140), layout.TopDragon);
-        Assert.True(layout.AccountPanel.Y < layout.Footer.Y);
-        Assert.True(layout.AccountPanel.Y + layout.AccountPanel.Height > layout.Footer.Y);
+        Assert.Equal(new LoginSpritePlacement(0, 41, 1024, 637), layout.Backdrop);
+        Assert.Equal(new LoginSpritePlacement(0, 0, 1024, 768), layout.StageBorder);
+        Assert.Equal(new LoginSpritePlacement(43, 162, 340, 434), layout.RegionPanel);
+        Assert.Equal(new LoginSpritePlacement(256, 606, 508, 98), layout.AccountPanel);
+        Assert.Equal(new LoginSpritePlacement(18, 15, 190, 18), layout.VersionLabel);
+        Assert.Equal(new LoginSpritePlacement(137, 603, 38, 34), layout.RegionPagePrevious);
+        Assert.Equal(new LoginSpritePlacement(249, 603, 40, 34), layout.RegionPageNext);
+        Assert.Equal(new LoginSpritePlacement(178, 609, 70, 22), layout.RegionPageText);
     }
 
     [Fact]
-    public void ReferenceStage_SelectionChromeUsesBoundedDistinctSlots()
+    public void ReferenceStage_RegionHoldersRunDownEachColumnAtTheSettledSpringPositions()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
-        Assert.Equal(16, layout.RegionCells.Length);
-        Assert.Equal(12, layout.ServerCells.Length);
-        Assert.Equal(new LoginSpritePlacement(55, 194, 154, 50), layout.RegionCells[0]);
-        Assert.Equal(new LoginSpritePlacement(216, 194, 154, 50), layout.RegionCells[1]);
-        Assert.Equal(new LoginSpritePlacement(216, 544, 154, 50), layout.RegionCells[^1]);
-        Assert.Equal(new LoginSpritePlacement(431, 218, 158, 58), layout.ServerCells[0]);
-        Assert.Equal(new LoginSpritePlacement(767, 488, 158, 58), layout.ServerCells[^1]);
-        AssertSelectionFits(layout);
+
+        Assert.Equal(16, layout.RegionHolders.Length);
+        Assert.Equal(new LoginStagePoint(59, 176), layout.RegionHolders[0]);
+        Assert.Equal(new LoginStagePoint(59, 525), layout.RegionHolders[7]);
+        Assert.Equal(new LoginStagePoint(214, 176), layout.RegionHolders[8]);
+        Assert.Equal(new LoginStagePoint(214, 525), layout.RegionHolders[15]);
+        Assert.Equal(new LoginSpritePlacement(59, 175, 151, 53), layout.RegionTiles[0]);
+        Assert.Equal(new LoginSpritePlacement(60, 178, 149, 49), layout.RegionHitAreas[0]);
+        Assert.Equal(new LoginSpritePlacement(215, 527, 149, 49), layout.RegionHitAreas[15]);
     }
 
     [Fact]
-    public void CompactStage_ScalesAllLayersProportionally()
+    public void ReferenceStage_ServerHoldersFollowSprite180PositionData()
+    {
+        LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(1024, 768));
+
+        Assert.Equal(12, layout.ServerHolders.Length);
+        Assert.Equal(new LoginStagePoint(426, 194), layout.ServerHolders[0]);
+        // ss3 is authored one pixel below the rest of its row.
+        Assert.Equal(new LoginStagePoint(762, 195), layout.ServerHolders[2]);
+        Assert.Equal(new LoginStagePoint(762, 467), layout.ServerHolders[11]);
+        Assert.Equal(new LoginSpritePlacement(432, 195, 150, 83), layout.ServerHitAreas[0]);
+        Assert.Equal(new LoginSpritePlacement(456, 259, 120, 15), layout.ServerLabels[0]);
+    }
+
+    [Fact]
+    public void CompactStage_ScalesEveryLayerAndHolder()
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(800, 600));
 
-        Assert.Equal(new LoginSpritePlacement(0, 31, 800, 498), layout.Backdrop);
-        Assert.Equal(new LoginSpritePlacement(0, 0, 800, 91), layout.Header);
-        Assert.Equal(new LoginSpritePlacement(0, 502, 800, 109), layout.Footer);
-        Assert.Equal(new LoginSpritePlacement(202, 484, 397, 77), layout.AccountPanel);
-        Assert.Equal(new LoginSpritePlacement(209, 20, 386, 109), layout.TopDragon);
-        Assert.Equal(new LoginSpritePlacement(43, 152, 120, 39), layout.RegionCells[0]);
-        Assert.Equal(new LoginSpritePlacement(169, 425, 120, 39), layout.RegionCells[^1]);
-        Assert.Equal(new LoginSpritePlacement(337, 170, 123, 45), layout.ServerCells[0]);
-        Assert.Equal(new LoginSpritePlacement(599, 381, 123, 45), layout.ServerCells[^1]);
-        AssertSelectionFits(layout);
+        Assert.Equal(new LoginSpritePlacement(0, 32, 800, 498), layout.Backdrop);
+        Assert.Equal(new LoginSpritePlacement(0, 0, 800, 600), layout.StageBorder);
+        Assert.Equal(new LoginSpritePlacement(34, 127, 266, 339), layout.RegionPanel);
+        Assert.Equal(new LoginSpritePlacement(200, 473, 397, 77), layout.AccountPanel);
+        Assert.Equal(new LoginStagePoint(46, 138), layout.RegionHolders[0]);
+        Assert.Equal(new LoginSpritePlacement(46, 137, 118, 41), layout.RegionTiles[0]);
+        Assert.Equal(new LoginStagePoint(333, 151), layout.ServerHolders[0]);
+        Assert.Equal(new LoginSpritePlacement(338, 153, 117, 64), layout.ServerHitAreas[0]);
     }
 
     [Theory]
     [InlineData(1024, 768)]
     [InlineData(800, 600)]
-    public void Footer_IsOpaqueBeforeBackdropEnds_AndContinuesPastBottomEdge(int width, int height)
+    public void HitAreas_AreDisjointAndInsideTheStage(int width, int height)
     {
         LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(width, height));
-        RgbaImage footer = LoginArtwork.LoadFooter();
-        int firstOpaqueRow = 0;
 
-        while (firstOpaqueRow < footer.Height)
-        {
-            bool opaque = true;
-            for (int x = 0; x < footer.Width; x++)
-            {
-                if (footer.Pixels.Span[checked((firstOpaqueRow * footer.Width + x) * 4 + 3)] != byte.MaxValue)
-                {
-                    opaque = false;
-                    break;
-                }
-            }
+        AssertDisjointAndInside(layout.RegionHitAreas, layout);
+        AssertDisjointAndInside(layout.ServerHitAreas, layout);
+    }
 
-            if (opaque)
-            {
-                break;
-            }
+    [Fact]
+    public void Scale_RoundsNegativeOffsetsLikePositiveOnes()
+    {
+        LoginVisualLayout layout = LoginVisualLayout.Create(new LogicalRenderSize(800, 600));
 
-            firstOpaqueRow++;
-        }
-
-        Assert.Equal(32, firstOpaqueRow);
-        for (int y = firstOpaqueRow; y < footer.Height; y++)
-        {
-            for (int x = 0; x < footer.Width; x++)
-            {
-                Assert.Equal(byte.MaxValue, footer.Pixels.Span[checked((y * footer.Width + x) * 4 + 3)]);
-            }
-        }
-
-        int scaledOpaqueRow = checked((int)(((long)firstOpaqueRow * height + 384) / 768));
-        Assert.True(layout.Footer.Y + scaledOpaqueRow <= layout.Backdrop.Y + layout.Backdrop.Height);
-        Assert.True(layout.Footer.Y + layout.Footer.Height >= layout.Height);
+        Assert.Equal(-1, layout.Scale(-1));
+        Assert.Equal(1, layout.Scale(1));
+        Assert.Equal(-8, layout.Scale(-10));
+        Assert.Equal(8, layout.Scale(10));
     }
 
     [Theory]
@@ -105,16 +96,20 @@ public sealed class LoginVisualLayoutTests
         Assert.Throws<ArgumentOutOfRangeException>(() => LoginVisualLayout.Create(new LogicalRenderSize(width, height)));
     }
 
-    private static void AssertSelectionFits(LoginVisualLayout layout)
+    private static void AssertDisjointAndInside(ReadOnlySpan<LoginSpritePlacement> areas, LoginVisualLayout layout)
     {
-        foreach (LoginSpritePlacement placement in layout.RegionCells)
+        for (int index = 0; index < areas.Length; index++)
         {
-            Assert.True(placement.X >= 0 && placement.Y >= 0 && placement.X + placement.Width <= layout.Width && placement.Y + placement.Height <= layout.Height);
-        }
+            LoginSpritePlacement area = areas[index];
+            Assert.True(area.X >= 0 && area.Y >= 0 && area.Width > 0 && area.Height > 0);
+            Assert.True(area.X + area.Width <= layout.Width && area.Y + area.Height <= layout.Height);
 
-        foreach (LoginSpritePlacement placement in layout.ServerCells)
-        {
-            Assert.True(placement.X >= 0 && placement.Y >= 0 && placement.X + placement.Width <= layout.Width && placement.Y + placement.Height <= layout.Height);
+            for (int other = index + 1; other < areas.Length; other++)
+            {
+                LoginSpritePlacement next = areas[other];
+                Assert.False(area.X < next.X + next.Width && next.X < area.X + area.Width &&
+                    area.Y < next.Y + next.Height && next.Y < area.Y + area.Height);
+            }
         }
     }
 }

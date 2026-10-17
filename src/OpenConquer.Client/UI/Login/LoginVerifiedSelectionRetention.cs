@@ -53,17 +53,10 @@ internal static class LoginVerifiedSelectionRetention
             return;
         }
 
-        for (int page = 0; page < serverIndex / LoginServerSelection.ServersPerPage; page++)
+        if (!selection.SelectServerSlot(serverIndex))
         {
-            if (!selection.ChangeServerPage(1))
-            {
-                throw new InvalidOperationException("A verified server no longer fits its page.");
-            }
-        }
-
-        if (!selection.SelectServerSlot(serverIndex % LoginServerSelection.ServersPerPage))
-        {
-            throw new InvalidOperationException("A verified server disappeared during selection rebind.");
+            // Sprite 180 shows twelve holders; a realm beyond them cannot stay selected.
+            return;
         }
     }
 

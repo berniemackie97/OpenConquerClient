@@ -27,7 +27,7 @@ public sealed class LoginVerifiedSelectionRetentionTests
     }
 
     [Fact]
-    public void AuthenticatedRenewalRetainsChoiceButAlwaysWipesBothCredentialBuffers()
+    public void AuthenticatedRenewalRetainsAccountAndChoiceButZeroesPassword()
     {
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog previous = Catalog(signer, 7);
@@ -49,18 +49,21 @@ public sealed class LoginVerifiedSelectionRetentionTests
         Assert.Same(current.View, selection.Catalog);
         Assert.Same(current.View.Regions[0], selection.SelectedRegion);
         Assert.Same(current.View.Regions[0].Servers[0], selection.SelectedServer);
-        Assert.Equal(0, credentials.AccountLength);
+        // Revalidated signed-directory data may preserve the account name, never the password.
+        // Selection remains bound only when signed endpoint identity is unchanged.
+        Assert.Equal("A", credentials.AccountDisplay);
+        Assert.Equal(1, credentials.AccountLength);
         Assert.Equal(0, credentials.PasswordLength);
-        Assert.Equal(LoginCredentialFocus.None, credentials.Focus);
+        Assert.Equal(LoginCredentialFocus.Password, credentials.Focus);
         Assert.True(credentials.Enabled);
     }
 
     [Fact]
-    public void StableIdentifiersCanMoveAcrossRegionAndServerPages()
+    public void StableIdentifiersCanMoveAcrossRegionPagesAndServerHolders()
     {
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog previous = Catalog(signer, 7);
-        SignedLoginCatalog current = Catalog(signer, 8, regionIndex: 16, serverIndex: 12);
+        SignedLoginCatalog current = Catalog(signer, 8, regionIndex: 16, serverIndex: 11);
         (LoginServerSelection selection, LoginSelectionInput input) = CreateInput();
         LoginVerifiedSelectionRetention.Apply(null, previous, s_now, input, selection);
         SelectFirst(selection);
@@ -68,11 +71,10 @@ public sealed class LoginVerifiedSelectionRetentionTests
         LoginVerifiedSelectionRetention.Apply(previous, current, s_now, input, selection);
 
         Assert.Equal(1, selection.RegionPage);
-        Assert.Equal(1, selection.ServerPage);
         Assert.Equal(16, selection.SelectedRegionIndex);
-        Assert.Equal(12, selection.SelectedServerIndex);
+        Assert.Equal(11, selection.SelectedServerIndex);
         Assert.Equal(0, selection.SelectedRegionSlot);
-        Assert.Equal(0, selection.SelectedServerSlot);
+        Assert.Equal(11, selection.SelectedServerSlot);
         Assert.Equal("local", selection.SelectedRegion?.Id);
         Assert.Equal("local-realm", selection.SelectedServer?.Id);
     }
@@ -189,24 +191,64 @@ public sealed class LoginVerifiedSelectionRetentionTests
     }
 
     [Fact]
-    public void RenewingCatalogCancelsPendingPointerCaptureEvenWhenChoiceIsRestored()
+    public void RealmMovedPastTheTwelveHoldersIsNotRetained()
     {
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog previous = Catalog(signer, 7);
-        SignedLoginCatalog current = Catalog(signer, 8);
+        SignedLoginCatalog current = Catalog(signer, 8, serverIndex: 12);
         (LoginServerSelection selection, LoginSelectionInput input) = CreateInput();
         LoginVerifiedSelectionRetention.Apply(null, previous, s_now, input, selection);
-        input.PointerPressed(true, 60, 200);
-        LoginVerifiedSelectionRetention.Apply(previous, current, s_now, input, selection);
-        input.PointerReleased(true, 60, 200);
-        Assert.Null(selection.SelectedRegion);
-
         SelectFirst(selection);
-        input.PointerPressed(true, 440, 225);
-        LoginVerifiedSelectionRetention.Apply(current, Catalog(signer, 9), s_now, input, selection);
-        input.PointerReleased(true, 440, 225);
-        Assert.Equal("local-realm", selection.SelectedServer?.Id);
-        Assert.Equal(LoginSelectionFocus.None, input.Focus);
+
+        LoginVerifiedSelectionRetention.Apply(previous, current, s_now, input, selection);
+
+        Assert.Equal("local", selection.SelectedRegion?.Id);
+        Assert.Null(selection.SelectedServer);
+    }
+
+    [Fact]
+    public void RenewingCatalogCancelsAPendingPageCapture()
+    {
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog previous = Catalog(signer, 7, regionIndex: 16);
+        SignedLoginCatalog current = Catalog(signer, 8, regionIndex: 16);
+        (LoginServerSelection selection, LoginSelectionInput input) = CreateInput();
+        LoginVerifiedSelectionRetention.Apply(null, previous, s_now, input, selection);
+
+        Assert.Equal(LoginSelectionEvent.PagePressed, input.PointerPressed(true, 260, 615));
+        LoginVerifiedSelectionRetention.Apply(previous, current, s_now, input, selection);
+        input.PointerReleased(true, 260, 615);
+
+        Assert.Equal(0, selection.RegionPage);
+    }
+
+    [Fact]
+    public void RetailStartupDefaultsOnlyAfterCurrentSignedCatalogIsInstalled()
+    {
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog signed = Catalog(signer, 7);
+        (LoginServerSelection selection, LoginSelectionInput input) = CreateInput();
+        Assert.False(LoginRetailStartupSelection.TryApply(signed, s_now, selection));
+        Assert.Null(selection.SelectedRegion);
+        LoginVerifiedSelectionRetention.Apply(null, signed, s_now, input, selection);
+        Assert.True(LoginRetailStartupSelection.TryApply(signed, s_now, selection));
+        Assert.Same(signed.View.Regions[0], selection.SelectedRegion);
+        Assert.Same(signed.View.Regions[0].Servers[0], selection.SelectedServer);
+        Assert.Equal(0, selection.SelectedRegionSlot);
+        Assert.Equal(0, selection.SelectedServerSlot);
+        LoginVerifiedSelectionRetention.Apply(signed, null, s_now, input, selection);
+        Assert.False(LoginRetailStartupSelection.TryApply(signed, s_now, selection));
+    }
+
+    [Fact]
+    public void ExpiredAuthenticatedCatalogCannotSeedStartupSelection()
+    {
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog signed = Catalog(signer, 7);
+        (LoginServerSelection selection, LoginSelectionInput input) = CreateInput();
+        LoginVerifiedSelectionRetention.Apply(null, signed, s_now, input, selection);
+        Assert.False(LoginRetailStartupSelection.TryApply(signed, signed.ExpiresAt, selection));
+        Assert.Null(selection.SelectedServer);
     }
 
     private static (LoginServerSelection Selection, LoginSelectionInput Input) CreateInput()

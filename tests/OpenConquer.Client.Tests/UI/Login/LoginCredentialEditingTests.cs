@@ -161,8 +161,8 @@ public sealed class LoginCredentialEditingTests
         Assert.Equal("PLAYER", input.AccountDisplay);
         selection.ReplaceCatalog(LoginServerCatalog.Empty);
         input.Synchronize();
-        Assert.False(input.Enabled);
-        Assert.Equal(0, input.AccountLength);
+        Assert.True(input.Enabled);
+        Assert.Equal("PLAYER", input.AccountDisplay);
         Assert.Equal(LoginCredentialFocus.None, input.Focus);
     }
 
