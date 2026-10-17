@@ -122,13 +122,45 @@ public sealed class LoginSelectionAnimationTests
         Assert.True(selection.SelectRegionSlot(0));
         animation.Advance(0, selection, interactive: true);
         Assert.Equal(0, animation.HoveredServerSlot);
+
+        animation.Advance(0, selection, interactive: false);
+        Assert.Equal(-1, animation.HoveredServerSlot);
+    }
+
+    [Fact]
+    public void ServerRolloverFadesTheHighlightInThenLoopsTheSparkle()
+    {
+        LoginSelectionAnimation animation = new(s_layout);
+        LoginServerSelection selection = SelectionWithServers(regionCount: 1);
+        Assert.True(selection.SelectRegionSlot(0));
+        LoginRect server = s_layout.ServerHitAreas[0];
+
+        animation.PointerMoved(true, server.X + 4, server.Y + 4);
+        animation.Advance(0, selection, interactive: true);
+        Assert.Equal(0, animation.ServerHighlightStep);
+        Assert.Equal(-1, animation.ServerHoverFrame);
+
+        // Sprite 179 frames 2-5 fade sprite 40 in; frame 6 holds it and starts sprite 83.
+        animation.Advance(3, selection, interactive: true);
+        Assert.Equal(3, animation.ServerHighlightStep);
+        Assert.Equal(-1, animation.ServerHoverFrame);
+        animation.Advance(1, selection, interactive: true);
+        Assert.Equal(4, animation.ServerHighlightStep);
+        Assert.Equal(0, animation.ServerHoverFrame);
+
         animation.Advance(LoginServerArtwork.HoverFrameCount - 1, selection, interactive: true);
         Assert.Equal(LoginServerArtwork.HoverFrameCount - 1, animation.ServerHoverFrame);
         animation.Advance(1, selection, interactive: true);
         Assert.Equal(0, animation.ServerHoverFrame);
+        Assert.Equal(4, animation.ServerHighlightStep);
 
-        animation.Advance(0, selection, interactive: false);
-        Assert.Equal(-1, animation.HoveredServerSlot);
+        // Rolling out jumps to frame 11, which clears both; rolling back in starts again from frame 2.
+        animation.PointerMoved(true, 0, 0);
+        animation.Advance(1, selection, interactive: true);
+        animation.PointerMoved(true, server.X + 4, server.Y + 4);
+        animation.Advance(0, selection, interactive: true);
+        Assert.Equal(0, animation.ServerHighlightStep);
+        Assert.Equal(-1, animation.ServerHoverFrame);
     }
 
     private static LoginServerSelection SelectionWithServers(int regionCount)

@@ -8,6 +8,7 @@ public sealed class LoginServerArtworkTests
     [Theory]
     [InlineData(LoginServerArtwork.Layer.Unopened, 170, 90, 170, 90, 1)]
     [InlineData(LoginServerArtwork.Layer.Default, 170, 90, 170, 90, 1)]
+    [InlineData(LoginServerArtwork.Layer.Highlight, 200, 100, 200, 100, 1)]
     [InlineData(LoginServerArtwork.Layer.Hover, 1600, 600, 200, 120, LoginServerArtwork.HoverFrameCount)]
     [InlineData(LoginServerArtwork.Layer.Selected, 1760, 720, 220, 120, LoginServerArtwork.SelectedFrameCount)]
     [InlineData(LoginServerArtwork.Layer.Status, 72, 18, 18, 18, LoginServerArtwork.StatusStateCount)]

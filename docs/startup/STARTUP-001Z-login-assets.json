@@ -250,6 +250,17 @@
       ]
     },
     {
+      "path": "Login/Server/Highlight.rgba.br",
+      "width": 200,
+      "height": 100,
+      "rgbaSha256": "03184EB35B171363DDCE0438FC644458121449945DD7C898A05070CFA0248469",
+      "source": "data/main/start.dat",
+      "element": "sprite 40, sprite 179 depth 4 on frames 2-10",
+      "evidence": [
+        "assets/start/sprites/DefineSprite_40/1.png"
+      ]
+    },
+    {
       "path": "Login/Server/Hover.rgba.br",
       "width": 1600,
       "height": 600,
