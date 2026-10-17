@@ -17,13 +17,12 @@ public sealed class LoginAccountSessionTests
         using TcpListener listener = Listen();
         Task<int> server = SendThenObserveCloseAsync(listener, Convert.FromHexString(EncryptedSeed1059), 1);
 
-        await using (LoginAccountSession session = await LoginAccountSession.OpenAsync(
-                         "127.0.0.1", Port(listener), s_timeouts))
+        await using (LoginAccountSession session = await LoginAccountSession.OpenAsync("127.0.0.1", Port(listener), s_timeouts, TestContext.Current.CancellationToken))
         {
             Assert.Equal(0x12345678u, session.Seed);
         }
 
-        Assert.Equal(0, await server.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(0, await server.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
     }
 
     [Theory]
@@ -35,9 +34,9 @@ public sealed class LoginAccountSessionTests
         Task<int> server = SendThenObserveCloseAsync(listener, Convert.FromHexString(encrypted), 8);
 
         await Assert.ThrowsAsync<InvalidDataException>(() =>
-            LoginAccountSession.OpenAsync("127.0.0.1", Port(listener), s_timeouts));
+            LoginAccountSession.OpenAsync("127.0.0.1", Port(listener), s_timeouts, TestContext.Current.CancellationToken));
 
-        Assert.Equal(0, await server.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(0, await server.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -47,9 +46,9 @@ public sealed class LoginAccountSessionTests
         Task server = SendThenDisconnectAsync(listener, Convert.FromHexString("C5486912"));
 
         await Assert.ThrowsAsync<EndOfStreamException>(() =>
-            LoginAccountSession.OpenAsync("127.0.0.1", Port(listener), s_timeouts));
+            LoginAccountSession.OpenAsync("127.0.0.1", Port(listener), s_timeouts, TestContext.Current.CancellationToken));
 
-        await server.WaitAsync(TimeSpan.FromSeconds(5));
+        await server.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -61,9 +60,9 @@ public sealed class LoginAccountSessionTests
             new(TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(100));
 
         await Assert.ThrowsAsync<TimeoutException>(() =>
-            LoginAccountSession.OpenAsync("127.0.0.1", Port(listener), shortSeed));
+            LoginAccountSession.OpenAsync("127.0.0.1", Port(listener), shortSeed, TestContext.Current.CancellationToken));
 
-        Assert.Equal(0, await server.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(0, await server.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -76,18 +75,18 @@ public sealed class LoginAccountSessionTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             LoginAccountSession.OpenAsync("127.0.0.1", Port(listener), s_timeouts, cancellation.Token));
 
-        Assert.Equal(0, await server.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(0, await server.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task InvalidTimeoutsAndHostsFailBeforeOpeningTransport()
     {
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            LoginAccountSession.OpenAsync("127.0.0.1", 9958, default));
+            LoginAccountSession.OpenAsync("127.0.0.1", 9958, default, TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            LoginAccountSession.OpenAsync("https://example.org", 9958, s_timeouts));
+            LoginAccountSession.OpenAsync("https://example.org", 9958, s_timeouts, TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            LoginAccountSession.OpenAsync("127.0.0.1", 0, s_timeouts));
+            LoginAccountSession.OpenAsync("127.0.0.1", 0, s_timeouts, TestContext.Current.CancellationToken));
     }
 
     private static TcpListener Listen()

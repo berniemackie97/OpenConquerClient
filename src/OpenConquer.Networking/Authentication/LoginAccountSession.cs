@@ -19,7 +19,10 @@ internal sealed class LoginAccountSession : IAsyncDisposable
         _client = client;
     }
 
-    internal uint Seed { get; private set; }
+    internal uint Seed
+    {
+        get; private set;
+    }
 
     /// <summary>
     /// Low-level transport operation; the caller MUST obtain the host/port from the current

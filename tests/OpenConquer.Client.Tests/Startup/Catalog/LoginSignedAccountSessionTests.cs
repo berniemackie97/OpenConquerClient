@@ -15,29 +15,29 @@ public sealed class LoginSignedAccountSessionTests
         new(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
     [Fact]
-    public void NoCatalogNoSelectionAndExpiredAuthorityNeverOpenSockets()
+    public async Task NoCatalogNoSelectionAndExpiredAuthorityNeverOpenSockets()
     {
         LoginServerSelection selection = new();
-        Assert.Throws<InvalidOperationException>(() =>
-            LoginSignedAccountSession.OpenAsync(null, selection, s_now, s_timeouts));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            LoginSignedAccountSession.OpenAsync(null, selection, s_now, s_timeouts, TestContext.Current.CancellationToken));
 
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog signed = CreateCatalog(signer, "127.0.0.1", 9958);
-        Assert.Throws<InvalidOperationException>(() =>
-            LoginSignedAccountSession.OpenAsync(signed, selection, s_now, s_timeouts));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            LoginSignedAccountSession.OpenAsync(signed, selection, s_now, s_timeouts, TestContext.Current.CancellationToken));
 
         selection.ReplaceCatalog(signed.View);
         selection.SelectRegionSlot(0);
         selection.SelectServerSlot(0);
-        Assert.Throws<InvalidOperationException>(() =>
-            LoginSignedAccountSession.OpenAsync(signed, selection, s_now.AddHours(2), s_timeouts));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            LoginSignedAccountSession.OpenAsync(signed, selection, s_now.AddHours(2), s_timeouts, TestContext.Current.CancellationToken));
 
         LoginServerSelection unrelated = new();
         unrelated.ReplaceCatalog(new LoginServerCatalog(signed.View.Regions));
         unrelated.SelectRegionSlot(0);
         unrelated.SelectServerSlot(0);
-        Assert.Throws<InvalidOperationException>(() =>
-            LoginSignedAccountSession.OpenAsync(signed, unrelated, s_now, s_timeouts));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            LoginSignedAccountSession.OpenAsync(signed, unrelated, s_now, s_timeouts, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -54,13 +54,12 @@ public sealed class LoginSignedAccountSessionTests
         Assert.True(selection.SelectServerSlot(0));
 
         Task peer = SendSeedAsync(listener);
-        await using (LoginAccountSession session = await LoginSignedAccountSession.OpenAsync(
-                         signed, selection, s_now, s_timeouts))
+        await using (LoginAccountSession session = await LoginSignedAccountSession.OpenAsync(signed, selection, s_now, s_timeouts, TestContext.Current.CancellationToken))
         {
             Assert.Equal(0x12345678u, session.Seed);
         }
 
-        await peer.WaitAsync(TimeSpan.FromSeconds(5));
+        await peer.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
     }
 
     private static SignedLoginCatalog CreateCatalog(ECDsa signer, string host, int port)
