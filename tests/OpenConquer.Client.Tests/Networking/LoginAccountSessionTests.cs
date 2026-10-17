@@ -26,7 +26,7 @@ public sealed class LoginAccountSessionTests
     }
 
     [Theory]
-    [InlineData("454869128E317C0F")] // decoded length is zero
+    [InlineData("45486912")] // decoded length is zero; the parser must reject the four-byte header
     [InlineData("C548AA128E317C0F")] // decoded packet type is 1055, not 1059
     public async Task MalformedOrUnexpectedSeedFailsClosed(string encrypted)
     {
@@ -107,8 +107,7 @@ public sealed class LoginAccountSessionTests
             await stream.WriteAsync(bytes.AsMemory(offset, Math.Min(chunk, bytes.Length - offset)));
         }
 
-        byte[] buffer = new byte[1];
-        return await stream.ReadAsync(buffer);
+        return await ObserveCloseAsync(stream);
     }
 
     private static async Task SendThenDisconnectAsync(TcpListener listener, byte[] bytes)
@@ -120,7 +119,21 @@ public sealed class LoginAccountSessionTests
     private static async Task<int> AcceptAndObserveCloseAsync(TcpListener listener)
     {
         using TcpClient client = await listener.AcceptTcpClientAsync();
+        return await ObserveCloseAsync(client.GetStream());
+    }
+
+    private static async Task<int> ObserveCloseAsync(NetworkStream stream)
+    {
         byte[] buffer = new byte[1];
-        return await client.GetStream().ReadAsync(buffer);
+        try
+        {
+            return await stream.ReadAsync(buffer);
+        }
+        catch (IOException exception) when (exception.InnerException is SocketException
+            { SocketErrorCode: SocketError.ConnectionReset or SocketError.ConnectionAborted })
+        {
+            // Aborting a socket with unread data may surface as a TCP reset rather than EOF.
+            return 0;
+        }
     }
 }
