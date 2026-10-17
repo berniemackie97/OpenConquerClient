@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using OpenConquer.Client.Startup.Catalog;
+using OpenConquer.Client.UI.Login.Selection;
 
 namespace OpenConquer.Client.Tests.Startup.Catalog;
 
@@ -27,11 +28,11 @@ public sealed class SignedLoginCatalogTests
         Assert.Equal("login.example.org", endpoint!.Host);
         Assert.Equal(9958, endpoint.Port);
         Assert.False(verified.TryGetAccountEndpoint(
-            new OpenConquer.Client.UI.Login.LoginRegion("north", "North", []),
+            new LoginRegion("north", "North", []),
             verified.View.Regions[0].Servers[0], out _));
         Assert.False(verified.TryGetAccountEndpoint(
             verified.View.Regions[0],
-            new OpenConquer.Client.UI.Login.LoginServer("realm-1", "Realm One", "NativeRealm1"), out _));
+            new LoginServer("realm-1", "Realm One", "NativeRealm1"), out _));
     }
 
     [Fact]

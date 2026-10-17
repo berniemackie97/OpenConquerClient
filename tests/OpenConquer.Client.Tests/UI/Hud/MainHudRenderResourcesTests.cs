@@ -1,4 +1,4 @@
-using OpenConquer.Client.UI.Hud.Rendering;
+using OpenConquer.Client.UI;
 
 namespace OpenConquer.Client.Tests.UI.Hud;
 
@@ -8,7 +8,7 @@ public sealed class MainHudRenderResourcesTests
     public void Ownership_TracksAndReturnsExactResourceInstance()
     {
         List<string> events = [];
-        using MainHudRendererOwnership ownership = new();
+        using ResourceOwnership ownership = new();
         RecordingResource resource = new("chrome", events);
 
         RecordingResource tracked = ownership.Track(resource);
@@ -20,7 +20,7 @@ public sealed class MainHudRenderResourcesTests
     public void Dispose_ReleasesResourcesInReverseConstructionOrder()
     {
         List<string> events = [];
-        MainHudRendererOwnership ownership = new();
+        ResourceOwnership ownership = new();
 
         string[] constructionOrder =
         [
@@ -50,7 +50,7 @@ public sealed class MainHudRenderResourcesTests
     public void Dispose_AttemptsEveryResourceWhenEarlierDisposalsThrow()
     {
         List<string> events = [];
-        MainHudRendererOwnership ownership = new();
+        ResourceOwnership ownership = new();
 
         InvalidOperationException expected = new("magic hint cleanup");
         InvalidOperationException secondary = new("selected skill cleanup");
@@ -79,7 +79,7 @@ public sealed class MainHudRenderResourcesTests
     public void DisposeAfterInitializationFailure_PreservesOriginalConstructionFailure()
     {
         List<string> events = [];
-        MainHudRendererOwnership ownership = new();
+        ResourceOwnership ownership = new();
 
         InvalidOperationException primary = new("renderer initialization failed");
 
@@ -98,7 +98,7 @@ public sealed class MainHudRenderResourcesTests
     public void DisposeAfterInitializationFailure_OnlyReleasesConstructedResources()
     {
         List<string> events = [];
-        MainHudRendererOwnership ownership = new();
+        ResourceOwnership ownership = new();
 
         ownership.Track(new RecordingResource("Chrome", events));
         ownership.Track(new RecordingResource("Vitals", events));
@@ -116,7 +116,7 @@ public sealed class MainHudRenderResourcesTests
     public void Dispose_IsIdempotentAfterSuccessfulCleanup()
     {
         List<string> events = [];
-        MainHudRendererOwnership ownership = new();
+        ResourceOwnership ownership = new();
         RecordingResource resource = new("Chrome", events);
 
         ownership.Track(resource);
@@ -132,7 +132,7 @@ public sealed class MainHudRenderResourcesTests
     public void Dispose_IsIdempotentAfterCleanupFailure()
     {
         List<string> events = [];
-        MainHudRendererOwnership ownership = new();
+        ResourceOwnership ownership = new();
         RecordingResource resource = new("Chrome", events, new InvalidOperationException("cleanup failed"));
 
         ownership.Track(resource);
@@ -149,7 +149,7 @@ public sealed class MainHudRenderResourcesTests
     public void Track_AfterDisposalIsRejected()
     {
         List<string> events = [];
-        MainHudRendererOwnership ownership = new();
+        ResourceOwnership ownership = new();
 
         ownership.Dispose();
 
@@ -163,8 +163,8 @@ public sealed class MainHudRenderResourcesTests
     public void IndependentOwners_ReleaseOnlyTheirOwnResources()
     {
         List<string> events = [];
-        MainHudRendererOwnership first = new();
-        MainHudRendererOwnership second = new();
+        ResourceOwnership first = new();
+        ResourceOwnership second = new();
 
         RecordingResource firstResource = first.Track(new RecordingResource("First", events));
         RecordingResource secondResource = second.Track(new RecordingResource("Second", events));
@@ -180,7 +180,7 @@ public sealed class MainHudRenderResourcesTests
         Assert.Equal(["First", "Second"], events);
     }
 
-    private static void SimulateConstructionFailure(MainHudRendererOwnership ownership, InvalidOperationException exception)
+    private static void SimulateConstructionFailure(ResourceOwnership ownership, InvalidOperationException exception)
     {
         try
         {

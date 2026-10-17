@@ -5,47 +5,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Assets/Login/login-backdrop.bmp" LogicalName="OpenConquer.Content.Assets.Login.Backdrop.bmp" />
-    <EmbeddedResource Include="Assets/Login/account-panel.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.AccountPanel.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/enter-up.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.EnterUp.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/enter-hover.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.EnterHover.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/enter-pressed.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.EnterPressed.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/exit-up.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ExitUp.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/exit-hover.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ExitHover.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/exit-pressed.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.ExitPressed.rgba.br" />
-
-    <EmbeddedResource Include="Assets/Login/Cursor/normal-0.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Cursor.Normal0.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/Cursor/normal-1.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Cursor.Normal1.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/Cursor/normal-2.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Cursor.Normal2.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/Cursor/normal-3.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Cursor.Normal3.rgba.br" />
-    <EmbeddedResource Include="Assets/Login/Cursor/normal-4.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Cursor.Normal4.rgba.br" />
-
-    <EmbeddedResource Include="Assets/Login/Audio/music.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.music.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/Glide.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.Glide.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/click_2.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.click_2.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/page.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.page.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/Dragon.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.Dragon.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/Button_1.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.Button_1.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/Button_2.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.Button_2.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/Confirm.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.Confirm.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/key_1.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.key_1.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/key_2.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.key_2.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/key_3.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.key_3.pcm.br" />
-    <EmbeddedResource Include="Assets/Login/Audio/error.pcm.br" WithCulture="false" LogicalName="OpenConquer.Content.Assets.Login.Audio.error.pcm.br" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Assets/Login/Retail/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.Retail.%(Filename)%(Extension)" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Assets/Login/RetailPanel/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RetailPanel.%(Filename)%(Extension)" />
-    <EmbeddedResource Include="Assets/Login/RetailMotion/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RetailMotion.%(Filename)%(Extension)" />
-    <EmbeddedResource Include="Assets/Login/RetailSelection/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RetailSelection.%(Filename)%(Extension)" />
-    <EmbeddedResource Include="Assets/Login/RetailStage/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RetailStage.%(Filename)%(Extension)" />
-    <EmbeddedResource Include="Assets/Login/RetailFallback/*.rgba.br" LogicalName="OpenConquer.Content.Assets.Login.RetailFallback.%(Filename)%(Extension)" />
-    <EmbeddedResource Include="Assets/Login/RetailMotion/BirdFrames.bin" LogicalName="OpenConquer.Content.Assets.Login.RetailMotion.BirdFrames.bin" />
-    <EmbeddedResource Include="Assets/RealmIcons/*.rgba.br" LogicalName="OpenConquer.Content.Assets.RealmIcons.%(Filename)%(Extension)" />
+    <!-- Resource names mirror the asset path, with forward slashes on every host. WithCulture is off because
+         MSBuild would otherwise read the "pcm" in Name.pcm.br as a culture and move the audio to a satellite assembly. -->
+    <EmbeddedResource Include="Assets/Login/**/*"
+                      WithCulture="false"
+                      LogicalName="Assets/Login/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

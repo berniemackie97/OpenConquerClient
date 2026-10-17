@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using OpenConquer.Client.Startup.Catalog;
-using OpenConquer.Client.UI.Login;
+using OpenConquer.Client.UI.Login.Selection;
 
 namespace OpenConquer.Client.Tests.Startup.Catalog;
 
