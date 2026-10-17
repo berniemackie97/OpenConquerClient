@@ -92,7 +92,8 @@ internal sealed class LoginSelectionAnimation
         RegionFlameFrame = (RegionFlameFrame + frames) % LoginRegionArtwork.FlameFrameCount;
         RegionFlameFadeFrame = Math.Min(RegionFlameFadeFrame + frames, RegionFlameFadeFrames);
         ServerSelectedFrame = AdvanceSelectedServer(ServerSelectedFrame, frames);
-        ServerHoverFrame = Math.Min(ServerHoverFrame + frames, LoginServerArtwork.HoverFrameCount - 1);
+        // Sprite 83 has no stop action: it loops while its tile holds frame 6.
+        ServerHoverFrame = (ServerHoverFrame + frames) % LoginServerArtwork.HoverFrameCount;
 
         if (_rollingOutSlot >= 0)
         {

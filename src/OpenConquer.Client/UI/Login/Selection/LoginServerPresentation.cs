@@ -8,11 +8,16 @@ using OpenConquer.Rendering.Sprites;
 namespace OpenConquer.Client.UI.Login.Selection;
 
 /// <summary>
-/// Root depth 4, sprite 180: each server tile's picture and its rollover and selection effects. Pictures are
-/// created on first use, at most one texture per bundled icon.
+/// Root depth 4, sprite 180: each server tile's picture, status light, and rollover and selection effects.
+/// Pictures are created on first use, at most one texture per bundled icon.
 /// </summary>
 internal sealed class LoginServerPresentation : IDisposable
 {
+    // flushLight shows sprite 34 frame `state` for states 1-4 and frame 4 for any other value. The catalog has no
+    // status, which ServerListEntry_ResolveFlashStatusCode (0x5EA5A2) resolves to 0 for every server: the frame the
+    // retail client shows once its status fetch has failed.
+    private const int UnlistedStatusFrame = 3;
+
     private readonly ResourceOwnership _ownership = new();
     private readonly OpenGLGraphicsDevice _graphicsDevice;
     private readonly LoginStageLayout _layout;
@@ -20,6 +25,7 @@ internal sealed class LoginServerPresentation : IDisposable
     private readonly OpenGLTexture2D _default;
     private readonly OpenGLTexture2D _hover;
     private readonly OpenGLTexture2D _selected;
+    private readonly OpenGLTexture2D _lights;
     private readonly Dictionary<string, OpenGLTexture2D> _icons = new(StringComparer.Ordinal);
 
     public LoginServerPresentation(OpenGLGraphicsDevice graphicsDevice, LoginStageLayout layout)
@@ -33,6 +39,7 @@ internal sealed class LoginServerPresentation : IDisposable
             _default = Create(LoginServerArtwork.Load(LoginServerArtwork.Layer.Default));
             _hover = Create(LoginServerArtwork.Load(LoginServerArtwork.Layer.Hover));
             _selected = Create(LoginServerArtwork.Load(LoginServerArtwork.Layer.Selected));
+            _lights = Create(LoginServerArtwork.Load(LoginServerArtwork.Layer.Status));
         }
         catch
         {
@@ -59,6 +66,12 @@ internal sealed class LoginServerPresentation : IDisposable
             };
             LoginRect bounds = _layout.Offset(origins[slot], 0, 0, picture.Width, picture.Height);
             renderer.DrawSprite(picture, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+
+            // Sprite 179 depth 6, above the picture and below the depth 8 effects; an empty slot hides it.
+            if (selection.ServerAtSlot(slot) is not null)
+            {
+                DrawFrame(renderer, _lights, LoginServerArtwork.Layer.Status, UnlistedStatusFrame, _layout.ServerLights[slot]);
+            }
         }
 
         int hovered = animation.HoveredServerSlot;
@@ -68,7 +81,6 @@ internal sealed class LoginServerPresentation : IDisposable
             DrawEffect(renderer, _hover, LoginServerArtwork.Layer.Hover, animation.ServerHoverFrame, origins[hovered], -23, -9);
         }
 
-        // Status lights stay hidden: the catalog carries no authenticated live status.
         int selected = selection.SelectedServerSlot;
         if (selected >= 0)
         {
@@ -83,7 +95,12 @@ internal sealed class LoginServerPresentation : IDisposable
         int offsetX, int offsetY)
     {
         LoginArtworkSheet sheet = LoginServerArtwork.Describe(layer);
-        LoginRect target = _layout.Offset(origin, offsetX, offsetY, sheet.FrameWidth, sheet.FrameHeight);
+        DrawFrame(renderer, atlas, layer, frame, _layout.Offset(origin, offsetX, offsetY, sheet.FrameWidth, sheet.FrameHeight));
+    }
+
+    private static void DrawFrame(OpenGLRenderer renderer, OpenGLTexture2D atlas, LoginServerArtwork.Layer layer, int frame, LoginRect target)
+    {
+        LoginArtworkSheet sheet = LoginServerArtwork.Describe(layer);
         SpriteSourceRectangle source = new(sheet.FrameX(frame), sheet.FrameY(frame), sheet.FrameWidth, sheet.FrameHeight);
         renderer.DrawSprite(atlas, source, target.X, target.Y, target.Width, target.Height);
     }

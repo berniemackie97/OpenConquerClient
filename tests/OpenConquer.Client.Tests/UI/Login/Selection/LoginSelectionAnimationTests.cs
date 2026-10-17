@@ -122,8 +122,10 @@ public sealed class LoginSelectionAnimationTests
         Assert.True(selection.SelectRegionSlot(0));
         animation.Advance(0, selection, interactive: true);
         Assert.Equal(0, animation.HoveredServerSlot);
-        animation.Advance(100, selection, interactive: true);
+        animation.Advance(LoginServerArtwork.HoverFrameCount - 1, selection, interactive: true);
         Assert.Equal(LoginServerArtwork.HoverFrameCount - 1, animation.ServerHoverFrame);
+        animation.Advance(1, selection, interactive: true);
+        Assert.Equal(0, animation.ServerHoverFrame);
 
         animation.Advance(0, selection, interactive: false);
         Assert.Equal(-1, animation.HoveredServerSlot);

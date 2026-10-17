@@ -64,7 +64,7 @@ One 30 fps stage clock drives every timeline. The first rendered frame starts it
 | Bird | 602 | loops from the first frame |
 | Region rollover | 7 + 3 | defaultR frames 2–8 and hold, frames 10–12 on roll-out; the rolled-over holder draws on top |
 | Region selected | 25 | sprite 60 flame loop inside sprite 61, fading in over 5 frames |
-| Server rollover | 34 | sprite 83 at (−22.65, −9), plays once and holds its last frame |
+| Server rollover | 34 | sprite 83 at (−22.65, −9); no stop action, so it loops (frames 22–34 are empty) |
 | Server selected | 47 | sprite 178 at (−26, −29); later loops restart at its `aa` label (frame 23) |
 | Save / Clear dialog | 10 | maskMC alpha 0, 0, 51, 103, 154, 205, 154, 103, 51, 0 (of 256) over rows 90–659; dialog shown on frame 6, which holds until Ok or Cancel |
 | Account list | — | 20 ms steps of 10 + 2 × rows pixels |
@@ -105,6 +105,18 @@ From `flashLogin.ini`. `[serverSelection] show` is never played by the movie's s
 | Dialog Ok / Cancel press | `Button_1.mp3` / `Button_2.mp3` |
 | Typing | `key_1.mp3`, `key_2.mp3`, `key_3.mp3` in turn |
 
+## Server status lights
+
+Sprite 179 `light` (sprite 34, frames red, yellow, green, purple) sits at (9.3, 62.25) on every present server,
+above the picture and below the rollover and selection effects; an empty slot hides it. `flushLight` shows frame
+`state` for states 1–4 and frame 4 otherwise.
+
+The retail client seeds state 3 on its first `SERVER` push, then fetches `ini/common.ini [ServerStatus] URL`
+once and pushes again with `ServerListEntry_ResolveFlashStatusCode` (0x5EA5A2), which returns 0 for a server the
+fetch did not list. The shipped URL (`account.conqueronline.com/status.php`) is gone, so retail shows frame 4 on
+every server. The signed catalog has no status, so the client draws that same frame 4. The green seed shown
+before the fetch completes is not reproduced.
+
 ## Account history
 
 `CMD_RECORDACCOUNT` happens only through Save → Ok; `CMD_CLEARACCOUNT` only through Clear → Ok, and only for
@@ -117,16 +129,17 @@ clears the password.
 
 - Enter does not submit credentials; no account-server packet is sent.
 - Register, Purchase and Help do not open the publisher-era URLs.
-- Server status lights stay hidden. The signed catalog identifies realms and their account endpoints; it does
-  not report whether a realm is up. The retail first push seeds status 3, which is presentation, not liveness.
-  Lights need a separately signed, short-lived status feed bound to the current catalog; until one exists the
-  four sprite 34 states are packaged but not drawn.
+- No status fetch. A live status needs a separately signed, short-lived feed bound to the current catalog; the
+  signed catalog identifies realms and their account endpoints, not whether they are up.
 - Region captions come from the signed catalog; the retail region movies bake their own titles.
 - Replacing the catalog clears the password.
 
 ## Open
 
 - Staged server-slot fade on region change (`Strong.easeIn`) and the automatic first-server selection after it.
+- Server rollover: sprite 179 frames 2–5 fade sprite 40 in (alpha 13, 74, 135, 195 of 256) at (2.1, 1.75) and
+  sprite 83 starts at frame 6; roll-out jumps to frame 11, which clears both. The client draws sprite 83 from the
+  first rollover frame and no sprite 40.
 - Enter key: the native bridge sends a synthetic click on the Enter button (Down state and `Confirm.mp3`).
 - `CTxtTip` tooltips (`flashLogin.ini [tip]`), the Caps Lock overlay, and the loading, error and quit dialogs.
 - Footer labels in SimSun, and Windows GDI pixel parity for every text field.
