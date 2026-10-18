@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Numerics;
 using System.Security.Cryptography;
-using System.Text;
 using OpenConquer.Networking.Authentication;
 using OpenConquer.Networking.Game.Cryptography;
 using OpenConquer.Networking.Game.Handshake;
@@ -78,7 +77,8 @@ public sealed class GameServerHandshakeSessionTests
             new LoginAccountResponse1055(0, 20, 0, 0, null));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            GameServerHandshakeSession.OpenAsync(failed, s_timeouts));
+            GameServerHandshakeSession.OpenAsync(failed, s_timeouts,
+                TestContext.Current.CancellationToken));
     }
 
     [Fact]
