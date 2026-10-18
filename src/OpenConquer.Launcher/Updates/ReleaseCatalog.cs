@@ -34,7 +34,7 @@ internal abstract record ReleaseCatalogResult
     internal sealed record Rejected(ReleaseCatalogIssue Issue) : ReleaseCatalogResult;
 }
 
-/// <summary>Authenticates a bounded publisher catalog and selects the newest compatible release.</summary>
+/// <summary>Verifies the publisher's size-limited release catalog and picks the newest compatible release.</summary>
 internal sealed class ReleaseCatalog
 {
     public const int CurrentSchemaVersion = 1;

@@ -1,6 +1,9 @@
 namespace OpenConquer.Launcher.Settings;
 
-/// <summary>Owns one settings surface's I/O and its idempotent shutdown, independently of UI events.</summary>
+/// <summary>
+/// Loads and saves display settings for one settings window. Shutdown is safe to call more than once and
+/// doesn't depend on UI events.
+/// </summary>
 internal sealed class DisplaySettingsSession : IAsyncDisposable
 {
     private readonly IDisplaySettingsStore _store;

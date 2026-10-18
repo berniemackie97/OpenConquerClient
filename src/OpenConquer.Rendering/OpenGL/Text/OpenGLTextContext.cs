@@ -9,7 +9,7 @@ using OpenConquer.Rendering.Text.Rendering;
 namespace OpenConquer.Rendering.OpenGL.Text;
 
 /// <summary>
-/// Owns one native-compatible text font, its glyph cache, layout source, and OpenGL atlas resources.
+/// One font that matches the 5517 client's text, with its glyph cache, layout source and OpenGL atlas.
 /// </summary>
 public sealed class OpenGLTextContext : IDisposable
 {

@@ -3,7 +3,10 @@ using System.Security.Principal;
 
 namespace OpenConquer.Launcher.Instances;
 
-/// <summary>Local activation only. This protocol is not a game-login or client-handoff channel.</summary>
+/// <summary>
+/// Lets a second launcher on the same machine ask the running one to come to the front. It is not used for game
+/// login or for handing off to the client.
+/// </summary>
 internal static class LauncherActivationProtocol
 {
     // Magic, version 1, activate command, two reserved zero bytes. No variable-length fields.

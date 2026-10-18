@@ -57,26 +57,4 @@ public sealed class DotNetProcessRunnerTests
 
         Assert.Throws<ArgumentException>(() => runner.Run(temporary.RootPath, arguments!));
     }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        private readonly string _path = Path.Combine(Path.GetTempPath(), $"openconquer-dotnet-process-{Guid.NewGuid():N}");
-
-        public TemporaryDirectory()
-        {
-            Directory.CreateDirectory(_path);
-        }
-
-        public string RootPath => _path;
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(_path, recursive: true);
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
-    }
 }

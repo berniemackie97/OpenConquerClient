@@ -29,8 +29,8 @@ internal static class LoginSignedAccountExchange
             throw new InvalidOperationException("No current authenticated AccountServer selection is available.");
         }
 
-        // The native cipher is NOT authenticated encryption. Explicitly disallow real remote
-        // password submission while keeping this bounded exchange testable with a local peer.
+        // The 5517 cipher doesn't authenticate anything, so real passwords must not go to a remote server.
+        // Loopback is still allowed so the exchange can be tested against a local peer.
         if (!catalog!.TryGetAccountEndpoint(region!, server!, out LoginAccountEndpoint? endpoint) ||
             endpoint is null || endpoint.Host != "127.0.0.1")
         {

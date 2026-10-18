@@ -1,8 +1,9 @@
 namespace OpenConquer.Client.UI.Login.Selection;
 
 /// <summary>
-/// Fail-closed region/server selection over the retail grids: sixteen region holders per page, and the
-/// twelve server holders of the selected region (sprite 180 has no server paging).
+/// Region and server selection over the retail grids: sixteen region slots per page, and the twelve server slots
+/// of the selected region (sprite 180 has no server paging). Nothing is selected until the player picks, and a
+/// new catalog clears the selection.
 /// </summary>
 internal sealed class LoginServerSelection
 {

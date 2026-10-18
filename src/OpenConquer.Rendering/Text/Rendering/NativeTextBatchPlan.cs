@@ -3,7 +3,7 @@ using OpenConquer.Rendering.Text.Layout;
 namespace OpenConquer.Rendering.Text.Rendering;
 
 /// <summary>
-/// Builds a reusable, deterministic per-atlas-page rendering plan for one native text layout.
+/// Builds a reusable rendering plan for one text layout, grouped by atlas page.
 /// </summary>
 internal sealed class NativeTextBatchPlan
 {

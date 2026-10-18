@@ -3,7 +3,7 @@ using OpenConquer.Launcher.Installation;
 
 namespace OpenConquer.Launcher;
 
-/// <summary>Owns installation evaluation, recovery, and process-lifetime cancellation.</summary>
+/// <summary>Checks and repairs the installation, and cancels outstanding work when the launcher exits.</summary>
 internal sealed class LauncherApplication : IAsyncDisposable
 {
     private readonly object _gate = new();

@@ -3,8 +3,8 @@ using System.Buffers.Binary;
 namespace OpenConquer.Networking.Authentication;
 
 /// <summary>
-/// Native AccountServer 1100 report. Hardware text is untrusted, caller-provided telemetry
-/// and is never used as an authentication secret or discovered automatically.
+/// The AccountServer 1100 report. The caller supplies the hardware text; it isn't trusted, isn't used as an
+/// authentication secret and is never read from the machine automatically.
 /// </summary>
 internal static class LoginAccountMacAddressReport1100
 {
@@ -41,7 +41,6 @@ internal static class LoginAccountMacAddressReport1100
         BinaryPrimitives.WriteUInt16LittleEndian(destination[2..], PacketType);
         BinaryPrimitives.WriteUInt32LittleEndian(destination[4..], sessionToken);
         macAddress.CopyTo(destination[8..]);
-        // Byte offsets 48..51 are structurally present but semantically unknown in native evidence.
-        // Zero initialization is deliberate; no guessed telemetry is injected.
+        // Bytes 48..51 are in the packet but what they mean isn't known, so they stay zero instead of a guess.
     }
 }

@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Tool.Legacy.ServerDat;
 
 /// <summary>
-/// Reads and decodes a retail 5517 <c>Server.dat</c> file from an explicit filesystem path.
+/// Reads and decodes a retail 5517 <c>Server.dat</c> file from the given path.
 /// </summary>
 internal static class ServerDatFileReader
 {

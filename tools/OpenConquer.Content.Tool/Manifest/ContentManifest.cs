@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Tool.Manifest;
 
 /// <summary>
-/// The deterministic identity and integrity catalog for a generated content set.
+/// Identifies a generated content set and lists the files in it with their hashes.
 /// </summary>
 internal sealed class ContentManifest
 {

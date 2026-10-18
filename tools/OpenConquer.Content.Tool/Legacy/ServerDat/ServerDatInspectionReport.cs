@@ -40,7 +40,7 @@ internal sealed class ServerDatInspectionReport
     }
 
     /// <summary>
-    /// Renders the decoded catalog as deterministic console lines.
+    /// Formats the decoded catalog as console lines, in a stable order.
     /// </summary>
     public IEnumerable<string> ToReportLines()
     {

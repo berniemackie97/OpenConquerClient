@@ -3,8 +3,8 @@ using System.Runtime.ExceptionServices;
 namespace OpenConquer.Client.UI;
 
 /// <summary>
-/// Owns a set of disposable resources created in sequence and releases them in reverse order. If a later
-/// resource fails to construct, the ones already created are released without masking that failure.
+/// Holds disposable resources created one after another and disposes them in reverse order. If creating one
+/// fails, the ones already created are disposed and the original exception still propagates.
 /// </summary>
 internal sealed class ResourceOwnership : IDisposable
 {

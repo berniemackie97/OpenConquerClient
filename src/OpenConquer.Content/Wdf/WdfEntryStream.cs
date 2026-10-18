@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Wdf;
 
 /// <summary>
-/// Presents one bounded WDF payload entry as an independent readable stream.
+/// A read-only stream over one entry of a WDF archive. Reads stop at the end of the entry.
 /// </summary>
 internal sealed class WdfEntryStream : Stream
 {

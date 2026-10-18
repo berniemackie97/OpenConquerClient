@@ -3,8 +3,8 @@ using System.Security.Cryptography;
 namespace OpenConquer.Networking.Authentication;
 
 /// <summary>
-/// Builds the standard native 1060 plaintext envelope from caller-owned credential characters.
-/// Pure composition: no socket access, session authorization, or account-login state changes.
+/// Builds the standard 1060 plaintext packet from the caller's credential characters.
+/// It only writes bytes: no socket access, authorization or login state changes.
 /// </summary>
 internal static class StandardAccountCredentialComposer
 {

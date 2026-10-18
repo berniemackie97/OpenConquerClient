@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 namespace OpenConquer.Content.Tool.Import;
 
 /// <summary>
-/// Copies one retail content payload into the canonical content-set tree while fingerprinting it.
+/// Copies one retail content file into the content-set tree and hashes it while copying.
 /// </summary>
 internal static class ContentPayloadCopier
 {

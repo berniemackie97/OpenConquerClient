@@ -148,8 +148,7 @@ internal sealed class LauncherDiagnostics : IDisposable
         }
         catch (Exception)
         {
-            // Diagnostics must not replace a healthy launcher operation or obscure the original
-            // process failure because a sink or diagnostic projection itself failed.
+            // A failing log sink must not break a working launcher operation or hide the failure being logged.
         }
     }
 

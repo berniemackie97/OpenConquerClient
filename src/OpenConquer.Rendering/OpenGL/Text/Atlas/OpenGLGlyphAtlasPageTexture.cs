@@ -5,7 +5,7 @@ using Silk.NET.OpenGL;
 namespace OpenConquer.Rendering.OpenGL.Text.Atlas;
 
 /// <summary>
-/// Owns the OpenGL coverage texture corresponding to one CPU glyph-atlas page.
+/// The OpenGL coverage texture for one CPU glyph-atlas page.
 /// </summary>
 internal sealed unsafe class OpenGLGlyphAtlasPageTexture : IDisposable
 {

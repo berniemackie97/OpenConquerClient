@@ -17,7 +17,7 @@ internal static class ServerDatEnvelopeDecoder
     private const byte GzipMagicByte1 = 0x8B;
 
     /// <summary>
-    /// Decodes retail <c>Server.dat</c> using the independently native 5517 public key.
+    /// Decodes a retail <c>Server.dat</c> with the 5517 client's public key.
     /// </summary>
     public static byte[] DecodeToXml(ReadOnlySpan<byte> encryptedServerDat)
     {

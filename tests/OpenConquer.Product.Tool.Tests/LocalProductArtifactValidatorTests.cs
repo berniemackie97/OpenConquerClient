@@ -204,38 +204,4 @@ public sealed class LocalProductArtifactValidatorTests
                 "The test host is not a supported OpenConquer product runtime."
             );
     }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        private readonly string _path = Path.Combine(
-            Path.GetTempPath(),
-            $"openconquer-local-product-validation-{Guid.NewGuid():N}"
-        );
-
-        public TemporaryDirectory()
-        {
-            Directory.CreateDirectory(_path);
-        }
-
-        public string RootPath => _path;
-
-        public string CreateDirectory(string name)
-        {
-            string path = Path.Combine(_path, name);
-
-            Directory.CreateDirectory(path);
-
-            return path;
-        }
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(_path, recursive: true);
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
-    }
 }

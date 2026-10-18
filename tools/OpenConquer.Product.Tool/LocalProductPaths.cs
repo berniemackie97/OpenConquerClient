@@ -1,6 +1,6 @@
 namespace OpenConquer.Product.Tool;
 
-/// <summary>Canonical repository-local paths used to compose one development product candidate.</summary>
+/// <summary>Paths inside the repository used to build one development product.</summary>
 internal sealed record LocalProductPaths(string RootPath, string WorkRootPath, string WorkspacePath, string ClientPublishPath,
     string LauncherPublishPath, string ReleasePath, string CandidateProductPath, string ProductPath, string PreviousProductPath,
     string ReleaseManifestPath, string PublicKeyPath, string RawSignaturePath, string ReleaseSignaturePath, string ReleaseTrustPath)

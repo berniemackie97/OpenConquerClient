@@ -4,7 +4,7 @@ using OpenConquer.Rendering.Text.Layout;
 namespace OpenConquer.Rendering.Text.Rendering;
 
 /// <summary>
-/// Writes deterministic text-glyph geometry in logical pixel coordinates.
+/// Writes text glyph geometry in logical pixel coordinates.
 /// </summary>
 internal static class NativeTextGeometryBuilder
 {

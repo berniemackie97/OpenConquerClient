@@ -5,7 +5,7 @@ using Silk.NET.Input;
 namespace OpenConquer.Platform.Windowing.Desktop;
 
 /// <summary>
-/// Owns desktop keyboard subscriptions and translates backend input into UI commands and characters.
+/// Subscribes to desktop keyboard events and turns them into UI commands and characters.
 /// </summary>
 internal sealed class DesktopKeyboardInput : IDisposable
 {

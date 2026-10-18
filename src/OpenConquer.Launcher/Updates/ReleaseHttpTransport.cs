@@ -25,7 +25,7 @@ internal abstract record ReleaseTransferResult<T>
     internal sealed record Rejected(ReleaseTransferIssue Issue) : ReleaseTransferResult<T>;
 }
 
-/// <summary>Performs bounded HTTPS transfers with an explicitly owned HTTP lifetime.</summary>
+/// <summary>HTTPS downloads with timeouts and size limits. Creates and disposes its own HTTP client.</summary>
 internal sealed class ReleaseHttpTransport : IDisposable
 {
     private const int BufferSize = 128 * 1024;

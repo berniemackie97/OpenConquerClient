@@ -18,8 +18,8 @@ using OpenConquer.Rendering.Presentation;
 namespace OpenConquer.Client.UI.Hud.Rendering;
 
 /// <summary>
-/// Owns gameplay HUD content, input, and GPU resources as a single authenticated-world lifetime.
-/// Construct only after a world session has been authorized and its OpenGL context is active.
+/// The gameplay HUD's content, input and GPU resources, created and disposed together for one signed-in world.
+/// Create it only after the world session is authorized and its OpenGL context is current.
 /// </summary>
 internal sealed class WorldHudRuntime : IDisposable
 {

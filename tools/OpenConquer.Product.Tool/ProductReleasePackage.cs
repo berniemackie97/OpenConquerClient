@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 
 namespace OpenConquer.Product.Tool;
 
-/// <summary>Creates and validates the deterministic archive consumed by launcher acquisition.</summary>
+/// <summary>Creates and validates the release archive the launcher downloads. The same input always produces the same archive.</summary>
 internal static class ProductReleasePackage
 {
     public const long MaximumPackageLength = 16L * 1024 * 1024 * 1024;

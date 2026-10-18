@@ -8,7 +8,7 @@ using Silk.NET.Windowing;
 namespace OpenConquer.Platform.Windowing.Startup;
 
 /// <summary>
-/// Owns the short lived startup window and OpenGL context used during client initialization.
+/// The short-lived window and OpenGL context used while the client starts up.
 /// </summary>
 public sealed class StartupWindow : IDisposable
 {

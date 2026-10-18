@@ -2,7 +2,10 @@ using OpenConquer.Client.Startup.Catalog;
 
 namespace OpenConquer.Client.UI.Login.Selection;
 
-/// <summary>Rebinds an explicit realm choice only across fully authenticated, equivalent snapshots.</summary>
+/// <summary>
+/// Keeps the player's realm choice across a catalog refresh, but only when both catalogs are current and
+/// verified and the realm is still there.
+/// </summary>
 internal static class LoginVerifiedSelectionRetention
 {
     public static void Apply(SignedLoginCatalog? previous, SignedLoginCatalog? current, DateTimeOffset now, LoginSelectionInput input, LoginServerSelection selection)

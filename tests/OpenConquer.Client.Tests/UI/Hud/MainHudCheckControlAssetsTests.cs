@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Globalization;
 using System.Text;
 using OpenConquer.Client.UI.Hud.CheckControls;
@@ -158,7 +157,7 @@ public sealed class MainHudCheckControlAssetsTests
 
                 int width = definition.AniSectionName == malformedSection && frameIndex == malformedFrameIndex ? malformedWidth : 32;
                 int height = definition.AniSectionName == malformedSection && frameIndex == malformedFrameIndex ? malformedHeight : 32;
-                content.WriteBytes(path, CreateDxt3Dds(width, height));
+                content.WriteBytes(path, DdsTestData.CreateDxt3Dds(width, height));
             }
 
             ani.Append('\n');
@@ -168,59 +167,4 @@ public sealed class MainHudCheckControlAssetsTests
     }
 
     private static string FramePath(string sectionName, int frameIndex) => $"data/test/{sectionName}_{frameIndex}.dds";
-
-    private static byte[] CreateDxt3Dds(int width, int height)
-    {
-        const int PixelDataOffset = 128;
-        int blockCountX = (width + 3) / 4;
-        int blockCountY = (height + 3) / 4;
-        int encodedLength = checked(blockCountX * blockCountY * 16);
-        byte[] dds = new byte[PixelDataOffset + encodedLength];
-
-        BinaryPrimitives.WriteUInt32LittleEndian(dds, 0x20534444);
-        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(4), 124);
-        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(8), 0x00081007);
-        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(12), checked((uint)height));
-        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(16), checked((uint)width));
-        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(20), checked((uint)encodedLength));
-        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(76), 32);
-        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(80), 4);
-        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(84), 0x33545844);
-        BinaryPrimitives.WriteUInt32LittleEndian(dds.AsSpan(108), 0x00001000);
-
-        return dds;
-    }
-
-    private sealed class TemporaryContentDirectory : IDisposable
-    {
-        public TemporaryContentDirectory()
-        {
-            RootPath = Path.Combine(Path.GetTempPath(), "OpenConquer.Client.Tests", Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(RootPath);
-        }
-
-        public string RootPath
-        {
-            get;
-        }
-
-        public void WriteText(string relativePath, string contents) => WriteBytes(relativePath, Encoding.Latin1.GetBytes(contents));
-
-        public void WriteBytes(string relativePath, ReadOnlySpan<byte> contents)
-        {
-            string path = Path.Combine(RootPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
-            string directory = Path.GetDirectoryName(path) ?? throw new InvalidOperationException($"'{relativePath}' has no parent directory.");
-
-            Directory.CreateDirectory(directory);
-            File.WriteAllBytes(path, contents);
-        }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(RootPath))
-            {
-                Directory.Delete(RootPath, recursive: true);
-            }
-        }
-    }
 }

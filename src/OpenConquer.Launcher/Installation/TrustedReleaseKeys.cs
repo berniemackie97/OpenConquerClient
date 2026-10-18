@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace OpenConquer.Launcher.Installation;
 
-/// <summary>Immutable publisher trust roots compiled into the launcher package.</summary>
+/// <summary>The publisher public keys embedded in the launcher.</summary>
 internal sealed class TrustedReleaseKeys
 {
     public const string EmbeddedResourceName = "OpenConquer.Launcher.release-trust.json";

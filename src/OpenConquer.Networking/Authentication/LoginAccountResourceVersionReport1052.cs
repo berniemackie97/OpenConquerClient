@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 namespace OpenConquer.Networking.Authentication;
 
 /// <summary>
-/// Native 28-byte AccountServer resource report, NOT the later GameServer login-proof 1052.
+/// The 28-byte AccountServer resource report. Not the GameServer 1052 login proof sent later.
 /// </summary>
 internal static class LoginAccountResourceVersionReport1052
 {

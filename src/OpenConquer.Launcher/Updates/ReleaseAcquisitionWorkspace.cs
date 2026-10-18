@@ -110,7 +110,10 @@ internal abstract record ReleaseAcquisitionResult
         ReleasePackageIssue? PackageIssue) : ReleaseAcquisitionResult;
 }
 
-/// <summary>Owns serialized, private download staging outside the managed product root.</summary>
+/// <summary>
+/// A private staging area for downloads, outside the installed product folder. A lock file lets only one
+/// download use it at a time.
+/// </summary>
 internal sealed class ReleaseAcquisitionWorkspace
 {
     public const string LockFileName = ".openconquer.acquire.lock";
