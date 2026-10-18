@@ -62,8 +62,10 @@ never allocate based on their declared value; invalid structure fails closed.
 length or throws on an impossible declaration.
 `TryRead` returns false for incomplete frames, throws for malformed or
 overlong frames, and outputs a fully validated challenge only on success.
-The two IVs are copied from the supplied temporary decrypted buffer so a
-future transport can immediately clear that buffer. The public key is
+The challenge result can be created only through a validating factory with a
+private constructor. Both IVs are copied, and only read-only spans are exposed;
+invalid keys and mutated caller arrays cannot forge its stored parameters.
+The temporary decrypted frame can therefore be cleared by its future owner. The public key is
 encoded in ASCII only after length, hex and group-range checks.
 There is no mutable process-global crypto state, unbounded input allocation,
 retry, opportunistic parsing, or speculative protocol variant.
@@ -77,8 +79,10 @@ unchanged.
 
 ## Acceptance criteria and continuation
 
-- Standalone deterministic fixture matching the OpenConquerServer challenge
-  construction contract (same lengths, chunk ordering, group and trailer).
+- Fixed 207-byte decrypted reference fixture derived independently from the
+  OpenConquerServer challenge builder's literal prime, group, chunks, and trailer.
+  It is not claimed to be an observed live-server capture; the reference bytes
+  do not depend on production decoder constants.
 - Prefix and body fragmentation, malformed declared lengths, corrupted
   chunk lengths, wrong trailer, excess bytes, unexpected group/generator,
   unsafe DH public keys, missing fields and copied IV ownership.

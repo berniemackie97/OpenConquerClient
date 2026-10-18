@@ -88,8 +88,8 @@ internal static class GameServerChallengeDecoder
 
         // Both directional IVs and the public key are copied out of the caller's
         // temporary plaintext buffer before it is cleared by its future owner.
-        challenge = new GameServerChallenge(serverOutboundIv.ToArray(),
-            serverInboundIv.ToArray(), Encoding.ASCII.GetString(publicKeyHex));
+        challenge = GameServerChallenge.FromValidatedParameters(serverOutboundIv,
+            serverInboundIv, publicKeyHex);
         return true;
     }
 
@@ -136,7 +136,7 @@ internal static class GameServerChallengeDecoder
         return true;
     }
 
-    private static bool TryParsePublicKey(ReadOnlySpan<byte> encoded, out BigInteger value)
+    internal static bool TryParsePublicKey(ReadOnlySpan<byte> encoded, out BigInteger value)
     {
         value = BigInteger.Zero;
         if (encoded.IsEmpty || encoded.Length > PrimeHex.Length)
@@ -196,12 +196,35 @@ internal static class GameServerChallengeDecoder
 /// Validated parameters of one decrypted challenge, not an authenticated peer.
 /// ClientInboundIv is the server's outbound IV, and ClientOutboundIv is its inbound IV.
 /// </summary>
-internal sealed class GameServerChallenge(byte[] clientInboundIv, byte[] clientOutboundIv, string serverPublicKeyHex)
+internal sealed class GameServerChallenge
 {
-    private readonly byte[] _clientInboundIv = clientInboundIv;
-    private readonly byte[] _clientOutboundIv = clientOutboundIv;
+    private readonly byte[] _clientInboundIv;
+    private readonly byte[] _clientOutboundIv;
 
-    internal ReadOnlyMemory<byte> ClientInboundIv => _clientInboundIv;
-    internal ReadOnlyMemory<byte> ClientOutboundIv => _clientOutboundIv;
-    internal string ServerPublicKeyHex { get; } = serverPublicKeyHex;
+    private GameServerChallenge(byte[] clientInboundIv, byte[] clientOutboundIv, string serverPublicKeyHex)
+    {
+        _clientInboundIv = clientInboundIv;
+        _clientOutboundIv = clientOutboundIv;
+        ServerPublicKeyHex = serverPublicKeyHex;
+    }
+
+    // Even friend-assembly callers cannot construct a result with invalid
+    // parameters or retain mutable references to caller-owned IV arrays.
+    internal static GameServerChallenge FromValidatedParameters(
+        ReadOnlySpan<byte> serverOutboundIv, ReadOnlySpan<byte> serverInboundIv,
+        ReadOnlySpan<byte> serverPublicKeyHex)
+    {
+        if (serverOutboundIv.Length != 8 || serverInboundIv.Length != 8 ||
+            !GameServerChallengeDecoder.TryParsePublicKey(serverPublicKeyHex, out _))
+        {
+            throw new InvalidDataException("GameServer challenge parameters are invalid.");
+        }
+
+        return new GameServerChallenge(serverOutboundIv.ToArray(),
+            serverInboundIv.ToArray(), Encoding.ASCII.GetString(serverPublicKeyHex));
+    }
+
+    internal ReadOnlySpan<byte> ClientInboundIv => _clientInboundIv;
+    internal ReadOnlySpan<byte> ClientOutboundIv => _clientOutboundIv;
+    internal string ServerPublicKeyHex { get; }
 }

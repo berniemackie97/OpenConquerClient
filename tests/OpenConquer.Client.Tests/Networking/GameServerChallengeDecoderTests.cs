@@ -6,10 +6,19 @@ namespace OpenConquer.Client.Tests.Networking;
 
 public sealed class GameServerChallengeDecoderTests
 {
+    // Independent reference: fixed plaintext bytes from OpenConquerServer's
+    // GameHandshakeExchange.BuildChallenge contract, NOT a live network capture.
+    // An independent literal prevents the decoder from defining its own fixture.
+    private const string ServerReferenceChallengeHex =
+        "A0A1A2A3A4A5A6A7A8A9AAC40000000C0000005A5A5A5A5A5A5A5A5A5A5A5A0800000001020304050607080800000015161718191A1B1C8000000045374136394542444631303546324136424244454144374537393846373641323039414437334642343636343331453245373335324544323632463843353538463130424546454139373744453945323144434545394230344432343546333030454343424241303345373236333035353644303131303233463945383537460200000030350200000031395451536572766572";
+
+    private const string ServerReferencePrimeHex =
+        "E7A69EBDF105F2A6BBDEAD7E798F76A209AD73FB466431E2E7352ED262F8C558F10BEFEA977DE9E21DCEE9B04D245F300ECCBBA03E72630556D011023F9E857F";
+
     [Fact]
     public void DecodesExactNativeCompatibleServerChallenge()
     {
-        byte[] challenge = BuildChallenge();
+        byte[] challenge = Convert.FromHexString(ServerReferenceChallengeHex);
         Assert.True(GameServerChallengeDecoder.TryGetFrameLength(challenge.AsSpan(0, 15), out int required));
         Assert.Equal(challenge.Length, required);
 
@@ -23,8 +32,8 @@ public sealed class GameServerChallengeDecoderTests
 
         // The decoded output cannot alias the short-lived decrypted frame.
         challenge.AsSpan().Clear();
-        Assert.Equal((byte)1, parsed.ClientInboundIv.Span[0]);
-        Assert.Equal((byte)21, parsed.ClientOutboundIv.Span[0]);
+        Assert.Equal((byte)1, parsed.ClientInboundIv[0]);
+        Assert.Equal((byte)21, parsed.ClientOutboundIv[0]);
     }
 
     [Fact]
@@ -97,12 +106,37 @@ public sealed class GameServerChallengeDecoderTests
     [InlineData("01")]
     [InlineData("GG")]
     [InlineData("g0")]
-    [InlineData("")]
     public void RejectsInvalidDhPublicKeys(string publicKey)
     {
         byte[] challenge = BuildChallenge(publicKey: publicKey);
         Assert.Throws<InvalidDataException>(() =>
             GameServerChallengeDecoder.TryRead(challenge, out _));
+    }
+
+    [Fact]
+    public void EmptyPublicKeyChunkIsRejectedByChunkFraming()
+    {
+        byte[] challenge = BuildChallenge(publicKey: "");
+        Assert.Throws<InvalidDataException>(() =>
+            GameServerChallengeDecoder.TryRead(challenge, out _));
+    }
+
+    [Fact]
+    public void ChallengeParametersAreValidatedAndDefensivelyCopied()
+    {
+        byte[] inbound = [1, 2, 3, 4, 5, 6, 7, 8];
+        byte[] outbound = [11, 12, 13, 14, 15, 16, 17, 18];
+        GameServerChallenge challenge = GameServerChallenge.FromValidatedParameters(
+            inbound, outbound, "19"u8);
+        inbound[0] = 0;
+        outbound[0] = 0;
+        Assert.Equal((byte)1, challenge.ClientInboundIv[0]);
+        Assert.Equal((byte)11, challenge.ClientOutboundIv[0]);
+
+        Assert.Throws<InvalidDataException>(() =>
+            GameServerChallenge.FromValidatedParameters(inbound.AsSpan(0, 7), outbound, "19"u8));
+        Assert.Throws<InvalidDataException>(() =>
+            GameServerChallenge.FromValidatedParameters(inbound, outbound, "00"u8));
     }
 
     [Fact]
@@ -142,7 +176,7 @@ public sealed class GameServerChallengeDecoderTests
         WriteChunk(stream, Enumerable.Repeat((byte)0x5A, 12).ToArray());
         WriteChunk(stream, outboundIv ?? Enumerable.Range(1, 8).Select(static i => (byte)i).ToArray());
         WriteChunk(stream, Enumerable.Range(21, 8).Select(static i => (byte)i).ToArray());
-        WriteChunk(stream, Encoding.ASCII.GetBytes(prime ?? GameServerChallengeDecoder.PrimeHex));
+        WriteChunk(stream, Encoding.ASCII.GetBytes(prime ?? ServerReferencePrimeHex));
         WriteChunk(stream, Encoding.ASCII.GetBytes(generator));
         WriteChunk(stream, Encoding.ASCII.GetBytes(publicKey));
 
