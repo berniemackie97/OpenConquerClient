@@ -31,6 +31,19 @@ public sealed class GameLoginProof1052Tests
     }
 
     [Fact]
+    public void HardwareInputMayAliasDestinationWithoutBeingCleared()
+    {
+        byte[] packet = new byte[GameLoginProof1052.PacketLength];
+        byte[] address = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB];
+        address.CopyTo(packet, 16);
+
+        GameLoginProof1052.Write(packet, 1, 2, 0x6E45, packet.AsSpan(16, 6), 5517);
+
+        Assert.Equal(address, packet.AsSpan(16, 6).ToArray());
+        Assert.Equal((ushort)0, BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(22)));
+    }
+
+    [Fact]
     public void InvalidDestinationOrSessionTokenDoesNotWritePartialSensitiveData()
     {
         byte[] destination = Enumerable.Repeat((byte)0xA5, GameLoginProof1052.PacketLength).ToArray();
