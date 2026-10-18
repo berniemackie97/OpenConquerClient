@@ -59,6 +59,43 @@ public sealed class LoginAccountExchangeTests
     }
 
     [Fact]
+    public async Task UnknownFailureCodeIsPreservedWithoutAnyEndpoint()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener listener = Listen();
+        Task<int> peer = PeerAsync(listener, Convert.FromHexString(
+            "BFF0C21A41BC57F60B73D1CF39646F3E6D00E32A714C87C66528FBB229345F0E9D5053BA"), token);
+
+        await using LoginAccountSession session = await OpenAsync(listener, token);
+        LoginAccountResponse1055 response = await session.AuthenticateAsync(
+            "testacc"u8.ToArray(), "password1".AsMemory(), "LocalRealm"u8.ToArray(),
+            static () => true, TimeSpan.FromSeconds(5), token);
+
+        Assert.False(response.IsSuccess);
+        Assert.Equal(0xDEADBEEFu, response.AuthenticationKeyOrFailureCode);
+        Assert.Null(response.GameHost);
+        Assert.Equal(0u, response.GamePort);
+        Assert.Equal(0, await peer.WaitAsync(TimeSpan.FromSeconds(5), token));
+    }
+
+    [Theory]
+    [InlineData("BFF0211A51BC57F60B44B1BAB2056F3EB900E32A626FF42466CAF8503A345F0E9D5053BA")]
+    [InlineData("BFF0C21A51BC57F6D5980B2239646F3EB900E32A626FF42466CAF8503A345F0E9D5053BA")]
+    public async Task UnexpectedTypeOrMalformedSuccessEndpointAbortsSession(string wire)
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener listener = Listen();
+        Task<int> peer = PeerAsync(listener, Convert.FromHexString(wire), token);
+
+        await using LoginAccountSession session = await OpenAsync(listener, token);
+        await Assert.ThrowsAsync<InvalidDataException>(() => session.AuthenticateAsync(
+            "testacc"u8.ToArray(), "password1".AsMemory(), "LocalRealm"u8.ToArray(),
+            static () => true, TimeSpan.FromSeconds(5), token));
+
+        Assert.Equal(0, await peer.WaitAsync(TimeSpan.FromSeconds(5), token));
+    }
+
+    [Fact]
     public async Task MalformedHeaderFailsClosedBeforeReadingBody()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
