@@ -11,7 +11,7 @@ internal static class GameClientDhResponseEnvelope
     internal const int PrefixLength = 7;
     internal const int MinimumPaddingLength = 10;
     internal const int MaximumPaddingLength = 49;
-    internal const int MaximumPublicKeyHexLength = GameServerChallengeDecoder.PrimeHex.Length;
+    internal const int MaximumPublicKeyHexLength = 128;
 
     internal static int GetFrameLength(int paddingLength, ReadOnlySpan<byte> clientPublicKeyHex)
     {
