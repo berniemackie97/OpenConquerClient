@@ -1,6 +1,8 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 
 namespace OpenConquer.Networking.Authentication;
 
@@ -13,6 +15,7 @@ internal sealed class LoginAccountSession : IAsyncDisposable
     private readonly TcpClient _client;
     private readonly LoginLegacyStreamCipher _cipher = new();
     private int _disposed;
+    private int _authenticationStarted;
 
     private LoginAccountSession(TcpClient client)
     {
@@ -90,6 +93,101 @@ internal sealed class LoginAccountSession : IAsyncDisposable
         }
     }
 
+
+    /// <summary>
+    /// Completes at most one credential exchange after the 1059 seed. Successful responses keep
+    /// this session open for the native post-authentication continuation; failures close it.
+    /// Live credential submission is restricted to IPv4 loopback until the remote-peer trust
+    /// boundary is implemented independently of the native unauthenticated stream cipher.
+    /// </summary>
+    internal async Task<LoginAccountResponse1055> AuthenticateAsync(
+        ReadOnlyMemory<byte> accountName, ReadOnlyMemory<char> password,
+        ReadOnlyMemory<byte> protocolServerName, Func<bool> isAuthorized,
+        TimeSpan responseTimeout, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(isAuthorized);
+        if (responseTimeout <= TimeSpan.Zero || responseTimeout > TimeSpan.FromSeconds(30))
+        {
+            throw new ArgumentOutOfRangeException(nameof(responseTimeout));
+        }
+
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        if (Interlocked.CompareExchange(ref _authenticationStarted, 1, 0) != 0)
+        {
+            throw new InvalidOperationException("The AccountServer session already has an authentication attempt.");
+        }
+
+        byte[] request = new byte[StandardAccountRequest1060.PacketLength];
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            StandardAccountCredentialComposer.Write(request, accountName.Span, password.Span,
+                protocolServerName.Span, Seed);
+
+            // No credential may leave this client for a remote peer over legacy stream obfuscation.
+            if (_client.Client.RemoteEndPoint is not IPEndPoint peer ||
+                !IPAddress.IsLoopback(peer.Address))
+            {
+                throw new InvalidOperationException("Remote AccountServer credentials require authenticated transport.");
+            }
+
+            using CancellationTokenSource deadline =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(responseTimeout);
+
+            // The authority callback is evaluated AFTER composing and immediately before the
+            // first potential write. The UI is not wired to this operation in AUTH-001D.
+            if (!isAuthorized())
+            {
+                throw new InvalidOperationException("The authenticated realm selection changed before credential submission.");
+            }
+
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            _cipher.EncryptOutbound(request);
+            await _client.GetStream().WriteAsync(request, deadline.Token).ConfigureAwait(false);
+
+            byte[] frame = new byte[LoginAccountResponse1055.FrameLength];
+            NetworkStream stream = _client.GetStream();
+            await ReadAndDecryptExactlyAsync(stream,
+                frame.AsMemory(0, LoginDecodedFrameReader.HeaderLength), deadline.Token).ConfigureAwait(false);
+
+            if (BinaryPrimitives.ReadUInt16LittleEndian(frame) != LoginAccountResponse1055.FrameLength ||
+                BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(2)) != LoginAccountResponse1055.PacketType)
+            {
+                throw new InvalidDataException("AccountServer returned an invalid authentication frame header.");
+            }
+
+            await ReadAndDecryptExactlyAsync(stream,
+                frame.AsMemory(LoginDecodedFrameReader.HeaderLength), deadline.Token).ConfigureAwait(false);
+
+            if (!LoginAccountResponse1055.TryRead(frame, out LoginAccountResponse1055 response))
+            {
+                throw new InvalidDataException("AccountServer returned an invalid authentication response.");
+            }
+
+            if (!response.IsSuccess)
+            {
+                await DisposeAsync().ConfigureAwait(false);
+            }
+
+            return response;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            await DisposeAsync().ConfigureAwait(false);
+            throw new TimeoutException("AccountServer authentication exchange timed out.");
+        }
+        catch
+        {
+            await DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(request);
+        }
+    }
+
     public ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
@@ -139,7 +237,7 @@ internal sealed class LoginAccountSession : IAsyncDisposable
             int read = await stream.ReadAsync(remaining, token).ConfigureAwait(false);
             if (read == 0)
             {
-                throw new EndOfStreamException("AccountServer closed during the seed exchange.");
+                throw new EndOfStreamException("AccountServer closed before the expected frame completed.");
             }
 
             _cipher.DecryptInbound(remaining.Span[..read]);
