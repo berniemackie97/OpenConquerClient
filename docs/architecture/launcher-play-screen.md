@@ -10,7 +10,8 @@ and its configuration files `ini/PlayGui.ini` and `ini/Play.dat`.
 `Evidence/nativeflashevidence/work/login-ui-research/bake_launcher_assets.py`. Each image is
 straight-alpha RGBA, Brotli-compressed, and checked against its SHA-256 when loaded. The skin colour
 key `RGB(0, 255, 0)` is transparent. `Main.bmp`'s transparent pixels are exactly the area outside
-`Play/Main.rgn`. The cursor frames are those of `Normal.ani`, identical to the game's own.
+`Play/Main.rgn`. The cursor frames are those of `Normal.ani`, identical to the game's own;
+`CPlayDlg_OnSetCursor` sets it over the whole dialog, buttons included.
 
 ## Layout
 
@@ -65,6 +66,11 @@ A start button verifies the installation again, records the mode, starts the rel
 executable with the display preferences (`--window-size`, `--window-mode`, `--presentation`), and
 closes the launcher. `play.exe` closed the same way after starting AutoPatch. If the installation is
 not usable or the client cannot start, the hint popup shows the reason. Continue retries the same mode.
+A start pressed while the launcher's first installation check is still running waits for that check.
+
+Only a managed installation can start the client. The launcher project run on its own (from an IDE or
+`dotnet run`) has none and reports "Installation incomplete"; run the local managed product instead
+(`docs/development.md`, Local Managed Product).
 
 ## Web panel
 
@@ -74,6 +80,9 @@ page exists), in the platform web view (`Avalonia.Controls.WebView`). Browsing d
 and developer tools are off. Pages on the home page's site stay in the panel. Other HTTPS links open in
 the system browser, and any other scheme is blocked. WebView2 keeps its working files under the launcher
 configuration directory.
+
+The web view is a native view drawn above every other control in the window. It is hidden while the
+hint popup is open, which overlaps it, and shown again when the popup closes.
 
 ## Not reproduced
 

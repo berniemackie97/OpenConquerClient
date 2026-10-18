@@ -48,7 +48,6 @@ internal sealed class PlaySkinButton : Control, ICustomHitTest, IDisposable
         Width = _states[0].Width;
         Height = _states[0].Height;
         Focusable = true;
-        Cursor = null;
     }
 
     /// <summary>Raised when a press is released over the button, or Enter or Space is pressed while it has focus.</summary>

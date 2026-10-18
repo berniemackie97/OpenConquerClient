@@ -26,10 +26,11 @@ internal sealed class PlayScreen : Canvas, IDisposable
     private readonly Image _hint;
     private readonly StackPanel _hintText;
     private readonly TextBlock _version;
+    private readonly Control _webPanel;
 
     public PlayScreen(Control webPanel)
     {
-        ArgumentNullException.ThrowIfNull(webPanel);
+        _webPanel = webPanel ?? throw new ArgumentNullException(nameof(webPanel));
         Width = PlayLayout.Window.Width;
         Height = PlayLayout.Window.Height;
         Styles.Add(CreateTooltipStyle());
@@ -126,6 +127,9 @@ internal sealed class PlayScreen : Canvas, IDisposable
             _hintText.Children.Add(CreateHintLine(line, double.NaN));
         }
 
+        // The web panel is a native view that always draws above the dialog's own controls, so it steps
+        // aside while the hint covers it.
+        _webPanel.IsVisible = false;
         _hint.IsVisible = true;
         _hintText.IsVisible = true;
         foreach (PlayButton button in (ReadOnlySpan<PlayButton>)[PlayButton.Continue, PlayButton.Return])
@@ -157,6 +161,7 @@ internal sealed class PlayScreen : Canvas, IDisposable
         _hintText.IsVisible = false;
         _buttons[PlayButton.Continue].IsVisible = false;
         _buttons[PlayButton.Return].IsVisible = false;
+        _webPanel.IsVisible = true;
     }
 
     public void Dispose()
