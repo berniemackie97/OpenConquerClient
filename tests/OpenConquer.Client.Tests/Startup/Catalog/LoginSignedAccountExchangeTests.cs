@@ -37,7 +37,8 @@ public sealed class LoginSignedAccountExchangeTests
             s_timeouts, clock, token))
         {
             Assert.True(result.IsSuccess);
-            Assert.NotNull(result.Continuation);
+            // A valid 1055 is an intermediate AccountServer success, not world admission.
+            Assert.True(result.IsSuccess);
             Assert.Equal(0u, result.FailureCode);
             Assert.Equal("LoginAccountExchangeResult { IsSuccess = True }", result.ToString());
         }
@@ -60,7 +61,8 @@ public sealed class LoginSignedAccountExchangeTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(20u, result.FailureCode);
-        Assert.Null(result.Continuation);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token));
         Assert.Equal("LoginAccountExchangeResult { IsSuccess = False }", result.ToString());
         Assert.Equal(0, await peer.WaitAsync(TimeSpan.FromSeconds(5), token));
     }
