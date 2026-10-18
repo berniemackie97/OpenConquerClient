@@ -77,7 +77,7 @@ internal static class RealmCatalogDefinition
                         RequireObject(server, "id", "name", "protocolServerName", "accountHost", "accountPort", "iconId");
                         string serverId = Id(server, "id");
                         string name = Name(server, "name", 48);
-                        string protocol = Name(server, "protocolServerName", 64);
+                        string protocol = Name(server, "protocolServerName", 15);
                         string host = Text(server, "accountHost", 253);
                         int port = Integer(server, "accountPort");
                         string icon = Text(server, "iconId", 8);
@@ -85,9 +85,9 @@ internal static class RealmCatalogDefinition
                         {
                             throw new InvalidDataException("Duplicate server ID or protocol name.");
                         }
-                        if (protocol.Any(static c => c > 0x7f) || protocol.Length > 15)
+                        if (protocol.Any(static c => c is not (>= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_' or '(' or ')' or '-')))
                         {
-                            throw new InvalidDataException("The publisher currently supports only NUL-terminable ASCII native protocol names of at most 15 bytes.");
+                            throw new InvalidDataException("Native protocol server names allow only ASCII letters, digits, underscore, parentheses and hyphen.");
                         }
                         if (host != host.Trim() || host.Any(static c => c > 127 || char.IsWhiteSpace(c)) ||
                             Uri.CheckHostName(host) is not (UriHostNameType.Dns or UriHostNameType.IPv4) || port is < 1 or > 65535 || !KnownIcon(icon))

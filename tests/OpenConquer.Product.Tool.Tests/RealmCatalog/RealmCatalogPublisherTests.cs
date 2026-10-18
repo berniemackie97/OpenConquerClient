@@ -61,11 +61,32 @@ public sealed class RealmCatalogPublisherTests
     }
 
     [Theory]
+    [InlineData("A")]
+    [InlineData("ABCDEFGHIJKLMNO")]
+    [InlineData("Fire(World)-01")]
+    public void Publisher_AcceptsNativeProtocolIdentity(string name)
+    {
+        using Fixture fixture = new();
+        File.WriteAllText(fixture.DefinitionPath, Definition.Replace("RealmOne", name, StringComparison.Ordinal));
+        RealmCatalogPublishOptions options = fixture.Options();
+        RealmCatalogPublisher.Create(options, s_now);
+
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(options.OutputPath, "realms.json")));
+        JsonElement region = Assert.Single(document.RootElement.GetProperty("regions").EnumerateArray());
+        JsonElement server = Assert.Single(region.GetProperty("servers").EnumerateArray());
+        Assert.Equal(name, server.GetProperty("protocolServerName").GetString());
+    }
+
+    [Theory]
     [InlineData("g02s13", "g02s14")]
     [InlineData("g02s13", "../../key")]
     [InlineData("login.example.org", "http://bad/")]
     [InlineData("9958", "0")]
     [InlineData("RealmOne", "AProtocolServerNameThatExceedsTheNativeField")]
+    [InlineData("RealmOne", "ABCDEFGHIJKLMNOP")]
+    [InlineData("RealmOne", "Main World")]
+    [InlineData("RealmOne", "Name.With.Dot")]
+    [InlineData("RealmOne", "naïve")]
     [InlineData("\"iconId\":\"g02s13\"", "\"iconId\":\"g02s13\",\"iconId\":\"g02s13\"")]
     [InlineData("\"accountPort\":9958", "\"accountPort\":9958,\"unrecognized\":true")]
     public void Publisher_RejectsUntrustedOrUnsupportedMetadata(string oldValue, string newValue)

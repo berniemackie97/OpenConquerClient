@@ -47,6 +47,27 @@ public sealed class LoginServerCatalogTests
         Assert.Throws<ArgumentException>(() => new LoginServer(id, label, protocolName));
     }
 
+    [Theory]
+    [InlineData("A")]
+    [InlineData("ABCDEFGHIJKLMNO")]
+    [InlineData("Fire(World)-01")]
+    public void Server_AcceptsExactNativeRealmIdentities(string name)
+    {
+        Assert.Equal(name, new LoginServer("realm", "Display", name).ProtocolServerName);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("ABCDEFGHIJKLMNOP")]
+    [InlineData("Main World")]
+    [InlineData("naïve")]
+    [InlineData("Name.With.Dot")]
+    [InlineData("../realm")]
+    public void Server_RejectsUnrepresentableProtocolIdentity(string name)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => new LoginServer("realm", "Display", name));
+    }
+
     [Fact]
     public void Catalog_EnforcesBoundedRegionAndServerCounts()
     {

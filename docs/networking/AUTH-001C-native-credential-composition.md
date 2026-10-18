@@ -61,3 +61,12 @@ account setup, mobile/bound-account variants, or new login UI visuals.
 - Preserve prior RC5 vectors and the zero-copy buffer/parser contract from AUTH-001A/B.
 - Locked restore, format verify, Release build, full tests and content-set verify;
   macOS, Windows, Quality and Dependency Review CI must pass before merge.
+
+## Realm identity boundary review (PR #117)
+
+The signed catalog consumer and publishing tool both enforce the AccountServer's
+`ProtocolServerName` contract: 1–15 ASCII characters from `[A-Za-z0-9_()-]`.
+The packet 1060 field is 16 bytes and is NUL-padded. Protocol identities are not
+truncated, normalized, or substituted. Unicode remains supported for *display*
+labels, which are separate from the protocol identity. Regression tests cover
+publisher acceptance, signed-catalog rejection, and maximum-length names.

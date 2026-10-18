@@ -122,7 +122,7 @@ internal sealed class SignedLoginCatalog
                     }
                     string serverId = LoginCatalogJson.RequiredString(serverElement, "id", 64);
                     string displayName = LoginCatalogJson.RequiredString(serverElement, "name", 48);
-                    string protocolName = LoginCatalogJson.RequiredString(serverElement, "protocolServerName", 64);
+                    string protocolName = LoginCatalogJson.RequiredString(serverElement, "protocolServerName", LoginCatalogText.MaximumProtocolServerNameLength);
                     string accountHost = LoginCatalogJson.RequiredString(serverElement, "accountHost", 253);
                     int accountPort = LoginCatalogJson.RequiredInteger(serverElement, "accountPort");
                     string? iconId = schemaVersion == 2 ? LoginCatalogJson.RequiredString(serverElement, "iconId", 8) : null;

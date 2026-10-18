@@ -82,6 +82,34 @@ public sealed class SignedLoginCatalogTests
         Assert.Throws<InvalidDataException>(() => SignedLoginCatalog.Read(new byte[SignedLoginCatalog.MaximumCatalogBytes + 1], new byte[64], authority, s_now));
     }
 
+    [Theory]
+    [InlineData("ABCDEFGHIJKLMNOP")]
+    [InlineData("Main World")]
+    [InlineData("naïve")]
+    [InlineData("Name.With.Dot")]
+    [InlineData("../realm")]
+    public void SignedCatalogRejectsAuthenticatedButUnrepresentableProtocolIdentity(string name)
+    {
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        string json = Encoding.UTF8.GetString(ValidPayload());
+        string changed = json.Replace("NativeRealm1", name, StringComparison.Ordinal);
+        Assert.NotEqual(json, changed);
+        byte[] payload = Encoding.UTF8.GetBytes(changed);
+
+        Assert.Throws<InvalidDataException>(() =>
+            SignedLoginCatalog.Read(payload, Sign(signer, payload), Authority(signer), s_now));
+    }
+
+    [Fact]
+    public void SignedCatalogAcceptsFullFifteenByteProtocolIdentity()
+    {
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        string json = Encoding.UTF8.GetString(ValidPayload());
+        byte[] payload = Encoding.UTF8.GetBytes(json.Replace("NativeRealm1", "ABCDEFGHIJKLMNO", StringComparison.Ordinal));
+        SignedLoginCatalog catalog = SignedLoginCatalog.Read(payload, Sign(signer, payload), Authority(signer), s_now);
+        Assert.Equal("ABCDEFGHIJKLMNO", catalog.View.Regions[0].Servers[0].ProtocolServerName);
+    }
+
     [Fact]
     public void Authority_RequiresP256AndHttpsLocations()
     {
