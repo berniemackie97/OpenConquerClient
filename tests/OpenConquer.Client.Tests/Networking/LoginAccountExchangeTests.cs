@@ -79,16 +79,16 @@ public sealed class LoginAccountExchangeTests
     }
 
     [Theory]
-    [InlineData("BFF0211A51BC57F60B44B1BAB2056F3EB900E32A626FF42466CAF8503A345F0E9D5053BA")]
-    [InlineData("BFF0C21A51BC57F6D5980B2239646F3EB900E32A626FF42466CAF8503A345F0E9D5053BA")]
-    public async Task UnexpectedTypeOrMalformedSuccessEndpointAbortsSession(string wire)
+    [InlineData("BFF0211A51BC57F60B44B1BAB2056F3EB900E32A626FF42466CAF8503A345F0E9D5053BA", true)]
+    [InlineData("BFF0C21A51BC57F6D5980B2239646F3EB900E32A626FF42466CAF8503A345F0E9D5053BA", false)]
+    public async Task UnexpectedTypeOrMalformedSuccessEndpointAbortsSession(string wire, bool invalidPacketType)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener listener = Listen();
         byte[] response = Convert.FromHexString(wire);
         // An unexpected packet type is rejected from its four-byte header. Do not
         // race a terminal socket close by sending a body the parser must never read.
-        if (response[2] == 0x21)
+        if (invalidPacketType)
         {
             response = response[..4];
         }
