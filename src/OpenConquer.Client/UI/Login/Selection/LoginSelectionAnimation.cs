@@ -15,6 +15,8 @@ internal sealed class LoginSelectionAnimation
     private const int RegionRolloutFrameCount = 3;
     // defaultR sprite 61 fades its flame in over five frames, then stops.
     private const int RegionFlameFadeFrames = 5;
+    // Sprite 179: rollover plays frames 2-5, fading sprite 40 in, and stops on frame 6, where sprite 83 starts.
+    private const int ServerHighlightFadeFrames = 4;
 
     private readonly LoginStageLayout _layout;
     private LoginRegion? _selectedRegion;
@@ -26,6 +28,7 @@ internal sealed class LoginSelectionAnimation
     private int _pointerY;
     private int _regionRolloverFrame;
     private int _rollingOutSlot = -1;
+    private int _serverRolloverFrames;
 
     public LoginSelectionAnimation(LoginStageLayout layout) => _layout = layout ?? throw new ArgumentNullException(nameof(layout));
 
@@ -57,11 +60,11 @@ internal sealed class LoginSelectionAnimation
         get; private set;
     }
 
-    /// <summary>Frame of <see cref="LoginServerArtwork.Layer.Hover"/> for <see cref="HoveredServerSlot"/>.</summary>
-    public int ServerHoverFrame
-    {
-        get; private set;
-    }
+    /// <summary>Sprite 179 frames 2-6 as 0-4: how far <see cref="LoginServerArtwork.Layer.Highlight"/> has faded in.</summary>
+    public int ServerHighlightStep => Math.Min(_serverRolloverFrames, ServerHighlightFadeFrames);
+
+    /// <summary>Frame of <see cref="LoginServerArtwork.Layer.Hover"/> for <see cref="HoveredServerSlot"/>, or -1 before frame 6.</summary>
+    public int ServerHoverFrame => _serverRolloverFrames < ServerHighlightFadeFrames ? -1 : _serverRolloverFrames - ServerHighlightFadeFrames;
 
     public void PointerMoved(bool mapped, int x, int y)
     {
@@ -92,7 +95,12 @@ internal sealed class LoginSelectionAnimation
         RegionFlameFrame = (RegionFlameFrame + frames) % LoginRegionArtwork.FlameFrameCount;
         RegionFlameFadeFrame = Math.Min(RegionFlameFadeFrame + frames, RegionFlameFadeFrames);
         ServerSelectedFrame = AdvanceSelectedServer(ServerSelectedFrame, frames);
-        ServerHoverFrame = Math.Min(ServerHoverFrame + frames, LoginServerArtwork.HoverFrameCount - 1);
+        // Sprite 83 has no stop action: it loops while its tile holds frame 6.
+        _serverRolloverFrames += frames;
+        if (_serverRolloverFrames >= ServerHighlightFadeFrames)
+        {
+            _serverRolloverFrames = ServerHighlightFadeFrames + (_serverRolloverFrames - ServerHighlightFadeFrames) % LoginServerArtwork.HoverFrameCount;
+        }
 
         if (_rollingOutSlot >= 0)
         {
@@ -161,7 +169,7 @@ internal sealed class LoginSelectionAnimation
         if (!ReferenceEquals(server, _hoveredServer))
         {
             _hoveredServer = server;
-            ServerHoverFrame = 0;
+            _serverRolloverFrames = 0;
         }
 
         HoveredServerSlot = server is null ? -1 : slot;
