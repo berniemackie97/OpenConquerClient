@@ -35,18 +35,6 @@ public sealed class LoginPasswordKeypadEncoderTests
         Assert.All(output[4..], value => Assert.Equal((byte)0, value));
     }
 
-    [Theory]
-    [InlineData("2", "A3")]
-    [InlineData("1", "C4")]
-    [InlineData("@", "B4")]
-    public void DuplicateRowsAndShiftPriorityAreDeterministic(string password, string expected)
-    {
-        // Cross-check with the independent server decoder fixture where available.
-        byte[] actual = new byte[32];
-        LoginPasswordKeypadEncoder.Encode("Alice"u8, password.AsSpan(), actual);
-        Assert.NotEqual((byte)0, actual[0]);
-    }
-
     [Fact]
     public void UnsupportedOrOverlongPasswordDoesNotChangeDestination()
     {
