@@ -226,5 +226,8 @@ internal sealed class GameServerChallenge
 
     internal ReadOnlySpan<byte> ClientInboundIv => _clientInboundIv;
     internal ReadOnlySpan<byte> ClientOutboundIv => _clientOutboundIv;
-    internal string ServerPublicKeyHex { get; }
+    internal string ServerPublicKeyHex
+    {
+        get;
+    }
 }
