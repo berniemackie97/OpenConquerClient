@@ -55,7 +55,10 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         using CancellationTokenSource operation =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, authorityLifetime);
 
-        TcpClient client = new(AddressFamily.InterNetwork) { NoDelay = true };
+        TcpClient client = new(AddressFamily.InterNetwork)
+        {
+            NoDelay = true
+        };
         GameSessionCipher? sessionCipher = null;
         try
         {

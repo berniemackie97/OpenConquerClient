@@ -3,8 +3,10 @@ namespace OpenConquer.Networking.Game.Handshake;
 /// <summary>Independent ceilings for connecting and completing one native DH exchange.</summary>
 internal readonly record struct GameServerHandshakeTimeouts(TimeSpan Connect, TimeSpan Exchange)
 {
-    internal static GameServerHandshakeTimeouts Default { get; } =
-        new(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5));
+    internal static GameServerHandshakeTimeouts Default
+    {
+        get;
+    } = new(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5));
 
     internal void Validate()
     {
