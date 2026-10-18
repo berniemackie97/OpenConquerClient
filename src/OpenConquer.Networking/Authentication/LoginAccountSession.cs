@@ -214,11 +214,12 @@ internal sealed class LoginAccountSession : IAsyncDisposable
             throw new InvalidOperationException("The session has no matching successful authentication.");
         }
 
-        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         if (Interlocked.CompareExchange(ref _postAuthenticationStarted, 1, 0) != 0)
         {
             throw new InvalidOperationException("Post-authentication reports have already been attempted.");
         }
+
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
         byte[] macFrame = new byte[LoginAccountMacAddressReport1100.FrameLength];
         byte[] resourceFrame = new byte[LoginAccountResourceVersionReport1052.FrameLength];
