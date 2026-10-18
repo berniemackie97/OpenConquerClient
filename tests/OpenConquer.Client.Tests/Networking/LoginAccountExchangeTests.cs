@@ -85,7 +85,15 @@ public sealed class LoginAccountExchangeTests
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener listener = Listen();
-        Task<int> peer = PeerAsync(listener, Convert.FromHexString(wire), token);
+        byte[] response = Convert.FromHexString(wire);
+        // An unexpected packet type is rejected from its four-byte header. Do not
+        // race a terminal socket close by sending a body the parser must never read.
+        if (response[2] == 0x21)
+        {
+            response = response[..4];
+        }
+
+        Task<int> peer = PeerAsync(listener, response, token);
 
         await using LoginAccountSession session = await OpenAsync(listener, token);
         await Assert.ThrowsAsync<InvalidDataException>(() => session.AuthenticateAsync(
@@ -211,9 +219,16 @@ public sealed class LoginAccountExchangeTests
                 Convert.ToHexString(request.AsSpan(132, 32)));
         }
 
-        for (int offset = 0; offset < response.Length; offset += 3)
+        if (response.Length == LoginDecodedFrameReader.HeaderLength)
         {
-            await stream.WriteAsync(response.AsMemory(offset, Math.Min(3, response.Length - offset)), token);
+            await stream.WriteAsync(response, token);
+        }
+        else
+        {
+            for (int offset = 0; offset < response.Length; offset += 3)
+            {
+                await stream.WriteAsync(response.AsMemory(offset, Math.Min(3, response.Length - offset)), token);
+            }
         }
 
         return await ObserveCloseAsync(stream, token);
