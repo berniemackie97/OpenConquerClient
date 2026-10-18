@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Security.Cryptography;
 
 namespace OpenConquer.Networking.Authentication;
 
@@ -38,14 +39,24 @@ internal static class GameLoginProof1052
                 nameof(hardwareAddress));
         }
 
-        destination.Clear();
-        BinaryPrimitives.WriteUInt16LittleEndian(destination, PacketLength);
-        BinaryPrimitives.WriteUInt16LittleEndian(destination[2..], PacketType);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination[4..], sessionToken);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination[8..], authenticationKey);
-        BinaryPrimitives.WriteUInt16LittleEndian(destination[12..], Mode);
-        BinaryPrimitives.WriteUInt16LittleEndian(destination[14..], localeTag);
-        hardwareAddress.CopyTo(destination[16..]);
-        BinaryPrimitives.WriteInt32LittleEndian(destination[24..], resourceVersion);
+        // Stage caller-owned bytes first: hardwareAddress may overlap destination.
+        Span<byte> hardware = stackalloc byte[HardwareAddressLength];
+        hardwareAddress.CopyTo(hardware);
+        try
+        {
+            destination.Clear();
+            BinaryPrimitives.WriteUInt16LittleEndian(destination, PacketLength);
+            BinaryPrimitives.WriteUInt16LittleEndian(destination[2..], PacketType);
+            BinaryPrimitives.WriteUInt32LittleEndian(destination[4..], sessionToken);
+            BinaryPrimitives.WriteUInt32LittleEndian(destination[8..], authenticationKey);
+            BinaryPrimitives.WriteUInt16LittleEndian(destination[12..], Mode);
+            BinaryPrimitives.WriteUInt16LittleEndian(destination[14..], localeTag);
+            hardware.CopyTo(destination[16..]);
+            BinaryPrimitives.WriteInt32LittleEndian(destination[24..], resourceVersion);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(hardware);
+        }
     }
 }
