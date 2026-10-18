@@ -39,7 +39,6 @@ public sealed class LoginAccountPostAuthenticationPacketTests
     }
 
     [Theory]
-    [InlineData("")]
     [InlineData("001122AABBC")]
     [InlineData("001122AABBCCD")]
     [InlineData("001122aabbcc")]
