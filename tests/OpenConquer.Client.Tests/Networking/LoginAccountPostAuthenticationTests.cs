@@ -35,7 +35,7 @@ public sealed class LoginAccountPostAuthenticationTests
             TimeSpan.FromSeconds(5), token);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            result.CompletePostAuthenticationAsync([], 5517, TimeSpan.FromSeconds(5), token));
+            result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token));
         await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
@@ -51,7 +51,7 @@ public sealed class LoginAccountPostAuthenticationTests
         await using LoginAccountExchangeResult result =
             LoginAccountExchangeResult.Success(SuccessResponse(), session);
 
-        await result.CompletePostAuthenticationAsync([], 5517, TimeSpan.FromSeconds(5), token);
+        await result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token);
         await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
@@ -86,7 +86,7 @@ public sealed class LoginAccountPostAuthenticationTests
         canceled.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            result.CompletePostAuthenticationAsync([], 5517, TimeSpan.FromSeconds(5), canceled.Token));
+            result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), canceled.Token));
         await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
@@ -102,7 +102,7 @@ public sealed class LoginAccountPostAuthenticationTests
         await result.DisposeAsync();
 
         await Assert.ThrowsAsync<ObjectDisposedException>(() =>
-            result.CompletePostAuthenticationAsync([], 5517, TimeSpan.FromSeconds(5), token));
+            result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token));
         await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
@@ -118,8 +118,8 @@ public sealed class LoginAccountPostAuthenticationTests
             LoginAccountExchangeResult.Success(SuccessResponse(), session);
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            result.CompletePostAuthenticationAsync([], 5517, TimeSpan.Zero, token));
-        await result.CompletePostAuthenticationAsync([], 5517, TimeSpan.FromSeconds(5), token);
+            result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.Zero, token));
+        await result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token);
         await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 

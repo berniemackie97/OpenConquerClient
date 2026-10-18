@@ -62,7 +62,7 @@ public sealed class LoginSignedAccountExchangeTests
         Assert.False(result.IsSuccess);
         Assert.Equal(20u, result.FailureCode);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            result.CompletePostAuthenticationAsync([], 5517, TimeSpan.FromSeconds(5), token));
+            result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token));
         Assert.Equal("LoginAccountExchangeResult { IsSuccess = False }", result.ToString());
         Assert.Equal(0, await peer.WaitAsync(TimeSpan.FromSeconds(5), token));
     }
