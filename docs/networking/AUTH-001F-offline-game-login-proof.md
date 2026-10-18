@@ -32,15 +32,19 @@ startup variant and is excluded here.
 
 `GameLoginProof1052` is a pure serializer with exact-length and hardware-byte
 validation before mutation. An empty hardware span produces six zero bytes.
-Locale tag and resource version are explicit caller-owned input values; no
-machine identifiers, localization data or file content are discovered by this
-codec. Zero is a valid authentication-key byte pattern; no undocumented
+Locale tag and resource version are explicit caller-owned input values to the
+pure serializer; no machine identifiers, localization data or file content are
+discovered by this codec. The six-byte hardware staging area is zero-initialized
+before copying, preserving the empty-hardware fallback and overlapping spans. Zero is a valid authentication-key byte pattern; no undocumented
 nonzero-key requirement is introduced.
 
 The existing `LoginAccountExchangeResult` owns the AccountServer success outcome.
 It now records report completion only **after** its existing native 1100/1052
 continuation finishes successfully, including closing the AccountServer
-socket. `WriteGameLoginProof` can then compose the next proof **exactly once**.
+socket. The result retains the version successfully reported to the AccountServer
+and automatically reuses it in the GameServer proof; callers cannot supply an
+inconsistent second version. `WriteGameLoginProof` can then compose the next
+proof **exactly once**.
 It fails before reports, after disposal, on an account failure, and on
 repeated invocation. A bad output buffer does not consume the proof issuance.
 The narrow lifetime lock prevents a pending report completion from authorizing

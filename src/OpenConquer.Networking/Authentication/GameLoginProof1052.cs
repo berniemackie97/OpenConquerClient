@@ -41,6 +41,7 @@ internal static class GameLoginProof1052
 
         // Stage caller-owned bytes first: hardwareAddress may overlap destination.
         Span<byte> hardware = stackalloc byte[HardwareAddressLength];
+        hardware.Clear();
         hardwareAddress.CopyTo(hardware);
         try
         {

@@ -10,6 +10,7 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
     private readonly LoginAccountSession? _session;
     private readonly Lock _lifetimeGate = new();
     private bool _postAuthenticationCompleted;
+    private int _reportedResourceVersion;
     private bool _gameProofWritten;
     private bool _disposed;
 
@@ -52,6 +53,7 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
         {
             // Disposal can race the outgoing reports; never grant a proof after disposal.
             ObjectDisposedException.ThrowIf(_disposed, this);
+            _reportedResourceVersion = resourceVersion;
             _postAuthenticationCompleted = true;
         }
     }
@@ -59,10 +61,11 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
     /// <summary>
     /// Writes one standard post-DH GameServer login proof after successful AccountServer
     /// reports. This does not open a GameServer connection or authorize world entry.
+    /// The resource version is taken from the completed AccountServer 1052 report.
     /// The caller owns and must clear the resulting sensitive packet.
     /// </summary>
     internal void WriteGameLoginProof(Span<byte> destination, ushort localeTag,
-        ReadOnlySpan<byte> hardwareAddress, int resourceVersion)
+        ReadOnlySpan<byte> hardwareAddress)
     {
         lock (_lifetimeGate)
         {
@@ -78,7 +81,7 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
             }
 
             GameLoginProof1052.Write(destination, Response.SessionToken,
-                Response.AuthenticationKeyOrFailureCode, localeTag, hardwareAddress, resourceVersion);
+                Response.AuthenticationKeyOrFailureCode, localeTag, hardwareAddress, _reportedResourceVersion);
             _gameProofWritten = true;
         }
     }

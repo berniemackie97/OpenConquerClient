@@ -34,7 +34,7 @@ public sealed class LoginAccountPostAuthenticationTests
         byte[] hardware = [0x00, 0x11, 0x22, 0xAA, 0xBB, 0xCC];
 
         Assert.Throws<InvalidOperationException>(() =>
-            result.WriteGameLoginProof(proof, 0x6E45, hardware, 5517));
+            result.WriteGameLoginProof(proof, 0x6E45, hardware));
         Assert.All(proof, value => Assert.Equal((byte)0xA5, value));
 
         await result.CompletePostAuthenticationAsync("001122AABBCC"u8.ToArray(), 5517,
@@ -43,19 +43,19 @@ public sealed class LoginAccountPostAuthenticationTests
         // Proof composition is enabled only after both reports have completed and
         // the original AccountServer socket is closed.
         Assert.Throws<ArgumentException>(() =>
-            result.WriteGameLoginProof(new byte[27], 0x6E45, hardware, 5517));
-        result.WriteGameLoginProof(proof, 0x6E45, hardware, 5517);
+            result.WriteGameLoginProof(new byte[27], 0x6E45, hardware));
+        result.WriteGameLoginProof(proof, 0x6E45, hardware);
         Assert.Equal("1C001C0444332211EFCDAB897C00456E001122AABBCC00008D150000",
             Convert.ToHexString(proof));
         Assert.Throws<InvalidOperationException>(() =>
-            result.WriteGameLoginProof(new byte[28], 0x6E45, hardware, 5517));
+            result.WriteGameLoginProof(new byte[28], 0x6E45, hardware));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token));
         await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await result.DisposeAsync();
         Assert.Throws<ObjectDisposedException>(() =>
-            result.WriteGameLoginProof(new byte[28], 0x6E45, hardware, 5517));
+            result.WriteGameLoginProof(new byte[28], 0x6E45, hardware));
     }
 
     [Fact]
@@ -71,6 +71,11 @@ public sealed class LoginAccountPostAuthenticationTests
             LoginAccountExchangeResult.Success(SuccessResponse(), session);
 
         await result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token);
+
+        byte[] proof = new byte[GameLoginProof1052.PacketLength];
+        result.WriteGameLoginProof(proof, 0, ReadOnlySpan<byte>.Empty);
+        Assert.Equal(5517, System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(proof.AsSpan(24)));
+        Assert.All(proof.AsSpan(16, 8).ToArray(), value => Assert.Equal((byte)0, value));
         await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 

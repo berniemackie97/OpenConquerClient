@@ -31,6 +31,18 @@ public sealed class GameLoginProof1052Tests
     }
 
     [Fact]
+    public void MissingHardwareAddressHasDeterministicZeroBytes()
+    {
+        byte[] packet = Enumerable.Repeat((byte)0xA5, GameLoginProof1052.PacketLength).ToArray();
+
+        GameLoginProof1052.Write(packet, 0x10203040, 0x50607080, 0x6E45,
+            ReadOnlySpan<byte>.Empty, 5517);
+
+        Assert.Equal("1C001C0440302010807060507C00456E00000000000000008D150000",
+            Convert.ToHexString(packet));
+    }
+
+    [Fact]
     public void HardwareInputMayAliasDestinationWithoutBeingCleared()
     {
         byte[] packet = new byte[GameLoginProof1052.PacketLength];
