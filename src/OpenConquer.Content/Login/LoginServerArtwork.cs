@@ -11,6 +11,8 @@ public static class LoginServerArtwork
         Unopened,
         /// <summary>defaultS.swf, shown for a server without a picture.</summary>
         Default,
+        /// <summary>Sprite 40, bounds (-17, -19.5), placed at (2.1, 1.75) and faded in on rollover.</summary>
+        Highlight,
         /// <summary>Sprite 83, placed at (-22.65, -9) on rollover.</summary>
         Hover,
         /// <summary>Sprite 178, placed at (-26, -29) while selected.</summary>
@@ -29,6 +31,7 @@ public static class LoginServerArtwork
     [
         (new("Login/Server/Unopened.rgba.br", 170, 90, "64511F3C4B1A4B072F7F09B243C88A22A70F19CB8441A586D4B512871DE7F9DE"), LoginArtworkSheet.OneFrame(170, 90)),
         (new("Login/Server/Default.rgba.br", 170, 90, "37A300257303589F9E1052D73805708807A9F1CCD466A8D927D4F491F3976C3B"), LoginArtworkSheet.OneFrame(170, 90)),
+        (new("Login/Server/Highlight.rgba.br", 200, 100, "03184EB35B171363DDCE0438FC644458121449945DD7C898A05070CFA0248469"), LoginArtworkSheet.OneFrame(200, 100)),
         (new("Login/Server/Hover.rgba.br", 1600, 600, "C8695D2B639DA9B12B49EC0B1786AF58E62FD392C2B9FEA9489E9605519EE4A3"),
             new(1600, 600, 200, 120, Columns: 8, HoverFrameCount)),
         (new("Login/Server/Selected.rgba.br", 1760, 720, "C6DDCC3CE1ED6A121492763E369E534EBCBA5BD1A40EF902F5C2228A0C42938C"),

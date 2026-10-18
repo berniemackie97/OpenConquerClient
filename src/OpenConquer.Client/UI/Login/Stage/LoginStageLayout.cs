@@ -51,6 +51,7 @@ internal sealed class LoginStageLayout
     private readonly LoginRect[] _regionHitAreas = new LoginRect[RegionColumnCount * RegionRowCount];
     private readonly LoginPoint[] _serverOrigins = new LoginPoint[ServerColumnCount * ServerRowCount];
     private readonly LoginRect[] _serverHitAreas = new LoginRect[ServerColumnCount * ServerRowCount];
+    private readonly LoginRect[] _serverLights = new LoginRect[ServerColumnCount * ServerRowCount];
     private readonly LoginRect[] _serverLabels = new LoginRect[ServerColumnCount * ServerRowCount];
 
     private LoginStageLayout(LogicalRenderSize size)
@@ -101,6 +102,8 @@ internal sealed class LoginStageLayout
             _serverOrigins[slot] = Point(originX, originY);
             // Sprite 179 hitMC: sprite 37 (-55.2,-199.6)-(60.8,-106.6) under [1.29311, 0, 0, 0.89247, 77.75, 179.65].
             _serverHitAreas[slot] = PlaceExact(originX + 6.3705, originY + 1.5149, 149.9903, 82.9992);
+            // Sprite 179 light: sprite 34, bounds (0,0)-(18,18), at (9.3, 62.25).
+            _serverLights[slot] = PlaceExact(originX + 9.3, originY + 62.25, 18, 18);
             // Sprite 179 nameTxt: edit text 35 at (30.5, 64.8), x-scale 1.0043335, inside its 2-pixel gutter.
             _serverLabels[slot] = PlaceExact(originX + 30.5, originY + 64.8, 119.05 * 1.00433349609375, 15.6);
         }
@@ -172,6 +175,8 @@ internal sealed class LoginStageLayout
     public ReadOnlySpan<LoginPoint> ServerOrigins => _serverOrigins;
 
     public ReadOnlySpan<LoginRect> ServerHitAreas => _serverHitAreas;
+
+    public ReadOnlySpan<LoginRect> ServerLights => _serverLights;
 
     public ReadOnlySpan<LoginRect> ServerLabels => _serverLabels;
 

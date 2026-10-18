@@ -50,6 +50,17 @@ public sealed class LoginStageLayoutTests
     }
 
     [Fact]
+    public void ReferenceStage_PlacesEachServerLightAtItsSprite179Offset()
+    {
+        LoginStageLayout layout = LoginStageLayout.Create(new LogicalRenderSize(1024, 768));
+
+        Assert.Equal(12, layout.ServerLights.Length);
+        Assert.Equal(new LoginRect(435, 256, 18, 18), layout.ServerLights[0]);
+        Assert.Equal(new LoginRect(772, 257, 18, 18), layout.ServerLights[2]);
+        Assert.Equal(new LoginRect(435, 348, 18, 18), layout.ServerLights[3]);
+    }
+
+    [Fact]
     public void CompactStage_ScalesEveryLayerAndHolder()
     {
         LoginStageLayout layout = LoginStageLayout.Create(new LogicalRenderSize(800, 600));
@@ -62,17 +73,19 @@ public sealed class LoginStageLayoutTests
         Assert.Equal(new LoginRect(46, 137, 118, 41), layout.RegionTiles[0]);
         Assert.Equal(new LoginPoint(333, 151), layout.ServerOrigins[0]);
         Assert.Equal(new LoginRect(338, 153, 117, 64), layout.ServerHitAreas[0]);
+        Assert.Equal(new LoginRect(340, 200, 14, 14), layout.ServerLights[0]);
     }
 
     [Theory]
     [InlineData(1024, 768)]
     [InlineData(800, 600)]
-    public void HitAreas_AreDisjointAndInsideTheStage(int width, int height)
+    public void HitAreasAndLights_AreDisjointAndInsideTheStage(int width, int height)
     {
         LoginStageLayout layout = LoginStageLayout.Create(new LogicalRenderSize(width, height));
 
         AssertDisjointAndInside(layout.RegionHitAreas, layout);
         AssertDisjointAndInside(layout.ServerHitAreas, layout);
+        AssertDisjointAndInside(layout.ServerLights, layout);
     }
 
     [Fact]
