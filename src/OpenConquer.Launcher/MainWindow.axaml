@@ -2,50 +2,11 @@
     x:Class="OpenConquer.Launcher.MainWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="OpenConquer Launcher"
-    Width="760"
-    Height="460"
+    Width="800"
+    Height="600"
     CanResize="False"
-    WindowStartupLocation="CenterScreen">
-
-  <Grid Margin="32">
-    <StackPanel
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center"
-        MaxWidth="620"
-        Spacing="16">
-      <TextBlock
-          x:Name="ProductName"
-          HorizontalAlignment="Center"
-          FontSize="16"
-          FontWeight="SemiBold" />
-      <TextBlock
-          x:Name="InstallationHeading"
-          HorizontalAlignment="Center"
-          FontSize="20"
-          FontWeight="SemiBold" />
-      <TextBlock
-          x:Name="StatusTitle"
-          AutomationProperties.LiveSetting="Polite"
-          HorizontalAlignment="Center"
-          FontSize="32"
-          FontWeight="SemiBold"
-          TextWrapping="Wrap" />
-      <TextBlock
-          x:Name="StatusDetail"
-          AutomationProperties.LiveSetting="Polite"
-          HorizontalAlignment="Center"
-          TextAlignment="Center"
-          TextWrapping="Wrap" />
-      <StackPanel
-          Orientation="Horizontal"
-          HorizontalAlignment="Center"
-          Spacing="12">
-        <Button x:Name="RetryInstallationButton" Click="OnRetryInstallation" />
-        <Button x:Name="SettingsButton" Content="Display settings" Click="OnDisplaySettings" />
-        <Button x:Name="CloseButton" Click="OnCloseRequested" />
-      </StackPanel>
-    </StackPanel>
-  </Grid>
-
-</Window>
+    WindowDecorations="None"
+    Background="Transparent"
+    TransparencyLevelHint="Transparent"
+    ShowInTaskbar="True"
+    WindowStartupLocation="Manual" />

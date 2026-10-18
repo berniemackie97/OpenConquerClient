@@ -10,6 +10,15 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- The centre panel page (play.exe showed ini/Play.dat [Web] web1). A placeholder until the product site exists. -->
+    <OpenConquerLauncherHomePage Condition="'$(OpenConquerLauncherHomePage)' == ''">https://www.google.com/</OpenConquerLauncherHomePage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="OpenConquerLauncherHomePage" Value="$(OpenConquerLauncherHomePage)" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="OpenConquer.Launcher.Tests" />
     <InternalsVisibleTo Include="OpenConquer.Launcher.InstanceProbe" />
@@ -20,7 +29,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Resource names mirror the asset path, with forward slashes on every host. -->
+    <EmbeddedResource Include="Assets/Play/**/*"
+                      WithCulture="false"
+                      LogicalName="Assets/Play/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Controls.WebView" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Serilog" />

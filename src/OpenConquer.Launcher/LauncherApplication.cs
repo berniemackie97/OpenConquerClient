@@ -59,6 +59,33 @@ internal sealed class LauncherApplication : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Verifies the installation again immediately before the client starts, so a launch never relies on a check
+    /// made when the launcher opened. Simultaneous requests share the active check.
+    /// </summary>
+    public Task VerifyInstallationAsync()
+    {
+        lock (_gate)
+        {
+            if (_shutdown is not null)
+            {
+                throw new InvalidOperationException("Launcher shutdown has started.");
+            }
+
+            if (_evaluation is { IsCompleted: false })
+            {
+                return _evaluation;
+            }
+
+            if (_state is not (LauncherState.InstallationResolved or LauncherState.InstallationUnavailable))
+            {
+                throw new InvalidOperationException("Only an evaluated installation can be verified again.");
+            }
+
+            return BeginEvaluationLocked();
+        }
+    }
+
     public Task StopAsync()
     {
         lock (_gate)

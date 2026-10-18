@@ -9,6 +9,7 @@ Reference:
 - [`compatibility/native-text.md`](compatibility/native-text.md)
 - [`content/retail-5517-content-plan.md`](content/retail-5517-content-plan.md)
 - [`architecture/launcher-managed-installation.md`](architecture/launcher-managed-installation.md)
+- [`architecture/launcher-play-screen.md`](architecture/launcher-play-screen.md)
 
 ## Quality Gate
 
