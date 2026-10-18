@@ -6,7 +6,8 @@ C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for Window
 
 **Early development. The launcher is not release-ready.**
 
-<img width="1281" height="754" alt="image" src="https://github.com/user-attachments/assets/b474182d-e9a0-4d96-9d25-28669ec90a7b" />
+<img width="808" height="609" alt="LauncherImage" src="https://github.com/user-attachments/assets/7c57dcaa-85a9-4e0c-9a9a-299914b9bf1f" />
+<img width="1281" height="754" alt="ClientImage" src="https://github.com/user-attachments/assets/b474182d-e9a0-4d96-9d25-28669ec90a7b" />
 
 
 ## Current Capabilities
