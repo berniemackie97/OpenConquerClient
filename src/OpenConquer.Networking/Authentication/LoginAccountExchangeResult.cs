@@ -24,8 +24,21 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
         get;
     }
 
-    // Retained only for the next native account-socket report slice. Not GameServer transport.
-    internal LoginAccountSession? Continuation => _session;
+    /// <summary>
+    /// Completes the native 1100/1052 AccountServer continuation and closes its socket.
+    /// This is NOT the GameServer 1052 login proof and does not connect to the world.
+    /// </summary>
+    internal Task CompletePostAuthenticationAsync(ReadOnlyMemory<byte> macAddress,
+        int resourceVersion, TimeSpan phaseTimeout, CancellationToken cancellationToken = default)
+    {
+        if (_session is null)
+        {
+            throw new InvalidOperationException("A failed AccountServer exchange has no continuation.");
+        }
+
+        return _session.SendPostAuthenticationReportsAsync(
+            Response.SessionToken, macAddress, resourceVersion, phaseTimeout, cancellationToken);
+    }
 
     internal static LoginAccountExchangeResult Success(LoginAccountResponse1055 response, LoginAccountSession session)
     {

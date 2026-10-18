@@ -16,6 +16,8 @@ internal sealed class LoginAccountSession : IAsyncDisposable
     private readonly LoginLegacyStreamCipher _cipher = new();
     private int _disposed;
     private int _authenticationStarted;
+    private int _postAuthenticationStarted;
+    private uint _successfulSessionToken;
 
     private LoginAccountSession(TcpClient client)
     {
@@ -169,6 +171,10 @@ internal sealed class LoginAccountSession : IAsyncDisposable
             {
                 await DisposeAsync().ConfigureAwait(false);
             }
+            else
+            {
+                _successfulSessionToken = response.SessionToken;
+            }
 
             return response;
         }
@@ -185,6 +191,65 @@ internal sealed class LoginAccountSession : IAsyncDisposable
         finally
         {
             CryptographicOperations.ZeroMemory(request);
+        }
+    }
+
+
+    /// <summary>
+    /// Single-use native continuation after a successful 1055. Sends 1100 then the AccountServer
+    /// form of 1052 on the SAME outbound cipher stream and always closes the account socket.
+    /// A successful socket write does not prove the remote peer accepted these telemetry reports.
+    /// </summary>
+    internal async Task SendPostAuthenticationReportsAsync(
+        uint sessionToken, ReadOnlyMemory<byte> macAddress, int resourceVersion,
+        TimeSpan phaseTimeout, CancellationToken cancellationToken = default)
+    {
+        if (phaseTimeout <= TimeSpan.Zero || phaseTimeout > TimeSpan.FromSeconds(30))
+        {
+            throw new ArgumentOutOfRangeException(nameof(phaseTimeout));
+        }
+
+        if (sessionToken == 0 || sessionToken != _successfulSessionToken)
+        {
+            throw new InvalidOperationException("The session has no matching successful authentication.");
+        }
+
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        if (Interlocked.CompareExchange(ref _postAuthenticationStarted, 1, 0) != 0)
+        {
+            throw new InvalidOperationException("Post-authentication reports have already been attempted.");
+        }
+
+        byte[] macFrame = new byte[LoginAccountMacAddressReport1100.FrameLength];
+        byte[] resourceFrame = new byte[LoginAccountResourceVersionReport1052.FrameLength];
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // Validate and construct BOTH reports before any bytes are sent.
+            LoginAccountMacAddressReport1100.Write(macFrame, sessionToken, macAddress.Span);
+            LoginAccountResourceVersionReport1052.Write(resourceFrame, sessionToken, resourceVersion);
+
+            using CancellationTokenSource deadline =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(phaseTimeout);
+
+            NetworkStream stream = _client.GetStream();
+            _cipher.EncryptOutbound(macFrame);
+            await stream.WriteAsync(macFrame, deadline.Token).ConfigureAwait(false);
+
+            _cipher.EncryptOutbound(resourceFrame);
+            await stream.WriteAsync(resourceFrame, deadline.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException("AccountServer post-authentication reports timed out.");
+        }
+        finally
+        {
+            // The native account socket is not reused for world login and is never retried.
+            await DisposeAsync().ConfigureAwait(false);
+            CryptographicOperations.ZeroMemory(macFrame);
+            CryptographicOperations.ZeroMemory(resourceFrame);
         }
     }
 
