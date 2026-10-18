@@ -17,10 +17,7 @@ internal static class LoginAccountResourceVersionReport1052
             throw new ArgumentException("The native AccountServer 1052 frame must be exactly 28 bytes.", nameof(destination));
         }
 
-        if (sessionToken == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(sessionToken));
-        }
+        ArgumentOutOfRangeException.ThrowIfZero(sessionToken);
 
         destination.Clear();
         BinaryPrimitives.WriteUInt16LittleEndian(destination, FrameLength);

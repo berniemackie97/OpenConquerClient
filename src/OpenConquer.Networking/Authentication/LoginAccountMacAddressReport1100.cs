@@ -19,10 +19,7 @@ internal static class LoginAccountMacAddressReport1100
             throw new ArgumentException("The native 1100 frame must be exactly 52 bytes.", nameof(destination));
         }
 
-        if (sessionToken == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(sessionToken));
-        }
+        ArgumentOutOfRangeException.ThrowIfZero(sessionToken);
 
         if (macAddress.Length is not (0 or 12))
         {
