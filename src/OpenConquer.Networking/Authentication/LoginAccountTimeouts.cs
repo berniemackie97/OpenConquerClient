@@ -1,6 +1,6 @@
 namespace OpenConquer.Networking.Authentication;
 
-/// <summary>Independent bounded phases for AccountServer connection, seed and authentication exchange.</summary>
+/// <summary>Separate time limits for the AccountServer connect, seed and response steps.</summary>
 internal readonly record struct LoginAccountTimeouts(TimeSpan Connect, TimeSpan Seed)
 {
     internal static LoginAccountTimeouts Default { get; } = new(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5));

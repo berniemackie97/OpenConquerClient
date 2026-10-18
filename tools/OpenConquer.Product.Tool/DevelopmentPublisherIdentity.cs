@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 
 namespace OpenConquer.Product.Tool;
 
-/// <summary>Persistent development-only publisher used to authenticate locally composed products.</summary>
+/// <summary>A development-only publisher key, kept on disk, used to sign products built locally.</summary>
 internal sealed class DevelopmentPublisherIdentity : IDisposable
 {
     private const int MaximumPrivateKeyLength = 1024;

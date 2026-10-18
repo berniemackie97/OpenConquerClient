@@ -9,7 +9,7 @@ internal static class LoginSeed1059
     internal const int MinimumFrameLength = 8;
     internal const int MaximumFrameLength = 64;
 
-    /// <summary>Only the type-1059 seed at offset four is evidenced; no unverified trailing fields are interpreted.</summary>
+    /// <summary>Only the seed at offset 4 is confirmed, so any fields after it are ignored.</summary>
     internal static bool TryReadSeed(ReadOnlySpan<byte> frame, out uint seed)
     {
         seed = 0;

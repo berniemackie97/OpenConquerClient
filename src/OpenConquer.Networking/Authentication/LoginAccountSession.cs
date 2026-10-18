@@ -7,8 +7,8 @@ using System.Security.Cryptography;
 namespace OpenConquer.Networking.Authentication;
 
 /// <summary>
-/// Owns exactly one connected AccountServer socket and its directional cipher positions.
-/// Opening consumes precisely one verified 1059 seed frame. No credentials are transmitted.
+/// One connected AccountServer socket and the cipher position for each direction.
+/// Opening reads one verified 1059 seed frame. No credentials are sent.
 /// </summary>
 internal sealed class LoginAccountSession : IAsyncDisposable
 {

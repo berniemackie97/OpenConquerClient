@@ -305,29 +305,4 @@ public sealed class DevelopmentReleaseSequenceTests
         Assert.Equal(expected, File.GetUnixFileMode(sequencePath));
         Assert.Equal(expected, File.GetUnixFileMode(lockPath));
     }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        private readonly string _path = Path.Combine(
-            Path.GetTempPath(),
-            $"openconquer-development-sequence-{Guid.NewGuid():N}"
-        );
-
-        public TemporaryDirectory()
-        {
-            Directory.CreateDirectory(_path);
-        }
-
-        public string RootPath => _path;
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(_path, recursive: true);
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
-    }
 }

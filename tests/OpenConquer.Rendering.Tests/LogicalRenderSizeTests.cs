@@ -95,9 +95,8 @@ public sealed class LogicalRenderSizeTests
     [Fact]
     public void DefaultInstance_HasZeroDimensionsAndBypassesValidation()
     {
-        // A record struct always has a parameterless default that the constructor cannot
-        // guard. Callers must not treat default(LogicalRenderSize) as a usable size, and
-        // this test records that the type does not pretend otherwise.
+        // A record struct always has a parameterless default the constructor can't guard. default(LogicalRenderSize)
+        // is 0x0, not a usable size; this test pins that.
         LogicalRenderSize size = default;
 
         Assert.Equal(0, size.Width);

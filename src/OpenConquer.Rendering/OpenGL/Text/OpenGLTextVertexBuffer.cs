@@ -5,7 +5,7 @@ using Silk.NET.OpenGL;
 namespace OpenConquer.Rendering.OpenGL.Text;
 
 /// <summary>
-/// Owns fixed-capacity OpenGL vertex resources used to upload and draw native-text glyph batches.
+/// Fixed-capacity OpenGL vertex buffers for uploading and drawing glyph batches.
 /// </summary>
 internal sealed unsafe class OpenGLTextVertexBuffer : IDisposable
 {

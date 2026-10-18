@@ -595,38 +595,4 @@ public sealed class LocalProductBuilderTests
             File.WriteAllText(path, string.Empty);
         }
     }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        private readonly string _path = Path.Combine(
-            Path.GetTempPath(),
-            $"openconquer-local-product-builder-{Guid.NewGuid():N}"
-        );
-
-        public TemporaryDirectory()
-        {
-            Directory.CreateDirectory(_path);
-        }
-
-        public string RootPath => _path;
-
-        public string CreateDirectory(string name)
-        {
-            string path = Path.Combine(_path, name);
-
-            Directory.CreateDirectory(path);
-
-            return path;
-        }
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(_path, recursive: true);
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
-    }
 }

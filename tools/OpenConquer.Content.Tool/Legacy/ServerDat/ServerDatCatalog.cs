@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Tool.Legacy.ServerDat;
 
 /// <summary>
-/// Immutable representation of the server groups decoded from a retail 5517 <c>Server.dat</c> file.
+/// The server groups decoded from a retail 5517 <c>Server.dat</c> file.
 /// </summary>
 internal sealed class ServerDatCatalog
 {

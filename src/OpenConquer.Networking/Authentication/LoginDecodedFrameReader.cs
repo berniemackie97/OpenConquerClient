@@ -4,8 +4,8 @@ using System.Buffers.Binary;
 namespace OpenConquer.Networking.Authentication;
 
 /// <summary>
-/// Zero-copy parser for already-decrypted native account-login frames. The caller owns the
-/// PipeReader/sequence, buffering limit, cipher stream, and lifetime of returned slices.
+/// Parses account-login frames that are already decrypted, without copying. The caller is responsible for the
+/// PipeReader or sequence, the buffer limit, the cipher and how long returned slices stay valid.
 /// </summary>
 internal static class LoginDecodedFrameReader
 {
@@ -13,15 +13,14 @@ internal static class LoginDecodedFrameReader
     internal const int MaximumFrameLength = 1024;
 
     /// <summary>
-    /// Takes exactly one complete [length:u16][type:u16][body] frame, leaving any later bytes
-    /// in <paramref name="input"/>. Incomplete input is unchanged. The returned frame is a
-    /// borrowed view into the caller's memory, valid only until that memory is reused or released.
+    /// Takes one complete [length:u16][type:u16][body] frame and leaves any later bytes in <paramref name="input"/>.
+    /// Incomplete input is left unchanged. The returned frame points into the caller's memory and is valid only
+    /// until that memory is reused or released.
     /// </summary>
     /// <returns><see langword="true"/> for a complete, valid frame; <see langword="false"/> only
     /// when more decoded bytes are required.</returns>
-    /// <exception cref="InvalidDataException">The length is outside native bounds or the packet
-    /// type is zero. This is a terminal protocol violation: the session owner must disconnect,
-    /// not treat the data as incomplete or attempt to resynchronize.</exception>
+    /// <exception cref="InvalidDataException">The length is out of range or the packet type is zero.
+    /// The caller must disconnect: this isn't incomplete data, and the stream can't be resynchronized.</exception>
     internal static bool TryRead(ref ReadOnlySequence<byte> input, out ReadOnlySequence<byte> frame)
     {
         frame = default;

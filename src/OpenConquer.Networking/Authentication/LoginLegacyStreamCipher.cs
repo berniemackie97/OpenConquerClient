@@ -1,9 +1,9 @@
 namespace OpenConquer.Networking.Authentication;
 
 /// <summary>
-/// Implements the native 5517 AccountServer legacy stream transform (socket encryption mode 1).
-/// This is compatibility obfuscation, not authenticated encryption. The two directions own independent
-/// 16-bit stream positions and must never be shared between concurrent operations.
+/// The 5517 AccountServer stream cipher (socket encryption mode 1). It obscures traffic but doesn't
+/// authenticate it. Each direction keeps its own 16-bit stream position, and an instance must not be used by
+/// concurrent operations.
 /// </summary>
 internal sealed class LoginLegacyStreamCipher
 {

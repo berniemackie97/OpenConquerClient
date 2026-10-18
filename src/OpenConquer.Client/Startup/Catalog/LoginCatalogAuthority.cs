@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace OpenConquer.Client.Startup.Catalog;
 
-/// <summary>Immutable issuer and HTTPS origin authority embedded into the signed client build.</summary>
+/// <summary>The catalog issuer and HTTPS origin built into the signed client.</summary>
 internal sealed class LoginCatalogAuthority
 {
     private const string ResourceName = "OpenConquer.Client.Startup.Catalog.Authority.json";

@@ -1,6 +1,6 @@
 namespace OpenConquer.Client.UI.Login.Selection;
 
-/// <summary>Fixed 5×7 uppercase status alphabet, independent of fonts installed on the desktop host.</summary>
+/// <summary>Fixed 5x7 uppercase status alphabet, independent of fonts installed on the desktop host.</summary>
 internal static class LoginDirectoryStatusRaster
 {
     public const int GlyphWidth = 5;

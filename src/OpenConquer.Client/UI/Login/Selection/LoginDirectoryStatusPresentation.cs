@@ -5,7 +5,7 @@ using OpenConquer.Rendering.Sprites;
 
 namespace OpenConquer.Client.UI.Login.Selection;
 
-/// <summary>Owns the single unconfigured-authority banner for one OpenGL context.</summary>
+/// <summary>The banner shown when no catalog authority is configured, for one OpenGL context.</summary>
 internal sealed class LoginDirectoryStatusPresentation : IDisposable
 {
     private static readonly SpriteColor s_backdrop = new(19, 15, 12, 210);

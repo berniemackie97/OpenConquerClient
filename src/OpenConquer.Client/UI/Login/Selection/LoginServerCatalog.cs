@@ -81,8 +81,8 @@ internal sealed class LoginRegion
 }
 
 /// <summary>
-/// Immutable, bounded presentation snapshot accepted only from an explicitly trusted catalog producer.
-/// An empty catalog does not authorize selection, networking, or account login.
+/// Read-only, size-limited catalog data for the login screen. Only a trusted catalog source may create one.
+/// An empty catalog doesn't allow selection, networking or account login.
 /// </summary>
 internal sealed class LoginServerCatalog
 {
@@ -167,7 +167,7 @@ internal static class LoginCatalogText
 
         if (value.Length > MaximumProtocolServerNameLength)
         {
-            throw new ArgumentException("Native protocol server names must contain 1–15 ASCII bytes.", parameterName);
+            throw new ArgumentException("Native protocol server names must contain 1 to 15 ASCII bytes.", parameterName);
         }
 
         foreach (char character in value)

@@ -5,7 +5,7 @@ using OpenConquer.Rendering.Text.Native;
 namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
-/// Owns one FreeType face and the mapped font data backing it.
+/// One FreeType face and the mapped font data behind it.
 /// </summary>
 internal sealed unsafe class FreeTypeFace : IDisposable
 {

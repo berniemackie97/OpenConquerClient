@@ -20,9 +20,8 @@ internal static class StandardAccountRequest1060
     internal const int ServerFieldLength = 16;
 
     /// <summary>
-    /// Writes a full plaintext packet for subsequent authenticated-transport encryption.
-    /// The credential argument must already contain the native seeded-RC5 ciphertext,
-    /// not a password or an intermediate keypad-transformed plaintext buffer.
+    /// Writes the full plaintext packet, which the session cipher encrypts afterwards. The credential argument
+    /// must already be the seeded-RC5 ciphertext, not the password or the keypad-encoded buffer.
     /// </summary>
     internal static void Write(Span<byte> destination, ReadOnlySpan<byte> accountName, ReadOnlySpan<byte> encryptedCredentialBlock, ReadOnlySpan<byte> protocolServerName)
     {

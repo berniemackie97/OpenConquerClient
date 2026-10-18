@@ -6,9 +6,8 @@ namespace OpenConquer.Rendering.Tests;
 /// Covers the logical-to-host transform that both rendering and input depend on.
 /// </summary>
 /// <remarks>
-/// Every case here runs without a graphics device, which is the point of keeping the transform
-/// out of the renderer: the arithmetic that decides where a frame is drawn and where a click
-/// lands is the part that must not be trusted to manual testing.
+/// None of these cases need a graphics device; that is why the transform lives outside the renderer. Where a
+/// frame is drawn and where a click lands is easy to get subtly wrong, so it is tested here rather than by hand.
 /// </remarks>
 public sealed class PresentationViewportTests
 {
@@ -205,11 +204,9 @@ public sealed class PresentationViewportTests
     [Fact]
     public void TryMapToLogical_LeavesSomeLogicalPixelsUnreachableWhenMinified()
     {
-        // Shrinking the window below the logical size means fewer destination pixels than logical
-        // ones, so some logical pixels genuinely have no position that resolves to them. That is
-        // inherent to downscaling, not an off-by-one: 960 destination columns cannot address 1024
-        // logical columns. Pinned so the pointer-precision loss is a known property rather than a
-        // surprise once input lands.
+        // With the window smaller than the logical size there are fewer destination pixels than logical ones, so some
+        // logical pixels can't be hit at all: 960 destination columns can't address 1024 logical columns. That comes
+        // with downscaling and isn't an off-by-one. The test pins it so the loss of pointer precision is expected.
         PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, 1280, 720, PresentationPolicy.Fit);
 
         Assert.Equal(960, viewport.Width);
@@ -313,8 +310,8 @@ public sealed class PresentationViewportTests
     [InlineData(2560, 1440, PresentationPolicy.Stretch)]
     public void TryMapPointerToLogical_MapsTheTopOfTheWindowToTheTopOfTheLogicalFrame(int hostWidth, int hostHeight, PresentationPolicy policy)
     {
-        // The flip is the whole point: a pointer row counted from the top must not resolve to a
-        // logical row counted from the bottom.
+        // This checks the flip: a pointer row counted from the top must not resolve to a logical row counted from
+        // the bottom.
         PresentationViewport viewport = PresentationViewport.Compute(s_logical1024, hostWidth, hostHeight, policy);
 
         int topPointerY = hostHeight - 1 - (viewport.OffsetY + viewport.Height - 1);

@@ -5,7 +5,7 @@ namespace OpenConquer.Product.Tool;
 
 internal sealed record ProductReleaseFile(string Path, long Length, byte[] Sha256);
 
-/// <summary>Creates and validates deterministic signed-release payloads.</summary>
+/// <summary>Creates and validates the signed release payload. The same release always produces the same bytes.</summary>
 internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductId, ulong ReleaseSequence, string ReleaseVersion, int MinimumLauncherVersion, string TargetRuntime, string ClientExecutable, IReadOnlyList<ProductReleaseFile> Files)
 {
     public const int CurrentSchemaVersion = 1;

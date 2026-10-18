@@ -101,29 +101,4 @@ public sealed class ProductRepositoryLocatorTests
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, "<Project />");
     }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        private readonly string _path = Path.Combine(
-            Path.GetTempPath(),
-            $"openconquer-product-repository-{Guid.NewGuid():N}"
-        );
-
-        public TemporaryDirectory()
-        {
-            Directory.CreateDirectory(_path);
-        }
-
-        public string RootPath => _path;
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(_path, recursive: true);
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
-    }
 }

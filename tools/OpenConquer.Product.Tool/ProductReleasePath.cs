@@ -86,7 +86,10 @@ internal static class ProductReleasePath
     }
 }
 
-/// <summary>Tracks a bounded release tree using the same identity on every platform.</summary>
+/// <summary>
+/// Tracks the files and directories of a release. Names are compared case-insensitively on every platform, so a
+/// release that would collide on Windows is rejected everywhere. The directory count is capped.
+/// </summary>
 internal sealed class ProductReleasePathTopology
 {
     private readonly int _maximumDirectoryCount;

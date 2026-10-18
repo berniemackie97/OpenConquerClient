@@ -12,7 +12,7 @@ internal sealed record ProductReleaseCatalogEntry(
     long PackageLength,
     byte[] PackageSha256);
 
-/// <summary>Creates the bounded release index authenticated by the publisher.</summary>
+/// <summary>Creates the size-limited release index that the publisher signs.</summary>
 internal static class ProductReleaseCatalog
 {
     public const int CurrentSchemaVersion = 1;

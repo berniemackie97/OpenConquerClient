@@ -20,7 +20,7 @@ internal static class PlayLayout
     /// <summary>Foreground picture 2, <c>Play/Version.bmp</c>.</summary>
     public static readonly Point VersionLabel = new(35, 29);
 
-    /// <summary>Control 1012: the version text, drawn from its top left (<c>TextRect=0,0,…</c>).</summary>
+    /// <summary>Control 1012: the version text, drawn from its top left (<c>TextRect=0,0,...</c>).</summary>
     public static readonly Point VersionText = new(110, 33);
 
     /// <summary>Control 1005.</summary>

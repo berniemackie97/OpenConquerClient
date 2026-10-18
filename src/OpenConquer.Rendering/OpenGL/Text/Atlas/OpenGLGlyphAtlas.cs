@@ -5,7 +5,7 @@ using Silk.NET.OpenGL;
 namespace OpenConquer.Rendering.OpenGL.Text.Atlas;
 
 /// <summary>
-/// Owns the OpenGL texture set corresponding to one CPU glyph atlas.
+/// The OpenGL textures for one CPU glyph atlas.
 /// </summary>
 internal sealed class OpenGLGlyphAtlas : IDisposable
 {

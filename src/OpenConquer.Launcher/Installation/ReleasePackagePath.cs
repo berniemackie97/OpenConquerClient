@@ -98,7 +98,10 @@ internal static class ReleasePackagePath
     }
 }
 
-/// <summary>Tracks a bounded package tree using the same identity on every platform.</summary>
+/// <summary>
+/// Tracks the files and directories of a package. Names are compared case-insensitively on every platform, so a
+/// package that would collide on Windows is rejected everywhere. The directory count is capped.
+/// </summary>
 internal sealed class ReleasePackagePathTopology
 {
     private readonly int _maximumDirectoryCount;

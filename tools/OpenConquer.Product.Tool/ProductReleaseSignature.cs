@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace OpenConquer.Product.Tool;
 
-/// <summary>Validates externally produced signatures and writes their bounded envelope.</summary>
+/// <summary>Checks signatures made outside this tool and writes the size-limited envelope that carries them.</summary>
 internal static class ProductReleaseSignature
 {
     public const string FileName = "openconquer.release.sig";
