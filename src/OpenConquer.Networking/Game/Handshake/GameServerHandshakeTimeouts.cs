@@ -15,3 +15,4 @@ internal readonly record struct GameServerHandshakeTimeouts(TimeSpan Connect, Ti
                 "GameServer handshake timeouts must be positive and at most 30 seconds.");
         }
     }
+}
