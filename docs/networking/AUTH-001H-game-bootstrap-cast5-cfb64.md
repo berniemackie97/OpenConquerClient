@@ -56,11 +56,19 @@ The independent OpenConquerServer fixed zero-IV vector is:
 
 Tests independently assert this exact output, its decryption, fresh-IV
 determinism, state retention across 3/17/1/51/25-byte fragments, and
-in-place round trips. They also encrypt and decrypt the 207-byte fixed
-server-source-derived AUTH-001G plaintext fixture across its first
-15 bytes and later fragments, validating the recovered envelope with
-the existing decoder. The 207-byte fixture is not a live captured
-ciphertext; only the fixed CAST5 vector independently verifies crypto.
+in-place round trips. The 207-byte AUTH-001G plaintext fixture is
+paired with a fixed ciphertext generated separately using the Python
+`cryptography` provider's CAST5/CFB-64 implementation (16-byte native key,
+8-byte zero IV). Before producing this fixture, the independent provider
+was checked against the server's published short CAST5 ciphertext vector.
+
+The test asserts both encryption to that exact independent ciphertext and
+fragmented decryption of those fixed bytes across the initial 15-byte
+challenge prefix and later fragments. The recovered envelope must pass the
+existing challenge decoder. This fixture is derived from server source,
+**not captured from a live GameServer**. It serves as a cross-implementation
+CAST5-CFB64 interoperability reference rather than a real-peer authentication
+claim.
 
 Negative tests cover undersized destination, prohibited overlapping
 spans, terminal disposal, and ensuring invalid calls do not consume
