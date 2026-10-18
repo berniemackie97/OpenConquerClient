@@ -3,7 +3,7 @@ using OpenConquer.Rendering.Text.Glyphs;
 namespace OpenConquer.Rendering.Text.Atlas;
 
 /// <summary>
-/// Stores rasterized glyph coverage in deterministic 512x512 atlas pages.
+/// Stores rasterized glyph coverage in 512x512 atlas pages.
 /// </summary>
 internal sealed class GlyphAtlas
 {

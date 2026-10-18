@@ -5,7 +5,7 @@ using OpenConquer.Rendering.Text.Native;
 namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
-/// Owns one initialized FreeType library instance for the rendering text subsystem.
+/// One initialized FreeType library instance for text rendering.
 /// </summary>
 internal sealed unsafe class FreeTypeLibrary : IDisposable
 {

@@ -13,7 +13,10 @@ internal enum LoginCredentialFocus
     Password,
 }
 
-/// <summary>Bounded ASCII credential editor. Neither rendering nor clipboard code can access password characters.</summary>
+/// <summary>
+/// Account and password editor for ASCII input, with length limits. Rendering and clipboard code never see
+/// password characters.
+/// </summary>
 internal sealed class LoginCredentialInput : IDisposable
 {
     internal const int MaximumAccountLength = 32;
@@ -144,8 +147,8 @@ internal sealed class LoginCredentialInput : IDisposable
                 }
                 break;
             case DesktopKey.Enter:
-                // Retail sends a synthetic Enter-button press, not a credential focus change.
-                // Account-server submission is deliberately not implemented.
+                // Retail sends a synthetic Enter-button press here; focus stays where it is.
+                // Sending credentials to the account server is left out on purpose.
                 break;
             case DesktopKey.Left:
                 MoveTo(!shift && HasSelection ? SelectionStart : _caret - 1, shift);

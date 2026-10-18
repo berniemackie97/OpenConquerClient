@@ -178,29 +178,4 @@ public sealed class DevelopmentProductBuildLockTests
             File.GetUnixFileMode(lockPath)
         );
     }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        private readonly string _path = Path.Combine(
-            Path.GetTempPath(),
-            $"openconquer-development-build-lock-{Guid.NewGuid():N}"
-        );
-
-        public TemporaryDirectory()
-        {
-            Directory.CreateDirectory(_path);
-        }
-
-        public string RootPath => _path;
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(_path, recursive: true);
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
-    }
 }

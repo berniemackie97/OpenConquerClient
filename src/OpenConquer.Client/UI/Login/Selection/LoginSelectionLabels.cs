@@ -6,7 +6,7 @@ using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Login.Selection;
 
-/// <summary>Owns glyph resources and the bounded set of visible catalog labels for one OpenGL context.</summary>
+/// <summary>Glyph resources and the visible catalog labels for one OpenGL context.</summary>
 internal sealed class LoginSelectionLabels : IDisposable
 {
     // Edit text 35 (sprite 179 nameTxt) and 184 (sprite 259 pageTxt) use device Arial 14 / Arial Bold 20.

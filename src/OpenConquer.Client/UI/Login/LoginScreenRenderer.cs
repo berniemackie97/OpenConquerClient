@@ -9,8 +9,8 @@ using OpenConquer.Rendering.OpenGL;
 namespace OpenConquer.Client.UI.Login;
 
 /// <summary>
-/// Owns every OpenGL resource of the login screen for one context and draws the screen in the order of the
-/// retail <c>start.dat</c> root display list.
+/// Every OpenGL resource of the login screen for one context. Draws the screen in the same order as the retail
+/// <c>start.dat</c> root display list.
 /// </summary>
 internal sealed class LoginScreenRenderer : IDisposable
 {

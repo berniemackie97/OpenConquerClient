@@ -2,7 +2,7 @@ using System.Buffers;
 
 namespace OpenConquer.Launcher.Installation;
 
-/// <summary>Owns safe release-tree reads, copies, generation paths, and the mutation lock.</summary>
+/// <summary>Reads and copies release trees safely, builds generation paths and holds the lock for changes.</summary>
 internal sealed class ManagedReleaseStore
 {
     private const string StagingPrefix = ".staging-";

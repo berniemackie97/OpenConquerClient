@@ -1,7 +1,7 @@
 namespace OpenConquer.Networking.Authentication;
 
 /// <summary>
-/// Native 5517 account-seeded keypad mapping. This is a compatibility transform, not encryption.
+/// The 5517 keypad mapping, seeded from the account name. It is a compatibility transform, not encryption.
 /// </summary>
 internal static class LoginPasswordKeypadEncoder
 {
@@ -33,9 +33,9 @@ internal static class LoginPasswordKeypadEncoder
     ];
 
     /// <summary>
-    /// Writes a NUL-padded 32-byte plaintext credential field for seeded RC5.
-    /// Rejects unrepresentable input rather than silently truncating a password.
-    /// Sources remain caller-owned and are never formatted, logged, or copied to strings.
+    /// Writes the NUL-padded 32-byte plaintext credential field that seeded RC5 encrypts next.
+    /// Input that can't be represented is rejected instead of truncating the password.
+    /// The inputs stay with the caller and are never formatted, logged or copied into strings.
     /// </summary>
     internal static void Encode(ReadOnlySpan<byte> accountName, ReadOnlySpan<char> password, Span<byte> destination)
     {

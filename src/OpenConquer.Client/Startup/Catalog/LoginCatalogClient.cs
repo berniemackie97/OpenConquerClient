@@ -2,7 +2,7 @@ using System.Net;
 
 namespace OpenConquer.Client.Startup.Catalog;
 
-/// <summary>Fetches a signed catalog with bounded HTTPS reads and no ambient client credentials.</summary>
+/// <summary>Fetches the signed catalog over HTTPS with size limits, without cookies or default credentials.</summary>
 internal sealed class LoginCatalogClient : IDisposable
 {
     private static readonly TimeSpan s_operationTimeout = TimeSpan.FromSeconds(12);

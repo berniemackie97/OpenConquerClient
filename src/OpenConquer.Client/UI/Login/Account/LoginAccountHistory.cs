@@ -3,7 +3,7 @@ using OpenConquer.Client.UI.Login.Credentials;
 
 namespace OpenConquer.Client.UI.Login.Account;
 
-/// <summary>Bounded account-name recall. Passwords and realm endpoints never enter this store.</summary>
+/// <summary>Remembers up to ten account names. Passwords and realm endpoints are never stored here.</summary>
 internal sealed class LoginAccountHistory
 {
     internal const int Capacity = 10;

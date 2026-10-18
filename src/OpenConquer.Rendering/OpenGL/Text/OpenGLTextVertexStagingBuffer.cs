@@ -4,7 +4,7 @@ using OpenConquer.Rendering.Text.Rendering;
 namespace OpenConquer.Rendering.OpenGL.Text;
 
 /// <summary>
-/// Owns reusable CPU staging storage for bounded OpenGL native-text vertex uploads.
+/// Reusable, fixed-capacity CPU memory for staging text vertex uploads.
 /// </summary>
 internal sealed class OpenGLTextVertexStagingBuffer
 {

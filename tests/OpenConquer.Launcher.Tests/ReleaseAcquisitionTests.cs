@@ -832,31 +832,4 @@ public sealed class ReleaseAcquisitionTests
             throw new InvalidOperationException("An infinite delay unexpectedly completed.");
         }
     }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        private readonly string _path;
-
-        public TemporaryDirectory(string prefix)
-        {
-            _path = Path.Combine(Path.GetTempPath(), $"{prefix}-{Guid.NewGuid():N}");
-            Directory.CreateDirectory(_path);
-        }
-
-        public string RootPath => _path;
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(_path, recursive: true);
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
-        }
-    }
 }

@@ -33,26 +33,4 @@ public sealed class ProductReleaseTrustIntegrationTests
 
         Assert.True(trustedKeys.Verify(releaseSignature, releaseManifest));
     }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        private readonly string _path = Path.Combine(Path.GetTempPath(), $"openconquer-release-trust-integration-{Guid.NewGuid():N}");
-
-        public TemporaryDirectory()
-        {
-            Directory.CreateDirectory(_path);
-        }
-
-        public string RootPath => _path;
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(_path, recursive: true);
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
-    }
 }

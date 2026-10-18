@@ -108,33 +108,4 @@ public sealed class ManagedReleaseManifestTests
             }),
         });
     }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            RootPath = Path.Combine(Path.GetTempPath(), "OpenConquer.ReleaseManifest.Tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(RootPath);
-        }
-
-        public string RootPath
-        {
-            get;
-        }
-
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(RootPath, recursive: true);
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
-        }
-    }
 }

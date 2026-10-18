@@ -3,7 +3,8 @@ using System.Text.Json;
 namespace OpenConquer.Content.Tool.Manifest;
 
 /// <summary>
-/// Serializes a <see cref="ContentManifest"/> to canonical JSON.
+/// Writes a <see cref="ContentManifest"/> as JSON with a fixed layout, so the same manifest always produces the
+/// same bytes.
 /// </summary>
 internal static class ContentManifestWriter
 {

@@ -5,7 +5,10 @@ using System.Security.Cryptography;
 
 namespace OpenConquer.Networking.Authentication;
 
-/// <summary>Native 5517 credential-field RC5-32/12/16 encryption; never a transport cipher or password encoder.</summary>
+/// <summary>
+/// RC5-32/12/16 for the 5517 credential field only. The transport cipher and the password keypad encoding are
+/// separate.
+/// </summary>
 internal static class CredentialRc5
 {
     internal const int BlockLength = 8;

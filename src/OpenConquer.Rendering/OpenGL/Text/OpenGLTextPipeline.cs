@@ -5,7 +5,7 @@ using Silk.NET.OpenGL;
 namespace OpenConquer.Rendering.OpenGL.Text;
 
 /// <summary>
-/// Owns the OpenGL shader program and fixed render-state contract for text rendering.
+/// The text shader program and the fixed OpenGL render state it expects.
 /// </summary>
 internal sealed class OpenGLTextPipeline : IDisposable
 {

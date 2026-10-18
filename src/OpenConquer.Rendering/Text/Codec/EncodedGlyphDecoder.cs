@@ -11,7 +11,7 @@ internal sealed class EncodedGlyphDecoder(int effectiveCodePage)
     private readonly Encoding? _encoding = ResolveEncoding(effectiveCodePage);
 
     /// <summary>
-    /// Attempts to decode one single- or double-byte glyph key into exactly one Unicode scalar value.
+    /// Tries to decode a single- or double-byte glyph key into a single Unicode scalar value.
     /// </summary>
     public bool TryDecode(ushort glyphKey, out Rune character)
     {

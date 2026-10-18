@@ -8,7 +8,7 @@ internal static class ClientContentPath
     private static readonly char[] s_pathSeparators = ['/', '\\'];
 
     /// <summary>
-    /// Parses a relative content path without canonicalizing structurally different input.
+    /// Splits a relative content path into segments. Empty, "." and ".." segments are rejected rather than normalized.
     /// </summary>
     public static string[] ParseSegments(string contentPath, string parameterName)
     {

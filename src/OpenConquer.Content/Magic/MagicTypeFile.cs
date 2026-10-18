@@ -116,7 +116,7 @@ public sealed class MagicTypeFile
 
             ReadOnlySpan<byte> token = line.Slice(position, separator);
 
-            // Native source field 3 contains the magic name, not an integer.
+            // Field 3 is the magic name, not a number.
             if (index != 3)
             {
                 if (!Utf8Parser.TryParse(token, out int value, out int consumed) || consumed != token.Length)

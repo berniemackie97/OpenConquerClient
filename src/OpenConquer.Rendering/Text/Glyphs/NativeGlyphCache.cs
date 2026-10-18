@@ -6,10 +6,10 @@ using OpenConquer.Rendering.Text.Layout;
 namespace OpenConquer.Rendering.Text.Glyphs;
 
 /// <summary>
-/// Caches encoded glyph keys, performs record-zero missing-glyph fallback, and owns atlas placement.
+/// Caches encoded glyph keys, falls back to record zero for missing glyphs and places glyphs in the atlas.
 /// </summary>
 /// <remarks>
-/// This type is single-owner rendering state. It does not own or dispose the supplied font rasterizers.
+/// Not thread-safe; one renderer uses it. It doesn't dispose the font rasterizers passed to it.
 /// </remarks>
 internal sealed class NativeGlyphCache
 {

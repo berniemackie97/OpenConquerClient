@@ -3,7 +3,7 @@ using System.IO.MemoryMappedFiles;
 namespace OpenConquer.Rendering.Text.Fonts.FreeType;
 
 /// <summary>
-/// Owns a readonly memory mapping used as backing storage for a FreeType memory face.
+/// A read-only memory mapping of a font file, used as the data behind a FreeType memory face.
 /// </summary>
 internal sealed unsafe class FreeTypeFontFile : IDisposable
 {

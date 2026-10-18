@@ -7,7 +7,7 @@ internal enum ProductHostPlatform
     Linux,
 }
 
-/// <summary>Canonical user-scoped location of the local-development publisher identity.</summary>
+/// <summary>Where the local development publisher key is stored for the current user.</summary>
 internal sealed record DevelopmentPublisherIdentityPaths(string RootPath, string PrivateKeyPath)
 {
     public const string PrivateKeyFileName = "publisher-private.pk8";

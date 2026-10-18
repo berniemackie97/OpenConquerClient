@@ -3,7 +3,7 @@ using OpenConquer.Rendering.Text.Atlas;
 namespace OpenConquer.Rendering.Text.Layout;
 
 /// <summary>
-/// Identifies the authoritative font configuration and glyph atlas that produced a native text layout.
+/// Identifies the font configuration and glyph atlas a text layout was built from.
 /// </summary>
 internal sealed class NativeTextLayoutSource
 {

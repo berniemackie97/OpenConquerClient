@@ -1,9 +1,8 @@
 namespace OpenConquer.Networking.Authentication;
 
 /// <summary>
-/// Result of one bounded AccountServer exchange. Success owns the still-connected account socket
-/// for the separate native 1100/1052 continuation; failure carries only the numeric refusal code.
-/// This does not represent GameServer admission.
+/// Result of one AccountServer exchange. On success it keeps the account socket open for the 1100/1052
+/// follow-up; on failure it carries only the numeric refusal code. It says nothing about GameServer admission.
 /// </summary>
 internal sealed class LoginAccountExchangeResult : IAsyncDisposable
 {
@@ -25,8 +24,8 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
     }
 
     /// <summary>
-    /// Completes the native 1100/1052 AccountServer continuation and closes its socket.
-    /// This is NOT the GameServer 1052 login proof and does not connect to the world.
+    /// Sends the 1100/1052 AccountServer follow-up and closes the socket. This isn't the GameServer 1052 login
+    /// proof and doesn't connect to the world.
     /// </summary>
     internal Task CompletePostAuthenticationAsync(ReadOnlyMemory<byte> macAddress,
         int resourceVersion, TimeSpan phaseTimeout, CancellationToken cancellationToken = default)

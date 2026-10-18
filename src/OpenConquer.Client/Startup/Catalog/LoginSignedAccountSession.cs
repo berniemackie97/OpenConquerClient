@@ -4,8 +4,8 @@ using OpenConquer.Networking.Authentication;
 namespace OpenConquer.Client.Startup.Catalog;
 
 /// <summary>
-/// Only opens account transport for a selected realm in a still-current signed catalog.
-/// The returned session owns its TCP connection; callers must dispose it.
+/// Opens the account connection only for a realm picked from a signed catalog that is still current.
+/// The caller must dispose the returned session, which holds the TCP connection.
 /// </summary>
 internal static class LoginSignedAccountSession
 {

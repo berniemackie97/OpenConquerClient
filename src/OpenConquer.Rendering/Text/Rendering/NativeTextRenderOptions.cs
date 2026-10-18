@@ -3,7 +3,7 @@ using OpenConquer.Rendering.Sprites;
 namespace OpenConquer.Rendering.Text.Rendering;
 
 /// <summary>
-/// Defines immutable caller-controlled settings for one native text render operation.
+/// Caller settings for one text render.
 /// </summary>
 public readonly record struct NativeTextRenderOptions
 {

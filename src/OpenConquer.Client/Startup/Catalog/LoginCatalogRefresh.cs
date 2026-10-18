@@ -1,6 +1,9 @@
 namespace OpenConquer.Client.Startup.Catalog;
 
-/// <summary>Owns bounded authenticated catalog refresh and in-process sequence monotonicity.</summary>
+/// <summary>
+/// Refreshes the signed catalog on a timer. A catalog is accepted only if its sequence is higher than any
+/// accepted before it in this process.
+/// </summary>
 internal sealed class LoginCatalogRefresh : IDisposable
 {
     private static readonly TimeSpan s_refreshInterval = TimeSpan.FromMinutes(5);
@@ -32,7 +35,7 @@ internal sealed class LoginCatalogRefresh : IDisposable
         _fetch = fetch;
     }
 
-    /// <summary>Runs on the client render thread. Returns true only when the authoritative view changes.</summary>
+    /// <summary>Runs on the render thread. Returns true only when <see cref="Current"/> changes.</summary>
     public bool Advance(DateTimeOffset now)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

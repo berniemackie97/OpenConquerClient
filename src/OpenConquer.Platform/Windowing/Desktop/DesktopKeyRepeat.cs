@@ -3,8 +3,8 @@ using System.Diagnostics;
 namespace OpenConquer.Platform.Windowing.Desktop;
 
 /// <summary>
-/// Supplies bounded command-key repeat because Silk.NET GLFW discards non-text repeat events.
-/// Printable-key repetition is supplied by the backend's character callback instead.
+/// Repeats held editing and navigation keys, because Silk.NET's GLFW backend drops repeat events for keys
+/// that don't produce text. Printable keys repeat through the backend's character callback instead.
 /// </summary>
 internal sealed class DesktopKeyRepeat
 {

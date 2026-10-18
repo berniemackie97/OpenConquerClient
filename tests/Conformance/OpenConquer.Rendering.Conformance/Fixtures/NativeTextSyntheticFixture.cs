@@ -6,7 +6,7 @@ using OpenConquer.Rendering.Text.Layout;
 namespace OpenConquer.Rendering.Conformance.Fixtures;
 
 /// <summary>
-/// Provides deterministic synthetic glyph-atlas data for native-text OpenGL conformance without relying on host fonts or FreeType output.
+/// Made-up glyph-atlas data for the text OpenGL conformance cases, so they don't depend on host fonts or FreeType.
 /// </summary>
 internal sealed class NativeTextSyntheticFixture : IDisposable
 {

@@ -3,7 +3,7 @@ using OpenConquer.Rendering.Text.Atlas;
 namespace OpenConquer.Rendering.Text.Layout;
 
 /// <summary>
-/// Contains measured native text dimensions, ordered drawable layout items, and the authoritative source that produced them.
+/// Measured text size, the drawable layout items in order, and the layout source that produced them.
 /// </summary>
 internal sealed class NativeTextLayout
 {

@@ -1,6 +1,6 @@
 namespace OpenConquer.Platform.Windowing.Desktop;
 
-/// <summary>Owns predecoded RGBA cursor frames and a fixed native cursor hotspot.</summary>
+/// <summary>Pre-decoded RGBA cursor frames and the cursor's fixed hotspot.</summary>
 public sealed class DesktopCursorAnimation
 {
     private readonly byte[][] _frames;
