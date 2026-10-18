@@ -133,6 +133,9 @@ internal sealed class LoginServerCatalog
 
 internal static class LoginCatalogText
 {
+    // Matches the AccountServer's ProtocolServerName and the NUL-terminated 1060 field.
+    internal const int MaximumProtocolServerNameLength = 15;
+
     public static string ValidateId(string value, string parameterName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value, parameterName);
@@ -160,14 +163,21 @@ internal static class LoginCatalogText
 
     public static string ValidateProtocolServerName(string value, string parameterName)
     {
-        ValidateName(value, parameterName, maxLength: 64);
+        ArgumentException.ThrowIfNullOrWhiteSpace(value, parameterName);
+
+        if (value.Length > MaximumProtocolServerNameLength)
+        {
+            throw new ArgumentException("Native protocol server names must contain 1–15 ASCII bytes.", parameterName);
+        }
 
         foreach (char character in value)
         {
-            if (char.IsSurrogate(character))
+            if (character is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_' or '(' or ')' or '-')
             {
-                throw new ArgumentException("The native protocol server name does not support supplementary characters.", parameterName);
+                continue;
             }
+
+            throw new ArgumentException("Native protocol server names allow only ASCII letters, digits, underscore, parentheses and hyphen.", parameterName);
         }
 
         return value;

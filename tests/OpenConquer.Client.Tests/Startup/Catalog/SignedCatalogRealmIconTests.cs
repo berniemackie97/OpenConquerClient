@@ -21,7 +21,7 @@ public sealed class SignedCatalogRealmIconTests
         LoginServer server = Assert.Single(region.Servers);
 
         Assert.Equal("g01s01", server.IconId);
-        Assert.Equal("RealProtocolName", server.ProtocolServerName);
+        Assert.Equal("RealmProtocol", server.ProtocolServerName);
         Assert.True(verified.TryGetAccountEndpoint(region, server, out LoginAccountEndpoint? endpoint));
         Assert.Equal("login.example.org", endpoint!.Host);
         Assert.Equal(9958, endpoint.Port);
@@ -80,7 +80,7 @@ public sealed class SignedCatalogRealmIconTests
             new
             {
                 id = "north", name = "North",
-                servers = new[] { new { id = "realm-1", name = "Realm One", protocolServerName = "RealProtocolName", accountHost = "login.example.org", accountPort = 9958, iconId = "g01s01" } },
+                servers = new[] { new { id = "realm-1", name = "Realm One", protocolServerName = "RealmProtocol", accountHost = "login.example.org", accountPort = 9958, iconId = "g01s01" } },
             },
         },
     });
