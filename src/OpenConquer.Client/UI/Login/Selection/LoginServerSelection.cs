@@ -16,6 +16,7 @@ internal sealed class LoginServerSelection
     }
     public int SelectedRegionIndex { get; private set; } = -1;
     public int SelectedServerIndex { get; private set; } = -1;
+    internal long Revision { get; private set; }
     public int RegionPageCount => PageCount(Catalog.Regions.Count, RegionsPerPage);
 
     public LoginRegion? SelectedRegion => SelectedRegionIndex >= 0 ? Catalog.Regions[SelectedRegionIndex] : null;
@@ -29,6 +30,7 @@ internal sealed class LoginServerSelection
         RegionPage = 0;
         SelectedRegionIndex = -1;
         SelectedServerIndex = -1;
+        Revision++;
     }
 
     public LoginRegion? RegionAtSlot(int slot)
@@ -65,6 +67,7 @@ internal sealed class LoginServerSelection
         {
             SelectedRegionIndex = index;
             SelectedServerIndex = -1;
+            Revision++;
         }
 
         return true;
@@ -77,7 +80,12 @@ internal sealed class LoginServerSelection
             return false;
         }
 
-        SelectedServerIndex = slot;
+        if (SelectedServerIndex != slot)
+        {
+            SelectedServerIndex = slot;
+            Revision++;
+        }
+
         return true;
     }
 
