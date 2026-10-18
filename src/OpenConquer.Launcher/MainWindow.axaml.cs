@@ -243,7 +243,9 @@ internal sealed partial class MainWindow : Window, IDisposable
         _screen.SetStartEnabled(false);
         try
         {
-            Task verification = _application.State is LauncherState.InstallationResolved or LauncherState.InstallationUnavailable
+            // A start during the first check waits for it; afterwards every start checks again.
+            Task verification = _application.State is LauncherState.EvaluatingInstallation or LauncherState.InstallationResolved
+                or LauncherState.InstallationUnavailable
                 ? _application.VerifyInstallationAsync()
                 : Task.CompletedTask;
             await RenderEvaluationAsync(verification);
@@ -264,7 +266,6 @@ internal sealed partial class MainWindow : Window, IDisposable
                     ShowProblem(LauncherText.For(faulted), retryMode: null);
                     break;
                 default:
-                    // The first installation check is still running; the start buttons stay enabled for a retry.
                     break;
             }
         }
