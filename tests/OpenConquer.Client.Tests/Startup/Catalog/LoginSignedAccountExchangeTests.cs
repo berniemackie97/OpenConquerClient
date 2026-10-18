@@ -61,6 +61,8 @@ public sealed class LoginSignedAccountExchangeTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(20u, result.FailureCode);
+        Assert.Throws<InvalidOperationException>(() =>
+            result.WriteGameLoginProof(new byte[28], 0x6E45, ReadOnlySpan<byte>.Empty, 5517));
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token));
         Assert.Equal("LoginAccountExchangeResult { IsSuccess = False }", result.ToString());

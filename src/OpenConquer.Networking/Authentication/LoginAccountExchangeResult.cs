@@ -8,6 +8,10 @@ namespace OpenConquer.Networking.Authentication;
 internal sealed class LoginAccountExchangeResult : IAsyncDisposable
 {
     private readonly LoginAccountSession? _session;
+    private readonly Lock _lifetimeGate = new();
+    private bool _postAuthenticationCompleted;
+    private bool _gameProofWritten;
+    private bool _disposed;
 
     private LoginAccountExchangeResult(LoginAccountResponse1055 response, LoginAccountSession? session)
     {
@@ -28,7 +32,7 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
     /// Completes the native 1100/1052 AccountServer continuation and closes its socket.
     /// This is NOT the GameServer 1052 login proof and does not connect to the world.
     /// </summary>
-    internal Task CompletePostAuthenticationAsync(ReadOnlyMemory<byte> macAddress,
+    internal async Task CompletePostAuthenticationAsync(ReadOnlyMemory<byte> macAddress,
         int resourceVersion, TimeSpan phaseTimeout, CancellationToken cancellationToken = default)
     {
         if (_session is null)
@@ -36,8 +40,47 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
             throw new InvalidOperationException("A failed AccountServer exchange has no continuation.");
         }
 
-        return _session.SendPostAuthenticationReportsAsync(
-            Response.SessionToken, macAddress, resourceVersion, phaseTimeout, cancellationToken);
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+        }
+
+        await _session.SendPostAuthenticationReportsAsync(
+            Response.SessionToken, macAddress, resourceVersion, phaseTimeout, cancellationToken).ConfigureAwait(false);
+
+        lock (_lifetimeGate)
+        {
+            // Disposal can race the outgoing reports; never grant a proof after disposal.
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _postAuthenticationCompleted = true;
+        }
+    }
+
+    /// <summary>
+    /// Writes one standard post-DH GameServer login proof after successful AccountServer
+    /// reports. This does not open a GameServer connection or authorize world entry.
+    /// The caller owns and must clear the resulting sensitive packet.
+    /// </summary>
+    internal void WriteGameLoginProof(Span<byte> destination, ushort localeTag,
+        ReadOnlySpan<byte> hardwareAddress, int resourceVersion)
+    {
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_session is null || !Response.IsSuccess || !_postAuthenticationCompleted)
+            {
+                throw new InvalidOperationException("The AccountServer post-authentication sequence has not completed.");
+            }
+
+            if (_gameProofWritten)
+            {
+                throw new InvalidOperationException("The GameServer login proof has already been composed.");
+            }
+
+            GameLoginProof1052.Write(destination, Response.SessionToken,
+                Response.AuthenticationKeyOrFailureCode, localeTag, hardwareAddress, resourceVersion);
+            _gameProofWritten = true;
+        }
     }
 
     internal static LoginAccountExchangeResult Success(LoginAccountResponse1055 response, LoginAccountSession session)
@@ -61,7 +104,15 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
         return new LoginAccountExchangeResult(response, session: null);
     }
 
-    public ValueTask DisposeAsync() => _session?.DisposeAsync() ?? ValueTask.CompletedTask;
+    public ValueTask DisposeAsync()
+    {
+        lock (_lifetimeGate)
+        {
+            _disposed = true;
+        }
+
+        return _session?.DisposeAsync() ?? ValueTask.CompletedTask;
+    }
 
     public override string ToString() => $"LoginAccountExchangeResult {{ IsSuccess = {IsSuccess} }}";
 }
