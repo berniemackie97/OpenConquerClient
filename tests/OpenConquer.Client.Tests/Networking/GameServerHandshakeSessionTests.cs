@@ -235,6 +235,22 @@ public sealed class GameServerHandshakeSessionTests
     private static async Task CompletedGamePeerAsync(TcpListener listener,
         TaskCompletionSource<byte[]> encryptedMessage, CancellationToken token)
     {
+        try
+        {
+            await CompletedGamePeerCoreAsync(listener, encryptedMessage, token);
+        }
+        catch (Exception error)
+        {
+            // Surface a failed peer parser immediately instead of making the
+            // parent test time out on an unresolved completion source.
+            encryptedMessage.TrySetException(error);
+            throw;
+        }
+    }
+
+    private static async Task CompletedGamePeerCoreAsync(TcpListener listener,
+        TaskCompletionSource<byte[]> encryptedMessage, CancellationToken token)
+    {
         using TcpClient peer = await listener.AcceptTcpClientAsync(token);
         NetworkStream stream = peer.GetStream();
         byte[] challenge = Convert.FromHexString(EncryptedChallenge);
