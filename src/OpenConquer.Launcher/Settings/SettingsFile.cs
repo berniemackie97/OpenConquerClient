@@ -54,6 +54,50 @@ internal static partial class SettingsFile
         }
     }
 
+    /// <summary>
+    /// Writes a private file beside the destination, flushes it, then atomically replaces the destination.
+    /// Cancellation before the replacement leaves the destination untouched and removes the staged file.
+    /// </summary>
+    internal static void Replace(string directory, string fileName, ReadOnlySpan<byte> contents, bool destinationExists, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        Directory.CreateDirectory(directory);
+        string? temporary = Path.Combine(directory, "." + Path.GetFileNameWithoutExtension(fileName) + "-" + Guid.NewGuid().ToString("N") + ".tmp");
+
+        try
+        {
+            FileStreamOptions options = new()
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                Share = FileShare.None
+            };
+
+            if (!OperatingSystem.IsWindows())
+            {
+                options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            }
+
+            using (FileStream stream = new(temporary, options))
+            {
+                stream.Write(contents);
+                stream.Flush(flushToDisk: true);
+            }
+
+            token.ThrowIfCancellationRequested();
+            Commit(temporary, Path.Combine(directory, fileName), destinationExists);
+            temporary = null;
+        }
+        finally
+        {
+            // Cleanup failures remain observable instead of silently accumulating staged files.
+            if (temporary is not null)
+            {
+                File.Delete(temporary);
+            }
+        }
+    }
+
     internal static void Commit(string temporaryPath, string destinationPath, bool destinationExists)
     {
         if (OperatingSystem.IsWindows() && destinationExists)

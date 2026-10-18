@@ -91,7 +91,8 @@ Program
 ├── host exception observation
 └── Avalonia
     └── App
-        └── MainWindow
+        └── MainWindow (the play.exe dialog)
+            ├── PlayScreen
             └── LauncherApplication
                 └── ManagedInstallationResolver
 ```
@@ -108,13 +109,16 @@ The launcher currently owns:
 - authenticated installed-release update, repair, and verified rollback transactions;
 - authenticated release-catalog selection and bounded package acquisition;
 - application state and cancellation;
-- non-secret display preferences and the owned settings dialog.
+- non-secret display preferences and the owned settings dialog;
+- the native play screen, start-mode records and client start.
 
 `MainWindow` is a presentation adapter. Product state belongs to `LauncherApplication`, not the UI.
 
 Expected installation failures can be retried against the same package root. Checks run off the UI
 thread and cannot overlap. Shutdown owns one shared drain operation; late check results cannot
 replace `Stopping`. See the [installation contract](launcher-managed-installation.md) for details.
+
+The window reproduces the retail `play.exe` dialog; see the [play screen](launcher-play-screen.md).
 
 Display preferences have a separate [storage and dialog contract](launcher-settings.md). The view
 owns its draft; the settings session owns I/O cancellation and draining.

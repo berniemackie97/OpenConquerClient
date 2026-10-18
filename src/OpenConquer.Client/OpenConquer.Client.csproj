@@ -49,7 +49,8 @@
     <Error Condition="!Exists('$(OpenConquerCatalogAuthorityFile)')" Text="The explicitly configured OpenConquer catalog authority file does not exist: $(OpenConquerCatalogAuthorityFile)" />
   </Target>
 
-  <Target Name="RejectLocalRealmAuthorityPublish" BeforeTargets="ComputeFilesToPublish;Publish" Condition="'$(OpenConquerLocalRealmAuthority)' == 'true'">
+  <!-- A local managed product (Product Tool create-local-product) is a development build and may carry it. -->
+  <Target Name="RejectLocalRealmAuthorityPublish" BeforeTargets="ComputeFilesToPublish;Publish" Condition="'$(OpenConquerLocalRealmAuthority)' == 'true' and '$(OpenConquerLocalProduct)' != 'true'">
     <Error Text="Local development realm authority cannot be published. Pass an explicit production OpenConquerCatalogAuthorityFile, or remove ~/.config/openconquer/client.local.props." />
   </Target>
 

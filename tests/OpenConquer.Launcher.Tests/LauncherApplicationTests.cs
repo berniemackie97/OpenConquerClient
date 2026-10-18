@@ -606,6 +606,48 @@ public sealed class LauncherApplicationTests
     }
 
     [Fact]
+    public async Task VerifyInstallationAsyncChecksAgainAndPublishesTheNewResult()
+    {
+        string root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "managed-installation"));
+        ManagedInstallation installation = CreateManagedInstallation(root);
+        int calls = 0;
+        LauncherApplication application = new(new StubResolver(_ => Task.FromResult<ManagedInstallationResolution>(++calls == 1
+            ? new ManagedInstallationResolution.Resolved(installation)
+            : new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ClientIntegrityFailure))));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(application.VerifyInstallationAsync);
+        await application.StartAsync();
+        Assert.IsType<LauncherState.InstallationResolved>(application.State);
+
+        await application.VerifyInstallationAsync();
+
+        Assert.Equal(2, calls);
+        Assert.Equal(ManagedInstallationIssue.ClientIntegrityFailure, Assert.IsType<LauncherState.InstallationUnavailable>(application.State).Issue);
+        await application.StopAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(application.VerifyInstallationAsync);
+    }
+
+    [Fact]
+    public async Task VerifyInstallationAsyncSharesAnActiveCheck()
+    {
+        TaskCompletionSource<ManagedInstallationResolution> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int calls = 0;
+        LauncherApplication application = new(new StubResolver(_ => ++calls == 1
+            ? Task.FromResult<ManagedInstallationResolution>(new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ManifestMissing))
+            : release.Task));
+        await application.StartAsync();
+
+        Task first = application.VerifyInstallationAsync();
+        Task second = application.VerifyInstallationAsync();
+        release.SetResult(new ManagedInstallationResolution.Rejected(ManagedInstallationIssue.ReadFailure));
+        await Task.WhenAll(first, second);
+
+        Assert.Same(first, second);
+        Assert.Equal(2, calls);
+        await application.StopAsync();
+    }
+
+    [Fact]
     public async Task StartAsyncRejectsASecondStartup()
     {
         LauncherApplication application = new(

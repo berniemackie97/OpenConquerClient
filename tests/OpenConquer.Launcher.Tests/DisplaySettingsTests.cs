@@ -221,7 +221,7 @@ public sealed class DisplaySettingsTests : IDisposable
     {
         if (!OperatingSystem.IsWindows())
         {
-            Assert.Equal(expected, DisplaySettingsStore.LinuxConfigurationHome(configured, home));
+            Assert.Equal(expected, LauncherConfigurationDirectory.LinuxConfigurationHome(configured, home));
         }
     }
 }

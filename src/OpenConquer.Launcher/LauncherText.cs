@@ -7,11 +7,13 @@ internal static class LauncherText
 {
     public const string ProductName = "OpenConquer";
     public const string WindowTitle = "OpenConquer Launcher";
-    public const string InstallationHeading = "Game status";
-    public const string CheckAgain = "Check again";
+    public const string DisplaySettings = "Display settings…";
+    public const string Exit = "Exit";
     public const string Close = "Close";
     public const string AlreadyRunningTitle = "OpenConquer is already running";
     public const string AlreadyRunningDetail = "The existing launcher isn't responding. Close it and open OpenConquer again. It may be running in another desktop session.";
+
+    public static (string Title, string Detail) ClientStartFailed => ("Can't start OpenConquer", "The game client couldn't be started. Choose Continue to try again.");
 
     public static (string Title, string Detail) For(LauncherState state)
     {

@@ -108,6 +108,7 @@ internal sealed class LocalProductBuilder
             "--no-restore",
             "--output",
             paths.ClientPublishPath,
+            "-p:OpenConquerLocalProduct=true",
         ]);
     }
 

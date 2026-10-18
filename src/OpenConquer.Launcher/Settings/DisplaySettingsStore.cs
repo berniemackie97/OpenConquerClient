@@ -77,7 +77,6 @@ internal sealed class DisplaySettingsStore : IDisplaySettingsStore
             return SettingsIssue.Unavailable;
         }
 
-        string? temporary = null;
         try
         {
             SettingsReadResult current = Read(token);
@@ -103,65 +102,12 @@ internal sealed class DisplaySettingsStore : IDisplaySettingsStore
                 return SettingsIssue.Invalid;
             }
 
-            token.ThrowIfCancellationRequested();
-            Directory.CreateDirectory(_directory);
-            temporary = Path.Combine(_directory, ".display-" + Guid.NewGuid().ToString("N") + ".tmp");
-
-            FileStreamOptions options = new()
-            {
-                Mode = FileMode.CreateNew,
-                Access = FileAccess.Write,
-                Share = FileShare.None
-            };
-
-            if (!OperatingSystem.IsWindows())
-            {
-                options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
-            }
-
-            using (FileStream stream = new(temporary, options))
-            {
-                stream.Write(DisplaySettingsDocument.Serialize(preferences));
-                stream.Flush(flushToDisk: true);
-            }
-
-            token.ThrowIfCancellationRequested();
-
-            SettingsFile.Commit(temporary, Path.Combine(_directory, FileName), destinationExists: revision is not null);
-
-            temporary = null;
+            SettingsFile.Replace(_directory, FileName, DisplaySettingsDocument.Serialize(preferences), destinationExists: revision is not null, token);
             return null;
         }
         catch (UnauthorizedAccessException) { return SettingsIssue.Unavailable; }
         catch (IOException) { return SettingsIssue.Unavailable; }
-        finally
-        {
-            // Cleanup failures remain observable instead of silently accumulating staged files.
-            if (temporary is not null)
-            {
-                File.Delete(temporary);
-            }
-        }
     }
 
-    internal static DisplaySettingsStore ForCurrentUser()
-    {
-        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        string? root = OperatingSystem.IsWindows() ? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
-            : OperatingSystem.IsMacOS()
-                ? Path.Combine(home, "Library", "Application Support") : OperatingSystem.IsLinux()
-                    ? LinuxConfigurationHome(Environment.GetEnvironmentVariable("XDG_CONFIG_HOME"), home) : null;
-
-        return new DisplaySettingsStore(IsAbsolute(root) ? Path.Combine(root!, "OpenConquer", "Launcher") : null);
-    }
-
-    internal static string? LinuxConfigurationHome(string? configured, string? home)
-    {
-        return IsAbsolute(configured) ? configured : IsAbsolute(home) ? Path.Combine(home!, ".config") : null;
-    }
-
-    private static bool IsAbsolute(string? path)
-    {
-        return !string.IsNullOrWhiteSpace(path) && Path.IsPathFullyQualified(path) && !path.Contains('\0');
-    }
+    internal static DisplaySettingsStore ForCurrentUser() => new(LauncherConfigurationDirectory.ForCurrentUser());
 }
