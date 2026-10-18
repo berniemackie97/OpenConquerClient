@@ -16,7 +16,10 @@ internal sealed class LoginServerSelection
     }
     public int SelectedRegionIndex { get; private set; } = -1;
     public int SelectedServerIndex { get; private set; } = -1;
-    internal long Revision { get; private set; }
+    internal long Revision
+    {
+        get; private set;
+    }
     public int RegionPageCount => PageCount(Catalog.Regions.Count, RegionsPerPage);
 
     public LoginRegion? SelectedRegion => SelectedRegionIndex >= 0 ? Catalog.Regions[SelectedRegionIndex] : null;
