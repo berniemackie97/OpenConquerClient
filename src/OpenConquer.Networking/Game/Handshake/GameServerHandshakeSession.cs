@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using OpenConquer.Networking.Authentication;
 using OpenConquer.Networking.Game.Cryptography;
 using OpenConquer.Networking.Game.Framing;
+using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Networking.Game.Handshake;
 
@@ -26,6 +27,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     private Task? _disposeTask;
     private int _activeOperations;
     private int _phase; // 0: handshake complete, 1: proof sending, 2: ready, 3: reading, 4: terminal
+    private int _loginControlState; // 0: unclaimed, 1: reading, 2: resolved, 3: raw-read bypassed
     private bool _disposed;
 
     private GameServerHandshakeSession(TcpClient client, GameSessionCipher cipher,
@@ -235,12 +237,85 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     /// the session; a partial frame, invalid trailer, timeout or cancellation
     /// is terminal. The caller must dispose the returned frame.
     /// </summary>
-    internal async Task<GameSecuredInboundFrame?> ReadFrameAsync(
+    internal Task<GameSecuredInboundFrame?> ReadFrameAsync(
+        TimeSpan timeout, CancellationToken cancellationToken = default) =>
+        ReadFrameCoreAsync(timeout, cancellationToken, loginControlRead: false);
+
+    /// <summary>
+    /// Resolves the first post-proof login-channel 1004 once. Accepted routes
+    /// leave the session alive for separate character bootstrap; a refusal or
+    /// any invalid/incomplete response terminates it.
+    /// </summary>
+    internal async Task<GameLoginControlOutcome> ReadLoginControlAsync(
         TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         ValidateTimeout(timeout);
         cancellationToken.ThrowIfCancellationRequested();
-        EnterOperation(expectedPhase: 2, activePhase: 3);
+
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2 || _loginControlState != 0)
+            {
+                throw new InvalidOperationException("The first GameServer login control can only be read once, before any raw secured reads.");
+            }
+
+            _loginControlState = 1;
+        }
+
+        try
+        {
+            using GameSecuredInboundFrame? frame = await ReadFrameCoreAsync(
+                timeout, cancellationToken, loginControlRead: true).ConfigureAwait(false);
+
+            if (frame is null)
+            {
+                throw new EndOfStreamException("GameServer closed without a login control outcome.");
+            }
+
+            GameLoginControlOutcome outcome = GameLoginControl1004.Read(frame.Packet.Span);
+
+            lock (_lifetimeGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (_phase != 2)
+                {
+                    throw new InvalidOperationException("GameServer session left its secured read phase before resolving login control.");
+                }
+
+                _loginControlState = 2;
+            }
+
+            if (outcome.Kind == GameLoginControlKind.Refused)
+            {
+                TerminateLoginControlSession();
+            }
+
+            return outcome;
+        }
+        catch
+        {
+            TerminateLoginControlSession();
+            throw;
+        }
+    }
+
+    private void TerminateLoginControlSession()
+    {
+        lock (_lifetimeGate)
+        {
+            _phase = 4;
+        }
+
+        _client.Dispose();
+    }
+
+    private async Task<GameSecuredInboundFrame?> ReadFrameCoreAsync(
+        TimeSpan timeout, CancellationToken cancellationToken, bool loginControlRead)
+    {
+        ValidateTimeout(timeout);
+        cancellationToken.ThrowIfCancellationRequested();
+        EnterReadOperation(loginControlRead);
 
         bool completed = false;
         byte[] encrypted = new byte[GameSecuredFrameProtocol.MaximumWireLength];
@@ -338,6 +413,41 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         {
             throw new ArgumentOutOfRangeException(nameof(timeout),
                 "GameServer secured I/O timeout must be positive and at most 30 seconds.");
+        }
+    }
+
+    private void EnterReadOperation(bool loginControlRead)
+    {
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2)
+            {
+                throw new InvalidOperationException("GameServer secured operation is not valid in this phase.");
+            }
+
+            if (loginControlRead)
+            {
+                if (_loginControlState != 1)
+                {
+                    throw new InvalidOperationException("The first GameServer login control was not claimed.");
+                }
+            }
+            else
+            {
+                if (_loginControlState == 1)
+                {
+                    throw new InvalidOperationException("A GameServer login control read is in progress.");
+                }
+
+                if (_loginControlState == 0)
+                {
+                    _loginControlState = 3;
+                }
+            }
+
+            _phase = 3;
+            _activeOperations++;
         }
     }
 
