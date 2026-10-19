@@ -194,7 +194,7 @@ public sealed class GameServerHandshakeSessionTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
 
-        await game.SendLoginProofAsync(0x6E45, [0, 0x11, 0x22, 0xAA, 0xBB, 0xCC],
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
             TimeSpan.FromSeconds(5), token);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.SendLoginProofAsync(0x6E45, ReadOnlyMemory<byte>.Empty,
@@ -227,7 +227,7 @@ public sealed class GameServerHandshakeSessionTests
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await using GameServerHandshakeSession game =
             await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
-        await game.SendLoginProofAsync(0x6E45, [0, 0x11, 0x22, 0xAA, 0xBB, 0xCC],
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
             TimeSpan.FromSeconds(5), token);
 
         await Assert.ThrowsAsync<InvalidDataException>(() =>
@@ -251,7 +251,7 @@ public sealed class GameServerHandshakeSessionTests
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await using GameServerHandshakeSession game =
             await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
-        await game.SendLoginProofAsync(0x6E45, [0, 0x11, 0x22, 0xAA, 0xBB, 0xCC],
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
             TimeSpan.FromSeconds(5), token);
 
         await Assert.ThrowsAsync<EndOfStreamException>(() =>
@@ -273,7 +273,7 @@ public sealed class GameServerHandshakeSessionTests
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await using GameServerHandshakeSession game =
             await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
-        await game.SendLoginProofAsync(0x6E45, [0, 0x11, 0x22, 0xAA, 0xBB, 0xCC],
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
             TimeSpan.FromSeconds(5), token);
 
         await Assert.ThrowsAsync<TimeoutException>(() =>
