@@ -28,6 +28,8 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     private int _activeOperations;
     private int _phase; // 0: handshake complete, 1: proof sending, 2: ready, 3: reading, 4: terminal
     private int _loginControlState; // 0: unclaimed, 1: reading, 2: resolved, 3: raw-read bypassed
+    private int _existingCharacterPreludeState; // 0: unclaimed, 1: reading, 2: resolved, 3: bypassed
+    private bool _existingCharacterRoute;
     private bool _disposed;
 
     private GameServerHandshakeSession(TcpClient client, GameSessionCipher cipher,
@@ -239,7 +241,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     /// </summary>
     internal Task<GameSecuredInboundFrame?> ReadFrameAsync(
         TimeSpan timeout, CancellationToken cancellationToken = default) =>
-        ReadFrameCoreAsync(timeout, loginControlRead: false, cancellationToken);
+        ReadFrameCoreAsync(timeout, loginControlRead: false, preludeRead: false, cancellationToken);
 
     /// <summary>
     /// Resolves the first post-proof login-channel 1004 once. Accepted routes
@@ -266,7 +268,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         try
         {
             using GameSecuredInboundFrame? frame = await ReadFrameCoreAsync(
-                timeout, loginControlRead: true, cancellationToken).ConfigureAwait(false);
+                timeout, loginControlRead: true, preludeRead: false, cancellationToken).ConfigureAwait(false);
 
             if (frame is null)
             {
@@ -284,6 +286,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
                 }
 
                 _loginControlState = 2;
+                _existingCharacterRoute = outcome.Kind == GameLoginControlKind.ExistingCharacter;
                 if (outcome.Kind == GameLoginControlKind.Refused)
                 {
                     // Publish terminal state before releasing the gate: no raw
@@ -306,6 +309,83 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Reads the current companion server's existing-character account-history
+    /// and server-state prelude as one exclusive secured-read operation. Native
+    /// 5517 does not require either packet as a prerequisite for 1006/EnterMap.
+    /// This method is not a world-admission or character-ready transition.
+    /// </summary>
+    internal async Task<GameExistingCharacterPrelude> ReadExistingCharacterPreludeAsync(
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        ValidateTimeout(timeout);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2 || !_existingCharacterRoute || _loginControlState != 2 ||
+                _existingCharacterPreludeState != 0)
+            {
+                throw new InvalidOperationException(
+                    "Existing-character prelude requires an accepted control and uninterrupted first bootstrap reads.");
+            }
+
+            _existingCharacterPreludeState = 1;
+        }
+
+        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, _lifetimeCancellation.Token);
+        deadline.CancelAfter(timeout);
+
+        try
+        {
+            using GameSecuredInboundFrame? historyFrame = await ReadFrameCoreAsync(
+                timeout, loginControlRead: false, preludeRead: true, deadline.Token).ConfigureAwait(false);
+            if (historyFrame is null)
+            {
+                throw new EndOfStreamException("GameServer closed before account login history.");
+            }
+
+            GameLoginHistory2078 history = GameLoginHistory2078.Read(historyFrame.Packet.Span);
+
+            using GameSecuredInboundFrame? stateFrame = await ReadFrameCoreAsync(
+                timeout, loginControlRead: false, preludeRead: true, deadline.Token).ConfigureAwait(false);
+            if (stateFrame is null)
+            {
+                throw new EndOfStreamException("GameServer closed before the server state packet.");
+            }
+
+            GameServerState2079 state = GameServerState2079.Read(stateFrame.Packet.Span);
+            deadline.Token.ThrowIfCancellationRequested();
+
+            lock (_lifetimeGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (_phase != 2 || _existingCharacterPreludeState != 1)
+                {
+                    throw new InvalidOperationException(
+                        "The existing-character prelude lost exclusive secured-read ownership.");
+                }
+
+                _existingCharacterPreludeState = 2;
+            }
+
+            return new GameExistingCharacterPrelude(history, state);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
+            !_lifetimeCancellation.IsCancellationRequested)
+        {
+            TerminateLoginControlSession();
+            throw new TimeoutException("GameServer existing-character prelude timed out.");
+        }
+        catch
+        {
+            TerminateLoginControlSession();
+            throw;
+        }
+    }
+
     private void TerminateLoginControlSession()
     {
         lock (_lifetimeGate)
@@ -317,11 +397,11 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     }
 
     private async Task<GameSecuredInboundFrame?> ReadFrameCoreAsync(
-        TimeSpan timeout, bool loginControlRead, CancellationToken cancellationToken)
+        TimeSpan timeout, bool loginControlRead, bool preludeRead, CancellationToken cancellationToken)
     {
         ValidateTimeout(timeout);
         cancellationToken.ThrowIfCancellationRequested();
-        EnterReadOperation(loginControlRead);
+        EnterReadOperation(loginControlRead, preludeRead);
 
         bool completed = false;
         byte[] encrypted = new byte[GameSecuredFrameProtocol.MaximumWireLength];
@@ -422,7 +502,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
     }
 
-    private void EnterReadOperation(bool loginControlRead)
+    private void EnterReadOperation(bool loginControlRead, bool preludeRead)
     {
         lock (_lifetimeGate)
         {
@@ -449,6 +529,27 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
                 if (_loginControlState == 0)
                 {
                     _loginControlState = 3;
+                }
+
+                if (preludeRead)
+                {
+                    if (!_existingCharacterRoute || _existingCharacterPreludeState != 1)
+                    {
+                        throw new InvalidOperationException("Existing-character prelude is not claimed.");
+                    }
+                }
+                else
+                {
+                    if (_existingCharacterPreludeState == 1)
+                    {
+                        throw new InvalidOperationException(
+                            "A typed existing-character prelude read is in progress.");
+                    }
+
+                    if (_existingCharacterRoute && _existingCharacterPreludeState == 0)
+                    {
+                        _existingCharacterPreludeState = 3;
+                    }
                 }
             }
 
