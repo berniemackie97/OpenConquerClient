@@ -5,8 +5,8 @@ using System.Numerics;
 using System.Security.Cryptography;
 using OpenConquer.Networking.Authentication;
 using OpenConquer.Networking.Game.Cryptography;
-using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Framing;
+using OpenConquer.Networking.Game.Handshake;
 
 namespace OpenConquer.Client.Tests.Networking;
 
