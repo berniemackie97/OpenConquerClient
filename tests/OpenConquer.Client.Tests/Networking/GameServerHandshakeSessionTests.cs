@@ -737,16 +737,28 @@ public sealed class GameServerHandshakeSessionTests
                             Convert.FromHexString("08001F08010000005451536572766572");
                         byte[] followupWire =
                             Convert.FromHexString("0800F103556677885451536572766572");
-                        server.EncryptOutbound(historyWire, historyWire);
-                        server.EncryptOutbound(stateWire, stateWire);
-                        server.EncryptOutbound(followupWire, followupWire);
-
-                        byte[] joined = response switch
+                        byte[] joined;
+                        if (response == PeerResponse.AcceptedWrongPreludeOrder)
                         {
-                            PeerResponse.AcceptedThenHistory => [.. firstWire, .. historyWire],
-                            PeerResponse.AcceptedWrongPreludeOrder => [.. firstWire, .. stateWire],
-                            _ => [.. firstWire, .. historyWire, .. stateWire, .. followupWire]
-                        };
+                            // The peer's outbound cipher advances only over bytes
+                            // actually transmitted; do not encrypt omitted history.
+                            server.EncryptOutbound(stateWire, stateWire);
+                            joined = [.. firstWire, .. stateWire];
+                        }
+                        else
+                        {
+                            server.EncryptOutbound(historyWire, historyWire);
+                            if (response == PeerResponse.AcceptedThenHistory)
+                            {
+                                joined = [.. firstWire, .. historyWire];
+                            }
+                            else
+                            {
+                                server.EncryptOutbound(stateWire, stateWire);
+                                server.EncryptOutbound(followupWire, followupWire);
+                                joined = [.. firstWire, .. historyWire, .. stateWire, .. followupWire];
+                            }
+                        }
                         await stream.WriteAsync(joined, token);
                     }
                     else

@@ -28,7 +28,7 @@ public sealed class GameExistingCharacterPreludePacketTests
     [Fact]
     public void AccountHistoryPreservesNonzeroValuesAndDecodesWindows1252()
     {
-        byte[] history = Convert.FromHexString("0D001E08BA1D594E02" + "436166E900");
+        byte[] history = Convert.FromHexString("0E001E08BA1D594E02" + "436166E900");
         GameLoginHistory2078 result = GameLoginHistory2078.Read(history);
 
         Assert.Equal(0x4E591DBAu, result.LastLoginTimestamp);
