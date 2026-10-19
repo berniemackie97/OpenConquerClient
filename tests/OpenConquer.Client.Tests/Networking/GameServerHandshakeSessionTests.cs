@@ -265,7 +265,9 @@ public sealed class GameServerHandshakeSessionTests
         int declared = BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(7));
         Assert.InRange(declared, 31, 1017);
 
-        byte[] body = new byte[declared];
+        // The 7-byte native prefix precedes a declared region that INCLUDES
+        // its own four-byte length field, already consumed in 'header'.
+        byte[] body = new byte[declared - sizeof(int)];
         await stream.ReadExactlyAsync(body, token);
         decryptor.Transform(body, body);
         int offset = 0;
