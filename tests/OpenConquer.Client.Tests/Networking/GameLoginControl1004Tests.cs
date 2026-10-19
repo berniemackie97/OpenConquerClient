@@ -81,6 +81,62 @@ public sealed class GameLoginControl1004Tests
         Assert.Throws<InvalidDataException>(() => GameLoginControl1004.Read(packet));
     }
 
+    [Theory]
+    [InlineData(0, (byte)0x81)]
+    [InlineData(1, (byte)0x81)]
+    [InlineData(2, (byte)0x81)]
+    [InlineData(0, (byte)0x8D)]
+    [InlineData(1, (byte)0x8D)]
+    [InlineData(2, (byte)0x8D)]
+    [InlineData(0, (byte)0x8F)]
+    [InlineData(1, (byte)0x8F)]
+    [InlineData(2, (byte)0x8F)]
+    [InlineData(0, (byte)0x90)]
+    [InlineData(1, (byte)0x90)]
+    [InlineData(2, (byte)0x90)]
+    [InlineData(0, (byte)0x9D)]
+    [InlineData(1, (byte)0x9D)]
+    [InlineData(2, (byte)0x9D)]
+    public void UndefinedAnsiBytesInIgnoredStringsCannotEstablishLoginRoutes(int fieldIndex, byte value)
+    {
+        foreach (string fixture in new[] { AcceptedHex, NewRoleHex })
+        {
+            byte[] packet = WithOneByteStringField(Convert.FromHexString(fixture), fieldIndex, value);
+
+            Assert.Throws<InvalidDataException>(() => GameLoginControl1004.Read(packet));
+        }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void DefinedWindows1252ByteInIgnoredStringPreservesNativeControl(int fieldIndex)
+    {
+        byte[] packet = WithOneByteStringField(Convert.FromHexString(AcceptedHex), fieldIndex, 0x80);
+
+        GameLoginControlOutcome outcome = GameLoginControl1004.Read(packet);
+
+        Assert.Equal(GameLoginControlKind.ExistingCharacter, outcome.Kind);
+        Assert.Null(outcome.RefusalText);
+    }
+
+    // Compose a fixture with a one-byte sender, recipient or suffix. The
+    // fixed server packet layout is independent of the client parser.
+    private static byte[] WithOneByteStringField(byte[] packet, int fieldIndex, byte value)
+    {
+        int lengthOffset = 25 + fieldIndex;
+        byte[] result = new byte[packet.Length + 1];
+
+        packet.AsSpan(0, lengthOffset + 1).CopyTo(result);
+        result[lengthOffset] = 1;
+        result[lengthOffset + 1] = value;
+        packet.AsSpan(lengthOffset + 1).CopyTo(result.AsSpan(lengthOffset + 2));
+        BinaryPrimitives.WriteUInt16LittleEndian(result, checked((ushort)result.Length));
+
+        return result;
+    }
+
     [Fact]
     public void TruncatedOrExtendedStringListIsRejectedEvenWithConsistentHeader()
     {

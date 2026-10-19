@@ -55,9 +55,12 @@ internal static class GameLoginControl1004
                 throw new InvalidDataException("The GameServer login control has an invalid string length.");
             }
 
+            ReadOnlySpan<byte> value = packet.Slice(offset, length);
+            ValidateAnsiBytes(value);
+
             if (index == 3)
             {
-                message = packet.Slice(offset, length);
+                message = value;
             }
 
             offset += length;
@@ -66,17 +69,6 @@ internal static class GameLoginControl1004
         if (offset != packet.Length || message.Contains((byte)0))
         {
             throw new InvalidDataException("The GameServer login control contains extra data or an embedded NUL.");
-        }
-
-        // Windows-1252 does not assign printable characters to these slots.
-        // Reject them explicitly: runtime code-page providers may substitute
-        // control characters rather than invoke the decoder fallback.
-        foreach (byte value in message)
-        {
-            if (value is 0x81 or 0x8D or 0x8F or 0x90 or 0x9D)
-            {
-                throw new InvalidDataException("The GameServer login control contains an undefined ANSI byte.");
-            }
         }
 
         if (message.SequenceEqual("ANSWER_OK"u8))
@@ -96,6 +88,19 @@ internal static class GameLoginControl1004
         catch (DecoderFallbackException exception)
         {
             throw new InvalidDataException("The GameServer login refusal contains invalid ANSI text.", exception);
+        }
+    }
+
+    private static void ValidateAnsiBytes(ReadOnlySpan<byte> value)
+    {
+        // Windows-1252 leaves these bytes undefined. Reject them explicitly:
+        // runtime providers may otherwise substitute control characters.
+        foreach (byte character in value)
+        {
+            if (character is 0x81 or 0x8D or 0x8F or 0x90 or 0x9D)
+            {
+                throw new InvalidDataException("The GameServer login control contains an undefined ANSI byte.");
+            }
         }
     }
 

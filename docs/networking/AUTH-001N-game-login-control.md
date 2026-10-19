@@ -37,9 +37,10 @@ The first GameServer packet after transmitting proof 1052 must be a secured
 All numeric fields are little-endian. Total packet size must match its header,
 be at least 29 and no more than 1024 bytes; every string length is bounded and
 the final byte must belong to the fourth string. The first three strings
-are ignored for login control, matching native consumption. The fourth string
-is Windows-1252, matching the companion server `WireTextEncodingResolver`.
-Unrepresentable ANSI bytes, embedded NUL, malformed lists, unexpected packet
+are ignored for login control, matching native consumption, but all four
+are checked for undefined Windows-1252 bytes. The message is decoded using
+Windows-1252, matching the companion server `WireTextEncodingResolver`.
+Undefined ANSI bytes, embedded NUL in the message, malformed lists, unexpected packet
 types and wrong channels are rejected rather than interpreted as authentication.
 
 Exact `ANSWER_OK` means **existing-character bootstrap has begun**, not world
@@ -87,7 +88,8 @@ invent a successful creation path.
 
 Tests use independently specified plaintext 1004 layouts (including the
 server's literal refusal text), malformed packet cases, exact control words,
-Windows-1252 refusal text and same-session loopback proof/secured-I/O tests.
+Windows-1252 refusal text, undefined ANSI byte rejection in every string,
+defined extended ANSI-byte acceptance, and same-session loopback proof/secured-I/O tests.
 Acceptance additionally requires locked restore, formatting, Release build,
 full tests, retail content verification, Linux/macOS/Windows CI, Dependency
 Review and all substantive PR review findings. User merge remains explicit.
