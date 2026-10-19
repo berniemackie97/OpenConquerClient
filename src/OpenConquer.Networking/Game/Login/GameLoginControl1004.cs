@@ -68,6 +68,17 @@ internal static class GameLoginControl1004
             throw new InvalidDataException("The GameServer login control contains extra data or an embedded NUL.");
         }
 
+        // Windows-1252 does not assign printable characters to these slots.
+        // Reject them explicitly: runtime code-page providers may substitute
+        // control characters rather than invoke the decoder fallback.
+        foreach (byte value in message)
+        {
+            if (value is 0x81 or 0x8D or 0x8F or 0x90 or 0x9D)
+            {
+                throw new InvalidDataException("The GameServer login control contains an undefined ANSI byte.");
+            }
+        }
+
         if (message.SequenceEqual("ANSWER_OK"u8))
         {
             return new GameLoginControlOutcome(GameLoginControlKind.ExistingCharacter, null);

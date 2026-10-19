@@ -239,7 +239,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     /// </summary>
     internal Task<GameSecuredInboundFrame?> ReadFrameAsync(
         TimeSpan timeout, CancellationToken cancellationToken = default) =>
-        ReadFrameCoreAsync(timeout, cancellationToken, loginControlRead: false);
+        ReadFrameCoreAsync(timeout, loginControlRead: false, cancellationToken);
 
     /// <summary>
     /// Resolves the first post-proof login-channel 1004 once. Accepted routes
@@ -266,7 +266,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         try
         {
             using GameSecuredInboundFrame? frame = await ReadFrameCoreAsync(
-                timeout, cancellationToken, loginControlRead: true).ConfigureAwait(false);
+                timeout, loginControlRead: true, cancellationToken).ConfigureAwait(false);
 
             if (frame is null)
             {
@@ -284,11 +284,17 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
                 }
 
                 _loginControlState = 2;
+                if (outcome.Kind == GameLoginControlKind.Refused)
+                {
+                    // Publish terminal state before releasing the gate: no raw
+                    // reader may race a refusal into another secured read.
+                    _phase = 4;
+                }
             }
 
             if (outcome.Kind == GameLoginControlKind.Refused)
             {
-                TerminateLoginControlSession();
+                _client.Dispose();
             }
 
             return outcome;
@@ -311,7 +317,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     }
 
     private async Task<GameSecuredInboundFrame?> ReadFrameCoreAsync(
-        TimeSpan timeout, CancellationToken cancellationToken, bool loginControlRead)
+        TimeSpan timeout, bool loginControlRead, CancellationToken cancellationToken)
     {
         ValidateTimeout(timeout);
         cancellationToken.ThrowIfCancellationRequested();
