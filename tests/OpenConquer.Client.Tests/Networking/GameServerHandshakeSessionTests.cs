@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Security.Cryptography;
 using OpenConquer.Networking.Authentication;
 using OpenConquer.Networking.Game.Cryptography;
+using OpenConquer.Networking.Game.Framing;
 using OpenConquer.Networking.Game.Handshake;
 
 namespace OpenConquer.Client.Tests.Networking;
@@ -173,6 +174,232 @@ public sealed class GameServerHandshakeSessionTests
         await encrypted.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
         await game.DisposeAsync();
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task SecuredProofAndConsecutiveInboundFramesPreserveBothCipherStreams()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = SecuredGamePeerAsync(games, PeerResponse.TwoFrames, token);
+
+        await using LoginAccountExchangeResult account =
+            await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game =
+            await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
+            TimeSpan.FromSeconds(5), token);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.SendLoginProofAsync(0x6E45, ReadOnlyMemory<byte>.Empty,
+                TimeSpan.FromSeconds(5), token));
+
+        using GameSecuredInboundFrame first = Assert.IsType<GameSecuredInboundFrame>(
+            await game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+        Assert.Equal(1052, first.PacketType);
+        Assert.Equal("08001C0455667788", Convert.ToHexString(first.Packet.Span));
+        using GameSecuredInboundFrame second = Assert.IsType<GameSecuredInboundFrame>(
+            await game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+        Assert.Equal(1009, second.PacketType);
+        Assert.Equal("0400F103", Convert.ToHexString(second.Packet.Span));
+
+        await game.DisposeAsync();
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task InvalidSecuredSignatureClosesSocketAndTerminatesReads()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = SecuredGamePeerAsync(games, PeerResponse.InvalidSignature, token);
+
+        await using LoginAccountExchangeResult account =
+            await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game =
+            await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
+            TimeSpan.FromSeconds(5), token);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task PartialSecuredFrameEofClosesSocketWithoutReturningPacket()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = SecuredGamePeerAsync(games, PeerResponse.PartialFrameEof, token);
+
+        await using LoginAccountExchangeResult account =
+            await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game =
+            await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
+            TimeSpan.FromSeconds(5), token);
+
+        await Assert.ThrowsAsync<EndOfStreamException>(() =>
+            game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task SecuredFrameTimeoutTerminatesSessionAndAbortsSocket()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = SecuredGamePeerAsync(games, PeerResponse.SilentAfterProof, token);
+
+        await using LoginAccountExchangeResult account =
+            await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game =
+            await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
+            TimeSpan.FromSeconds(5), token);
+
+        await Assert.ThrowsAsync<TimeoutException>(() =>
+            game.ReadFrameAsync(TimeSpan.FromMilliseconds(150), token));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task AccountDisposalBeforeProofIsTerminalAndNoProofIsSent()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        TaskCompletionSource<byte[]> completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task gamePeer = CompletedGamePeerAsync(games, completed, token);
+
+        await using LoginAccountExchangeResult account =
+            await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game =
+            await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+
+        await account.DisposeAsync();
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
+            game.SendLoginProofAsync(0x6E45, ReadOnlyMemory<byte>.Empty,
+                TimeSpan.FromSeconds(5), token));
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    private enum PeerResponse
+    {
+        TwoFrames,
+        InvalidSignature,
+        PartialFrameEof,
+        SilentAfterProof,
+    }
+
+    private static async Task SecuredGamePeerAsync(TcpListener listener, PeerResponse response,
+        CancellationToken token)
+    {
+        using TcpClient peer = await listener.AcceptTcpClientAsync(token);
+        NetworkStream stream = peer.GetStream();
+        await stream.WriteAsync(Convert.FromHexString(EncryptedChallenge), token);
+
+        // Server-side interpretation of the client's unframed DH answer:
+        // seven random prefix bytes, including length, two chunks, trailer.
+        byte[] header = new byte[11];
+        await stream.ReadExactlyAsync(header, token);
+        using GameHandshakeBootstrapCipher decryptor = GameHandshakeBootstrapCipher.CreateDecryptor();
+        decryptor.Transform(header, header);
+        int declared = BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(7));
+        Assert.InRange(declared, 31, 1017);
+        byte[] body = new byte[declared - sizeof(int)];
+        await stream.ReadExactlyAsync(body, token);
+        decryptor.Transform(body, body);
+        int offset = 0;
+        int paddingLength = BinaryPrimitives.ReadInt32LittleEndian(body);
+        Assert.InRange(paddingLength, 10, 49);
+        offset += sizeof(int) + paddingLength;
+        int publicLength = BinaryPrimitives.ReadInt32LittleEndian(body.AsSpan(offset));
+        offset += sizeof(int);
+        Assert.InRange(publicLength, 1, 128);
+        Assert.True(GameServerChallengeDecoder.TryParsePublicKey(
+            body.AsSpan(offset, publicLength), out BigInteger publicKey));
+        offset += publicLength;
+        Assert.Equal("TQClient"u8.ToArray(), body.AsSpan(offset).ToArray());
+
+        BigInteger prime = new(Convert.FromHexString(GameServerChallengeDecoder.PrimeHex),
+            isUnsigned: true, isBigEndian: true);
+        BigInteger shared = BigInteger.ModPow(publicKey, new BigInteger(2), prime);
+        byte[] minimal = shared.ToByteArray(isUnsigned: true, isBigEndian: true);
+        byte[] key = new byte[64];
+        minimal.CopyTo(key, 0);
+        try
+        {
+            using GameSessionCipher server = new(key,
+                [21, 22, 23, 24, 25, 26, 27, 28], [1, 2, 3, 4, 5, 6, 7, 8]);
+
+            byte[] proofWire = new byte[36];
+            await stream.ReadExactlyAsync(proofWire, token);
+            server.DecryptInbound(proofWire, proofWire);
+            Assert.Equal(
+                "1C001C0444332211EFCDAB897C00456E001122AABBCC00008D150000" +
+                "5451436C69656E74", Convert.ToHexString(proofWire));
+
+            switch (response)
+            {
+                case PeerResponse.TwoFrames:
+                    byte[] first = Convert.FromHexString("08001C04556677885451536572766572");
+                    byte[] second = Convert.FromHexString("0400F1035451536572766572");
+                    server.EncryptOutbound(first, first);
+                    server.EncryptOutbound(second, second);
+                    byte[] both = new byte[first.Length + second.Length];
+                    first.CopyTo(both, 0);
+                    second.CopyTo(both, first.Length);
+                    await stream.WriteAsync(both, token);
+                    Assert.Equal(0, await ObserveCloseAsync(stream, token));
+                    return;
+
+                case PeerResponse.InvalidSignature:
+                    byte[] invalid = Convert.FromHexString("08001C04556677885451436C69656E74");
+                    server.EncryptOutbound(invalid, invalid);
+                    await stream.WriteAsync(invalid, token);
+                    Assert.Equal(0, await ObserveCloseAsync(stream, token));
+                    return;
+
+                case PeerResponse.PartialFrameEof:
+                    byte[] partial = Convert.FromHexString("08001C04556677885451536572766572");
+                    server.EncryptOutbound(partial, partial);
+                    await stream.WriteAsync(partial.AsMemory(0, 5), token);
+                    return;
+
+                case PeerResponse.SilentAfterProof:
+                    Assert.Equal(0, await ObserveCloseAsync(stream, token));
+                    return;
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(minimal);
+            CryptographicOperations.ZeroMemory(key);
+        }
     }
 
     private static async Task<LoginAccountExchangeResult> AuthenticatedAccountAsync(

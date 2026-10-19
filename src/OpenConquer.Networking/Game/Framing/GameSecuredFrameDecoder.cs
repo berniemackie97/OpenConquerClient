@@ -26,6 +26,31 @@ internal sealed class GameSecuredFrameDecoder : IDisposable
         _sessionCipher = sessionCipher ?? throw new ArgumentNullException(nameof(sessionCipher));
     }
 
+    /// <summary>
+    /// Exact maximum encrypted bytes needed for the next decoding step. Before
+    /// receiving the header this is at most four bytes; after it is the
+    /// remaining bounded wire frame. Enables socket reads without consuming
+    /// ciphertext that belongs to the following frame.
+    /// </summary>
+    internal int BytesNeeded
+    {
+        get
+        {
+            lock (_gate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (_faulted)
+                {
+                    throw new InvalidOperationException("The secured frame decoder is terminal.");
+                }
+
+                return _expectedWireLength == 0
+                    ? GameSecuredFrameProtocol.HeaderLength - _bufferedLength
+                    : _expectedWireLength - _bufferedLength;
+            }
+        }
+    }
+
     internal GameSecuredFrameDecodeResult Decode(ReadOnlySpan<byte> encrypted)
     {
         lock (_gate)
