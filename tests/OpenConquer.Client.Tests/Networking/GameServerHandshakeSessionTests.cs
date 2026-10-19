@@ -350,7 +350,7 @@ public sealed class GameServerHandshakeSessionTests
         VerifyFirstLoginControlAsync(PeerResponse.LoginRefused, GameLoginControlKind.Refused,
             "The server is full. Please try again later.");
 
-    private async Task VerifyFirstLoginControlAsync(
+    private static async Task VerifyFirstLoginControlAsync(
         PeerResponse reply, GameLoginControlKind expected, string? refusal)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
@@ -390,7 +390,7 @@ public sealed class GameServerHandshakeSessionTests
     public Task WrongFirstPacketIsTerminal() =>
         VerifyUnexpectedInitialLoginControlAsync(PeerResponse.WrongFirstPacket);
 
-    private async Task VerifyUnexpectedInitialLoginControlAsync(PeerResponse reply)
+    private static async Task VerifyUnexpectedInitialLoginControlAsync(PeerResponse reply)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
@@ -452,7 +452,7 @@ public sealed class GameServerHandshakeSessionTests
     public Task LoginControlTimeoutCannotEstablishSuccess() =>
         VerifyMissingInitialLoginControlAsync(PeerResponse.SilentAfterProof);
 
-    private async Task VerifyMissingInitialLoginControlAsync(PeerResponse reply)
+    private static async Task VerifyMissingInitialLoginControlAsync(PeerResponse reply)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
