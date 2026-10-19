@@ -11,6 +11,8 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
     private bool _postAuthenticationCompleted;
     private int _reportedResourceVersion;
     private bool _gameProofWritten;
+    private bool _gameHandoffClaimed;
+    private readonly CancellationTokenSource _gameHandoffLifetime = new();
     private bool _disposed;
 
     private LoginAccountExchangeResult(LoginAccountResponse1055 response, LoginAccountSession? session)
@@ -85,6 +87,37 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Grants at most one GameServer handshake attempt after both native account
+    /// reports completed. A 1055 redirect is untrusted: only literal IPv4
+    /// loopback is permitted until independently authenticated transport exists.
+    /// </summary>
+    internal (int Port, CancellationToken Lifetime) ClaimLoopbackGameHandoff()
+    {
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_session is null || !Response.IsSuccess || !_postAuthenticationCompleted)
+            {
+                throw new InvalidOperationException("AccountServer post-authentication has not completed.");
+            }
+
+            if (_gameHandoffClaimed)
+            {
+                throw new InvalidOperationException("GameServer handshake has already been claimed.");
+            }
+
+            if (Response.GameHost != "127.0.0.1" ||
+                Response.GamePort is < 1 or > 65535)
+            {
+                throw new InvalidOperationException("Remote GameServer redirect requires authenticated peer transport.");
+            }
+
+            _gameHandoffClaimed = true;
+            return ((int)Response.GamePort, _gameHandoffLifetime.Token);
+        }
+    }
+
     internal static LoginAccountExchangeResult Success(LoginAccountResponse1055 response, LoginAccountSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
@@ -108,9 +141,19 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
 
     public ValueTask DisposeAsync()
     {
+        bool cancel;
         lock (_lifetimeGate)
         {
+            cancel = !_disposed;
             _disposed = true;
+        }
+
+        if (cancel)
+        {
+            // Cancel active connect/handshake without running callbacks under
+            // the lifetime lock.
+            _gameHandoffLifetime.Cancel();
+            _gameHandoffLifetime.Dispose();
         }
 
         return _session?.DisposeAsync() ?? ValueTask.CompletedTask;
