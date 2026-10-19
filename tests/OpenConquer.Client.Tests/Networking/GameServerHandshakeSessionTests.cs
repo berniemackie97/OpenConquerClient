@@ -341,11 +341,16 @@ public sealed class GameServerHandshakeSessionTests
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
-    [Theory]
-    [InlineData(PeerResponse.NewRole, GameLoginControlKind.CharacterCreation, null)]
-    [InlineData(PeerResponse.LoginRefused, GameLoginControlKind.Refused,
-        "The server is full. Please try again later.")]
-    public async Task FirstLoginControlRoutesCreationOrTerminatesRefusal(
+    [Fact]
+    public Task FirstLoginControlRoutesCharacterCreation() =>
+        VerifyFirstLoginControlAsync(PeerResponse.NewRole, GameLoginControlKind.CharacterCreation, null);
+
+    [Fact]
+    public Task FirstLoginControlTerminatesRefusal() =>
+        VerifyFirstLoginControlAsync(PeerResponse.LoginRefused, GameLoginControlKind.Refused,
+            "The server is full. Please try again later.");
+
+    private async Task VerifyFirstLoginControlAsync(
         PeerResponse reply, GameLoginControlKind expected, string? refusal)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
@@ -377,10 +382,15 @@ public sealed class GameServerHandshakeSessionTests
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
-    [Theory]
-    [InlineData(PeerResponse.WrongLoginChannel)]
-    [InlineData(PeerResponse.WrongFirstPacket)]
-    public async Task UnexpectedInitialLoginControlIsTerminal(PeerResponse reply)
+    [Fact]
+    public Task WrongLoginChannelIsTerminal() =>
+        VerifyUnexpectedInitialLoginControlAsync(PeerResponse.WrongLoginChannel);
+
+    [Fact]
+    public Task WrongFirstPacketIsTerminal() =>
+        VerifyUnexpectedInitialLoginControlAsync(PeerResponse.WrongFirstPacket);
+
+    private async Task VerifyUnexpectedInitialLoginControlAsync(PeerResponse reply)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
@@ -434,10 +444,15 @@ public sealed class GameServerHandshakeSessionTests
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
-    [Theory]
-    [InlineData(PeerResponse.NoLoginResponse)]
-    [InlineData(PeerResponse.SilentAfterProof)]
-    public async Task MissingInitialLoginControlNeverReturnsSuccess(PeerResponse reply)
+    [Fact]
+    public Task LoginControlEofCannotEstablishSuccess() =>
+        VerifyMissingInitialLoginControlAsync(PeerResponse.NoLoginResponse);
+
+    [Fact]
+    public Task LoginControlTimeoutCannotEstablishSuccess() =>
+        VerifyMissingInitialLoginControlAsync(PeerResponse.SilentAfterProof);
+
+    private async Task VerifyMissingInitialLoginControlAsync(PeerResponse reply)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
