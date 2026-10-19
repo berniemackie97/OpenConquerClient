@@ -91,7 +91,7 @@ public sealed class GameExistingCharacterPreludePacketTests
         Assert.Throws<InvalidDataException>(() => GameLoginHistory2078.Read(wrongSize));
 
         Assert.Throws<InvalidDataException>(() =>
-            GameLoginHistory2078.Read(Convert.FromHexString(EmptyHistoryHex)[..^1]));
+            GameLoginHistory2078.Read(Convert.FromHexString(EmptyHistoryHex).AsSpan(0, 9)));
 
         byte[] oversized = new byte[1025];
         BinaryPrimitives.WriteUInt16LittleEndian(oversized, (ushort)oversized.Length);
