@@ -3,6 +3,7 @@ using OpenConquer.Client.UI.Login.Controls;
 using OpenConquer.Client.UI.Login.Credentials;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Client.UI.Login.Stage;
+using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Content.Login;
 using OpenConquer.Rendering.OpenGL;
 
@@ -20,6 +21,7 @@ internal sealed class LoginScreenRenderer : IDisposable
     private readonly LoginServerPresentation _servers;
     private readonly LoginSelectionLabels _labels;
     private readonly LoginDirectoryStatusPresentation _directoryStatus;
+    private readonly LoginErrorPresentation _errors;
     private readonly LoginRegionPresentation _regions;
     private readonly LoginCredentialPresentation _credentials;
     private readonly LoginButtonPresentation _buttons;
@@ -41,6 +43,7 @@ internal sealed class LoginScreenRenderer : IDisposable
             _servers = _ownership.Track(new LoginServerPresentation(graphicsDevice, layout));
             _labels = _ownership.Track(new LoginSelectionLabels(graphicsDevice, layout));
             _directoryStatus = _ownership.Track(new LoginDirectoryStatusPresentation(graphicsDevice, layout));
+            _errors = _ownership.Track(new LoginErrorPresentation(graphicsDevice, layout));
             _regions = _ownership.Track(new LoginRegionPresentation(graphicsDevice, layout));
             _credentials = _ownership.Track(new LoginCredentialPresentation(graphicsDevice, layout));
             _buttons = _ownership.Track(new LoginButtonPresentation(graphicsDevice));
@@ -84,6 +87,10 @@ internal sealed class LoginScreenRenderer : IDisposable
             _regions.DrawPageButtons(renderer, screen.SelectionInput, _buttons);
             _labels.DrawRegionPage(renderer, selection);
         }
+
+        // Depth179 errorMC and depth205 quitWindow, beneath the border and account panel.
+        _errors.Draw(renderer, screen.Error);
+        _errors.Draw(renderer, screen.Quit);
 
         // Depths 216 and 221: border ornament, then enterMC.
         _stage.DrawBorder(renderer);
