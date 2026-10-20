@@ -165,6 +165,7 @@ internal sealed record GameCharacterInfo1006
             PlayerNameBytes = playerName,
             SpouseNameBytes = spouseName
         };
+    }
 
     private static byte[] ReadNameEntry(ReadOnlySpan<byte> snapshot, ref int offset, bool retain)
     {
