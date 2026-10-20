@@ -23,6 +23,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private Task<AttemptResult>? _pending;
     private CancellationTokenSource? _cancellation;
     private GameServerHandshakeSession? _acceptedGame;
+    private Task? _revocation;
     private SignedLoginCatalog? _catalog;
     private LoginServerSelection? _selection;
     private long _revision;
@@ -44,11 +45,12 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(screen);
-        if (_pending is not null)
+        if (_pending is not null || _revocation is { IsCompleted: false })
         {
             return false;
         }
 
+        _revocation = null;
         LoginServerSelection selected = screen.Selection;
         if (catalog is null || !catalog.IsCurrent(_clock.GetUtcNow()) ||
             !ReferenceEquals(selected.Catalog, catalog.View) ||
@@ -98,8 +100,9 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
             return;
         }
 
-        if (!ReferenceEquals(current, _catalog) || current is null ||
-            !current.IsCurrent(_clock.GetUtcNow()) || _selection?.Revision != _revision)
+        bool revoked = !ReferenceEquals(current, _catalog) || current is null ||
+            !current.IsCurrent(_clock.GetUtcNow()) || _selection?.Revision != _revision;
+        if (revoked)
         {
             _cancellation?.Cancel();
         }
@@ -116,8 +119,22 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         _cancellation = null;
         _catalog = null;
         _selection = null;
-        _acceptedGame = result.Game;
-        Publish(result.Status);
+        if (revoked)
+        {
+            // A completed success may race a catalog/selection revocation.
+            // Never retain that game socket or expose the accepted status.
+            if (result.Game is { } revokedGame)
+            {
+                _revocation = DisposeRevokedAsync(revokedGame);
+            }
+
+            Publish(LoginAttemptStatus.Cancelled);
+        }
+        else
+        {
+            _acceptedGame = result.Game;
+            Publish(result.Status);
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -141,6 +158,12 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         _cancellation?.Dispose();
         _cancellation = null;
         _pending = null;
+        if (_revocation is { } revocation)
+        {
+            await revocation.ConfigureAwait(false);
+            _revocation = null;
+        }
+
         if (_acceptedGame is { } accepted)
         {
             _acceptedGame = null;
@@ -237,6 +260,19 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         {
             CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(password.AsSpan()));
             CryptographicOperations.ZeroMemory(name);
+        }
+    }
+
+    private static async Task DisposeRevokedAsync(GameServerHandshakeSession game)
+    {
+        try
+        {
+            await game.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // Shutdown failure must not revive an unauthorized session or
+            // leak untrusted transport exception contents onto the UI thread.
         }
     }
 
