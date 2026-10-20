@@ -327,7 +327,7 @@ public sealed class GameServerHandshakeSessionTests
 
         GameLoginControlOutcome result = await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token);
         Assert.Equal(GameLoginControlKind.ExistingCharacter, result.Kind);
-        Assert.Null(result.RefusalText);
+        Assert.True(result.RefusalBytes.IsEmpty);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token));
@@ -365,7 +365,7 @@ public sealed class GameServerHandshakeSessionTests
             await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
         Assert.Equal(0u, prelude.LoginHistory.LastLoginTimestamp);
         Assert.Equal((byte)0, prelude.LoginHistory.LocationWarningFlag);
-        Assert.Equal(string.Empty, prelude.LoginHistory.LastLoginLocation);
+        Assert.True(prelude.LoginHistory.LastLoginLocationBytes.IsEmpty);
         Assert.Equal(1u, prelude.ServerState.Value);
         Assert.Equal((ushort)2001, prelude.ServerState.SelectedUiState);
 
