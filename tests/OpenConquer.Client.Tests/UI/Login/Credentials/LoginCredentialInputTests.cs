@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using OpenConquer.Client.UI.Login.Credentials;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Client.UI.Login.Stage;
@@ -8,6 +10,59 @@ namespace OpenConquer.Client.Tests.UI.Login.Credentials;
 
 public sealed class LoginCredentialInputTests
 {
+    [Fact]
+    public void LoginCredentialsAreIndependentlyOwnedAndEditorSecretIsErased()
+    {
+        (LoginServerSelection selected, LoginCredentialLayout layout) = Setup(1024, 768);
+        using LoginCredentialInput input = new(selected, layout);
+        Assert.True(input.PointerPressed(true, layout.AccountField.X + 2, layout.AccountField.Y + 2));
+        foreach (char c in "Player_01")
+        {
+            input.TextEntered(c);
+        }
+
+        Assert.True(input.PointerPressed(true, layout.PasswordField.X + 2, layout.PasswordField.Y + 2));
+        foreach (char c in "Password_1")
+        {
+            input.TextEntered(c);
+        }
+
+        Assert.True(input.TryTakeLoginCredentials(out byte[] account, out char[] secret));
+        try
+        {
+            Assert.Equal("Player_01"u8.ToArray(), account);
+            Assert.Equal("Password_1".ToCharArray(), secret);
+            Assert.Equal(0, input.PasswordLength);
+            Assert.Equal(string.Empty, input.PasswordMask);
+            input.Dispose();
+            Assert.Equal("Password_1".ToCharArray(), secret);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(account);
+            CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(secret.AsSpan()));
+        }
+    }
+
+    [Fact]
+    public void NativeEnglishPasswordValidationDoesNotTakeAnOverlongSecret()
+    {
+        (LoginServerSelection selected, LoginCredentialLayout layout) = Setup(1024, 768);
+        using LoginCredentialInput input = new(selected, layout);
+        Assert.True(input.PointerPressed(true, layout.AccountField.X + 2, layout.AccountField.Y + 2));
+        input.TextEntered('A');
+        Assert.True(input.PointerPressed(true, layout.PasswordField.X + 2, layout.PasswordField.Y + 2));
+        foreach (char c in "123456789012345")
+        {
+            input.TextEntered(c);
+        }
+
+        Assert.False(input.TryTakeLoginCredentials(out byte[] account, out char[] secret));
+        Assert.Empty(account);
+        Assert.Empty(secret);
+        Assert.Equal(15, input.PasswordLength);
+    }
+
     [Fact]
     public void EmptyCatalogAllowsEditingWithoutAuthorizingAnyRealm()
     {
