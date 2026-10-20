@@ -1,31 +1,33 @@
-# AUTH-001G — Native GameServer DH challenge envelope (offline)
+# AUTH-001G: GameServer DH challenge envelope (offline)
 
-## Audited dependency and scope
+AUTH-001G validates the plaintext of one GameServer DH challenge that has
+already been decrypted. It builds on the AccountServer 1059/1060/1055
+exchange, the 1100/account-1052 continuation and the offline GameServer 1052
+proof from AUTH-001F. It adds no GameServer CAST5, DH or TCP transport. The
+decoder does not decrypt (the fixed-key CAST5-CFB64 bootstrap transform is
+AUTH-001H), open a socket, compute a DH secret, negotiate session crypto,
+decide whether to trust a peer or send packet 1052. The client DH exchange and
+transport ownership come in later steps. A parsed DH key does not authenticate
+the server.
 
-Baseline `OpenConquerClient` `main` `eb19ba2dfc0060760e35426f9ac56022cb2acaf2`, after AUTH-001F (#123).
-The merged client has the AccountServer 1059/1060/1055, 1100/account-1052
-continuation and offline GameServer 1052 proof, but **no** GameServer CAST5,
-DH, or TCP transport yet.
+## Sources
 
-Primary native evidence: `20_notes/Network/13_connection_lifecycle.md`,
-`CClientSecurity__ProcessServerDhChallenge` (`0x753801`),
-`CClientSecurity__GenerateClientDhResponse` (`0x753669`),
-`CGameSocket__ReceiveMsg` (`0x6E1C83`), and
-`20_notes/Network/14_session_derived_legacy_cipher_mask.md`.
-Independent server contract: OpenConquerServer
-`GameHandshakeExchange.BuildChallenge` and its existing protocol tests.
+- Research on the retail client:
+  `20_notes/Network/13_connection_lifecycle.md`,
+  `CClientSecurity__ProcessServerDhChallenge` (`0x753801`),
+  `CClientSecurity__GenerateClientDhResponse` (`0x753669`),
+  `CGameSocket__ReceiveMsg` (`0x6E1C83`), and
+  `20_notes/Network/14_session_derived_legacy_cipher_mask.md`.
+- Independent server implementation: OpenConquerServer
+  `GameHandshakeExchange.BuildChallenge` and its existing protocol tests.
 
-This slice **only validates the plaintext of one already-decrypted challenge**.
-It does not implement the fixed-key CAST5 transform, create a socket,
-perform DH, compute a secret, negotiate session crypto, authorize a peer,
-or transmit packet 1052. A parsed DH key is not authentication.
+## Envelope format
 
-## Native and server-compatible envelope
-
-The GameServer sends a **raw**, bootstrap CAST5-CFB64-encrypted handshake
-envelope, not an ordinary length/type packet. The next slice's transport must
-decrypt an initial **15 bytes**, then bound and read precisely the remainder,
-without consuming any following secured packet.
+The GameServer sends a raw handshake envelope encrypted with the bootstrap
+CAST5-CFB64 cipher. It is not an ordinary length/type packet. The transport
+that reads it must decrypt the first 15 bytes, check the declared length
+against the limits, and then read the remainder and nothing more, so that it
+does not consume the secured packet that follows.
 
 | Plaintext offset | Length | Purpose |
 | --- | --- | --- |
@@ -34,65 +36,72 @@ without consuming any following secured packet.
 | 15 | variable | Six consecutive `[length:i32LE][bytes]` entries |
 | last 8 | 8 | ASCII `TQServer` signature |
 
-The native client accepts declared lengths `12..1024` and considers
-`11 + declared` bytes the logical challenge. It historically decrypts
-four bytes beyond this logical end from offset 15; **do not reproduce that
-out-of-bounds behavior**. The managed parser requires a complete exact
-frame and a valid trailer, with no read-ahead, extra bytes, or trailing
+The retail client accepts declared lengths `12..1024` and treats
+`11 + declared` bytes as the logical challenge. It also decrypts four bytes
+past that logical end, counting from offset 15. This client does not reproduce
+that out-of-bounds read. The managed parser requires a complete frame of the
+declared size and a valid trailer, with no read-ahead, extra bytes or trailing
 chunks.
 
-The six ordered entries are opaque junk/padding; server outbound IV
-(client inbound IV, 8 bytes); server inbound IV (client outbound IV,
-8 bytes); DH prime hex; generator hex; server public key hex.
-The server currently emits 12 bytes of junk, 8-byte IVs, a fixed
-128-hex-character prime and `05` generator. The reader accepts bounded
-nonempty junk (`1..64`) but **pins the actual DH group** to the
-OpenConquerServer values and accepts only the public-key interval
-`2..p-2`. Hex public keys can be odd length, as in OpenSSL output.
+The six entries, in order:
 
-The strict group check is a deliberate application compatibility/security
-restriction: other groups, even if accepted by the original binary, require
-separate evidence and cryptographic review. Rejected hostile chunk lengths
-never allocate based on their declared value; invalid structure fails closed.
+1. Opaque junk/padding
+2. Server outbound IV (client inbound IV, 8 bytes)
+3. Server inbound IV (client outbound IV, 8 bytes)
+4. DH prime, in hex
+5. Generator, in hex
+6. Server public key, in hex
 
-## Ownership and trust
+The server currently sends 12 bytes of junk, 8-byte IVs, a fixed
+128-hex-character prime and the generator `05`. The reader accepts nonempty
+junk of `1..64` bytes. It pins the DH group to the OpenConquerServer values
+and accepts only public keys in the interval `2..p-2`. Hex public keys can
+have an odd number of digits, as in OpenSSL output.
 
-`GameServerChallengeDecoder.TryGetFrameLength` returns false only until
-15 decrypted prefix bytes are available, then returns a bounded total
-length or throws on an impossible declaration.
-`TryRead` returns false for incomplete frames, throws for malformed or
-overlong frames, and outputs a fully validated challenge only on success.
-The challenge result can be created only through a validating factory with a
-private constructor. Both IVs are copied, and only read-only spans are exposed;
-invalid keys and mutated caller arrays cannot forge its stored parameters.
-The temporary decrypted frame can therefore be cleared by its future owner. The public key is
-encoded in ASCII only after length, hex and group-range checks.
-There is no mutable process-global crypto state, unbounded input allocation,
-retry, opportunistic parsing, or speculative protocol variant.
+Pinning the group is a compatibility and security restriction of this client.
+Other groups, even ones the original binary accepts, would need separate
+research and cryptographic review. Hostile chunk lengths are rejected without
+allocating memory based on the declared value, and any invalid structure is
+rejected.
 
-The fixed CAST5 bootstrap key is protocol compatibility, **not**
-authenticated encryption. Neither the decrypted challenge's signature nor
-a successful DH exchange proves the connected server's identity. The
-AccountServer 1055 redirect remains untrusted without independent endpoint
-authority. The existing AUTH-001D loopback-only credential restriction is
-unchanged.
+## Types and trust
 
-## Acceptance criteria and continuation
+`GameServerChallengeDecoder.TryGetFrameLength` returns false until 15
+decrypted prefix bytes are available. After that it returns the total frame
+length, which is always within the limits, or throws if the declared length is
+impossible. `TryRead` returns false for incomplete frames, throws for
+malformed or overlong frames, and outputs a fully validated challenge only on
+success.
 
-- Fixed 207-byte decrypted reference fixture derived independently from the
-  OpenConquerServer challenge builder's literal prime, group, chunks, and trailer.
-  It is not claimed to be an observed live-server capture; the reference bytes
-  do not depend on production decoder constants.
-- Prefix and body fragmentation, malformed declared lengths, corrupted
-  chunk lengths, wrong trailer, excess bytes, unexpected group/generator,
-  unsafe DH public keys, missing fields and copied IV ownership.
-- No changes to authenticated directory, AccountServer traffic, login UI,
-  GameServer networking, native account variants, rendering or launcher.
+The challenge result has a private constructor and can only be created through
+a validating factory. Both IVs are copied, and only read-only spans are
+exposed, so neither invalid keys nor later changes to the caller's arrays can
+forge its stored parameters. The future owner can therefore clear the
+temporary decrypted frame. The public key is encoded as ASCII only after its
+length, hex digits and group range have been checked. There is no global
+mutable crypto state, no allocation sized by untrusted input, and no retry,
+opportunistic parsing or speculative protocol variant.
+
+The fixed CAST5 bootstrap key exists for protocol compatibility and is not
+authenticated encryption. Neither the `TQServer` signature in the decrypted
+challenge nor a successful DH exchange proves who the connected server is. The
+AccountServer 1055 redirect stays untrusted unless the endpoint is
+authenticated some other way. The loopback-only credential restriction from
+AUTH-001D is unchanged. Putting this decoder on a live, unauthenticated remote
+connection would not make the login secure.
+
+## Testing
+
+- A fixed 207-byte decrypted reference fixture, built independently from the
+  literal prime, group, chunks and trailer in the OpenConquerServer challenge
+  builder. It is not a capture from a live server, and the reference bytes do
+  not depend on constants in the production decoder.
+- Tests cover fragmentation of the prefix and body, malformed declared
+  lengths, corrupted chunk lengths, a wrong trailer, excess bytes, an
+  unexpected group or generator, unsafe DH public keys, missing fields and
+  ownership of the copied IVs.
+- The authenticated directory, AccountServer traffic, login UI, GameServer
+  networking, 5517 account variants, rendering and launcher are unchanged.
 - Locked restore, format verification, Release build, all tests, content
-  verification, macOS/Windows/Linux Quality, Dependency Review, reviewer
-  findings and final independent audit.
-
-The next separate audited slice can add fixed-key CAST5-CFB64 bootstrap
-decryption, followed by client DH key exchange and transport ownership.
-Do not put this plain-envelope decoder on a live unauthenticated remote
-connection and call it a secure login.
+  verification, and the macOS, Windows, Linux Quality and Dependency Review
+  jobs pass.

@@ -1,19 +1,19 @@
-# Native Graphics Compatibility
+# Retail 5517 Graphics Compatibility
 
-Verified Conquer Online 5517 graphics behavior implemented by OpenConquer Client. Detailed
-reverse-engineering addresses, bounded native replays, and decompilation evidence remain outside
-this document.
+This document describes the Conquer Online 5517 graphics behavior that OpenConquer Client
+reproduces. Reverse-engineering addresses, replays of the original client code, and decompilation
+notes are kept elsewhere.
 
 ## Logical Frame
 
-Retail `ini/GameSetUp.ini` maps screen modes to:
+Retail `ini/GameSetUp.ini` maps screen modes to logical sizes:
 
 | Modes | Logical size |
 | --- | ---: |
-| 0, 1 | 800×600 |
-| 2, 3 | 1024×768 |
+| 0, 1 | 800x600 |
+| 2, 3 | 1024x768 |
 
-Logical rendering uses:
+The logical target uses:
 
 ```text
 RGB565 or RGB555-compatible color
@@ -22,7 +22,7 @@ opaque black clear
 depth clear = 1.0
 ```
 
-Desktop size and presentation scaling do not change logical coordinates.
+Logical coordinates do not depend on the desktop size or presentation scaling.
 
 ## Presentation
 
@@ -32,7 +32,7 @@ logical target
 → host framebuffer
 ```
 
-Verified outer cadence is approximately 25 ms / 40 FPS.
+The retail outer frame cadence is about 25 ms per frame (40 FPS). Frame pacing works like this:
 
 ```text
 wait only for remaining frame time
@@ -41,20 +41,20 @@ do not replay missed frames
 overruns establish the next cadence anchor
 ```
 
-Logical-target multisampling remains unimplemented.
+Multisampling on the logical target is not implemented.
 
 ## Sprite Rendering
 
-### Content Boundary
+### Image Formats
 
-Supported verified ANI image formats:
+ANI frames can use these image formats:
 
 ```text
 .tga
 .dds / single-level DXT3
 ```
 
-Images cross into Rendering as top-left RGBA.
+Decoded images are handed to Rendering as RGBA with a top-left origin.
 
 GPU textures use:
 
@@ -66,7 +66,7 @@ single mip level
 
 ### DDS
 
-Implemented subset:
+Only this subset is supported:
 
 ```text
 2D
@@ -91,7 +91,7 @@ depth write = disabled
 culling     = disabled
 ```
 
-Supported blending:
+Blend modes:
 
 | Mode | Source | Destination |
 | --- | --- | --- |
@@ -107,7 +107,7 @@ xNdc = 2 * x / width - 1
 yNdc = 1 - 2 * y / height
 ```
 
-Coordinates are top-left oriented.
+The origin is the top-left corner.
 
 ### Source Geometry
 
@@ -120,7 +120,7 @@ fully contained within texture
 clamp-to-edge
 ```
 
-Verified compatibility draws use `SpriteSourceBounds`:
+Compatibility draws that need retail sampling behavior use `SpriteSourceBounds`:
 
 ```text
 non-negative edges
@@ -132,16 +132,16 @@ nearest filtering
 REPEAT addressing
 ```
 
-The repeated-source path is restricted to verified compatibility consumers. Ordinary sprite
-validation remains bounded.
+Only the compatibility consumers described in this document use the repeating source path. Ordinary
+sprites still go through the rectangle checks above.
 
-Verified HUD gauge source geometry is not normalized merely because a hypothetical generalized
-input could produce an out-of-range source edge. Native compatibility permits source coordinates
-outside the physical image and relies on point sampling plus wrap behavior.
+HUD gauge source rectangles are not clamped just because some other input could produce an
+out-of-range edge. The retail client allows source coordinates outside the image and relies on point
+sampling with wrap addressing.
 
 ### Color
 
-`SpriteColor` performs RGBA modulation:
+`SpriteColor` multiplies the sampled texel by the color (RGBA modulation):
 
 ```text
 sampled texture × normalized color
@@ -149,7 +149,7 @@ sampled texture × normalized color
 
 ### Rotation
 
-Verified rotation:
+Rotation follows the retail rules:
 
 ```text
 signed integer degrees
@@ -160,9 +160,9 @@ pivot at destination center
 
 ## Solid Rectangle Rendering
 
-The native HUD experience bar requires non-textured solid rectangles.
+The HUD experience bar is drawn with untextured solid rectangles.
 
-The rendering path preserves:
+Solid rectangles use:
 
 ```text
 top-left logical coordinates
@@ -174,11 +174,11 @@ no depth write
 no culling
 ```
 
-A zero width or zero height produces no visible covered pixels.
+A rectangle with zero width or zero height covers no pixels.
 
 ## Main HUD
 
-Verified major draw order:
+The HUD draws its parts in this order:
 
 ```text
 background
@@ -192,7 +192,7 @@ selected-skill image / previously armed cover
 selected-skill cooldown text
 ```
 
-Current implementation covers all of those boundaries.
+Every step in this list is implemented.
 
 For logical height `H`:
 
@@ -200,9 +200,9 @@ For logical height `H`:
 originY = H - 141
 ```
 
-HUD coordinates are not resolution-scaled.
+HUD coordinates do not scale with resolution.
 
-Supported native HUD logical sizes are:
+The HUD supports two logical sizes:
 
 ```text
 800×600
@@ -226,16 +226,16 @@ Frame0=data/main/mainDialog1.dds
 Frame1=data/main/mainDialog2.dds
 ```
 
-Verified identities:
+Expected sizes and SHA-256 hashes:
 
 | Asset | Size | SHA-256 |
 | --- | ---: | --- |
 | `Control.Ani` | 317837 bytes | `a1db47baaeb2f75eea3b5216378f97d713c2afeaefe05ec02e6f584794532d27` |
-| `ProgressBk.dds` | 256×256 | `9b91a28e0170142a48dc03332691959eca01c179b9d8c592aa5b11af4f5d966c` |
-| `mainDialog1.dds` | 256×256 | `505a4655c398e41bd25698b57caa50f48376cff713e1c8c6f287a03866038fe1` |
-| `MainDialog2.dds` | 256×128 | `818d13f62509ac859fb0ed72d36ec6aeb2b12f9ed3dee3c6172171d99ba86f41` |
+| `ProgressBk.dds` | 256x256 | `9b91a28e0170142a48dc03332691959eca01c179b9d8c592aa5b11af4f5d966c` |
+| `mainDialog1.dds` | 256x256 | `505a4655c398e41bd25698b57caa50f48376cff713e1c8c6f287a03866038fe1` |
+| `MainDialog2.dds` | 256x128 | `818d13f62509ac859fb0ed72d36ec6aeb2b12f9ed3dee3c6172171d99ba86f41` |
 
-Verified provenance:
+Retail source of each asset (loose file or WDF package):
 
 ```text
 Control.Ani     → loose
@@ -246,10 +246,14 @@ mainDialog2     → loose
 
 ### Layout
 
+Background:
+
 ```text
 Progress45 frame 0
 destination (0, originY)
 ```
+
+`Dialog4` panels:
 
 ```text
 A: frame 0, source (0,112,256,144), destination (0, originY-3)
@@ -258,7 +262,7 @@ C: frame 1, source (0,0,256,54),    destination (512, originY+88)
 D: frame 1, source (0,64,256,54),   destination (768, originY+88)
 ```
 
-Panel D naturally clips at 800×600.
+At 800x600, panel D runs past the right edge of the screen and is clipped.
 
 ## Main HUD Vitals
 
@@ -290,22 +294,22 @@ Frame0=data/main/ProgressForce2.dds
 Frame1=data/main/ProgressForce2A.dds
 ```
 
-Verified identities:
+Expected sizes and SHA-256 hashes:
 
 | Asset | Size | SHA-256 |
 | --- | ---: | --- |
-| `ProgressHP.dds` | 128×128 | `ecd40dbdebc5e582860c91deeb28a29b8adaaf9dbc8285e8c5404a5f1ab6be2d` |
-| `ProgressHPA.dds` | 128×128 | `2ad8122875e02d25ff53ed281b9214fcbde1689a773fdb59e0bba355bde0c54d` |
-| `ProgressHPH.dds` | 128×128 | `f85e3d2287f9f3cda60b3494dcb36359479d738c34030d3266530026080d2679` |
-| `ProgressMP.dds` | 128×128 | `01fbd1e55d5266a823ffb2347a96721f8e9b7ec18c4393f18ee4488ccac605be` |
-| `ProgressMPA.dds` | 128×128 | `324ddfd751ec47123285a26905d00d56694ffd7461f38f6b3e6e3125095952e1` |
-| `ProgressMPH.dds` | 128×128 | `b8dfdad6025fbd28201d92d9fe95f8ff504450209d43feeec57aaa0a30f4ebc6` |
-| `ProgressForce.dds` | 128×128 | `f030dbbd0823b08d12901ebf803adee687df015d3d017793f67959db9d9e8192` |
-| `ProgressForceA.dds` | 128×128 | `3b7177b3bb0405e3c7f0a68aaaa3e6ca5b054ff63d798887eec5687adc76154b` |
-| `ProgressForce2.dds` | 32×32 | `9a67c108613cdf5440a40708bcbd3573ef9b3782da6d997c435b654a7fbbada9` |
-| `ProgressForce2a.dds` | 32×32 | `77ebf0be6f6f4621ecfb28f1e04f39f6f95bce647fc0d27af44bcf4b2c13c789` |
+| `ProgressHP.dds` | 128x128 | `ecd40dbdebc5e582860c91deeb28a29b8adaaf9dbc8285e8c5404a5f1ab6be2d` |
+| `ProgressHPA.dds` | 128x128 | `2ad8122875e02d25ff53ed281b9214fcbde1689a773fdb59e0bba355bde0c54d` |
+| `ProgressHPH.dds` | 128x128 | `f85e3d2287f9f3cda60b3494dcb36359479d738c34030d3266530026080d2679` |
+| `ProgressMP.dds` | 128x128 | `01fbd1e55d5266a823ffb2347a96721f8e9b7ec18c4393f18ee4488ccac605be` |
+| `ProgressMPA.dds` | 128x128 | `324ddfd751ec47123285a26905d00d56694ffd7461f38f6b3e6e3125095952e1` |
+| `ProgressMPH.dds` | 128x128 | `b8dfdad6025fbd28201d92d9fe95f8ff504450209d43feeec57aaa0a30f4ebc6` |
+| `ProgressForce.dds` | 128x128 | `f030dbbd0823b08d12901ebf803adee687df015d3d017793f67959db9d9e8192` |
+| `ProgressForceA.dds` | 128x128 | `3b7177b3bb0405e3c7f0a68aaaa3e6ca5b054ff63d798887eec5687adc76154b` |
+| `ProgressForce2.dds` | 32x32 | `9a67c108613cdf5440a40708bcbd3573ef9b3782da6d997c435b654a7fbbada9` |
+| `ProgressForce2a.dds` | 32x32 | `77ebf0be6f6f4621ecfb28f1e04f39f6f95bce647fc0d27af44bcf4b2c13c789` |
 
-Verified provenance:
+Retail source of each asset (loose file or WDF package):
 
 ```text
 ProgressHP       → data.wdf
@@ -320,7 +324,8 @@ ProgressForce2   → loose
 ProgressForce2A  → loose ProgressForce2a.dds
 ```
 
-All ten frames are required and validated. Eight verified reachable frames are uploaded to the GPU.
+All ten frames must be present and valid. The retail drawing code can reach only eight of them, and
+only those eight are uploaded to the GPU.
 
 ### Layout
 
@@ -340,14 +345,14 @@ All ten frames are required and validated. Eight verified reachable frames are u
 | Stamina | 8 | 70 | 8 |
 | Extended stamina | 8 | 35 | 8 |
 
-Fills grow bottom-up.
+Fills grow from the bottom up.
 
 ```text
 pixelsPerUnit = height / range
 cappedPixelsPerUnit = range >= 100 ? height * 0.01 : pixelsPerUnit
 ```
 
-Compatibility calculations use C# `float`.
+These compatibility calculations use C# `float`.
 
 ### Subvariants
 
@@ -372,28 +377,29 @@ current > follower
 → frame 2 follower only
 ```
 
-Life starts at subvariant 1 and permanently switches to 0 after positive clamped mana is observed.
+Life starts at subvariant 1. It switches to 0 for good the first time the clamped mana value is
+positive.
 
-Mana starts at subvariant 0 and exposes the verified alternate-state toggle.
+Mana starts at subvariant 0 and supports the retail alternate-state toggle.
 
 ### Stamina
 
 Regular stamina uses `Progress46` frame 0.
 
-Extended stamina renders when:
+Extended stamina is drawn when both of these hold:
 
 ```text
 HasExtendedStaminaGauge
 Stamina >= 100
 ```
 
-Range:
+Its range is:
 
 ```text
 0..50
 ```
 
-Value:
+The value drawn is:
 
 ```text
 Stamina - 100
@@ -401,9 +407,9 @@ Stamina - 100
 
 ### Progress47 Compatibility
 
-`ProgressForce2.dds` is 32×32 while the configured fill height is 35.
+`ProgressForce2.dds` is 32x32, but the configured fill height is 35.
 
-Verified behavior:
+The retail client handles this as follows:
 
 ```text
 source bottom = 35
@@ -418,29 +424,27 @@ value 25 → source top 18, destination height 17
 value 50 → source top 0,  destination height 35
 ```
 
-A positive value may truncate to destination height 0. Native behavior interprets zero destination
-height as natural texture height.
+A positive value can truncate to a destination height of 0. The retail client treats a destination
+height of 0 as the texture's natural height.
 
-OpenConquer preserves this only inside the HUD-gauge compatibility path.
+OpenConquer reproduces this only in the HUD gauge compatibility path.
 
-Zero value remains no draw.
+A value of zero still draws nothing.
 
-### Native Source Geometry Boundary
+### Source and Destination Rounding
 
-The style-0 follower calculation deliberately keeps source rounding and destination rounding
-separate.
+The style-0 follower calculation rounds the source and the destination differently:
 
 ```text
 source pixels      = truncate(followerExact)
 destination pixels = round(followerExact)
 ```
 
-The native path does not clamp the calculated source rectangle to the physical texture before
-rendering.
+The retail code does not clamp the computed source rectangle to the texture size before drawing.
 
-Current verified 5517 HUD consumers remain inside their required operating domain. Do not introduce
-a generic source-height clamp merely to normalize hypothetical inputs; that would alter verified
-native geometry and repeated-sampling behavior.
+The 5517 HUD gauges that use this path stay within the input range they need. A general
+source-height clamp for hypothetical inputs would change the retail geometry and the
+repeated-sampling results, so the code does not add one.
 
 ### Missing Content
 
@@ -456,7 +460,7 @@ unexpected dimensions
 
 ## Main HUD Skill and Experience
 
-GFX-UI-003 reconstructs the native `Progress42` skill gauge and English-style experience bar.
+GFX-UI-003 adds the retail `Progress42` skill gauge and the English-style experience bar.
 
 ### Skill Assets
 
@@ -470,16 +474,16 @@ Frame1=data/main/ProgressPower.dds
 Frame2=data/main/ProgressPowerH.dds
 ```
 
-Verified identities:
+Expected sizes, SHA-256 hashes, and retail sources:
 
 | Asset | Size | SHA-256 | Provenance |
 | --- | ---: | --- | --- |
-| `ProgressPower.dds` | 128×128 | `c32b0c502b7ab00aff2308a5708ac777fe6ee29ff101bfad056bd4c54ad94248` | `data.wdf` |
-| `ProgressPowerH.dds` | 128×128 | `e4d10a40d7ead3d91a3b29cf5339baca487df1f41a40c8afa8c892c80f351868` | `data.wdf` |
+| `ProgressPower.dds` | 128x128 | `c32b0c502b7ab00aff2308a5708ac777fe6ee29ff101bfad056bd4c54ad94248` | `data.wdf` |
+| `ProgressPowerH.dds` | 128x128 | `e4d10a40d7ead3d91a3b29cf5339baca487df1f41a40c8afa8c892c80f351868` | `data.wdf` |
 
-Frame 1 intentionally aliases the same physical `ProgressPower.dds` bytes as frame 0.
+Frame 1 points to the same `ProgressPower.dds` file as frame 0, as declared in the retail ANI.
 
-All three ANI declarations are required. Runtime rendering needs only the two unique textures.
+All three ANI frame entries must be present. Rendering needs only the two distinct textures.
 
 ### Layout
 
@@ -495,7 +499,7 @@ experience width  = 398
 experience height = 4
 ```
 
-Therefore:
+This gives:
 
 ```text
 800×600  → skill Y 509, experience Y 555
@@ -504,9 +508,9 @@ Therefore:
 
 ### Skill State
 
-Normal skill rendering uses the same style-0 gauge geometry as the verified native HUD gauges.
+Normal skill rendering uses the same style-0 gauge geometry as the vitals gauges.
 
-Subvariant behavior:
+Subvariants:
 
 ```text
 0 → normal Progress42 fill
@@ -514,13 +518,13 @@ Subvariant behavior:
 2 → full frame-2 highlight sprite
 ```
 
-The full highlight draws the complete 128×128 `ProgressPowerH.dds` sprite at the skill origin.
+The full highlight draws the whole 128x128 `ProgressPowerH.dds` sprite at the skill origin.
 
 ### Skill Highlight Timer
 
-The native highlight timer is intentionally not rewritten as conventional elapsed-time logic.
+The highlight timer copies the retail logic as is. It is not a conventional elapsed-time check.
 
-Arming:
+When the highlight is armed:
 
 ```text
 highlight active = true
@@ -528,23 +532,23 @@ start timestamp  = 0
 current subvariant is preserved until the post-HUD tail
 ```
 
-First post-HUD advancement while armed:
+On the first post-HUD update while armed:
 
 ```text
 subvariant = 2
 start       = current DWORD tick
 ```
 
-Subsequent expiration:
+After that, it expires as follows:
 
 ```text
 deadline = unchecked(start + 500)
 expire when now >= deadline
 ```
 
-The zero timestamp remains a native sentinel.
+A start timestamp of 0 is a sentinel value, as in the retail client.
 
-This has observable DWORD-wrap behavior:
+Because the tick count is a DWORD, wraparound has visible effects:
 
 ```text
 a wrapped deadline can expire early before the clock wraps
@@ -552,20 +556,21 @@ the wrapped boundary can expire after wrap
 a missed pre-wrap deadline can remain active after wrap
 ```
 
-Those behaviors are verified compatibility semantics. Replacing this with:
+These effects match the retail client. The conventional check below would change them:
 
 ```text
 unchecked(now - start) >= 500
 ```
 
-would be an intentional native-behavior deviation and must not be introduced as a generic timer
-cleanup.
+That change would be a deviation from retail. Make it only on purpose and document it, never as a
+timer cleanup.
 
 ### Experience Scaling
 
-Native experience values are 64-bit before reduction to the signed 32-bit style-10 drawing path.
+Experience values are 64-bit in the retail client. They are reduced to signed 32-bit for the
+style-10 drawing path.
 
-The scale shift is selected from the maximum:
+The shift amount depends on the maximum:
 
 ```text
 maximum bits 48..63 nonzero → shift 32
@@ -573,13 +578,13 @@ maximum high DWORD nonzero  → shift 16
 otherwise                   → shift 0
 ```
 
-The same shift is applied to current experience.
+The same shift is applied to the current experience.
 
-The shifted values are interpreted with native signed 32-bit semantics.
+The shifted values are then treated as signed 32-bit integers, as in the retail client.
 
 ### Positive Experience
 
-If the signed maximum is non-positive, no experience bar is drawn.
+If the signed maximum is zero or negative, no experience bar is drawn.
 
 For positive values:
 
@@ -588,7 +593,7 @@ value = min(value, maximum)
 pixels = truncate(value * 398 / maximum)
 ```
 
-Positive experience uses three bands:
+A positive value is drawn as three bands:
 
 | Band | Y offset | Height | RGBA |
 | --- | ---: | ---: | --- |
@@ -596,19 +601,19 @@ Positive experience uses three bands:
 | middle | 1 | 2 | `E8 A3 26 FF` |
 | bottom | 3 | 1 | `AB 91 6C FF` |
 
-A positive value that truncates to zero pixels remains a zero-width draw.
+A positive value that truncates to zero pixels is still drawn, with zero width.
 
 ### Negative Experience
 
-The native style-10 path performs only an upper clamp:
+The retail style-10 path clamps only from above:
 
 ```text
 clampedValue = min(value, maximum)
 ```
 
-It does not lower-clamp a negative signed value.
+A negative value is not clamped from below.
 
-Negative values render one red band:
+A negative value is drawn as one red band:
 
 ```text
 RGBA   = FF 00 00 FF
@@ -616,24 +621,24 @@ height = 4
 width  = -truncate(value * 398 / maximum)
 ```
 
-This means sufficiently negative synthetic values can produce a rectangle wider than the nominal
-398-pixel experience region.
+A synthetic value that is negative enough can therefore produce a rectangle wider than the nominal
+398-pixel experience area.
 
-That behavior is evidence-backed and must not be replaced with a symmetric
-`[-maximum, maximum]` clamp without recording an intentional compatibility deviation.
+This matches the retail client. Replacing it with a symmetric `[-maximum, maximum]` clamp would be a
+deviation from retail and must be documented as one.
 
 ## Main HUD Action Strip
 
-GFX-UI-004 reconstructs the ten native `CMyButton` controls drawn by `CDlgMain`.
+GFX-UI-004 adds the ten retail `CMyButton` controls that `CDlgMain` draws.
 
-GFX-UI-005 reconstructs the four neighboring native `CMyCheck` controls documented separately
+The four `CMyCheck` controls next to them (GFX-UI-005) are described under Main HUD Check Controls
 below.
 
-### Native Controls and Draw Order
+### Controls and Draw Order
 
-All controls use a 46×22 logical hit rectangle and 64×32 natural-size artwork.
+Each control has a 46x22 logical hit rectangle and 64x32 artwork drawn at natural size.
 
-| Draw | Native section | Control ID | Local X | Local Y | Frames |
+| Draw | ANI section | Control ID | Local X | Local Y | Frames |
 | ---: | --- | ---: | ---: | ---: | ---: |
 | 1 | `Button40` | `0x5DF` | 502 | 94 | 2 |
 | 2 | `Button410` | `0x3EE` | 702 | 119 | 2 |
@@ -646,14 +651,14 @@ All controls use a 46×22 logical hit rectangle and 64×32 natural-size artwork.
 | 9 | `Main3_OrganiseBtn` | `0x400` | 702 | 94 | 4 |
 | 10 | `Button41` | `0x402` | 602 | 94 | 3 |
 
-Final top-row Y positions:
+Final Y position of the top row:
 
 ```text
 800×600  → 553
 1024×768 → 721
 ```
 
-Final bottom-row Y positions:
+Final Y position of the bottom row:
 
 ```text
 800×600  → 578
@@ -667,11 +672,11 @@ left/top     inclusive
 right/bottom exclusive
 ```
 
-Artwork opacity outside the 46×22 native logical control rectangle does not enlarge the hit region.
+Opaque artwork outside the 46x22 logical control rectangle does not extend the hit region.
 
 ### Action Assets
 
-All action-strip DDS frames are verified 64×32 single-level DXT3 images.
+Every action-strip DDS frame is a 64x32 single-level DXT3 image.
 
 | ANI section | Asset | SHA-256 | Retail provenance |
 | --- | --- | --- | --- |
@@ -706,9 +711,10 @@ All action-strip DDS frames are verified 64×32 single-level DXT3 images.
 | `Button41` | `SkillBtnClick.dds` | `5a2f7810b5a99b8a5c0a8ee01c8da2a7bfc167b511bf90f782cbe220f4cb361a` | package |
 | `Button41` | `SkillBtnL.dds` | `d04c0e8c75a3809ac7c27046a818fa2d0510cd8d414cc2a0e5590911f1a5d19a` | package |
 
-Production content resolution remains `LooseThenPackage`.
+At runtime, these files resolve with `LooseThenPackage`.
 
-Conformance independently enforces the exact known retail loose/package provenance above.
+The conformance tests separately check that each file comes from the loose or package source listed
+above.
 
 ### Shared CMyButton State
 
@@ -721,9 +727,9 @@ Logical frame meanings:
 3 hover
 ```
 
-All ten controls begin enabled.
+All ten controls start enabled.
 
-Verified state transitions:
+State transitions:
 
 ```text
 WM_ENABLE(FALSE) → frame 2
@@ -739,18 +745,18 @@ left up while captured
 → reset frame 1 to frame 0
 ```
 
-Mouse-up resets the visual frame only when the current frame is still frame 1.
+On mouse-up, the frame goes back to 0 only if it is still frame 1.
 
-If an external native state machine overwrites the frame while the button is captured, release
-preserves that overwritten frame.
+If another state machine overwrites the frame while the button is captured, the release keeps the
+overwritten frame.
 
-Activation therefore does not depend on `currentFrame == 1`.
+Activation does not depend on `currentFrame == 1`.
 
-None of the ten controls enables the optional hover-frame behavior.
+None of the ten controls turns on the optional hover frame.
 
 ### ANI Frame Modulo
 
-The native ANI renderer wraps a logical frame through the physical section frame count.
+The retail ANI renderer takes the logical frame modulo the number of frames in the section.
 
 Examples:
 
@@ -768,11 +774,12 @@ logical 3 → physical 0
 logical 0..3 → physical 0..3
 ```
 
-OpenConquer stores the logical CMyButton frame and applies modulo only at frame selection.
+OpenConquer stores the logical CMyButton frame and applies the modulo only when it picks the frame
+to draw.
 
 ### Pointer Capture
 
-Only one action-strip button may own pointer capture at a time.
+At most one action-strip button holds pointer capture at a time.
 
 While captured:
 
@@ -783,14 +790,14 @@ release inside activates
 unmappable framebuffer release still clears capture
 ```
 
-An unavailable control cannot start interaction.
+An unavailable control cannot start an interaction.
 
-If a control becomes unavailable while captured, release still clears capture but activation is
-suppressed.
+If a control becomes unavailable while it holds capture, the release still clears capture but does
+not activate the control.
 
 ### PK Skin State
 
-PK mode selects the visual section:
+The PK mode selects which ANI section is drawn:
 
 ```text
 mode 0 → Button47  / PkFree
@@ -799,20 +806,20 @@ mode 2 → Button48  / PkGroup
 mode 3 → Button412 / PkArre
 ```
 
-Unknown mode values preserve the current skin.
+An unknown mode value keeps the current skin.
 
-Skin changes preserve the button's current logical frame and existing blink epoch.
+Changing the skin keeps the button's current logical frame and blink epoch.
 
 Mode 0 arms the local PK blink gate.
 
-Modes 1, 2, and 3 do not clear an already-active blink gate, so an existing blink may continue on
-the newly selected skin.
+Modes 1, 2, and 3 do not clear a blink gate that is already active, so a running blink can continue
+on the new skin.
 
-Repeated mode 0 while already active does not restart the established blink epoch.
+Setting mode 0 again while the gate is active does not restart the blink epoch.
 
 ### PK Blink State
 
-The PK blink uses a 500 ms phase and a 30,000 ms retention boundary.
+The PK blink uses a 500 ms phase and stays active for up to 30,000 ms.
 
 When the local gate is active:
 
@@ -824,26 +831,24 @@ frame = (unsigned_elapsed / 500) & 1
 sample expiry clock separately
 ```
 
-Expiration:
+Expiry:
 
 ```text
 elapsed <= 30000 → retain gate
 elapsed > 30000  → clear gate, frame 0, start 0
 ```
 
-Exactly 30,000 ms remains active.
+The gate is still active at 30,000 ms and expires at 30,001 ms.
 
-30,001 ms expires.
+The elapsed time uses unsigned DWORD subtraction, as in the retail client.
 
-Unsigned DWORD subtraction is intentional.
+The initialization flag stays set after the gate expires.
 
-The initialization flag remains set after expiration.
-
-PK blinking may overwrite a pressed or disabled logical frame before rendering.
+The PK blink can overwrite a pressed or disabled logical frame before the button is drawn.
 
 ### Organise Blink State
 
-Organise uses a separate local gate and process-style epoch.
+The Organise button has its own local gate and process-style epoch.
 
 When active:
 
@@ -853,15 +858,13 @@ sample phase clock
 frame = 1 + ((unsigned_elapsed / 500) & 1)
 ```
 
-Therefore Organise alternates physical logical frames:
+So Organise alternates between these logical frames (which are also its physical frames):
 
 ```text
 1 ↔ 2
 ```
 
-There is no timeout.
-
-There is no zero-start restart rule.
+Unlike the PK blink, it has no timeout and no zero-start restart rule.
 
 Reset:
 
@@ -871,26 +874,24 @@ set frame 0
 preserve initialized global epoch
 ```
 
-Rearming after reset therefore resumes from the existing epoch rather than restarting the phase.
+Arming it again after a reset continues from the existing epoch, so the phase does not restart.
 
-### Activation Boundary
+### Activation
 
-GFX-UI-004 reconstructs the verified native control boundary and returns the activated control
-identity.
+GFX-UI-004 covers the controls themselves and reports which control was activated.
 
-It deliberately does not recursively implement the downstream dialog, gameplay, audio, or network
-behavior of each action.
+The dialogs, gameplay, audio, and network behavior behind each action are not implemented.
 
-Artwork names are not used to invent downstream semantics.
+Artwork names are not used to guess what an action does.
 
 ## Main HUD Check Controls
 
-GFX-UI-005 reconstructs the four native `CMyCheck` controls drawn by `CDlgMain` immediately after
-the ten GFX-UI-004 `CMyButton` controls.
+GFX-UI-005 adds the four retail `CMyCheck` controls that `CDlgMain` draws right after the ten
+`CMyButton` controls from GFX-UI-004.
 
-### Native Controls and Draw Order
+### Controls and Draw Order
 
-| Draw | ANI section | Control ID | Local X | Local Y | Final 800×600 | Final 1024×768 |
+| Draw | ANI section | Control ID | Local X | Local Y | Final 800x600 | Final 1024x768 |
 | ---: | --- | ---: | ---: | ---: | --- | --- |
 | 1 | `Check40` | `0x3F4` | 0 | 23 | `(0,482)` | `(0,650)` |
 | 2 | `Check43` | `0x3F7` | 72 | 23 | `(72,482)` | `(72,650)` |
@@ -905,7 +906,8 @@ Y = logicalHeight - 141
 
 There is no screen-width multiplier.
 
-Each control has a 22×22 logical HWND-equivalent hit rectangle.
+Each control has a 22x22 logical hit rectangle, the equivalent of its window (HWND) in the retail
+client.
 
 Hit testing uses:
 
@@ -914,8 +916,8 @@ left/top     inclusive
 right/bottom exclusive
 ```
 
-The ANI artwork is 32×32 and is rendered at natural size. Artwork outside the 22×22 logical control
-rectangle does not enlarge the interactive region.
+The ANI artwork is 32x32 and is drawn at natural size. Artwork outside the 22x22 control rectangle
+does not extend the clickable area.
 
 ### ANI State Frames
 
@@ -926,9 +928,9 @@ rectangle does not enlarge the interactive region.
 | `Check46` | `ScreenMoveChk1.dds` | `ScreenMoveChk2.dds` |
 | `Button411` | `NpcEquip.dds` | `NpcEquipClick.dds` |
 
-All eight frames are verified 32×32 single-level DXT3 DDS images.
+All eight frames are 32x32 single-level DXT3 DDS images.
 
-Verified encoded SHA-256:
+SHA-256 of the encoded files:
 
 | Asset | SHA-256 |
 | --- | --- |
@@ -941,17 +943,17 @@ Verified encoded SHA-256:
 | `NpcEquip.dds` | `ce4605c39ad53462db6d62ee16d26d9481e50eacf85513d6cbbae61abe3fc45c` |
 | `NpcEquipClick.dds` | `0c2b8b6f9e2fc330a056a36b1021d7f67866bae5cee6066df741d92ad1ce6b80` |
 
-Production import resolves these frame requirements with `LooseThenPackage`.
+The production import resolves these frames with `LooseThenPackage`.
 
-Conformance does not guess a fixed package-vs-loose origin for these frames. Instead each verified
-retail frame must resolve from exactly one source in the audited retail root, after which its encoded
-SHA-256 is checked.
+The conformance tests do not assume whether these frames come from a package or a loose file. Each
+frame must resolve from exactly one source in the reference retail root, and its encoded SHA-256 is
+then checked.
 
 ### Shared CMyCheck State
 
-All four controls initialize to state 0.
+All four controls start in state 0.
 
-The native state byte and render frame advance together.
+The state byte and the render frame always change together.
 
 For the two-state controls:
 
@@ -961,12 +963,12 @@ state 0 → state 1
 state 1 → state 0
 ```
 
-The transition occurs on `WM_LBUTTONDOWN`, not mouse-up.
+The state changes on `WM_LBUTTONDOWN`, not on mouse-up.
 
-The state object therefore does not use the GFX-UI-004 CMyButton capture/release state machine and
-does not perform a mouse-up visual rollback.
+These controls therefore do not use the CMyButton capture/release logic from GFX-UI-004, and
+mouse-up does not change what is drawn.
 
-The native setter truncates its input to the low byte before checking the state-count bound:
+The retail setter keeps only the low byte of its input before comparing it with the state count:
 
 ```text
 requested = low byte of input
@@ -978,11 +980,11 @@ requested >= 2
 → preserve current state and frame
 ```
 
-The setter itself does not notify the parent.
+The setter does not notify the parent.
 
-### Native Parent Handlers
+### Parent Handlers
 
-Verified parent mappings are:
+Each control maps to a parent handler:
 
 ```text
 Check40   0x3F4 → empty parent handler
@@ -991,17 +993,17 @@ Check46   0x3FF → shell screen-shift state
 Button411 0x3F8 → equipment-inspection target mode
 ```
 
-GFX-UI-005 implements the verified reusable control boundary and local state/rendering behavior.
+GFX-UI-005 implements the reusable control with its local state and rendering.
 
-It deliberately does not recursively implement those downstream parent feature effects.
+The features behind those parent handlers are not implemented.
 
-The exact USER32 capture/release and `BN_CLICKED` behavior for an outside release after native
-`CMyCheck` mouse-move handling remains unresolved. That boundary is not required for the proven
-mouse-down state transition and is not fabricated by the managed implementation.
+It is still unknown how USER32 capture/release and `BN_CLICKED` behave when the mouse is released
+outside the control after the retail `CMyCheck` mouse-move handling. The mouse-down state change
+does not depend on it, and the managed implementation does not try to emulate it.
 
 ## Main HUD Quickbar
 
-GFX-UI-006 reconstructs the native ten-slot main-HUD quickbar/grid.
+GFX-UI-006 adds the retail ten-slot quickbar (a one-row grid) on the main HUD.
 
 ### Geometry
 
@@ -1018,17 +1020,17 @@ logical width      410
 logical height     40
 ```
 
-The parent HUD origin remains:
+The parent HUD origin is the same:
 
 ```text
 Y = logicalHeight - 141
 ```
 
-Slot input bounds use the 41×40 stride region. Visual content occupies the verified 40×40 cell.
+Hit testing for each slot uses the 41x40 stride region. Slot content is drawn in the 40x40 cell.
 
 ### Content Kinds
 
-The implemented native content-kind boundary includes:
+Supported content kinds:
 
 ```text
 1  item
@@ -1039,8 +1041,8 @@ The implemented native content-kind boundary includes:
 6  weapon swap
 ```
 
-GFX-UI-006 preserves the verified distinction between fixed control artwork and parametric ANI
-families. Runtime dependencies are resolved from:
+As in the retail client, GFX-UI-006 keeps fixed control artwork separate from parametric ANI
+families. Runtime dependencies come from:
 
 ```text
 ani/Control.ani
@@ -1049,7 +1051,7 @@ ani/ItemMinIcon.Ani
 ani/effect.ani
 ```
 
-Implemented rendering/state behavior includes:
+Implemented rendering and state:
 
 ```text
 slot content
@@ -1064,12 +1066,12 @@ activation
 pickup state
 ```
 
-The Client owns the consumer-facing quickbar state. Live Gameplay population and downstream
-activation side effects remain deferred.
+The Client layer owns the quickbar state that consumers see. Filling it from live Gameplay data, and
+the side effects of activating a slot, are not implemented yet.
 
 ## Main HUD Selected Skill
 
-GFX-UI-007 reconstructs the selected-skill `CMyImage` boundary and its cooldown text consumer.
+GFX-UI-007 adds the selected-skill `CMyImage` control and its cooldown text.
 
 ### Image Geometry
 
@@ -1088,11 +1090,10 @@ cover section       Image0
 cover source        (0,0,64,64)
 ```
 
-The selected image is resolved through `ani/Magic.ani`. The cover is resolved through
-`ani/Control.ani`.
+The selected image comes from `ani/Magic.ani` and the cover from `ani/Control.ani`.
 
-`SetSectionAndContent` activates the image and updates native content/blocking state before ANI
-lookup. A failed later lookup therefore does not roll those state mutations back.
+`SetSectionAndContent` activates the image and updates the content and blocking state before the ANI
+lookup. If the lookup then fails, those state changes stay in place.
 
 `ClearLoadedImage` clears only:
 
@@ -1102,7 +1103,7 @@ content ID
 blocked-cover state
 ```
 
-It preserves the selected ANI section and independent cover flag.
+It keeps the selected ANI section and the separate cover flag.
 
 ### Cooldown Text
 
@@ -1115,7 +1116,7 @@ FontSize
 Color
 ```
 
-Clean/default values are:
+Values in a clean retail install, which are also the defaults:
 
 ```text
 OffsetX   = 0
@@ -1124,10 +1125,10 @@ FontSize  = 20
 Color     = 0xFFFFFFFF
 ```
 
-The cooldown text uses the production native-text façade and the GUI font settings described in
-`native-text.md`.
+The cooldown text is drawn through the production native-text façade with the GUI font settings
+described in `native-text.md`.
 
-Displayed seconds preserve the verified unsigned ceiling conversion:
+Displayed seconds use the retail unsigned ceiling conversion:
 
 ```text
 0 ms       → no text
@@ -1136,7 +1137,7 @@ Displayed seconds preserve the verified unsigned ceiling conversion:
 ...
 ```
 
-Equivalent managed expression:
+The managed equivalent is:
 
 ```text
 remaining == 0 ? 0 : ((remaining - 1) / 1000) + 1
@@ -1144,7 +1145,7 @@ remaining == 0 ? 0 : ((remaining - 1) / 1000) + 1
 
 ### Cover Ordering
 
-The observable native ordering is stateful:
+In the retail client, the draw order depends on state left by the previous frame:
 
 ```text
 selected-image Show
@@ -1159,18 +1160,18 @@ draw cooldown number when active
 re-arm cover flag when cooldown continues
 ```
 
-Therefore a continuing cooldown does not behave like a stateless `icon → text → cover` composition.
-The cover used by the current image draw comes from the state armed by the previous cooldown pass.
+A running cooldown is therefore not a simple `icon → text → cover` composition. Whether the cover is
+drawn with the image in this frame depends on the flag armed by the previous cooldown pass.
 
-The managed implementation preserves that ordering by drawing the selected image first and running
-the cooldown renderer afterward.
+The managed implementation keeps this order by drawing the selected image first and running the
+cooldown renderer after it.
 
-The selected-skill identity and cooldown time are separate Client-owned state seams. Live Gameplay
-producers remain deferred.
+The selected skill and its cooldown time are separate pieces of state owned by the Client layer.
+Nothing in Gameplay feeds them live data yet.
 
-### GFX-UI-006 / GFX-UI-007 Conformance
+### Quickbar and Selected-Skill Conformance (GFX-UI-006, GFX-UI-007)
 
-Real-driver conformance covers both supported logical resolutions and verifies:
+Real-driver conformance runs at both supported logical resolutions and checks:
 
 ```text
 quickbar production rendering against independent reference composition
@@ -1186,8 +1187,8 @@ post-draw cover-flag transition
 production text-context GPU path
 ```
 
-The selected-skill retail DDS inputs are independently decoded and compared against production decode
-before framebuffer comparison.
+Before the framebuffers are compared, the selected-skill retail DDS files are decoded with an
+independent decoder and the result is compared with the production decoder's output.
 
 ## Missing Content Behavior
 
@@ -1204,7 +1205,7 @@ missing declared frame
 → that consumer unavailable
 ```
 
-Malformed compatibility content is rejected:
+Malformed content is rejected:
 
 ```text
 unexpected ANI frame count
@@ -1212,11 +1213,12 @@ invalid DDS
 unexpected decoded dimensions
 ```
 
-One missing action-button, check-control, quickbar, or selected-skill section does not disable unrelated consumers outside that dependency boundary.
+A missing action-button, check-control, quickbar, or selected-skill section disables only the
+consumers that depend on it.
 
 ## Real-Driver Conformance
 
-Verified environment:
+Test environment:
 
 ```text
 OpenGL   4.1 Metal - 90.5
@@ -1226,10 +1228,9 @@ Renderer Apple M4
 Target   RGB565
 ```
 
-The complete current rendering conformance suite passes against the authorized clean retail 5517
-content root.
+The full rendering conformance suite passes against an authorized clean retail 5517 content root.
 
-It verifies both supported logical resolutions:
+It runs at both supported logical resolutions:
 
 ```text
 800×600
@@ -1247,12 +1248,12 @@ It verifies both supported logical resolutions:
 
 | Resolution | SHA-256 |
 | --- | --- |
-| 800×600 | `bf905c1d0fdadf486303ba4849221bec836b8a6f52f6b23a4d91b09244cd8cf1` |
-| 1024×768 | `dbdaa4cd332fda6661d438ad5b29b97d051ec2d51cc8149b92a2e4aede4fb629` |
+| 800x600 | `bf905c1d0fdadf486303ba4849221bec836b8a6f52f6b23a4d91b09244cd8cf1` |
+| 1024x768 | `dbdaa4cd332fda6661d438ad5b29b97d051ec2d51cc8149b92a2e4aede4fb629` |
 
 ### HUD Vitals
 
-| Case | 800×600 | 1024×768 |
+| Case | 800x600 | 1024x768 |
 | --- | --- | --- |
 | HP normal dual | `d8c78f9d71e330ba0e992102a715a01416a15ccc8e3eb2d9164e0fcd5ce64320` | `541583eada1a2129f172772090a3fb24a6c1261e708b4bb7264acec6b7c4e221` |
 | HP startup frame 2 | `ac25430ae00fae6a1664fdbb9ed1ba58cf230e0433dc8784856a2cbf839a9095` | `3919458824463798e757336acce23a0e2e2e8ad26c1b6d88d05217962985d304` |
@@ -1265,7 +1266,7 @@ It verifies both supported logical resolutions:
 
 ### HUD Skill and Experience
 
-Real-driver conformance independently verifies at both logical sizes:
+At both logical sizes, real-driver conformance checks these cases against independent references:
 
 ```text
 normal Progress42 fill
@@ -1279,11 +1280,11 @@ negative red experience path
 64-bit experience shift behavior
 ```
 
-The production DXT3 decode is compared against an independent reference decoder before rendering.
+Before rendering, the production DXT3 decode is compared with an independent reference decoder.
 
 ### HUD Action Strip
 
-Real-driver conformance independently verifies at both logical sizes:
+At both logical sizes, real-driver conformance checks these cases against independent references:
 
 ```text
 all ten native controls
@@ -1302,7 +1303,7 @@ The action-strip suite covers 52 logical frame/skin cases per supported resoluti
 
 ### HUD Check Controls
 
-Real-driver conformance independently verifies at both logical sizes:
+At both logical sizes, real-driver conformance checks these cases against independent references:
 
 ```text
 all four native CMyCheck controls
@@ -1317,9 +1318,9 @@ production DXT3 decode vs independent reference decode
 exact production framebuffer vs independent reference framebuffer
 ```
 
-Verified Apple M4 / OpenGL 4.1 Metal framebuffer hashes:
+Framebuffer hashes on Apple M4 with OpenGL 4.1 Metal:
 
-| Case | 800×600 | 1024×768 |
+| Case | 800x600 | 1024x768 |
 | --- | --- | --- |
 | all state 0 | `e7b429c0728e4dbba90163b87b8b88fb5e4df2b4cd3067f41d95bb4b49cf7eff` | `b7e43a9f94a46a9074decbc33cdfe2c32b8aba30f9a18373782520fd33c79391` |
 | Check40 state 1 | `edcea1b6e8d556c065809630ddd434bb84cd30d11a4ac6d832987ec79c916547` | `cec1baa25100e329871e37c59881f00420d8618709b5b2b035b2dbe3a79a9413` |
@@ -1327,9 +1328,11 @@ Verified Apple M4 / OpenGL 4.1 Metal framebuffer hashes:
 | Check46 state 1 | `ca89ff3de0649132f5c486777e78d8fa16013071c3eeecf387507ae1372be748` | `68474c0463781a65e979332cb0253cde257faad1eb0696ef37cd8a58741a872d` |
 | Button411 state 1 | `283600632ef49fbe68654fefcfe213030173378c9f332bb4b08a275f269aa97e` | `853a7d7677750583aa27dee5694935e3accd3666bbe7b0a18c71f7d7e6aae7fe` |
 
-Portable conformance requires production output to equal the independently specified reference.
+The portable conformance check requires the production output to match the independently specified
+reference.
 
-Driver hashes are evidence for the tested hardware/driver combination, not portable goldens.
+The driver hashes above hold only for the tested hardware and driver. They are not portable golden
+values.
 
 ## Current Scope
 
@@ -1403,7 +1406,7 @@ background → vitals → panels → skill/XP → quickbar → action buttons �
 real-driver HUD conformance
 ```
 
-Deferred:
+Not implemented yet:
 
 ```text
 logical-target multisampling

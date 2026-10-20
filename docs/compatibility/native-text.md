@@ -1,33 +1,30 @@
-# Native Text Compatibility
+# 5517 Text Compatibility
 
-Compatibility contract for Conquer Online 5517 text configuration, encoded-text semantics, font
-resolution, glyph rasterization, caching, atlas storage, layout, render-style behavior, OpenGL
-resource ownership, and GPU drawing.
+This document describes how OpenConquer reproduces the text handling of the Conquer Online 5517
+client: text configuration files, encoded-text rules, font resolution, glyph rasterization, caching,
+atlas storage, layout, render styles, OpenGL resource ownership and GPU drawing.
 
-Detailed native addresses, decompilation traces, caller inventories, and unresolved
-reverse-engineering evidence belong in the native analysis notes.
+Addresses in the retail binaries, decompilation traces, caller lists and open reverse-engineering
+questions are kept in the native analysis notes rather than here.
 
 ## Startup Configuration
 
 ### Game Font
 
-Retail `ini/Font.ini` configures the initial game-font request.
-
-Format:
+The retail client reads its initial game font from `ini/Font.ini`. The file has this format:
 
 ```text
 <face token><space><nominal pixel height>
 ```
 
-Parsing uses the final ASCII space, allowing spaces inside face names.
-
-Clean 5517 content:
+The parser splits at the last ASCII space, so face names may contain spaces. The clean 5517 install
+contains:
 
 ```text
 Arial 12
 ```
 
-Contract:
+Parsing rules:
 
 ```text
 face token            = bytes before final ASCII space
@@ -36,23 +33,23 @@ invalid/zero height   = 12
 negative nonzero      = preserved
 ```
 
-The face token is preserved exactly at the Content boundary.
+The Content layer keeps the face token byte for byte.
 
-`Font.ini` is a loose-file dependency; WDF packages do not satisfy it.
+`Font.ini` is read only as a loose file. A copy inside a WDF package is not used.
 
-OpenConquer limits the file to 256 bytes and rejects larger inputs instead of reproducing native
-fixed-buffer truncation.
+OpenConquer rejects a `Font.ini` larger than 256 bytes. The retail client instead reads the file
+into a fixed-size buffer and truncates it.
 
-`Font.ini` is now part of the managed runtime content closure because GFX-UI-007 selected-skill
-cooldown rendering is the first production HUD consumer of the native font pipeline.
+`Font.ini` is part of the runtime content set because the selected-skill cooldown text (GFX-UI-007)
+is the first HUD element in production that draws with this font pipeline.
 
 ### GUI Font Settings
 
-Retail optionally reads loose `ini/FontSetting.ini` as a GUI/chat font override layer.
+If a loose `ini/FontSetting.ini` exists, the retail client reads it to override GUI and chat font
+settings. The clean 5517 install does not include this file.
 
-Clean 5517 does not contain this file.
-
-Native initial state represented by `ClientFontSettingsConfiguration`:
+Before the file is read, the settings start from the retail client's initial values, which
+`ClientFontSettingsConfiguration` models:
 
 ```text
 chat font height       14
@@ -78,7 +75,7 @@ Antialias
 GUIFont
 ```
 
-Verified quirks:
+Parsing quirks confirmed in the retail client:
 
 ```text
 keys are case-insensitive
@@ -106,31 +103,30 @@ empty ChatFont after parsing
 → inherit GUIFont
 ```
 
-OpenConquer does not claim native-compatible CRT overflow behavior for malformed extreme numeric
-inputs. Compatibility coverage is intentionally limited to the verified value domain.
+For malformed or extremely large numbers, OpenConquer does not match the overflow behavior of the
+retail C runtime. Compatibility covers only the value ranges that were checked against the retail
+client.
 
-### Native Font Tokens
+### Font Tokens
 
-The native text system accepts family names and file-oriented tokens:
+A font request is either a family name or a file token of this form:
 
 ```text
 $*.tt?
 ```
 
-The leading `$` selects file-token semantics.
-
-Examples:
+The leading `$` marks a file token. Examples:
 
 ```text
 $simsun.ttc
 $simsun.ttf
 ```
 
-The `?` represents the third character of the three-character extension; OpenConquer does not treat
-it as a wildcard. Accepted extensions have three characters whose first two characters are `tt`.
+The `?` stands for the third character of the extension. OpenConquer does not treat it as a
+wildcard. An accepted extension has three characters, and the first two are `tt`.
 
-File tokens resolve only against fonts registered with the host font system. They do not trigger
-recursive filesystem searches or arbitrary path access.
+File tokens match only fonts registered with the host's font system. They never start a recursive
+directory search or open an arbitrary path.
 
 ### Normal UI Font Height
 
@@ -142,9 +138,9 @@ Size=12
 Width=6
 ```
 
-Current consumers require only `Size`.
+Only `Size` is used today.
 
-Contract:
+Resolution rules:
 
 ```text
 Size present and integer → configured value
@@ -153,41 +149,42 @@ missing section/key      → 14
 invalid integer          → 14
 ```
 
-Clean 5517 resolves this value to `12`.
+The clean 5517 install resolves this value to `12`.
 
-The two height defaults are intentionally distinct:
+The two fallback heights differ, and both are correct:
 
 ```text
 Font.ini nominal-height fallback = 12
 info.ini normal-height fallback  = 14
 ```
 
-`info.ini` remains a loose-file configuration source.
+`info.ini` is also read only as a loose file.
 
 ### Client Code Page
 
-Retail optionally reads `ini/CodePage.ini`.
+The retail client reads `ini/CodePage.ini` if it exists.
 
-The first line supplies the configured native code-page value. Later font-size-level data remains
-outside the implemented contract.
+The first line holds the configured code page. The font-size-level data on later lines is not
+implemented.
 
-The native global begins at:
+The retail client's code-page global starts at:
 
 ```text
 0
 ```
 
-On Windows, code page `0` means `CP_ACP`.
+On Windows, code page `0` means `CP_ACP`, the system ANSI code page.
 
-Clean 5517 content contains no `CodePage.ini`. Independent decoding of the shipped data establishes
-CP936 as the authored encoding, so OpenConquer resolves the clean configuration deterministically:
+The clean 5517 install has no `CodePage.ini`. Decoding the shipped data independently shows that
+it was written in CP936, so OpenConquer resolves the clean configuration to CP936 regardless of the
+host's ANSI code page:
 
 ```text
 ConfiguredCodePage = 0
 EffectiveCodePage  = 936
 ```
 
-An explicit nonzero code page is preserved:
+A nonzero configured code page is used as is:
 
 ```text
 CodePage.ini: 950
@@ -196,7 +193,7 @@ ConfiguredCodePage = 950
 EffectiveCodePage  = 950
 ```
 
-First-line parsing preserves native-style integer-prefix behavior:
+The first line is parsed the way the retail client parses an integer prefix:
 
 ```text
 leading ASCII whitespace allowed
@@ -205,13 +202,15 @@ consume decimal digits until first non-digit
 no digits → 0
 ```
 
-OpenConquer rejects signed 32-bit overflow rather than reproducing native `atoi` overflow behavior.
+A value that overflows a signed 32-bit integer is rejected. OpenConquer does not reproduce the
+overflow behavior of the retail `atoi` call.
 
-`CodePage.ini` is optional, loose-only, and limited to a 256-byte first line.
+`CodePage.ini` is optional and read only as a loose file. Its first line may be at most 256 bytes.
 
 ## Encoded Text Model
 
-The native text path establishes encoded-byte identity before Unicode conversion:
+Text is handled as encoded bytes. The identity of each glyph comes from those bytes, before any
+conversion to Unicode:
 
 ```text
 encoded bytes
@@ -231,7 +230,7 @@ FreeType glyph lookup
 
 ### String Termination
 
-The first NUL terminates the logical input:
+The first NUL byte ends the string:
 
 ```text
 41 00 42
@@ -244,7 +243,7 @@ Bytes after the first NUL are ignored.
 
 ### Single-Byte Glyphs
 
-A byte not consumed as a DBCS lead byte maps directly to its native glyph key:
+A byte that is not used as a DBCS lead byte becomes its own glyph key:
 
 ```text
 41
@@ -254,7 +253,7 @@ A byte not consumed as a DBCS lead byte maps directly to its native glyph key:
 
 ### DBCS Glyphs
 
-Lead-byte classification follows the Windows DBCS code-page contract.
+Lead bytes are classified with the Windows DBCS code-page ranges:
 
 | Code page | Lead-byte ranges          |
 | --------: | ------------------------- |
@@ -264,15 +263,15 @@ Lead-byte classification follows the Windows DBCS code-page contract.
 |       950 | `81-FE`                   |
 |      1361 | `84-D3`, `D8-DE`, `E0-F9` |
 
-Other code pages have no DBCS lead-byte ranges at this boundary.
+All other code pages are treated as having no lead bytes.
 
-A lead byte followed by another logical byte consumes both:
+When a lead byte is followed by another byte of the string, the two bytes form one key:
 
 ```text
 key = (lead << 8) | trail
 ```
 
-Verified CP936 example:
+CP936 example:
 
 ```text
 B0 D7
@@ -280,9 +279,9 @@ B0 D7
 0xB0D7
 ```
 
-The trail byte is not independently validated during byte walking.
+The byte walk does not validate the trail byte.
 
-A dangling lead byte remains a single-byte glyph:
+A lead byte at the end of the string stays a single-byte glyph:
 
 ```text
 B0
@@ -290,7 +289,7 @@ B0
 0x00B0
 ```
 
-A following NUL also leaves the lead byte dangling:
+The same happens when the lead byte is followed by NUL:
 
 ```text
 B0 00 D7
@@ -301,7 +300,7 @@ end
 
 ### Glyph-Key Decoding
 
-`EncodedGlyphDecoder` converts one established native glyph key into exactly one Unicode scalar.
+`EncodedGlyphDecoder` converts one glyph key into a single Unicode scalar value.
 
 Single-byte key:
 
@@ -325,15 +324,15 @@ U+767D 白
 
 Decoding fails when:
 
-- the effective code page is invalid, unavailable, or unsupported;
-- the encoded bytes are malformed;
-- decoding does not produce exactly one Unicode scalar.
+- the effective code page is invalid, unavailable or unsupported
+- the encoded bytes are malformed
+- decoding produces anything other than one Unicode scalar
 
-Malformed native glyph keys are not repaired or reinterpreted.
+A malformed glyph key is never repaired or reinterpreted.
 
 ### Newline
 
-ASCII line feed is a distinct semantic unit:
+An ASCII line feed is a token of its own:
 
 ```text
 0A
@@ -341,7 +340,7 @@ ASCII line feed is a distinct semantic unit:
 newline
 ```
 
-Layout applies:
+Layout then moves the pen:
 
 ```text
 X = 0
@@ -350,7 +349,7 @@ Y += nominalPixelHeight + nominalPixelHeight / 4
 
 ## Data Icons
 
-The native measurement path can optionally recognize:
+The retail measurement code can optionally recognize data-icon tokens:
 
 ```text
 #NN
@@ -367,9 +366,9 @@ Examples:
 #99 → icon 99
 ```
 
-A valid token consumes exactly three bytes.
+A valid token is three bytes long.
 
-Malformed or truncated forms remain ordinary glyph bytes:
+Malformed or truncated forms are treated as ordinary glyph bytes:
 
 ```text
 #
@@ -389,7 +388,7 @@ When data-icon recognition is disabled:
 '7'
 ```
 
-Measurement resolves icon width in this order:
+Measurement takes the icon width from the first of these that applies:
 
 ```text
 nonzero caller width
@@ -399,18 +398,18 @@ provider width
 
 A missing or zero provider width uses the 16-pixel fallback.
 
-Nonzero caller and provider widths preserve their signed native value.
+Nonzero caller and provider widths are used as signed values, as in the retail client, so a
+negative width stays negative.
 
-`NativeTextLayout` can therefore contain ordered data-icon items, but GFX-TEXT-004 does not invent
-an icon-texture ownership model. The glyph renderer validates the complete layout before GPU state
-mutation and rejects layouts containing data icons.
+A `NativeTextLayout` can contain data-icon items in text order. GFX-TEXT-004 does not
+define who owns icon textures, so the glyph renderer checks the whole layout before it changes any
+GPU state and rejects a layout that contains data icons.
 
-Actual data-icon resource selection and rendering belong to the UI rendering path that owns those
-resources.
+Choosing and drawing the icon images is the job of the UI rendering code that owns those resources.
 
 ## Host Font Discovery
 
-`OpenConquer.Rendering` discovers fonts through each operating system's registered font APIs.
+`OpenConquer.Rendering` finds fonts through the font registration APIs of each operating system:
 
 ```text
 Windows → GDI + DirectWrite
@@ -425,59 +424,59 @@ physical file path
 optional face index
 ```
 
-A null face index means the host identified a file but not one specific face.
+A null face index means the host named a file but not a specific face in it.
 
 No adapter recursively scans guessed font directories.
 
 ### Windows
 
-Windows enumerates the DirectWrite system font collection and resolves local physical font files and
-face indices.
+The Windows adapter enumerates the DirectWrite system font collection and resolves each entry to a
+local font file and face index.
 
-The default GUI candidate begins with:
+The default GUI font starts from:
 
 ```text
 GetStockObject(DEFAULT_GUI_FONT)
 ```
 
-Its `LOGFONTW` is translated through DirectWrite to a physical font resource.
+DirectWrite translates its `LOGFONTW` into a physical font resource.
 
-If that resource cannot be resolved concretely, the default GUI reference may be absent.
+If that translation does not produce a specific resource, there may be no default GUI reference.
 
 ### macOS
 
-macOS enumerates registered font URLs through CoreText.
+The macOS adapter enumerates registered font URLs through CoreText.
 
-The default GUI candidate begins with the CoreText system UI font and resolves its file through:
+The default GUI font is the CoreText system UI font. Its file comes from:
 
 ```text
 kCTFontURLAttribute
 ```
 
-This path does not currently provide a required face index, so the reference may use a null face
-index.
+This lookup does not currently provide a face index, so the reference may have a null face index.
 
 ### Linux
 
-Linux uses an isolated fontconfig configuration and the system font set.
+The Linux adapter uses its own isolated fontconfig configuration together with the system font
+set.
 
-The default GUI candidate is matched from:
+The default GUI font is the fontconfig match for:
 
 ```text
 sans-serif
 ```
 
-`FC_FILE` and `FC_INDEX` identify the concrete resource.
+`FC_FILE` and `FC_INDEX` give the file and face.
 
-Fontconfig sysroot information is honored when constructing physical paths.
+Physical paths include the fontconfig sysroot when one is set.
 
 ## Host Font Catalog
 
-`HostFontCatalog` converts host discovery into deterministic resolver data.
+`HostFontCatalog` turns the discovered fonts into data for the resolver.
 
-Font paths are canonicalized before identity comparison.
+Font paths are normalized before they are compared.
 
-Catalog path identity uses an explicit platform policy:
+Path comparison depends on the platform:
 
 ```text
 Windows → case-insensitive
@@ -485,24 +484,24 @@ macOS   → ordinal
 Linux   → ordinal
 ```
 
-Catalog ordering is deterministic and independent of host enumeration order.
+Catalog order is stable and does not depend on the order in which the host lists fonts.
 
 Duplicate references to the same physical file are merged.
 
-If any registration for a file has an unknown face index, all inspectable faces in that file are
-eligible. Otherwise only explicitly registered face indices are eligible.
+If any registration of a file has no face index, every inspectable face in that file is eligible.
+Otherwise only the registered face indices are eligible.
 
-The default GUI resource is included even when absent from the ordinary host enumeration.
+The default GUI font is included even when the normal host enumeration does not list it.
 
-FreeType inspection supplies family and style metadata.
+FreeType inspection provides each face's family and style metadata.
 
-Invalid, inaccessible, empty, or otherwise uninspectable registered files remain known candidate
-files without producing family entries.
+A registered file that is invalid, inaccessible, empty or otherwise cannot be inspected stays in the
+catalog as a candidate file, but it adds no family entries.
 
-For a default GUI reference with an explicit face index, the concrete resource remains a valid
-candidate even when metadata inspection fails.
+When the default GUI reference has a face index, that file and face remain a valid candidate even if
+metadata inspection fails.
 
-For a default GUI reference without a face index:
+When the default GUI reference has no face index:
 
 ```text
 regular face preferred
@@ -512,34 +511,35 @@ no inspectable face → no resolved default GUI font
 
 ## Font Resolution
 
-`SystemFontResolver` handles family and file-token requests separately.
+`SystemFontResolver` handles family requests and file-token requests separately.
 
 ### Family Requests
 
 Family lookup is case-insensitive.
 
-When multiple faces share a family:
+When several faces share a family:
 
 ```text
 regular face preferred
 otherwise deterministic first catalog entry
 ```
 
-The selected face index is preserved.
+The result keeps the chosen face index.
 
 ### File Requests
 
-A leading `$` selects registered-file resolution:
+A leading `$` asks for a registered font file by name:
 
 ```text
 $simsun.ttc
 ```
 
-Matching uses the registered physical filename and is case-insensitive.
+The token is compared case-insensitively with the file name of each registered font.
 
-Directory separators are rejected so file tokens cannot become arbitrary filesystem paths.
+Tokens that contain directory separators are rejected, so a file token can never become an
+arbitrary file system path.
 
-The current verified file-token contract does not carry a collection face index:
+A file token has no way to name a face inside a font collection, so it always resolves to face 0:
 
 ```text
 ResolvedFont(filePath, faceIndex: 0)
@@ -547,15 +547,15 @@ ResolvedFont(filePath, faceIndex: 0)
 
 ### Default GUI Font
 
-Default GUI resolution uses the concrete host resource discovered by the platform adapter.
+The default GUI font resolves directly to the file and face that the platform adapter found.
 
-It is not converted back into a family name for another resolution pass.
+It is not turned back into a family name and resolved a second time.
 
-## Native Font Creation Fallback
+## Font Creation Fallback
 
-Resolution and face creation are separate stages.
+Resolving a font and creating a face from it are separate steps.
 
-Creation attempts occur in this exact order:
+Creation tries these candidates in this order:
 
 ```text
 1. requested face/token
@@ -576,7 +576,7 @@ recoverable creation failure → continue
 successful creation   → stop
 ```
 
-Recoverable creation failures are limited to:
+Only these exceptions count as recoverable creation failures:
 
 ```text
 FontFaceCreationException
@@ -585,39 +585,39 @@ IOException
 UnauthorizedAccessException
 ```
 
-Unexpected ABI, lifetime, arithmetic, resource-exhaustion, or programming failures propagate.
+Other failures (ABI, lifetime, arithmetic, resource exhaustion or programming errors) propagate to
+the caller.
 
-The fallback chain is not deduplicated. Two stages resolving to the same physical face remain two
-policy attempts.
+The chain is not deduplicated. If two stages resolve to the same physical face, creation is
+attempted twice.
 
-If no usable candidate exists, creation fails explicitly.
+If no candidate works, font creation fails with an error.
 
-This policy is only for font creation. Missing-glyph fallback after face creation is handled by the
-native glyph-cache layer.
+This chain applies only to font creation. Fallback for missing glyphs happens after the face exists,
+in the glyph cache.
 
-## FreeType Boundary
+## FreeType Interop
 
-`OpenConquer.Rendering` owns a narrow FreeType native seam.
+`OpenConquer.Rendering` contains a small native interop layer for FreeType.
 
-The managed ABI declarations model the supported FreeType 2.x ABI and do not escape the
-interop/rasterization boundary.
+Its managed declarations describe the supported FreeType 2.x ABI and are not exposed outside the
+interop and rasterization code.
 
-Runtime requirement:
+Required version:
 
 ```text
 FreeType 2.x >= 2.14.3
 ```
 
-The packaged native dependency currently provides FreeType 2.14.3.
+The bundled native package currently ships FreeType 2.14.3.
 
-OpenConquer.FreeType.Native 1.0.0 has established source/build provenance for its
-original published native binaries on all six supported platforms. This does not
-establish byte-for-byte reproducibility across later Windows build runs. The rendering
-project stages package-supplied FTL.TXT, LICENSE.TXT, PROVENANCE.md, and BDF/PCF
-notices under `third-party/freetype/` in the published client; CI checks those notices
-through the signed release package and managed installation.
+The originally published native binaries of OpenConquer.FreeType.Native 1.0.0 have documented
+source and build provenance on all six supported platforms. This does not mean that later Windows
+builds reproduce the same bytes. The rendering project copies the FTL.TXT, LICENSE.TXT,
+PROVENANCE.md and BDF/PCF notices from the package into `third-party/freetype/` in the published
+client. CI checks those notices in both the signed release package and the managed installation.
 
-When `FreeTypeLibrary` initializes, it queries the loaded version and rejects:
+On initialization, `FreeTypeLibrary` checks the version of the loaded library and rejects:
 
 ```text
 major != 2
@@ -626,16 +626,17 @@ version < 2.14.3
 
 ### ABI Portability
 
-Native C `long` width differs across supported 64-bit platforms:
+The size of the C `long` type differs between the supported 64-bit platforms:
 
 ```text
 Unix 64-bit C long     = 64-bit
 Windows 64-bit C long  = 32-bit
 ```
 
-The FreeType seam therefore uses explicit `CLong` and `CULong` representations.
+The interop layer therefore uses `CLong` and `CULong` for these fields.
 
-ABI layout tests verify the native structures consumed by the rasterizer on supported CI platforms.
+ABI layout tests check the native structures that the rasterizer reads, on each supported CI
+platform.
 
 ### Lifetime
 
@@ -649,10 +650,10 @@ mapped font file
 library lease
 ```
 
-A face's library lease keeps FreeType alive even if the original `FreeTypeLibrary` owner is
+The library lease keeps FreeType alive even after the `FreeTypeLibrary` that created the face is
 disposed.
 
-Destruction order:
+These are released in this order:
 
 ```text
 FT_Face
@@ -660,13 +661,13 @@ mapped font file
 library lease
 ```
 
-Failed construction releases partially acquired resources.
+If construction fails, anything already acquired is released.
 
 ## Glyph Rasterization
 
 `FreeTypeGlyphRasterizer` owns one configured face.
 
-Face sizing uses:
+The face is sized with:
 
 ```text
 FT_Set_Char_Size(
@@ -677,7 +678,7 @@ FT_Set_Char_Size(
     0)
 ```
 
-The `× 64` conversion uses checked arithmetic.
+The `× 64` conversion uses checked arithmetic. Heights are handled as follows:
 
 ```text
 height == 0 → rejected
@@ -686,9 +687,9 @@ negative nonzero height → preserved and passed through
 
 ### Glyph Lookup
 
-Unicode scalars are mapped through FreeType's active character map.
+Unicode scalar values are looked up through the face's active FreeType character map.
 
-A zero glyph index means missing:
+Glyph index zero means the glyph is missing:
 
 ```text
 TryRasterizeGlyph → false
@@ -699,7 +700,7 @@ The rasterizer does not choose a fallback font.
 
 ### Metrics
 
-Managed metrics preserve the verified native semantics:
+Glyph metrics follow the definitions confirmed in the retail client:
 
 ```text
 bearing X  = bitmap_left
@@ -707,7 +708,7 @@ top offset = nominalPixelHeight - bitmap_top
 advance    = horizontal 26.6 advance / 64
 ```
 
-Signed advance conversion truncates toward zero.
+The advance is signed, and the conversion truncates toward zero.
 
 `RasterizedGlyph` also carries:
 
@@ -717,7 +718,7 @@ bitmap height
 normalized coverage
 ```
 
-A valid space can therefore have:
+A space is therefore a valid glyph with:
 
 ```text
 bitmap area = 0
@@ -726,8 +727,8 @@ advance     > 0
 
 ### Bitmap Normalization
 
-FreeType bitmap pitch can be positive or negative. Logical row traversal therefore depends on the
-pitch sign:
+FreeType bitmap pitch can be positive or negative, so the address of each logical row depends on
+the sign of the pitch:
 
 ```text
 pitch >= 0:
@@ -737,10 +738,10 @@ pitch < 0:
     row pointer = buffer + (rows - 1 - row) * abs(pitch)
 ```
 
-For negative pitch, `buffer` addresses the lower physical row and logical traversal proceeds in the
-opposite physical direction.
+With a negative pitch, `buffer` points at the lower physical row, and logical rows run through
+memory in the opposite direction.
 
-Output coverage is tightly packed in logical row order.
+The output coverage is tightly packed in logical row order.
 
 ### Antialiasing
 
@@ -758,27 +759,28 @@ FreeType render mode = mono
 coverage             = 0 or 255
 ```
 
-The rasterizer exposes this immutable configuration through `IGlyphRasterizer.AntialiasEnabled`.
-`NativeTextFontRecord` carries the same authoritative policy into rendering.
+The rasterizer exposes this setting as `IGlyphRasterizer.AntialiasEnabled`, and it cannot change
+after the rasterizer is created. `NativeTextFontRecord` carries the same setting into rendering,
+where it is the only source of the antialias mode.
 
-The verified native draw behavior when antialiasing is disabled is:
+When antialiasing is disabled, the retail client draws with:
 
 ```text
 text color alpha   → 255
 corner color alpha → 255
 ```
 
-Persistent four-corner colors used by `PerCornerColor` remain separate and are not force-opaqued by
-that rule.
+The four persistent corner colors used by `PerCornerColor` are separate. This rule does not force
+them to be opaque.
 
-OpenConquer derives this behavior from the font/rasterizer configuration. There is no independent
-caller-controlled antialias boolean in the rendering API.
+OpenConquer takes this behavior from the font and rasterizer configuration. The rendering API has
+no separate antialias flag that callers can set.
 
 ## Missing-Glyph Fallback
 
-Font creation fallback and missing-glyph fallback are separate policies.
+Missing-glyph fallback is a separate policy from font creation fallback.
 
-Each native glyph cache is configured with:
+Each glyph cache is set up with:
 
 ```text
 primary font record
@@ -786,7 +788,7 @@ font record 0
 effective code page
 ```
 
-For an uncached encoded glyph key:
+When an encoded glyph key is not cached yet:
 
 ```text
 decode glyph key
@@ -799,24 +801,24 @@ if still missing:
     advance using primary line-height behavior
 ```
 
-When the primary font is already record 0, the fallback record is not retried.
+If the primary font is already record 0, it is not tried a second time.
 
-A glyph-key decoding failure is treated as missing and uses the primary line-height advance without
-calling either rasterizer.
+If the glyph key cannot be decoded, the glyph is treated as missing. It gets the primary line-height
+advance, and neither rasterizer is called.
 
-Unexpected rasterizer failures propagate rather than being converted into missing-glyph results.
+Unexpected rasterizer failures propagate. They are not turned into missing-glyph results.
 
-## Native Glyph Cache
+## Glyph Cache
 
-The cache key remains the native encoded glyph key:
+As in the retail client, the cache is keyed by the encoded glyph key:
 
 ```text
 ushort encoded glyph key
 ```
 
-Unicode decoding occurs only after a cache miss.
+Unicode decoding happens only on a cache miss.
 
-Cached entries preserve:
+Each cache entry stores:
 
 ```text
 source font-record index
@@ -827,18 +829,18 @@ optional atlas region
 missing state
 ```
 
-Successful zero-area glyphs such as spaces are cached with their advance but without atlas storage.
+Glyphs that rasterize with no bitmap area, such as spaces, are cached with their advance and take
+no atlas space.
 
-Missing results are cached so repeated unsupported glyphs do not repeatedly perform decoding or font
-lookup.
+Missing glyphs are cached too, so an unsupported glyph is decoded and looked up only once.
 
-Coverage bytes are stored by the atlas rather than duplicated in every cache entry.
+Coverage bytes live in the atlas and are not copied into each cache entry.
 
-The cache does not own or dispose the supplied font rasterizers.
+The cache does not own the font rasterizers it is given and does not dispose them.
 
 ## Glyph Atlas
 
-Verified native atlas requirements:
+Atlas parameters confirmed in the retail client:
 
 ```text
 page width  = 512 pixels
@@ -846,23 +848,23 @@ page height = 512 pixels
 separation  = 2 pixels
 ```
 
-Zero-area glyphs do not consume atlas storage.
+Glyphs with zero area take no atlas space.
 
-Glyphs larger than one atlas page fail explicitly.
+A glyph larger than one atlas page is an error.
 
-OpenConquer currently uses deterministic shelf allocation inside those verified page and separation
-constraints.
+Within those page and separation limits, OpenConquer currently places glyphs with a deterministic
+shelf allocator.
 
-Exact native row-wrap and page-allocation thresholds have not been established, so OpenConquer does
-not claim that its internal atlas coordinates are native-identical.
+The row-wrap and page-allocation thresholds of the retail client are not known, so OpenConquer
+does not claim that its atlas coordinates match the retail client's.
 
-Each page exposes normalized grayscale coverage and a monotonically increasing revision.
+Each page exposes its normalized grayscale coverage and a revision number that only increases.
 
-GFX-TEXT-004 mirrors each CPU page to a lazily created OpenGL `R8` texture. The GPU copy retains the
-CPU page's last uploaded revision and performs a full-page `TexSubImage2D` synchronization when that
-revision changes.
+GFX-TEXT-004 mirrors each CPU page into an OpenGL `R8` texture, which is created the first time it
+is needed. The GPU copy remembers the last revision it uploaded. When the CPU page's revision
+changes, it uploads the whole page again with `TexSubImage2D`.
 
-Texture policy is:
+Texture settings:
 
 ```text
 internal format = R8
@@ -874,13 +876,13 @@ max level       = 0
 mipmaps         = none
 ```
 
-Coverage is sampled explicitly from the texture's red channel.
+Coverage is sampled from the texture's red channel.
 
-## Native Text Layout
+## Text Layout
 
-Layout consumes `EncodedTextReader` tokens rather than reparsing encoded bytes.
+Layout works on the tokens from `EncodedTextReader` and does not parse the encoded bytes again.
 
-The pen begins at:
+The pen starts at:
 
 ```text
 X = 0
@@ -889,26 +891,26 @@ Y = 0
 
 ### Glyphs
 
-Drawable glyph position:
+A drawable glyph is placed at:
 
 ```text
 X = pen X + bearing-left
 Y = pen Y + top offset
 ```
 
-After processing the glyph:
+Then the pen moves:
 
 ```text
 pen X += advance
 ```
 
-A successful zero-area glyph advances the pen without emitting a drawable glyph item.
+A glyph with zero area moves the pen but adds no drawable item.
 
-A missing glyph advances using the cached primary line-height behavior and emits no drawable item.
+A missing glyph moves the pen by the cached primary line-height advance and adds no drawable item.
 
 ### Newlines
 
-On newline:
+On a newline:
 
 ```text
 maximum width = max(maximum width, pen X)
@@ -918,7 +920,7 @@ pen Y        += nominal height + nominal height / 4
 
 ### Measurement
 
-Final dimensions are:
+The measured size is:
 
 ```text
 width  = maximum horizontal pen extent
@@ -932,11 +934,11 @@ width  = 0
 height = nominal height
 ```
 
-Layout arithmetic uses checked integer operations.
+All layout arithmetic is checked for integer overflow.
 
 ### Data Icons
 
-A recognized data icon emits one ordered data-icon layout item carrying:
+A recognized data icon adds one data-icon item, in text order, with:
 
 ```text
 icon index
@@ -945,39 +947,38 @@ Y
 resolved width
 ```
 
-Its width advances the horizontal pen.
+The horizontal pen advances by the icon's width.
 
-The glyph renderer does not attempt to reinterpret a data icon as text. Until an explicit
-icon-resource rendering path exists, such layouts are rejected before OpenGL state is modified.
+The glyph renderer never tries to draw a data icon as text. Until there is a separate renderer for
+icon resources, layouts that contain data icons are rejected before any OpenGL state changes.
 
 ## Layout Provenance
 
-A glyph atlas page index is meaningful only relative to the exact glyph atlas that produced it.
-Rendering must also use the font configuration that supplied the layout's antialias policy.
+An atlas page index only has meaning for the glyph atlas that produced it. Rendering must also use
+the same font configuration that set the layout's antialias mode.
 
-`NativeTextLayoutSource` therefore binds:
+`NativeTextLayoutSource` therefore ties each layout to:
 
 ```text
 authoritative primary font record
 authoritative CPU glyph atlas
 ```
 
-Each `NativeTextLayoutEngine` creates one stable source instance and every layout produced by that
-engine retains that exact source identity.
+Each `NativeTextLayoutEngine` creates one source object, and every layout from that engine refers
+to that same object.
 
-The identity contract is reference identity rather than structural equivalence:
+The check compares references. Two sources with equal contents are still different sources:
 
 ```text
 layout.Source must be the exact source bound to the GPU text resource
 ```
 
-`NativeTextLayoutSource` is provenance only. It does not own or dispose the supplied font record,
-rasterizer, glyph cache, or atlas.
+`NativeTextLayoutSource` only records where a layout came from. It does not own or dispose the font
+record, rasterizer, glyph cache or atlas it refers to.
 
-`OpenGLTextResource` owns the OpenGL atlas mirror corresponding to exactly one layout source and one
-OpenGL device.
+`OpenGLTextResource` owns the OpenGL copy of the atlas for one layout source on one OpenGL device.
 
-Before drawing, rendering validates:
+Before drawing, the renderer checks:
 
 ```text
 renderer/device identity
@@ -988,11 +989,12 @@ atlas page validity
 render-style work budget
 ```
 
-These deterministic caller failures occur before text-pipeline OpenGL state mutation.
+If the caller gets any of these wrong, the error is raised before the text pipeline changes any
+OpenGL state.
 
-## Native Render Styles
+## Render Styles
 
-The verified native `RENDER_TEXT_STYLE` values are:
+The retail `RENDER_TEXT_STYLE` values are:
 
 ```text
 0 = Normal
@@ -1022,9 +1024,9 @@ Two passes:
 
 ### MultiOffsetOutline
 
-Eight one-pixel corner passes followed by the base text.
+Eight one-pixel corner passes, then the base text.
 
-Verified order:
+Pass order, as confirmed in the retail client:
 
 ```text
 (-1,  0)
@@ -1040,8 +1042,9 @@ Verified order:
 
 ### OffsetTrail
 
-The native path emits deterministic interpolated offsets from the configured displacement back
-toward the base position, then emits the base pass.
+The retail client draws passes at interpolated offsets, starting at the configured offset and
+stepping back toward the base position. The base pass comes last. The same offset always gives the
+same sequence.
 
 Pass count:
 
@@ -1049,7 +1052,7 @@ Pass count:
 abs(offset X) + abs(offset Y) + 1
 ```
 
-Verified example:
+Example:
 
 ```text
 offset = (3, 1)
@@ -1061,13 +1064,13 @@ offset = (3, 1)
 (0, 0) base
 ```
 
-Signed offsets are preserved.
+Offsets keep their sign.
 
 ### PerCornerColor
 
-One base geometry pass using four independently configured colors.
+One base pass, with a separately configured color at each of the four corners.
 
-Native corner order is:
+Corner order in the retail client:
 
 ```text
 top-left
@@ -1076,14 +1079,14 @@ top-right
 bottom-right
 ```
 
-The four persistent corner colors remain independent from the ordinary text/corner-alpha
-force-opaque behavior used when antialiasing is disabled.
+These four persistent corner colors are not affected by the alpha forcing that applies to the text
+and corner colors when antialiasing is disabled.
 
-## Native Glyph Geometry
+## Glyph Geometry
 
-Each glyph render pass emits six vertices as two triangles.
+Each glyph pass emits six vertices that form two triangles.
 
-Verified native vertex order:
+Vertex order, as confirmed in the retail client:
 
 ```text
 triangle 1:
@@ -1097,48 +1100,48 @@ top-right
 bottom-left
 ```
 
-Equivalent sequence:
+As one sequence:
 
 ```text
 TL, BL, TR, BR, TR, BL
 ```
 
-Per-vertex color mapping therefore follows:
+Vertex colors follow the same order:
 
 ```text
 TL, BL, TR, BR, TR, BL
 ```
 
-The `TR ↔ BL` diagonal is intentionally preserved because it changes per-corner color interpolation.
+The shared `TR ↔ BL` diagonal is kept on purpose, because it changes how per-corner colors
+interpolate.
 
-Texture coordinates are normalized directly from the glyph's atlas region.
+Texture coordinates are computed directly from the glyph's atlas region and normalized.
 
-Destination arithmetic uses widened integer intermediates before conversion to floating-point
-coordinates.
+Destination positions are computed with wider integer intermediates before they are converted to
+floating-point coordinates.
 
-### Half-Pixel Boundary
+### Half-Pixel Offset
 
-The D3D8-era implementation contains coordinate representation details associated with its graphics
-API.
+The retail client's D3D8 code has coordinate details that come from that graphics API.
 
-OpenConquer does not reproduce a D3D8 half-pixel offset mechanically.
+OpenConquer does not copy the D3D8 half-pixel offset.
 
-The modern OpenGL path expresses glyph edges directly in logical pixel coordinates and maps them to
-clip space:
+The OpenGL path places glyph edges directly in logical pixel coordinates and maps them to clip
+space:
 
 ```text
 xNdc = (x / targetWidth) * 2 - 1
 yNdc = 1 - (y / targetHeight) * 2
 ```
 
-No `±0.5` correction is introduced.
+There is no `±0.5` correction.
 
-This preserves the observable logical placement verified by real-driver conformance without
-cargo-culting an obsolete API representation artifact.
+This gives the same visible logical placement, which the real-driver conformance tests check,
+without copying a quirk of the old API.
 
 ## OpenGL Text Pipeline
 
-GFX-TEXT-004 uses a dedicated OpenGL 3.3 Core-compatible text pipeline.
+GFX-TEXT-004 adds a separate text pipeline that works with OpenGL 3.3 Core.
 
 Vertex attributes are tightly packed:
 
@@ -1150,9 +1153,9 @@ offset 16: vec4 color             normalized unsigned byte
 stride = 20 bytes
 ```
 
-The vertex ABI is covered by exact managed size and field-offset tests.
+Tests check the size and field offsets of the managed vertex struct.
 
-The fragment contract is:
+The fragment shader computes:
 
 ```text
 coverage = texture(atlas, uv).r
@@ -1160,9 +1163,9 @@ output RGB   = vertex RGB
 output alpha = vertex alpha * coverage
 ```
 
-The atlas is coverage-only. Texture RGB is not used to modulate the output RGB channels.
+The atlas holds coverage only. Texture RGB does not affect the output RGB channels.
 
-Relevant draw state is explicitly established:
+The pipeline sets every draw state it relies on:
 
 ```text
 scissor test  = disabled
@@ -1179,7 +1182,7 @@ dest factor   = one minus source alpha
 active texture = unit 0
 ```
 
-This is the modern equivalent of the verified native text state:
+This is the OpenGL equivalent of the retail client's text render state:
 
 ```text
 alpha blend = enabled
@@ -1197,26 +1200,25 @@ texture RGB selects diffuse
 texture alpha multiplies diffuse alpha
 ```
 
-Fixed-function state, FVF declarations, COM ownership, and D3D8 pipeline structure are not
+Fixed-function state, FVF declarations, COM ownership and the D3D8 pipeline structure are not
 reproduced.
 
-After drawing, the text pipeline returns the renderer to its defined local baseline rather than
-depending on incidental prior OpenGL state.
+After drawing, the text pipeline restores the renderer's defined baseline state. It does not rely
+on whatever OpenGL state happened to be set before.
 
 ## Text Batching
 
-Native evidence establishes that batched text rendering:
+Reverse engineering shows that the retail client's batched text rendering:
 
 ```text
 collects vertices by atlas page
 flushes atlas-page batches at Font_DrawEnd
 ```
 
-The exact native atlas-page traversal order during the final flush has not been established.
+The order in which the retail client walks the atlas pages during that final flush is not known.
+OpenConquer makes no claim to match it.
 
-OpenConquer therefore does not claim parity for an undocumented page-flush ordering.
-
-Its deterministic reconstruction policy is:
+OpenConquer uses this reproducible order instead:
 
 ```text
 atlas pages flush in ascending stable page index
@@ -1229,16 +1231,16 @@ original glyph order is preserved
 render-pass order for each glyph is preserved
 ```
 
-Page indices are deterministic atlas creation-order identities.
+Page indices follow the order in which atlas pages were created.
 
-Cross-page overlap remains a documented uncertainty because a different native final page traversal
-could make overlap ordering observable.
+Overlap between glyphs on different pages is still an open question. If the retail client flushes
+its pages in a different order, overlapping glyphs could be drawn in a different order too.
 
-## Bounded Rendering Work
+## Rendering Work Limits
 
-Rendering uses reusable fixed-capacity CPU and GPU staging resources.
+Rendering reuses fixed-size CPU and GPU staging buffers.
 
-Current bounds:
+Current limits:
 
 ```text
 staging capacity      = 4,096 glyph passes
@@ -1246,28 +1248,26 @@ maximum draw workload = 65,536 glyph passes
 vertices per pass     = 6
 ```
 
-A staging-capacity boundary causes a flush and reuse of the same storage. It is not a text-length
-compatibility limit.
+When the staging buffer is full, it is flushed and the same storage is reused. This does not limit
+the length of the text.
 
-The maximum workload is a modern resource-safety policy that prevents pathological trail offsets or
-untrusted text from creating unbounded CPU work.
+The workload cap is an OpenConquer safety limit and is not claimed to exist in the retail client.
+It stops extreme trail offsets or untrusted text from causing unlimited CPU work.
 
-For reference, the nine-pass outline style can render:
+For example, the nine-pass outline style can draw
 
 ```text
 floor(65,536 / 9) = 7,281 glyphs
 ```
 
-in one render operation before reaching that safety boundary.
+in one render call before it hits the cap.
 
-The bound is not claimed to be a native client restriction.
-
-Normal warmed staging and batching paths reuse previously allocated storage. Managed allocation is
-permitted when capacities or atlas resources grow for the first time.
+Once warmed up, staging and batching reuse storage they have already allocated. Managed allocation
+can happen when a capacity or an atlas resource grows for the first time.
 
 ## OpenGL Resource Ownership
 
-Ownership is intentionally separated:
+Each object owns a distinct set of resources:
 
 ```text
 NativeTextLayoutSource
@@ -1294,19 +1294,19 @@ OpenGLGraphicsDevice
     creates text resources for its GL device
 ```
 
-GPU objects must be disposed while their OpenGL context remains valid.
+GPU objects must be disposed while their OpenGL context is still valid.
 
-As with existing OpenGL texture resources, device identity is validated explicitly rather than
-allowing resources created by one graphics device to be used by another.
+As with the existing OpenGL texture resources, the device is checked on use, so a resource created
+by one graphics device cannot be used with another.
 
-Renderer construction and destruction follow explicit reverse ownership ordering and preserve the
-first encountered failure during cleanup.
+Renderer construction and disposal follow a fixed ownership order, and resources are released in
+reverse. If cleanup hits more than one error, the first one is reported.
 
 ## Failure Atomicity
 
-Deterministic request validation occurs before the first text draw-state mutation.
+All checks on a draw request run before the first change to text draw state.
 
-This includes:
+They cover:
 
 ```text
 renderer disposal state
@@ -1321,11 +1321,11 @@ maximum glyph-pass workload
 batch-plan construction
 ```
 
-An empty drawable layout is a true no-op and does not activate the text pipeline.
+A layout with nothing to draw does nothing at all and does not activate the text pipeline.
 
-Once GPU execution begins, driver/backend failures can naturally occur after partial GPU work. The
-renderer performs best-effort deterministic cleanup while preserving the first failure rather than
-masking it with a secondary cleanup exception.
+Once GPU work has started, a driver or backend error can still happen partway through. The renderer
+then cleans up as far as it can and reports the first error. A later exception during cleanup does
+not hide it.
 
 ## Managed Ownership
 
@@ -1432,14 +1432,14 @@ OpenGLTextLayout
     opaque caller-facing measured layout
 ```
 
-Content and Rendering remain independent sibling projects.
+Content and Rendering are independent sibling projects.
 
-Host font APIs are rendering-resource discovery mechanisms and remain inside Rendering. They do not
-introduce a Rendering → Platform dependency.
+The host font APIs are used to find rendering resources, so they live in Rendering. Using them does
+not make Rendering depend on Platform.
 
-The Client composition root now connects Content-derived font/code-page configuration to Rendering
-for GFX-UI-007 selected-skill cooldown text. Rendering retains ownership of host font discovery,
-FreeType objects, glyph/layout state, and OpenGL atlas resources.
+The Client composition root passes the font and code-page configuration from Content to Rendering
+for the selected-skill cooldown text (GFX-UI-007). Rendering still owns host font discovery,
+FreeType objects, glyph and layout state, and the OpenGL atlas resources.
 
 ## GFX-TEXT-002 Scope
 
@@ -1487,8 +1487,7 @@ missing-glyph reporting
 antialias mode selection
 ```
 
-Deferred work from GFX-TEXT-002 is implemented by later slices rather than being incomplete work in
-that slice.
+Work deferred from GFX-TEXT-002 is implemented in the later stages listed below.
 
 ## GFX-TEXT-003 Scope
 
@@ -1525,10 +1524,9 @@ signed nonzero data-icon width preservation
 checked layout and atlas arithmetic
 ```
 
-Later rendering work from this slice is implemented by GFX-TEXT-004 rather than being incomplete
-GFX-TEXT-003 work.
+The rendering work that builds on GFX-TEXT-003 is implemented in GFX-TEXT-004.
 
-Still outside the implemented compatibility contract:
+Not implemented yet:
 
 ```text
 CodePage.ini font-size levels
@@ -1595,7 +1593,7 @@ per-corner native-diagonal conformance
 atlas-revision synchronization conformance
 ```
 
-Known evidence boundary:
+What is known about page batching:
 
 ```text
 native batches by atlas page: verified
@@ -1603,8 +1601,8 @@ exact native final page traversal order: unresolved
 OpenConquer ascending page-index order: deterministic modern policy
 ```
 
-GFX-TEXT-004 itself did not add a runtime HUD/UI consumer. GFX-UI-007 now supplies the first
-production text-bearing HUD consumer: selected-skill cooldown text through `OpenGLTextContext`.
+GFX-TEXT-004 on its own did not add any HUD or UI text. The first HUD text in production comes from
+GFX-UI-007: the selected-skill cooldown text, drawn through `OpenGLTextContext`.
 
 ## Text Reconstruction Roadmap
 
@@ -1638,26 +1636,25 @@ category-9 Magic hints
 learned/zero-magic text, native wrapping, colors and 12-pixel font
 ```
 
-Selected-skill cooldown text is the first production text-bearing UI consumer.
-GFX-UI-008 adds the category-8 main-HUD status-hint panel as the next consumer, using
-retail StrRes.ini bytes, the normal GUI font height, and the existing OpenGLTextContext.
-Category-9 Magic hints also consume retail magic/effect metadata, subprofession
-requirements, configured keyed localization, and runtime snapshots. Native byte-oriented
-wrapping and colored text are covered by real-driver HUD conformance at 800×600 and
-1024×768. Live Gameplay producers are not connected.
-Separate control tooltips and other status-hint categories remain deferred.
+Selected-skill cooldown text was the first UI text in production. GFX-UI-008 adds the next one, the
+category-8 main-HUD status-hint panel. It uses the retail StrRes.ini bytes, the normal GUI font
+height and the existing OpenGLTextContext. Category-9 Magic hints also use retail magic and effect
+metadata, subprofession requirements, configured keyed localization and runtime snapshots.
+Real-driver HUD conformance tests cover the retail byte-based wrapping and colored text at 800x600
+and 1024x768. Live producers in Gameplay are not connected yet. Separate control tooltips and the
+other status-hint categories are deferred.
 
-## Conformance Boundary
+## Conformance Testing
 
-Deterministic policy and CPU contracts are covered by unit tests.
+Unit tests cover the policy logic and the CPU-side behavior.
 
-Host-font adapters require execution on their real operating systems. CI validates the native host
-and FreeType seams on supported Windows, macOS, and Linux environments.
+The host font adapters can only run on their own operating systems. CI tests the native host font
+and FreeType interop code on the supported Windows, macOS and Linux environments.
 
-GFX-TEXT-004 adds real-driver OpenGL conformance using synthetic deterministic glyph coverage rather
-than host-selected font output.
+GFX-TEXT-004 adds OpenGL conformance tests that run on real drivers. They use synthetic glyph
+coverage with fixed values instead of output from host-selected fonts.
 
-The text conformance path verifies:
+The text conformance tests check:
 
 ```text
 logical pixel placement
@@ -1668,23 +1665,22 @@ native per-corner TR-BL triangle diagonal
 CPU atlas revision → existing GPU texture synchronization
 ```
 
-The original synthetic GFX-TEXT-004 fixture populates `GlyphAtlas` directly. It does not invoke
-FreeType or depend on host font discovery.
+The original synthetic GFX-TEXT-004 fixture fills `GlyphAtlas` directly. It does not call FreeType
+or use host font discovery.
 
-GFX-UI-007 adds a second deterministic real-driver path through the production `OpenGLTextContext`
-façade using an injected synthetic rasterizer. That verifies façade ownership, layout, lazy atlas
-page creation/synchronization, and GPU drawing without introducing host-font pixel variability.
+GFX-UI-007 adds a second real-driver test that goes through the production `OpenGLTextContext`
+façade with an injected synthetic rasterizer. It checks the façade's ownership, layout, on-demand
+atlas page creation and upload, and GPU drawing, without the pixel variation that host fonts
+would bring.
 
-Selected-skill conformance then composes deterministic cooldown glyphs with the verified retail
-selected-skill image/cover path and checks the native stateful cover ordering.
+The selected-skill conformance test then combines the synthetic cooldown glyphs with the retail
+selected-skill image and cover drawing, and checks the retail client's stateful cover ordering.
 
-This separation is intentional.
+The tests keep host fonts out on purpose. The FreeType version and the font file versions used by
+the retail client are not known. OpenConquer therefore does not claim pixel-identical glyph bitmaps
+just because both clients rasterize glyphs the way FreeType does.
 
-The exact FreeType revision and exact physical font revision used by the retail client have not been
-established. OpenConquer therefore does not claim pixel-identical glyph bitmaps merely because both
-implementations use FreeType-shaped rasterization.
-
-Exact rasterized glyph pixels can vary with:
+Rasterized glyph pixels can vary with:
 
 ```text
 font revision
@@ -1693,12 +1689,12 @@ hinting behavior
 host font selection
 ```
 
-The implemented GFX-TEXT-004 conformance instead establishes the deterministic rendering behavior
-after coverage has entered the authoritative OpenConquer glyph atlas.
+The GFX-TEXT-004 conformance tests instead check rendering from the point where coverage is in the
+OpenConquer glyph atlas. From there on, the output is reproducible.
 
-## Modernization Boundary
+## Modernization Rules
 
-Preserve verified 5517 behavior:
+5517 behavior that OpenConquer keeps:
 
 ```text
 encoded-byte traversal before Unicode conversion
@@ -1735,7 +1731,7 @@ source-alpha blending
 per-page batching behavior
 ```
 
-Modern implementation constraints:
+Rules for the modern implementation:
 
 ```text
 Content owns configuration parsing
@@ -1775,7 +1771,7 @@ do not claim undocumented atlas-page flush order as native behavior
 do not claim retail glyph-bitmap pixel identity without evidence
 ```
 
-The governing rule is observable compatibility rather than implementation archaeology:
+The general rule is to keep observable behavior and modernize the implementation:
 
 ```text
 preserve behavior that affects visible output, content compatibility, protocol semantics,

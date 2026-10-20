@@ -2,14 +2,12 @@
 
 ## Status
 
-**Verified legacy compatibility evidence; offline tooling only.**
+Offline tooling only. The OpenConquer client does not use `Server.dat` at runtime.
 
-Retail `Server.dat` is preserved because it is important evidence for the native 5517 login/server
+The repository keeps the retail `Server.dat` because it documents the 5517 login and server
 bootstrap flow.
 
-It is **not** part of the modern OpenConquer client runtime architecture.
-
-The production policy is:
+How the file is used:
 
 ```text
 retail Server.dat
@@ -23,12 +21,12 @@ modern client runtime
         └── no Server.dat dependency
 ```
 
-There is no runtime fallback to `Server.dat`, no hard-coded replacement server list, and no
-translation of the historical file into a modern runtime realm catalog.
+The runtime never falls back to `Server.dat`. There is no hard-coded server list to replace it, and
+the file is not converted into a runtime realm catalog.
 
 ## Retail Identity
 
-The audited retail 5517 file is:
+Identity of the retail 5517 file:
 
 ```text
 length: 2816 bytes
@@ -36,25 +34,24 @@ SHA-256: 0b4d366786aa4498c7e470f10fd8bca716bc1d6cbda1eb3894666183f8327a90
 RSA blocks: 11 × 256 bytes
 ```
 
-The exact fixture is tracked at:
+A byte-for-byte copy is tracked as a test fixture at:
 
 ```text
 tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
 ```
 
-The fixture is test/tooling evidence. It is deliberately not staged under
+The fixture is used only by tests and tooling, so it is not staged under
 `content/retail-5517/payload`.
 
-## Native Location and Lookup Behavior
+## Location and Lookup
 
-Native 5517 reads `Server.dat` directly from the client root.
+The 5517 client reads `Server.dat` directly from the client root, as a loose file. It does not look
+it up in a WDF package.
 
-The audited behavior is a loose-file operation rather than WDF package lookup.
+OpenConquer does not need to model this with `ContentLookupMode.LooseOnly`, because its runtime does
+not read `Server.dat` at all.
 
-That fact remains compatibility evidence, but the modern implementation no longer needs to model it
-through `ContentLookupMode.LooseOnly` because the modern runtime does not read `Server.dat` at all.
-
-Offline tooling instead accepts an explicit filesystem path:
+The offline tooling takes a filesystem path instead:
 
 ```text
 operator-selected file
@@ -66,21 +63,22 @@ No package lookup or fallback is involved.
 
 ## Cryptographic Envelope
 
-Native `CConfigDataTableQueryProvider` constructs a 2048-bit RSA public key using exponent `65537`.
+In the retail client, `CConfigDataTableQueryProvider` builds a 2048-bit RSA public key with exponent
+`65537`.
 
-The independently recovered unsigned big-endian modulus has raw 256-byte SHA-256:
+The modulus was recovered separately. Its SHA-256, taken over the raw 256-byte unsigned big-endian
+value, is:
 
 ```text
 76acb04b08190b129985f8dee2b466efcd686eb1662cb598bd1a8154cb9196f1
 ```
 
-OpenConquer stores the independently verified final modulus directly.
+OpenConquer stores this final modulus directly.
 
-It does not reproduce the native constructor's seed schedule and BIGNUM assembly in production
-tooling. Those construction details remain compatibility evidence and are locked by tests where
-useful.
+The tooling does not reproduce the retail constructor's seed schedule and BIGNUM assembly. Tests
+cover those construction details where useful.
 
-The verified decode pipeline is:
+Decoding goes through these steps:
 
 ```text
 11 × 256-byte RSA blocks
@@ -96,54 +94,49 @@ PKCS#1 type-1 extraction
 table_data[name=outenserver]
 ```
 
-The inflated XML SHA-256 is:
+The SHA-256 of the inflated XML is:
 
 ```text
 5d6b00ff722a8b37aa2981affecd478aee73bdc22cdc498a25b700242b55c35a
 ```
 
-## Security Interpretation
+## Security Notes
 
-The historical RSA construction should not be treated as encryption that keeps the server list
-secret from the client.
+The RSA layer does not keep the server list secret from the client. The client ships with the public
+key needed to recover the payload.
 
-The client contains the public material required to recover the payload.
+What the scheme does provide is consistent with publisher-controlled authenticity and tamper
+resistance: data produced with the matching private key can be checked or recovered by the client
+with the embedded public key.
 
-The useful property of the native construction is instead consistent with publisher-controlled
-authenticity and tamper resistance: data produced with the corresponding private-key operation can
-be checked or recovered by the client using embedded public material.
+OpenConquer does not reuse this mechanism to establish trust. Service discovery, authentication,
+routing, and update trust each need their own security design.
 
-That historical mechanism is not reused as a modern production trust system.
+## Tooling Decoder
 
-Modern service discovery, authentication, routing, and update trust each belong to their appropriate
-modern security boundary.
+The decoder treats every input file as untrusted.
 
-## Hardened Tooling Decoder
+The envelope checks require:
 
-The preserved decoder treats every supplied file as untrusted input.
+- non-empty input
+- complete 256-byte RSA blocks
+- no more than 64 encrypted blocks
+- a 256-byte public modulus
+- every RSA representative to be less than the modulus
+- PKCS#1 type-1 prefix `00 01`
+- at least eight `FF` padding bytes
+- a zero separator
+- a non-empty extracted payload chunk
+- a valid gzip signature
+- an inflated XML size of at most 1 MiB
+- reproducible rejection of malformed data
 
-The envelope boundary requires:
-
-- non-empty input;
-- complete 256-byte RSA blocks;
-- no more than 64 encrypted blocks;
-- a 256-byte public modulus;
-- every RSA representative to be strictly less than the modulus;
-- PKCS#1 type-1 prefix `00 01`;
-- at least eight `FF` padding bytes;
-- a zero separator;
-- a non-empty extracted payload chunk;
-- gzip signature validation;
-- a maximum inflated XML size of 1 MiB;
-- deterministic malformed-data rejection.
-
-The file reader additionally bounds the encrypted file to:
+Before it reads the whole encrypted payload into memory, the file reader checks the file against
+this size limit:
 
 ```text
 64 × 256 bytes = 16384 bytes
 ```
-
-before allowing the complete encrypted payload to accumulate in memory.
 
 ## XML Structure
 
@@ -155,23 +148,22 @@ table_data[name=outenserver]
 
 The parser:
 
-- prohibits DTD processing;
-- disables external XML resolution;
-- bounds parsed document characters;
-- rejects duplicate `outenserver` tables;
-- rejects duplicate row IDs;
-- rejects duplicate field names within a row;
-- bounds group count to 1024;
-- bounds servers per group to 100;
-- uses checked row-index arithmetic;
-- requires structurally required rows and fields.
+- disables DTD processing
+- disables external XML resolution
+- limits the number of characters it parses
+- rejects duplicate `outenserver` tables
+- rejects duplicate row IDs
+- rejects duplicate field names within a row
+- allows at most 1024 groups
+- allows at most 100 servers per group
+- uses overflow-checked arithmetic for row indexes
+- requires the rows and fields the structure depends on
 
-Unknown fields are tolerated so the parser remains narrowly coupled to the verified fields it
-actually consumes.
+Unknown fields are ignored, so the parser depends only on the fields it reads.
 
-## Verified Retail Schema
+## Retail Schema
 
-The audited fields are:
+The retail file uses these fields:
 
 ```text
 id
@@ -195,20 +187,20 @@ servers: 94
 
 Group rows use IDs `1..14`.
 
-The first server row for a group is derived as:
+The ID of a group's first server row is:
 
 ```text
 0x65 + (groupIndex - 1) × 0x64
 ```
 
-and the group's `Child` value determines how many sequential server rows belong to it.
+The group's `Child` value gives the number of consecutive server rows that belong to it.
 
-The 100-row stride is structural native evidence. The modern tooling parser therefore rejects a
-per-group server count greater than 100.
+The retail format spaces groups 100 rows apart, so the tooling parser rejects any group with more
+than 100 servers.
 
-## Historical Model Semantics
+## Model Naming
 
-The tooling model intentionally preserves source-format terminology:
+The tooling model keeps the names used by the file format:
 
 ```text
 ServerDatCatalog
@@ -216,7 +208,7 @@ ServerDatGroup
 ServerDatServer
 ```
 
-and historical field semantics such as:
+It also keeps the original field names and meanings:
 
 ```text
 FlashName
@@ -227,7 +219,8 @@ ServerIp
 ServerPort
 ```
 
-These names are deliberately not projected into generic modern properties such as:
+These fields are not mapped to generic properties like the ones below, because those names would
+suggest a runtime meaning the fields do not have:
 
 ```text
 DisplayName
@@ -237,11 +230,7 @@ Realm
 Endpoint
 ```
 
-because doing so would incorrectly imply modern runtime semantics.
-
-The inspected retail fixture demonstrates why this distinction matters.
-
-Several rows contain different `FlashName` and `ServerName` values. Examples include:
+The retail fixture shows why this matters. In several rows, `FlashName` and `ServerName` differ:
 
 ```text
 FlashName="Water"       ServerName="Fire"
@@ -250,85 +239,80 @@ FlashName="Pegasus"     ServerName="Basilisk"
 FlashName="Cinderella"  ServerName="SnowWhite"
 ```
 
-`FlashName` is therefore not interchangeable with the native protocol server identifier.
+`FlashName` therefore cannot stand in for the server identifier that the protocol uses.
 
-## Protocol Significance of ServerName
+## ServerName in the Login Protocol
 
-Native 5517 account-login protocol evidence shows that `ServerName` participates in the login
-boundary.
+In the 5517 account-login protocol, `ServerName` is part of the login request.
 
 `MsgAccount` packet type `1060` contains a 16-byte server-name field at offset `+260`.
 
-The historical `ServerName` field must therefore remain distinct from presentation metadata.
+`ServerName` therefore has to stay separate from display metadata.
 
-The runtime server-selection design must preserve the protocol value independently of a display
-label or any modern catalog identifier. Removing the historical file does not remove this native
-login requirement. The runtime source and mapping require their own native/server contract audit.
+Runtime server selection must carry the protocol value separately from any display label or catalog
+identifier. Dropping the file does not remove this login requirement. Where the runtime gets the
+value, and how it maps to a server, still has to be checked against the retail client and server.
 
 ## ServerIP and ServerPort
 
-Historical `ServerIP` and `ServerPort` describe the native pre-authentication login/account ingress
-represented by `Server.dat`.
+`ServerIP` and `ServerPort` give the account (login) server that the 5517 client contacts before
+authentication.
 
-They are preserved as source text by the tooling model.
+The tooling model keeps them as the original text. The parser does not turn them into runtime
+endpoints:
 
-The tooling parser deliberately does not reinterpret them as modern runtime endpoints.
+- `ServerIP` is not converted into a host type
+- `ServerPort` is not parsed into a network endpoint
+- the inspection tool never opens a connection
+- nothing at runtime falls back to these values
 
-In particular:
+The handoff to the game world after authentication is a separate part of the protocol.
 
-- `ServerIP` is not converted into a modern host abstraction;
-- `ServerPort` is not parsed into a runtime networking endpoint;
-- no connection is initiated from inspection tooling;
-- no runtime fallback uses these values.
+## Runtime Decision
 
-The native post-authentication world handoff is a separate protocol concern.
+Retail `Server.dat` is not used at runtime. Leaving it out changes where server configuration comes
+from. It does not change the 5517 account-authentication protocol.
 
-## Modern Runtime Decision
+The launcher must keep the original 5517 AccountServer authentication, credential transformations,
+results, and login-to-game handoff. Any new runtime source for server discovery and selection needs
+a clear owner and trust model, and must keep protocol server names separate from UI labels.
+Endpoints must not be hardcoded in UI code.
 
-Retail `Server.dat` remains outside the production runtime. Its removal changes the source of server
-configuration, not the native account-authentication protocol.
-
-The launcher must preserve original 5517 AccountServer authentication, credential transformations,
-results, and login-to-game handoff. A replacement runtime source for server discovery/selection
-requires an explicit trust and ownership boundary, with native protocol server names kept distinct
-from UI labels. Endpoints must not be hardcoded in UI code.
-
-The earlier proposed post-authentication realm-routing lifecycle is superseded by the native-parity
-reconstruction requirement. Do not infer new connection-ticket or identity-provider protocols from
-this historical decoder. No runtime server catalog or authentication implementation exists yet.
+Runtime networking aims for parity with the 5517 login flow. This replaces an earlier proposal for a
+post-authentication realm-routing lifecycle. This decoder is not a basis for new connection-ticket
+or identity-provider protocols. No runtime server catalog or authentication implementation exists
+yet.
 
 See the
 [native-parity networking direction](../architecture/architecture.md#native-parity-networking-direction)
-for the runtime architecture that supersedes historical `Server.dat` discovery.
+for the runtime design that replaces `Server.dat` discovery.
 
 ## Tooling Ownership
 
-All retained `Server.dat` implementation lives beneath:
+All `Server.dat` code lives under:
 
 ```text
 tools/OpenConquer.Content.Tool/Legacy/ServerDat/
 ```
 
-Tests live beneath:
+Tests live under:
 
 ```text
 tests/OpenConquer.Content.Tool.Tests/Legacy/ServerDat/
 ```
 
-The exact retail fixture lives beneath:
+The retail fixture lives under:
 
 ```text
 tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/
 ```
 
-There is intentionally no speculative `OpenConquer.Legacy` runtime library.
-
-If a second independent non-runtime consumer eventually requires this code, ownership can be
-reevaluated from actual requirements.
+There is no `OpenConquer.Legacy` runtime library. If another non-runtime consumer needs this code
+later, where it lives can be decided then, based on what that consumer needs.
 
 ## Inspection Command
 
-The supported offline inspection command is:
+To inspect a file offline:
 
 ```bash
 dotnet run --project tools/OpenConquer.Content.Tool -- \
@@ -338,24 +322,24 @@ dotnet run --project tools/OpenConquer.Content.Tool -- \
 
 The report includes:
 
-- absolute inspected path;
-- group count;
-- total server-row count;
-- group IDs and historical Flash metadata;
-- server IDs;
-- `FlashName`;
-- `FlashIcon`;
-- `FlashHint`;
-- `ServerName`;
-- `ServerIP`;
-- `ServerPort`.
+- the absolute path of the inspected file
+- group count
+- total server-row count
+- group IDs and their Flash metadata
+- server IDs
+- `FlashName`
+- `FlashIcon`
+- `FlashHint`
+- `ServerName`
+- `ServerIP`
+- `ServerPort`
 
-Source strings are escaped before rendering so embedded control characters cannot inject fake report
-lines.
+Strings from the file are escaped before printing, so embedded control characters cannot inject fake
+report lines.
 
 ## Runtime Content Policy
 
-`Server.dat` is intentionally absent from:
+`Server.dat` is left out of:
 
 ```text
 ClientContentClosure
@@ -364,39 +348,30 @@ content/retail-5517/manifest.json
 published OpenConquer.Client content
 ```
 
-The current runtime content closure therefore contains five files:
+The runtime content closure is the set resolved by `ClientContentClosure` and recorded in
+`content/retail-5517/manifest.json`. The
+[retail 5517 content plan](../content/retail-5517-content-plan.md) describes what it contains.
+`Server.dat` is never part of it.
 
-```text
-data/main/Logo1.bmp
-data/main/Logo2.bmp
-ini/GameSetUp.ini
-ini/info.ini
-ini/package.ini
-```
-
-The exact retail `Server.dat` remains preserved independently as compatibility evidence.
+The retail `Server.dat` is kept separately, as the test fixture described above.
 
 ## Verification
 
-Parity tests permanently lock:
+Parity tests pin:
 
-- encrypted fixture length;
-- encrypted fixture SHA-256;
-- 11-block encrypted shape;
-- native public modulus identity;
-- inflated XML length;
-- inflated XML SHA-256;
-- 14-group structure;
-- hardened RSA/PKCS#1/gzip rejection behavior;
-- hardened XML parsing behavior.
+- the encrypted fixture length
+- the encrypted fixture SHA-256
+- the 11-block encrypted layout
+- the retail public modulus
+- the inflated XML length
+- the inflated XML SHA-256
+- the 14-group structure
+- rejection of bad RSA, PKCS#1, and gzip input
+- the XML parser hardening
 
-The `inspect-server-dat` command has also been exercised successfully against the exact tracked
-retail fixture and reports:
+Running `inspect-server-dat` on the tracked retail fixture reports:
 
 ```text
 Groups: 14
 Servers: 94
 ```
-
-This boundary preserves the historical evidence without making obsolete deployment mechanics part of
-the modern production architecture.

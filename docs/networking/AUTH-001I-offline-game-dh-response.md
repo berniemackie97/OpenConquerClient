@@ -1,115 +1,124 @@
-# AUTH-001I — Native client GameServer DH response and session material (offline)
+# AUTH-001I: Client GameServer DH response and session material (offline)
 
-## Proven baseline
+AUTH-001I builds the client's encrypted DH response to the GameServer
+challenge and derives the session key material, without any network I/O. It
+builds on the AUTH-001G challenge decoder and the AUTH-001H fixed-key
+CAST5-CFB64 bootstrap transform. It adds no GameServer socket, live DH
+exchange or secured game frame transport.
 
-Client `main` `0e34e1cd200c42acdc26ab20cfbed956b3c26075`
-includes the verified AUTH-001G challenge decoder and AUTH-001H fixed-key
-CAST5-CFB64 bootstrap transform. No GameServer socket, live DH exchange,
-or secured game frame transport exists yet.
+## Sources
 
-Evidence:
-- Original retail 5517 native investigation:
+- Research on the original retail 5517 client:
   `20_notes/Network/13_connection_lifecycle.md`, functions
   `CClientSecurity__ProcessServerDhChallenge` (0x753801),
-  `CClientSecurity__GenerateClientDhResponse` (0x753669), and
+  `CClientSecurity__GenerateClientDhResponse` (0x753669) and
   `CGameSocket__ReceiveMsg` (0x6E1C83).
-- `20_notes/Network/14_session_derived_legacy_cipher_mask.md`
-  documents independent shared-secret/key-schedule initialization.
+- `20_notes/Network/14_session_derived_legacy_cipher_mask.md` documents how
+  the shared secret and key schedule are initialized independently.
 - OpenConquerServer `GameHandshakeExchange.Complete` and
-  `GameClientKeyExchangeResponseDecoder` confirm key material, server
-  parser framing, direction-specific IVs, and one-use session semantics.
+  `GameClientKeyExchangeResponseDecoder` confirm the key material, the
+  framing expected by the server parser, the direction-specific IVs and the
+  single-use session semantics.
 
-## Native 5517 protocol
+## 5517 protocol
 
-The client responds to a validated, already-decrypted challenge using
-the *pinned* 512-bit DH prime and generator `0x05`. A fresh private exponent
-is produced with the system CSPRNG and uniform rejection sampling in
-`2..p-2`; the resulting public key is `g^x mod p` and the shared secret is
-`serverPublic^x mod p`. Server public keys were previously checked to be
-strictly within `(1,p-1)` by AUTH-001G.
+The client answers a validated, already-decrypted challenge using the pinned
+512-bit DH prime and the generator `0x05`. A fresh private exponent comes
+from the system CSPRNG, using uniform rejection sampling in `2..p-2`. The
+public key is `g^x mod p` and the shared secret is `serverPublic^x mod p`.
+AUTH-001G has already checked that the server public key lies in the open
+interval `(1,p-1)`.
 
-Native OpenSSL `DH_compute_key` writes a **minimal big-endian** shared secret
-at byte zero of a previously zeroed `DH_size`-sized buffer (64 bytes).
-**Do not left-pad** it to a fixed 64-byte big-endian integer. The client
-passes the complete 64-byte buffer to the subsequent CAST5 key expansion,
-which uses at most its first 16 bytes. This is an interoperability rule,
-not a recommendation for new cryptographic protocols.
+The retail client calls OpenSSL `DH_compute_key`, which writes the shared
+secret as a minimal big-endian number starting at byte zero of a previously
+zeroed buffer of `DH_size` bytes (64 bytes). The secret must not be
+left-padded to a fixed 64-byte big-endian integer. The client passes the
+whole 64-byte buffer to the CAST5 key expansion that follows, which uses at
+most its first 16 bytes. This is an interoperability rule, and not a
+recommendation for new cryptographic protocols.
 
-The client response is not a normal `[length:u16][packetType:u16]` frame:
+The client response does not use the usual `[length:u16][packetType:u16]`
+frame:
 
 | Offset | Size | Content |
 | --- | --- | --- |
 | 0 | 7 | Fresh random prefix |
 | 7 | 4 | Little-endian length of the remaining envelope |
-| 11 | 4 + n | Little-endian length and random padding, 10–49 bytes |
+| 11 | 4 + n | Little-endian length and random padding, 10 to 49 bytes |
 | next | 4 + k | Little-endian length and uppercase public-key hex |
 | last 8 | 8 | ASCII `TQClient` |
 
-It is encrypted with a **fresh** fixed-key CAST5-CFB64 instance using
-the independent zero IV, not with the newly computed DH session key.
-The native random prefix and padding are opaque; no deterministic
-production seed or insecure random generator is permitted. The
-server's response decoder limits declared lengths to 31–1017 and
-parses exactly the two chunks plus trailer.
+The response is encrypted with a fresh fixed-key CAST5-CFB64 instance that
+starts from its own zero IV. It is not encrypted with the newly computed DH
+session key. The random prefix and padding are opaque. Production code must
+not use a fixed seed or an insecure random generator for them. The server's
+response decoder limits declared lengths to 31 to 1017, and parses the two
+chunks plus the trailer and nothing else.
 
-## Ownership and lifecycle
+## Types and lifetime
 
-`GameClientDhResponseEnvelope` is an exact-length atomic plaintext writer.
-It validates prefix, padding and public-key lengths and content before
-modifying the destination. Inputs may overlap its destination because
-all variable content is copied into fixed stack spans first.
+`GameClientDhResponseEnvelope` writes the plaintext atomically into a
+destination of the required length. It validates the length and content of
+the prefix, the padding and the public key before changing the destination.
+Inputs may overlap the destination, because all variable content is first
+copied into fixed stack spans.
 
-`GameClientDhExchange.Create` is the production entry point; it uses only
-`RandomNumberGenerator` for private key, prefix and padding. Rejection
-sampling is bounded (128 tries). The internal parameterized construction
-uses the same full checks and is for deterministic protocol verification
-only; it must not receive caller-provided entropy in a future live flow.
+`GameClientDhExchange.Create` is the production entry point. It uses only
+`RandomNumberGenerator` for the private key, prefix and padding. Rejection
+sampling gives up after 128 tries. The internal constructor that takes these
+values as parameters runs the same full checks and exists only for
+reproducible protocol tests. A future live flow must never pass
+caller-provided entropy to it.
 
-Each exchange owns one encrypted response, one 64-byte native session-key
-material buffer and both copied eight-byte directional IVs. The response
-can be written to an exactly sized caller-owned buffer **once**. Session
-material can subsequently be transferred to three mutually nonoverlapping,
-exactly sized caller buffers **once**. Invalid destinations are rejected
-without touching outputs or consuming either issuance. The exchange
-explicitly zeroes its owned secrets and response buffers at disposal and
-also clears its internal key/IVs immediately after transfer.
+Each exchange owns one encrypted response, one 64-byte buffer of 5517
+session key material and copies of both eight-byte directional IVs. The
+response can be written once, into a caller-owned buffer of the required
+size. The session material can then be transferred once, into three
+caller-owned buffers of the required sizes that must not overlap each other.
+Invalid destinations are rejected without touching any output and without
+using up either issuance. The exchange zeroes its secrets and response
+buffers on disposal, and clears its internal key and IVs right after the
+transfer.
 
-The caller must clear all copies of encrypted response and, especially,
-session key material after use. The future session owner must treat a
-partially written response as terminal: successful in-memory copying is
-NOT proof that the response reached the server. No retry or credential
-submission is enabled by this slice.
+The caller must clear every copy of the encrypted response and, above all,
+of the session key material after use. The future session owner must treat a
+partially written response as fatal to the session, because a successful
+copy in memory does not prove that the response reached the server.
+AUTH-001I enables no retries and no credential submission.
 
-BigInteger and the third-party CAST implementation may internally allocate
-copies of secret state not guaranteed to be wiped by the runtime. This
-limitation is not hidden; temporary byte arrays are explicitly cleared.
-No secret is logged, printed or persisted.
+BigInteger and the third-party CAST implementation may make internal copies
+of secret state that the runtime does not guarantee to wipe. This limitation
+is stated openly here. Temporary byte arrays are cleared. No secret is
+logged, printed or persisted.
 
-## Tests and security boundary
+## Testing
 
-A fixed independent reference uses test-only exponent `2`, server public
-`0x19` (i.e., `5^2`), seven prefix bytes `01..07`, and ten `AA`
-padding bytes. The exact 39-byte plaintext and independently computed
-CAST5-CFB64 ciphertext are pinned, along with the resulting 64-byte
-`02 71 00 ... 00` secret layout. The production RNG test decrypts a fresh
-response, validates its structure, computes the server-side matching
-shared secret from the public key, and confirms directional IVs and
-right-side zero padding without requiring deterministic randomness.
-Negative tests cover invalid ranges and lengths, destination overlap,
-atomicity, single issuance, transfer ordering, use after disposal, and
-response parser compatibility.
+A fixed independent reference uses the test-only exponent `2`, the server
+public key `0x19` (that is, `5^2`), the seven prefix bytes `01..07` and ten
+`AA` padding bytes. The 39-byte plaintext and the independently computed
+CAST5-CFB64 ciphertext are pinned, along with the resulting 64-byte secret
+layout `02 71 00 ... 00`. The production RNG test decrypts a fresh response,
+validates its structure, computes the matching server-side shared secret
+from the public key, and checks the directional IVs and the zero padding on
+the right. It does not need reproducible randomness. Negative tests cover
+invalid ranges and lengths, destination overlap, atomicity, single issuance,
+transfer ordering, use after disposal and compatibility with the response
+parser.
 
-**Security qualification:** This is the native game's legacy **512-bit DH
-group**, not modern, authenticated key agreement. DH groups of this size are
-inadequate for secure production authentication, and fixed-key CAST5
-bootstrap obfuscation does not authenticate any remote peer.
-The prior loopback-only AccountServer credential guard remains unchanged.
+The change passes locked restore, formatting, Release build, full tests,
+content-set verification, and the macOS, Windows, Linux Quality and
+Dependency Review jobs.
 
-No GameServer TCP connection, remote redirect trust, secured CAST5 session
-cipher, frame reader/writer, proof 1052 send, world admission or login UI
-is introduced. Those require a separate endpoint-trust design and fully
-bounded connection lifecycle before a live client can safely use this code.
+## Security
 
-Acceptance: locked restore, formatting, Release build, full tests,
-content-set verification, macOS/Windows/Linux Quality, Dependency Review,
-independent review findings and explicit user merge decision.
+**Security warning:** the 5517 game uses a legacy 512-bit DH group with no
+authentication. DH groups of this size are not adequate for secure
+production authentication, and the fixed-key CAST5 bootstrap obfuscation
+does not authenticate any remote peer. The loopback-only AccountServer
+credential guard is unchanged.
+
+AUTH-001I adds no GameServer TCP connection, trust in remote redirects,
+secured CAST5 session cipher, frame reader or writer, proof 1052 send, world
+admission or login UI. Before a live client can use this code safely, it
+needs a separate design for endpoint trust and a connection lifecycle with a
+time limit on every phase.
