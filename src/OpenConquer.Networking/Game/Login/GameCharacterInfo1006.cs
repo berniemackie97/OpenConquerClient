@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Text;
 using OpenConquer.Networking.Game.Framing;
 
 namespace OpenConquer.Networking.Game.Login;
@@ -14,10 +13,8 @@ internal sealed record GameCharacterInfo1006
 {
     internal const ushort PacketType = 1006;
     private const int StringCountOffset = 110;
-    private const int StringCount = 3;
     private const int MaximumStringLength = 15;
-    private const int MinimumPacketLength = StringCountOffset + 1 + StringCount;
-    private static readonly Encoding s_ansi = CreateAnsiEncoding();
+    private const int NativeNameBufferCapacity = MaximumStringLength + 1;
 
     // Native plaintext wire offset +4.
     internal uint EntityId { get; init; }
@@ -93,129 +90,113 @@ internal sealed record GameCharacterInfo1006
     internal ulong PackedSubProfessionPhases { get; init; }
     // Native plaintext wire offset +106.
     internal uint RacePoints { get; init; }
-    internal string PlayerName { get; init; } = string.Empty;
-    internal string SpouseName { get; init; } = string.Empty;
+    // Raw owned bytes. Native setters retain C-string prefixes and defer
+    // any code-page interpretation until a separate rendering consumer.
+    internal ReadOnlyMemory<byte> PlayerNameBytes { get; init; }
+    internal ReadOnlyMemory<byte> SpouseNameBytes { get; init; }
 
     internal static GameCharacterInfo1006 Read(ReadOnlySpan<byte> packet)
     {
-        if (packet.Length is < MinimumPacketLength or > GameSecuredFrameProtocol.MaximumPacketLength ||
+        if (packet.Length is < GameSecuredFrameProtocol.HeaderLength or >
+                GameSecuredFrameProtocol.MaximumPacketLength ||
             BinaryPrimitives.ReadUInt16LittleEndian(packet) != packet.Length ||
             BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) != PacketType)
         {
             throw new InvalidDataException("GameServer character information is not a valid 1006 packet.");
         }
 
-        if (packet[StringCountOffset] != StringCount)
-        {
-            throw new InvalidDataException("GameServer character information requires exactly three string entries.");
-        }
+        // Native constructor zeroes 1024 bytes before copying the received
+        // packet. Missing fixed fields or string bytes consequently read as
+        // zeros. Reproduce the defined in-buffer behavior without emulating
+        // unchecked native reads or exposing pooled network memory.
+        Span<byte> snapshot = stackalloc byte[GameSecuredFrameProtocol.MaximumPacketLength];
+        snapshot.Clear();
+        packet.CopyTo(snapshot);
 
         int offset = StringCountOffset + 1;
-        string playerName = ReadNameEntry(packet, ref offset) ??
-            throw new InvalidDataException("GameServer character name is absent.");
-        _ = ReadNameEntry(packet, ref offset, retain: false);
-        string spouseName = ReadNameEntry(packet, ref offset) ??
-            throw new InvalidDataException("GameServer character spouse name is absent.");
-
-        if (offset != packet.Length)
+        byte count = snapshot[StringCountOffset];
+        byte[] playerName = count >= 1 ? ReadNameEntry(snapshot, ref offset, retain: true) : [];
+        if (count >= 2)
         {
-            throw new InvalidDataException("GameServer character information has trailing string-list bytes.");
+            _ = ReadNameEntry(snapshot, ref offset, retain: false);
         }
+
+        byte[] spouseName = count >= 3 ? ReadNameEntry(snapshot, ref offset, retain: true) : [];
 
         return new GameCharacterInfo1006
         {
-            EntityId = BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]),
-            TransformLookSourceId = BinaryPrimitives.ReadUInt16LittleEndian(packet[8..]),
-            PackedAppearance = BinaryPrimitives.ReadUInt32LittleEndian(packet[10..]),
-            HairComposite = BinaryPrimitives.ReadUInt16LittleEndian(packet[14..]),
-            Silver = BinaryPrimitives.ReadUInt32LittleEndian(packet[16..]),
-            ConquerPoints = BinaryPrimitives.ReadUInt32LittleEndian(packet[20..]),
-            Experience = BinaryPrimitives.ReadUInt64LittleEndian(packet[24..]),
-            LegacyDeed = BinaryPrimitives.ReadUInt32LittleEndian(packet[32..]),
-            LegacyMedal = BinaryPrimitives.ReadUInt32LittleEndian(packet[36..]),
-            LegacyMedalSelect = BinaryPrimitives.ReadUInt32LittleEndian(packet[40..]),
-            VirtuePoints = BinaryPrimitives.ReadUInt32LittleEndian(packet[44..]),
-            EncodedPreRebirthLevel = BinaryPrimitives.ReadUInt32LittleEndian(packet[48..]),
-            Strength = BinaryPrimitives.ReadUInt16LittleEndian(packet[52..]),
-            Agility = BinaryPrimitives.ReadUInt16LittleEndian(packet[54..]),
-            Vitality = BinaryPrimitives.ReadUInt16LittleEndian(packet[56..]),
-            Spirit = BinaryPrimitives.ReadUInt16LittleEndian(packet[58..]),
-            UnspentAttributePoints = BinaryPrimitives.ReadUInt16LittleEndian(packet[60..]),
-            CurrentLife = BinaryPrimitives.ReadUInt16LittleEndian(packet[62..]),
-            CurrentMana = BinaryPrimitives.ReadUInt16LittleEndian(packet[64..]),
-            PkPoints = BinaryPrimitives.ReadInt16LittleEndian(packet[66..]),
-            Level = packet[68],
-            CurrentProfession = packet[69],
-            FirstProfession = packet[70],
-            PreviousProfession = packet[71],
-            LegacyNobility = packet[72],
-            RebirthCount = packet[73],
-            LegacyAutoAllot = packet[74],
-            AuraTierScore = BinaryPrimitives.ReadUInt32LittleEndian(packet[75..]),
-            CoachPointsHundredths = BinaryPrimitives.ReadUInt16LittleEndian(packet[79..]),
-            CoachExperienceShareCount = BinaryPrimitives.ReadUInt16LittleEndian(packet[81..]),
-            CoachSessionState = BinaryPrimitives.ReadUInt16LittleEndian(packet[85..]),
-            FlowerStatusTier = BinaryPrimitives.ReadUInt32LittleEndian(packet[87..]),
-            TitleId = BinaryPrimitives.ReadUInt16LittleEndian(packet[91..]),
-            BoundConquerPoints = BinaryPrimitives.ReadUInt32LittleEndian(packet[93..]),
-            ActiveSubProfessionId = packet[97],
-            PackedSubProfessionPhases = BinaryPrimitives.ReadUInt64LittleEndian(packet[98..]),
-            RacePoints = BinaryPrimitives.ReadUInt32LittleEndian(packet[106..]),
-            PlayerName = playerName,
-            SpouseName = spouseName
+            EntityId = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[4..]),
+            TransformLookSourceId = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[8..]),
+            PackedAppearance = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[10..]),
+            HairComposite = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[14..]),
+            Silver = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[16..]),
+            ConquerPoints = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[20..]),
+            Experience = BinaryPrimitives.ReadUInt64LittleEndian(snapshot[24..]),
+            LegacyDeed = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[32..]),
+            LegacyMedal = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[36..]),
+            LegacyMedalSelect = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[40..]),
+            VirtuePoints = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[44..]),
+            EncodedPreRebirthLevel = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[48..]),
+            Strength = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[52..]),
+            Agility = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[54..]),
+            Vitality = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[56..]),
+            Spirit = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[58..]),
+            UnspentAttributePoints = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[60..]),
+            CurrentLife = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[62..]),
+            CurrentMana = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[64..]),
+            PkPoints = BinaryPrimitives.ReadInt16LittleEndian(snapshot[66..]),
+            Level = snapshot[68],
+            CurrentProfession = snapshot[69],
+            FirstProfession = snapshot[70],
+            PreviousProfession = snapshot[71],
+            LegacyNobility = snapshot[72],
+            RebirthCount = snapshot[73],
+            LegacyAutoAllot = snapshot[74],
+            AuraTierScore = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[75..]),
+            CoachPointsHundredths = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[79..]),
+            CoachExperienceShareCount = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[81..]),
+            CoachSessionState = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[85..]),
+            FlowerStatusTier = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[87..]),
+            TitleId = BinaryPrimitives.ReadUInt16LittleEndian(snapshot[91..]),
+            BoundConquerPoints = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[93..]),
+            ActiveSubProfessionId = snapshot[97],
+            PackedSubProfessionPhases = BinaryPrimitives.ReadUInt64LittleEndian(snapshot[98..]),
+            RacePoints = BinaryPrimitives.ReadUInt32LittleEndian(snapshot[106..]),
+            PlayerNameBytes = playerName,
+            SpouseNameBytes = spouseName
         };
-    }
 
-    private static string? ReadNameEntry(ReadOnlySpan<byte> packet, ref int offset, bool retain = true)
+    private static byte[] ReadNameEntry(ReadOnlySpan<byte> snapshot, ref int offset, bool retain)
     {
-        if (offset >= packet.Length)
+        if (offset >= snapshot.Length)
         {
-            throw new InvalidDataException("GameServer character information has a truncated string list.");
+            // Bounded native indices 0..2 never reach this on 1024-byte storage.
+            throw new InvalidDataException("GameServer character string offset exceeds bounded storage.");
         }
 
-        int length = packet[offset++];
-        if (length > MaximumStringLength || length > packet.Length - offset)
+        int length = snapshot[offset++];
+        if (length > snapshot.Length - offset)
         {
-            throw new InvalidDataException("GameServer character information has an invalid name-entry length.");
+            throw new InvalidDataException("GameServer character string exceeds bounded storage.");
         }
 
-        ReadOnlySpan<byte> entry = packet.Slice(offset, length);
+        ReadOnlySpan<byte> entry = snapshot.Slice(offset, length);
         offset += length;
-        foreach (byte character in entry)
+
+        // The reader zeros its local destination when the selected entry is
+        // missing or length >= 16. Index 1 is discarded, but its declared
+        // length still determines the position of index 2.
+        if (!retain || length >= NativeNameBufferCapacity)
         {
-            // A Windows-1252 provider may substitute control codes instead of
-            // raising DecoderFallbackException for these undefined byte slots.
-            if (character is 0x81 or 0x8D or 0x8F or 0x90 or 0x9D)
-            {
-                throw new InvalidDataException("GameServer character information contains an undefined ANSI byte.");
-            }
+            return [];
         }
 
-        // String entry 1 is demonstrably discarded by the native 1006 handler,
-        // but its framing remains essential to locate the third (spouse) entry.
-        if (!retain)
+        int terminator = entry.IndexOf((byte)0);
+        if (terminator >= 0)
         {
-            return null;
+            entry = entry[..terminator];
         }
 
-        if (entry.Contains((byte)0))
-        {
-            throw new InvalidDataException("GameServer character information contains an embedded name NUL.");
-        }
-
-        try
-        {
-            return s_ansi.GetString(entry);
-        }
-        catch (DecoderFallbackException exception)
-        {
-            throw new InvalidDataException("GameServer character information contains invalid ANSI name text.", exception);
-        }
-    }
-
-    private static Encoding CreateAnsiEncoding()
-    {
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        return Encoding.GetEncoding(1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+        return entry.ToArray();
     }
 }
