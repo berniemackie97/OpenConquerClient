@@ -6,8 +6,8 @@ using OpenConquer.Client.Startup.Catalog;
 using OpenConquer.Client.Startup.LoginFlow;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
-using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Credentials;
+using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Rendering.Presentation;
 
