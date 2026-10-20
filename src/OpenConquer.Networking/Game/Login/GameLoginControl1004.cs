@@ -1,28 +1,25 @@
 using System.Buffers.Binary;
-using System.Text;
+using OpenConquer.Networking.Game.Framing;
 
 namespace OpenConquer.Networking.Game.Login;
 
 /// <summary>
-/// Reads the native first post-proof GameServer login control talk (1004, channel 0x835).
-/// A control word establishes a character-login route, not world admission.
+/// Reads the first secured native 5517 login-channel talk (1004). The wire
+/// carries byte strings, not a mandatory Windows-1252 Unicode encoding.
+/// Native list-count/copy failures do not invalidate the packet header.
 /// </summary>
 internal static class GameLoginControl1004
 {
     internal const ushort PacketType = 1004;
     internal const ushort LoginChannel = 0x835;
 
-    private const byte StringCount = 4;
     private const int StringCountOffset = 24;
     private const int FirstStringOffset = 25;
-    private const int MinimumPacketLength = FirstStringOffset + StringCount;
-    private const int MaximumNameLength = 15;
-
-    private static readonly Encoding s_ansi = CreateAnsiEncoding();
+    private const int MessageIndex = 3;
 
     internal static GameLoginControlOutcome Read(ReadOnlySpan<byte> packet)
     {
-        if (packet.Length is < MinimumPacketLength or > 1024 ||
+        if (packet.Length is < FirstStringOffset or > GameSecuredFrameProtocol.MaximumPacketLength ||
             BinaryPrimitives.ReadUInt16LittleEndian(packet) != packet.Length ||
             BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) != PacketType)
         {
@@ -34,79 +31,87 @@ internal static class GameLoginControl1004
             throw new InvalidDataException("The first GameServer control talk is not on the login channel.");
         }
 
-        if (packet[StringCountOffset] != StringCount)
+        // The native 5517 reader queries indices 0..3 independently and does
+        // not require count == 4. Absent message entries produce empty text.
+        if (packet[StringCountOffset] <= MessageIndex)
         {
-            throw new InvalidDataException("The GameServer login control has an invalid string-list count.");
+            return new GameLoginControlOutcome(GameLoginControlKind.Refused, ReadOnlyMemory<byte>.Empty);
         }
 
         int offset = FirstStringOffset;
-        ReadOnlySpan<byte> message = default;
-
-        for (int index = 0; index < StringCount; index++)
+        for (int index = 0; index < MessageIndex; index++)
         {
-            if (offset >= packet.Length)
-            {
-                throw new InvalidDataException("The GameServer login control has a truncated string list.");
-            }
-
-            int length = packet[offset++];
-            if ((index < 3 && length > MaximumNameLength) || length > packet.Length - offset)
-            {
-                throw new InvalidDataException("The GameServer login control has an invalid string length.");
-            }
-
-            ReadOnlySpan<byte> value = packet.Slice(offset, length);
-            ValidateAnsiBytes(value);
-
-            if (index == 3)
-            {
-                message = value;
-            }
-
-            offset += length;
+            // Oversized ignored entries are skipped by their declared length.
+            // Never reproduce the native reader's unchecked memory accesses:
+            // a length running beyond the bounded received frame is invalid.
+            _ = ReadEntry(packet, ref offset);
         }
 
-        if (offset != packet.Length || message.Contains((byte)0))
+        ReadOnlySpan<byte> message = ReadEntry(packet, ref offset);
+        int terminator = message.IndexOf((byte)0);
+        if (terminator >= 0)
         {
-            throw new InvalidDataException("The GameServer login control contains extra data or an embedded NUL.");
+            message = message[..terminator];
         }
 
-        if (message.SequenceEqual("ANSWER_OK"u8))
+        // The native dispatcher compares its NUL-terminated control words
+        // using _stricmp, not an ordinal case-sensitive comparison.
+        if (EqualsAsciiControlWord(message, "ANSWER_OK"u8))
         {
-            return new GameLoginControlOutcome(GameLoginControlKind.ExistingCharacter, null);
+            return new GameLoginControlOutcome(GameLoginControlKind.ExistingCharacter, ReadOnlyMemory<byte>.Empty);
         }
 
-        if (message.SequenceEqual("NEW_ROLE"u8))
+        if (EqualsAsciiControlWord(message, "NEW_ROLE"u8))
         {
-            return new GameLoginControlOutcome(GameLoginControlKind.CharacterCreation, null);
+            return new GameLoginControlOutcome(GameLoginControlKind.CharacterCreation, ReadOnlyMemory<byte>.Empty);
         }
 
-        try
-        {
-            return new GameLoginControlOutcome(GameLoginControlKind.Refused, s_ansi.GetString(message));
-        }
-        catch (DecoderFallbackException exception)
-        {
-            throw new InvalidDataException("The GameServer login refusal contains invalid ANSI text.", exception);
-        }
+        // Preserve wire bytes for an explicit presentation-code-page decision.
+        // ANSI conversion is consumer-specific in 5517; it is not a framing
+        // validator. Never hand out borrowed pooled frame memory.
+        return new GameLoginControlOutcome(GameLoginControlKind.Refused, message.ToArray());
     }
 
-    private static void ValidateAnsiBytes(ReadOnlySpan<byte> value)
+    private static ReadOnlySpan<byte> ReadEntry(ReadOnlySpan<byte> packet, ref int offset)
     {
-        // Windows-1252 leaves these bytes undefined. Reject them explicitly:
-        // runtime providers may otherwise substitute control characters.
-        foreach (byte character in value)
+        if (offset >= packet.Length)
         {
-            if (character is 0x81 or 0x8D or 0x8F or 0x90 or 0x9D)
-            {
-                throw new InvalidDataException("The GameServer login control contains an undefined ANSI byte.");
-            }
+            return ReadOnlySpan<byte>.Empty;
         }
+
+        int length = packet[offset++];
+        if (length > packet.Length - offset)
+        {
+            throw new InvalidDataException(
+                "GameServer login talk string exceeds the bounded received packet.");
+        }
+
+        ReadOnlySpan<byte> entry = packet.Slice(offset, length);
+        offset += length;
+        return entry;
     }
 
-    private static Encoding CreateAnsiEncoding()
+    private static bool EqualsAsciiControlWord(ReadOnlySpan<byte> actual, ReadOnlySpan<byte> expected)
     {
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        return Encoding.GetEncoding(1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+        if (actual.Length != expected.Length)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < actual.Length; index++)
+        {
+            byte character = actual[index];
+            if (character is >= (byte)'a' and <= (byte)'z')
+            {
+                character = (byte)(character - ('a' - 'A'));
+            }
+
+            if (character != expected[index])
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -1,95 +1,62 @@
-# AUTH-001N — First post-proof GameServer login control
+# AUTH-001N — First post-proof GameServer login control (native compatibility correction)
 
-## Verified base and scope
+Original implementation: PR #132, client main `fa3dcd81c419e9a048cfebff562eef013c4dcb75`.
+Correction evidence: `20_notes/Network/Native-auth-string-validation-2026-10-18.md`,
+including isolated instruction replay and the corroborated 1004 dispatch.
 
-Client base: `49887bb052823d4422b1f5db733badd67218ffb0` (merged AUTH-001M, PR #131).
-Companion server: `111c641c08305917e1144a940453ca0c5a6eafea`.
+## Verified native / companion distinction
 
-The native Conquer 5517 `CMsgTalk__Process` dispatches type 1004 on login channel
-`0x835` to `CMyShellDlg_HandleLoginStatusSystemTalk`. Verified native evidence:
-`20_notes/Network/01_core_packets.md` (world-entry controls and string lists),
-`20_notes/Network/13_connection_lifecycle.md`, and
-`20_notes/Architecture/03_login_flash_startup_command_contract.md`.
-The current server's `GameConnectionAuthenticator` redeems the first secured
-1052 proof without issuing a separate "ticket accepted" acknowledgement.
-`GameLoginCapacityGate` / `ExistingCharacterBootstrapProcessor` can refuse
-with a 1004 login-channel text before closing. Successful existing-character
-bootstrap begins with `1004 ANSWER_OK`, followed by `2078`, `2079`,
-`1006`. A character-creation route corresponds to `1004 NEW_ROLE`, but
-the current GameServer intentionally does **not** implement that route.
+The companion server sends a secured 1004 on login channel `0x835`
+with four length-prefixed byte strings and known ASCII controls
+`ANSWER_OK` and `NEW_ROLE`. The native 5517 parser validates packet
+header/type and delegates strings to `MsgStringList_TryGetEntry`.
+The native 1004 handler ignores lookup failures; it does **not** require
+count exactly four, bounded 15-byte earlier string lengths, or complete
+consumption of the entire declared string list.
 
-## Bounded control contract
+The fourth string's **C-string prefix** is compared via native
+`_stricmp` at `0x5DCC93` / `0x5DCD13`. Consequently, ASCII letter
+case and bytes after its first NUL do not affect the control decision.
+The first three entries may have larger length prefixes; their lengths
+still determine the fourth string's position. Recipient/sender strings
+can affect other native filtering or logging; they do not act as a
+hard validation gate for the login-control branch.
 
-The first GameServer packet after transmitting proof 1052 must be a secured
-1004 on channel `0x835`. Its plaintext wire layout is:
+The correction reads the required prefix without reinterpreting native
+byte text as obligatory Windows-1252. Refusals retain **owned raw bytes**;
+the eventual presentation layer must select an explicit code page.
+The native 1004 filter uses system CP_ACP rather than a fixed CP1252
+decoder. The clean retail `slient.dat` substitution file is empty;
+arbitrary consumer-specific substitutions are not claimed here.
 
-```text
-[u16 packetLength including header][u16 type = 1004]
-[u32 colour][u16 channel = 0x835][u16 style]
-[u32 identity][u32 reserved][u32 reserved]
-[u8 count = 4]
-[u8 sender length][0..15 bytes]
-[u8 recipient length][0..15 bytes]
-[u8 suffix length][0..15 bytes]
-[u8 message length][0..255 bytes]
-```
+## Intentional safe managed divergences
 
-All numeric fields are little-endian. Total packet size must match its header,
-be at least 29 and no more than 1024 bytes; every string length is bounded and
-the final byte must belong to the fourth string. The first three strings
-are ignored for login control, matching native consumption, but all four
-are checked for undefined Windows-1252 bytes. The message is decoded using
-Windows-1252, matching the companion server `WireTextEncodingResolver`.
-Undefined ANSI bytes, embedded NUL in the message, malformed lists, unexpected packet
-types and wrong channels are rejected rather than interpreted as authentication.
+Native string iteration can use constructor-zeroed memory outside a
+short received packet; for extreme 1004 lengths it can even read past
+the native allocation. **We will not emulate unsafe out-of-bounds
+reads or memory corruption.** A selected field whose declared bytes
+exceed the received packet is rejected and the secured session closes.
+The secured frame decoder retains the 1024-byte cap, length consistency
+and direction-specific signature checks; these signatures do not
+authenticate remote peers.
 
-Exact `ANSWER_OK` means **existing-character bootstrap has begun**, not world
-admission. Exact `NEW_ROLE` means **character-creation route required**, not
-character creation completed. Any other 1004 login-channel text is an untrusted
-refusal message: the socket is terminated and no subsequent frame may be
-processed. Authentication rejection without any reply yields a terminal EOF,
-not a success result.
+Missing fourth entry produces an empty refusal, whereas a fourth entry
+with a malformed length running beyond bounded input is a protocol error.
+Bounded bytes after the fourth entry or extra unrequested entries are
+ignored. No native exception is used to grant character or world authority.
 
-## Ownership and concurrency
+Successful controls establish a character-login route only. The socket
+remains loopback-only. A refusal terminates; no later secured frame
+may be relabeled as the first control. The session owns all cipher and
+buffer lifetimes. No UI, creation implementation or world admission
+is introduced.
 
-`GameServerHandshakeSession.ReadLoginControlAsync` claims exactly one first
-control read after proof transmission. It uses the existing bounded secured
-frame reader, per-phase timeout, continuous CAST5 state and pooled frame
-ownership. It disposes the decrypted frame before returning. No buffer or
-socket ownership is transferred to a presentation layer.
+## Verification
 
-An ordinary `ReadFrameAsync` call issued before this control read deliberately
-marks the first-frame boundary as bypassed. Subsequent attempts to infer an
-initial login outcome then fail: an unrelated packet cannot be interpreted as
-the original 1004. Concurrent and repeated control reads are rejected without
-creating waiting tasks. Once a successful control route is recorded, the
-existing secured frame reader remains usable for future separately audited
-character bootstrap or creation. No new writer is introduced.
-
-Missing, malformed, canceled or timed-out control reads close the connection
-and leave the secured session terminal. The refusal path closes immediately.
-The existing one-shot proof, loopback-only trust boundary, disposal and
-shutdown behavior are unchanged.
-
-## Security and exclusions
-
-Legacy DH + CAST5 framing is not authenticated transport. The accepted route
-does not cryptographically authenticate the peer, establish ticket redemption
-from the client's perspective, prove complete character bootstrap or grant
-world authority. It is evidence only of the GameServer's observed first
-login-channel control word on the loopback socket.
-
-This slice does not enable remote endpoints, UI login, character registration,
-repeat 1052, inbound 2078/2079/1006 processing, map entry or gameplay.
-Full character creation is blocked by the current companion server; do not
-invent a successful creation path.
-
-## Regression gates
-
-Tests use independently specified plaintext 1004 layouts (including the
-server's literal refusal text), malformed packet cases, exact control words,
-Windows-1252 refusal text, undefined ANSI byte rejection in every string,
-defined extended ANSI-byte acceptance, and same-session loopback proof/secured-I/O tests.
-Acceptance additionally requires locked restore, formatting, Release build,
-full tests, retail content verification, Linux/macOS/Windows CI, Dependency
-Review and all substantive PR review findings. User merge remains explicit.
+Native-derived regression cases cover case-insensitive controls,
+NUL-prefix matching, count<4, extra count/trailing data, oversized
+ignored entries, raw legacy bytes (including 0x81) and bounded selected
+length failures. Real encrypted peer tests verify one-time control
+ownership and terminal refusal. Format, Release build/test, retail
+content verification, Linux/macOS/Windows CI, dependency review and
+CodeQL remain required before merge.

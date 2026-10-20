@@ -1,8 +1,8 @@
 namespace OpenConquer.Networking.Game.Login;
 
 /// <summary>
-/// A verified first login-channel control response. Neither successful route
-/// means that the character has completed bootstrap or entered the world.
+/// A verified first login-channel route, or a terminal refusal. Neither
+/// successful route establishes world admission or authenticates the peer.
 /// </summary>
 internal enum GameLoginControlKind
 {
@@ -11,6 +11,10 @@ internal enum GameLoginControlKind
     Refused,
 }
 
-/// <param name="Kind">The character-login route, or a terminal refusal.</param>
-/// <param name="RefusalText">Only populated for a refusal; untrusted presentation text.</param>
-internal readonly record struct GameLoginControlOutcome(GameLoginControlKind Kind, string? RefusalText);
+/// <param name="Kind">Existing character, creation, or refusal.</param>
+/// <param name="RefusalBytes">
+/// Owned NUL-terminated-prefix bytes of an untrusted refusal. Decode only at
+/// an explicitly selected UI code page; native wire text is not fixed CP1252.
+/// </param>
+internal readonly record struct GameLoginControlOutcome(
+    GameLoginControlKind Kind, ReadOnlyMemory<byte> RefusalBytes);
