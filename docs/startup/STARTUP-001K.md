@@ -1,24 +1,34 @@
-# STARTUP-001K — Pre-authentication credential entry boundary
+# STARTUP-001K: Credential entry before authentication
 
-## Native evidence and scope
+## Sources and scope
 
-The `20_notes/Architecture/03_login_flash_startup_command_contract.md` native research documents distinct `CMD_NAME` (`CLoginFlashDlg_HandleFlashCommandString` at `0x4AA72D`) and `CMD_PASSWORD` (`0x4AA7B3`) inputs. `20_notes/Server/login-credential-envelope.md` documents the verified 5517 AccountServer login envelope and the credential keypad character domain (`0-9 a-z A-Z . - @ > _`). These are the evidence anchors for input separation and conservative ASCII acceptance; the implementation does **not** perform the keypad transform, emit packet 1060, initiate a socket, persist an account, or invoke a native callback.
+The research note `20_notes/Architecture/03_login_flash_startup_command_contract.md` documents separate `CMD_NAME` (handled by `CLoginFlashDlg_HandleFlashCommandString` at `0x4AA72D`) and `CMD_PASSWORD` (`0x4AA7B3`) inputs in the 5517 client. `20_notes/Server/login-credential-envelope.md` documents the 5517 AccountServer login envelope and the characters the credential keypad accepts (`0-9 a-z A-Z . - @ > _`). These notes are the basis for keeping the account and password inputs separate and for accepting only that ASCII set. The implementation only collects input. It does not apply the keypad transform, send packet 1060, open a socket, store an account or call any of the 5517 command callbacks.
 
-The verified retail art includes an account panel, but its exact interactive field placements have not been established from the Flash timeline. This slice places two explicitly **first-party reconstructed** input outlines inside the existing panel for usability. They are not asserted to be retail-exact, and manual screenshot validation at 1024×768 and 800×600 remains mandatory.
+The retail art includes an account panel, but the Flash timeline has not yet shown where its interactive fields sit. To make the fields usable, STARTUP-001K draws two input outlines of its own inside the existing panel. They are a reconstruction and are not claimed to match the retail layout. They still have to be checked by hand against screenshots at 1024x768 and 800x600.
 
-## Authority and input lifetime
+## Input lifetime
 
-- Until a catalog view has a currently selected server, the fields are invisible and refuse input. The only production catalog source is the previously verified signed authority. There is no default server, development endpoint, or untrusted configuration fallback.
-- Changing catalog identity or selected-server identity clears the account and password arrays and removes focus. Catalog revocation/expiry is observed immediately on the render thread after the existing selection reset.
-- Changing window focus, leaving the input area, disposing the input, or releasing the OpenGL context clears the password. `Escape` clears focus and password. No keyboard command can submit a login request in this slice.
-- Both input buffers have conservative 32-character limits. Characters outside the verified keypad domain are dropped instead of coerced or silently encoded. The eventual networking slice must explicitly revalidate the account and credential semantics against the selected authoritative endpoint.
-- Password input is held only in a fixed-length `char[]`; removed bytes are erased and the array is explicitly zeroed with `CryptographicOperations.ZeroMemory`. Neither password strings nor password glyphs are generated; rendering receives only a fixed `*` mask string whose length equals the current password length. Managed and operating-system-level copies of individual key events cannot be guaranteed to be erasable; this design does not claim otherwise.
-- Account text is presented on screen only while an authoritative server is selected. Its existing field contains only validated ASCII, and long values show a bounded visible suffix. Password input is never written to files, clipboard, diagnostics, or catalog metadata.
-- `DesktopWindow.TextEntered` is the only printable-character input path. `KeyPressed` handles editing commands; Ctrl/Alt/Super keyboard shortcuts do not alter the field. Pointer hit tests use the already established host-framebuffer-to-logical mapping, keeping letterboxing inert. No clipboard, paste API, IME, or hidden surrogate acceptance is introduced.
-- Text resources belong to `LoginPresentation`, are created lazily for an enabled form, and are disposed before the graphics device. UI changes update cached layouts, never reconstruct them per unchanged frame. There is no status indicator or enabled Login/Register button before a verified AccountServer protocol implementation exists.
+- Until the catalog view has a selected server, the fields are hidden and ignore input. In production, the catalog comes only from the signed publisher source that the client already verifies. There is no default server, no development endpoint and no fallback to untrusted configuration.
+- Changing the catalog identity or the selected server clears the account and password arrays and removes focus. Catalog revocation or expiry is picked up immediately on the render thread, right after the existing selection reset.
+- The password is cleared when the window loses focus, when focus leaves the input area, when the input is disposed and when the OpenGL context is released. `Escape` clears focus and the password. No keyboard command can submit a login request yet.
+- Both input buffers are limited to 32 characters. Characters outside the keypad set are dropped. They are never converted or silently encoded. When networking is added, it must validate the account and credential rules again against the selected server's endpoint.
+- The password is held only in a fixed-length `char[]`. Removed bytes are erased, and the array is zeroed with `CryptographicOperations.ZeroMemory`. No password string and no password glyphs are ever created. Rendering receives only a fixed `*` mask string whose length matches the current password length. Copies of individual key events held by the managed runtime or the operating system may not be erasable, and this design does not claim otherwise.
+- Account text is shown only while a server from the signed catalog is selected. The account field holds only validated ASCII, and a long value shows only its last characters that fit. Password input is never written to files, the clipboard, diagnostics or catalog metadata.
+- `DesktopWindow.TextEntered` is the only path for printable characters. `KeyPressed` handles editing commands, and Ctrl, Alt and Super shortcuts do not change the field. Pointer hit tests use the existing mapping from host framebuffer to logical coordinates, so clicks in the letterbox area do nothing. There is no clipboard or paste support, no IME and no hidden acceptance of surrogates.
+- Text resources belong to `LoginPresentation`. They are created lazily once the form is enabled and are disposed before the graphics device. UI changes update the cached layouts, and unchanged frames do not rebuild them. There is no status indicator and no enabled Login or Register button until the AccountServer protocol is implemented and verified.
 
-## Acceptance
+## Testing
 
-Run focused model/layout tests, all existing login/catalog/rendering tests, locked restore, formatting, full Release build and tests, and retail content closure. Validate on real Windows/macOS drivers at both 4:3 logical resolutions: untrusted empty catalog shows no form, signed selected server reveals the account fields, keyboard focus and masking behave as specified, changing region/server or expiry clears input, losing desktop focus clears the secret, no login socket opens, and GL resources are released cleanly.
+Run the model and layout tests, all existing login, catalog and rendering tests, locked restore, formatting, a full Release build and tests, and the retail content closure check. On real Windows and macOS drivers, at both 4:3 logical resolutions, check that:
 
-Native credential transform, seed exchange, packet framing and response handling require a separate audited slice. No assumption about a password's plaintext length beyond the conservative pre-auth input cap is treated as permission to send it over the wire.
+- an untrusted, empty catalog shows no form
+- selecting a server from a signed catalog shows the account fields
+- keyboard focus and masking behave as described above
+- changing region or server, or catalog expiry, clears the input
+- losing desktop focus clears the password
+- no login socket opens
+- GL resources are released cleanly
+
+## Limits
+
+The 5517 credential transform, seed exchange, packet framing and response handling need separate, reviewed work. The 32-character cap is only an input limit. It is not a statement about what password lengths are safe to send over the wire, and nothing is sent.

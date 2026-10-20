@@ -1,21 +1,21 @@
-# STARTUP-001H — Unicode text layout foundation
+# STARTUP-001H: Unicode text layout
 
-## Boundary
+## Scope
 
-The authenticated realm catalog from STARTUP-001G contains display strings, not CP936 or other retail-encoded byte sequences. Text intended for the modern login interface must not be converted into legacy bytes, because such conversion can lose identities and silently replace unsupported characters.
+The authenticated realm catalog from STARTUP-001G holds display strings, not CP936 or other retail-encoded byte sequences. Text for the new login interface must not be converted to legacy bytes, because that conversion can make distinct names identical and silently replace characters it cannot represent.
 
-This slice adds a Unicode-scalar layout entry point to the existing Rendering-owned FreeType/OpenGL text context. It does not change the legacy byte-oriented layout contract or draw server labels yet. That presentation work must be completed in its own audited slice, including a font coverage policy and correct fitting within the approved login geometry. A completed string-to-glyph path is not proof of complete Unicode shaping, bidirectional ordering, font fallback, or glyph coverage. Those are separate presentation requirements.
+STARTUP-001H adds a layout entry point for Unicode scalar values to the existing FreeType/OpenGL text context owned by Rendering. The legacy byte-oriented layout does not change, and server labels are not drawn yet. Drawing them is separate, reviewed work that needs a font coverage policy and must fit within the approved login layout. A path from string to glyph does not mean full Unicode shaping, bidirectional ordering, font fallback or glyph coverage. Those are separate presentation requirements.
 
-## Contract
+## Behavior
 
-- `OpenGLTextContext.LayoutUnicode` accepts UTF-16 text and passes Unicode scalar values directly to the same existing font rasterization and glyph-atlas machinery.
-- Supplementary-plane scalar values remain intact. Unpaired surrogates and NUL are rejected before rasterization.
-- Unicode layout does not interpret `#NN` as retail data icons and does not depend on any legacy code page. LF retains the existing logical line-advance convention.
-- Native encoded layout continues to use encoded 16-bit glyph identities; Unicode glyphs carry an independent scalar identity. Both layout types preserve the originating context and glyph-atlas ownership.
-- A Unicode layout is bounded to 4096 UTF-16 code units, and each font context caches at most 4096 distinct direct Unicode scalar values. Exceeding a limit fails explicitly rather than expanding resources without a bound.
-- Missing glyphs preserve the current rasterizer miss semantics; this slice does not invent a font-fallback or replacement-glyph policy.
-- Existing OpenGL renderers, textures, text passes, content closure, catalog signature validation, and login presentation geometry are unchanged.
+- `OpenGLTextContext.LayoutUnicode` takes UTF-16 text and passes its Unicode scalar values straight to the existing font rasterizer and glyph atlas.
+- Scalar values from the supplementary planes stay intact. Unpaired surrogates and NUL are rejected before rasterization.
+- Unicode layout does not treat `#NN` as a retail data icon and does not use any legacy code page. LF advances to a new line the same way as in the existing layout.
+- The retail encoded layout still identifies glyphs by their encoded 16-bit value. Unicode glyphs are identified by their scalar value, kept separate from encoded ones. Both layout types keep track of the context they came from and of glyph-atlas ownership.
+- A Unicode layout takes at most 4096 UTF-16 code units, and each font context caches at most 4096 distinct Unicode scalar values. Going over either limit is an error, so resources never grow without a limit.
+- Missing glyphs behave as they already do in the rasterizer. There is no font-fallback or replacement-glyph policy.
+- The existing OpenGL renderers, textures, text passes, content closure, catalog signature validation and login layout are unchanged.
 
-## Acceptance
+## Testing
 
-Verify the new Unicode layout tests, existing native encoded-text and glyph-cache tests, full Release tests, and cross-platform build gates. Driver-backed glyph rendering and approved 800×600/1024×768 login-label placement remain requirements for the subsequent UI consumer. An empty or unavailable trusted realm catalog remains empty; no endpoints, server names, or authentication behavior are introduced here.
+Run the new Unicode layout tests, the existing retail encoded-text and glyph-cache tests, the full Release test suite and the cross-platform build checks. Glyph rendering on a real driver, and approved login-label placement at 800x600 and 1024x768, are still required of the UI code that will use this path. An empty or unavailable trusted realm catalog stays empty, and no endpoints, server names or authentication behavior are added.

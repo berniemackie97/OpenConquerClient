@@ -2,13 +2,13 @@
 
 Contributions are welcome.
 
-OpenConquer is still early in development, so larger changes should fit the existing architecture
-rather than introducing new project boundaries or abstractions without a clear need.
+OpenConquer is early in development. Larger changes should fit the existing architecture. Add new
+projects or abstractions only when there is a clear need for them.
 
 ## Development Workflow
 
-Changes should be developed on a focused branch and submitted through a pull request. Direct pushes
-to `main` are not part of the normal development workflow.
+Work on a focused branch and submit your changes through a pull request. Changes do not normally
+reach `main` through direct pushes.
 
 Before opening or updating a pull request, restore dependencies once:
 
@@ -16,8 +16,8 @@ Before opening or updating a pull request, restore dependencies once:
 dotnet restore OpenConquer.Client.slnx --locked-mode
 ```
 
-Locked mode is what CI uses. A restore that changes a lock file fails there, so a dependency
-change must be committed along with the lock files it produces.
+CI restores in locked mode, so a restore that would change a lock file fails there. Commit a
+dependency change together with the lock files it produces.
 
 Check formatting without restoring again:
 
@@ -25,47 +25,46 @@ Check formatting without restoring again:
 dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
 ```
 
-Build the complete solution in the same configuration used by CI:
+Build the whole solution in the Release configuration, as CI does:
 
 ```bash
 dotnet build OpenConquer.Client.slnx --configuration Release --no-restore
 ```
 
-Run the whole suite the way CI does:
+Run the full test suite the same way CI does:
 
 ```bash
 dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 ```
 
-Test projects should contain real tests when they are introduced; empty test-project scaffolding
-is not kept in the repository.
+A new test project should contain real tests from the start. Empty test-project scaffolding is not
+kept in the repository.
 
-Finally, verify that the diff contains no whitespace errors:
+Finally, check the diff for whitespace errors:
 
 ```bash
 git diff --check
 ```
 
-Pull requests must pass the repository's required CI, cross-platform build, and dependency-review
-checks before merge.
+A pull request can be merged only after it passes the repository's required CI, cross-platform
+build, and dependency-review checks.
 
 ## Code
 
-A few general rules:
+General rules:
 
 - warnings are treated as errors
 - keep platform and graphics APIs out of gameplay code
 - avoid allocations and blocking work in hot frame paths
-- prefer clear game terminology over native/decompiler terminology
-- keep ownership and resource lifetime explicit
+- prefer clear game terminology over names taken from the original binary or the decompiler
+- make ownership and resource lifetime visible in the code
 - do not add catch-all projects such as `Core`, `Common`, or `Utilities`
-- do not introduce an interface or abstraction unless it represents a real boundary
+- add an interface or abstraction only when it represents a real boundary
 - do not hide required production behavior behind silent no-op implementations
 - keep changes focused
 
-Reverse-engineered behavior from the original client may be used to establish compatibility, but the
-new implementation should not reproduce the original client architecture simply because retail
-implemented something that way.
+Reverse-engineered behavior from the original client can be used to match its behavior. The new
+code should not copy the original client's architecture just because retail was built that way.
 
 ## Project Structure
 
@@ -75,13 +74,13 @@ The current production projects are:
 OpenConquer.Client
 OpenConquer.Content
 OpenConquer.Gameplay
+OpenConquer.Launcher
 OpenConquer.Networking
 OpenConquer.Platform
 OpenConquer.Rendering
 ```
 
-Adding another assembly should represent a clear ownership boundary and should be discussed before
-implementation.
+A new assembly needs a clear ownership reason. Discuss it before starting the implementation.
 
 See [`docs/architecture/architecture.md`](docs/architecture/architecture.md) for the current
 architecture.

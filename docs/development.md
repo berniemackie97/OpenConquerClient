@@ -23,7 +23,7 @@ dotnet run --project tools/OpenConquer.Content.Tool -c Release --no-build -- \
 git diff --check
 ```
 
-Builds use warnings as errors and repository analyzer configuration.
+Builds treat warnings as errors and use the repository's analyzer configuration.
 
 ## Run Client
 
@@ -40,7 +40,8 @@ Options:
 --content-root /path/to/client
 ```
 
-`ini/GameSetUp.ini` selects the logical render size. Desktop size and presentation are independent.
+`ini/GameSetUp.ini` selects the logical render size. The desktop window size and the presentation
+mode are set independently of it.
 
 ## Rendering Conformance
 
@@ -52,7 +53,7 @@ dotnet build tests/Conformance/OpenConquer.Rendering.Conformance/OpenConquer.Ren
   --no-restore
 ```
 
-Run against an exact retail 5517 root:
+Run against an unmodified retail 5517 root:
 
 ```bash
 dotnet run \
@@ -120,13 +121,14 @@ independent HUD reference geometry
 exact real-driver framebuffer comparison
 ```
 
-Current real-driver verification covers both supported logical resolutions against exact retail 5517
-content on Apple M4 hardware using the OpenGL 4.1 Metal driver and an RGB565 logical target.
+Real-driver testing currently covers both supported logical resolutions with unmodified retail 5517
+content on Apple M4 hardware, using the OpenGL 4.1 Metal driver and an RGB565 logical target.
 
-Graphics contracts and driver evidence are maintained in
+Graphics rules and per-driver results are documented in
 [`compatibility/native-graphics.md`](compatibility/native-graphics.md).
 
-Text contracts are maintained in [`compatibility/native-text.md`](compatibility/native-text.md).
+Text rendering rules are documented in
+[`compatibility/native-text.md`](compatibility/native-text.md).
 
 ## Content
 
@@ -190,24 +192,24 @@ category-9 Magic hints
 
 The experience bar uses solid-rectangle rendering and adds no image asset to the runtime closure.
 
-Manifest source casing may differ from logical ANI casing when a loose retail file wins lookup.
-Current example:
+The casing of a manifest source path can differ from the logical ANI path when a loose retail file
+wins the lookup. Current example:
 
 ```text
 ANI path:    data/main/ProgressForce2A.dds
 source path: data/main/ProgressForce2a.dds
 ```
 
-Retail `ini/package.ini` remains import configuration for resolving WDF-backed requirements from an
-authorized retail source. It is not part of the curated runtime closure.
+Retail `ini/package.ini` is import configuration only: the importer uses it to resolve WDF-backed
+requirements from an authorized retail source. It is not part of the curated runtime closure.
 
-Production ANI frame requirements use `LooseThenPackage`. Rendering conformance may enforce a stricter
-known retail provenance contract for a verified asset when native evidence establishes that the
-specific file is loose-only or package-only in the audited 5517 source.
+Production ANI frame requirements use `LooseThenPackage`. Rendering conformance can be stricter for
+a single asset: when research on the retail client shows that the file exists only loose, or only
+inside a package, in the 5517 source, the conformance test can require that provenance.
 
 Compatibility-only assets do not expand the runtime closure.
 
-`Server.dat` remains offline tooling evidence and must not ship with the client.
+`Server.dat` is reference material for offline tooling only and must not ship with the client.
 
 ### Import Retail Content
 
@@ -251,7 +253,7 @@ dotnet run \
   --content-set /path/to/client-publish/content/retail-5517
 ```
 
-Required invariant:
+The check requires all three to match:
 
 ```text
 ClientContentClosure
@@ -261,7 +263,7 @@ manifest
 payload
 ```
 
-The current checked-in retail-5517 manifest records exactly 3,785 files and 21,319,841 bytes.
+The checked-in retail-5517 manifest currently records 3,785 files and 21,319,841 bytes.
 
 ### Inspect Server.dat
 
@@ -275,7 +277,7 @@ dotnet run \
 
 ## HUD Development Boundary
 
-Current implemented main-HUD composition is:
+The main HUD currently draws these elements:
 
 ```text
 Progress45 background
@@ -294,7 +296,7 @@ category-8 main-HUD status hints
 category-9 Magic hints
 ```
 
-The action strip implements the verified native `CMyButton` boundary:
+The action strip reproduces the retail `CMyButton` behavior:
 
 ```text
 10 CMyButton controls
@@ -312,11 +314,11 @@ PK timed state
 Organise timed state
 ```
 
-The returned action-button activation identities are intentionally not wired to downstream dialogs,
-gameplay, or network operations until those feature boundaries are implemented from their own
-native evidence.
+Button activations are returned to the caller but are not yet connected to dialogs, gameplay or
+network operations. Each will be connected when that feature is implemented, based on its own
+research on the retail client.
 
-The four implemented `CMyCheck` controls use the verified native boundary:
+The four `CMyCheck` controls reproduce the retail behavior:
 
 ```text
 Check40   0x3F4
@@ -332,7 +334,7 @@ left-button down performs the state transition
 no managed release rollback
 ```
 
-GFX-UI-006 implements the ten-slot quickbar/grid boundary:
+GFX-UI-006 implements the ten-slot quickbar/grid:
 
 ```text
 control ID 0x3FD
@@ -352,10 +354,10 @@ hover / activation / pickup state
 quantity / upgrade / cover / cooldown / glow rendering
 ```
 
-The quickbar content closure intentionally includes broad parametric ANI families. Do not replace
-that consumer-led expansion with a hand-selected asset subset.
+The quickbar content closure includes broad parametric ANI families on purpose, because the set is
+expanded from what the quickbar can display. Do not replace it with a hand-picked subset of assets.
 
-GFX-UI-007 implements the selected-skill boundary:
+GFX-UI-007 implements the selected-skill control:
 
 ```text
 control ID 0x3FE
@@ -366,44 +368,42 @@ local origin (753,96)
 64×64 Image0 cover source
 ```
 
-Selected-skill cooldown rendering is a separate Client-owned consumer seam. The image draw observes
-the previously armed cover flag; the cooldown routine then clears that flag, draws the cooldown
-number when active, and re-arms the flag for the next image draw.
+Selected-skill cooldown rendering is a separate step owned by the Client project. The image draw
+uses the cover flag as it was last armed. The cooldown routine then clears that flag, draws the
+cooldown number when a cooldown is active, and re-arms the flag for the next image draw.
 
-Do not collapse that stateful behavior into a stateless overlay order.
+Keep this stateful sequence. Do not replace it with a stateless overlay order.
 
-The production cooldown text path uses Content-derived font/code-page configuration and a Rendering-
-owned `OpenGLTextContext`. Rendering owns host font discovery, FreeType, rasterizer, layout/cache,
-CPU atlas, and GPU atlas lifetimes.
+In production, cooldown text takes its font and code-page configuration from Content and draws
+through an `OpenGLTextContext` owned by Rendering. Rendering owns the lifetimes of host font
+discovery, FreeType, the rasterizer, layout and caching, and the CPU and GPU atlases.
 
-Live Gameplay producers for quickbar contents, selected-skill identity, and cooldown time remain
-deferred. The downstream map, screen-shift, equipment-view, action-dialog, and network effects also
-remain outside the implemented boundary.
+Gameplay does not supply live quickbar contents, the selected skill or cooldown times yet. The map,
+screen-shift, equipment-view, action-dialog and network effects that these controls lead to are not
+implemented either.
 
-GFX-UI-008 implements the category-8 main-HUD status-hint panel, including the
-Dialog21 backdrop, StrRes.ini string resources, Win32 RGNDATA hotspot regions,
-native hotspot selection, the MP startup guard, and normal-font text rendering.
-Region hit testing uses CDlgMain-local pixels, while hint anchors are shell-relative.
-The panel renders after selected-skill cooldown text.
+GFX-UI-008 implements the category-8 main-HUD status-hint panel: the Dialog21 backdrop, StrRes.ini
+string resources, Win32 RGNDATA hotspot regions, the retail hotspot selection, the MP startup guard
+and normal-font text rendering. Region hit testing uses CDlgMain-local pixels, while hint anchors
+are relative to the shell. The panel is drawn after the selected-skill cooldown text.
 
-Category-9 Magic hints also implement learned-magic and zero-magic branches with
-retail magic/effect/subprofession metadata, configured keyed localization, native
-encoded-byte wrapping, colored text, and a 12-pixel font. Real-driver conformance
-covers 800×600 and 1024×768. Runtime snapshots are supported, but live Gameplay
-producers have not been connected.
+Category-9 Magic hints cover both the learned-magic and the zero-magic case. They use retail magic,
+effect and subprofession metadata, configured keyed localization, the retail client's wrapping of
+encoded bytes, colored text and a 12-pixel font. Real-driver conformance covers 800x600 and
+1024x768. Runtime snapshots are supported, but live Gameplay producers are not connected yet.
 
-Per-control tooltips, other status-hint categories, and the outer HUD gate remain deferred.
+Per-control tooltips, other status-hint categories and the outer HUD gate are not implemented yet.
 
 Do not infer unimplemented side effects from ANI artwork names.
 
 ## Native Compatibility Discipline
 
-Native 5517 evidence is authoritative for observable compatibility behavior.
+For observable behavior, the retail 5517 client, as documented by research, is the reference.
 
-When a verified native behavior is unusual, do not normalize it solely because a more conventional
-modern implementation appears safer or cleaner.
+If a confirmed 5517 behavior is unusual, keep it. Do not change it only because a more conventional
+modern implementation looks safer or cleaner.
 
-Current examples include:
+Current examples:
 
 ```text
 skill-highlight DWORD timer sentinel and wrap behavior
@@ -419,8 +419,8 @@ selected-skill cover flag surviving image clear
 cooldown cover flag applying to the following image draw
 ```
 
-A deliberate deviation from verified native behavior must be explicit and documented rather than
-introduced by a generic cleanup.
+Any intended deviation from confirmed 5517 behavior must be documented as such. It must not slip in
+as part of a general cleanup.
 
 ## Local Managed Product
 
@@ -468,8 +468,8 @@ repair
 rollback
 ```
 
-Development signing keys, release sequence state, and coordination locks remain outside repository
-and product output.
+Development signing keys, release sequence state and coordination locks are kept out of the
+repository and the product output.
 
 ## Test Ownership
 
@@ -522,14 +522,14 @@ Release build
 tests
 ```
 
-Real-driver rendering conformance runs separately on supported desktop hardware with exact retail
-content.
+Real-driver rendering conformance runs separately, on supported desktop hardware with unmodified
+retail content.
 
-GitHub Actions dependencies must remain pinned to immutable commit SHAs.
+GitHub Actions dependencies must stay pinned to commit SHAs.
 
 ## Commit Rule
 
-A slice is complete only after:
+A change is complete only after:
 
 ```text
 implementation

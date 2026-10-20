@@ -1,72 +1,88 @@
-# AUTH-001C — Native keypad and standard account request composition
+# AUTH-001C: 5517 keypad encoding and account request composition
 
-## Audited dependency baseline
+AUTH-001C builds the standard AccountServer request 1060: it encodes the password
+with the retail per-account keypad, encrypts it with RC5 and writes the packet into a
+caller buffer. It does not send anything.
 
-- OpenConquerClient `main` at `759c7eedce052e952142b13b18ba70af407d8b4f`, after merged AUTH-001B PR #115.
-- `20_notes/Server/login-credential-envelope.md` (native client and live-server measurements, 2026-08-23).
-- `20_notes/Architecture/03_login_flash_startup_command_contract.md`, verified CMD_PASSWORD path.
-- OpenConquerServer `LoginPasswordKeypadDecoder`, `LoginCredentialKey`, `LoginAccountRequestPacket`.
-- Existing client `LoginSeedKey`, `CredentialRc5` and `StandardAccountRequest1060` are reused.
+## Sources
 
-## Proven native contract
+- `20_notes/Server/login-credential-envelope.md` (measurements of the retail client
+  and a live server, 2026-08-23).
+- `20_notes/Architecture/03_login_flash_startup_command_contract.md`, the confirmed
+  CMD_PASSWORD path.
+- OpenConquerServer `LoginPasswordKeypadDecoder`, `LoginCredentialKey`,
+  `LoginAccountRequestPacket`.
+- The existing client types `LoginSeedKey`, `CredentialRc5` and
+  `StandardAccountRequest1060` are reused.
 
-For the ordinary 5517 login (no shipped OEM configuration), client packet 1060 is 276 bytes:
-four-byte little-endian frame header, 128-byte account name, 128-byte credential field,
-16-byte protocol server name. Only the first 32 credential bytes are RC5-encrypted;
-the remaining 96 bytes are zero-filled.
+## Packet 1060 in the retail client
 
-Per-account keypad encoding precedes RC5. The keypad seed is the signed-byte sum of
-the exact account-name bytes, fed to MSVCRT srand/rand for a 16-byte salt.
-Native keyboard rows (VA `0x936768`) are searched in order, shifted column first.
-A 255-entry permutation is sorted by the native descending selection-swap algorithm
-using weights `value ^ salt[value & 15]`; strict greater-than comparison matters
-for equal weights. Encoding yields each mapped 1-based permutation index, with
-a zero-padded fixed 32-byte field.
+For the ordinary 5517 login (no shipped OEM configuration), client packet 1060 is 276
+bytes: a four-byte little-endian frame header, a 128-byte account name, a 128-byte
+credential field and a 16-byte protocol server name. Only the first 32 credential
+bytes are RC5-encrypted. The remaining 96 bytes are zero.
 
-RC5-32/12/16 uses the **separately received login seed 1059**, not the account-name
-sum, to derive its key. The MSVCRT-derived 16-byte key changes with each server seed.
-The in-memory credential-buffer XOR is canceled before the RC5 input is assembled;
-it must NOT be recreated as another wire transform.
+The per-account keypad encoding runs before RC5. The keypad seed is the sum of the
+account-name bytes, each taken as a signed byte. That sum seeds MSVCRT srand/rand,
+which produces a 16-byte salt. The retail keyboard rows (VA `0x936768`) are searched
+in order, shifted column first. A 255-entry permutation is sorted with the retail
+client's descending selection-swap algorithm, using the weights
+`value ^ salt[value & 15]`. The comparison is a strict greater-than, which matters
+when two weights are equal. The encoder writes the 1-based permutation index of each
+mapped character into a fixed 32-byte field padded with zeros.
 
-Native's 48-row keyboard repertoire is `0-9 a-z A-Z . - @ > _`. The modern
-encoder rejects unsupported password characters rather than silently truncating,
-a documented defensive deviation. The current modern UI allows at most 15 password
-characters and 32 account characters; the composer adopts those input bounds.
+RC5-32/12/16 derives its key from the login seed 1059, which the server sends
+separately, and not from the account-name sum. The 16-byte key is produced with
+MSVCRT and changes with every server seed. The retail client also XORs the credential
+buffer in memory, but that XOR is undone before the RC5 input is assembled. It must
+not be added as an extra transform on the wire.
 
-## Security, ownership and exclusions
+The retail client's 48-row keyboard covers `0-9 a-z A-Z . - @ > _`. The encoder
+rejects any password character outside that set instead of silently truncating the
+password. This is a documented defensive deviation from the retail client. The
+current login UI allows at most 15 password characters and 32 account characters, and
+the composer uses the same input limits.
 
-The pure `StandardAccountCredentialComposer.Write` takes caller-owned password
-characters and produces a caller-owned 276-byte packet. It never sends packets,
-opens sockets, retains references, or logs passwords. Both 32-byte transient
-encoded/ciphertext spans are zeroed in a `finally`; `CredentialRc5` already zeroes
-its key, working source and subkeys. The caller remains responsible for clearing
-its source password and the eventual packet buffer after any permitted send.
+## Security and ownership
 
-The wire-compatible legacy RC5 and transport obfuscation are **not authenticated
-encryption**. A valid signed directory establishes endpoint metadata authority,
-not server identity or secure credential transport. This code does not grant
-authority to send credentials over a live connection.
+`StandardAccountCredentialComposer.Write` is a pure function. It takes password
+characters owned by the caller and writes a 276-byte packet into a buffer owned by
+the caller. It never sends packets, opens sockets, keeps references or logs
+passwords. Its two temporary 32-byte spans (the encoded password and the ciphertext)
+are zeroed in a `finally`, and `CredentialRc5` already zeroes its key, its working
+copy of the input and its subkeys. The caller remains responsible for clearing its
+source password, and the packet buffer once any permitted send is done.
 
-Out of scope: login UI submission, `1060` socket sends, post-submit reads,
-1055 response handling, GameServer handoff, retries, status reporting, OEM
-account setup, mobile/bound-account variants, or new login UI visuals.
+The legacy RC5 and transport obfuscation are needed for wire compatibility but are
+not authenticated encryption. A valid signed directory vouches for the endpoint
+metadata only. It does not prove the server's identity or make the credential
+transport secure. This code does not by itself permit sending credentials over a live
+connection.
 
-## Acceptance criteria
+Out of scope: submitting from the login UI, sending `1060` on a socket, reading the
+reply, handling the 1055 response, the GameServer handoff, retries, status reporting,
+OEM account setup, mobile and bound-account variants, and any new login UI visuals.
 
-- Match independent OpenConquerServer keypad vectors including shifted digit
-  collisions and signed high-byte account seed; assert NUL padding.
-- Match an end-to-end packet fixture for a known account/password/server/seed,
-  from a separately evaluated native-consistent permutation + standard RC5 reference.
-- Reject invalid account/password/realm/destination without modifying the output.
-- Preserve prior RC5 vectors and the zero-copy buffer/parser contract from AUTH-001A/B.
-- Locked restore, format verify, Release build, full tests and content-set verify;
-  macOS, Windows, Quality and Dependency Review CI must pass before merge.
+## Testing
 
-## Realm identity boundary review (PR #117)
+- The encoder matches the independent OpenConquerServer keypad vectors, including
+  shifted digit collisions and an account seed with signed high bytes. NUL padding is
+  checked.
+- The composer matches an end-to-end packet fixture for a known account, password,
+  server and seed. The fixture comes from a separately computed permutation that
+  follows the retail algorithm, and a standard RC5 reference.
+- An invalid account, password, realm or destination is rejected and the output is
+  left unchanged.
+- The earlier RC5 vectors and the zero-copy buffer and parser behavior from
+  AUTH-001A/B still hold.
+- Locked restore, format verification, Release build, full tests and content-set
+  verification pass, as do the macOS, Windows, Quality and Dependency Review CI jobs.
 
-The signed catalog consumer and publishing tool both enforce the AccountServer's
-`ProtocolServerName` contract: 1–15 ASCII characters from `[A-Za-z0-9_()-]`.
-The packet 1060 field is 16 bytes and is NUL-padded. Protocol identities are not
-truncated, normalized, or substituted. Unicode remains supported for *display*
-labels, which are separate from the protocol identity. Regression tests cover
-publisher acceptance, signed-catalog rejection, and maximum-length names.
+## Realm protocol name
+
+The signed catalog consumer and the publishing tool both enforce the AccountServer
+rule for `ProtocolServerName`: 1 to 15 ASCII characters from `[A-Za-z0-9_()-]`. The
+packet 1060 field is 16 bytes and padded with NUL. Protocol names are never
+truncated, normalized or substituted. Display labels may use Unicode and are kept
+separate from the protocol name. Regression tests cover acceptance by the publisher,
+rejection in the signed catalog, and names of the maximum length.

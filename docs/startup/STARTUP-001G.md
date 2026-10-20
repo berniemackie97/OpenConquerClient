@@ -1,14 +1,14 @@
-# STARTUP-001G — Authenticated realm-catalog acquisition
+# STARTUP-001G: Signed realm catalog download
 
-## Authority
+## Trust model
 
-The client does not trust `Server.dat`, arbitrary CLI configuration, a mutable user file, a DNS lookup, or HTTP transport alone to define the account-login destination. It accepts only a bounded server catalog with an ECDSA P-256/SHA-256 detached signature over the **exact** JSON bytes. The issuer key and the two HTTPS locations are embedded at **client build/publish time**, and is covered by the existing publisher-signed installed-release manifest **when launched from a verified managed installation**. Direct developer execution does not independently authenticate the binary. The catalog-signing private key **never** enters the source tree, client binary, or launcher.
+The account-login destination never comes from `Server.dat`, arbitrary command-line settings, a user-editable file, a DNS lookup or HTTP transport on its own. The client accepts only a size-limited server catalog with a detached ECDSA P-256/SHA-256 signature over the raw JSON bytes. The issuer key and the two HTTPS locations are compiled in when the client is built and published. When the client is launched from a verified managed installation, they are covered by the existing publisher-signed manifest of the installed release. When a developer runs the client directly, nothing authenticates the binary. The private catalog-signing key never goes into the source tree, the client binary or the launcher.
 
-If the public authority descriptor is not compiled into the client, the startup catalog remains empty. An invalid configured authority aborts startup. A failed download, invalid signature, stale document, invalid endpoint, or unsupported schema leaves the catalog empty. No legacy fallbacks, test roots, placeholder addresses, or implicit trust-key CLI switches exist.
+If the public authority descriptor is not compiled in, the startup catalog stays empty. An invalid configured authority stops startup. A failed download, invalid signature, stale document, invalid endpoint or unsupported schema leaves the catalog empty. There are no legacy fallbacks, test roots, placeholder addresses or hidden command-line switches for trust keys.
 
 ### Build authority (public values only)
 
-Supply `-p:OpenConquerCatalogAuthorityFile=/absolute/ci/path/catalog-authority.json` to **build and publish**, using a release-managed source. The file must be UTF-8 JSON with exactly:
+Pass `-p:OpenConquerCatalogAuthorityFile=/absolute/ci/path/catalog-authority.json` to both build and publish, pointing at a file managed by the release process. The file must be UTF-8 JSON with these fields and no others:
 
 ```json
 {
@@ -18,13 +18,13 @@ Supply `-p:OpenConquerCatalogAuthorityFile=/absolute/ci/path/catalog-authority.j
 }
 ```
 
-The values above are **documentation syntax, not shipped configuration**. Do not use them as production endpoints or generate throwaway production signing keys. Release production credentials and public trust need an explicit operator/publisher decision. Never take the authority JSON from an untrusted user-controlled runtime path.
+The values above only show the syntax; they are not shipped configuration. Do not use them as production endpoints, and do not generate throwaway production signing keys. Production credentials and the public trust key for a release are a decision for the operator and publisher. Never read the authority JSON from a runtime path that an untrusted user controls.
 
-An unauthenticated developer build has no embedded authority and remains fail-closed. Test-only ephemeral signing keys are generated within the test process and never embedded in a production build. Authority files larger than 4096 bytes, malformed/duplicate/unknown fields, non-P-256 keys, non-HTTPS URLs, redirects, credentials, query strings, and nonstandard ports are rejected.
+A developer build without an authority file has no embedded authority and accepts no catalog. Signing keys used only in tests are generated inside the test process and never embedded in a production build. Authority files are rejected if they are larger than 4096 bytes, have malformed, duplicate or unknown fields, or contain a key that is not P-256, a non-HTTPS URL, a redirect, credentials, a query string or a nonstandard port.
 
 ### Signed payload v1
 
-The issuer signs the exact bytes of a UTF-8 JSON document (without normalizing whitespace or keys). Signature file is exactly 64 raw IEEE-P1363 bytes (`r || s`) from ECDSA P-256 with SHA-256. Document schema:
+The issuer signs the bytes of a UTF-8 JSON document as they are, with no normalization of whitespace or keys. The signature file holds 64 raw IEEE-P1363 bytes (`r || s`) from ECDSA P-256 with SHA-256. Document schema:
 
 ```json
 {
@@ -51,22 +51,26 @@ The issuer signs the exact bytes of a UTF-8 JSON document (without normalizing w
 }
 ```
 
-All values are **schema examples only**; the client ships no populated issuer document or endpoint. The timestamp must be UTC seconds in the shown format. Signature is verified **before parsing**. Unknown/duplicate fields are fatal. Issue time cannot be more than 5 minutes in the future; expiry must be in the future and within 24 hours of issue. Region and server names/identifiers pass the established immutable view-model validators. Protocol names remain distinct from labels. Account ingress hosts/ports are separately validated and never inferred from UI text or the old `Server.dat`.
+All values are schema examples. The client ships no filled-in issuer document or endpoint. Timestamps are UTC with whole seconds, in the format shown. The signature is checked before the document is parsed. Unknown or duplicate fields are fatal. The issue time may be at most 5 minutes in the future. The expiry must be in the future and no more than 24 hours after the issue time. Region and server names and identifiers go through the same immutable view-model validators as before. Protocol names stay separate from labels. Account ingress hosts and ports are validated separately and are never derived from UI text or the old `Server.dat`.
 
-Limits: 128 KiB JSON, 64-byte detached signature, at most 64 regions, 128 servers per region, and 1024 servers total. Only HTTP 200 from the exact configured HTTPS URI is accepted; no redirects, automatic decompression, cookies or ambient client credentials. Total acquisition timeout is 12 seconds. The network task does not block the desktop startup loop.
+Limits: 128 KiB of JSON, a 64-byte detached signature, at most 64 regions, 128 servers per region and 1024 servers in total. Only an HTTP 200 response from the configured HTTPS URI itself is accepted. Redirects, automatic decompression, cookies and ambient client credentials are not used. The whole download has a 12-second timeout. The network task does not block the desktop startup loop.
 
 ## Runtime ownership
 
-- `Startup/Catalog` owns issuer key validation, signed catalog parsing, bounded HTTP acquisition, and the typed account-ingress directory.
-- `ClientApplication` starts acquisition after the main desktop window is created and consumes the completed result on its render thread, preserving single-threaded selection state.
-- The existing `LoginSelectionInput.ReplaceCatalog` atomically revokes previous selection/focus/capture on new authority data.
-- Expiry clears the active catalog and any selection. Shutdown cancels outstanding acquisition and leaves no ongoing UI mutation.
-- There is no account connection in this slice. Future authentication must obtain the ingress **from the verified catalog's directory** for the **selected identity**, after verifying the catalog is still current. View-model labels must never be used as an endpoint.
+- `Startup/Catalog` owns issuer key validation, signed catalog parsing, the size- and time-limited HTTP download, and the typed account-ingress directory.
+- `ClientApplication` starts the download after the main desktop window is created and picks up the finished result on its render thread, so selection state stays single-threaded.
+- `LoginSelectionInput.ReplaceCatalog` clears the previous selection, focus and capture in one step when new catalog data arrives.
+- When the catalog expires, the active catalog and any selection are cleared. Shutdown cancels a download in progress, and nothing changes the UI after that.
+- There is no account connection yet. When authentication is added, it must take the ingress for the selected identity from the verified catalog's directory, after checking that the catalog is still current. View-model labels must never be used as an endpoint.
 
-## Boundaries and acceptance
+## Limitations
 
-This slice deliberately does not introduce a browser, Flash runtime, generated server rows, online/offline badges, server names painted into the OpenGL grid, Login/Register submission, native login packets, or world authorization. UTF-8 catalog display names are retained as Unicode values; the legacy CP936 text pipeline must not silently substitute glyphs. Text rendering is a separate, explicitly reviewed consumer of the authenticated view.
+This step adds no browser, Flash runtime, generated server rows, online/offline badges, server names drawn into the OpenGL grid, Login/Register submission, 5517 login packets or world authorization. UTF-8 catalog display names are kept as Unicode strings. The legacy CP936 text pipeline must not silently substitute glyphs for them. Drawing that text is a separate consumer of the authenticated view, reviewed on its own.
 
-A detached signature plus a maximum 24-hour lifetime bounds, but does not eliminate, replay of a previously valid document across process restarts. The `sequence` field is verified as positive and retained for future persistent anti-rollback policy. It is **not** currently a cross-process rollback fence, and should not be represented as one.
+A detached signature and a lifetime of at most 24 hours limit replay of an old, once-valid document across process restarts, but they do not prevent it. The `sequence` field is checked to be positive and kept for a future anti-rollback policy that persists between runs. It does not currently stop rollback across processes, and it should not be described as doing so.
 
-Verify locked restore, format, Release build, all unit tests, retail content closure and publish isolation, real macOS/Windows startup, cancellation, expiry, and both supported logical resolutions. Production catalog acquisition remains disabled until the publisher supplies a genuine authority descriptor as part of the controlled signed client release.
+The production catalog download stays disabled until the publisher supplies a real authority descriptor as part of a controlled, signed client release.
+
+## Testing
+
+Check locked restore, format, Release build, all unit tests, the retail content closure and publish isolation, real startup on macOS and Windows, cancellation, expiry, and both supported logical resolutions.

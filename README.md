@@ -2,9 +2,10 @@
 
 [![CI](https://github.com/berniemackie97/OpenConquerClient/actions/workflows/ci.yml/badge.svg)](https://github.com/berniemackie97/OpenConquerClient/actions/workflows/ci.yml)
 
-C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for Windows, macOS, and Linux.
+OpenConquer Client is a C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for
+Windows, macOS, and Linux.
 
-**Early development. The launcher is not release-ready.**
+**Status:** early development. The launcher is not ready for release.
 
 <img width="808" height="609" alt="LauncherImage" src="https://github.com/user-attachments/assets/7c57dcaa-85a9-4e0c-9a9a-299914b9bf1f" />
 <img width="1281" height="754" alt="ClientImage" src="https://github.com/user-attachments/assets/b474182d-e9a0-4d96-9d25-28669ec90a7b" />
@@ -15,7 +16,7 @@ C#/.NET 10 reconstruction of the Conquer Online 5517 client ecosystem for Window
 | Product | Implemented | Remaining |
 | --- | --- | --- |
 | Launcher | Managed installation resolution, authenticated releases, integrity verification, update/repair/rollback transaction, single-instance activation, saved display preferences | Production release origin, launcher self-update, player-facing maintenance flow, controlled client startup |
-| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, native text rendering, static main-HUD chrome, life/mana/stamina vitals, skill/experience HUD, native 10-button action strip, four native main-HUD CMyCheck controls, 10-slot quickbar/grid, selected-skill image/cover, selected-skill cooldown text, main-HUD category-8 status hints and category-9 Magic hints | Live gameplay state, downstream HUD-control side effects, per-control tooltips, other status-hint categories, outer HUD gate, remaining UI, networking, maps, roles, effects, animation |
+| Client | Desktop host, logical rendering/presentation, verified retail content, TGA/DXT3 sprites, retail text rendering, static main-HUD chrome, life/mana/stamina vitals, skill/experience HUD, retail 10-button action strip, four retail main-HUD CMyCheck controls, 10-slot quickbar/grid, selected-skill image/cover, selected-skill cooldown text, main-HUD category-8 status hints and category-9 Magic hints | Live gameplay state, downstream HUD-control side effects, per-control tooltips, other status-hint categories, outer HUD gate, remaining UI, networking, maps, roles, effects, animation |
 
 ## Architecture
 
@@ -31,7 +32,7 @@ flowchart TD
     Client --> Networking["OpenConquer.Networking"]
 ```
 
-Launcher and game client are separate products.
+The launcher and the game client are separate products. Each one handles its own part of the flow:
 
 ```text
 launcher
@@ -58,9 +59,11 @@ dotnet build OpenConquer.Client.slnx -c Release --no-restore
 dotnet test OpenConquer.Client.slnx -c Release --no-build --no-restore
 ```
 
-CI builds and tests on Linux, Windows, and macOS.
+CI builds and tests on Linux, Windows, and macOS. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
+full set of checks to run before opening a pull request.
 
-Real-driver rendering conformance runs separately on supported desktop hardware against exact retail 5517 content.
+Rendering conformance tests run separately, with real GPU drivers on supported desktop hardware,
+against the retail 5517 content.
 
 ## Run
 
@@ -74,25 +77,25 @@ dotnet run \
   create-local-product
 ```
 
-Output:
+The product is written to:
 
 ```text
 artifacts/local-product/product
 ```
 
-macOS/Linux:
+Start the launcher on macOS or Linux:
 
 ```bash
 ./artifacts/local-product/product/OpenConquer.Launcher
 ```
 
-Windows:
+On Windows:
 
 ```powershell
 .\artifacts\local-product\product\OpenConquer.Launcher.exe
 ```
 
-Direct client development:
+During development you can also run the client directly:
 
 ```bash
 dotnet run --project src/OpenConquer.Client -- \
@@ -108,17 +111,15 @@ Client options:
 | `--window-size` | `WIDTHxHEIGHT`; default `1280x720` |
 | `--window-mode` | `resizable`, `fixed`, `fullscreen` |
 | `--presentation` | `fit`, `integer`, `stretch` |
-| `--content-root` | Authorized retail-compatible content tree |
+| `--content-root` | An authorized retail-compatible content tree |
 
-Logical rendering is restricted to 800×600 or 1024×768 according to `ini/GameSetUp.ini`.
-
-Desktop size, window mode, and presentation are independent.
+The logical render size is either 800x600 or 1024x768, as selected by `ini/GameSetUp.ini`. Desktop
+size, window mode, and presentation are set independently of each other and of the logical size.
 
 ## Compatibility
 
-Native 5517 behavior is the compatibility authority.
-
-Preserve verified:
+The observable behavior of the retail 5517 client is the reference for compatibility. Once confirmed
+against the original client, the following are preserved:
 
 ```text
 protocol packets
@@ -134,13 +135,14 @@ HUD geometry and ordering
 native UI state and input behavior
 ```
 
-Do not preserve obsolete implementation machinery when observable behavior can be reproduced safely.
+The original client's internal machinery is not copied when the same observable behavior can be
+reproduced safely in another way.
 
 ### Runtime Content
 
 The managed runtime closure currently contains 3,785 files totaling 21,319,841 bytes.
 
-The exact path set is authoritative in:
+The full set of paths is defined by:
 
 ```text
 content/retail-5517/manifest.json
@@ -183,7 +185,7 @@ category-9 learned-magic and zero-magic hints
 retail magic metadata, descriptions, subprofession requirements, and keyed localization
 ```
 
-Required invariant:
+These four sets must always match:
 
 ```text
 ClientContentClosure
@@ -195,17 +197,18 @@ tracked payload
 published client content
 ```
 
-The large closure is intentional: GFX-UI-006 introduced verified parametric quickbar consumers whose
-ANI catalogs reference broad action, magic, item-icon, and glow families. The manifest, rather than a
-hand-maintained Markdown file list, is the exact closure authority.
+The closure is large on purpose. GFX-UI-006 added parameterized quickbar consumers, and their ANI
+catalogs reference whole action, magic, item-icon, and glow families. The manifest is the source of
+truth for the file list, so the list is not maintained by hand in Markdown.
 
-Retail WDF archives are import sources and are not shipped in the curated content set.
+Retail WDF archives are used only as import sources. They are not shipped in the curated content
+set.
 
-Retail `Server.dat` remains offline compatibility evidence and is not runtime content.
+Retail `Server.dat` is kept as an offline compatibility reference. It is not runtime content.
 
 ### HUD
 
-Implemented main-HUD composition is:
+The main HUD is currently built from:
 
 ```text
 Progress45 background
@@ -222,10 +225,10 @@ selected-skill image / previously armed cover
 selected-skill cooldown text
 ```
 
-The action strip reconstructs the verified native visual, state, timing, hit-test, capture, and
-release behavior of its ten `CMyButton` controls.
+The action strip reproduces the confirmed retail visuals, state, timing, hit testing, pointer
+capture, and release behavior of its ten `CMyButton` controls.
 
-Implemented action-strip behavior includes:
+Implemented action-strip behavior:
 
 ```text
 native control IDs and draw order
@@ -241,11 +244,10 @@ PK timed blinking
 Organise timed blinking
 ```
 
-Action-button activation results are not yet connected to downstream gameplay dialogs, networking,
-or other feature behavior. Those dependencies are implemented only after their own native contracts
-are verified.
+Activating an action button does not yet open gameplay dialogs, send network traffic, or trigger
+any other feature. Each of those is connected only after its own retail behavior has been confirmed.
 
-The neighboring native `CMyCheck` group currently reconstructs:
+The neighboring group of `CMyCheck` controls currently reproduces:
 
 ```text
 Check40   0x3F4  walk/run
@@ -261,7 +263,7 @@ left/top inclusive, right/bottom exclusive hit testing
 native draw order after the ten CMyButton controls
 ```
 
-GFX-UI-006 adds the native ten-slot quickbar/grid boundary:
+GFX-UI-006 adds the ten-slot quickbar/grid:
 
 ```text
 control ID 0x3FD
@@ -283,7 +285,7 @@ covers and cooldown state
 animated glow families
 ```
 
-GFX-UI-007 adds the selected-skill boundary:
+GFX-UI-007 adds the selected-skill control:
 
 ```text
 control ID 0x3FE
@@ -298,32 +300,32 @@ previously armed cover
 cooldown text
 ```
 
-The cooldown routine intentionally mutates the selected-image cover flag after the image draw. A
-continuing cooldown therefore renders the currently armed cover, draws the cooldown number, and
-re-arms the cover for the following frame. This one-frame state behavior is preserved rather than
-normalized into a stateless overlay.
+The retail cooldown routine changes the selected-image cover flag after the image is drawn. While a
+cooldown continues, each frame draws the currently armed cover, draws the cooldown number, and
+re-arms the cover for the next frame. OpenConquer keeps this one-frame state change instead of
+replacing it with a stateless overlay.
 
-Quickbar contents, selected-skill identity, and cooldown time currently expose Client-owned consumer
-state seams. Live Gameplay producers remain deferred.
+Quickbar contents, the selected skill, and the cooldown time are currently supplied through state
+inputs owned by the Client project. Live producers in Gameplay are not connected yet.
 
-The check controls likewise do not invent downstream map, screen-shift, equipment-view, or other
-feature effects. Native USER32 release/`BN_CLICKED` behavior outside the proven state-transition
-boundary remains deferred.
+The check controls do not yet trigger map, screen-shift, equipment-view, or other feature effects.
+The retail USER32 release and `BN_CLICKED` handling beyond the confirmed state transition is not
+implemented yet.
 
-GFX-UI-008 implements the native main-HUD category-8 status-hint panel. Its input uses
-CDlgMain-local rectangle and binary-region hotspots; its anchors remain shell-relative.
-The panel renders after selected-skill cooldown text using retail StrRes.ini strings,
-normal GUI font settings, and the Dialog21 backdrop. The MP startup guard is retained.
+GFX-UI-008 implements the main-HUD category-8 status-hint panel. Its input hotspots are rectangles
+and binary regions in CDlgMain-local coordinates, while its anchors stay relative to the shell. The
+panel draws after the selected-skill cooldown text, using retail StrRes.ini strings, the normal GUI
+font settings, and the Dialog21 backdrop. The MP startup guard is kept.
 
-The category-9 Magic-hint renderer is also implemented. It uses retail MagicType.dat,
-MagicEffect.ini, SubProfessionInfo.ini, configured Cn_Res.ini keyed strings, and StrRes.ini
-native strings to render learned-magic and zero-magic branches with native encoded-byte
-wrapping, line colors, and 12-pixel magic text. Both supported HUD resolutions have
-real-driver conformance coverage. Runtime snapshots are supported, but live Gameplay
-producers are not yet connected.
+The category-9 Magic-hint renderer is also implemented. It draws the learned-magic and zero-magic
+branches from retail MagicType.dat, MagicEffect.ini, SubProfessionInfo.ini, keyed strings from the
+configured Cn_Res.ini, and StrRes.ini strings. It reproduces the retail wrapping by encoded byte,
+the line colors, and the 12-pixel magic text. Conformance tests on real GPU drivers cover both
+supported HUD resolutions. The renderer accepts runtime snapshots, but no live Gameplay producer is
+connected yet.
 
-Per-control tooltips, other status-hint categories, and the outer HUD gate remain deferred
-until their own native contracts and dependencies are verified.
+Per-control tooltips, the other status-hint categories, and the outer HUD gate are not implemented.
+Each one waits until its retail behavior and its dependencies have been confirmed.
 
 ## Repository
 
@@ -363,7 +365,9 @@ tools/
 | Development | [`docs/development.md`](docs/development.md) |
 | Architecture | [`docs/architecture/architecture.md`](docs/architecture/architecture.md) |
 | Managed installation | [`docs/architecture/launcher-managed-installation.md`](docs/architecture/launcher-managed-installation.md) |
-| Native graphics | [`docs/compatibility/native-graphics.md`](docs/compatibility/native-graphics.md) |
-| Native text | [`docs/compatibility/native-text.md`](docs/compatibility/native-text.md) |
+| Graphics compatibility | [`docs/compatibility/native-graphics.md`](docs/compatibility/native-graphics.md) |
+| Text compatibility | [`docs/compatibility/native-text.md`](docs/compatibility/native-text.md) |
 | Retail content | [`docs/content/retail-5517-content-plan.md`](docs/content/retail-5517-content-plan.md) |
 | Retail inventory | [`docs/content/retail-5517-inventory.md`](docs/content/retail-5517-inventory.md) |
+| Startup and login screen notes | [`docs/startup/`](docs/startup/README.md) |
+| Login networking notes | [`docs/networking/`](docs/networking/README.md) |

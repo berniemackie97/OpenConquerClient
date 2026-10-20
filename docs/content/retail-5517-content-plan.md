@@ -1,8 +1,9 @@
 # Retail 5517 Content Plan
 
-## Contract
+## Content Rules
 
-Runtime content is consumer-led.
+Runtime content is driven by consumers: a file is included only because implemented code needs it.
+These three sets must match:
 
 ```text
 ClientContentClosure
@@ -12,10 +13,11 @@ manifest path keys
 payload path keys
 ```
 
-Path-key comparison is case-insensitive. Manifest source paths preserve imported source casing.
+Path keys are compared case-insensitively. Manifest source paths keep the casing of the imported
+source.
 
-Retail assets enter the runtime set only when an implemented consumer requires them and the native
-dependency has been verified.
+A retail asset joins the runtime set only when an implemented consumer needs it and the retail
+client's dependency on it has been confirmed.
 
 ## Runtime Closure
 
@@ -26,25 +28,24 @@ files: 3,785
 bytes: 21,319,841
 ```
 
-The exact path set is maintained by:
+The full path list is kept in:
 
 ```text
 content/retail-5517/manifest.json
 content/retail-5517/payload
 ```
 
-The Markdown plan intentionally does not duplicate all 3,785 manifest entries. GFX-UI-006
-introduced verified parametric quickbar consumers whose ANI catalogs expand into broad action,
-magic, item-icon, and glow families; manually mirroring that path set here would create a second,
-drift-prone source of truth.
+This document does not repeat all 3,785 manifest entries. The parametric quickbar consumers added in
+GFX-UI-006 pull in whole families of action, magic, item-icon, and glow frames from their ANI
+catalogs. Copying that list here would create a second list that drifts out of date.
 
-Current consumer groups are:
+Current consumer groups:
 
 | Consumer | Configuration / catalogs | Asset lookup |
 | --- | --- | --- |
 | Startup | `ini/GameSetUp.ini`, `ini/info.ini`, startup logos | configuration/logo-specific |
 | Login version label | `version.dat` (start.dat `setVer`) | `LooseOnly` |
-| Native GUI font | `ini/Font.ini` | `LooseOnly` |
+| GUI font | `ini/Font.ini` | `LooseOnly` |
 | Main HUD fixed controls | `ani/Control.ani` | `LooseThenPackage` frames |
 | Quickbar fixed controls | `ani/Control.ani` | `LooseThenPackage` frames |
 | Quickbar magic / XP magic | `ani/Magic.ani` | `LooseThenPackage` |
@@ -55,12 +56,12 @@ Current consumer groups are:
 | Main-HUD category-8 status hints | `ani/Control.ani` `[Dialog21]`, `ini/StrRes.ini`, three `ini/Progress*.rgn` files | `LooseThenPackage` backdrop; `LooseOnly` strings and regions |
 | Main-HUD category-9 Magic hints | `ini/MagicType.dat`, `ini/MagicEffect.ini`, `ini/SubProfessionInfo.ini`, configured `ini/Cn_Res.ini`; shared `ini/StrRes.ini` and `[Dialog21]` | `LooseOnly` metadata/strings; shared `LooseThenPackage` backdrop |
 
-`ini/FontSetting.ini` and `ini/CodePage.ini` are optional native configuration inputs. They are
-absent from the clean retail 5517 root and therefore are not copied into the curated runtime set.
-Their managed loaders preserve the verified missing-file defaults.
+`ini/FontSetting.ini` and `ini/CodePage.ini` are optional retail configuration files. A clean retail
+5517 root does not have them, so they are not copied into the curated runtime set. When the files
+are missing, their managed loaders fall back to the same defaults as the retail client.
 
-The curated set contains exactly the closure resolved by `ClientContentClosure`. WDF archives and
-`ini/package.ini` are import-time sources/configuration and are not shipped.
+The curated set contains the closure resolved by `ClientContentClosure` and nothing else. WDF
+archives and `ini/package.ini` are used only during import and are not shipped.
 
 ## HUD Dependency Chain
 
@@ -146,10 +147,10 @@ ani/Control.ani
     └── SkillBtnL.dds
 ```
 
-The experience bar is rendered from native solid-rectangle behavior and therefore adds no retail
-image dependency.
+The experience bar is drawn with solid rectangles, as in the retail client, so it needs no retail
+image.
 
-Verified retail provenance:
+Retail source of each file:
 
 ```text
 Control.Ani         → loose
@@ -189,23 +190,23 @@ Main3_MissionBtn frames  → loose
 Main3_OrganiseBtn frames → loose
 ```
 
-The action-strip provenance assertions are independent conformance requirements.
+The conformance tests check the action-strip sources as a separate requirement.
 
-For the four main-HUD check controls, production import remains `LooseThenPackage`. Rendering
-conformance independently requires each of the eight verified frame paths to resolve from exactly
-one retail source and verifies its exact encoded SHA-256 before reference decoding.
+The four main-HUD check controls are imported with `LooseThenPackage`. Rendering conformance
+separately requires each of their eight frame paths to resolve from exactly one retail source, and
+checks each file's encoded SHA-256 before the reference decode.
 
-The importer materializes selected bytes into the curated payload. Package provenance is not
-preserved after import.
+The importer writes the selected bytes into the curated payload. Whether a file came from a package
+is not recorded after import.
 
-All ANI-declared HUD frames in the closure are required, including repeated paths and frames not
-currently uploaded to the GPU.
+Every ANI-declared HUD frame in the closure is required, including repeated paths and frames that
+are not uploaded to the GPU today.
 
-### Quickbar Dependency Expansion
+### Quickbar Dependencies
 
 GFX-UI-006 adds fixed and parametric quickbar dependencies.
 
-Fixed `Control.ani` requirements include:
+Fixed `Control.ani` dependencies include:
 
 ```text
 Compose_CoverPic
@@ -217,14 +218,14 @@ Main3_Num0Pic .. Main3_Num9Pic
 Equip_Num0 .. Equip_Num9
 ```
 
-The importer also follows verified parametric `Control.ani` families:
+The importer also follows these parametric `Control.ani` families:
 
 ```text
 ButtonA<decimal>
 Action_Dance<decimal>Btn
 ```
 
-Additional catalogs are runtime requirements:
+These catalogs are also required at runtime:
 
 ```text
 ani/Magic.ani
@@ -246,7 +247,7 @@ ItemDefault
 Item<decimal>
 ```
 
-From `effect.ani`, the verified glow families are:
+From `effect.ani`, the closure includes these glow families:
 
 ```text
 FireLight
@@ -256,11 +257,11 @@ RoyalBlueLight
 YellowLight
 ```
 
-`data/main3/skill38.dds` is a verified missing retail frame and is explicitly excluded rather than
-turning the known retail defect into an import failure.
+`data/main3/skill38.dds` is a frame the retail install is known to be missing. It is excluded so
+that this retail defect does not make the import fail.
 
-This parametric dependency expansion is why the exact closure is tracked in the manifest instead of
-being duplicated as a Markdown path table.
+Because of this parametric expansion, the full closure is tracked in the manifest instead of a path
+table in this document.
 
 ### Selected-Skill Dependencies
 
@@ -279,31 +280,31 @@ ini/Font.ini
 ini/info.ini [SelectMagicNum]
 ```
 
-`FontSetting.ini` remains an optional loose override and is absent from clean retail 5517.
+`FontSetting.ini` is still an optional loose override and is not present in a clean retail 5517
+install.
 
-The selected-skill DDS frames use the same `LooseThenPackage` resolution and deterministic
-materialization rules as the other ANI-backed HUD assets.
+The selected-skill DDS frames are resolved with `LooseThenPackage` and written to the payload by the
+same reproducible rules as the other ANI-backed HUD assets.
 
 ### Category-8 Status-Hint Dependencies
 
-GFX-UI-008 adds `Dialog21` frame 0 (`data/main/MsgDlg.dds`) together with
-`ini/StrRes.ini`, `ini/ProgressXp.rgn`, `ini/ProgressMp.rgn`, and
-`ini/ProgressHp.rgn`. The backdrop resolves from `data.wdf`; the strings and
-regions are loose retail files. These five dependencies contribute 128,677 bytes.
-The manifest remains the authoritative source of exact runtime paths and hashes.
+GFX-UI-008 adds `Dialog21` frame 0 (`data/main/MsgDlg.dds`), `ini/StrRes.ini`, `ini/ProgressXp.rgn`,
+`ini/ProgressMp.rgn`, and `ini/ProgressHp.rgn`. The backdrop comes from `data.wdf`. The strings and
+regions are loose retail files. Together these five files add 128,677 bytes. The manifest is the
+source of truth for runtime paths and hashes.
 
 ### Category-9 Magic-Hint Dependencies
 
 Category-9 Magic hints load `ini/MagicType.dat`, `ini/MagicEffect.ini`, and
-`ini/SubProfessionInfo.ini` through `LooseOnly`. The configured keyed client-string
-resource resolves to `ini/Cn_Res.ini` for verified retail 5517; `ini/StrRes.ini`
-and the `Dialog21` backdrop are shared with category-8 status hints.
+`ini/SubProfessionInfo.ini` with `LooseOnly`. In retail 5517, the configured keyed client-string
+resource resolves to `ini/Cn_Res.ini`. `ini/StrRes.ini` and the `Dialog21` backdrop are shared with
+the category-8 status hints.
 
-The renderer supports learned-magic details and zero-magic special branches, native
-encoded-byte wrapping, line coloring, and the 12-pixel magic font. It consumes a
-runtime snapshot rather than inventing live Gameplay producers. Independent real-driver
-conformance covers 800×600 and 1024×768. Other hint categories and control tooltips
-are not implemented.
+The renderer handles learned-magic details and the special zero-magic cases. It wraps text on
+encoded bytes as the retail client does, colors each line, and uses the 12-pixel magic font. It
+reads a runtime snapshot, because there is no live Gameplay producer yet. Real-driver conformance
+against independent references covers 800x600 and 1024x768. Other hint categories and control
+tooltips are not implemented.
 
 ## Content Resolution
 
@@ -317,13 +318,13 @@ PackageOnly
 LooseThenPackage
 ```
 
-Consumers declare lookup mode explicitly.
+Each consumer declares its lookup mode.
 
 `ClientContentClosure` defines the shipped dependency set.
 
 ## Import
 
-`import-retail-5517`:
+`import-retail-5517` runs these steps:
 
 ```text
 validate retail version
@@ -338,19 +339,19 @@ write deterministic manifest
 publish only after complete success
 ```
 
-The importer opens `ini/package.ini` from the authorized retail source to register WDF archives
-before resolving package-backed requirements. That file is import configuration, not a runtime
-dependency, and is not copied into the curated content set.
+Before it resolves package-backed files, the importer reads `ini/package.ini` from the authorized
+retail source to register the WDF archives. That file is import configuration only. It is not a
+runtime dependency and is not copied into the curated content set.
 
 The importer does not bulk-copy retail directories or archives.
 
-Failed imports leave no published partial set.
+A failed import leaves no partial set published.
 
 ## WDF
 
-Retail `ini/package.ini` defines package registration for import-time resolution.
+Retail `ini/package.ini` lists the packages to register for import-time lookup.
 
-Verified compatibility rules:
+Package lookup follows the retail rules:
 
 ```text
 normalize declaration
@@ -362,7 +363,7 @@ hash full virtual path for entry UID
 read bounded WDF entry
 ```
 
-Import validation additionally requires:
+Import validation also requires:
 
 ```text
 bounded archive/index arithmetic
@@ -374,26 +375,26 @@ payload contained before index
 no host-path links or reparse traversal
 ```
 
-Missing or unusable declared packages remain non-fatal registrations where required by verified
-behavior.
+Where the retail client tolerates a declared package that is missing or unusable, registration does
+not fail either.
 
-The curated runtime set contains the resolved asset bytes as loose files and therefore does not
-require `ini/package.ini` or the source WDF archives.
+The curated runtime set stores the resolved assets as loose files, so it needs neither
+`ini/package.ini` nor the source WDF archives.
 
 ## ANI and Images
 
-ANI files are compatibility data.
+ANI files are read as retail-format compatibility data.
 
-Current production image support required by the closure:
+Image formats the closure needs (both supported in production):
 
 ```text
 TGA
 DDS / single-level DXT3
 ```
 
-Decoders validate format structure before allocation and reject unsupported variants.
+Decoders check the format structure before allocating memory and reject unsupported variants.
 
-Current HUD ANI consumers include:
+Current HUD ANI consumers:
 
 ```text
 Progress40
@@ -447,18 +448,17 @@ Magic0
 Image0
 ```
 
-The parametric forms above describe section-selection contracts, not synthetic ANI names generated at
-runtime. Only sections actually present in the verified retail catalogs contribute frames to the
-closure.
+The parametric forms above are patterns for selecting sections. The runtime does not generate ANI
+names from them. Only sections that exist in the retail catalogs add frames to the closure.
 
-The known missing retail `data/main3/skill38.dds` frame is excluded explicitly from quickbar closure
-materialization.
+The known missing retail frame `data/main3/skill38.dds` is left out when the quickbar closure is
+materialized.
 
 ## Excluded Content
 
-Compatibility evidence does not enter the runtime closure unless a production consumer requires it.
+Reference material stays out of the runtime closure unless a production consumer needs it.
 
-`Server.dat` remains tooling-only evidence:
+`Server.dat` is used only by tooling:
 
 ```text
 tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
@@ -485,7 +485,7 @@ manifest
 payload
 ```
 
-It verifies:
+It checks:
 
 ```text
 required paths
@@ -498,8 +498,8 @@ SHA-256
 manifest schema
 ```
 
-Rendering conformance separately verifies exact retail identities and provenance for the implemented
-HUD consumers.
+Rendering conformance separately checks the identities and sources of the retail files used by the
+implemented HUD consumers.
 
 Current graphics conformance covers:
 
@@ -526,7 +526,9 @@ independent DXT3 reference decoding
 exact framebuffer comparison
 ```
 
-## Expansion Rule
+## Adding Content
+
+To add retail content:
 
 ```text
 verify native consumer
@@ -541,7 +543,7 @@ verify native consumer
 → run release gate
 ```
 
-No speculative bulk imports.
+Content is never bulk-imported ahead of a consumer that needs it.
 
 ## Release Gate
 
@@ -562,4 +564,4 @@ dotnet run \
 git diff --check
 ```
 
-Graphics slices also require real-driver conformance against an authorized retail 5517 root.
+Graphics changes also need a real-driver conformance run against an authorized retail 5517 root.
