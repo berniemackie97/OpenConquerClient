@@ -381,6 +381,160 @@ public sealed class GameServerHandshakeSessionTests
     }
 
     [Fact]
+    public async Task CharacterInfoReceiptIsOneShotAndLeavesTheNextSecuredFrameIntact()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = SecuredGamePeerAsync(games, PeerResponse.AcceptedCharacterInfo, token);
+
+        await using LoginAccountExchangeResult account =
+            await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game =
+            await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
+            TimeSpan.FromSeconds(5), token);
+        Assert.Equal(GameLoginControlKind.ExistingCharacter,
+            (await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
+
+        GameCharacterInfo1006 character =
+            await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
+
+        Assert.Equal(0x11223344u, character.EntityId);
+        Assert.Equal((short)-7, character.PkPoints);
+        Assert.Equal("416461", Convert.ToHexString(character.PlayerNameBytes.Span));
+        Assert.Equal("4C696E", Convert.ToHexString(character.SpouseNameBytes.Span));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token));
+        using GameSecuredInboundFrame next = Assert.IsType<GameSecuredInboundFrame>(
+            await game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+        Assert.Equal(1009, next.PacketType);
+        Assert.Equal("0800F10355667788", Convert.ToHexString(next.Packet.Span));
+
+        // No client action74 or other gameplay packet was emitted; the local
+        // peer will observe only closure after the explicit disposal below.
+        await game.DisposeAsync();
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task RawReadCannotBeRelabeledAsCharacterInfoAfterPrelude()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = SecuredGamePeerAsync(games, PeerResponse.AcceptedCharacterInfo, token);
+
+        await using LoginAccountExchangeResult account =
+            await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game =
+            await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
+            TimeSpan.FromSeconds(5), token);
+        _ = await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token);
+        _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
+
+        using GameSecuredInboundFrame raw = Assert.IsType<GameSecuredInboundFrame>(
+            await game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+        Assert.Equal(1006, raw.PacketType);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token));
+
+        await game.DisposeAsync();
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public Task WrongCharacterInfoTypeIsTerminal() =>
+        VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedWrongCharacterInfo);
+
+    [Fact]
+    public Task MissingCharacterInfoEofIsTerminal() =>
+        VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedNoCharacterInfo);
+
+    [Fact]
+    public Task SilentCharacterInfoTimeoutIsTerminal() =>
+        VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedSilentCharacterInfo);
+
+    private static async Task VerifyFailedCharacterInfoAsync(PeerResponse response)
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = SecuredGamePeerAsync(games, response, token);
+
+        await using LoginAccountExchangeResult account =
+            await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game =
+            await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
+            TimeSpan.FromSeconds(5), token);
+        _ = await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token);
+        _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
+
+        if (response == PeerResponse.AcceptedWrongCharacterInfo)
+        {
+            await Assert.ThrowsAsync<InvalidDataException>(() =>
+                game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token));
+        }
+        else if (response == PeerResponse.AcceptedNoCharacterInfo)
+        {
+            await Assert.ThrowsAsync<EndOfStreamException>(() =>
+                game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token));
+        }
+        else
+        {
+            await Assert.ThrowsAsync<TimeoutException>(() =>
+                game.ReadCharacterInfoAsync(TimeSpan.FromMilliseconds(150), token));
+        }
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task TypedCharacterInfoCannotStartBeforePrelude()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = SecuredGamePeerAsync(games, PeerResponse.AcceptedCharacterInfo, token);
+
+        await using LoginAccountExchangeResult account =
+            await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game =
+            await GameServerHandshakeSession.OpenAsync(account, s_timeouts, token);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token));
+        await game.SendLoginProofAsync(0x6E45, new byte[] { 0, 0x11, 0x22, 0xAA, 0xBB, 0xCC },
+            TimeSpan.FromSeconds(5), token);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token));
+        _ = await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token));
+
+        // Invalid-phase calls did not steal the handshake/prelude authority.
+        _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
+        Assert.Equal(0x11223344u,
+            (await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token)).EntityId);
+
+        await game.DisposeAsync();
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
     public async Task RawReadAfterAcceptedControlPreventsRetroactivePreludeOwnership()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
@@ -616,6 +770,10 @@ public sealed class GameServerHandshakeSessionTests
         AcceptedThenHistory,
         AcceptedFullPrelude,
         AcceptedWrongPreludeOrder,
+        AcceptedCharacterInfo,
+        AcceptedWrongCharacterInfo,
+        AcceptedNoCharacterInfo,
+        AcceptedSilentCharacterInfo,
         NewRole,
         LoginRefused,
         WrongLoginChannel,
@@ -701,6 +859,10 @@ public sealed class GameServerHandshakeSessionTests
                 case PeerResponse.AcceptedThenHistory:
                 case PeerResponse.AcceptedFullPrelude:
                 case PeerResponse.AcceptedWrongPreludeOrder:
+                case PeerResponse.AcceptedCharacterInfo:
+                case PeerResponse.AcceptedWrongCharacterInfo:
+                case PeerResponse.AcceptedNoCharacterInfo:
+                case PeerResponse.AcceptedSilentCharacterInfo:
                 case PeerResponse.NewRole:
                 case PeerResponse.LoginRefused:
                 case PeerResponse.WrongLoginChannel:
@@ -730,7 +892,9 @@ public sealed class GameServerHandshakeSessionTests
                     server.EncryptOutbound(firstWire, firstWire);
 
                     if (response is PeerResponse.AcceptedThenHistory or
-                        PeerResponse.AcceptedFullPrelude or PeerResponse.AcceptedWrongPreludeOrder)
+                        PeerResponse.AcceptedFullPrelude or PeerResponse.AcceptedWrongPreludeOrder or
+                        PeerResponse.AcceptedCharacterInfo or PeerResponse.AcceptedWrongCharacterInfo or
+                        PeerResponse.AcceptedNoCharacterInfo or PeerResponse.AcceptedSilentCharacterInfo)
                     {
                         // 2078, 2079 and the type-1009 continuation are independently
                         // composed wire fixtures, not retail-server captures.
@@ -758,11 +922,41 @@ public sealed class GameServerHandshakeSessionTests
                             else
                             {
                                 server.EncryptOutbound(stateWire, stateWire);
-                                server.EncryptOutbound(followupWire, followupWire);
-                                joined = [.. firstWire, .. historyWire, .. stateWire, .. followupWire];
+                                if (response is PeerResponse.AcceptedCharacterInfo or
+                                    PeerResponse.AcceptedWrongCharacterInfo)
+                                {
+                                    byte[] characterWire = CreateCharacterInfoWire(
+                                        invalidType: response == PeerResponse.AcceptedWrongCharacterInfo);
+                                    server.EncryptOutbound(characterWire, characterWire);
+
+                                    if (response == PeerResponse.AcceptedCharacterInfo)
+                                    {
+                                        server.EncryptOutbound(followupWire, followupWire);
+                                        joined = [.. firstWire, .. historyWire, .. stateWire,
+                                            .. characterWire, .. followupWire];
+                                    }
+                                    else
+                                    {
+                                        joined = [.. firstWire, .. historyWire, .. stateWire, .. characterWire];
+                                    }
+                                }
+                                else if (response is PeerResponse.AcceptedNoCharacterInfo or
+                                    PeerResponse.AcceptedSilentCharacterInfo)
+                                {
+                                    joined = [.. firstWire, .. historyWire, .. stateWire];
+                                }
+                                else
+                                {
+                                    server.EncryptOutbound(followupWire, followupWire);
+                                    joined = [.. firstWire, .. historyWire, .. stateWire, .. followupWire];
+                                }
                             }
                         }
                         await stream.WriteAsync(joined, token);
+                        if (response == PeerResponse.AcceptedNoCharacterInfo)
+                        {
+                            return;
+                        }
                     }
                     else
                     {
@@ -785,6 +979,25 @@ public sealed class GameServerHandshakeSessionTests
             CryptographicOperations.ZeroMemory(minimal);
             CryptographicOperations.ZeroMemory(key);
         }
+    }
+
+    private static byte[] CreateCharacterInfoWire(bool invalidType)
+    {
+        // Independently constructed current companion-server 1006 layout:
+        // 110 fixed bytes, three string-list entries, eight-byte server trailer.
+        byte[] wire = new byte[120 + 8];
+        BinaryPrimitives.WriteUInt16LittleEndian(wire, 120);
+        BinaryPrimitives.WriteUInt16LittleEndian(wire.AsSpan(2), invalidType ? (ushort)1009 : (ushort)1006);
+        BinaryPrimitives.WriteUInt32LittleEndian(wire.AsSpan(4), 0x11223344);
+        BinaryPrimitives.WriteInt16LittleEndian(wire.AsSpan(66), -7);
+        wire[110] = 3;
+        wire[111] = 3;
+        "Ada"u8.CopyTo(wire.AsSpan(112));
+        wire[115] = 0;
+        wire[116] = 3;
+        "Lin"u8.CopyTo(wire.AsSpan(117));
+        "TQServer"u8.CopyTo(wire.AsSpan(120));
+        return wire;
     }
 
     private static async Task<LoginAccountExchangeResult> AuthenticatedAccountAsync(
