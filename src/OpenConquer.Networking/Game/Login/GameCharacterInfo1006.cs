@@ -17,83 +17,239 @@ internal sealed record GameCharacterInfo1006
     private const int NativeNameBufferCapacity = MaximumStringLength + 1;
 
     // Native plaintext wire offset +4.
-    internal uint EntityId { get; init; }
+    internal uint EntityId
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +8.
-    internal ushort TransformLookSourceId { get; init; }
+    internal ushort TransformLookSourceId
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +10.
-    internal uint PackedAppearance { get; init; }
+    internal uint PackedAppearance
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +14.
-    internal ushort HairComposite { get; init; }
+    internal ushort HairComposite
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +16.
-    internal uint Silver { get; init; }
+    internal uint Silver
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +20.
-    internal uint ConquerPoints { get; init; }
+    internal uint ConquerPoints
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +24.
-    internal ulong Experience { get; init; }
+    internal ulong Experience
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +32.
-    internal uint LegacyDeed { get; init; }
+    internal uint LegacyDeed
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +36.
-    internal uint LegacyMedal { get; init; }
+    internal uint LegacyMedal
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +40.
-    internal uint LegacyMedalSelect { get; init; }
+    internal uint LegacyMedalSelect
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +44.
-    internal uint VirtuePoints { get; init; }
+    internal uint VirtuePoints
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +48.
-    internal uint EncodedPreRebirthLevel { get; init; }
+    internal uint EncodedPreRebirthLevel
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +52.
-    internal ushort Strength { get; init; }
+    internal ushort Strength
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +54.
-    internal ushort Agility { get; init; }
+    internal ushort Agility
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +56.
-    internal ushort Vitality { get; init; }
+    internal ushort Vitality
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +58.
-    internal ushort Spirit { get; init; }
+    internal ushort Spirit
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +60.
-    internal ushort UnspentAttributePoints { get; init; }
+    internal ushort UnspentAttributePoints
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +62.
-    internal ushort CurrentLife { get; init; }
+    internal ushort CurrentLife
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +64.
-    internal ushort CurrentMana { get; init; }
+    internal ushort CurrentMana
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +66.
-    internal short PkPoints { get; init; }
+    internal short PkPoints
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +68.
-    internal byte Level { get; init; }
+    internal byte Level
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +69.
-    internal byte CurrentProfession { get; init; }
+    internal byte CurrentProfession
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +70.
-    internal byte FirstProfession { get; init; }
+    internal byte FirstProfession
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +71.
-    internal byte PreviousProfession { get; init; }
+    internal byte PreviousProfession
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +72.
-    internal byte LegacyNobility { get; init; }
+    internal byte LegacyNobility
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +73.
-    internal byte RebirthCount { get; init; }
+    internal byte RebirthCount
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +74.
-    internal byte LegacyAutoAllot { get; init; }
+    internal byte LegacyAutoAllot
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +75.
-    internal uint AuraTierScore { get; init; }
+    internal uint AuraTierScore
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +79.
-    internal ushort CoachPointsHundredths { get; init; }
+    internal ushort CoachPointsHundredths
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +81.
-    internal ushort CoachExperienceShareCount { get; init; }
+    internal ushort CoachExperienceShareCount
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +85.
-    internal ushort CoachSessionState { get; init; }
+    internal ushort CoachSessionState
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +87.
-    internal uint FlowerStatusTier { get; init; }
+    internal uint FlowerStatusTier
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +91.
-    internal ushort TitleId { get; init; }
+    internal ushort TitleId
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +93.
-    internal uint BoundConquerPoints { get; init; }
+    internal uint BoundConquerPoints
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +97.
-    internal byte ActiveSubProfessionId { get; init; }
+    internal byte ActiveSubProfessionId
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +98.
-    internal ulong PackedSubProfessionPhases { get; init; }
+    internal ulong PackedSubProfessionPhases
+    {
+        get;
+        init;
+    }
     // Native plaintext wire offset +106.
-    internal uint RacePoints { get; init; }
+    internal uint RacePoints
+    {
+        get;
+        init;
+    }
     // Raw owned bytes. Native setters retain C-string prefixes and defer
     // any code-page interpretation until a separate rendering consumer.
-    internal ReadOnlyMemory<byte> PlayerNameBytes { get; init; }
-    internal ReadOnlyMemory<byte> SpouseNameBytes { get; init; }
+    internal ReadOnlyMemory<byte> PlayerNameBytes
+    {
+        get;
+        init;
+    }
+    internal ReadOnlyMemory<byte> SpouseNameBytes
+    {
+        get;
+        init;
+    }
 
     internal static GameCharacterInfo1006 Read(ReadOnlySpan<byte> packet)
     {
