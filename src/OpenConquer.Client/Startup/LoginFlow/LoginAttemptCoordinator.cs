@@ -172,10 +172,10 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
                 return new(LoginAttemptStatus.AccountRefused, null);
             }
 
-            // NetBIOS unavailable: use its documented all-zero six-byte fallback.
-            // res.dat absent: native resource version defaults to zero.
-            byte[] absentMac = new byte[6];
-            await account.CompletePostAuthenticationAsync(absentMac,
+            // Native NetBIOS failure: account packet 1100 has an empty
+            // 12-byte ASCII MAC text field; game proof 1052 has six raw zeros.
+            // Their serializers independently zero-fill an absent address.
+            await account.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty,
                 ReadResourceVersion(_contentRoot), s_timeout, cancellationToken).ConfigureAwait(false);
 
             Publish(LoginAttemptStatus.ConnectingGame);
@@ -187,7 +187,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
                     GameServerHandshakeTimeouts.Default, cancellationToken).ConfigureAwait(false);
 
                 // The verified English dataset emits the little-endian 'En' tag.
-                await game.SendLoginProofAsync(0x6E45, absentMac,
+                await game.SendLoginProofAsync(0x6E45, ReadOnlyMemory<byte>.Empty,
                     s_timeout, cancellationToken).ConfigureAwait(false);
 
                 Publish(LoginAttemptStatus.ReadingCharacter);
