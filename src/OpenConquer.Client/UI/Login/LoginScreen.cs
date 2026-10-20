@@ -41,6 +41,9 @@ internal sealed class LoginScreen : IDisposable
     /// <summary>Raised when Exit is clicked.</summary>
     public event Action? ExitRequested;
 
+    /// <summary>The native Enter activation requests login; the host owns all network work.</summary>
+    internal event Action? LoginRequested;
+
     public LoginStageLayout Layout
     {
         get;
@@ -245,6 +248,15 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
+        if (key.Key == DesktopKey.Enter && !key.IsRepeat &&
+            (key.Modifiers & (DesktopKeyModifiers.Alt | DesktopKeyModifiers.Control |
+                DesktopKeyModifiers.Super)) == 0 &&
+            Credentials.Focus != LoginCredentialFocus.None)
+        {
+            LoginRequested?.Invoke();
+            return;
+        }
+
         int revision = Credentials.EditRevision;
         if (!TryHandleClipboard(key, readClipboard, writeClipboard))
         {
@@ -330,7 +342,7 @@ internal sealed class LoginScreen : IDisposable
                 ExitRequested?.Invoke();
                 break;
             case LoginButton.Enter:
-                // Enter is the retail button; submitting credentials to an account server is not implemented.
+                LoginRequested?.Invoke();
                 break;
             default:
                 // Register, Purchase and Help open publisher-era URLs, which stay disabled.

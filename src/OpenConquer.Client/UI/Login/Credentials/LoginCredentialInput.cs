@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Platform.Windowing.Desktop;
@@ -231,6 +232,27 @@ internal sealed class LoginCredentialInput : IDisposable
         SetFocus(LoginCredentialFocus.Account);
         MoveTo(_accountLength, extend: false);
         _dragging = false;
+        return true;
+    }
+
+    /// <summary>
+    /// Takes independent, short-lived credential buffers for one login attempt.
+    /// The caller must zero both buffers. Taking the password immediately erases
+    /// the editor copy so no concurrent render/input path can retain a secret.
+    /// </summary>
+    internal bool TryTakeLoginCredentials(out byte[] accountName, out char[] password)
+    {
+        Synchronize();
+        accountName = [];
+        password = [];
+        if (_accountLength == 0 || _passwordLength is < 1 or > 14)
+        {
+            return false;
+        }
+
+        accountName = Encoding.ASCII.GetBytes(_account.AsSpan(0, _accountLength));
+        password = _password.AsSpan(0, _passwordLength).ToArray();
+        ClearPassword();
         return true;
     }
 
