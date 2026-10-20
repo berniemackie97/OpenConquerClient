@@ -90,7 +90,12 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
                 }
                 catch (OperationCanceledException) when (!operation.IsCancellationRequested)
                 {
-                    throw new TimeoutException("GameServer loopback connection timed out.");
+                    throw new LoginConnectFailureException(LoginConnectTarget.Game, true,
+                        new TimeoutException("GameServer loopback connection timed out."));
+                }
+                catch (SocketException exception)
+                {
+                    throw new LoginConnectFailureException(LoginConnectTarget.Game, false, exception);
                 }
             }
 

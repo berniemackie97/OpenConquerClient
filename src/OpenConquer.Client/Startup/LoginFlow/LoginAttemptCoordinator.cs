@@ -29,7 +29,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private long _revision;
     private long _lastAttemptTimestamp;
     private bool _hasAttempted;
-    private int _status;
+    private LoginAttemptFeedback _feedback = new(LoginAttemptStatus.Idle);
     private bool _disposed;
 
     internal LoginAttemptCoordinator(string contentRoot, TimeProvider? clock = null)
@@ -39,7 +39,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         _clock = clock ?? TimeProvider.System;
     }
 
-    internal LoginAttemptStatus Status => (LoginAttemptStatus)Volatile.Read(ref _status);
+    internal LoginAttemptFeedback Feedback => Volatile.Read(ref _feedback);
+    internal LoginAttemptStatus Status => Feedback.Status;
 
     internal bool TryStart(LoginScreen screen, SignedLoginCatalog? catalog)
     {
@@ -51,6 +52,15 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
 
         _revocation = null;
+        screen.Credentials.Synchronize();
+        // Flash rejects empty fields before emitting CMD_ENTERGAME and consuming its retry guard.
+        if (screen.Credentials.AccountLength == 0 || screen.Credentials.PasswordLength == 0)
+        {
+            Publish(LoginAttemptStatus.EnterCredentials, screen.Credentials.AccountLength == 0
+                ? LoginFailure.EmptyAccount() : LoginFailure.EmptyPassword());
+            return false;
+        }
+
         LoginServerSelection selected = screen.Selection;
         if (catalog is null || !catalog.IsCurrent(_clock.GetUtcNow()) ||
             !ReferenceEquals(selected.Catalog, catalog.View) ||
@@ -59,7 +69,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
             !catalog.TryGetAccountEndpoint(region, server, out LoginAccountEndpoint? endpoint) ||
             endpoint is null || endpoint.Host != "127.0.0.1")
         {
-            Publish(LoginAttemptStatus.SelectRealm);
+            Publish(LoginAttemptStatus.SelectRealm, LoginFailure.Resource(10012));
             return false;
         }
 
@@ -69,7 +79,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         if (_hasAttempted && _clock.GetElapsedTime(_lastAttemptTimestamp, now) <
             TimeSpan.FromSeconds(10))
         {
-            Publish(LoginAttemptStatus.RetryLater);
+            Publish(LoginAttemptStatus.RetryLater, LoginFailure.Resource(49995));
             return false;
         }
 
@@ -77,7 +87,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         _lastAttemptTimestamp = now;
         if (!screen.Credentials.TryTakeLoginCredentials(out byte[] name, out char[] password))
         {
-            Publish(LoginAttemptStatus.EnterCredentials);
+            Publish(LoginAttemptStatus.EnterCredentials, LoginFailure.Resource(11400));
             return false;
         }
 
@@ -133,7 +143,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         else
         {
             _acceptedGame = result.Game;
-            Publish(result.Status);
+            Publish(result.Status, result.Failure);
         }
     }
 
@@ -192,7 +202,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
             CryptographicOperations.ZeroMemory(name);
             if (!account.IsSuccess)
             {
-                return new(LoginAttemptStatus.AccountRefused, null);
+                return new(LoginAttemptStatus.AccountRefused, null, LoginFailure.Account(account.FailureCode));
             }
 
             // Native NetBIOS failure: account packet 1100 has an empty
@@ -218,7 +228,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
                     await game.ReadLoginControlAsync(s_timeout, cancellationToken).ConfigureAwait(false);
                 if (control.Kind == GameLoginControlKind.Refused)
                 {
-                    return new(LoginAttemptStatus.GameRefused, null);
+                    return new(LoginAttemptStatus.GameRefused, null, LoginFailure.Game(control.RefusalBytes.Span));
                 }
 
                 if (control.Kind == GameLoginControlKind.CharacterCreation)
@@ -247,14 +257,20 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         {
             return new(LoginAttemptStatus.Cancelled, null);
         }
+        catch (LoginConnectFailureException exception)
+        {
+            return new(exception.TimedOut ? LoginAttemptStatus.Timeout : LoginAttemptStatus.Unavailable,
+                null, LoginFailure.Resource(exception.Target == LoginConnectTarget.Account ? 10397u : 100100u));
+        }
         catch (TimeoutException)
         {
-            return new(LoginAttemptStatus.Timeout, null);
+            // Managed read deadlines close the established socket. Native socket loss uses StrRes10249.
+            return new(LoginAttemptStatus.Timeout, null, LoginFailure.Resource(10249));
         }
         catch (Exception)
         {
             // Exception messages from untrusted peers must never reach the UI.
-            return new(LoginAttemptStatus.Unavailable, null);
+            return new(LoginAttemptStatus.Unavailable, null, LoginFailure.Resource(10249));
         }
         finally
         {
@@ -304,7 +320,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
     }
 
-    private void Publish(LoginAttemptStatus value) => Volatile.Write(ref _status, (int)value);
+    private void Publish(LoginAttemptStatus value, LoginFailure? failure = null) =>
+        Volatile.Write(ref _feedback, new LoginAttemptFeedback(value, failure));
 
-    private sealed record AttemptResult(LoginAttemptStatus Status, GameServerHandshakeSession? Game);
+    private sealed record AttemptResult(LoginAttemptStatus Status, GameServerHandshakeSession? Game, LoginFailure? Failure = null);
 }

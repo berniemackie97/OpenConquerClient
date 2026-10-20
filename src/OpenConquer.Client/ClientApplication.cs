@@ -40,6 +40,7 @@ internal sealed class ClientApplication : IDisposable
     private LoginScreen? _login;
     private LoginCatalogBinding? _catalog;
     private LoginAttemptCoordinator? _loginFlow;
+    private LoginErrorMessages? _loginErrors;
     private LoginAudioPlayer? _audio;
     private ResourceOwnership? _graphics;
     private OpenGLRenderer? _renderer;
@@ -159,6 +160,7 @@ internal sealed class ClientApplication : IDisposable
             ClientVersionLabel.Load(contentSource), cue => _audio?.Play(cue));
         _login.ExitRequested += () => _window?.RequestClose();
         _loginFlow = new LoginAttemptCoordinator(_contentRootPath);
+        _loginErrors = LoginErrorMessages.Load(contentSource, LoginErrorEncoding.ForCurrentHost());
         _login.LoginRequested += OnLoginRequested;
 
         IReadOnlyList<RgbaImage> cursorFrames = LoginCursorArtwork.Load();
@@ -220,7 +222,10 @@ internal sealed class ClientApplication : IDisposable
         DateTimeOffset now = DateTimeOffset.UtcNow;
         _catalog?.Update(login, now);
         _loginFlow?.Update(_catalog?.CurrentCatalog(now));
-        login.AttemptStatus = _loginFlow?.Status ?? LoginAttemptStatus.Idle;
+        if (_loginFlow is { } flow && _loginErrors is { } messages)
+        {
+            login.ApplyFeedback(flow.Feedback, messages);
+        }
         login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
         ContinueCredentialDrag();
 
@@ -253,7 +258,7 @@ internal sealed class ClientApplication : IDisposable
         if (_login is { } login && _loginFlow is { } flow)
         {
             flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
-            login.AttemptStatus = flow.Status;
+            login.ApplyFeedback(flow.Feedback, _loginErrors!);
         }
     }
 

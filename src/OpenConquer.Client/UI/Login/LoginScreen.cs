@@ -21,6 +21,7 @@ internal sealed class LoginScreen : IDisposable
     private readonly Action<LoginAudioCue> _playSound;
     private readonly LoginAudioFeedback _sounds;
     private bool _disposed;
+    private LoginAttemptFeedback? _feedback;
 
     public LoginScreen(LoginStageLayout layout, LoginAccountHistory history, string versionLabel, Action<LoginAudioCue> playSound)
     {
@@ -36,6 +37,8 @@ internal sealed class LoginScreen : IDisposable
         AccountLayout = new LoginAccountLayout(layout);
         Account = new LoginAccountControls(AccountLayout, history);
         Buttons = LoginControlLayout.CreateButtons(layout);
+        Error = new LoginErrorDialog(layout);
+        Quit = new LoginErrorDialog(layout, quit: true);
         _sounds = new LoginAudioFeedback(layout);
     }
 
@@ -46,6 +49,41 @@ internal sealed class LoginScreen : IDisposable
     {
         get;
         set;
+    }
+
+    internal LoginErrorDialog Error
+    {
+        get;
+    }
+    internal LoginErrorDialog Quit
+    {
+        get;
+    }
+    private LoginErrorDialog? ActiveDialog => Quit.IsOpen ? Quit : Error.IsOpen ? Error : null;
+    internal bool IsLoginPending => AttemptStatus is LoginAttemptStatus.ConnectingAccount or
+        LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter;
+
+    internal void ApplyFeedback(LoginAttemptFeedback feedback, LoginErrorMessages messages)
+    {
+        ArgumentNullException.ThrowIfNull(feedback);
+        ArgumentNullException.ThrowIfNull(messages);
+        if (ReferenceEquals(_feedback, feedback))
+        {
+            return;
+        }
+
+        _feedback = feedback;
+        AttemptStatus = feedback.Status;
+        if (feedback.Failure is { OpensErrorMovie: true } failure)
+        {
+            FocusLost();
+            Error.Show(messages.Format(failure));
+            Play(LoginAudioCue.Error);
+        }
+        else if (IsLoginPending)
+        {
+            FocusLost();
+        }
     }
 
     /// <summary>The native Enter activation requests login; the host owns all network work.</summary>
@@ -111,7 +149,7 @@ internal sealed class LoginScreen : IDisposable
     /// <summary>logo.swf loads on root frame 3, after the opening; the logo timeline counts from there.</summary>
     public long LogoFrame => Math.Max(0, Clock.Frame - LoginOpeningArtwork.FrameCount);
 
-    private bool PointerIsFree => !IsOpeningPlaying && !Account.CapturesPointer;
+    private bool PointerIsFree => !IsOpeningPlaying && ActiveDialog is null && !IsLoginPending && !Account.CapturesPointer;
 
     /// <summary>Advances every login timeline by one rendered frame.</summary>
     public void Advance(TimeSpan elapsed)
@@ -121,6 +159,11 @@ internal sealed class LoginScreen : IDisposable
         int frames = Clock.Advance(elapsed);
         Credentials.Synchronize();
         Account.Advance(Clock.Step, frames);
+        Error.Advance(frames);
+        if (Quit.Advance(frames))
+        {
+            ExitRequested?.Invoke();
+        }
         SelectionAnimation.Advance(frames, Selection, interactive: PointerIsFree);
     }
 
@@ -147,6 +190,17 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
+        if (ActiveDialog is { } dialog)
+        {
+            Play(dialog.PointerMoved(mapped, x, y) is not null ? LoginAudioCue.ButtonHover : null);
+            return;
+        }
+
+        if (IsLoginPending)
+        {
+            return;
+        }
+
         SelectionAnimation.PointerMoved(mapped, x, y);
         bool dialogButtonEntered = Account.PointerMoved(mapped, x, y) is not null;
         if (Account.CapturesPointer)
@@ -165,6 +219,22 @@ internal sealed class LoginScreen : IDisposable
     public void PointerPressed(bool mapped, int x, int y, bool extendSelection)
     {
         if (IsOpeningPlaying)
+        {
+            return;
+        }
+
+        if (ActiveDialog is { } dialog)
+        {
+            Play(dialog.PointerPressed(mapped, x, y) switch
+            {
+                LoginDialogButton.Ok => LoginAudioCue.ButtonClick,
+                LoginDialogButton.Cancel => LoginAudioCue.ButtonHover,
+                _ => null,
+            });
+            return;
+        }
+
+        if (IsLoginPending)
         {
             return;
         }
@@ -215,6 +285,17 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
+        if (ActiveDialog is { } dialog)
+        {
+            Play(dialog.PointerReleased(mapped, x, y) ? LoginAudioCue.Error : null);
+            return;
+        }
+
+        if (IsLoginPending)
+        {
+            return;
+        }
+
         Credentials.PointerReleased();
 
         if (Account.IsModal)
@@ -239,7 +320,7 @@ internal sealed class LoginScreen : IDisposable
     /// <summary>Continues a held credential selection; <paramref name="x"/> is clamped to the stage.</summary>
     public void PointerDragged(int x)
     {
-        if (Credentials.IsSelecting && CaretLocator is { } locator)
+        if (PointerIsFree && Credentials.IsSelecting && CaretLocator is { } locator)
         {
             Credentials.PointerDragged(locator.LocateWhileDragging(Credentials, x));
         }
@@ -250,7 +331,15 @@ internal sealed class LoginScreen : IDisposable
         ArgumentNullException.ThrowIfNull(readClipboard);
         ArgumentNullException.ThrowIfNull(writeClipboard);
 
-        if (IsOpeningPlaying || Account.CapturesPointer)
+        if (!IsOpeningPlaying && key.Key == DesktopKey.Escape && !key.IsRepeat && !Quit.IsOpen)
+        {
+            FocusLost();
+            Quit.Show(string.Empty);
+            Play(LoginAudioCue.Error);
+            return;
+        }
+
+        if (IsOpeningPlaying || ActiveDialog is not null || IsLoginPending || Account.CapturesPointer)
         {
             return;
         }
@@ -275,7 +364,7 @@ internal sealed class LoginScreen : IDisposable
 
     public void TextEntered(char character)
     {
-        if (IsOpeningPlaying || Account.CapturesPointer)
+        if (IsOpeningPlaying || ActiveDialog is not null || IsLoginPending || Account.CapturesPointer)
         {
             return;
         }
@@ -292,6 +381,8 @@ internal sealed class LoginScreen : IDisposable
         Credentials.FocusLost();
         Buttons.Reset();
         Account.FocusLost();
+        Error.FocusLost();
+        Quit.FocusLost();
         _sounds.Reset();
     }
 

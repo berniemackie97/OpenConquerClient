@@ -1,0 +1,22 @@
+{
+  "sourceSha256": "db4b4550bc4b3fa91b2fd7cc173bb9a6f8109dbc65221e7f0df290610655da20",
+  "renderer": "JPEXS FFDec 26.3.0; sprite frame6 at scale1, transparent background; root x=-1",
+  "assets": [
+    {
+      "name": "Error",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "95DB6F8321AA6E65ED8DF46FFB65E46BF684EEB8C2062B4CD0C80E3DE3E8142D"
+    },
+    {
+      "name": "Quit",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "60C097EF6E447B625D4153A074757F4E1ECA9066659D497F75DC58C4DEA7EEF8"
+    }
+  ]
+}
