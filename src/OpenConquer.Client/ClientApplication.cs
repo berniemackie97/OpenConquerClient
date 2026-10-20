@@ -1,5 +1,7 @@
 using System.Runtime.ExceptionServices;
 using OpenConquer.Client.Startup;
+using OpenConquer.Client.Startup.LoginFlow;
+using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Client.UI;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
@@ -37,6 +39,7 @@ internal sealed class ClientApplication : IDisposable
     private DesktopCursorAnimation? _cursor;
     private LoginScreen? _login;
     private LoginCatalogBinding? _catalog;
+    private LoginAttemptCoordinator? _loginFlow;
     private LoginAudioPlayer? _audio;
     private ResourceOwnership? _graphics;
     private OpenGLRenderer? _renderer;
@@ -117,6 +120,8 @@ internal sealed class ClientApplication : IDisposable
 
         _disposed = true;
         _catalog?.Cancel();
+        _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _loginFlow = null;
 
         try
         {
@@ -148,6 +153,8 @@ internal sealed class ClientApplication : IDisposable
         _login = new LoginScreen(LoginStageLayout.Create(_logicalRenderSize), LoginAccountHistory.ForCurrentUser(),
             ClientVersionLabel.Load(contentSource), cue => _audio?.Play(cue));
         _login.ExitRequested += () => _window?.RequestClose();
+        _loginFlow = new LoginAttemptCoordinator(_contentRootPath);
+        _login.LoginRequested += OnLoginRequested;
 
         IReadOnlyList<RgbaImage> cursorFrames = LoginCursorArtwork.Load();
         _cursor = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
@@ -205,7 +212,10 @@ internal sealed class ClientApplication : IDisposable
         OpenGLRenderer renderer = _renderer ?? throw new InvalidOperationException("The renderer is not initialized.");
         LoginScreenRenderer loginRenderer = _loginRenderer ?? throw new InvalidOperationException("The login renderer is not initialized.");
 
-        _catalog?.Update(login, DateTimeOffset.UtcNow);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        _catalog?.Update(login, now);
+        _loginFlow?.Update(_catalog?.CurrentCatalog(now));
+        login.AttemptStatus = _loginFlow?.Status ?? LoginAttemptStatus.Idle;
         login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
         ContinueCredentialDrag();
 
@@ -231,6 +241,15 @@ internal sealed class ClientApplication : IDisposable
         }
 
         firstFailure?.Throw();
+    }
+
+    private void OnLoginRequested()
+    {
+        if (_login is { } login && _loginFlow is { } flow)
+        {
+            flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
+            login.AttemptStatus = flow.Status;
+        }
     }
 
     private void OnFramebufferResized(PixelSize size) => _renderer?.ResizeHostFramebuffer(size.Width, size.Height);

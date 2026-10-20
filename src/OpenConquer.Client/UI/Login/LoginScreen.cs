@@ -5,6 +5,7 @@ using OpenConquer.Client.UI.Login.Controls;
 using OpenConquer.Client.UI.Login.Credentials;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Client.UI.Login.Stage;
+using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Content.Login;
 using OpenConquer.Platform.Windowing.Desktop;
 
@@ -40,6 +41,8 @@ internal sealed class LoginScreen : IDisposable
 
     /// <summary>Raised when Exit is clicked.</summary>
     public event Action? ExitRequested;
+
+    internal LoginAttemptStatus AttemptStatus { get; set; }
 
     /// <summary>The native Enter activation requests login; the host owns all network work.</summary>
     internal event Action? LoginRequested;
