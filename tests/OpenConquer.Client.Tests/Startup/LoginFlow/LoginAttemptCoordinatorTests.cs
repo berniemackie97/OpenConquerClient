@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using OpenConquer.Client.Startup.Catalog;
 using OpenConquer.Client.Startup.LoginFlow;
+using OpenConquer.Client.Tests.Startup.Catalog;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Credentials;
