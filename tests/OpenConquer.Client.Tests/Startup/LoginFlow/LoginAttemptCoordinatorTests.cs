@@ -66,6 +66,56 @@ public sealed class LoginAttemptCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task RealmChangeDuringSeedCancelsAttemptBeforeCredentialTransmission()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        DateTimeOffset now = new(2026, 10, 17, 22, 0, 0, TimeSpan.Zero);
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, port, now);
+        using LoginScreen screen = CreateFilledScreen(catalog);
+
+        TaskCompletionSource<bool> accepted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task peer = HoldAccountSeedAsync(listener, accepted, release, token);
+
+        await using LoginAttemptCoordinator attempts = new(_folder, new FixedClock(now));
+        Assert.True(attempts.TryStart(screen, catalog));
+        await accepted.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+
+        screen.Selection.ReplaceCatalog(catalog.View);
+        attempts.Update(catalog);
+        release.TrySetResult(true);
+        await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
+
+        using CancellationTokenSource budget = CancellationTokenSource.CreateLinkedTokenSource(token);
+        budget.CancelAfter(TimeSpan.FromSeconds(5));
+        while (attempts.Status == LoginAttemptStatus.ConnectingAccount)
+        {
+            attempts.Update(catalog);
+            if (attempts.Status != LoginAttemptStatus.ConnectingAccount)
+            {
+                break;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(10), budget.Token);
+        }
+
+        Assert.Equal(LoginAttemptStatus.Cancelled, attempts.Status);
+    }
+
+    private static async Task HoldAccountSeedAsync(TcpListener listener,
+        TaskCompletionSource<bool> accepted, TaskCompletionSource<bool> release, CancellationToken token)
+    {
+        using TcpClient client = await listener.AcceptTcpClientAsync(token);
+        accepted.TrySetResult(true);
+        await release.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+        // Deliberately no seed bytes: cancelled selection cannot transmit a 1060.
+    }
+
+    [Fact]
     public async Task RealEncryptedLoopbackAccountRefusalReturnsToLoginWithoutLeakingCredentials()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
