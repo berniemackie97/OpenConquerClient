@@ -450,11 +450,19 @@ public sealed class GameServerHandshakeSessionTests
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
-    [Theory]
-    [InlineData(PeerResponse.AcceptedWrongCharacterInfo)]
-    [InlineData(PeerResponse.AcceptedNoCharacterInfo)]
-    [InlineData(PeerResponse.AcceptedSilentCharacterInfo)]
-    public async Task MissingOrUnexpectedCharacterInfoIsTerminal(PeerResponse response)
+    [Fact]
+    public Task WrongCharacterInfoTypeIsTerminal() =>
+        VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedWrongCharacterInfo);
+
+    [Fact]
+    public Task MissingCharacterInfoEofIsTerminal() =>
+        VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedNoCharacterInfo);
+
+    [Fact]
+    public Task SilentCharacterInfoTimeoutIsTerminal() =>
+        VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedSilentCharacterInfo);
+
+    private static async Task VerifyFailedCharacterInfoAsync(PeerResponse response)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
