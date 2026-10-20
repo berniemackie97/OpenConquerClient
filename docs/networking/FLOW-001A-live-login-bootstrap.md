@@ -48,6 +48,8 @@ open the native creation screen.
   unrelated hardware identifier or fingerprint is invented on macOS.
 - `res.dat` integer is used when an existing local file contains a bounded
   integer; native defaults to zero when absent/invalid.
+- Native `CMD_ENTERGAME`'s 10-second monotonic attempt guard runs before
+  password validation; a repeated attempt is refused without sending bytes.
 - Native English password acceptance is capped at 14 characters despite
   the text field's 15-character edit limit.
 

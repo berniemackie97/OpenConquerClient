@@ -26,6 +26,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private SignedLoginCatalog? _catalog;
     private LoginServerSelection? _selection;
     private long _revision;
+    private long _lastAttemptTimestamp;
+    private bool _hasAttempted;
     private int _status;
     private bool _disposed;
 
@@ -59,6 +61,18 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
             return false;
         }
 
+        // Native CMD_ENTERGAME (0x4ABFBD) applies its 10-second attempt gate
+        // before validating the password, using monotonic elapsed time.
+        long now = _clock.GetTimestamp();
+        if (_hasAttempted && _clock.GetElapsedTime(_lastAttemptTimestamp, now) <
+            TimeSpan.FromSeconds(10))
+        {
+            Publish(LoginAttemptStatus.RetryLater);
+            return false;
+        }
+
+        _hasAttempted = true;
+        _lastAttemptTimestamp = now;
         if (!screen.Credentials.TryTakeLoginCredentials(out byte[] name, out char[] password))
         {
             Publish(LoginAttemptStatus.EnterCredentials);

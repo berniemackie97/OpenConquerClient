@@ -107,7 +107,7 @@ public sealed class LoginAttemptCoordinatorTests : IDisposable
 
         Assert.Equal(LoginAttemptStatus.AccountRefused, attempts.Status);
         Assert.True(attempts.TryStart(screen, catalog) is false);
-        Assert.Equal(LoginAttemptStatus.EnterCredentials, attempts.Status);
+        Assert.Equal(LoginAttemptStatus.RetryLater, attempts.Status);
     }
 
     private static async Task RefuseAccountAsync(TcpListener listener, CancellationToken token)

@@ -6,6 +6,7 @@ internal enum LoginAttemptStatus
     Idle,
     SelectRealm,
     EnterCredentials,
+    RetryLater,
     ConnectingAccount,
     AccountRefused,
     ConnectingGame,

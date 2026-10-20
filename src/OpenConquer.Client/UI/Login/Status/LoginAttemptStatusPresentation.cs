@@ -84,6 +84,7 @@ internal sealed class LoginAttemptStatusPresentation : IDisposable
     {
         LoginAttemptStatus.SelectRealm => "SELECT A LOCAL REALM",
         LoginAttemptStatus.EnterCredentials => "ENTER ACCOUNT AND PASSWORD",
+        LoginAttemptStatus.RetryLater => "PLEASE LOGIN LATER",
         LoginAttemptStatus.ConnectingAccount => "CONNECTING TO ACCOUNT SERVER",
         LoginAttemptStatus.AccountRefused => "ACCOUNT LOGIN REFUSED",
         LoginAttemptStatus.ConnectingGame => "CONNECTING TO GAME SERVER",
