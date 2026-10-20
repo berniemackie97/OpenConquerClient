@@ -1,58 +1,64 @@
-# AUTH-001P — Native 5517 1006 character-information snapshot
+# AUTH-001P: 5517 1006 character information snapshot
 
-Evidence: `20_notes/Network/MsgUserInfo1006-semantic-closure-2026-09-17.md`,
+Sources:
+`20_notes/Network/MsgUserInfo1006-semantic-closure-2026-09-17.md`,
 `MsgUserInfo1006-historical-field-reconciliation.md`, and
-`Native-auth-string-validation-2026-10-18.md` with instruction-level
-reader replay. Fixed fields and their exact offsets are independently
-corroborated by the companion server `GameCharacterInfoPacket`.
+`Native-auth-string-validation-2026-10-18.md`, which includes an
+instruction-level replay of the reader. The companion server's
+`GameCharacterInfoPacket` independently confirms the fixed fields and
+their offsets.
 
-## This slice
+## Decoder
 
-A bounded, **pure inbound snapshot decoder**. It does not mutate a hero,
-send action 74, admit the character to the world, or authenticate the
-remote peer. Existing secured framing caps packets at 1024 bytes.
+AUTH-001P adds a decoder that turns one inbound 1006 into a snapshot and
+has no side effects. It does not change hero state, send action 74,
+admit the character to the world or authenticate the remote peer. The
+secured framing already limits packets to 1024 bytes.
 
-Native 1006 validates the header/type, copies into constructor-zeroed
-1024-byte storage, and queries string-list entries 0, 1, 2 separately.
-There is **no exact three-entry count validation**, string-list
-exhaustion requirement, or mandatory Windows-1252 decode. An absent
-selected name, selected length >=16, or leading NUL yields an empty
-native name; an embedded NUL keeps the prefix. String entry 1 is
-discarded completely but its length determines spouse-entry location.
-Extra string entries are not consumed.
+The retail 1006 handler checks the header and type, copies the packet
+into constructor-zeroed 1024-byte storage, and looks up string-list
+entries 0, 1 and 2 one at a time. It does not check for a count of three
+entries, does not require the string list to be used up, and does not
+require a Windows-1252 decode. If the selected name is absent, has a
+length of 16 or more, or starts with a NUL, the retail name is empty. An
+embedded NUL keeps the bytes before it. String entry 1 is discarded
+entirely, but its length decides where the spouse entry starts. Extra
+string entries are not consumed.
 
-The managed parser zero-fills **within a bounded local 1024-byte
-snapshot** and retains the actual native fixed-field offsets, including
-signed i16 PK points, raw retired compatibility fields, the unsigned
-encoded pre-rebirth-level value, and decimal-packed subprofession
-phases. Player/spouse names are **owned raw byte buffers**, not prematurely
-interpreted as CP1252 Unicode. No source pooled frame reference escapes.
+The managed parser zero-fills a local 1024-byte snapshot and uses the
+retail fixed-field offsets. These include PK points as a signed i16,
+retired compatibility fields kept raw, the pre-rebirth level as an
+unsigned encoded value, and subprofession phases packed as decimal
+digits. The player and spouse names are raw byte buffers owned by the
+snapshot. They are not decoded as CP1252 into Unicode at this stage. No
+reference to the pooled source frame escapes.
 
-Native byte decoding occurs at the eventual UI consumer/code page,
-not in the 1006 wire reader; invalid CP1252 slots and valid CP936
-sequences therefore remain intact.
+Decoding the raw bytes is left to the UI code that eventually displays
+them, with its own code page, not to the 1006 wire reader. Bytes that
+are invalid in CP1252 and valid CP936 sequences therefore stay intact.
 
-## Critical mutation/transport boundary
+## Hero state and action 74
 
-Native 1006 Process mutates hero name, spouse, ID and fixed-field state
-**before** attempting EnterMap action74. It has **no nonzero-EntityId
-or nonempty-name gate**. With EntityId0, action construction fails;
-normal active-socket send handling can then close the socket, without
-rolling back earlier hero writes.
+The retail 1006 Process step writes the hero's name, spouse, ID and
+fixed-field state before it tries EnterMap action 74. It does not check
+for a nonzero EntityId or a nonempty name. With EntityId 0, building the
+action fails. The normal send handling for an active socket can then
+close the socket, and the hero writes made earlier are not rolled back.
 
-This implementation deliberately does **not** emulate that
-nontransactional mutation or unsafe send path. EntityId0 and
-empty names remain representable in a decoded snapshot. Any future
-hero-state transition and action74 send requires a **separate,
-explicitly audited, fail-closed ownership/authorization design**.
-A decoded snapshot alone is not proof of world admission.
+This client does not copy that partial, non-transactional update or the
+unsafe send path. A decoded snapshot can still hold EntityId 0 and empty
+names. Any later hero-state update and sending action 74 will need a
+separate, reviewed design for ownership and authorization that rejects
+anything invalid. A decoded snapshot alone does not mean the character
+has entered the world.
 
-## Regression gates
+## Testing
 
-Use native-derived byte fixtures for missing/extra entries,
-length255 ignored entry, overlong selected name, NUL prefixes,
-CP936 bytes, zero-filled truncated field and selected string,
-signed PK, packed phases, EntityId0, malformed header and >1024.
-Require locked restore, Release build/full tests, format validation,
-retail content verification, Linux/macOS/Windows CI, CodeQL,
-dependency review and review signoff. Never auto-merge.
+Byte fixtures derived from the 5517 client cover missing and extra
+entries, an ignored entry with length 255, an overlong selected name,
+NUL prefixes, CP936 bytes, a truncated packet where a fixed field and
+the selected string are zero-filled, signed PK, packed phases, an
+EntityId of 0, a malformed header and a packet over 1024 bytes. CI runs
+locked restore, the Release build and full tests, format validation,
+retail content verification, Linux, macOS and Windows builds, CodeQL and
+dependency review.

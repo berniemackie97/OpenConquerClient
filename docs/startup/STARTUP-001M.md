@@ -1,24 +1,26 @@
-# STARTUP-001M — Visible login region/server pagination
+# STARTUP-001M: Region and server page buttons
 
-## Scope and ordering
+## Scope
 
-Continue the native client startup UI reconstruction after STARTUP-001K credential entry. STARTUP-001L's separate packet-framing utility remains dormant: this slice adds no cryptography, account networking, registration operation, world transition, or startup submission action.
+Builds on the STARTUP-001K credential entry and adds mouse paging to the login screen. The STARTUP-001L packet serializer stays unused. Nothing here touches cryptography, account networking, registration, world transition or login submission.
 
-The verified startup/login asset reference contains groups with more than the reconstructed twelve visible server slots. STARTUP-001F already implements bounded region/server pages and PageUp/PageDown keys, but provided no discoverable mouse controls. The current signed catalog admits up to 64 regions and 128 servers per region, so a mouse-only player could not reach off-page identities.
+Some groups in the startup/login asset reference have more servers than the twelve server slots the reconstructed screen shows. STARTUP-001F already splits regions and servers into pages and handles the PageUp and PageDown keys, but it had no visible mouse controls. The signed catalog allows up to 64 regions and 128 servers per region, so a player using only the mouse could not reach entries on other pages.
 
-## Layout provenance
+## Layout
 
-The controls use **first-party reconstructed** 24×24 reference-stage hit rectangles placed immediately outside the existing region and server cell grids. Their positions derive from `LoginVisualLayout` and scale with the two approved 4:3 logical stages (1024×768 and 800×600). They do **not** claim byte-for-byte reproduction of a Flash timeline, native button sprites, or previously unverified native mouse behavior. They use existing OpenGL rectangle primitives: no new textures, retail asset changes, Flash runtime, native behavior guesses, or font dependencies. Region/server cell positions, previously verified artwork, account panel and dragon remain unchanged.
+Each control is a 24x24 hit rectangle on the reference stage, placed just outside the region or server cell grid. The controls are this project's own reconstruction. They are not taken from the Flash timeline or the retail button sprites, and they do not copy 5517 mouse behavior, which has not been confirmed. Their positions come from `LoginVisualLayout` and scale with the two supported 4:3 logical stages (1024x768 and 800x600). They are drawn with the existing OpenGL rectangle primitives, so they need no new textures, retail asset changes, Flash runtime or fonts. The region and server cell positions, the existing artwork, the account panel and the dragon do not move.
 
-## State and security
+## State and input handling
 
-- Navigation affordances are invisible when a grid has zero or one page. When multiple pages exist, each direction is explicitly enabled/disabled by the current page bound. No controls appear in an empty, unconfigured, expired, or rejected catalog.
-- Mouse navigation requires press and release within the **same enabled** control, the same immutable catalog object, the same page, and (for server paging) the same selected region object. A released pointer outside logical viewport, lost focus, stale catalog, or changed region cannot activate a page.
-- Navigation uses the existing `LoginServerSelection.ChangeRegionPage` and `.ChangeServerPage` methods, which revoke stale selected identities; the existing `LoginCredentialInput.Synchronize` consequently erases credentials when a previously selected server is invalidated. Changing region pages clears server focus. No page arrow selects a server, authorizes login, or opens a socket.
-- Keyboard PageUp/PageDown continue to use the same selection transition rules, and pointer input remains routed through the host-framebuffer-to-logical viewport transform. The control layout and draw calls are stable, with no per-frame layout construction or GPU resource allocation.
+- The page controls are hidden when a grid has zero or one page. With more pages, each direction is enabled or disabled depending on whether the current page is the first or the last. No controls appear when the catalog is empty, unconfigured, expired or rejected.
+- A page change needs the press and the release on the same enabled control, with the same immutable catalog object, the same page and, for server paging, the same selected region object. Releasing outside the logical viewport, losing focus, a replaced catalog or a changed region cancels the click.
+- Paging calls the existing `LoginServerSelection.ChangeRegionPage` and `.ChangeServerPage` methods, which revoke selections that are no longer valid. When that invalidates the selected server, the existing `LoginCredentialInput.Synchronize` erases the credentials. Changing the region page also clears server focus. The page arrows never select a server, start a login or open a socket.
+- PageUp and PageDown follow the same selection rules as the mouse controls. Pointer input still goes through the transform from host framebuffer to logical viewport. The control layout does not change from frame to frame, and drawing builds no layouts and allocates no GPU resources per frame.
 
-## Acceptance and follow-up
+## Testing
 
-Verify unit tests for geometry, non-overlap, both resolutions, visibility, bounds, press/release, disabled controls, off-screen cancellation, focus loss, stale snapshot/region capture, credential revocation, and keyboard parity. Run locked restore, formatting, Release build and full tests, retail content-set verification, Windows/macOS CI, and real-driver visual conformance at 800×600 and 1024×768 using an explicitly authorized signed test catalog with 17 regions/13 servers.
+Unit tests cover geometry, non-overlap, both resolutions, visibility, first and last page limits, press and release, disabled controls, cancellation on an off-screen release, focus loss, a press captured against a stale catalog snapshot or region, credential revocation and keyboard parity. Also run locked restore, formatting, the Release build and full tests, retail content-set verification and Windows/macOS CI. Visual conformance is checked on a real driver at 800x600 and 1024x768 with a signed test catalog, issued for that purpose, that has 17 regions and 13 servers.
 
-The remaining startup UI work includes visual calibration against the original `start.dat` movie, login/register button chrome and appropriate **disabled/pending** states, catalog availability/error feedback, and native-equivalent command/status transitions after separate protocol verification. Production release authority and actual account credentials remain explicit external prerequisites; do not fabricate a live server to make the screen appear populated.
+## Remaining work
+
+Startup UI work still open after this change: visual calibration against the original `start.dat` movie, Login and Register button artwork with disabled and pending states, feedback on catalog availability and errors, and command and status transitions that match the 5517 client once the protocol has been verified separately. A production publisher key and real account credentials have to come from outside the project. A fake live server should never be added just to fill the screen.

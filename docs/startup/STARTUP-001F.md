@@ -1,26 +1,28 @@
-# STARTUP-001F — Region/server selection contract and input ownership
+# STARTUP-001F: Region/server selection model and input
 
-## Authority
+## Catalog
 
-Production startup does **not** read retail `Server.dat` or its decoded metadata as an operational realm catalog. This slice introduces no endpoints, login transport, routing fallbacks, registration packets, or synthetic production realms. It uses the existing 2×8 region and 3×4 server chrome and retains all established artwork coordinates, including `AccountPanel.Y = 637`.
+Production startup does not use retail `Server.dat` or its decoded metadata as the realm catalog. No endpoints, login transport, routing fallbacks, registration packets or made-up production realms are added. Selection uses the existing 2x8 region and 3x4 server chrome and keeps all artwork coordinates, including `AccountPanel.Y = 637`.
 
-`LoginServerCatalog` is an immutable **view snapshot**, not an endpoint/trust provider. Region IDs, display labels, realm IDs, and native-protocol `ServerName` are distinct fields. The catalog validates bounds and rejects duplicate identities, control/directional text, and malformed identifiers. A future authoritative catalog producer must satisfy its own signed-source/transport/provenance and protocol-endpoint contract **before** constructing and handing off such a snapshot. Input and presentation cannot themselves grant login or world-entry authorization.
+`LoginServerCatalog` is an immutable snapshot for the view. It does not supply endpoints or decide trust. Region IDs, display labels, realm IDs and the 5517 protocol `ServerName` are separate fields. The catalog checks its limits and rejects duplicate identities, control or directional text, and malformed identifiers. Whatever later produces a real catalog must first meet its own requirements for a signed source, transport, provenance and protocol endpoints, and only then build and hand over a snapshot. Input handling and drawing cannot by themselves allow login or world entry.
 
 ## Interaction
 
-- The client initially owns `LoginServerCatalog.Empty`, so no empty grid slot can be selected or activate a connection.
-- Catalog replacement clears selected region, selected server, page indexes, focus, and pending mouse capture; stale selection cannot survive authority changes.
-- Selecting a different region clears server selection and returns to the first server page. Region-page changes invalidate region and server selection; server-page changes invalidate server selection, preventing invisible stale targets.
-- Pointer selection requires press/release inside the exact same occupied logical cell. Pointer coordinates use the current OpenGL viewport mapping; letterboxes never hit-test.
+- The client starts with `LoginServerCatalog.Empty`, so no empty grid slot can be selected or start a connection.
+- Replacing the catalog clears the selected region, the selected server, the page indexes, focus and any pending mouse capture, so no stale selection survives a catalog change.
+- Selecting a different region clears the server selection and goes back to the first server page. Changing the region page clears both the region and server selection, and changing the server page clears the server selection, so nothing off-screen stays selected.
+- A pointer selection needs both the press and the release inside the same occupied logical cell. Pointer coordinates use the current OpenGL viewport mapping, and letterbox areas never hit-test.
 - Losing window focus or replacing the snapshot cancels pointer capture.
-- Tab/Shift-Tab navigate the region/server focus areas, arrows move within visible occupied cells, PageUp/PageDown change bounded pages, Enter commits focused selection, and Escape clears input focus without asserting any login/world state.
-- Focus and selection have distinct border feedback, with no per-frame texture creation, parsing, or heap allocations introduced by selection rendering.
-- No fabricated service status, protocol endpoint, character identity, or Login/Register action exists in this slice.
+- Tab and Shift-Tab move between the region and server focus areas, arrow keys move between visible occupied cells, PageUp and PageDown change pages within the page count, Enter selects the focused cell, and Escape clears input focus without changing any login or world state.
+- Focus and selection have different borders. Drawing the selection adds no per-frame texture creation, parsing or heap allocation.
+- There is no made-up service status, protocol endpoint, character identity or Login/Register action.
 
-## Constraints and acceptance
+## Limits
 
-Maximum 64 regions, 128 servers per region, and 1024 servers per snapshot. Collection input is defensively copied and validated. No catalog-provided values are used as resource paths. The protocol server name is stored verbatim for a later native-verified authentication request; it is not inferred from the visible label.
+A snapshot holds at most 64 regions, 128 servers per region and 1024 servers in total. Input collections are copied and validated. No value from the catalog is used as a resource path. The protocol server name is stored as given, for a later authentication request that matches the 5517 client. It is never derived from the visible label.
 
-Unit tests cover validation, mutation isolation, duplicated identities, bound failures, paging, stale selection invalidation, mouse capture, keyboard navigation, focus cancellation, and empty-catalog fail closure. Run the existing locked restore, formatting verification, Release build/tests, content-set verification, published-client integrity, macOS/Windows desktop smoke test, and rendering conformance gates.
+There is no Flash decoding and no runtime asset change. The retail content manifest is unchanged.
 
-No Flash decoding or runtime asset changes. The exact retail content manifest remains unchanged.
+## Testing
+
+Unit tests cover validation, isolation from later changes to the input, duplicate identities, limit failures, paging, clearing stale selections, mouse capture, keyboard navigation, focus cancellation, and an empty catalog that allows no selection. Also run the existing locked restore, format verification, Release build and tests, content-set verification, published-client integrity, desktop smoke test on macOS and Windows, and rendering conformance checks.

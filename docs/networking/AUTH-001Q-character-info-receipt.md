@@ -1,77 +1,75 @@
-# AUTH-001Q — Exclusive post-prelude secured character-information receipt
+# AUTH-001Q: Reading character information (1006) after the prelude
 
-## Audited heads and evidence
+## Sources
 
-Client base: `95e9b654f20eda1f1e482ba4b0cfc08b26ed5d94`,
-merged AUTH-001P #134. Server main:
-`bda9f0e76108872b648a9cfa5bb245c82589023e`.
-
-Native evidence in the updated `20_notes.zip`:
+Builds on AUTH-001P. The 5517 sources, in `20_notes.zip`:
 - `20_notes/Network/MsgUserInfo1006-semantic-closure-2026-09-17.md`
 - `20_notes/Network/Native-auth-string-validation-2026-10-18.md`
-- `20_notes/Network/13_connection_lifecycle.md`, specifically
-  `CMsgUserInfo__Process` 0x764276, builder 0x764873,
-  send 0x7648A3, and post-1006 EnterMap action 74.
+- `20_notes/Network/13_connection_lifecycle.md`, in particular
+  `CMsgUserInfo__Process` at 0x764276, the builder at 0x764873, the send
+  at 0x7648A3, and EnterMap action 74 after the 1006.
 
 The companion server's
 `ExistingCharacterBootstrapProcessor.ProcessAsync` sends
-`1004 ANSWER_OK → 2078 → 2079 → 1006`.
-That exact order is a **verified server implementation fact**,
-not a native universal requirement.
+`1004 ANSWER_OK → 2078 → 2079 → 1006`. That order is confirmed in the
+server code. It is not a general requirement of the 5517 client.
 
-## Scope
+## How it works
 
-The already independently audited `GameCharacterInfo1006.Read` parses
-one **plaintext** 1006 into an owned fixed-field/raw-name snapshot.
-This slice connects that parser to
-`GameServerHandshakeSession.ReadCharacterInfoAsync`, consuming one
-secured server-to-client frame on the same live connection after the
-existing typed 1004 and typed 2078/2079 convenience flow.
+`GameCharacterInfo1006.Read`, reviewed separately in AUTH-001P, parses
+one plaintext 1006 into a snapshot that owns its fixed fields and raw
+name bytes. `GameServerHandshakeSession.ReadCharacterInfoAsync` connects
+that parser to the live session. It consumes one secured
+server-to-client frame on the same connection, after the typed 1004 read
+and the typed 2078/2079 reads.
 
-- The typed reader is one-shot and must be claimed before an ordinary
-  secured raw read takes the post-prelude frame.
-- Claim and publication are protected by the existing session lifetime
-  gate. In-flight typed receipt excludes all competing raw reads, typed
-  prelude reads and duplicate 1006 reads.
-- The existing decoder owns the socket, directional CAST5 state, secured
-  eight-byte server signature and pooled frame lifetime. A decoded
-  `GameCharacterInfo1006` contains owned primitive fields and name
-  bytes, not a borrowed frame, span or socket handle.
-- The operation uses the existing positive, max-30-second timeout and
-  lifetime cancellation. EOF, malformed 1006, wrong type, timeout,
-  cancellation or disposal during the read leave the session terminal.
-  Pre-cancellation and invalid timeout are checked *before* claiming
-  the one-shot operation.
-- Success leaves the connection alive for a future, separately audited
-  world-entry request stage. It does not infer world admission.
+- The typed reader can be used once. It must be claimed before an
+  ordinary raw secured read takes the frame that follows the prelude.
+- The claim and the result are both protected by the session's existing
+  lifetime gate. While the typed read is in progress, no raw read, typed
+  prelude read or second 1006 read can run.
+- The existing decoder handles the socket, the directional CAST5 state,
+  the eight-byte secured server signature and the pooled frame lifetime.
+  A decoded `GameCharacterInfo1006` holds its own primitive fields and
+  name bytes. It holds no borrowed frame, span or socket handle.
+- The read uses the existing timeout (positive, at most 30 seconds) and
+  the session's lifetime cancellation. EOF, a malformed 1006, a wrong
+  packet type, a timeout, cancellation or disposal during the read all
+  end the session. An already-canceled token and an invalid timeout are
+  checked before the one-time read is claimed.
+- After a successful read the connection stays open for a later
+  world-entry request step, which will be reviewed on its own. A
+  successful read does not mean the character is in the world.
 
-## Native fidelity versus intentional restrictions
+## Differences from the retail client
 
-The native client does **not** require packets 2078 or 2079 before
-processing 1006. This scoped typed API requires them because the
-current companion server always emits them before 1006; an ordinary
-`ReadFrameAsync` remains available for independent native-order
-experimentation but forfeits retrospective typed ownership. Do not
-promote this API sequencing into a global retail protocol claim.
+The retail client does not require packets 2078 or 2079 before it
+processes 1006. This typed API requires them because the companion
+server always sends them before 1006. The ordinary `ReadFrameAsync` is
+still available for experimenting with the retail packet order, but a
+frame read that way can no longer be handled by the typed readers. The
+order this API expects is not a rule of the retail protocol.
 
-Native processing hydrates hero state and attempts to send action74.
-Native `EntityId=0` can partially mutate hero state before the
-failed send, with no rollback. This slice deliberately does **not**
-apply any mutable gameplay state or send action 74; it preserves
-`EntityId=0` and empty/raw name bytes as observations.
+The retail client fills in hero state and tries to send action 74. With
+`EntityId=0` it can update part of the hero state before the send fails,
+and nothing is rolled back. This client applies no gameplay state and
+does not send action 74. It keeps `EntityId=0` and empty or raw name
+bytes as decoded values.
 
-No UI or world session has access to the raw TCP stream; no non-loopback
-connect, DNS, creation path, remote authentication, action74 builder,
-hero mutation or inbound world dispatch is implemented.
+No UI or world session can reach the raw TCP stream. Non-loopback
+connections, DNS, character creation, remote authentication, a builder
+for action 74, hero updates and inbound world dispatch are not
+implemented.
 
 ## Verification
 
-Tests use a loopback AccountServer + GameServer with real DH,
-the originating one-shot 1052 proof, independent encrypted
-1004/2078/2079/1006 fixtures, a separately encrypted continuation
-packet, raw-read bypass, out-of-order packet, silent timeout, EOF,
-repeated read and premature phase rejection. Wire fixtures are
-source-derived **not remote retail captures**. Full locked restore,
-format, Release build/tests, content verification, Linux/macOS/Windows
-CI, dependency review, CodeQL, review and final PR diff audit
-are required. User merges only.
+Tests run a loopback AccountServer and GameServer with real DH and the
+one-time 1052 proof from the originating account result. They use
+independently encrypted 1004/2078/2079/1006 fixtures and a separately
+encrypted packet that follows them. They cover a raw read that bypasses
+the typed reader, a packet out of order, a timeout with no data, EOF, a
+repeated read and a read in the wrong phase. The wire fixtures are
+derived from source; they are not captures from a remote retail server.
+CI runs locked restore, the format check, Release build and tests,
+content verification, Linux, macOS and Windows builds, dependency review
+and CodeQL.

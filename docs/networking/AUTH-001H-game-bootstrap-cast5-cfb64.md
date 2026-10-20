@@ -1,99 +1,106 @@
-# AUTH-001H — Native GameServer bootstrap CAST5-CFB64
+# AUTH-001H: GameServer bootstrap CAST5-CFB64
 
-## Baseline and evidence
+AUTH-001H implements the fixed-key CAST5-CFB64 transform that the 5517
+GameServer handshake uses for its first envelopes. It builds on AUTH-001G,
+whose `GameServerChallengeDecoder` validates one GameServer DH challenge
+envelope after decryption. AUTH-001H adds the cipher only, with no
+GameServer transport.
 
-Verified client `main` `7dcff85a1b5e241827cf3fd2eb6d3944a70dc2e6`,
-after merged AUTH-001G (#125). The client already validates one
-**decrypted** GameServer DH challenge envelope in
-`GameServerChallengeDecoder`; it has no active GameServer transport.
+## Sources
 
-Evidence is the original 5517 native network/handshake research in
-`20_notes/Network/13_connection_lifecycle.md` and the independently
-implemented OpenConquerServer
-`GameHandshakeBootstrapCipher`,
-`GameCast5Cfb64Cipher`, and their test fixtures.
-The server encrypts its initial DH challenge using fixed-key
-CAST5-CFB64; its client-key-response parser uses the same fixed-key
-bootstrap encryption before the per-session cipher transition.
+The sources are the research on the original 5517 network handshake in
+`20_notes/Network/13_connection_lifecycle.md`, and the independent
+OpenConquerServer implementation: `GameHandshakeBootstrapCipher`,
+`GameCast5Cfb64Cipher` and their test fixtures. The server encrypts its
+initial DH challenge with fixed-key CAST5-CFB64. Its parser for the client
+key response uses the same fixed-key bootstrap encryption, before the
+switch to the per-session cipher.
 
-## Exact transform
+## Transform
 
-- Block primitive: CAST5 (CAST-128), using the 16-byte fixed ASCII key
+- Block cipher: CAST5 (CAST-128) with the 16-byte fixed ASCII key
   `BC234xs45nme7HU9`.
-- Mode: CFB with 64-bit feedback, byte-by-byte keystream consumption.
-- IV: eight zero bytes, reinitialized **once per independent envelope**.
-- Every 8 bytes: encrypt the current feedback register with CAST5.
-- Outgoing byte: `plaintext XOR keystream`; place ciphertext in feedback.
-- Incoming byte: `ciphertext XOR keystream`; place **incoming ciphertext**
-  in feedback. This matters for in-place decoding.
-- The feedback position must survive arbitrary TCP fragmentation within
-  a single envelope; it must not be reset after the 15-byte challenge header.
+- Mode: CFB with 64-bit feedback. The keystream is consumed one byte at a
+  time.
+- IV: eight zero bytes, set once at the start of each independent
+  envelope.
+- Every 8 bytes, the current feedback register is encrypted with CAST5.
+- Outgoing byte: `plaintext XOR keystream`. The ciphertext goes into the
+  feedback register.
+- Incoming byte: `ciphertext XOR keystream`. The incoming ciphertext goes
+  into the feedback register, which matters for in-place decoding.
+- The feedback position must carry over across any TCP fragmentation
+  within one envelope. It must not be reset after the 15-byte challenge
+  header.
 
-`GameHandshakeBootstrapCipher` owns one fixed-key direction-specific
-stream for one envelope and supports both encrypt/decrypt construction.
-`Transform` validates complete output capacity and rejects partial
-span overlap **before touching state or output**. Identical buffers are
-valid. The instance owns no background tasks, sockets, pipes, retries,
-or connection state; the eventual session owner must serialize fragments
-in network order and dispose when that envelope completes or fails.
+`GameHandshakeBootstrapCipher` owns one fixed-key stream, in one
+direction, for one envelope. It can be constructed for encryption or for
+decryption. `Transform` checks that the output has room for the whole
+input and rejects partially overlapping spans before it touches any state
+or output. Passing the same buffer as input and output is allowed. The
+instance owns no background tasks, sockets, pipes, retries or connection
+state. The session that eventually owns it must feed it fragments in
+network order and dispose of it when the envelope completes or fails.
 
-This slice uses `BouncyCastle.Cryptography` **2.7.0**, matching the
-server and pinned in the client's central versions and locked restore
-graphs (Networking, Client, Client.Tests, Rendering.Conformance).
-It does not copy, reimplement, or vendor a CAST5 S-box implementation.
-Owned feedback and keystream buffers are zeroed at disposal. The
-third-party primitive may retain its internal expanded key schedule
-until garbage collection; the bootstrap key itself is public and fixed.
-Do not claim that disposing this object erases arbitrary provider memory.
+The cipher uses `BouncyCastle.Cryptography` 2.7.0, the same version as the
+server. The version is pinned in the client's central package versions and
+in the locked restore graphs of Networking, Client, Client.Tests and
+Rendering.Conformance. No CAST5 S-box implementation is copied,
+reimplemented or vendored. The feedback and keystream buffers that the
+cipher owns are zeroed on disposal. The third-party primitive may keep its
+expanded key schedule in memory until garbage collection. The bootstrap
+key itself is public and fixed. Disposing this object does not erase
+memory held inside the provider.
 
-## Verification evidence
+## Testing
 
-The independent OpenConquerServer fixed zero-IV vector is:
+The independent OpenConquerServer vector, with a fixed zero IV, is:
 
 | Plaintext | Ciphertext (hex) |
 | --- | --- |
 | `OpenConquer-5517-CFB64` | `6A13741CE64645FCEC5A9D7A9630A3D18A9F3539C28C` |
 
-Tests independently assert this exact output, its decryption, fresh-IV
-determinism, state retention across 3/17/1/51/25-byte fragments, and
-in-place round trips. The 207-byte AUTH-001G plaintext fixture is
-paired with a fixed ciphertext generated separately using the Python
-`cryptography` provider's CAST5/CFB-64 implementation (16-byte native key,
-8-byte zero IV). Before producing this fixture, the independent provider
-was checked against the server's published short CAST5 ciphertext vector.
+Tests check this output and its decryption independently. They also check
+that a fresh zero IV always gives the same output, that state carries over
+across 3/17/1/51/25-byte fragments, and that in-place round trips work.
+The 207-byte AUTH-001G plaintext fixture is paired with a fixed ciphertext
+generated separately with the CAST5/CFB-64 implementation of the Python
+`cryptography` package (16-byte 5517 key, 8-byte zero IV). Before the
+fixture was produced, that provider was checked against the server's
+published short CAST5 ciphertext vector.
 
-The test asserts both encryption to that exact independent ciphertext and
-fragmented decryption of those fixed bytes across the initial 15-byte
-challenge prefix and later fragments. The recovered envelope must pass the
-existing challenge decoder. This fixture is derived from server source,
-**not captured from a live GameServer**. It serves as a cross-implementation
-CAST5-CFB64 interoperability reference rather than a real-peer authentication
-claim.
+The test checks both that encryption gives that independent ciphertext and
+that the fixed bytes decrypt correctly when split across the initial
+15-byte challenge prefix and later fragments. The recovered envelope must
+pass the existing challenge decoder. The fixture is derived from server
+source code and was not captured from a live GameServer. It is a
+CAST5-CFB64 interoperability reference between two implementations and
+says nothing about authenticating a real peer.
 
-Negative tests cover undersized destination, prohibited overlapping
-spans, terminal disposal, and ensuring invalid calls do not consume
-feedback state.
+Negative tests cover an undersized destination, prohibited overlapping
+spans and calls after disposal, and check that invalid calls do not
+consume feedback state.
 
-## Trust boundary, exclusions, and next slice
+The change passes locked restore, the formatter, Release build and tests,
+content verification, and the macOS, Windows, Quality and Dependency
+Review jobs.
 
-CAST5 with an embedded public key and zero IV is **not** authenticated
-encryption, does not provide unique session confidentiality, and
-cannot authenticate a GameServer peer. A valid `TQServer` trailer and
-well-formed DH fields are structural compatibility checks only.
-The AccountServer 1055 redirect is still untrusted live metadata
-because the legacy AccountServer transport is unauthenticated.
+## Security and scope
 
-**No GameServer TCP connection, DH response builder, shared-secret
-calculation, CAST session-key transition, game proof transmission,
-UI login action, or automatic endpoint trust decision is introduced.**
-The existing loopback-only account credential guard remains intact.
+CAST5 with a publicly known embedded key and a zero IV is not
+authenticated encryption. It gives no per-session confidentiality and
+cannot authenticate a GameServer. A valid `TQServer` trailer and
+well-formed DH fields are structural compatibility checks only. The
+AccountServer 1055 redirect is still untrusted live metadata, because the
+legacy AccountServer transport is unauthenticated.
 
-Only a separately audited handshake-lifetime/endpoint-trust slice may
-consume the primitive on a live connection. That slice must use a
-single continuous decryptor across the header/body reads, enforce
-bounded deadlines, never retry uncertain writes, preserve parser
-read-ahead exclusions and prove the endpoint security boundary.
+AUTH-001H adds no GameServer TCP connection, DH response builder,
+shared-secret calculation, switch to a CAST session key, game proof
+transmission, UI login action or automatic endpoint trust decision. The
+existing loopback-only guard on account credentials is unchanged.
 
-Before merge: locked restore, formatter, Release build/tests,
-content verification, macOS/Windows/Quality, Dependency Review,
-review response audit and explicit user merge acceptance.
+Only a separately reviewed step that owns the handshake lifetime and
+endpoint trust may use this primitive on a live connection. That step must
+use one continuous decryptor across the header and body reads, enforce
+deadlines, never retry uncertain writes, keep the parser's rule against
+reading ahead, and establish how the endpoint is secured.

@@ -1,120 +1,133 @@
-# AUTH-001L — Bounded loopback GameServer DH handshake transport
+# AUTH-001L: Loopback GameServer DH handshake
 
-## Audited baseline and protocol authority
+## Sources
 
-Client `main` `df955197efbc19f454e8bf31ad7b30619fa29842` includes merged
-AUTH-001A through AUTH-001K, ending with the secured-framing and negotiated
-CAST5 streams from PR #129. The companion server implementation was checked
-against `GameConnectionSession`, `GameTransportHandshakeProcessor`,
-`GameHandshakeExchange`, the server-side client-DH-response reader,
-and its handshake/connection tests. Native retail 5517 evidence remains in
-`20_notes/Network/13_connection_lifecycle.md` and preceding AUTH documents.
+Builds on AUTH-001A through AUTH-001K, which end with the secured
+framing and the negotiated CAST5 streams. The handshake follows the
+companion server's `GameConnectionSession`,
+`GameTransportHandshakeProcessor` and `GameHandshakeExchange`, its
+reader for the client DH response, and its handshake and connection
+tests. The retail 5517 sources are
+`20_notes/Network/13_connection_lifecycle.md` and the earlier AUTH
+documents.
 
-A GameServer socket does **not** receive an ordinary secured packet first.
-The server sends a fixed-key CAST5-CFB64-encrypted **raw DH challenge**
-whose first 15 decrypted bytes establish a bounded total envelope length.
-The client replies with one separately initialized, fixed-key-encrypted raw
-`TQClient` DH response. Only after that response is written does the
+## Handshake sequence
+
+The first thing on a GameServer socket is not an ordinary secured
+packet. The server sends a raw DH challenge encrypted with CAST5-CFB64
+under a fixed key. The first 15 decrypted bytes give the total envelope
+length, which has an upper limit. The client answers with one raw
+`TQClient` DH response, encrypted under the fixed key by a separately
+initialized cipher. Only after that response is written does the
 GameServer session switch to the negotiated directional CAST5 streams.
-The standard 1052 login proof is the first subsequent secured packet;
-**AUTH-001L deliberately does not send that proof**.
+The first secured packet after that is the standard 1052 login proof,
+which AUTH-001L does not send.
 
-## Authority and strict scope
+## Starting a handshake
 
-The `LoginAccountExchangeResult` permits **one** claim to begin a GameServer
-handshake, and only after its successful 1055 result has completed both
-native AccountServer reports (1100 and resource-version 1052). It requires
-a literal `127.0.0.1` redirect and a valid port. A failure result, missing
-report completion, disposed result, unsupported remote redirect or repeated
-claim fails before connecting.
+A `LoginAccountExchangeResult` can be claimed once to start a GameServer
+handshake. The claim is allowed only after a successful 1055 result and
+after both 5517 AccountServer reports (1100 and the resource-version
+1052) have completed. The redirect must be the literal `127.0.0.1` with
+a valid port. The claim fails before any connection attempt if the
+result is a failure, a report has not completed, the result is disposed,
+the redirect is remote, or the result was already claimed.
 
-The transport unconditionally connects to `IPAddress.Loopback` with an
-IPv4 `TcpClient`; it does not resolve DNS, connect to a caller-selected
-address, or trust a 1055 redirect as a remote peer identity. The existing
-AccountServer loopback-only credential guard remains intact.
-Disposing the AccountServer result cancels any still-active GameServer
-connect/handshake operation. Once successfully handed off, the new
-GameServer session owns its socket and session cipher independently.
+The transport always connects to `IPAddress.Loopback` with an IPv4
+`TcpClient`. It does no DNS lookup, never connects to an address chosen
+by the caller, and does not treat the 1055 redirect as the identity of a
+remote peer. The AccountServer's loopback-only credential check is
+unchanged. Disposing the AccountServer result cancels a GameServer
+connect or handshake that is still running. Once the handoff succeeds,
+the new GameServer session owns its socket and session cipher on its
+own.
 
-**This is local interoperability infrastructure, not a remotely secure
-connection mode.** Native legacy 512-bit DH and unauthenticated CAST5-CFB64
-cannot authenticate a remote endpoint or provide modern message integrity.
-Future real-remote support requires independently authenticated endpoint
-policy and explicit deployment design, not removal of this loopback gate.
+**This is for local testing only.** The 5517 handshake uses 512-bit
+Diffie-Hellman and unauthenticated CAST5-CFB64, which cannot
+authenticate a remote server or protect message integrity. Supporting
+remote servers will need a separate way to authenticate the endpoint;
+removing the loopback check is not enough.
 
-## Session and timeout contract
+## Timeouts and session lifetime
 
-`GameServerHandshakeTimeouts` validates separate positive, maximum
-30-second limits for TCP connect and the subsequent entire handshake.
-The handshake limit includes challenge reception, validation, DH
-calculation, encrypted response construction/write and cipher transfer.
-User cancellation propagates. Internal connect/handshake expiration is
-reported as a timeout, and no timeout is retried.
+`GameServerHandshakeTimeouts` holds two separate limits: one for the TCP
+connect and one for the whole handshake after it. Each must be positive
+and at most 30 seconds. The handshake limit covers receiving and
+validating the challenge, the DH calculation, building and writing the
+encrypted response, and handing over the cipher. Cancellation by the
+caller is passed through. When the internal connect or handshake
+deadline expires, the error is reported as a timeout. Timeouts are never
+retried.
 
-`GameServerHandshakeSession.OpenAsync` owns a fresh IPv4 TCP client from
-its first connect attempt. It sends **no data before receiving and
-validating** the server's challenge. It reads precisely 15 encrypted bytes,
-decrypts them with one continuous bootstrap decryptor, validates the
-declared bounded length, then reads/decrypts the **exact remaining bytes**.
-It does not read ahead into a future secured frame or reset CFB state
-between those reads.
+`GameServerHandshakeSession.OpenAsync` creates a new IPv4 TCP client and
+owns it from the first connect attempt. It sends nothing until it has
+received and validated the server's challenge. It reads 15 encrypted
+bytes and decrypts them with a single continuous bootstrap decryptor. It
+checks the declared length against the limit, then reads and decrypts
+the remaining bytes and no more. It never reads ahead into a later
+secured frame and does not reset the CFB state between those reads.
 
-The original strict AUTH-001G parser rejects malformed challenge chunks,
-IVs, DH group/public key and trailer. AUTH-001I then creates a fresh
-cryptographically random client DH response; AUTH-001H encrypts it under
-a separate zero-IV bootstrap instance; the response is written **once**
-to TCP. An uncertain/partial write, timeout, cancellation, invalid frame
-or EOF is terminal and closes the socket, without a reconnect or resend.
-The negotiated AUTH-001J session cipher is transferred only after that
-write returns successfully. Returning from `NetworkStream.WriteAsync`
-does **not** prove receipt or admission by the server.
+The AUTH-001G parser rejects malformed challenge chunks, IVs, DH group
+or public key, and trailer. AUTH-001I then builds a new client DH
+response from cryptographically random values, and AUTH-001H encrypts it
+with a separate bootstrap cipher instance that starts from a zero IV.
+The response is written to TCP once. A partial write or one with an
+unknown outcome, a timeout, cancellation, an invalid frame or EOF ends
+the session and closes the socket. There is no reconnect or resend. The
+negotiated AUTH-001J session cipher is handed over only after the write
+returns successfully. A successful return from
+`NetworkStream.WriteAsync` does not mean the server received the
+response or admitted the client.
 
-The new session exclusively owns the socket and the negotiated cipher
-until its idempotent asynchronous disposal. It deliberately exposes no
-public GameServer send/read protocol or UI login path in this slice:
-AUTH-001M may add bounded secured-frame I/O and native 1052 submission
-against this owned session after a separate audit.
+The new session is the only owner of the socket and the negotiated
+cipher until it is disposed. Disposal is asynchronous and idempotent. At
+this stage the session has no public API for sending or reading
+GameServer packets, and the UI has no login path to it. AUTH-001M adds
+secured-frame I/O with a size limit and sends the 1052 proof on this
+session.
 
 ## Memory, concurrency and ownership
 
-Handshake plaintext is limited to 1035 bytes, allocated once for one
+Handshake plaintext is at most 1035 bytes. It is allocated once for one
 challenge and erased in a `finally` block. The encrypted DH response is
-one exactly sized allocation and is erased on every success/error path.
-AUTH-001I clears its owned secret/IV buffers after single-use transfer;
-AUTH-001J owns the negotiated CAST5 directional feedback registers.
-The host itself does not log credentials, ticket material, session keys,
-redirects or packets.
+a single allocation of its exact size and is erased on every path,
+success or error. AUTH-001I clears the secret and IV buffers it owns
+after handing them over (they are used once). AUTH-001J owns the
+negotiated directional CAST5 feedback registers. The host does not log
+credentials, ticket material, session keys, redirects or packets.
 
-The account result uses its existing lock to protect the single claim.
-The new session's socket and cipher have one lifetime owner; disposal
-closes the socket and disposes the cipher. There are no unbounded queues,
-background loops, connection retries, or hidden tasks. The response
-buffer is never retained after a write. The underlying provider and
-BigInteger implementations may retain managed copies of key material:
-zeroing our owned arrays must not be described as complete erasure of
-provider-internal memory.
+The account result guards its single claim with its existing lock. The
+new session's socket and cipher have one owner, and disposal closes the
+socket and disposes the cipher. There are no unbounded queues,
+background loops, connection retries or hidden tasks. The response
+buffer is not kept after the write. The crypto provider and the
+BigInteger implementation may keep managed copies of key material, so
+zeroing the arrays this code owns is not a complete erasure of the
+provider's internal memory.
 
-## Regression evidence and acceptance
+## Testing
 
-Loopback tests exercise the actual client AccountServer seed, 1060/1055
-exchange and post-authentication reports, followed by GameServer challenge
-fragmentation. The challenge ciphertext is the previously independently
-generated AUTH-001H reference. A mock peer decrypts and parses the new
-client response using the native two-chunk `TQClient` contract, independently
-calculates the DH shared secret using the fixture server exponent, and
-produces a secured session ciphertext that the client decrypts.
+Loopback tests run the real client AccountServer seed, the 1060/1055
+exchange and the post-authentication reports, then deliver the
+GameServer challenge in fragments. The challenge ciphertext is the
+AUTH-001H reference, which was generated independently. A mock server
+decrypts and parses the new client response using the 5517 two-chunk
+`TQClient` layout, computes the DH shared secret on its own from the
+fixture server exponent, and sends secured session ciphertext that the
+client decrypts.
 
-Negative tests verify remote redirect rejection, failure account result,
-repeat claims, invalid timeout/pre-canceled call, malformed encrypted
-challenge, handshake timeout and account-disposal cancellation. No GameServer
-proof is sent. CI requires locked restore, formatter, Release build/test,
-retail content verification, Linux Quality/macOS/Windows, Dependency Review,
-independent review resolution, and explicit human merge approval.
+Negative tests cover a rejected remote redirect, a failed account
+result, repeated claims, an invalid timeout, a call that was canceled
+before it started, a malformed encrypted challenge, a handshake timeout,
+and cancellation by disposing the account result. No GameServer proof is
+sent. CI runs locked restore, the formatter, Release build and tests,
+retail content verification, the Linux Quality, macOS and Windows jobs,
+and Dependency Review.
 
 ## Out of scope
 
-No public-network GameServer connection, credential transmission,
-GameServer login proof transmission, ticket redemption, gameplay admission,
-secured-frame stream reader/writer, UI enablement, or remote peer trust is
-implemented here. Those capabilities must not be inferred from a locally
-completed unauthenticated DH negotiation.
+AUTH-001L does not connect to a GameServer on a public network, send
+credentials or the GameServer login proof, redeem a ticket, admit the
+player to gameplay, provide a secured-frame stream reader or writer,
+enable the UI, or trust a remote peer. A DH negotiation that completed
+locally without authentication does not imply any of these.

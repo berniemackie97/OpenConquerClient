@@ -1,31 +1,29 @@
 # Retail 5517 Content Inventory
 
-## Purpose
+This document records the first survey of the content shipped with the retail Windows client that
+OpenConquer Client is reconstructed from. It lists what the retail client contains. Being listed
+here does not mean a file belongs in the OpenConquer runtime.
 
-This document records the first evidence-based survey of the native Windows retail client content
-used to reconstruct OpenConquer Client. It is an inventory, not a statement that every retail file
-belongs in the modern runtime.
+The source tree was inspected read-only. Counts and byte totals below cover loose files only.
+Entries stored inside WDF packages are not counted.
 
-The source tree was inspected read-only. Counts and byte totals below describe loose files only;
-entries stored inside WDF packages are not included.
+A retail file can still be kept as a compatibility fixture when its exact bytes are needed for
+parity tests or offline inspection. That does not make it part of the runtime content set.
 
-Historical artifacts may be retained independently as compatibility fixtures when their exact bytes
-are needed for parity testing or offline inspection. That does not make them part of the production
-runtime content set.
+## Confidence Labels
 
-## Evidence Labels
-
-- **Observed** means the value came directly from the supplied retail files.
-- **Inferred** means the role follows from names, signatures, or references and still requires
-  confirmation against native behavior.
-- **Unknown** means implementation must stop at an evidence gate rather than invent behavior.
+- **Observed**: the value comes directly from the supplied retail files.
+- **Inferred**: the role follows from names, signatures or references, and still needs to be
+  confirmed against the retail client's behavior.
+- **Unknown**: the behavior has not been confirmed. Implementation waits at this point and does not
+  invent behavior.
 
 ## Source Identity
 
-The surveyed source identifies itself as retail version `5517` through the four ASCII bytes in
+The surveyed client identifies itself as retail version `5517` in the four ASCII bytes of
 `version.dat`.
 
-Selected source fingerprints:
+Fingerprints of selected source files:
 
 | Retail path                |       Bytes | SHA-256                                                            |
 | -------------------------- | ----------: | ------------------------------------------------------------------ |
@@ -38,41 +36,39 @@ Selected source fingerprints:
 | `data.wdf`                 | 392,245,257 | `fc628e4adeb7de48b0b7cde3c7793c7177a289a6defe9b90a33a1f683dcdb132` |
 | `c3.wdf`                   | 359,069,116 | `ab68f57cc24ae10052031583ce7aa4676247fe8dde5a7bdd98e572adcf7b7243` |
 
-These fingerprints identify the surveyed inputs without embedding a workstation-specific absolute
-path in project metadata.
+The fingerprints identify the surveyed files without storing an absolute path from the survey
+machine in the project.
 
-The checked-in runtime content manifest intentionally covers only the current consumer-led runtime
-dependency closure. `Server.dat` remains listed here because this document records the surveyed
-retail source, but its exact fixture is now retained separately as compatibility evidence rather
-than as runtime content.
+The checked-in runtime content manifest lists only the files that implemented client code needs
+today. `Server.dat` appears in the table above because this document describes the surveyed retail
+files. Its exact bytes are kept separately as a compatibility fixture, not as runtime content.
 
 ## Scope Summary
 
-| Retail area |  Files | Directories, including root |       Bytes | This slice                                   |
+| Retail area |  Files | Directories, including root |       Bytes | Survey coverage                              |
 | ----------- | -----: | --------------------------: | ----------: | -------------------------------------------- |
 | `ini/`      |    331 |                           3 |  28,557,142 | Full inventory and classification            |
 | `data/`     | 12,777 |                         357 | 195,662,666 | Full inventory by payload family             |
 | `ani/`      |     54 |                           1 |   8,483,019 | Included because it indexes `data/` payloads |
-| `map/`      |    977 |                           6 | 403,781,216 | Dependency boundary only                     |
-| `c3/`       | 11,886 |                       1,207 | 393,769,348 | Dependency boundary only                     |
-| `sound/`    |    527 |                           1 |  74,200,387 | Dependency boundary only                     |
-| `Help/`     |    169 |                           2 |   4,231,626 | Deferred; legacy help application content    |
+| `map/`      |    977 |                           6 | 403,781,216 | Listed as a dependency only                  |
+| `c3/`       | 11,886 |                       1,207 | 393,769,348 | Listed as a dependency only                  |
+| `sound/`    |    527 |                           1 |  74,200,387 | Listed as a dependency only                  |
+| `Help/`     |    169 |                           2 |   4,231,626 | Deferred (legacy help application content)   |
 
-The inspected `ini/`, `data/`, `ani/`, and `map/` paths contain no symbolic links, whitespace or
-non-ASCII path characters, or case-folded path collisions. The longest relative path in that set is
-67 characters. Those observations describe this snapshot; import validation must still enforce the
-same invariants for every source.
+The inspected `ini/`, `data/`, `ani/` and `map/` trees have no symbolic links, no whitespace or
+non-ASCII characters in paths, and no paths that collide when case is folded. The longest relative
+path in that set is 67 characters. This is true of this snapshot only. Import validation must still
+check the same rules for every source.
 
 ## Root Bootstrap Data
 
 ### `Server.dat`
 
-Retail `Server.dat` is verified compatibility evidence for the native 5517 login/server bootstrap
-flow.
+Retail `Server.dat` is a verified reference for the 5517 login/server bootstrap flow.
 
-It is **not** part of the modern OpenConquer client runtime content closure.
+It is not part of the OpenConquer client's runtime content.
 
-The production ownership is now:
+Where the file is used:
 
 ```text
 retail Server.dat
@@ -86,17 +82,17 @@ OpenConquer.Client runtime
         └── no Server.dat dependency
 ```
 
-The exact audited fixture is retained at:
+The fixture, byte-identical to the audited retail file, is kept at:
 
 ```text
 tests/OpenConquer.Content.Tool.Tests/TestData/retail-5517/Server.dat
 ```
 
-Native analysis establishes that retail 5517 reads the file directly from the client root rather
-than through WDF package routing. That remains historical compatibility evidence, but there is no
-modern runtime `LooseOnly` consumer because the production client no longer reads the file.
+Analysis of the retail binaries shows that retail 5517 reads the file directly from the client root,
+without going through WDF package routing. OpenConquer keeps this as a compatibility reference, but
+there is no runtime `LooseOnly` consumer because the client no longer reads the file.
 
-Verified retail identity:
+Retail file identity:
 
 ```text
 length: 2816 bytes
@@ -104,15 +100,15 @@ SHA-256: 0b4d366786aa4498c7e470f10fd8bca716bc1d6cbda1eb3894666183f8327a90
 RSA blocks: 11 × 256 bytes
 ```
 
-Native `CConfigDataTableQueryProvider` constructs a 2048-bit RSA public key with exponent `65537`.
+The retail `CConfigDataTableQueryProvider` builds a 2048-bit RSA public key with exponent `65537`.
 
-The independently recovered unsigned big-endian modulus has raw-byte SHA-256:
+The modulus was recovered independently. As unsigned big-endian raw bytes, its SHA-256 is:
 
 ```text
 76acb04b08190b129985f8dee2b466efcd686eb1662cb598bd1a8154cb9196f1
 ```
 
-The verified native decode path is:
+The retail client decodes the file in these steps:
 
 ```text
 11 × 256-byte RSA blocks
@@ -128,13 +124,13 @@ PKCS#1 type-1 extraction
 table_data[name=outenserver]
 ```
 
-The inflated XML SHA-256 is:
+SHA-256 of the inflated XML:
 
 ```text
 5d6b00ff722a8b37aa2981affecd478aee73bdc22cdc498a25b700242b55c35a
 ```
 
-The verified schema exposes:
+The schema has these fields:
 
 ```text
 id
@@ -149,29 +145,29 @@ ServerPort
 
 Root row `id=0` declares 14 groups.
 
-Group rows use IDs `1..14`; server rows begin at:
+Group rows use IDs `1..14`. The server rows of each group start at:
 
 ```text
 0x65 + (groupIndex - 1) * 0x64
 ```
 
-with `Child` on the group row defining that group's server count.
+The `Child` value on the group row gives the number of servers in that group.
 
-The 100-row stride is therefore structural evidence and the preserved tooling decoder rejects a
-per-group count above 100.
+Groups are therefore 100 rows apart, and the tooling decoder rejects a group with more than 100
+servers.
 
-The exact fixture currently decodes to:
+The fixture currently decodes to:
 
 ```text
 groups: 14
 servers: 94
 ```
 
-The tooling model intentionally preserves historical field semantics rather than normalizing them
-into a modern runtime server or realm model.
+The tooling model keeps the original field meanings. It does not convert them into a runtime server
+or realm model.
 
-That distinction is observable in the retail data itself. Multiple rows have different `FlashName`
-and `ServerName` values, including:
+The retail data shows why this matters. Several rows have different `FlashName` and `ServerName`
+values, for example:
 
 ```text
 FlashName="Water"       ServerName="Fire"
@@ -180,19 +176,19 @@ FlashName="Pegasus"     ServerName="Basilisk"
 FlashName="Cinderella"  ServerName="SnowWhite"
 ```
 
-`ServerName` also has separate verified protocol significance in the native login boundary, so it
-must not be conflated with presentation metadata.
+`ServerName` also has a confirmed role in the 5517 login protocol, so it must not be treated as
+display metadata.
 
-Historical `ServerIP` and `ServerPort` are preserved as source text in tooling only. They are not
-converted into modern runtime endpoints, and the inspection command never initiates a connection.
+The tooling keeps `ServerIP` and `ServerPort` as the original text. They are never turned into
+runtime endpoints, and the inspection command never opens a connection.
 
-Detailed cryptographic, parser, protocol, and modern-ownership rationale is maintained in
-[`../compatibility/server-dat.md`](../compatibility/server-dat.md).
+The cryptography, the parser, the protocol details and the reasons for this ownership split are
+described in [`../compatibility/server-dat.md`](../compatibility/server-dat.md).
 
 ## `ini/` Inventory
 
-The directory name is misleading: `ini/` is a mixed database containing text configuration, compiled
-tables, binary records, region data, and terrain-effect payloads.
+Despite its name, `ini/` is a mixed database. It holds text configuration, compiled tables, binary
+records, region data and terrain-effect payloads.
 
 | Extension | Files |     Bytes | Observed character                                   |
 | --------- | ----: | --------: | ---------------------------------------------------- |
@@ -205,7 +201,7 @@ tables, binary records, region data, and terrain-effect payloads.
 
 ### Functional families
 
-These are planning categories, not claims about native class ownership.
+These groups are for planning. They do not describe which retail classes own the files.
 
 | Family                           | Representative retail files                                                                                    | Proposed logical ownership                                       |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -214,7 +210,7 @@ These are planning categories, not claims about native class ownership.
 | UI layout and presentation       | `GUI.ini`, `GUI800X600.ini`, `CHATGUI.ini`, `PlayGui.ini`, `DummyMovie*.ini`, `msgbox.ini`                     | Presentation catalogs                                            |
 | Text and localization            | `StrRes.ini`, `Cn_Res.ini`, `nameRes.ini`, `numRes.ini`, `ProfessionalName.ini`, `StatusTips.ini`              | Localization catalogs                                            |
 | Items and economy                | `itemtype.dat`, `ItemAdd.ini`, `ItemTexture.ini`, `Shop.dat`, `emoneyshop.ini`, `itemprice.ini`                | Gameplay definition catalogs                                     |
-| Roles, NPCs, and monsters        | `Monster.dat`, `npc.ini`, `NpcX.ini`, `RolePart.ini`, `TransForm.ini`                                          | Gameplay and presentation definitions, split at typed boundaries |
+| Roles, NPCs, and monsters        | `Monster.dat`, `npc.ini`, `NpcX.ini`, `RolePart.ini`, `TransForm.ini`                                          | Gameplay and presentation definitions, split by typed reader     |
 | Magic, actions, and effects      | `MagicType.dat`, `Action.dat`, `Action*.ini`, `3DEffect*`, `MagicEffect.ini`, `effect.ini`                     | Gameplay definitions plus rendering bindings                     |
 | Models, textures, and motion     | `3DObj.*`, `3DTexture.*`, `3dmotion.*`, `armor.*`, `weapon.*`, `mount.*`                                       | Rendering/model catalogs                                         |
 | World and maps                   | `GameMap.dat`, `GameMapEx.ini`, `MapRelationInfo.ini`, `region.ini`, `terrainnpc.ini`, `TerrainMagic/`, `tme/` | World catalogs and map-content bindings                          |
@@ -223,21 +219,22 @@ These are planning categories, not claims about native class ownership.
 
 ### Format and precedence findings
 
-- Each of the 14 `.dbc` files has a same-stem text `.ini` counterpart. The DBC files are binary, not
-  renamed text. Which representation wins is **unknown** until the native loader is verified.
-- Eleven `.tme` payloads are duplicated byte-for-byte between `ini/tme/` and `ini/TerrainMagic/`.
-  Their path identities must be preserved even if a compiled package later deduplicates their bytes.
-- Fifteen `ini/` files are zero length. Empty is observable input and must not be confused with a
-  missing file.
-- High-byte text appears throughout the configuration corpus. Much of it is consistent with a
-  Chinese Windows code page, while `RacePointShop.ini` is detected as UTF-8. A blanket Latin-1 or
-  UTF-8 policy would corrupt some content. Encoding becomes explicit per format or per catalog after
-  native verification.
-- Text syntax is not uniform. Some files use ordinary sections and keys, some are whitespace- or
-  comma-delimited, some use numeric sections, and some carry `//` comments. Typed readers should
-  share a small lexical layer only where the observed grammars actually overlap.
+- Each of the 14 `.dbc` files has a text `.ini` file with the same stem. The DBC files are real
+  binary files, not renamed text. Which of the two the client uses is unknown until the retail
+  loader has been checked.
+- Eleven `.tme` payloads are byte-for-byte identical in `ini/tme/` and `ini/TerrainMagic/`. Both
+  paths must keep working even if a compiled package later stores the bytes only once.
+- Fifteen `ini/` files are zero length. An empty file is valid input and must not be confused with
+  a missing file.
+- Text with high-bit bytes appears throughout the configuration files. Much of it is consistent
+  with a Chinese Windows code page, but `RacePointShop.ini` is detected as UTF-8. A single Latin-1
+  or UTF-8 rule for every file would corrupt some content. Each format or catalog gets its own
+  declared encoding once the retail behavior has been checked.
+- Text syntax varies. Some files use ordinary sections and keys, some are delimited by whitespace
+  or commas, some use numeric sections, and some contain `//` comments. Typed readers should share
+  a small lexer only where the grammars really overlap.
 
-### Historical compatibility discrepancy
+### Corrected `GameSetUp.ini` layout
 
 The supplied retail `ini/GameSetUp.ini` contains:
 
@@ -246,15 +243,16 @@ The supplied retail `ini/GameSetUp.ini` contains:
 ScreenModeRecord=2
 ```
 
-The earlier pre-content-boundary `GameSetupConfiguration` implementation and its tests expected:
+An earlier `GameSetupConfiguration` implementation, written before the Content layer existed, and
+its tests expected:
 
 ```ini
 [ScreenModeRecord]
 ScreenMode=2
 ```
 
-That discrepancy has been corrected. The current typed reader and tests use the observed retail
-shape.
+This has been fixed. The current typed reader and its tests use the layout found in the retail
+file.
 
 ## `data/` Inventory
 
@@ -293,11 +291,11 @@ shape.
 | `data/pic/`           |    57 |    130,010 | Presentation images; classify by consumer                     |
 | `data/AutoPatch_pic/` |     5 |    550,545 | Patcher/launcher, excluded from game runtime by default       |
 
-The destination names are planning domains only. They are not instructions to bulk-migrate those
-families, rename retail files in place, or rewrite references by hand. Actual checked-in runtime
-content remains consumer-led.
+The destination names are planning areas only. They are not a plan to move these families in bulk,
+rename retail files in place or rewrite references by hand. Files enter the checked-in runtime
+content only when client code needs them.
 
-### Texture evidence
+### Textures
 
 Of the `.dds`-named files with a valid DDS signature:
 
@@ -307,49 +305,50 @@ Of the `.dds`-named files with a valid DDS signature:
 | DXT1     | 2,813 |
 | DXT5     |    13 |
 
-The most common dimensions are 128×128 (4,005 files), 64×64 (2,640), and 32×32 (1,849).
+The most common dimensions are 128x128 (4,005 files), 64x64 (2,640) and 32x32 (1,849).
 
-Four `.dds`-named item icons actually contain TGA payloads:
+Four item icons with a `.dds` name actually contain TGA data:
 
 - `data/MapItemIcon/722755.dds`
 - `data/MapItemIcon/710718.dds`
 - `data/ItemMinIcon/722755.dds`
 - `data/ItemMinIcon/710718.dds`
 
-Decoders and inventory tooling must dispatch from validated signatures, retain the original path for
-identity, and record extension/signature mismatches as diagnostics.
+Decoders and inventory tools must pick the format from the validated file signature, keep the
+original path as the file's identity, and report extension/signature mismatches as diagnostics.
 
 ### Duplicate payloads
 
-The loose `data/` tree contains 397 SHA-256 duplicate groups: 447 redundant file copies totaling
-5,845,326 bytes. Some duplicates have different semantic identities, such as item and world icons.
+The loose `data/` tree has 397 groups of files with identical SHA-256 hashes, which add up to 447
+redundant copies totaling 5,845,326 bytes. Some copies serve different purposes, such as an item
+icon and a world icon with the same bytes.
 
-Any future consumer/catalog layer must preserve every required logical path even if a later
-content-addressed payload store deduplicates identical bytes internally.
+Any future consumer or catalog must keep every logical path it needs, even if a content-addressed
+store later keeps identical bytes only once.
 
 ### Legacy-only content
 
-- The 28 `data/Cursor/*.ani` files are RIFF animated cursor binaries. They are unrelated to the text
-  animation catalogs under top-level `ani/` despite sharing an extension.
+- The 28 `data/Cursor/*.ani` files are RIFF animated cursor binaries. They share an extension with
+  the text animation catalogs in top-level `ani/` but are unrelated to them.
 - `data/PlayerFace/JPG/16/Thumbs.db` and `data/PlayerFace/JPG/64/Thumbs.db` are shell caches and are
-  excluded from runtime packages.
-- The 137 SWF files depend on retired Flash behavior. The default plan is to preserve them as source
-  evidence but rebuild required flows in first-party OpenConquer UI. Embedding a Flash runtime
-  requires a separate, explicit architecture and security decision.
-- `data/main/role.dat`, `data/main/start.dat`, and `data/main/start-facebook.dat` are substantial
-  binary inputs. Their formats and consumers remain an evidence gate.
+  left out of runtime packages.
+- The 137 SWF files need Flash, which is retired. The default plan is to keep them as reference
+  material and rebuild the flows that are needed in OpenConquer's own UI. Embedding a Flash runtime
+  would need its own architecture and security decision.
+- `data/main/role.dat`, `data/main/start.dat` and `data/main/start-facebook.dat` are large binary
+  inputs. Their formats and the code that reads them are not known yet, and work that depends on
+  them waits until they are.
 
 ## Adjacent Dependencies
 
 ### Animation catalogs
 
-Top-level `ani/` contains 54 text catalogs. Entries such as `ItemMinIcon.Ani` map logical animation
-or resource IDs to frames under `data/`; other catalogs bind map imagery.
+Top-level `ani/` contains 54 text catalogs. Entries in catalogs such as `ItemMinIcon.Ani` map
+logical animation or resource IDs to frames under `data/`. Other catalogs bind map imagery.
 
-These catalogs are relevant evidence whenever a future consumer depends on the corresponding
-resources because the catalog IDs, frame ordering, and retail paths are part of the compatibility
-contract. They remain inventory-only until an implemented consumer establishes the required lookup
-and decoding behavior.
+Any future code that uses these resources must follow the catalogs, because the catalog IDs, frame
+order and retail paths are part of the compatibility contract. Until such code exists and defines
+the lookup and decoding rules, the catalogs are only inventoried here.
 
 ### WDF packages and loose overlays
 
@@ -361,9 +360,9 @@ c3.wdf
 data3.wdf
 ```
 
-The first two packages exist in the surveyed snapshot; `data3.wdf` does not.
+The first two packages exist in the surveyed snapshot. `data3.wdf` does not.
 
-Observed retail archive identities:
+Retail archives in the snapshot:
 
 | Package     |     Entries |       Bytes | SHA-256                                                            |
 | ----------- | ----------: | ----------: | ------------------------------------------------------------------ |
@@ -371,34 +370,35 @@ Observed retail archive identities:
 | `c3.wdf`    |      10,274 | 359,069,116 | `ab68f57cc24ae10052031583ce7aa4676247fe8dde5a7bdd98e572adcf7b7243` |
 | `data3.wdf` | unavailable |           — | declared by retail but not present                                 |
 
-Existing WDF packages begin with the `PFDW` signature.
+Both existing WDF packages begin with the `PFDW` signature.
 
-Native analysis has established the package-registration and routing behavior required by the modern
-content boundary:
+Analysis of the retail binaries has established how packages are registered and how paths are
+routed to them. OpenConquer's content layer depends on this behavior:
 
-- `GraphicData.dll`, not `conquer.exe`, reads `ini/package.ini`;
-- `package.ini` is consumed as whitespace-delimited package-name tokens rather than as an INI file;
-- failure to open `package.ini` is non-fatal and produces zero registered packages;
-- `TqPackagesOpen` return values are discarded by the startup registration driver;
-- package names are normalized by lowercasing ASCII and converting `\` to `/`;
-- the registration prefix is the whole normalized declaration with everything from the final `.`
-  onward removed;
-- there is no basename extraction;
-- the actual registered package identity is the 32-bit WDF hash of that prefix;
-- package registration is first-wins by prefix hash;
-- distinct prefix strings whose hashes collide therefore share one routing identity;
-- prefix-hash ownership is established before the declared WDF is opened;
-- a missing or unusable first package consequently blocks later declarations with the same routing
-  hash;
-- the missing retail `data3.wdf` still registers an empty `data3` package identity and is non-fatal;
-- virtual-path routing hashes the first normalized path segment and selects the first registered
-  package with the same prefix hash;
-- the full normalized virtual path is hashed separately to obtain the WDF entry UID;
-- a virtual path without `/` routes using its entire normalized string;
-- native WDF hashing uses a 256-byte zero-padded buffer and silently truncates longer inputs;
-- loose-only, package-only, and loose-then-package lookup modes are distinct native behaviors.
+- `GraphicData.dll`, not `conquer.exe`, reads `ini/package.ini`.
+- `package.ini` is read as whitespace-delimited package names. It is not parsed as an INI file.
+- If `package.ini` cannot be opened, startup continues with zero registered packages.
+- The startup registration code ignores the return value of `TqPackagesOpen`.
+- Package names are normalized by lowercasing ASCII letters and converting `\` to `/`.
+- The registration prefix is the whole normalized declaration with everything from the last `.`
+  onward removed.
+- No basename is extracted.
+- The registered package identity is the 32-bit WDF hash of that prefix.
+- The first package registered with a given prefix hash wins.
+- Different prefix strings whose hashes collide therefore share one routing identity.
+- The prefix hash is claimed before the declared WDF file is opened.
+- So a missing or unusable first package still blocks later declarations with the same routing
+  hash.
+- The missing retail `data3.wdf` still registers an empty `data3` package identity, and startup
+  continues.
+- Virtual-path routing hashes the first normalized path segment and picks the first registered
+  package with the same prefix hash.
+- The full normalized virtual path is hashed separately to get the WDF entry UID.
+- A virtual path without `/` is routed by its whole normalized string.
+- The retail WDF hash uses a 256-byte zero-padded buffer and silently truncates longer inputs.
+- Loose-only, package-only and loose-then-package lookups are separate modes in the retail client.
 
-The WDF archive format is also verified:
+The WDF archive layout has also been confirmed:
 
 ```text
 12-byte header
@@ -416,64 +416,69 @@ entry table
     └── uint32 reserved = 0
 ```
 
-The entry table is sorted by UID ascending and native lookup uses binary search.
+The entry table is sorted by ascending UID, and the retail client finds entries with a binary
+search.
 
-The current implementation preserves those verified behaviors while applying explicit modern safety
-boundaries:
+OpenConquer keeps all of this behavior and adds these safety checks:
 
-- WDF archive paths are rejected when host resolution encounters symbolic links or reparse points;
-- expected package resolution/open/validation failures become non-fatal unavailable registrations;
-- package-registration results are published as an immutable completed snapshot;
-- archives are limited to 100,000 entries before allocation;
-- header and index arithmetic is checked;
-- the complete index must fit within the archive;
-- every 16-byte index record must be present;
-- the reserved DWORD must be zero;
-- UIDs must be strictly ascending;
-- duplicate UIDs are rejected;
-- each entry payload must begin at or after the 12-byte header;
-- each entry payload must end at or before the index table;
-- malformed and truncated archives fail deterministically;
-- opened entry streams are bounded to their selected payload range.
+- WDF archive paths are rejected if resolving them on the host runs into a symbolic link or
+  reparse point.
+- Expected failures to resolve, open or validate a package produce an unavailable registration and
+  do not stop startup.
+- The package registration results are published as one immutable snapshot after registration
+  completes.
+- An archive may have at most 100,000 entries. This is checked before anything is allocated.
+- Header and index arithmetic is overflow-checked.
+- The whole index must fit inside the archive.
+- Every 16-byte index record must be present.
+- The reserved DWORD must be zero.
+- UIDs must be strictly ascending.
+- Duplicate UIDs are rejected.
+- Each entry's payload must begin at or after the end of the 12-byte header.
+- Each entry's payload must end at or before the index table.
+- Malformed and truncated archives are always rejected with a defined error.
+- An opened entry stream can read only its own payload range.
 
-The 100,000-entry ceiling is a modern resource-safety limit rather than a retail format claim. It is
-well above both surveyed retail archive counts.
+The 100,000-entry limit is an OpenConquer resource-safety limit and not part of the retail format.
+It is well above the entry counts of both surveyed retail archives.
 
-The implementation intentionally does not reject overlap between two otherwise valid payload ranges.
+Overlapping payload ranges are allowed, as long as each range is otherwise valid.
 
-Retail files are observed to be packed contiguously, but native evidence has not established that
-overlap itself is an invalid format condition. Individual entry containment already prevents reads
-from escaping the validated payload region, so overlap rejection remains an explicit compatibility
-decision rather than deferred cleanup.
+The retail archives are packed contiguously, but the retail code does not show that overlap makes an
+archive invalid. Each entry is already confined to the validated payload region, so reads cannot
+escape it. Allowing overlap is a compatibility decision, not cleanup left for later.
 
 ### Deferred areas
 
-- `map/` holds DMap terrain containers and related scene data. `ini/GameMap.dat` is its primary
-  index. A verified reader already exists in the sibling server codebase and can be used as
-  supporting evidence, but client ownership and rendering composition remain separate work.
+- `map/` holds DMap terrain containers and related scene data, with `ini/GameMap.dat` as the main
+  index. The sibling server codebase already has a verified reader that can serve as a reference,
+  but client ownership and rendering composition are separate work.
 - `c3/` holds models and textures selected through the INI/DBC binding tables.
 - `sound/` holds WAV effects and MP3 music selected through INI audio catalogs.
 
-These areas remain deferred dependencies. Files from them enter the checked-in runtime content
-closure only when an implemented client consumer requires them and the corresponding slice has
-established the relevant compatibility and validation behavior.
+These areas are deferred. Their files are added to the checked-in runtime content only when
+implemented client code needs them and the related compatibility and validation behavior is in
+place.
 
-## Inventory Conclusions
+## Implications
 
-1. Retail directories are storage history, not suitable modern subsystem boundaries.
-2. Original relative paths remain compatibility identities and must never be casually normalized.
-3. Logical organization belongs in typed consumers and reviewed catalogs; physical runtime payload
-   migration remains consumer-led.
-4. Extension alone is not a safe format discriminator.
-5. WDF routing and archive validation are explicit runtime boundaries: native evidence determines
-   registration, hashing, routing, and lookup compatibility, while modern validation constrains
+1. Retail directories reflect how the files were historically stored. They are not a good basis
+   for modern subsystem boundaries.
+2. Original relative paths are part of each file's compatibility identity and must never be
+   normalized casually.
+3. Logical organization belongs in typed consumers and reviewed catalogs. Runtime payload files are
+   moved only when consuming code needs them.
+4. The file extension alone does not reliably identify a format.
+5. WDF routing and archive validation are runtime concerns with two sources of rules. The retail
+   binaries define registration, hashing, routing and lookup. OpenConquer's own validation treats
    legacy archives and host files as untrusted input.
-6. `Server.dat` is explicit compatibility evidence, with independently verified native RSA material,
-   bounded PKCS#1/gzip/XML decoding, typed historical projection, and exact parity tests, but it is
-   intentionally owned by offline tooling rather than by the production client runtime.
-7. Mutable preferences, immutable game definitions, presentation resources, historical compatibility
-   fixtures, and obsolete launcher content require different ownership and distribution policies.
-8. The **inventory** of the surveyed retail families is complete, while checked-in runtime migration
-   remains intentionally consumer-led. The repository may additionally preserve small exact
-   compatibility fixtures outside the runtime closure when required to permanently lock
-   parity-sensitive behavior.
+6. `Server.dat` is a compatibility reference. Its RSA key material was recovered and checked
+   independently, its PKCS#1/gzip/XML decoding is size-limited, it is mapped to a typed historical
+   model, and parity tests compare exact output. It belongs to offline tooling, not to the client
+   runtime.
+7. Mutable preferences, immutable game definitions, presentation resources, historical
+   compatibility fixtures and obsolete launcher content need different ownership and distribution
+   policies.
+8. The inventory of the surveyed retail families is complete. Runtime content is migrated only as
+   client code needs it. The repository may also keep small, byte-identical compatibility fixtures
+   outside the runtime content when they are needed to lock down parity-sensitive behavior.

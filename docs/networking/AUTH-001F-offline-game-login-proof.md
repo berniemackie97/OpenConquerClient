@@ -1,15 +1,26 @@
-# AUTH-001F — Standard GameServer login proof (offline)
+# AUTH-001F: Standard GameServer login proof (offline)
 
-## Audited baseline and sources
+AUTH-001F serializes the 28-byte login proof (type 1052) that the client sends
+as its first secured packet to the GameServer. It only builds the packet.
+Nothing in it connects to a GameServer.
 
-- Client `main` `6c66162228018bc1e3041591c12ac4e71c527c41` following merged AUTH-001E, PR #119. PRs #120–122 additionally changed launcher and documentation; those changes remain untouched.
-- `20_notes/Network/13_connection_lifecycle.md`, especially `CConnectionFlow__SendGameSessionBootstrap` (`0x6DF1D0`) and native `CMsgLoginBootstrap1052__BuildGameLoginProof` (`0x75443E`).
-- `20_notes/Network/14_session_derived_legacy_cipher_mask.md`, `0x75443E` and `0x7545FC`: the post-DH game proof forwards the AccountServer UID and authentication key **unchanged**, without the separately derived legacy mask.
-- OpenConquerServer `GameLoginProof.TryParse` and `GameConnectionAuthenticator`: the first secured GameServer frame must be a valid 1052 proof and its UID/key must redeem a single-use ticket.
+## Sources
 
-## Verified ordinary native 5517 packet
+- `20_notes/Network/13_connection_lifecycle.md`, especially
+  `CConnectionFlow__SendGameSessionBootstrap` (`0x6DF1D0`) and the retail
+  `CMsgLoginBootstrap1052__BuildGameLoginProof` (`0x75443E`).
+- `20_notes/Network/14_session_derived_legacy_cipher_mask.md`, `0x75443E` and
+  `0x7545FC`: the game proof sent after DH forwards the AccountServer UID and
+  authentication key unchanged, without the separately derived legacy mask.
+- OpenConquerServer `GameLoginProof.TryParse` and `GameConnectionAuthenticator`:
+  the first secured GameServer frame must be a valid 1052 proof, and its UID and
+  key must redeem a single-use ticket.
 
-On the standard (non-startup-movie/Facebook) path, **only after GameServer Diffie–Hellman completes**, the client sends this **28-byte** packet to the GameServer:
+## The 5517 login proof packet
+
+On the standard path (not the startup-movie/Facebook variant), the client sends
+this 28-byte packet to the GameServer, and only after the GameServer
+Diffie-Hellman exchange has completed:
 
 | Offset | Size | Field |
 | --- | --- | --- |
@@ -17,73 +28,78 @@ On the standard (non-startup-movie/Facebook) path, **only after GameServer Diffi
 | 2 | 2 | Little-endian packet type 1052 |
 | 4 | 4 | The 1055 session UID, unmodified |
 | 8 | 4 | The 1055 authentication key, unmodified |
-| 12 | 2 | Native mode `0x007C` |
-| 14 | 2 | Opaque locale tag, obtained from the native data-set lookup |
+| 12 | 2 | Mode `0x007C` (retail constant) |
+| 14 | 2 | Opaque locale tag, from the retail client's data-set lookup |
 | 16 | 6 | Six hardware-address bytes, or zero when unavailable |
-| 22 | 2 | Reserved zero bytes (from the cleared native packet buffer) |
+| 22 | 2 | Reserved zero bytes (the retail client clears the packet buffer) |
 | 24 | 4 | Signed `res.dat` resource version |
 
-**Do not confuse this packet with the 28-byte AccountServer resource-version
-report (also type 1052).** They have different layouts and occur on different
-connections. The client’s other native 96-byte packet 1203 belongs to a distinct
-startup variant and is excluded here.
+The 28-byte AccountServer resource-version report from AUTH-001E is also
+type 1052. The two packets have different layouts and travel on different
+connections. The retail client's 96-byte packet 1203 belongs to a different
+startup variant and is not covered here.
 
-## Type ownership and lifecycle
+## Types and lifetime
 
-`GameLoginProof1052` is a pure serializer with exact-length and hardware-byte
-validation before mutation. An empty hardware span produces six zero bytes.
-Locale tag and resource version are explicit caller-owned input values to the
-pure serializer; no machine identifiers, localization data or file content are
-discovered by this codec. The six-byte hardware staging area is zero-initialized
-before copying, preserving the empty-hardware fallback and overlapping spans. Zero is a valid authentication-key byte pattern; no undocumented
-nonzero-key requirement is introduced.
+`GameLoginProof1052` is a pure serializer. It checks the output length and the
+hardware bytes before writing anything. An empty hardware span produces six zero
+bytes. The caller passes in the locale tag and the resource version, and the
+codec does not discover machine identifiers, localization data or file content.
+The six-byte hardware staging area is zeroed before copying, which keeps the
+empty-hardware fallback correct and makes overlapping spans safe. An
+authentication key of all zero bytes is valid, and the serializer does not
+reject it.
 
-The existing `LoginAccountExchangeResult` owns the AccountServer success outcome.
-It now records report completion only **after** its existing native 1100/1052
-continuation finishes successfully, including closing the AccountServer
-socket. The result retains the version successfully reported to the AccountServer
-and automatically reuses it in the GameServer proof; callers cannot supply an
-inconsistent second version. `WriteGameLoginProof` can then compose the next
-proof **exactly once**.
-It fails before reports, after disposal, on an account failure, and on
-repeated invocation. A bad output buffer does not consume the proof issuance.
-The narrow lifetime lock prevents a pending report completion from authorizing
-proof composition after the result was disposed.
+The existing `LoginAccountExchangeResult` owns the successful AccountServer
+outcome. It marks reporting as complete only after its 1100/1052 continuation
+has finished successfully, including closing the AccountServer socket. The
+result keeps the resource version it reported to the AccountServer and reuses it
+in the GameServer proof, so callers cannot pass a second, different version.
+`WriteGameLoginProof` can then compose the proof once. It fails before the
+reports are done, after disposal, after an account failure and on a second call.
+A bad output buffer does not use up the single issuance. A narrow lifetime lock
+stops a report completion that is still pending from enabling proof composition
+after the result has been disposed.
 
-The 28-byte output is sensitive: it contains a redeemable UID/key ticket.
-It remains caller-owned and must be zeroed when eventually sent or discarded.
-The returned fields must not be logged, serialized into diagnostic messages,
-cached, or exposed to UI layers. There is no new method that opens a GameServer
-socket, bypasses signed realm authority, or considers the player logged in.
+The 28-byte output is sensitive because it contains a redeemable UID/key ticket.
+It belongs to the caller, who must zero it once it has been sent or discarded.
+Its fields must not be logged, written into diagnostic messages, cached or
+passed to UI layers. No new method opens a GameServer socket, bypasses the
+signed realm catalog or treats the player as logged in.
 
-## Security and subsequent dependency
+## Security and remaining work
 
-The GameServer response IP and port in 1055 originated on the existing
-legacy-obfuscated, unauthenticated AccountServer transport. The signed realm
-catalog authenticates account endpoint *metadata*, not the GameServer peer
-or 1055 redirect. This proof serializer **does not authorize connecting to
-that redirect** and does not make the legacy transport secure.
+The GameServer IP and port in 1055 arrive over the existing AccountServer
+transport, which is legacy-obfuscated and unauthenticated. The signed realm
+catalog authenticates the account endpoint metadata, but not the GameServer peer
+or the 1055 redirect. This serializer does not make it safe to connect to that
+redirect, and it does not make the legacy transport secure.
 
-Before any real GameServer handoff, independently audit and implement:
-- authenticated endpoint trust/selection policy and bounded connection lifetime;
-- server-initiated DH challenge format, validation, and client response;
-- native fixed CAST5 bootstrap and per-session cipher transition;
-- proof transmission only once over the correctly established game channel;
-- ticket-redeemed admission and all failure, cancellation and disposal paths.
+Before any real GameServer handoff, each of these needs its own research and
+implementation:
 
-The native `0x7C` mode constant is **not** the transport encryption mode.
-No speculative GameServer networking, retry infrastructure, OS MAC discovery,
-UI login action, or startup variant logic is included in this slice.
+- an authenticated policy for trusting and selecting endpoints, and a connection
+  lifetime with time limits
+- the format of the server-initiated DH challenge, its validation and the client
+  response
+- the 5517 fixed-key CAST5 bootstrap and the switch to the per-session cipher
+- sending the proof only once, over a correctly established game channel
+- admission after ticket redemption, and all failure, cancellation and disposal
+  paths
 
-## Verification
+The retail mode constant `0x7C` has nothing to do with the transport encryption
+mode. AUTH-001F adds no GameServer networking, retry logic, OS MAC discovery, UI
+login action or startup-variant logic.
 
-The independent OpenConquerServer parser fixture validates the exact serialized
-hex and all offsets. Added tests cover the zero-hardware fallback, signed
-resource-version field, invalid input atomicity, the real AUTH-001E TCP
-post-report lifecycle, disposal, account failure and single issuance.
-Existing AUTH-001A through AUTH-001E vectors and cross-platform networking
-tests must remain green.
+## Testing
 
-Acceptance requires locked restore, format verification, Release build and
-tests, content-set verification, Quality/macOS/Windows, Dependency Review,
-reviewer findings and explicit human merge acceptance.
+The independent OpenConquerServer parser fixture checks the serialized hex and
+every offset. Tests cover the zero-hardware fallback, the signed
+resource-version field, atomic rejection of invalid input, the real AUTH-001E
+TCP lifecycle after the reports, disposal, account failure and single issuance.
+The existing AUTH-001A through AUTH-001E vectors and the cross-platform
+networking tests still pass.
+
+The change passes locked restore, format verification, Release build and tests,
+content-set verification, and the Quality, macOS, Windows and Dependency Review
+jobs.

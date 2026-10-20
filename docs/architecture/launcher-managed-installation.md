@@ -1,10 +1,10 @@
 # Managed launcher installation
 
-The launcher and client publish independently. `OpenConquer.Product.Tool` composes them into one
-authenticated local/CI product; it is not an installer, updater, or production release-signing
-authority.
+The launcher and client are published separately. `OpenConquer.Product.Tool` combines them into one
+authenticated product for local development and CI. It is not an installer, an updater, or a
+production release-signing system.
 
-## Package contract
+## Package layout
 
 ```text
 <product root>/
@@ -17,8 +17,8 @@ authority.
         └── client/                       # client publish files
 ```
 
-Composition generates the installation descriptor and stages the authenticated release metadata. The
-raw launcher publish must not contain the descriptor, `releases/`, release manifest, release
+Composition generates the installation descriptor and stages the authenticated release metadata.
+The raw launcher publish must not contain the descriptor, `releases/`, a release manifest, a release
 signature, mutable release trust, a legacy root-level managed `client/`, or game runtime content.
 
 ```json
@@ -30,63 +30,68 @@ signature, mutable release trust, a legacy root-level managed `client/`, or game
 }
 ```
 
-Installation schema v2 requires exactly these properties. The active release is mandatory; the
-fallback is either null or a distinct release identity. A release identity contains a zero-padded
-20-digit positive sequence, the lowercase SHA-256 digest of the exact signed manifest bytes, and an
-optional 32-digit lowercase nonce used for same-release repair and safe generation
-collision/corruption avoidance. This makes every selected directory name independently checkable
-without granting the descriptor release authority.
+Installation schema v2 requires these properties and no others. The active release is required. The
+fallback is either null or a different release identity. A release identity is made of a
+zero-padded 20-digit positive sequence number, the lowercase SHA-256 digest of the signed manifest
+bytes, and an optional 32-digit lowercase nonce. The nonce is used for same-release repair and keeps
+a new generation from colliding with an existing or corrupted one. As a result, every selected
+directory name can be checked on its own, without trusting the descriptor to say which release is
+valid.
 
-Duplicate/unknown fields, malformed JSON, nonpositive or nonportable identities, equal active and
-fallback identities, and arbitrary paths are rejected. A structurally recognized higher version
-reports that a launcher update is required. The descriptor is bounded to 32 KiB.
+The descriptor is rejected if it has duplicate or unknown fields, malformed JSON, nonpositive or
+nonportable identities, identical active and fallback identities, or arbitrary paths. A descriptor
+with a recognizable structure but a higher schema version reports that a launcher update is
+required. The descriptor may be at most 32 KiB.
 
-Schema v1 remains a read and one-way migration contract for existing flat products:
+Schema v1 is still read, so existing flat products can be migrated one way to v2:
 
 ```json
 { "schemaVersion": 1, "productId": "OpenConquer", "clientRoot": "client" }
 ```
 
-New composition never emits schema v1. A successful update migrates a healthy legacy client into a
-versioned generation without mutating the legacy client in place before selecting the new
-generation. The untouched flat files remain inert; removing them is a packaging/lifecycle decision,
+New composition never writes schema v1. A successful update copies a healthy legacy client into a
+versioned generation and selects that generation, without changing the legacy client in place
+first. The old flat files are left unused. Removing them is a packaging or lifecycle decision and is
 not part of activation.
 
-`openconquer.release.json` identifies the product, monotonically positive release sequence, release
-version, minimum compatible launcher version, target runtime, client executable, and the complete
-ordered client file set with lengths and SHA-256 hashes. Release metadata is bounded and rejects
-duplicate, ambiguous, nonportable, linked, unsupported, or excessive filesystem entries.
+`openconquer.release.json` records the product, the positive release sequence (which only
+increases), the release version, the minimum compatible launcher version, the target runtime, the
+client executable, and the complete ordered list of client files with their lengths and SHA-256
+hashes. Release metadata has a size limit, and duplicate, ambiguous, nonportable, linked,
+unsupported, or excessive filesystem entries are rejected.
 
-`openconquer.release.sig` carries the ECDSA P-256/SHA-256 signature envelope for the exact manifest
-bytes. Publisher trust roots are immutable public keys embedded into the launcher package. Private
-release-signing keys are never part of the launcher or managed product.
+`openconquer.release.sig` holds the ECDSA P-256/SHA-256 signature envelope over the manifest bytes
+as stored. Publisher trust roots are fixed public keys embedded in the launcher package. Private
+release-signing keys are never part of the launcher or the managed product.
 
 ## Resolution and recovery
 
 `ManagedInstallationResolver` starts at `AppContext.BaseDirectory`. It requires a valid descriptor,
-a direct `releases/` root, an exact selected-generation root, and a direct `client/` directory;
-linked/reparse paths are rejected. The selected generation may contain only its manifest, signature,
-and client directory. It never searches the machine or asks the player to choose a folder.
+a `releases/` directory directly under the product root, a generation directory whose name matches
+the selected identity, and a `client/` directory directly inside it. Linked and reparse-point paths
+are rejected. The selected generation may contain only its manifest, signature, and client
+directory. The resolver never searches the machine and never asks the player to choose a folder.
 
 Resolution also requires:
 
-- supported release metadata and launcher-version compatibility;
-- configured embedded publisher trust;
-- a valid ECDSA P-256 signature from a trusted publisher over the exact manifest bytes;
-- a release target runtime matching the current launcher platform;
-- a generation identity matching the signed manifest sequence and exact manifest digest;
-- the exact manifest-declared client file set;
-- matching file lengths and SHA-256 hashes;
-- valid, non-linked, non-device, portable package paths;
-- the declared platform-specific client executable; and
-- portable executable permissions for that entry point on Unix.
+- supported release metadata and a compatible launcher version
+- configured embedded publisher trust
+- a valid ECDSA P-256 signature from a trusted publisher over the manifest bytes
+- a release target runtime that matches the current launcher platform
+- a generation identity that matches the signed manifest's sequence and the manifest digest
+- the client file set declared in the manifest, with no files missing or added
+- matching file lengths and SHA-256 hashes
+- valid, portable package paths that are neither links nor devices
+- the declared platform-specific client executable
+- portable executable permissions for that entry point on Unix
 
-The client tree is enumerated again after hashing to catch ordinary update/repair races that add,
-remove, rename, or link entries during verification. A hostile process executing as the same OS user
-is outside this filesystem-integrity trust boundary.
+After hashing, the resolver lists the client tree again. This catches ordinary update or repair
+races that add, remove, rename, or link entries during verification. It does not protect against a
+hostile process running as the same OS user.
 
-**Resolved means the installed managed client is structurally valid, platform-compatible,
-publisher-authenticated, and integrity-verified for the release described by the manifest.**
+An installation counts as resolved when the managed client is structurally valid, compatible with
+the platform, signed by a trusted publisher, and passes the integrity check for the release the
+manifest describes.
 
 `LauncherApplication` owns the lifecycle:
 
@@ -97,74 +102,81 @@ Starting → EvaluatingInstallation → InstallationResolved
 Any active state → Stopping → Stopped
 ```
 
-- Checks run off the UI thread. Only one can be active; overlapping retry requests share its task.
-- `Check again` is available after an expected installation failure. It rechecks the same package
-  root after files or permissions are restored; it does not claim to repair anything.
-- Unexpected failures remain fatal and reach the existing redacted host-diagnostics boundary.
-- Shutdown immediately owns state and signals cancellation. Every caller shares one task that drains
-  cancellation callbacks and the check before disposing the token source and publishing `Stopped`.
-- Callback failures cannot skip cleanup. Unrelated cancellation and unexpected failures remain
-  observable to the host. Resolver implementations must honor lifetime cancellation.
-- The fixed launcher window exposes keyboard-focusable `Check again` and `Close` buttons. Status
-  changes use polite accessibility live regions. Closing drains work and closes the window.
+- Checks run off the UI thread. Only one runs at a time, and retry requests made during a check
+  share its task.
+- `Check again` is offered after an expected installation failure. It checks the same package root
+  again, for example after files or permissions have been restored. It does not repair anything.
+- Unexpected failures are still fatal and go to the existing redacted host diagnostics.
+- Shutdown takes over the state at once and signals cancellation. All callers share one task. That
+  task waits for the cancellation callbacks and the running check to finish, then disposes the
+  token source and publishes `Stopped`.
+- A failing callback cannot skip cleanup. Unrelated cancellation and unexpected failures stay
+  visible to the host. Resolver implementations must honor lifetime cancellation.
+- The fixed-size launcher window has keyboard-focusable `Check again` and `Close` buttons. Status
+  changes are announced through polite accessibility live regions. Closing waits for pending work to
+  drain and then closes the window.
 
-## Composition guarantees
+## Composition checks
 
-The Product Tool rejects overlapping roots, filesystem aliases, linked roots/entries, an empty
-client publish, and launcher input that already owns the descriptor, release metadata, or `client/`.
+The Product Tool rejects overlapping roots, filesystem aliases, linked roots or entries, an empty
+client publish, and launcher input that already contains the descriptor, release metadata, or
+`client/`.
 
-Release-manifest creation hashes the exact independently published client tree.
+Release-manifest creation hashes the separately published client tree as it is.
 
-Release-signature creation accepts an externally produced signature and public key, verifies that
-the ECDSA P-256/SHA-256 signature authenticates the exact manifest bytes, and writes the bounded
+Release-signature creation takes a signature and public key produced outside the tool, checks that
+the ECDSA P-256/SHA-256 signature is valid for the manifest bytes, and writes the size-limited
 signature envelope.
 
-Release-trust creation accepts validated public publisher keys and creates the trust document used
-by the launcher's embedded-resource build boundary.
+Release-trust creation takes validated public publisher keys and creates the trust document that
+the launcher build embeds as a resource.
 
-Production private-key custody remains outside `OpenConquer.Product.Tool`.
+Production private keys are kept outside `OpenConquer.Product.Tool`.
 
-Staging requires the release manifest and signature envelope as explicit inputs. It validates their
-structure, snapshots their exact bytes, derives the release identity, copies the launcher and client
-into a temporary sibling directory, copies release metadata into the versioned generation, rejects
-metadata races, verifies the staged client against the staged manifest, writes the schema-v2
-descriptor, sanitizes copied Unix file modes while preserving executable intent, forces the declared
-Unix client entry point to portable `0755`, and activates the staging root by rename without
-replacing an existing output.
+Staging requires the release manifest and signature envelope as inputs. It validates their
+structure, takes a snapshot of their bytes, and derives the release identity. It copies the
+launcher and client into a temporary sibling directory and the release metadata into the versioned
+generation, and rejects the metadata if it changes during the copy. It then checks the staged
+client against the staged manifest and writes the schema-v2 descriptor. Copied Unix file modes are
+sanitized but keep their executable bits where intended, and the declared Unix client entry point is
+set to the portable mode `0755`. Finally, the staging root is activated by a rename that never
+replaces an existing output.
 
-Failed-stage cleanup is best-effort and preserves the primary error.
+If staging fails, cleanup is best-effort and the original error is reported.
 
-The stager does not establish publisher trust. The launcher independently verifies the staged
-signature against public trust roots embedded into its package before reporting the installation as
-resolved.
+Staging does not decide whether the publisher is trusted. Before reporting the installation as
+resolved, the launcher checks the staged signature itself against the public trust roots embedded
+in its package.
 
 ## Release discovery and acquisition
 
-The release-acquisition core consumes two configured HTTPS resources:
+The release acquisition code reads two configured HTTPS resources:
 
 ```text
 openconquer.catalog.json
 openconquer.catalog.sig
 ```
 
-The detached catalog signature uses the same embedded ECDSA P-256 publisher trust as installed
-release manifests. The schema identifies `OpenConquer`, carries an exact UTC expiry, and contains at
-most 128 releases. The launcher rejects expired catalogs and expirations more than 31 days ahead,
-bounding a cache/origin freeze attack. Each entry binds a positive release sequence, display version,
-minimum launcher version, supported runtime, absolute HTTPS package URI, positive compressed length,
-and lowercase SHA-256 package digest. The launcher rejects duplicate runtime/sequence identities,
-unknown or duplicate fields, unsupported schema, invalid compatibility data, unsafe URIs, invalid
-signatures, and catalogs larger than 256 KiB. It deterministically selects the greatest sequence for
-the current runtime and then enforces launcher compatibility. If that release requires a newer launcher,
-the catalog reports `LauncherUpdateRequired` instead of silently selecting an older release.
+The detached catalog signature is checked against the same embedded ECDSA P-256 publisher trust as
+installed release manifests. The catalog names the product `OpenConquer`, carries a UTC expiry
+time, and lists at most 128 releases. The launcher rejects catalogs that have expired or that expire
+more than 31 days in the future. This limits how long a frozen cache or origin can keep serving an
+old catalog. Each entry ties together a positive release sequence, a display version, the minimum
+launcher version, the supported runtime, an absolute HTTPS package URI, a positive compressed
+length, and the lowercase SHA-256 digest of the package. The launcher rejects duplicate
+runtime/sequence pairs, unknown or duplicate fields, an unsupported schema, invalid compatibility
+data, unsafe URIs, invalid signatures, and catalogs larger than 256 KiB. For the current runtime it
+always selects the release with the highest sequence, and only then checks launcher compatibility.
+If that release needs a newer launcher, the catalog reports `LauncherUpdateRequired` instead of
+quietly picking an older release.
 
-Transport accepts only an exact HTTP 200 response from the signed URI. Redirects, authentication or
-query data in URLs, fragments, content encoding, oversized declared or streamed content, length
-mismatch, digest mismatch, default credentials, cookies, automatic decompression, and stalled
-network operations are rejected. Metadata operations have a two-minute whole-operation deadline;
-package transfers have a 12-hour deadline in addition to the 30-second network-idle limit. Catalog
-documents remain memory-bounded. Packages stream through SHA-256 directly into a new private file;
-an existing destination is never replaced or removed after a rejected response.
+The download code accepts only an HTTP 200 response from the signed URI. It rejects redirects,
+credentials or query strings in URLs, fragments, content encoding, content larger than declared or
+allowed, length or digest mismatches, default credentials, cookies, automatic decompression, and
+stalled network operations. Each metadata operation must finish within two minutes. Package
+transfers have a 12-hour limit on top of the 30-second network idle limit. Catalog documents are
+held in memory with a size limit. Packages stream through SHA-256 directly into a new private file.
+After a rejected response, an existing destination is never replaced or removed.
 
 The package is a deterministic ZIP containing only:
 
@@ -174,56 +186,58 @@ openconquer.release.sig
 client/<every manifest-declared file>
 ```
 
-Directory entries, links/reparse entries, traversal, alternate separators, nonportable or ambiguous
-names, missing/extra entries, metadata disagreement, file-length/hash mismatch, more than 16,384
-client files or materialized directories, packages over 16 GiB, and expanded payloads over 64 GiB
-are rejected. Extraction uses
-new files below a private per-attempt directory, rechecks the exact tree shape, sanitizes Unix modes,
-and never selects the candidate. `ManagedReleaseTransaction` independently reauthenticates the
-manifest, signature, client tree, compatibility, sequence policy, and destination generation before
-atomically changing the descriptor.
+The package is rejected if it has directory entries, link or reparse entries, path traversal,
+alternate separators, nonportable or ambiguous names, missing or extra entries, disagreeing
+metadata, a file length or hash mismatch, more than 16,384 client files or extracted directories, a
+size over 16 GiB, or an expanded payload over 64 GiB. Extraction writes new files under a private
+per-attempt directory, checks the resulting tree shape again, and sanitizes Unix modes. It never
+selects the candidate. `ManagedReleaseTransaction` separately authenticates the manifest,
+signature, client tree, compatibility, sequence policy, and destination generation again before it
+changes the descriptor atomically.
 
-Acquisition workspaces must be absolute and filesystem-disjoint from the managed product, including
-resolved aliases. A private cross-process lock serializes acquisition. Startup under that lock
-removes only stale directories with the exact launcher-owned attempt-name format; unknown entries
-are preserved. A returned candidate lease holds serialization through the transaction and performs
-best-effort cleanup before releasing it. Cancellation is propagated without being converted into a
+Acquisition workspaces must be absolute paths and must not overlap the managed product on the
+filesystem, including through resolved aliases. A private cross-process lock lets only one
+acquisition run at a time. At startup, while holding that lock, acquisition removes only stale
+directories whose names match the launcher's own attempt-name format, and leaves unknown entries
+alone. A returned candidate lease keeps the lock through the transaction and does best-effort
+cleanup before releasing it. Cancellation is passed on as cancellation and is never turned into a
 recoverable transfer error.
 
-`ManagedReleaseMaintenance` handles concurrent state changes explicitly. A healthy installed
-sequence at or above the selected catalog sequence is kept, so replayed metadata cannot downgrade a
-working client. A strictly newer package uses update policy. A same-sequence package can use repair
-only after an update-policy rejection, a fresh failed resolution, and the transaction's independent
-manifest-identity check. Expected failures retain their catalog, transfer, package, installation, or
-transaction classification for the future player-facing recovery UI.
+`ManagedReleaseMaintenance` handles state that changes while it runs. If the installed release is
+healthy and its sequence is at or above the selected catalog sequence, it is kept, so replayed
+metadata cannot downgrade a working client. A package with a higher sequence goes through the update
+policy. A package with the same sequence can be used for repair only after the update policy has
+rejected it, a fresh resolution has failed, and the transaction's own manifest-identity check has
+passed. Expected failures keep their classification (catalog, transfer, package, installation, or
+transaction) for the player-facing recovery UI that is still to come.
 
-No production URL is hard-coded. A later deployment slice must provide a real publisher-controlled
-HTTPS origin, immutable package publication, environment configuration, key custody/rotation,
-consistency-preserving catalog/signature publication and cache policy, and an end-to-end live-origin
-check. This core does not define launcher self-update, UI policy, elevated installation, account
-login, or game protocol behavior.
+No production URL is hard-coded. A real deployment still needs a publisher-controlled HTTPS origin,
+immutable package publishing, environment configuration, key custody and rotation, a way to publish
+the catalog and its signature consistently with a matching cache policy, and an end-to-end check
+against the live origin. This code does not cover launcher self-update, UI policy, elevated
+installation, account login, or game protocol behavior.
 
 ## Local development composition
 
-`create-local-product` is the canonical development orchestration for exercising the complete
-managed-product boundary without turning the Product Tool into a production signing authority.
+`create-local-product` is the standard way to build and exercise the complete managed product
+during development, without making the Product Tool a production signing system.
 
-The command intentionally accepts no configuration options.
+The command takes no configuration options.
 
 Local composition uses:
 
-- a persistent user-scoped development-only ECDSA P-256 publisher;
-- PKCS#8 private-key storage outside the repository;
-- SHA-256 with RFC3279 DER ECDSA signatures;
-- user-scoped build serialization;
-- durable monotonically increasing development release sequences;
-- active and previous product manifests as an anti-rollback sequence floor;
-- isolated repository-local per-run workspaces;
-- a canonical active local product;
-- a previous-product rollback slot; and
-- rollback-safe rename-based activation.
+- a persistent, per-user ECDSA P-256 publisher used only for development
+- PKCS#8 private-key storage outside the repository
+- SHA-256 with RFC3279 DER ECDSA signatures
+- a per-user build lock, so only one build runs at a time
+- development release sequence numbers that are stored durably and only increase
+- the active and previous product manifests as a minimum sequence that blocks rollback
+- a separate workspace inside the repository for each run
+- one active local product at a fixed location
+- a rollback slot for the previous product
+- activation by rename that can be rolled back safely
 
-The repository-local layout is:
+The layout inside the repository is:
 
 ```text
 artifacts/local-product/
@@ -237,202 +251,210 @@ artifacts/local-product/
 └── product.previous/
 ```
 
-The workspace owns all intermediate publication, public-key, raw-signature, trust, release-metadata,
-and staged-candidate files.
+The workspace holds all intermediate files: publish output, the public key, the raw signature,
+trust, release metadata, and the staged candidate.
 
-Workspace cleanup is best-effort. Cleanup failure does not replace the primary composition result.
+Workspace cleanup is best-effort. A cleanup failure does not replace the result of the composition.
 
-The development publisher and sequence/lock state live outside the repository in the current user's
-platform configuration area. On Unix, the state directory and sensitive files are restricted to the
-current user.
+The development publisher and the sequence and lock state live outside the repository, in the
+current user's platform configuration area. On Unix, the state directory and sensitive files are
+restricted to the current user.
 
-The user-scoped build lock is shared across repository clones using the same development publisher
-state. This prevents concurrent local builds from racing publisher creation or release-sequence
-allocation.
+The per-user build lock is shared by all repository clones that use the same development publisher
+state. This keeps concurrent local builds from racing to create the publisher or to allocate a
+release sequence.
 
-The release sequence is durably reserved and never intentionally reused. A failed build may
-therefore leave a sequence gap after release identity has been allocated.
+Each release sequence is reserved durably and never reused on purpose. A build that fails after its
+release identity is allocated can therefore leave a gap in the sequence.
 
-If persistent sequence state is missing, the greatest sequence represented by the active or previous
-local product becomes the minimum exclusive floor for the next reservation.
+If the stored sequence state is missing, the next reserved sequence must be greater than the highest
+sequence found in the active or previous local product.
 
-Client publication, source/published-content verification, and `Server.dat` rejection occur before
-sequence reservation. Early failures therefore do not consume release identity.
+Client publishing, verification of the source and published content, and rejection of `Server.dat`
+happen before a sequence is reserved. Failures at those steps do not use up a release identity.
 
-After sequence reservation, local composition:
+After reserving a sequence, local composition:
 
-1. creates the release manifest for the exact client publish;
-2. signs the exact bounded manifest bytes with the persistent development publisher;
+1. creates the release manifest for the client publish;
+2. signs the size-limited manifest bytes with the persistent development publisher;
 3. creates the validated release-signature envelope;
 4. creates launcher trust from the development public key;
 5. publishes the launcher with that trust embedded;
-6. verifies raw-launcher isolation;
+6. verifies that the raw launcher publish is isolated;
 7. stages the managed-product candidate;
-8. verifies the candidate contains no loose development/signing state; and
+8. verifies that the candidate contains no loose development or signing state; and
 9. passes the candidate to local activation.
 
 The final managed product must not contain:
 
-- the development private key;
-- the development public-key file;
-- the raw development signature;
-- loose `release-trust.json`;
-- release-sequence state;
-- sequence locks;
-- build locks; or
-- activation locks.
+- the development private key
+- the development public-key file
+- the raw development signature
+- loose `release-trust.json`
+- release-sequence state
+- sequence locks
+- build locks
+- activation locks
 
-Retail `Server.dat` is also forbidden anywhere in the published managed client.
+Retail `Server.dat` must not appear anywhere in the published managed client either.
 
 ## Local activation
 
-Local activation validates a completed candidate before mutating the active product.
+Local activation validates a completed candidate before it changes the active product.
 
-The activation boundary verifies the candidate installation descriptor, release manifest,
-signature-envelope structure, and client integrity. Cryptographic publisher authorization remains
-the launcher's independent responsibility when the product is executed.
+Activation checks the candidate's installation descriptor, release manifest, signature-envelope
+structure, and client integrity. Checking the publisher's signature cryptographically is left to
+the launcher, which does it on its own when the product runs.
 
 Activation:
 
-1. validates canonical local-product, workspace, and candidate path relationships;
+1. validates how the local-product, workspace, and candidate paths relate to each other;
 2. acquires the repository-local activation lock;
-3. rejects a candidate whose release sequence does not advance beyond the active product;
-4. removes the older `product.previous` only after the new candidate has already passed validation;
+3. rejects a candidate whose release sequence is not higher than the active product's;
+4. removes the older `product.previous` only after the new candidate has passed validation;
 5. moves the current active product to `product.previous`;
-6. moves the candidate into the canonical active `product`; and
-7. attempts to restore the previous product if final promotion fails.
+6. moves the candidate into the active `product` directory; and
+7. tries to restore the previous product if this last move fails.
 
-A failed candidate before activation leaves the current active product untouched.
+If a candidate fails before activation, the current active product is left untouched.
 
-`product.previous` is a local-development rollback/recovery slot. It is not an implementation of
+`product.previous` is a rollback and recovery slot for local development. It does not implement
 player-facing update or repair.
 
 ## Installed client update, repair, and rollback transaction
 
-`ManagedReleaseTransaction` owns the narrow mutation boundary after a candidate release has been
-acquired. A candidate is one release root containing exactly the signed manifest, signature
-envelope, and client directory. The transaction does not discover releases, download them, choose a
-channel, update the running launcher, elevate privileges, or define an account/game protocol.
+`ManagedReleaseTransaction` makes the changes to the installation once a candidate release has been
+acquired. A candidate is one release root that contains the signed manifest, the signature
+envelope, and the client directory, and nothing else. The transaction does not discover or download
+releases, choose a channel, update the running launcher, elevate privileges, or define an account or
+game protocol.
 
-Candidate and managed-product roots must also remain filesystem-identity-disjoint. Existing ancestor
-links are resolved for relationship checks, and comparison uses a conservative portable
-case-insensitive policy so case aliases cannot bypass the boundary on filesystems such as default
-macOS APFS.
+The candidate and managed-product roots must also not overlap, compared by filesystem identity.
+Links in existing ancestors are resolved before the paths are compared. The comparison is
+case-insensitive on every platform, so a path that differs only in case cannot get around the check
+on filesystems such as default macOS APFS.
 
 Before changing installed state, the transaction:
 
-1. fully authenticates and hashes the candidate against embedded publisher trust;
-2. acquires the product-root update lock, serializing update, repair, and rollback across processes;
-3. authenticates current signed metadata to retain an anti-rollback floor even when current client
-   payload files are damaged;
-4. rejects update sequences that do not strictly advance and repair candidates that are not the
-   exact same signed release;
-5. copies only manifest-declared files and no more than their authenticated lengths into an
-   unselected staging generation with bounded traversal, no links/devices, create-new destinations,
-   durable file flushes, and restrictive Unix creation modes before final mode normalization; and
+1. authenticates the candidate against the embedded publisher trust and hashes all of it;
+2. acquires the product-root update lock, so only one update, repair, or rollback runs at a time
+   across processes;
+3. authenticates the current signed metadata, so the minimum sequence that blocks rollback is known
+   even when the current client files are damaged;
+4. rejects an update whose sequence is not higher than the current one, and a repair candidate that
+   is not the same signed release;
+5. copies only the files declared in the manifest, and no more than their authenticated lengths,
+   into a staging generation that is not yet selected. It limits traversal, refuses links and
+   devices, creates every destination as a new file, flushes files to disk, and uses restrictive
+   Unix creation modes until the final modes are set;
 6. authenticates and hashes the copied generation again.
 
 Only after those checks does it rename the complete staging generation into `releases/` and replace
-the descriptor. The descriptor replacement is the commit point and uses same-directory atomic
-replacement semantics (`File.Replace` for an existing descriptor on Windows and rename/move
-semantics otherwise). Cancellation is honored through the last pre-commit check; after the
-synchronous commit there is no cancellable work whose failure could falsely report an unchanged
-installation.
+the descriptor. Replacing the descriptor is the commit point. It is an atomic replacement within the
+same directory: `File.Replace` for an existing descriptor on Windows, and a rename or move
+elsewhere. Cancellation is honored up to the last check before the commit. After the synchronous
+commit there is no cancellable work left whose failure could wrongly report the installation as
+unchanged.
 
-An update records the former active generation as fallback only if it still verifies completely. If
-the active payload is damaged, an already-recorded healthy fallback is retained; otherwise the new
-release is selected without a fallback. Repair always writes a new nonce-bearing generation rather
-than modifying the selected directory in place. Explicit rollback fully verifies the fallback before
-selecting it and retains the displaced active generation as the next fallback only when it remains
-healthy.
+An update records the previous active generation as the fallback only if it still passes full
+verification. If the active files are damaged, an existing healthy fallback is kept. Otherwise the
+new release is selected without a fallback. Repair always writes a new generation with a nonce
+instead of modifying the selected directory in place. A requested rollback fully verifies the
+fallback before selecting it, and keeps the replaced active generation as the next fallback only if
+it is still healthy.
 
-Expected failures are classified without exposing paths or exception text: unavailable current
-authority, rejected candidate integrity, non-advancing update, blocked downgrade, wrong repair
-release, unavailable fallback, concurrent maintenance, access denial, linked paths, and filesystem
-failure. Cancellation remains cancellation rather than being flattened into a repair error.
+Expected failures are classified without exposing paths or exception text. The classes are:
+current release metadata unavailable, candidate failed integrity checks, update does not advance,
+downgrade blocked, wrong release for repair, fallback unavailable, concurrent maintenance, access
+denied, linked paths, and filesystem failure. Cancellation is reported as cancellation and never
+turned into a repair error.
 
-On supported local filesystems that provide atomic same-directory replacement semantics,
-process-crash behavior is deterministic:
+On supported local filesystems with atomic same-directory replacement, a process crash has a
+predictable outcome:
 
-- before descriptor replacement, the previous active release remains selected;
-- after descriptor replacement, the completely copied and reverified generation is selected;
-- incomplete staging directories and completed unreferenced generations are inert because no
-  descriptor names them; and
-- selected active/fallback generations are never deleted by this transaction.
+- Before the descriptor is replaced, the previous active release stays selected.
+- After the descriptor is replaced, the fully copied and re-verified generation is selected.
+- Incomplete staging directories and finished but unreferenced generations have no effect, because
+  no descriptor names them.
+- This transaction never deletes the selected active or fallback generation.
 
-The implementation durably flushes copied files and the temporary descriptor before activation.
-Mutable staging files and the transaction lock are created with private Unix permissions, and the
-published descriptor is normalized to portable read permissions before activation.
+Copied files and the temporary descriptor are flushed to disk before activation. Staging files that
+are still being written, and the transaction lock, are created with private Unix permissions. The
+published descriptor is given portable read permissions before activation.
 
-.NET does not expose a portable parent-directory flush, so the launcher does not claim stronger
-sudden-power-loss guarantees than the host filesystem provides.
+.NET has no portable way to flush a parent directory, so the launcher makes no stronger promise
+about sudden power loss than the host filesystem does.
 
-Automatic reclamation is intentionally absent until controlled client-process lifetime can prove a
-generation is no longer executing, especially on Windows. Production release-origin integration,
-recovery UI, launcher self-update, and signed platform deployment remain later launcher-owned
-slices.
+Old generations are not removed automatically. That waits until the launcher controls the client
+process lifetime and can prove a generation is no longer running, which matters most on Windows.
+Production release-origin integration, the recovery UI, launcher self-update, and signed platform
+deployment are future launcher work.
 
 ## Verification
 
-`ManagedInstallationResolverTests` cover schema/layout rejection, missing release metadata,
-unavailable release authority, untrusted signatures, client mutation, and trusted resolution.
+`ManagedInstallationResolverTests` cover rejected schemas and layouts, missing release metadata,
+unavailable release trust, untrusted signatures, modified client files, and successful trusted
+resolution.
 
-`ManagedReleaseTransactionTests` and the focused hardening tests cover trusted update, same-release
-repair, damaged-client recovery, legacy migration, verified rollback, corrupt fallback rejection,
-sequence policy, release-identity binding, cancellation, lock contention, linked and unexpected
-candidate entries, filesystem-identity alias rejection, authenticated-length staging,
-selected-generation shape, Unix lock permissions, and Unix executable permissions.
+`ManagedReleaseTransactionTests` and the related hardening tests cover trusted updates, same-release
+repair, recovery from a damaged client, legacy migration, verified rollback, rejection of a corrupt
+fallback, sequence policy, binding of the release identity, cancellation, lock contention, linked
+and unexpected candidate entries, rejection of filesystem-identity aliases, staging limited to
+authenticated lengths, selected-generation shape, Unix lock permissions, and Unix executable
+permissions.
 
-`ManagedInstallationPathGuardTests` cover exact, conservative case-insensitive, ancestor-link, and
-unrelated filesystem identities. `ManagedInstallationManifestTests` cover descriptor replacement
-semantics and final Unix descriptor permissions.
+`ManagedInstallationPathGuardTests` cover identical, case-insensitive, ancestor-link, and unrelated
+filesystem identities. `ManagedInstallationManifestTests` cover how the descriptor is replaced and
+its final Unix permissions.
 
-`ReleaseAcquisitionTests` cover authenticated compatible selection, tamper and ambiguity rejection,
-unsafe URLs, exact bounded transfers, redirect and oversize rejection, collision preservation,
-archive extraction, traversal containment, metadata agreement, Unix executable intent, workspace
-serialization, stale-attempt ownership, lease cleanup, end-to-end update and same-release repair,
-anti-downgrade behavior, and precise catalog failure classification.
+`ReleaseAcquisitionTests` cover selection of an authenticated, compatible release, rejection of
+tampered or ambiguous data, unsafe URLs, size-limited transfers that must match the declared length,
+rejection of redirects and oversized content, leaving existing files in place on a collision,
+archive extraction, containment of path traversal, metadata agreement, Unix executable bits,
+one-at-a-time workspace use, ownership of stale attempts, lease cleanup, end-to-end update and
+same-release repair, downgrade prevention, and classification of catalog failures.
 
-`LauncherApplicationTests` cover retry, cancellation ownership, concurrent/reentrant shutdown,
-callback failures, and terminal state.
+`LauncherApplicationTests` cover retry, cancellation ownership, concurrent and reentrant shutdown,
+callback failures, and the final state.
 
 `ManagedProductIntegrationTests` exercise real manifest creation, signing, staging, trusted
 resolution, untrusted publishers, and recovery without restarting the application.
 
 Product Tool tests cover:
 
-- release metadata;
-- release-signature envelopes;
-- deterministic release packages and strict archive validation;
-- publisher-authorized multi-runtime catalog construction and catalog signatures;
-- publisher trust;
-- persistent development publisher identity;
-- development-state permissions;
-- user-scoped build serialization;
-- monotonic release sequencing and anti-rollback recovery;
-- repository and runtime discovery;
-- local-product paths;
-- publish/product artifact isolation;
-- release-manifest traversal ordering and linked-entry rejection;
-- local-product orchestration;
-- rollback-safe local activation; and
-- managed-product staging.
+- release metadata
+- release-signature envelopes
+- deterministic release packages and archive validation
+- building multi-runtime catalogs authorized by the publisher, and catalog signatures
+- publisher trust
+- persistent development publisher identity
+- development-state permissions
+- per-user build serialization
+- release sequences that only increase, and recovery of the rollback floor
+- repository and runtime discovery
+- local-product paths
+- isolation of publish and product artifacts
+- release-manifest traversal order and rejection of linked entries
+- local-product orchestration
+- local activation that can be rolled back safely
+- managed-product staging
 
-CI generates an ephemeral P-256 publisher solely to exercise the production-capable release
-composition primitives. It creates the client manifest, creates release trust through the Product
-Tool, signs the manifest externally, creates the verified signature envelope, packages the exact
-client, builds and externally signs its catalog, embeds the corresponding public trust root into the
-CI launcher publish, and composes the managed product.
+CI generates a throwaway P-256 publisher only to exercise the release composition steps that
+production will also use. It creates the client manifest, creates release trust with the Product
+Tool, signs the manifest outside the tool, creates the verified signature envelope, packages the
+client, builds the catalog and signs it outside the tool, embeds the matching public trust root in
+the CI launcher publish, and composes the managed product.
 
 The CI publisher is unrelated to the persistent local-development publisher. Production release
 signing must use a separately controlled production publisher identity.
 
-For native desktop verification, run the canonical local managed launcher from
-`artifacts/local-product/product`. A valid local product must resolve to the ready state.
+To check the result on a real desktop, run the local managed launcher from
+`artifacts/local-product/product`. A valid local product must reach the ready state.
 
-When changing release integrity, product composition, or installation resolution, copy the managed
-product to an isolated temporary root, alter an authenticated client file, and run the copied
-launcher. The modified installation must fail closed while the canonical active product remains
-unchanged.
+When you change release integrity, product composition, or installation resolution, also copy the
+managed product to a separate temporary directory, change one authenticated client file, and run the
+copied launcher. The launcher must reject the modified installation, and the active product must
+stay unchanged.
 
-See [development commands](../development.md#launcher) for the exact workflow.
+See [Local Managed Product](../development.md#local-managed-product) in the development guide for
+the commands.
