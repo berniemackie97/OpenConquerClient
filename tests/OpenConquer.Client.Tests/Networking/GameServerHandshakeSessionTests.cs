@@ -489,7 +489,10 @@ public sealed class GameServerHandshakeSessionTests
 
         GameLoginControlOutcome result = await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token);
         Assert.Equal(expected, result.Kind);
-        Assert.Equal(refusal, result.RefusalText);
+        Assert.Equal(refusal,
+            result.RefusalBytes.IsEmpty
+                ? null
+                : System.Text.Encoding.ASCII.GetString(result.RefusalBytes.Span));
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token));
         if (expected == GameLoginControlKind.Refused)
