@@ -3,8 +3,8 @@ using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Credentials;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Content.Login;
-using OpenConquer.Rendering.Presentation;
 using OpenConquer.Platform.Windowing.Desktop;
+using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests.UI.Login;
 

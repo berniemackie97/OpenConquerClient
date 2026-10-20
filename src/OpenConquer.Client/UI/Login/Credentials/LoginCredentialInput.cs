@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
-using System.Text;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Platform.Windowing.Desktop;
@@ -250,7 +249,11 @@ internal sealed class LoginCredentialInput : IDisposable
             return false;
         }
 
-        accountName = Encoding.ASCII.GetBytes(_account.AsSpan(0, _accountLength));
+        accountName = new byte[_accountLength];
+        for (int index = 0; index < accountName.Length; index++)
+        {
+            accountName[index] = checked((byte)_account[index]);
+        }
         password = _password.AsSpan(0, _passwordLength).ToArray();
         ClearPassword();
         return true;
