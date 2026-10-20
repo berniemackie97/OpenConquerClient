@@ -20,20 +20,20 @@ public sealed class GameExistingCharacterPreludePacketTests
 
         Assert.Equal(0u, history.LastLoginTimestamp);
         Assert.Equal((byte)0, history.LocationWarningFlag);
-        Assert.Equal(string.Empty, history.LastLoginLocation);
+        Assert.True(history.LastLoginLocationBytes.IsEmpty);
         Assert.Equal(0u, state.Value);
         Assert.Equal((ushort)2000, state.SelectedUiState);
     }
 
     [Fact]
-    public void AccountHistoryPreservesNonzeroValuesAndDecodesWindows1252()
+    public void AccountHistoryPreservesNonzeroValuesAndOriginalLocationBytes()
     {
         byte[] history = Convert.FromHexString("0E001E08BA1D594E02" + "436166E900");
         GameLoginHistory2078 result = GameLoginHistory2078.Read(history);
 
         Assert.Equal(0x4E591DBAu, result.LastLoginTimestamp);
         Assert.Equal((byte)2, result.LocationWarningFlag);
-        Assert.Equal("Café", result.LastLoginLocation);
+        Assert.Equal("436166E9", Convert.ToHexString(result.LastLoginLocationBytes.Span));
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public sealed class GameExistingCharacterPreludePacketTests
 
         Assert.Equal(uint.MaxValue, result.LastLoginTimestamp);
         Assert.Equal(byte.MaxValue, result.LocationWarningFlag);
-        Assert.Equal("X", result.LastLoginLocation);
+        Assert.Equal("58", Convert.ToHexString(result.LastLoginLocationBytes.Span));
     }
 
     [Theory]
@@ -61,22 +61,43 @@ public sealed class GameExistingCharacterPreludePacketTests
     [InlineData((byte)0x8F)]
     [InlineData((byte)0x90)]
     [InlineData((byte)0x9D)]
-    public void UndefinedAnsiByteInHistoryLocationIsRejected(byte invalid)
+    public void AllWireBytesAreRetainedInHistoryLocation(byte invalid)
     {
         byte[] history = Convert.FromHexString(EmptyHistoryHex);
         history[9] = invalid; // Removes the only NUL; add a terminator.
         Array.Resize(ref history, history.Length + 1);
         BinaryPrimitives.WriteUInt16LittleEndian(history, (ushort)history.Length);
 
+        GameLoginHistory2078 result = GameLoginHistory2078.Read(history);
+        Assert.Equal(invalid, Assert.Single(result.LastLoginLocationBytes.Span.ToArray()));
+    }
+
+    [Fact]
+    public void ShortHistoryUsesImplicitNativeZeroFilledTerminator()
+    {
+        byte[] packet = Convert.FromHexString(EmptyHistoryHex);
+        packet[9] = (byte)'X';
+        Assert.Equal("58",
+            Convert.ToHexString(GameLoginHistory2078.Read(packet).LastLoginLocationBytes.Span));
+    }
+
+    [Fact]
+    public void HistoryWithoutNulAtMaximumFrameLengthFailsWithoutNativeOverread()
+    {
+        byte[] history = new byte[1024];
+        BinaryPrimitives.WriteUInt16LittleEndian(history, 1024);
+        BinaryPrimitives.WriteUInt16LittleEndian(history.AsSpan(2), 2078);
+        history.AsSpan(9).Fill((byte)'X');
+
         Assert.Throws<InvalidDataException>(() => GameLoginHistory2078.Read(history));
     }
 
     [Fact]
-    public void MissingHistoryTerminatorIsRejected()
+    public void ShortFixedHistoryWithoutLocationIsAcceptedAsEmpty()
     {
-        byte[] packet = Convert.FromHexString(EmptyHistoryHex);
-        packet[9] = (byte)'X';
-        Assert.Throws<InvalidDataException>(() => GameLoginHistory2078.Read(packet));
+        byte[] history = Convert.FromHexString("09001E080000000000");
+
+        Assert.True(GameLoginHistory2078.Read(history).LastLoginLocationBytes.IsEmpty);
     }
 
     [Fact]

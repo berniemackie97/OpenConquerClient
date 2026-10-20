@@ -22,7 +22,7 @@ public sealed class GameLoginControl1004Tests
         GameLoginControlOutcome result = GameLoginControl1004.Read(Convert.FromHexString(AcceptedHex));
 
         Assert.Equal(GameLoginControlKind.ExistingCharacter, result.Kind);
-        Assert.Null(result.RefusalText);
+        Assert.True(result.RefusalBytes.IsEmpty);
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class GameLoginControl1004Tests
         GameLoginControlOutcome result = GameLoginControl1004.Read(Convert.FromHexString(NewRoleHex));
 
         Assert.Equal(GameLoginControlKind.CharacterCreation, result.Kind);
-        Assert.Null(result.RefusalText);
+        Assert.True(result.RefusalBytes.IsEmpty);
     }
 
     [Fact]
@@ -40,39 +40,38 @@ public sealed class GameLoginControl1004Tests
         GameLoginControlOutcome result = GameLoginControl1004.Read(Convert.FromHexString(RefusalHex));
 
         Assert.Equal(GameLoginControlKind.Refused, result.Kind);
-        Assert.Equal("The server is full. Please try again later.", result.RefusalText);
+        Assert.Equal("The server is full. Please try again later.",
+            System.Text.Encoding.ASCII.GetString(result.RefusalBytes.Span));
     }
 
     [Fact]
-    public void RefusalTextUsesServerWindows1252Encoding()
+    public void RefusalPreservesOriginalWireBytesWithoutSelectingCodePage()
     {
         GameLoginControlOutcome result = GameLoginControl1004.Read(Convert.FromHexString(AnsiRefusalHex));
 
         Assert.Equal(GameLoginControlKind.Refused, result.Kind);
-        Assert.Equal("Sorry, € balance.", result.RefusalText);
+        Assert.Equal("536F7272792C20802062616C616E63652E",
+            Convert.ToHexString(result.RefusalBytes.Span));
     }
 
     [Fact]
-    public void ControlWordsAreExactAndCaseSensitive()
+    public void ControlWordsMatchTheNativeCaseInsensitiveComparison()
     {
         byte[] packet = Convert.FromHexString(AcceptedHex);
         packet[29] = (byte)'a';
 
         GameLoginControlOutcome result = GameLoginControl1004.Read(packet);
 
-        Assert.Equal(GameLoginControlKind.Refused, result.Kind);
-        Assert.Equal("aNSWER_OK", result.RefusalText);
+        Assert.Equal(GameLoginControlKind.ExistingCharacter, result.Kind);
+        Assert.True(result.RefusalBytes.IsEmpty);
     }
 
     [Theory]
     [InlineData(0, (byte)0x25)] // Declared length disagrees with available bytes.
     [InlineData(2, (byte)0xED)] // Wrong packet type.
     [InlineData(8, (byte)0x34)] // Creation channel is not a first login outcome.
-    [InlineData(24, (byte)3)]  // Wrong string count.
-    [InlineData(25, (byte)16)] // Native name buffer cannot hold this entry.
+    [InlineData(25, (byte)16)] // Declared string exceeds the available packet bytes.
     [InlineData(28, (byte)10)] // Message declares more bytes than exist.
-    [InlineData(30, (byte)0)] // Embedded NUL is not a valid control string.
-    [InlineData(30, (byte)0x81)] // Undefined Windows-1252 byte.
     public void InvalidFieldsFailClosed(int index, byte value)
     {
         byte[] packet = Convert.FromHexString(AcceptedHex);
@@ -97,13 +96,16 @@ public sealed class GameLoginControl1004Tests
     [InlineData(0, (byte)0x9D)]
     [InlineData(1, (byte)0x9D)]
     [InlineData(2, (byte)0x9D)]
-    public void UndefinedAnsiBytesInIgnoredStringsCannotEstablishLoginRoutes(int fieldIndex, byte value)
+    public void UnusedStringBytesDoNotBlockLoginControl(int fieldIndex, byte value)
     {
         foreach (string fixture in new[] { AcceptedHex, NewRoleHex })
         {
             byte[] packet = WithOneByteStringField(Convert.FromHexString(fixture), fieldIndex, value);
 
-            Assert.Throws<InvalidDataException>(() => GameLoginControl1004.Read(packet));
+            Assert.Equal(fixture == AcceptedHex
+                ? GameLoginControlKind.ExistingCharacter
+                : GameLoginControlKind.CharacterCreation,
+                GameLoginControl1004.Read(packet).Kind);
         }
     }
 
@@ -118,7 +120,7 @@ public sealed class GameLoginControl1004Tests
         GameLoginControlOutcome outcome = GameLoginControl1004.Read(packet);
 
         Assert.Equal(GameLoginControlKind.ExistingCharacter, outcome.Kind);
-        Assert.Null(outcome.RefusalText);
+        Assert.True(outcome.RefusalBytes.IsEmpty);
     }
 
     // Compose a fixture with a one-byte sender, recipient or suffix. The
@@ -138,7 +140,7 @@ public sealed class GameLoginControl1004Tests
     }
 
     [Fact]
-    public void TruncatedOrExtendedStringListIsRejectedEvenWithConsistentHeader()
+    public void TruncatedSelectedStringIsRejectedButUnreferencedTrailingDataIsIgnored()
     {
         byte[] original = Convert.FromHexString(AcceptedHex);
         byte[] truncated = original[..^1];
@@ -147,7 +149,72 @@ public sealed class GameLoginControl1004Tests
         BinaryPrimitives.WriteUInt16LittleEndian(extended, checked((ushort)extended.Length));
 
         Assert.Throws<InvalidDataException>(() => GameLoginControl1004.Read(truncated));
-        Assert.Throws<InvalidDataException>(() => GameLoginControl1004.Read(extended));
+        Assert.Equal(GameLoginControlKind.ExistingCharacter, GameLoginControl1004.Read(extended).Kind);
+    }
+
+    [Fact]
+    public void NativeReaderSkipsOversizedUnusedEntryWithoutRejectingValidControl()
+    {
+        byte[] oversizedUnused = new byte[255];
+        Array.Fill(oversizedUnused, (byte)0x81);
+        byte[] packet = BuildPacket(4, oversizedUnused, [], [], "ANSWER_OK"u8.ToArray());
+
+        Assert.Equal(GameLoginControlKind.ExistingCharacter, GameLoginControl1004.Read(packet).Kind);
+    }
+
+    [Fact]
+    public void NativeControlWordUsesCStringPrefixEvenWithEmbeddedNul()
+    {
+        byte[] packet = BuildPacket(4, [], [], [], "ANSWER_OK\0junk"u8.ToArray());
+
+        Assert.Equal(GameLoginControlKind.ExistingCharacter, GameLoginControl1004.Read(packet).Kind);
+    }
+
+    [Theory]
+    [InlineData((byte)0)]
+    [InlineData((byte)1)]
+    [InlineData((byte)2)]
+    [InlineData((byte)3)]
+    public void MissingControlEntryIsOrdinaryEmptyRefusal(byte count)
+    {
+        byte[] packet = BuildPacket(count);
+
+        GameLoginControlOutcome result = GameLoginControl1004.Read(packet);
+
+        Assert.Equal(GameLoginControlKind.Refused, result.Kind);
+        Assert.True(result.RefusalBytes.IsEmpty);
+    }
+
+    [Fact]
+    public void AdditionalDeclaredEntriesAndTrailingBytesDoNotChangeControl()
+    {
+        byte[] packet = BuildPacket(5, [], [], [], "nEw_rOlE"u8.ToArray(), [0xFF]);
+
+        Assert.Equal(GameLoginControlKind.CharacterCreation, GameLoginControl1004.Read(packet).Kind);
+    }
+
+    [Fact]
+    public void MalformedSelectedLengthCannotReadBeyondReceivedFrame()
+    {
+        byte[] packet = BuildPacket(4, [], [], [], "ANSWER_OK"u8.ToArray());
+        packet[28] = 255;
+
+        Assert.Throws<InvalidDataException>(() => GameLoginControl1004.Read(packet));
+    }
+
+    private static byte[] BuildPacket(byte count, params byte[][] strings)
+    {
+        List<byte> data = new(Convert.FromHexString(AcceptedHex).AsSpan(0, 25).ToArray());
+        data[24] = count;
+        foreach (byte[] value in strings)
+        {
+            data.Add(checked((byte)value.Length));
+            data.AddRange(value);
+        }
+
+        byte[] packet = [.. data];
+        BinaryPrimitives.WriteUInt16LittleEndian(packet, checked((ushort)packet.Length));
+        return packet;
     }
 
     [Fact]
