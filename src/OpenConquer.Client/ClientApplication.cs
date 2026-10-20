@@ -120,27 +120,32 @@ internal sealed class ClientApplication : IDisposable
 
         _disposed = true;
         _catalog?.Cancel();
-        _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _loginFlow = null;
-
         try
         {
-            _window?.Dispose();
+            _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
         finally
         {
+            _loginFlow = null;
             try
             {
-                _catalog?.Dispose();
-                _audio?.Dispose();
+                _window?.Dispose();
             }
             finally
             {
-                _login?.Dispose();
-                _catalog = null;
-                _audio = null;
-                _login = null;
-                _window = null;
+                try
+                {
+                    _catalog?.Dispose();
+                    _audio?.Dispose();
+                }
+                finally
+                {
+                    _login?.Dispose();
+                    _catalog = null;
+                    _audio = null;
+                    _login = null;
+                    _window = null;
+                }
             }
         }
     }
