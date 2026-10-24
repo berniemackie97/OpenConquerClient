@@ -1,10 +1,12 @@
 using System.Runtime.ExceptionServices;
 using OpenConquer.Client.Startup;
+using OpenConquer.Client.Startup.LoginFlow;
 using OpenConquer.Client.UI;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
 using OpenConquer.Client.UI.Login.Stage;
+using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
@@ -37,6 +39,8 @@ internal sealed class ClientApplication : IDisposable
     private DesktopCursorAnimation? _cursor;
     private LoginScreen? _login;
     private LoginCatalogBinding? _catalog;
+    private LoginAttemptCoordinator? _loginFlow;
+    private LoginErrorMessages? _loginErrors;
     private LoginAudioPlayer? _audio;
     private ResourceOwnership? _graphics;
     private OpenGLRenderer? _renderer;
@@ -117,25 +121,32 @@ internal sealed class ClientApplication : IDisposable
 
         _disposed = true;
         _catalog?.Cancel();
-
         try
         {
-            _window?.Dispose();
+            _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
         finally
         {
+            _loginFlow = null;
             try
             {
-                _catalog?.Dispose();
-                _audio?.Dispose();
+                _window?.Dispose();
             }
             finally
             {
-                _login?.Dispose();
-                _catalog = null;
-                _audio = null;
-                _login = null;
-                _window = null;
+                try
+                {
+                    _catalog?.Dispose();
+                    _audio?.Dispose();
+                }
+                finally
+                {
+                    _login?.Dispose();
+                    _catalog = null;
+                    _audio = null;
+                    _login = null;
+                    _window = null;
+                }
             }
         }
     }
@@ -148,6 +159,9 @@ internal sealed class ClientApplication : IDisposable
         _login = new LoginScreen(LoginStageLayout.Create(_logicalRenderSize), LoginAccountHistory.ForCurrentUser(),
             ClientVersionLabel.Load(contentSource), cue => _audio?.Play(cue));
         _login.ExitRequested += () => _window?.RequestClose();
+        _loginFlow = new LoginAttemptCoordinator(_contentRootPath);
+        _loginErrors = LoginErrorMessages.Load(contentSource, LoginErrorEncoding.ForCurrentHost());
+        _login.LoginRequested += OnLoginRequested;
 
         IReadOnlyList<RgbaImage> cursorFrames = LoginCursorArtwork.Load();
         _cursor = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
@@ -205,7 +219,13 @@ internal sealed class ClientApplication : IDisposable
         OpenGLRenderer renderer = _renderer ?? throw new InvalidOperationException("The renderer is not initialized.");
         LoginScreenRenderer loginRenderer = _loginRenderer ?? throw new InvalidOperationException("The login renderer is not initialized.");
 
-        _catalog?.Update(login, DateTimeOffset.UtcNow);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        _catalog?.Update(login, now);
+        _loginFlow?.Update(_catalog?.CurrentCatalog(now));
+        if (_loginFlow is { } flow && _loginErrors is { } messages)
+        {
+            login.ApplyFeedback(flow.Feedback, messages);
+        }
         login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
         ContinueCredentialDrag();
 
@@ -231,6 +251,15 @@ internal sealed class ClientApplication : IDisposable
         }
 
         firstFailure?.Throw();
+    }
+
+    private void OnLoginRequested()
+    {
+        if (_login is { } login && _loginFlow is { } flow)
+        {
+            flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
+            login.ApplyFeedback(flow.Feedback, _loginErrors!);
+        }
     }
 
     private void OnFramebufferResized(PixelSize size) => _renderer?.ResizeHostFramebuffer(size.Width, size.Height);

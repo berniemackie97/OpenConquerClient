@@ -3,6 +3,7 @@ using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Credentials;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Content.Login;
+using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests.UI.Login;
@@ -137,6 +138,33 @@ public sealed class LoginScreenTests : IDisposable
 
         Click(screen, 900, 720);
         Assert.True(exitRequested);
+    }
+
+    [Fact]
+    public void EnterButtonAndKeyboardIssueOneRequestEachAfterOpening()
+    {
+        using LoginScreen screen = Create(out _);
+        int attempts = 0;
+        screen.LoginRequested += () => attempts++;
+
+        Click(screen, 700, 720);
+        Assert.Equal(0, attempts);
+        SkipOpening(screen);
+
+        Click(screen, 700, 720);
+        Assert.Equal(1, attempts);
+
+        LoginRect field = s_fields.AccountField;
+        Click(screen, field.X + 2, field.Y + 2);
+        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Enter, DesktopKeyModifiers.None, false),
+            () => null, _ => { });
+        Assert.Equal(2, attempts);
+
+        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Enter, DesktopKeyModifiers.None, true),
+            () => null, _ => { });
+        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Enter, DesktopKeyModifiers.Control, false),
+            () => null, _ => { });
+        Assert.Equal(2, attempts);
     }
 
     public void Dispose() => Directory.Delete(_folder, recursive: true);

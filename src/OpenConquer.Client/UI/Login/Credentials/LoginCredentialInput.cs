@@ -234,6 +234,31 @@ internal sealed class LoginCredentialInput : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Takes independent, short-lived credential buffers for one login attempt.
+    /// The caller must zero both buffers. Taking the password immediately erases
+    /// the editor copy so no concurrent render/input path can retain a secret.
+    /// </summary>
+    internal bool TryTakeLoginCredentials(out byte[] accountName, out char[] password)
+    {
+        Synchronize();
+        accountName = [];
+        password = [];
+        if (_accountLength == 0 || _passwordLength is < 1 or > 14)
+        {
+            return false;
+        }
+
+        accountName = new byte[_accountLength];
+        for (int index = 0; index < accountName.Length; index++)
+        {
+            accountName[index] = checked((byte)_account[index]);
+        }
+        password = _password.AsSpan(0, _passwordLength).ToArray();
+        ClearPassword();
+        return true;
+    }
+
     /// <summary>Returns account selection only. Password content is never materialized as a string.</summary>
     public string? SelectedAccountText()
     {

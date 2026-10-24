@@ -1,0 +1,1134 @@
+{
+  "authority": "Retail Flash.ocx7.0, original start.dat field273, Arial14, Windows11 ARM x86 emulation, system ACP1252; measured at 1024x768 without DWM resampling. Glyph edge coverage remains host dependent.",
+  "ocxSha256": "94058fe5343d8d76d313998e1db44a0bedd47184b132fa6c3ace021cb665d703",
+  "startSha256": "db4b4550bc4b3fa91b2fd7cc173bb9a6f8109dbc65221e7f0df290610655da20",
+  "lineAdvance": 18,
+  "gdiAscent": 13,
+  "gdiHeight": 16,
+  "leading": 2,
+  "nonAdditivePairs": 0,
+  "pairCount": 50176,
+  "glyphCaptureSha256": "5f02fd6acf9a018048af39d6cd3e8c7bdda49b068d7716eae11df8b03baf7645",
+  "advances": [
+    {
+      "byte": 32,
+      "scalar": 32,
+      "advance": 4
+    },
+    {
+      "byte": 33,
+      "scalar": 33,
+      "advance": 5
+    },
+    {
+      "byte": 34,
+      "scalar": 34,
+      "advance": 5
+    },
+    {
+      "byte": 35,
+      "scalar": 35,
+      "advance": 8
+    },
+    {
+      "byte": 36,
+      "scalar": 36,
+      "advance": 8
+    },
+    {
+      "byte": 37,
+      "scalar": 37,
+      "advance": 12
+    },
+    {
+      "byte": 38,
+      "scalar": 38,
+      "advance": 9
+    },
+    {
+      "byte": 39,
+      "scalar": 39,
+      "advance": 3
+    },
+    {
+      "byte": 40,
+      "scalar": 40,
+      "advance": 5
+    },
+    {
+      "byte": 41,
+      "scalar": 41,
+      "advance": 5
+    },
+    {
+      "byte": 42,
+      "scalar": 42,
+      "advance": 5
+    },
+    {
+      "byte": 43,
+      "scalar": 43,
+      "advance": 8
+    },
+    {
+      "byte": 44,
+      "scalar": 44,
+      "advance": 4
+    },
+    {
+      "byte": 45,
+      "scalar": 45,
+      "advance": 5
+    },
+    {
+      "byte": 46,
+      "scalar": 46,
+      "advance": 4
+    },
+    {
+      "byte": 47,
+      "scalar": 47,
+      "advance": 4
+    },
+    {
+      "byte": 48,
+      "scalar": 48,
+      "advance": 8
+    },
+    {
+      "byte": 49,
+      "scalar": 49,
+      "advance": 8
+    },
+    {
+      "byte": 50,
+      "scalar": 50,
+      "advance": 8
+    },
+    {
+      "byte": 51,
+      "scalar": 51,
+      "advance": 8
+    },
+    {
+      "byte": 52,
+      "scalar": 52,
+      "advance": 8
+    },
+    {
+      "byte": 53,
+      "scalar": 53,
+      "advance": 8
+    },
+    {
+      "byte": 54,
+      "scalar": 54,
+      "advance": 8
+    },
+    {
+      "byte": 55,
+      "scalar": 55,
+      "advance": 8
+    },
+    {
+      "byte": 56,
+      "scalar": 56,
+      "advance": 8
+    },
+    {
+      "byte": 57,
+      "scalar": 57,
+      "advance": 8
+    },
+    {
+      "byte": 58,
+      "scalar": 58,
+      "advance": 4
+    },
+    {
+      "byte": 59,
+      "scalar": 59,
+      "advance": 4
+    },
+    {
+      "byte": 60,
+      "scalar": 60,
+      "advance": 8
+    },
+    {
+      "byte": 61,
+      "scalar": 61,
+      "advance": 8
+    },
+    {
+      "byte": 62,
+      "scalar": 62,
+      "advance": 8
+    },
+    {
+      "byte": 63,
+      "scalar": 63,
+      "advance": 8
+    },
+    {
+      "byte": 64,
+      "scalar": 64,
+      "advance": 14
+    },
+    {
+      "byte": 65,
+      "scalar": 65,
+      "advance": 9
+    },
+    {
+      "byte": 66,
+      "scalar": 66,
+      "advance": 9
+    },
+    {
+      "byte": 67,
+      "scalar": 67,
+      "advance": 10
+    },
+    {
+      "byte": 68,
+      "scalar": 68,
+      "advance": 10
+    },
+    {
+      "byte": 69,
+      "scalar": 69,
+      "advance": 9
+    },
+    {
+      "byte": 70,
+      "scalar": 70,
+      "advance": 9
+    },
+    {
+      "byte": 71,
+      "scalar": 71,
+      "advance": 11
+    },
+    {
+      "byte": 72,
+      "scalar": 72,
+      "advance": 9
+    },
+    {
+      "byte": 73,
+      "scalar": 73,
+      "advance": 3
+    },
+    {
+      "byte": 74,
+      "scalar": 74,
+      "advance": 6
+    },
+    {
+      "byte": 75,
+      "scalar": 75,
+      "advance": 9
+    },
+    {
+      "byte": 76,
+      "scalar": 76,
+      "advance": 8
+    },
+    {
+      "byte": 77,
+      "scalar": 77,
+      "advance": 11
+    },
+    {
+      "byte": 78,
+      "scalar": 78,
+      "advance": 9
+    },
+    {
+      "byte": 79,
+      "scalar": 79,
+      "advance": 11
+    },
+    {
+      "byte": 80,
+      "scalar": 80,
+      "advance": 9
+    },
+    {
+      "byte": 81,
+      "scalar": 81,
+      "advance": 11
+    },
+    {
+      "byte": 82,
+      "scalar": 82,
+      "advance": 10
+    },
+    {
+      "byte": 83,
+      "scalar": 83,
+      "advance": 9
+    },
+    {
+      "byte": 84,
+      "scalar": 84,
+      "advance": 9
+    },
+    {
+      "byte": 85,
+      "scalar": 85,
+      "advance": 9
+    },
+    {
+      "byte": 86,
+      "scalar": 86,
+      "advance": 9
+    },
+    {
+      "byte": 87,
+      "scalar": 87,
+      "advance": 13
+    },
+    {
+      "byte": 88,
+      "scalar": 88,
+      "advance": 8
+    },
+    {
+      "byte": 89,
+      "scalar": 89,
+      "advance": 9
+    },
+    {
+      "byte": 90,
+      "scalar": 90,
+      "advance": 8
+    },
+    {
+      "byte": 91,
+      "scalar": 91,
+      "advance": 4
+    },
+    {
+      "byte": 92,
+      "scalar": 92,
+      "advance": 4
+    },
+    {
+      "byte": 93,
+      "scalar": 93,
+      "advance": 4
+    },
+    {
+      "byte": 94,
+      "scalar": 94,
+      "advance": 5
+    },
+    {
+      "byte": 95,
+      "scalar": 95,
+      "advance": 8
+    },
+    {
+      "byte": 96,
+      "scalar": 96,
+      "advance": 5
+    },
+    {
+      "byte": 97,
+      "scalar": 97,
+      "advance": 8
+    },
+    {
+      "byte": 98,
+      "scalar": 98,
+      "advance": 8
+    },
+    {
+      "byte": 99,
+      "scalar": 99,
+      "advance": 7
+    },
+    {
+      "byte": 100,
+      "scalar": 100,
+      "advance": 8
+    },
+    {
+      "byte": 101,
+      "scalar": 101,
+      "advance": 8
+    },
+    {
+      "byte": 102,
+      "scalar": 102,
+      "advance": 4
+    },
+    {
+      "byte": 103,
+      "scalar": 103,
+      "advance": 8
+    },
+    {
+      "byte": 104,
+      "scalar": 104,
+      "advance": 8
+    },
+    {
+      "byte": 105,
+      "scalar": 105,
+      "advance": 3
+    },
+    {
+      "byte": 106,
+      "scalar": 106,
+      "advance": 3
+    },
+    {
+      "byte": 107,
+      "scalar": 107,
+      "advance": 7
+    },
+    {
+      "byte": 108,
+      "scalar": 108,
+      "advance": 3
+    },
+    {
+      "byte": 109,
+      "scalar": 109,
+      "advance": 11
+    },
+    {
+      "byte": 110,
+      "scalar": 110,
+      "advance": 8
+    },
+    {
+      "byte": 111,
+      "scalar": 111,
+      "advance": 8
+    },
+    {
+      "byte": 112,
+      "scalar": 112,
+      "advance": 8
+    },
+    {
+      "byte": 113,
+      "scalar": 113,
+      "advance": 8
+    },
+    {
+      "byte": 114,
+      "scalar": 114,
+      "advance": 5
+    },
+    {
+      "byte": 115,
+      "scalar": 115,
+      "advance": 7
+    },
+    {
+      "byte": 116,
+      "scalar": 116,
+      "advance": 4
+    },
+    {
+      "byte": 117,
+      "scalar": 117,
+      "advance": 8
+    },
+    {
+      "byte": 118,
+      "scalar": 118,
+      "advance": 7
+    },
+    {
+      "byte": 119,
+      "scalar": 119,
+      "advance": 9
+    },
+    {
+      "byte": 120,
+      "scalar": 120,
+      "advance": 6
+    },
+    {
+      "byte": 121,
+      "scalar": 121,
+      "advance": 7
+    },
+    {
+      "byte": 122,
+      "scalar": 122,
+      "advance": 6
+    },
+    {
+      "byte": 123,
+      "scalar": 123,
+      "advance": 5
+    },
+    {
+      "byte": 124,
+      "scalar": 124,
+      "advance": 3
+    },
+    {
+      "byte": 125,
+      "scalar": 125,
+      "advance": 5
+    },
+    {
+      "byte": 126,
+      "scalar": 126,
+      "advance": 8
+    },
+    {
+      "byte": 127,
+      "scalar": 127,
+      "advance": 11
+    },
+    {
+      "byte": 128,
+      "scalar": 8364,
+      "advance": 8
+    },
+    {
+      "byte": 129,
+      "scalar": 129,
+      "advance": 0
+    },
+    {
+      "byte": 130,
+      "scalar": 8218,
+      "advance": 3
+    },
+    {
+      "byte": 131,
+      "scalar": 402,
+      "advance": 8
+    },
+    {
+      "byte": 132,
+      "scalar": 8222,
+      "advance": 5
+    },
+    {
+      "byte": 133,
+      "scalar": 8230,
+      "advance": 14
+    },
+    {
+      "byte": 134,
+      "scalar": 8224,
+      "advance": 8
+    },
+    {
+      "byte": 135,
+      "scalar": 8225,
+      "advance": 8
+    },
+    {
+      "byte": 136,
+      "scalar": 710,
+      "advance": 5
+    },
+    {
+      "byte": 137,
+      "scalar": 8240,
+      "advance": 14
+    },
+    {
+      "byte": 138,
+      "scalar": 352,
+      "advance": 9
+    },
+    {
+      "byte": 139,
+      "scalar": 8249,
+      "advance": 5
+    },
+    {
+      "byte": 140,
+      "scalar": 338,
+      "advance": 14
+    },
+    {
+      "byte": 141,
+      "scalar": 141,
+      "advance": 0
+    },
+    {
+      "byte": 142,
+      "scalar": 381,
+      "advance": 8
+    },
+    {
+      "byte": 143,
+      "scalar": 143,
+      "advance": 0
+    },
+    {
+      "byte": 144,
+      "scalar": 144,
+      "advance": 0
+    },
+    {
+      "byte": 145,
+      "scalar": 8216,
+      "advance": 3
+    },
+    {
+      "byte": 146,
+      "scalar": 8217,
+      "advance": 3
+    },
+    {
+      "byte": 147,
+      "scalar": 8220,
+      "advance": 5
+    },
+    {
+      "byte": 148,
+      "scalar": 8221,
+      "advance": 5
+    },
+    {
+      "byte": 149,
+      "scalar": 8226,
+      "advance": 5
+    },
+    {
+      "byte": 150,
+      "scalar": 8211,
+      "advance": 8
+    },
+    {
+      "byte": 151,
+      "scalar": 8212,
+      "advance": 14
+    },
+    {
+      "byte": 152,
+      "scalar": 732,
+      "advance": 4
+    },
+    {
+      "byte": 153,
+      "scalar": 8482,
+      "advance": 14
+    },
+    {
+      "byte": 154,
+      "scalar": 353,
+      "advance": 7
+    },
+    {
+      "byte": 155,
+      "scalar": 8250,
+      "advance": 5
+    },
+    {
+      "byte": 156,
+      "scalar": 339,
+      "advance": 13
+    },
+    {
+      "byte": 157,
+      "scalar": 157,
+      "advance": 0
+    },
+    {
+      "byte": 158,
+      "scalar": 382,
+      "advance": 6
+    },
+    {
+      "byte": 159,
+      "scalar": 376,
+      "advance": 9
+    },
+    {
+      "byte": 160,
+      "scalar": 160,
+      "advance": 4
+    },
+    {
+      "byte": 161,
+      "scalar": 161,
+      "advance": 5
+    },
+    {
+      "byte": 162,
+      "scalar": 162,
+      "advance": 8
+    },
+    {
+      "byte": 163,
+      "scalar": 163,
+      "advance": 8
+    },
+    {
+      "byte": 164,
+      "scalar": 164,
+      "advance": 8
+    },
+    {
+      "byte": 165,
+      "scalar": 165,
+      "advance": 8
+    },
+    {
+      "byte": 166,
+      "scalar": 166,
+      "advance": 3
+    },
+    {
+      "byte": 167,
+      "scalar": 167,
+      "advance": 8
+    },
+    {
+      "byte": 168,
+      "scalar": 168,
+      "advance": 5
+    },
+    {
+      "byte": 169,
+      "scalar": 169,
+      "advance": 10
+    },
+    {
+      "byte": 170,
+      "scalar": 170,
+      "advance": 4
+    },
+    {
+      "byte": 171,
+      "scalar": 171,
+      "advance": 8
+    },
+    {
+      "byte": 172,
+      "scalar": 172,
+      "advance": 8
+    },
+    {
+      "byte": 173,
+      "scalar": 173,
+      "advance": 5
+    },
+    {
+      "byte": 174,
+      "scalar": 174,
+      "advance": 10
+    },
+    {
+      "byte": 175,
+      "scalar": 175,
+      "advance": 8
+    },
+    {
+      "byte": 176,
+      "scalar": 176,
+      "advance": 6
+    },
+    {
+      "byte": 177,
+      "scalar": 177,
+      "advance": 8
+    },
+    {
+      "byte": 178,
+      "scalar": 178,
+      "advance": 5
+    },
+    {
+      "byte": 179,
+      "scalar": 179,
+      "advance": 5
+    },
+    {
+      "byte": 180,
+      "scalar": 180,
+      "advance": 5
+    },
+    {
+      "byte": 181,
+      "scalar": 181,
+      "advance": 8
+    },
+    {
+      "byte": 182,
+      "scalar": 182,
+      "advance": 8
+    },
+    {
+      "byte": 183,
+      "scalar": 183,
+      "advance": 5
+    },
+    {
+      "byte": 184,
+      "scalar": 184,
+      "advance": 5
+    },
+    {
+      "byte": 185,
+      "scalar": 185,
+      "advance": 5
+    },
+    {
+      "byte": 186,
+      "scalar": 186,
+      "advance": 5
+    },
+    {
+      "byte": 187,
+      "scalar": 187,
+      "advance": 8
+    },
+    {
+      "byte": 188,
+      "scalar": 188,
+      "advance": 12
+    },
+    {
+      "byte": 189,
+      "scalar": 189,
+      "advance": 12
+    },
+    {
+      "byte": 190,
+      "scalar": 190,
+      "advance": 12
+    },
+    {
+      "byte": 191,
+      "scalar": 191,
+      "advance": 9
+    },
+    {
+      "byte": 192,
+      "scalar": 192,
+      "advance": 9
+    },
+    {
+      "byte": 193,
+      "scalar": 193,
+      "advance": 9
+    },
+    {
+      "byte": 194,
+      "scalar": 194,
+      "advance": 9
+    },
+    {
+      "byte": 195,
+      "scalar": 195,
+      "advance": 9
+    },
+    {
+      "byte": 196,
+      "scalar": 196,
+      "advance": 9
+    },
+    {
+      "byte": 197,
+      "scalar": 197,
+      "advance": 9
+    },
+    {
+      "byte": 198,
+      "scalar": 198,
+      "advance": 14
+    },
+    {
+      "byte": 199,
+      "scalar": 199,
+      "advance": 10
+    },
+    {
+      "byte": 200,
+      "scalar": 200,
+      "advance": 9
+    },
+    {
+      "byte": 201,
+      "scalar": 201,
+      "advance": 9
+    },
+    {
+      "byte": 202,
+      "scalar": 202,
+      "advance": 9
+    },
+    {
+      "byte": 203,
+      "scalar": 203,
+      "advance": 9
+    },
+    {
+      "byte": 204,
+      "scalar": 204,
+      "advance": 4
+    },
+    {
+      "byte": 205,
+      "scalar": 205,
+      "advance": 4
+    },
+    {
+      "byte": 206,
+      "scalar": 206,
+      "advance": 4
+    },
+    {
+      "byte": 207,
+      "scalar": 207,
+      "advance": 4
+    },
+    {
+      "byte": 208,
+      "scalar": 208,
+      "advance": 10
+    },
+    {
+      "byte": 209,
+      "scalar": 209,
+      "advance": 10
+    },
+    {
+      "byte": 210,
+      "scalar": 210,
+      "advance": 11
+    },
+    {
+      "byte": 211,
+      "scalar": 211,
+      "advance": 11
+    },
+    {
+      "byte": 212,
+      "scalar": 212,
+      "advance": 11
+    },
+    {
+      "byte": 213,
+      "scalar": 213,
+      "advance": 11
+    },
+    {
+      "byte": 214,
+      "scalar": 214,
+      "advance": 11
+    },
+    {
+      "byte": 215,
+      "scalar": 215,
+      "advance": 8
+    },
+    {
+      "byte": 216,
+      "scalar": 216,
+      "advance": 11
+    },
+    {
+      "byte": 217,
+      "scalar": 217,
+      "advance": 10
+    },
+    {
+      "byte": 218,
+      "scalar": 218,
+      "advance": 10
+    },
+    {
+      "byte": 219,
+      "scalar": 219,
+      "advance": 10
+    },
+    {
+      "byte": 220,
+      "scalar": 220,
+      "advance": 10
+    },
+    {
+      "byte": 221,
+      "scalar": 221,
+      "advance": 9
+    },
+    {
+      "byte": 222,
+      "scalar": 222,
+      "advance": 9
+    },
+    {
+      "byte": 223,
+      "scalar": 223,
+      "advance": 9
+    },
+    {
+      "byte": 224,
+      "scalar": 224,
+      "advance": 8
+    },
+    {
+      "byte": 225,
+      "scalar": 225,
+      "advance": 8
+    },
+    {
+      "byte": 226,
+      "scalar": 226,
+      "advance": 8
+    },
+    {
+      "byte": 227,
+      "scalar": 227,
+      "advance": 8
+    },
+    {
+      "byte": 228,
+      "scalar": 228,
+      "advance": 8
+    },
+    {
+      "byte": 229,
+      "scalar": 229,
+      "advance": 8
+    },
+    {
+      "byte": 230,
+      "scalar": 230,
+      "advance": 12
+    },
+    {
+      "byte": 231,
+      "scalar": 231,
+      "advance": 7
+    },
+    {
+      "byte": 232,
+      "scalar": 232,
+      "advance": 8
+    },
+    {
+      "byte": 233,
+      "scalar": 233,
+      "advance": 8
+    },
+    {
+      "byte": 234,
+      "scalar": 234,
+      "advance": 8
+    },
+    {
+      "byte": 235,
+      "scalar": 235,
+      "advance": 8
+    },
+    {
+      "byte": 236,
+      "scalar": 236,
+      "advance": 4
+    },
+    {
+      "byte": 237,
+      "scalar": 237,
+      "advance": 4
+    },
+    {
+      "byte": 238,
+      "scalar": 238,
+      "advance": 4
+    },
+    {
+      "byte": 239,
+      "scalar": 239,
+      "advance": 4
+    },
+    {
+      "byte": 240,
+      "scalar": 240,
+      "advance": 8
+    },
+    {
+      "byte": 241,
+      "scalar": 241,
+      "advance": 8
+    },
+    {
+      "byte": 242,
+      "scalar": 242,
+      "advance": 8
+    },
+    {
+      "byte": 243,
+      "scalar": 243,
+      "advance": 8
+    },
+    {
+      "byte": 244,
+      "scalar": 244,
+      "advance": 8
+    },
+    {
+      "byte": 245,
+      "scalar": 245,
+      "advance": 8
+    },
+    {
+      "byte": 246,
+      "scalar": 246,
+      "advance": 8
+    },
+    {
+      "byte": 247,
+      "scalar": 247,
+      "advance": 8
+    },
+    {
+      "byte": 248,
+      "scalar": 248,
+      "advance": 8
+    },
+    {
+      "byte": 249,
+      "scalar": 249,
+      "advance": 8
+    },
+    {
+      "byte": 250,
+      "scalar": 250,
+      "advance": 8
+    },
+    {
+      "byte": 251,
+      "scalar": 251,
+      "advance": 8
+    },
+    {
+      "byte": 252,
+      "scalar": 252,
+      "advance": 8
+    },
+    {
+      "byte": 253,
+      "scalar": 253,
+      "advance": 7
+    },
+    {
+      "byte": 254,
+      "scalar": 254,
+      "advance": 8
+    },
+    {
+      "byte": 255,
+      "scalar": 255,
+      "advance": 7
+    }
+  ]
+}

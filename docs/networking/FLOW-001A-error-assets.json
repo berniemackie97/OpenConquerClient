@@ -1,0 +1,71 @@
+{
+  "sourceSha256": "db4b4550bc4b3fa91b2fd7cc173bb9a6f8109dbc65221e7f0df290610655da20",
+  "renderer": "JPEXS FFDec 26.3.0; sprite frame6 at scale1, transparent background; root x=-1",
+  "assets": [
+    {
+      "name": "Error",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "95DB6F8321AA6E65ED8DF46FFB65E46BF684EEB8C2062B4CD0C80E3DE3E8142D"
+    },
+    {
+      "name": "Quit",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "60C097EF6E447B625D4153A074757F4E1ECA9066659D497F75DC58C4DEA7EEF8"
+    },
+    {
+      "name": "ErrorOkOver",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "00BB5A44F1C2C10167972537B87B0926D29E299763B189F94921959E2C39A4DC"
+    },
+    {
+      "name": "ErrorOkDown",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "86880932E2EEC9938702722F05BD2FF8473D5EB747323DD736B1BDB858968EFD"
+    },
+    {
+      "name": "QuitOkOver",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "DDA5B83A1A544051B0458454BD553A357D69DFD35F6304CB89B505C7F75E1467"
+    },
+    {
+      "name": "QuitOkDown",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "01B547548F1BF8EF3F6B09DCC8DEDC859E3AF7BFCC9D3A7955A556D420E4A9A2"
+    },
+    {
+      "name": "QuitCancelOver",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "BC1870A33224867103091354F45280C65B6D81559D6AC1228D06ECD0BFFA76F3"
+    },
+    {
+      "name": "QuitCancelDown",
+      "width": 296,
+      "height": 192,
+      "x": 360,
+      "y": 259,
+      "sha256": "E393A31EE8705C99CDC221FDD7681D42B67301C851711E6728200CC68ADAC433"
+    }
+  ],
+  "buttonStateExtraction": "Temporary copy of original start.xml: set buttonStateUp to buttonStateOver/Down for each record of button272 (OK) or282 (Cancel). FFDec xml2swf, then -selectid 274,287 -select 274:6,287:6 -export sprite. Crop local(361,259)-(657,451). Original files remain unchanged. Remove any record whose four button-state flags become false: an all-zero record is the SWF end marker, not a renderable record."
+}

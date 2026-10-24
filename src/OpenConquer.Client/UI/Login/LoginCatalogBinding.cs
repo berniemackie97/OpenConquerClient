@@ -28,6 +28,15 @@ internal sealed class LoginCatalogBinding : IDisposable
         return new LoginCatalogBinding(new LoginCatalogRefresh(token => FetchAsync(authority, token)));
     }
 
+    /// <summary>Returns only the currently presented, still-valid signed authority.</summary>
+    internal SignedLoginCatalog? CurrentCatalog(DateTimeOffset now)
+    {
+        SignedLoginCatalog? current = _refresh?.Current;
+        return current is not null && ReferenceEquals(current, _presented) && current.IsCurrent(now)
+            ? current
+            : null;
+    }
+
     public LoginDirectoryAvailability Availability(LoginServerSelection selection) =>
         LoginDirectoryStatus.Resolve(_refresh is not null, _refresh?.Current is not null, _refresh?.LastAttemptFailed ?? false, selection);
 

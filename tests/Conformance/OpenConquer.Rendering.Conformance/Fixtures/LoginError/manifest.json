@@ -1,0 +1,95 @@
+{
+  "source": "start.dat sprite274, FFDec26.3.0 full-frame export, root(-1,0), straight RGBA; empty dynamic text. Test composites over white before 16-bit target quantization.",
+  "frames": [
+    {
+      "frame": 1,
+      "sha256": "bbd05cf6097ac9b1f89ea29d2542c1b7b67ee46848393895f5a9e43fa1f621e5"
+    },
+    {
+      "frame": 2,
+      "sha256": "bbd05cf6097ac9b1f89ea29d2542c1b7b67ee46848393895f5a9e43fa1f621e5"
+    },
+    {
+      "frame": 3,
+      "sha256": "7ad7e530881b00be8bb252000bbec519f7eb70506e127b758cd521559702b098"
+    },
+    {
+      "frame": 4,
+      "sha256": "8e4a39d840a624acea1688dd185830a8ce62833f0032e67dd096b50ed62abaea"
+    },
+    {
+      "frame": 5,
+      "sha256": "40b9666bd6e4c43bd800aac47758b26eac0be9b2d8ca84532c9f8f4eb9305a2f"
+    },
+    {
+      "frame": 6,
+      "sha256": "6650383b41926459c9f6752a5e0767f4e0aee4dfc9965cc4e23c5d0a5e988768"
+    },
+    {
+      "frame": 7,
+      "sha256": "40b9666bd6e4c43bd800aac47758b26eac0be9b2d8ca84532c9f8f4eb9305a2f"
+    },
+    {
+      "frame": 8,
+      "sha256": "8e4a39d840a624acea1688dd185830a8ce62833f0032e67dd096b50ed62abaea"
+    },
+    {
+      "frame": 9,
+      "sha256": "7ad7e530881b00be8bb252000bbec519f7eb70506e127b758cd521559702b098"
+    },
+    {
+      "frame": 10,
+      "sha256": "bbd05cf6097ac9b1f89ea29d2542c1b7b67ee46848393895f5a9e43fa1f621e5"
+    }
+  ],
+  "buttonStates": [
+    {
+      "name": "ErrorOkOver",
+      "sha256": "cf1106e47b184b0728b4bb33afd6da7637f49718b0a03e66bd8ab1d156bf6cdf"
+    },
+    {
+      "name": "ErrorOkDown",
+      "sha256": "0f138af9d6e7f312ed2a785fbe42d221c5aef4eb9b1c2af9b86f4bf7145d5987"
+    },
+    {
+      "name": "QuitOkOver",
+      "sha256": "78b3431507aa7d5f305e1908182a770c0da7bcf09e9a8a5a37dbbddaf7525c68"
+    },
+    {
+      "name": "QuitOkDown",
+      "sha256": "d5c1abb81f1141af704cddfe1961c3741e7004b29d9061bf90f32b91c0833881"
+    },
+    {
+      "name": "QuitCancelOver",
+      "sha256": "51151f5a51187886e9444d749b79835be7bdfd161e5e9f2fce245514084b77b3"
+    },
+    {
+      "name": "QuitCancelDown",
+      "sha256": "b9b090e2c1c8022a047a7b8a68b3eaef8fe18322dad1562229d6c458258b3b51"
+    },
+    {
+      "name": "QuitUp",
+      "sha256": "8a53aceea69091b4f0ec7759c39793713455f2dcfdbd9e03622213b5b3075dfb"
+    },
+    {
+      "name": "LoadingQuitUp",
+      "sha256": "b0a695c6490887e5516a1f35dd2293d316ebf88f4cc7f8142277b1661b46ee58"
+    },
+    {
+      "name": "LoadingQuitOkOver",
+      "sha256": "312b3067f2d5c8e70d212184e874e3df2e6a08251f381c95ace928df9ea17a07"
+    },
+    {
+      "name": "LoadingQuitOkDown",
+      "sha256": "a33e1ec7950732631fd8c716eddbfc797e96ca2a9bddee8bd25557b8b2442ad6"
+    },
+    {
+      "name": "LoadingQuitCancelOver",
+      "sha256": "dd1752a9e28d3efc6f6292089a5610eb5b1a2da456b1fb4c3c1b52133312f21c"
+    },
+    {
+      "name": "LoadingQuitCancelDown",
+      "sha256": "766300df1f75424e031956a1b76397dcf27be97f6eebdb2eee660a5d09978c71"
+    }
+  ]
+}

@@ -67,7 +67,12 @@ internal sealed class LoginAccountSession : IAsyncDisposable
                 }
                 catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
-                    throw new TimeoutException("AccountServer connection timed out.");
+                    throw new LoginConnectFailureException(LoginConnectTarget.Account, true,
+                        new TimeoutException("AccountServer connection timed out."));
+                }
+                catch (SocketException exception)
+                {
+                    throw new LoginConnectFailureException(LoginConnectTarget.Account, false, exception);
                 }
             }
 
