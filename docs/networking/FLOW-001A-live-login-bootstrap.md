@@ -105,16 +105,23 @@ managed validation failure.
 Successful1006 remains the existing world-pending boundary. This correction does
 not implement EnterMap action74, world mutation/rendering, or the NEW_ROLE screen.
 
+## Text metrics
+
+Field273 text uses the advances and line metrics measured from the retail Flash 7
+control on Windows with the original `start.dat` (see
+[FLOW-001A-native-text-metrics.json](FLOW-001A-native-text-metrics.json)):
+per-byte Arial 14 advances for the Windows-1252 range, an 18-pixel baseline
+advance (not 14 + leading 2), GDI ascent 13, and no non-additive pairs across
+all 50,176 byte pairs. Flash keeps CRLF as two line breaks and treats a lone CR
+or LF as one; the layout follows that. Glyph shapes come from the existing
+cross-platform font renderer, so edge coverage is not pixel-identical to GDI.
+
 ## Verification and open acceptance gates
 
-See [FLOW-001A-verification.md](FLOW-001A-verification.md) for final local results
-and changed files. The normal gates are locked restore, formatting verification,
-Release build, the full test suite, content verification and the OpenGL conformance
-runner against the clean retail content directory.
+The normal gates are locked restore, formatting verification, Release build,
+the full test suite, content verification and the OpenGL conformance runner
+against the clean retail content directory. All pass locally and in CI on the
+PR head.
 
-Exact Windows Flash7/GDI text pixels, line metrics and wrapping have not been
-compared at1:1. The current field uses the existing cross-platform FreeType text
-renderer; matching field parameters is not proof of matching device-font pixels.
-The Windows VM start was canceled during this work. Windows/Linux runtime checks
-and a live companion-server desktop acceptance run are also not recorded as passed.
-These remain explicit limits on a claim of complete production/native parity.
+Still open: glyph edge coverage versus Windows GDI, and a live desktop run of
+the login against a local AccountServer and GameServer.
