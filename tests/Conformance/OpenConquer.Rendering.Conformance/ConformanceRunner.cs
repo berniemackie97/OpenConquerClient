@@ -25,6 +25,7 @@ internal static class ConformanceRunner
             SpriteColorConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
             SpriteBlendConformance.Run(graphicsDevice, framebufferSize);
             SolidRectangleConformance.Run(graphicsDevice, framebufferSize);
+            LoginErrorConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
             FireworkDxt3Conformance.Run(graphicsDevice, fireworkImage, framebufferSize);
             SpriteGeometryConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
             SpriteRepeatedSamplingConformance.Run(graphicsDevice, framebufferSize);

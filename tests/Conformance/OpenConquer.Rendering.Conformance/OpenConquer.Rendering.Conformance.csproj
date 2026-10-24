@@ -7,4 +7,8 @@
     <ProjectReference Include="../../../src/OpenConquer.Rendering/OpenConquer.Rendering.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/LoginError/*.rgba.zlib" />
+  </ItemGroup>
+
 </Project>

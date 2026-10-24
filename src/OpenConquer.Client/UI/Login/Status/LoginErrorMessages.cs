@@ -35,33 +35,49 @@ internal sealed class LoginErrorMessages(ClientStringResources numeric, ClientKe
             reason = keyed.GetEncoded("STR_CONNECT_ERROR_MSG_TYPE_UNKNOWN");
         }
 
-        // Interpret only the two retail placeholders. Never re-parse inserted server/resource text.
-        string template = encoding.GetString(keyed.GetEncoded("STR_LOGIN_FAIL").Span);
-        StringBuilder result = new();
-        for (int index = 0; index < template.Length; index++)
+        // Format the native narrow strings before ACP decoding. 754AD8 copies 0x100
+        // bytes to ebp-0x930; 754B1C writes NUL at ebp-0x831 (offset 255).
+        byte[] buffer = new byte[255];
+        int length = 0;
+        ReadOnlySpan<byte> template = keyed.GetEncoded("STR_LOGIN_FAIL").Span;
+        for (int index = 0; index < template.Length && length < buffer.Length && template[index] != 0; index++)
         {
             if (template[index] == '%' && index + 1 < template.Length)
             {
-                char specifier = template[index + 1];
-                if (specifier is 's' or 'd' or '%')
+                byte specifier = template[index + 1];
+                if (specifier is (byte)'s' or (byte)'d' or (byte)'%')
                 {
-                    result.Append(specifier switch
+                    if (specifier == 's')
                     {
-                        's' => encoding.GetString(reason.Span),
-                        'd' => unchecked((int)code).ToString(CultureInfo.InvariantCulture),
-                        _ => "%",
-                    });
+                        ReadOnlySpan<byte> value = reason.Span;
+                        int nul = value.IndexOf((byte)0);
+                        Append(nul < 0 ? value : value[..nul]);
+                    }
+                    else if (specifier == 'd')
+                    {
+                        Append(Encoding.ASCII.GetBytes(unchecked((int)code).ToString(CultureInfo.InvariantCulture)));
+                    }
+                    else
+                    {
+                        buffer[length++] = (byte)'%';
+                    }
+
                     index++;
                     continue;
                 }
             }
 
-            result.Append(template[index]);
+            buffer[length++] = template[index];
         }
 
-        // 1055 Process copies at most 256 bytes into its NUL-terminated failure buffer.
-        byte[] bytes = encoding.GetBytes(result.ToString());
-        return Decode(bytes.AsSpan(0, Math.Min(bytes.Length, 256)));
+        return Decode(buffer.AsSpan(0, length));
+
+        void Append(ReadOnlySpan<byte> value)
+        {
+            int count = Math.Min(value.Length, buffer.Length - length);
+            value[..count].CopyTo(buffer.AsSpan(length));
+            length += count;
+        }
     }
 
     private string Decode(ReadOnlySpan<byte> bytes)

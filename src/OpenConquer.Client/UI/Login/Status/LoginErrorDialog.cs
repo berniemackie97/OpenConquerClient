@@ -10,12 +10,19 @@ internal sealed class LoginErrorDialog
     private readonly LoginButtonSet<LoginDialogButton> _buttons;
     private bool _confirmed;
 
-    internal LoginErrorDialog(LoginStageLayout layout, bool quit = false)
+    internal LoginErrorDialog(LoginStageLayout layout, bool quit = false, bool loading = false)
     {
         IsQuit = quit;
+        IsLoadingQuit = quit && loading;
+        int offset = IsLoadingQuit ? 1 : 0;
         _buttons = new(quit
-            ? [(LoginDialogButton.Ok, layout.Place(381, 415, 96, 26)), (LoginDialogButton.Cancel, layout.Place(541, 415, 96, 26))]
+            ? [(LoginDialogButton.Ok, layout.Place(381 + offset, 415, 96, 26)), (LoginDialogButton.Cancel, layout.Place(541 + offset, 415, 96, 26))]
             : [(LoginDialogButton.Ok, layout.Place(461, 415, 96, 26))]);
+    }
+
+    internal bool IsLoadingQuit
+    {
+        get;
     }
 
     internal bool IsQuit

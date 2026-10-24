@@ -39,6 +39,7 @@ internal sealed class LoginScreen : IDisposable
         Buttons = LoginControlLayout.CreateButtons(layout);
         Error = new LoginErrorDialog(layout);
         Quit = new LoginErrorDialog(layout, quit: true);
+        LoadingQuit = new LoginErrorDialog(layout, quit: true, loading: true);
         _sounds = new LoginAudioFeedback(layout);
     }
 
@@ -59,7 +60,11 @@ internal sealed class LoginScreen : IDisposable
     {
         get;
     }
-    private LoginErrorDialog? ActiveDialog => Quit.IsOpen ? Quit : Error.IsOpen ? Error : null;
+    internal LoginErrorDialog LoadingQuit
+    {
+        get;
+    }
+    private LoginErrorDialog? ActiveDialog => LoadingQuit.IsOpen ? LoadingQuit : Quit.IsOpen ? Quit : Error.IsOpen ? Error : null;
     internal bool IsLoginPending => AttemptStatus is LoginAttemptStatus.ConnectingAccount or
         LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter;
 
@@ -160,7 +165,9 @@ internal sealed class LoginScreen : IDisposable
         Credentials.Synchronize();
         Account.Advance(Clock.Step, frames);
         Error.Advance(frames);
-        if (Quit.Advance(frames))
+        bool quit = Quit.Advance(frames);
+        bool loadingQuit = LoadingQuit.Advance(frames);
+        if (quit || loadingQuit)
         {
             ExitRequested?.Invoke();
         }
@@ -331,10 +338,10 @@ internal sealed class LoginScreen : IDisposable
         ArgumentNullException.ThrowIfNull(readClipboard);
         ArgumentNullException.ThrowIfNull(writeClipboard);
 
-        if (!IsOpeningPlaying && key.Key == DesktopKey.Escape && !key.IsRepeat && !Quit.IsOpen)
+        if (!IsOpeningPlaying && key.Key == DesktopKey.Escape && !key.IsRepeat && !Quit.IsOpen && !LoadingQuit.IsOpen)
         {
             FocusLost();
-            Quit.Show(string.Empty);
+            (IsLoginPending ? LoadingQuit : Quit).Show(string.Empty);
             Play(LoginAudioCue.Error);
             return;
         }
@@ -383,6 +390,7 @@ internal sealed class LoginScreen : IDisposable
         Account.FocusLost();
         Error.FocusLost();
         Quit.FocusLost();
+        LoadingQuit.FocusLost();
         _sounds.Reset();
     }
 

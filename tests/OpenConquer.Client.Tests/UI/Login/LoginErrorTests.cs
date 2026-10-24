@@ -16,13 +16,14 @@ public sealed class LoginErrorTests : IDisposable
 
     internal static LoginErrorMessages Messages() => new(
         ClientStringResources.Parse("49995=Please login later!\n11400=Your password must be 10-14 characters. Please retrieve your password on the website.\n"u8),
-        ClientKeyedStringResources.Parse("STR_LOGIN_FAIL=Failed to login: %s(%d)\nSTR_CONNECT_ERROR_MSG_TYPE_001=Invalid Account ID or Password\nSTR_CONNECT_ERROR_MSG_TYPE_024=This account has been banned.\nSTR_CONNECT_ERROR_MSG_TYPE_UNKNOWN=Unknown Error\n"u8),
+        ClientKeyedStringResources.Parse("STR_LOGIN_FAIL=Failed to login: %s(%d)\nSTR_CONNECT_ERROR_MSG_TYPE_001=Invalid Account ID or Password\nSTR_CONNECT_ERROR_MSG_TYPE_020=Server is busy.\nSTR_CONNECT_ERROR_MSG_TYPE_024=This account has been banned.\nSTR_CONNECT_ERROR_MSG_TYPE_UNKNOWN=Unknown Error\n"u8),
         LoginErrorEncoding.ForCodePage(1252));
 
     [Theory]
     [InlineData(1u, "Failed to login: Invalid Account ID or Password(1)")]
     [InlineData(24u, "Failed to login: This account has been banned.(24)")]
     [InlineData(123456u, "Failed to login: Unknown Error(123456)")]
+    [InlineData(uint.MaxValue, "Failed to login: Unknown Error(-1)")]
     public void AccountRefusalKeepsNumericCodeAndRetailFormatting(uint code, string expected)
     {
         LoginFailure failure = LoginFailure.Account(code);
@@ -194,7 +195,7 @@ public sealed class LoginErrorTests : IDisposable
     [Theory]
     [InlineData("abc def", 4, "abc |def")]
     [InlineData("abcdef", 3, "abc|def")]
-    [InlineData("a\r\nb\rc\nd", 8, "a|b|c|d")]
+    [InlineData("a\r\nb\rc\nd", 8, "a||b|c|d")]
     [InlineData("", 8, "")]
     public void WrappingKeepsWordsExplicitLineBreaksAndLongTokens(string text, int width, string expected)
     {
@@ -205,6 +206,93 @@ public sealed class LoginErrorTests : IDisposable
     public void WrappingNeverSplitsASurrogatePair()
     {
         Assert.Equal(["😀", "😀"], LoginErrorTextLayout.Wrap("😀😀", 1, value => value.EnumerateRunes().Count()));
+    }
+
+    [Fact]
+    public void AccountRefusalTruncatesNarrowBytesBeforeDecoding()
+    {
+        // The last copied byte is a DBCS lead byte. Decoding before truncation
+        // would retain the full character and incorrectly change the boundary.
+        byte[] prefix = System.Text.Encoding.ASCII.GetBytes("STR_LOGIN_FAIL=%s\nSTR_CONNECT_ERROR_MSG_TYPE_001=" + new string('a', 254));
+        byte[] resources = [.. prefix, 0xD6, 0xD0, (byte)'\n'];
+        System.Text.Encoding encoding = LoginErrorEncoding.ForCodePage(936);
+        LoginErrorMessages messages = new(ClientStringResources.Parse([]), ClientKeyedStringResources.Parse(resources), encoding);
+        string expected = encoding.GetString([.. Enumerable.Repeat((byte)'a', 254), 0xD6]);
+        Assert.Equal(expected, messages.Format(LoginFailure.Account(1)));
+    }
+
+    [Fact]
+    public void LoadingQuitUsesItsOwnDepthInstanceAndOnePixelOffset()
+    {
+        using LoginScreen screen = Screen([]);
+        screen.ApplyFeedback(new(LoginAttemptStatus.ConnectingGame), Messages());
+        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Escape, DesktopKeyModifiers.None, false), () => null, _ => { });
+        Assert.True(screen.LoadingQuit.IsOpen);
+        Assert.False(screen.Quit.IsOpen);
+        Assert.Equal(new LoginRect(382, 415, 96, 26), screen.LoadingQuit.Bounds(LoginDialogButton.Ok));
+        screen.LoadingQuit.Advance(4);
+        screen.PointerPressed(true, 580, 428, false);
+        screen.PointerReleased(true, 580, 428);
+        screen.LoadingQuit.Advance(3);
+        Assert.False(screen.LoadingQuit.IsOpen);
+        Assert.Equal(LoginAttemptStatus.ConnectingGame, screen.AttemptStatus);
+    }
+
+    [Fact]
+    public void ErrorButtonPlaysHoverPressAndHideAtTheNativeTransitions()
+    {
+        List<LoginAudioCue> sounds = [];
+        using LoginScreen screen = Screen(sounds);
+        screen.ApplyFeedback(new(LoginAttemptStatus.RetryLater, LoginFailure.Resource(49995)), Messages());
+        screen.Error.Advance(4);
+        screen.PointerMoved(true, 500, 428);
+        screen.PointerMoved(true, 500, 428);
+        screen.PointerPressed(true, 500, 428, false);
+        screen.PointerReleased(true, 500, 428);
+        Assert.Equal([LoginAudioCue.Error, LoginAudioCue.ButtonHover, LoginAudioCue.ButtonClick, LoginAudioCue.Error], sounds);
+        Assert.Equal(7, screen.Error.Frame);
+    }
+
+    [Theory]
+    [InlineData(800, 600)]
+    [InlineData(1024, 768)]
+    [InlineData(1600, 1200)]
+    public void ScaledButtonHitBoundsMatchRenderedStage(int width, int height)
+    {
+        LoginStageLayout layout = LoginStageLayout.Create(new LogicalRenderSize(width, height));
+        LoginErrorDialog dialog = new(layout);
+        dialog.Show("error");
+        dialog.Advance(4);
+        LoginRect bounds = layout.Place(461, 415, 96, 26);
+        Assert.Null(dialog.PointerPressed(true, bounds.X + bounds.Width, bounds.Y));
+        Assert.Equal(LoginDialogButton.Ok, dialog.PointerPressed(true, bounds.X, bounds.Y));
+        Assert.True(dialog.PointerReleased(true, bounds.X + bounds.Width - 1, bounds.Y + bounds.Height - 1));
+    }
+
+    [Theory]
+    [InlineData("Please Enter Your User Name.", 192)]
+    [InlineData("Failed to login: Invalid Account ID or Password(1)", 309)]
+    [InlineData("The server is full. Please try again later.", 251)]
+    [InlineData("<b>%s%d</b>", 91)]
+    public void DeviceTextAdvancesMatchWindowsFlash7Measurements(string text, int expected)
+    {
+        int width = 0;
+        foreach (System.Text.Rune rune in text.EnumerateRunes())
+        {
+            Assert.True(LoginErrorFontMetrics.TryGetAdvance(rune, out int advance));
+            width += advance;
+        }
+        Assert.Equal(expected, width);
+    }
+
+    [Fact]
+    public void UndefinedCp1252ControlsHaveNoAdvanceInRetailFlash()
+    {
+        foreach (System.Text.Rune rune in "\u0081\u008D\u008F\u0090\u009D".EnumerateRunes())
+        {
+            Assert.True(LoginErrorFontMetrics.TryGetAdvance(rune, out int advance));
+            Assert.Equal(0, advance);
+        }
     }
 
     private LoginScreen Screen(List<LoginAudioCue> sounds)

@@ -781,8 +781,12 @@ public sealed class GameServerHandshakeSessionTests
         NoLoginResponse,
     }
 
+    internal static Task RefuseCoordinatorLoginAsync(TcpListener listener, CancellationToken token) =>
+        SecuredGamePeerAsync(listener, PeerResponse.LoginRefused, token,
+            "1C001C0444332211EFCDAB897C00456E0000000000000000000000005451436C69656E74");
+
     private static async Task SecuredGamePeerAsync(TcpListener listener, PeerResponse response,
-        CancellationToken token)
+        CancellationToken token, string? expectedProof = null)
     {
         using TcpClient peer = await listener.AcceptTcpClientAsync(token);
         NetworkStream stream = peer.GetStream();
@@ -826,7 +830,7 @@ public sealed class GameServerHandshakeSessionTests
             await stream.ReadExactlyAsync(proofWire, token);
             server.DecryptInbound(proofWire, proofWire);
             Assert.Equal(
-                "1C001C0444332211EFCDAB897C00456E001122AABBCC00008D150000" +
+                expectedProof ?? "1C001C0444332211EFCDAB897C00456E001122AABBCC00008D150000" +
                 "5451436C69656E74", Convert.ToHexString(proofWire));
 
             switch (response)

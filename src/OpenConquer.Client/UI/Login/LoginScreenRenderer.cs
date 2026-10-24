@@ -110,6 +110,8 @@ internal sealed class LoginScreenRenderer : IDisposable
             _version.Draw(renderer);
         }
 
+        // Root depth294: quitWindow2, used while loading.
+        _errors.Draw(renderer, screen.LoadingQuit);
         _opening.Draw(renderer, screen.Clock.Frame);
     }
 

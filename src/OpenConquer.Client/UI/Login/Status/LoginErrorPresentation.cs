@@ -1,3 +1,4 @@
+using System.Text;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Login;
@@ -18,10 +19,11 @@ internal sealed class LoginErrorPresentation : IDisposable
     private readonly ResourceOwnership _ownership = new();
     private readonly LoginStageLayout _layout;
     private readonly OpenGLTexture2D[] _pictures = new OpenGLTexture2D[2];
-    private readonly OpenGLTexture2D[,] _buttons = new OpenGLTexture2D[2, 2];
+    private readonly OpenGLTexture2D[,,] _buttonPictures = new OpenGLTexture2D[2, 2, 2];
     private readonly OpenGLTextContext _font;
     private string? _lastText;
-    private OpenGLTextLayout[] _lines = [];
+    private GlyphPlacement[] _glyphs = [];
+    private sealed record GlyphPlacement(OpenGLTextLayout Layout, int X, int Y);
 
     internal LoginErrorPresentation(OpenGLGraphicsDevice device, LoginStageLayout layout)
     {
@@ -31,10 +33,17 @@ internal sealed class LoginErrorPresentation : IDisposable
         {
             _pictures[0] = Create(device, LoginErrorArtwork.Load(quit: false));
             _pictures[1] = Create(device, LoginErrorArtwork.Load(quit: true));
-            foreach (LoginDialogButton button in Enum.GetValues<LoginDialogButton>())
+            for (int quit = 0; quit < 2; quit++)
             {
-                _buttons[(int)button, 0] = Create(device, LoginAccountArtwork.LoadDialogButton(button, LoginButtonState.Over));
-                _buttons[(int)button, 1] = Create(device, LoginAccountArtwork.LoadDialogButton(button, LoginButtonState.Down));
+                foreach (LoginDialogButton button in Enum.GetValues<LoginDialogButton>())
+                {
+                    if (quit == 0 && button == LoginDialogButton.Cancel)
+                    {
+                        continue;
+                    }
+                    _buttonPictures[quit, (int)button, 0] = Create(device, LoginErrorArtwork.Load(quit != 0, button, LoginButtonState.Over));
+                    _buttonPictures[quit, (int)button, 1] = Create(device, LoginErrorArtwork.Load(quit != 0, button, LoginButtonState.Down));
+                }
             }
 
             _font = _ownership.Track(new OpenGLTextContext(device, "Arial", Math.Max(1, layout.Scale(14)), 0, true));
@@ -55,32 +64,44 @@ internal sealed class LoginErrorPresentation : IDisposable
             if (!dialog.IsQuit)
             {
                 _lastText = null;
-                _lines = [];
+                _glyphs = [];
             }
             return;
         }
 
         int alpha = LoginAccountArtwork.MaskAlpha(dialog.Frame) * 255 / 256;
         SpriteColor mask = new(0, 0, 0, (byte)alpha);
-        LoginRect band = _layout.Place(-1, 90, 1024, 570);
+        LoginRect band = _layout.Place(dialog.IsLoadingQuit ? 0 : -1, 90, 1024, 570);
         if (dialog.Frame != 6)
         {
             renderer.DrawSolidRectangle(band.X, band.Y, band.Width, band.Height, mask);
             return;
         }
 
-        OpenGLTexture2D picture = _pictures[dialog.IsQuit ? 1 : 0];
+        int kind = dialog.IsQuit ? 1 : 0;
+        OpenGLTexture2D picture = _pictures[kind];
+        foreach (LoginDialogButton button in Enum.GetValues<LoginDialogButton>())
+        {
+            if (!dialog.IsQuit && button == LoginDialogButton.Cancel)
+            {
+                continue;
+            }
+            LoginButtonState state = dialog.State(button);
+            if (state != LoginButtonState.Up)
+            {
+                picture = _buttonPictures[kind, (int)button, state == LoginButtonState.Over ? 0 : 1];
+                break;
+            }
+        }
         (int x, int y) = LoginErrorArtwork.Position;
-        LoginRect area = _layout.Place(x, y, picture.Width, picture.Height);
+        LoginRect area = _layout.Place(x + (dialog.IsLoadingQuit ? 1 : 0), y, picture.Width, picture.Height);
         renderer.DrawSolidRectangle(band.X, band.Y, band.Width, area.Y - band.Y, mask);
         renderer.DrawSolidRectangle(band.X, area.Y + area.Height, band.Width, band.Y + band.Height - area.Y - area.Height, mask);
         renderer.DrawSolidRectangle(band.X, area.Y, area.X - band.X, area.Height, mask);
         renderer.DrawSolidRectangle(area.X + area.Width, area.Y, band.X + band.Width - area.X - area.Width, area.Height, mask);
         renderer.DrawSprite(picture, area.X, area.Y, area.Width, area.Height);
-        DrawButton(renderer, dialog, LoginDialogButton.Ok);
         if (dialog.IsQuit)
         {
-            DrawButton(renderer, dialog, LoginDialogButton.Cancel);
             return;
         }
 
@@ -89,37 +110,50 @@ internal sealed class LoginErrorPresentation : IDisposable
         if (!string.Equals(_lastText, dialog.Text, StringComparison.Ordinal))
         {
             _lastText = dialog.Text;
-            _lines = [.. LoginErrorTextLayout.Wrap(dialog.Text, Math.Max(1, text.Width),
-                value => _font.LayoutUnicode(value).WidthPixels).Select(value => _font.LayoutUnicode(value))];
+            List<GlyphPlacement> glyphs = [];
+            Dictionary<Rune, OpenGLTextLayout> layouts = [];
+            OpenGLTextLayout Glyph(Rune rune)
+            {
+                if (!layouts.TryGetValue(rune, out OpenGLTextLayout? glyph))
+                {
+                    glyph = _font.LayoutUnicode(rune.ToString());
+                    layouts.Add(rune, glyph);
+                }
+                return glyph;
+            }
+            int Advance(Rune rune) => LoginErrorFontMetrics.TryGetAdvance(rune, out int advance) ? advance
+                : (int)Math.Round(Glyph(rune).WidthPixels * 1024.0 / _layout.Width);
+            int Measure(string value) => value.EnumerateRunes().Sum(Advance);
+            IReadOnlyList<string> lines = LoginErrorTextLayout.Wrap(dialog.Text, 273, Measure);
+            for (int line = 0; line < lines.Count; line++)
+            {
+                int xOffset = 0;
+                foreach (Rune rune in lines[line].EnumerateRunes())
+                {
+                    int advance = Advance(rune);
+                    if (advance > 0)
+                    {
+                        glyphs.Add(new(Glyph(rune), xOffset, line * LoginErrorFontMetrics.LineAdvance));
+                    }
+                    xOffset += advance;
+                }
+            }
+            _glyphs = [.. glyphs];
         }
 
         using OpenGLRenderer.ClipScope clip = renderer.Clip(text.X, text.Y, text.Width, text.Height);
-        for (int line = 0; line < _lines.Length; line++)
+        foreach (GlyphPlacement glyph in _glyphs)
         {
-            int top = text.Y + _layout.Scale(line * 16);
+            int top = text.Y + _layout.Scale(glyph.Y + LoginErrorFontMetrics.BaselineCorrection);
             if (top >= text.Y + text.Height)
             {
                 break;
             }
-
-            _font.Draw(renderer, _lines[line], s_style, text.X, top);
+            _font.Draw(renderer, glyph.Layout, s_style, text.X + _layout.Scale(glyph.X), top);
         }
     }
 
     public void Dispose() => _ownership.Dispose();
-
-    private void DrawButton(OpenGLRenderer renderer, LoginErrorDialog dialog, LoginDialogButton button)
-    {
-        LoginButtonState state = dialog.State(button);
-        if (state == LoginButtonState.Up)
-        {
-            return;
-        }
-
-        LoginRect bounds = dialog.Bounds(button);
-        renderer.DrawSprite(_buttons[(int)button, state == LoginButtonState.Down ? 1 : 0],
-            bounds.X, bounds.Y, bounds.Width, bounds.Height);
-    }
 
     private OpenGLTexture2D Create(OpenGLGraphicsDevice device, RgbaImage image) =>
         _ownership.Track(device.CreateTexture2D(image.Width, image.Height, image.Pixels.Span));

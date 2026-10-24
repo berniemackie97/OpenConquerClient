@@ -185,6 +185,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         LoginServerSelection selection, byte[] name, char[] password,
         GameServerHandshakeSession? previous, CancellationToken cancellationToken)
     {
+        bool gamePhase = false;
         try
         {
             if (previous is not null)
@@ -211,6 +212,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
             await account.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty,
                 ReadResourceVersion(_contentRoot), s_timeout, cancellationToken).ConfigureAwait(false);
 
+            gamePhase = true;
             Publish(LoginAttemptStatus.ConnectingGame);
             GameServerHandshakeSession? game = null;
             bool transferred = false;
@@ -264,13 +266,14 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
         catch (TimeoutException)
         {
-            // Managed read deadlines close the established socket. Native socket loss uses StrRes10249.
-            return new(LoginAttemptStatus.Timeout, null, LoginFailure.Resource(10249));
+            // Bounded managed reads close the socket; present its native loss resource.
+            // Native CNetMsg__ProcessMsg distinguishes account kind1 from game kind2.
+            return new(LoginAttemptStatus.Timeout, null, LoginFailure.Resource(gamePhase ? 10249u : 100116u));
         }
         catch (Exception)
         {
             // Exception messages from untrusted peers must never reach the UI.
-            return new(LoginAttemptStatus.Unavailable, null, LoginFailure.Resource(10249));
+            return new(LoginAttemptStatus.Unavailable, null, LoginFailure.Resource(gamePhase ? 10249u : 100116u));
         }
         finally
         {

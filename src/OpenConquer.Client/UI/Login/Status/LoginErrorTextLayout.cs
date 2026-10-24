@@ -11,7 +11,7 @@ internal static class LoginErrorTextLayout
         ArgumentNullException.ThrowIfNull(measure);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         List<string> lines = [];
-        foreach (string paragraph in text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n'))
+        foreach (string paragraph in text.Replace('\r', '\n').Split('\n'))
         {
             string remaining = paragraph;
             while (remaining.Length > 0 && measure(remaining) > width)

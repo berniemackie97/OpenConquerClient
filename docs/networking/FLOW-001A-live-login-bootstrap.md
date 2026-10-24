@@ -1,93 +1,120 @@
-# FLOW-001A — Live local-realm login bootstrap
+# FLOW-001A — Login bootstrap and native error presentation
 
-## Audited baseline
+The login composition submits credentials through the signed local realm catalog
+and presents failures with retail `start.dat` errorMC (sprite274). The temporary
+authentication status banner has been removed. Internal progress states remain
+available to the coordinator; they are not invented player-facing messages.
 
-Client main `2a71792d9661e8eb8989b6ebd702baaace9cfc34` (PR #136 merged).
-Companion server main `bda9f0e76108872b648a9cfa5bb245c82589023e`.
-Native sources: `20_notes/Architecture/03_login_flash_startup_command_contract.md`,
-`20_notes/Architecture/11_login_ui_assets_and_interactions.md` and
-`20_notes/Network/13_connection_lifecycle.md`.
+## Native authority
 
-The login screen already had native artwork, input, selection and credential
-editor but its Enter click never submitted credentials. Network components
-existed independently without an actual desktop composition path.
+The existing 5517 Binary Ninja database and the original SWF/resource files are
+authoritative. Evidence is maintained in the actual client-5517 notes folder:
 
-## Runtime connection path
+- `20_notes/Architecture/03_login_flash_startup_command_contract.md`
+- `20_notes/Architecture/11_login_ui_assets_and_interactions.md`
+- `20_notes/Architecture/FLOW-001A-login-error-ui-2026-10-20.md`
+- `20_notes/Network/13_connection_lifecycle.md`
 
-1. A pointer Enter release or an unmodified, nonrepeating Enter command
-   activates the same login request. The UI never opens a socket itself.
-2. The desktop event thread validates the **current embedded-authority-signed
-   catalog** and a selected **literal loopback** AccountServer endpoint.
-   No raw Server.dat, DNS, remote proxy or arbitrary user-supplied peer is used.
-3. The credential editor snapshots account bytes and password characters in
-   separate owned arrays and immediately zeroes the original editor password.
-   The attempt zeroes its buffers immediately after account 1060 composition
-   and again in a guaranteed finally path.
-4. The existing signed-catalog account exchange sends 1060 and interprets
-   the 1055 response with the original one-use server authority. On success
-   the same AccountServer socket sends 1100 and simple-string 1052.
-5. The AccountServer socket closes; the GameServer receives the single-use
-   redirected ticket over a loopback DH/CAST5 session, then the standard
-   post-DH 1052 proof, typed 1004 and the companion server's typed
-   2078/2079/1006 path.
-6. The still-live GameServer session is owned by the coordinator after
-   confirmed 1006 receipt. A retry disposes it first. Client shutdown cancels
-   the active attempt, drains it and disposes retained sessions.
+The focused note records instruction addresses, raw disassembly captures, SWF
+symbol/depth details and remaining proof boundaries. Extracted asset hashes and
+reproduction details are in [FLOW-001A-error-assets.json](FLOW-001A-error-assets.json).
 
-Native 5517's successful 1006 processing proceeds toward EnterMap action 74.
-This slice **does not** pretend that native hero/world mutation, action74,
-character creation, or world rendering has been implemented or validated.
-On 1006 receipt, the visible diagnostic explicitly says WORLD PENDING.
-The server's new-character route remains disabled, so NEW_ROLE cannot yet
-open the native creation screen.
+## Error behavior
 
-## Native-specific inputs
+| Trigger | Presentation |
+| --- | --- |
+| Empty account | SWF constant `Please Enter Your User Name.` |
+| Empty password | SWF constant `Please Enter Your Password.` |
+| Missing/currently unusable selected realm | StrRes10012 |
+| Repeated nonempty attempt within ten seconds | StrRes49995 |
+| English password exceeds fourteen characters | StrRes11400 |
+| AccountServer1055 refusal | Cn_Res `STR_CONNECT_ERROR_MSG_TYPE_%03u`, UNKNOWN fallback, `STR_LOGIN_FAIL` formatting |
+| AccountServer1055 code24 | Preserve code; native `KICKOUT_BANACCOUNT` has no handler in the clean SWF, so no invented errorMC dispatch |
+| GameServer1004 refusal | Owned original refusal bytes, NUL prefix and native `ERROR\|text` bridge delimiter boundary |
+| AccountServer initial connect failure/timeout | StrRes10397 |
+| GameServer initial connect failure/timeout | StrRes100100 |
+| AccountServer established socket failure | StrRes100116 |
+| GameServer established socket failure | StrRes10249 |
 
-- English dataset first two locale bytes: `En` (`0x6E45` little-endian).
-- Hardware identity: native NetBIOS failure fallback is zero-filled; no
-  unrelated hardware identifier or fingerprint is invented on macOS.
-- `res.dat` integer is used when an existing local file contains a bounded
-  integer; native defaults to zero when absent/invalid.
-- Native `CMD_ENTERGAME`'s 10-second monotonic attempt guard runs before
-  password validation; a repeated attempt is refused without sending bytes.
-- Native English password acceptance is capped at 14 characters despite
-  the text field's 15-character edit limit.
+Empty fields are checked before the native attempt guard. The guard is stamped
+before the English password-length check. An active attempt cannot be submitted
+again. Failure notifications carry immutable owned evidence and are applied once;
+a later identical failure is a new notification and restarts the movie.
 
-No exception messages, unknown peer payloads or credential bytes appear in
-the login status. The diagnostic notice is **not** represented as a faithful
-port of the native Flash loading/error movie: that separate visual and
-timeline parity closure is still required before claiming complete retail UI.
-The status is bounded, locally rasterized, and works without expanding the
-curated content manifest.
+1055 formatting operates on narrow resource bytes, substitutes the unsigned
+resource key and signed 32-bit `%d` value, and truncates to 255 bytes before text
+conversion. Inserted text is never reinterpreted as a format string or HTML.
+The Windows presentation bridge selects the system ACP. Other hosts explicitly
+use the English retail profile's Windows-1252 encoding. This does not relax
+protocol validation or change packet decoding contracts.
 
-## Reproducible local smoke test
+## Movie, input and resources
 
-Use the existing **publisher-signed local realm catalog**, not an unsigned
-test shortcut. Verify `~/.config/openconquer/client.local.props` exists
-without printing its key/path. The signed local selection is region
-`local`, server `local-realm`, protocol server name `LocalRealm`,
-AccountServer `127.0.0.1:9958`, GameServer `127.0.0.1:5816`.
+errorMC renders at root depth179, translated(-1,0), below enterMC and the border.
+The 30fps timeline begins at frame2, stops at6, and returns through frames7–10.
+Only the mask fades; artwork is held at6. The mask covers the authored y90–660
+band. The held image is at(360,259), the OK hit bounds are(461,415,96,26), and
+field273 retains its authored Arial14, red, multiline plain-text parameters.
+Text is clipped to the field and wraps without splitting Unicode surrogate pairs.
 
-With the local realm provisioned, Accounts schema v6, Game schema v13,
-a known existing-character account and valid runtime secrets, launch
-AccountServer and GameServer in separate development terminals. Confirm
-their actual TCP listeners with `lsof`. Do not rerun database migrations
-or reset any credential keys during smoke testing.
+The complete Up/Over/Down button compositions come from the original SWF.
+They are not layered over an already baked-in Up state, which would blend
+translucent edges twice. Show/hide, hover and press use existing retail audio
+cues. Pointer capture, drag-out and focus-loss behavior are retained. The modal
+blocks credential editing, clipboard access, underlying buttons and Enter.
+OK dismisses on pointer release; Enter does not activate it.
 
-Launch the client in Release configuration. Select the signed LocalRealm,
-enter the account and password, and press Enter. Verify progression through
-CONNECTING TO ACCOUNT SERVER, CONNECTING TO GAME SERVER, LOADING CHARACTER
-DATA, and CHARACTER RECEIVED WORLD PENDING. Verify no action74 send, no
-world admission, no character creation, and clean shutdown/disposal.
+Escape opens idle quit sprite287 at depth205. During a pending login it opens
+sprite396 at depth294, one pixel right and above enterMC. Cancel returns to the
+underlying dialog; OK requests application exit only at frame10. Exit still
+uses application shutdown to cancel and drain the coordinator.
 
-Negative tests: wrong password, unavailable AccountServer, wrong/expired
-catalog, unavailable GameServer, timeout, stale realm selection and repeat
-Enter during an active request. No changes to database identity are permitted
-for these negative tests.
+All textures and font resources belong to the graphics context and are released
+on initialization failure or disposal. The conformance runner recreates and
+double-disposes the presentation, checks every error timeline frame and all
+error/quit button states, and exercises dynamic text upload and clipping.
+Full-stage fixtures are independent of runtime crop placement. Comparison
+accounts for the renderer's RGB565/RGB555 target precision.
 
-## Quality gates
+## Transport and credential ownership
 
-Locked restore, `dotnet format --verify-no-changes`, Release build/full
-tests, content closure verification, Linux/macOS/Windows CI, dependency
-review, CodeQL and review audit. Exact local desktop/server smoke is a
-separate manual acceptance gate and **must not** be marked passed by CI.
+Only a current authority-signed catalog and literal loopback AccountServer are
+accepted. The editor moves credentials into separate owned buffers and clears
+the displayed password immediately. Both buffers are zeroed after account1060
+composition and again on every completion path. No exception text is displayed.
+No new credential logs, persistence, trust bypasses or wire formats are introduced.
+
+After a successful1055, the same account socket sends native1100 and account1052
+before closing. GameServer DH/CAST5, proof1052, control1004 and existing-character
+2078/2079/1006 handling retain their existing ownership and cancellation rules.
+Catalog expiry/replacement or selection revision revokes pending completion.
+A stale completion cannot reopen an error or retain an accepted game socket.
+Shutdown cancels pending work, drains it, and disposes the retained game session.
+
+Account connect retains its ten-second ceiling. The signed loopback flow has no
+legacy BGP fallback and does not reproduce the native post-failure blocking
+`Sleep(5000)` at `0x66D477`; exact prompt latency for that branch is not claimed. Game connect now uses the native
+thirty-second argument proven at `0x754DFB`. Existing five-second bounded seed,
+DH and packet-read deadlines remain a managed transport policy. When those
+expire the transport closes and the corresponding native socket-loss resource
+is displayed. These deadlines are **not claimed as native timeout parity**.
+Malformed protocol/local validation failures also close the attempt and use its
+phase's loss resource; there is no proven native counterpart for every stricter
+managed validation failure.
+
+Successful1006 remains the existing world-pending boundary. This correction does
+not implement EnterMap action74, world mutation/rendering, or the NEW_ROLE screen.
+
+## Verification and open acceptance gates
+
+See [FLOW-001A-verification.md](FLOW-001A-verification.md) for final local results
+and changed files. The normal gates are locked restore, formatting verification,
+Release build, the full test suite, content verification and the OpenGL conformance
+runner against the clean retail content directory.
+
+Exact Windows Flash7/GDI text pixels, line metrics and wrapping have not been
+compared at1:1. The current field uses the existing cross-platform FreeType text
+renderer; matching field parameters is not proof of matching device-font pixels.
+The Windows VM start was canceled during this work. Windows/Linux runtime checks
+and a live companion-server desktop acceptance run are also not recorded as passed.
+These remain explicit limits on a claim of complete production/native parity.
