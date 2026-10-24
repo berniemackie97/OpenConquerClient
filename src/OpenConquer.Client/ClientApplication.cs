@@ -40,6 +40,7 @@ internal sealed class ClientApplication : IDisposable
     private LoginScreen? _login;
     private LoginCatalogBinding? _catalog;
     private LoginAttemptCoordinator? _loginFlow;
+    private LoginRegistrationCoordinator? _registrationFlow;
     private LoginErrorMessages? _loginErrors;
     private LoginAudioPlayer? _audio;
     private ResourceOwnership? _graphics;
@@ -123,11 +124,19 @@ internal sealed class ClientApplication : IDisposable
         _catalog?.Cancel();
         try
         {
-            _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            try
+            {
+                _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            finally
+            {
+                _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
         }
         finally
         {
             _loginFlow = null;
+            _registrationFlow = null;
             try
             {
                 _window?.Dispose();
@@ -162,6 +171,10 @@ internal sealed class ClientApplication : IDisposable
         _loginFlow = new LoginAttemptCoordinator(_contentRootPath);
         _loginErrors = LoginErrorMessages.Load(contentSource, LoginErrorEncoding.ForCurrentHost());
         _login.LoginRequested += OnLoginRequested;
+        _registrationFlow = new LoginRegistrationCoordinator();
+        _login.RegistrationRequested += OnRegistrationRequested;
+        _login.RegistrationSubmitRequested += OnRegistrationSubmitRequested;
+        _login.RegistrationCancelRequested += OnRegistrationCancelRequested;
 
         IReadOnlyList<RgbaImage> cursorFrames = LoginCursorArtwork.Load();
         _cursor = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
@@ -186,6 +199,7 @@ internal sealed class ClientApplication : IDisposable
             _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy));
             _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
             login.CaretLocator = _loginRenderer.CaretLocator;
+            login.RegistrationCaretLocator = _loginRenderer.RegistrationCaretLocator;
             _graphics = graphics;
         }
         catch
@@ -204,6 +218,7 @@ internal sealed class ClientApplication : IDisposable
         if (_login is not null)
         {
             _login.CaretLocator = null;
+            _login.RegistrationCaretLocator = null;
         }
 
         ResourceOwnership? graphics = _graphics;
@@ -222,9 +237,18 @@ internal sealed class ClientApplication : IDisposable
         DateTimeOffset now = DateTimeOffset.UtcNow;
         _catalog?.Update(login, now);
         _loginFlow?.Update(_catalog?.CurrentCatalog(now));
-        if (_loginFlow is { } flow && _loginErrors is { } messages)
+        _registrationFlow?.Update(_catalog?.CurrentCatalog(now));
+        if (_loginErrors is { } messages)
         {
-            login.ApplyFeedback(flow.Feedback, messages);
+            if (_loginFlow is { } flow)
+            {
+                login.ApplyFeedback(flow.Feedback, messages);
+            }
+
+            if (_registrationFlow is { } registration)
+            {
+                login.ApplyRegistrationFeedback(registration.Feedback, messages);
+            }
         }
         login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
         ContinueCredentialDrag();
@@ -259,6 +283,33 @@ internal sealed class ClientApplication : IDisposable
         {
             flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
             login.ApplyFeedback(flow.Feedback, _loginErrors!);
+        }
+    }
+
+    private void OnRegistrationRequested()
+    {
+        if (_login is { } login && _registrationFlow is { } registration)
+        {
+            registration.Open(login.Selection, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
+            login.ApplyRegistrationFeedback(registration.Feedback, _loginErrors!);
+        }
+    }
+
+    private void OnRegistrationSubmitRequested()
+    {
+        if (_login is { } login && _registrationFlow is { } registration)
+        {
+            registration.TrySubmit(login.Registration, login.Selection, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
+            login.ApplyRegistrationFeedback(registration.Feedback, _loginErrors!);
+        }
+    }
+
+    private void OnRegistrationCancelRequested()
+    {
+        if (_login is { } login && _registrationFlow is { } registration)
+        {
+            registration.Close();
+            login.ApplyRegistrationFeedback(registration.Feedback, _loginErrors!);
         }
     }
 
@@ -315,7 +366,7 @@ internal sealed class ClientApplication : IDisposable
     /// <summary>A held credential selection keeps tracking the pointer, clamped to the stage, beyond the field.</summary>
     private void ContinueCredentialDrag()
     {
-        if (_login is { Credentials.IsSelecting: true } login && _renderer is { Viewport.IsEmpty: false } renderer)
+        if (_login is { IsSelectingText: true } login && _renderer is { Viewport.IsEmpty: false } renderer)
         {
             login.PointerDragged(renderer.Viewport.MapPointerXClamped(_lastPointer.X));
         }

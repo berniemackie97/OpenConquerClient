@@ -1,3 +1,4 @@
+using OpenConquer.Client.UI.Login.Controls;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Login;
@@ -100,13 +101,12 @@ internal sealed class LoginAccountPresentation : IDisposable
     private void DrawDialog(OpenGLRenderer renderer, LoginAccountControls controls, LoginAccountDialog dialog)
     {
         int frame = controls.DialogFrame;
-        int alpha = LoginAccountArtwork.MaskAlpha(frame) * 255 / 256;
-        SpriteColor mask = new(0, 0, 0, (byte)alpha);
+        SpriteColor mask = LoginModalMask.At(frame);
         LoginRect band = _layout.Mask;
 
         if (frame != LoginAccountArtwork.DialogHeldFrame)
         {
-            if (alpha > 0)
+            if (mask.Alpha > 0)
             {
                 renderer.DrawSolidRectangle(band.X, band.Y, band.Width, band.Height, mask);
             }
@@ -114,13 +114,9 @@ internal sealed class LoginAccountPresentation : IDisposable
             return;
         }
 
-        // The held dialog picture already carries the mask beneath it; draw the mask only around it.
         OpenGLTexture2D picture = _dialogs[(int)dialog];
         LoginRect area = _layout.Dialog(dialog, picture.Width, picture.Height);
-        renderer.DrawSolidRectangle(band.X, band.Y, band.Width, area.Y - band.Y, mask);
-        renderer.DrawSolidRectangle(band.X, area.Y + area.Height, band.Width, band.Y + band.Height - area.Y - area.Height, mask);
-        renderer.DrawSolidRectangle(band.X, area.Y, area.X - band.X, area.Height, mask);
-        renderer.DrawSolidRectangle(area.X + area.Width, area.Y, band.X + band.Width - area.X - area.Width, area.Height, mask);
+        LoginModalMask.DrawAround(renderer, band, area, mask);
         renderer.DrawSprite(picture, area.X, area.Y, area.Width, area.Height);
 
         DrawDialogButton(renderer, controls, LoginDialogButton.Ok, _layout.Ok);

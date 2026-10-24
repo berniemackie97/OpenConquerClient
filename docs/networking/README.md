@@ -28,3 +28,5 @@ For the current state of the client, see the [README](../../README.md) and the
 | [AUTH-001O](AUTH-001O-existing-character-prelude.md) | Existing-character 2078/2079 prelude |
 | [AUTH-001P](AUTH-001P-character-info-1006.md) | 5517 1006 character information snapshot |
 | [AUTH-001Q](AUTH-001Q-character-info-receipt.md) | Reading character information (1006) after the prelude |
+| [FLOW-001A](FLOW-001A-live-login-bootstrap.md) | Desktop login against the live servers and native error presentation |
+| [FLOW-001B](FLOW-001B-account-registration.md) | In-client account registration (OpenConquer extension) |

@@ -22,6 +22,7 @@ internal sealed class LoginErrorMessages(ClientStringResources numeric, ClientKe
             LoginFailureKind.Resource => Decode(numeric.GetEncoded(checked((int)failure.Code)).Span),
             LoginFailureKind.AccountRefusal => FormatAccount(failure.Code),
             LoginFailureKind.GameRefusal => Decode(failure.Bytes.Span),
+            LoginFailureKind.RegistrationNotice => LoginRegistrationText.For((LoginRegistrationNotice)failure.Code),
             _ => throw new ArgumentOutOfRangeException(nameof(failure)),
         };
     }
