@@ -7,6 +7,7 @@ internal enum LoginFailureKind
     Resource,
     AccountRefusal,
     GameRefusal,
+    RegistrationNotice,
 }
 
 /// <summary>Owned, bounded presentation evidence; never contains credentials or exception messages.</summary>
@@ -39,6 +40,9 @@ internal sealed class LoginFailure
     internal static LoginFailure EmptyPassword() => new(LoginFailureKind.EmptyPassword, 0, []);
     internal static LoginFailure Resource(uint id) => new(LoginFailureKind.Resource, id, []);
     internal static LoginFailure Account(uint code) => new(LoginFailureKind.AccountRefusal, code, []);
+    internal static LoginFailure Registration(LoginRegistrationNotice notice) =>
+        Enum.IsDefined(notice) ? new(LoginFailureKind.RegistrationNotice, (uint)notice, [])
+            : throw new ArgumentOutOfRangeException(nameof(notice), notice, null);
     internal static LoginFailure Game(ReadOnlySpan<byte> text)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(text.Length, 255);

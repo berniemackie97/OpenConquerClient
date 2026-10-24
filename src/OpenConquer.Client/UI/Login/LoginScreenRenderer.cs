@@ -98,7 +98,7 @@ internal sealed class LoginScreenRenderer : IDisposable
         _credentials.Draw(renderer, screen.Credentials);
         foreach (LoginButton button in LoginControlLayout.Buttons)
         {
-            _buttons.Draw(renderer, button, screen.Buttons.StateOf(button), screen.Buttons.BoundsOf(button));
+            _buttons.Draw(renderer, button, screen.ButtonState(button), screen.Buttons.BoundsOf(button));
         }
 
         _account.Draw(renderer, screen.Account);

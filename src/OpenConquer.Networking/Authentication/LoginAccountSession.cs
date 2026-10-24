@@ -15,7 +15,7 @@ internal sealed class LoginAccountSession : IAsyncDisposable
     private readonly TcpClient _client;
     private readonly LoginLegacyStreamCipher _cipher = new();
     private int _disposed;
-    private int _authenticationStarted;
+    private int _credentialExchangeStarted;
     private int _postAuthenticationStarted;
     private uint _successfulSessionToken;
 
@@ -119,9 +119,9 @@ internal sealed class LoginAccountSession : IAsyncDisposable
         }
 
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-        if (Interlocked.CompareExchange(ref _authenticationStarted, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _credentialExchangeStarted, 1, 0) != 0)
         {
-            throw new InvalidOperationException("The AccountServer session already has an authentication attempt.");
+            throw new InvalidOperationException("The AccountServer session already has a credential exchange.");
         }
 
         byte[] request = new byte[StandardAccountRequest1060.PacketLength];
@@ -199,6 +199,81 @@ internal sealed class LoginAccountSession : IAsyncDisposable
         }
     }
 
+
+    /// <summary>
+    /// Completes at most one OpenConquer registration exchange (0xF001 → 0xF002) after the 1059 seed. The server
+    /// answers once and closes, so this session is always disposed afterwards. Like login, credentials are only
+    /// sent to an IPv4 loopback peer, and the authority callback runs immediately before the write.
+    /// </summary>
+    internal async Task<AccountRegistrationResult> RegisterAsync(
+        ReadOnlyMemory<byte> accountName, ReadOnlyMemory<char> password, Func<bool> isAuthorized,
+        TimeSpan responseTimeout, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(isAuthorized);
+        if (responseTimeout <= TimeSpan.Zero || responseTimeout > TimeSpan.FromSeconds(30))
+        {
+            throw new ArgumentOutOfRangeException(nameof(responseTimeout));
+        }
+
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        if (Interlocked.CompareExchange(ref _credentialExchangeStarted, 1, 0) != 0)
+        {
+            throw new InvalidOperationException("The AccountServer session already has a credential exchange.");
+        }
+
+        byte[] request = new byte[AccountRegistrationRequestF001.PacketLength];
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            StandardAccountCredentialComposer.WriteRegistration(request, accountName.Span, password.Span, Seed);
+
+            if (_client.Client.RemoteEndPoint is not IPEndPoint peer ||
+                !IPAddress.IsLoopback(peer.Address))
+            {
+                throw new InvalidOperationException("Remote AccountServer credentials require authenticated transport.");
+            }
+
+            using CancellationTokenSource deadline =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(responseTimeout);
+
+            if (!isAuthorized())
+            {
+                throw new InvalidOperationException("The authenticated realm selection changed before credential submission.");
+            }
+
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            _cipher.EncryptOutbound(request);
+            NetworkStream stream = _client.GetStream();
+            await stream.WriteAsync(request, deadline.Token).ConfigureAwait(false);
+
+            byte[] frame = new byte[AccountRegistrationResponseF002.FrameLength];
+            await ReadAndDecryptExactlyAsync(stream,
+                frame.AsMemory(0, LoginDecodedFrameReader.HeaderLength), deadline.Token).ConfigureAwait(false);
+
+            if (BinaryPrimitives.ReadUInt16LittleEndian(frame) != AccountRegistrationResponseF002.FrameLength ||
+                BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(2)) != AccountRegistrationResponseF002.PacketType)
+            {
+                throw new InvalidDataException("AccountServer returned an invalid registration frame header.");
+            }
+
+            await ReadAndDecryptExactlyAsync(stream,
+                frame.AsMemory(LoginDecodedFrameReader.HeaderLength), deadline.Token).ConfigureAwait(false);
+
+            return AccountRegistrationResponseF002.TryRead(frame, out AccountRegistrationResult result)
+                ? result
+                : throw new InvalidDataException("AccountServer returned an undefined registration result.");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException("AccountServer registration exchange timed out.");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(request);
+            await DisposeAsync().ConfigureAwait(false);
+        }
+    }
 
     /// <summary>
     /// Single-use native continuation after a successful 1055. Sends 1100 then the AccountServer

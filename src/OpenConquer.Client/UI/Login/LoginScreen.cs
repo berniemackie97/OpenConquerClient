@@ -22,6 +22,7 @@ internal sealed class LoginScreen : IDisposable
     private readonly LoginAudioFeedback _sounds;
     private bool _disposed;
     private LoginAttemptFeedback? _feedback;
+    private LoginRegistrationFeedback? _registrationFeedback;
 
     public LoginScreen(LoginStageLayout layout, LoginAccountHistory history, string versionLabel, Action<LoginAudioCue> playSound)
     {
@@ -68,6 +69,18 @@ internal sealed class LoginScreen : IDisposable
     internal bool IsLoginPending => AttemptStatus is LoginAttemptStatus.ConnectingAccount or
         LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter;
 
+    /// <summary>The OpenConquer Sign Up flow's current step; retail opened a website instead.</summary>
+    internal LoginRegistrationStep RegistrationStep
+    {
+        get; private set;
+    }
+
+    /// <summary>While the account panel collects a new account, Enter and Escape belong to Sign Up.</summary>
+    internal bool IsRegistering => RegistrationStep is LoginRegistrationStep.EnterCredentials or LoginRegistrationStep.ConfirmPassword;
+
+    /// <summary>A login or registration exchange is in flight; the stage takes no input but Escape.</summary>
+    private bool IsExchangePending => IsLoginPending || RegistrationStep == LoginRegistrationStep.Submitting;
+
     internal void ApplyFeedback(LoginAttemptFeedback feedback, LoginErrorMessages messages)
     {
         ArgumentNullException.ThrowIfNull(feedback);
@@ -93,6 +106,42 @@ internal sealed class LoginScreen : IDisposable
 
     /// <summary>The native Enter activation requests login; the host owns all network work.</summary>
     internal event Action? LoginRequested;
+
+    /// <summary>Sign Up was clicked: enter or leave the registration flow.</summary>
+    internal event Action? RegistrationToggleRequested;
+
+    /// <summary>Enter while registering submits the current registration step.</summary>
+    internal event Action? RegistrationSubmitRequested;
+
+    /// <summary>Escape while registering leaves the flow instead of opening the quit dialog.</summary>
+    internal event Action? RegistrationCancelRequested;
+
+    internal void ApplyRegistrationFeedback(LoginRegistrationFeedback feedback, LoginErrorMessages messages)
+    {
+        ArgumentNullException.ThrowIfNull(feedback);
+        ArgumentNullException.ThrowIfNull(messages);
+        if (ReferenceEquals(_registrationFeedback, feedback))
+        {
+            return;
+        }
+
+        _registrationFeedback = feedback;
+        RegistrationStep = feedback.Step;
+        if (feedback.Notice is { } notice)
+        {
+            FocusLost();
+            Error.Show(messages.Format(notice));
+            Play(LoginAudioCue.Error);
+        }
+        else if (RegistrationStep == LoginRegistrationStep.Submitting)
+        {
+            FocusLost();
+        }
+    }
+
+    /// <summary>The state a button is drawn in. Sign Up stays held down while the panel collects a new account.</summary>
+    internal LoginButtonState ButtonState(LoginButton button) =>
+        button == LoginButton.Register && IsRegistering ? LoginButtonState.Down : Buttons.StateOf(button);
 
     public LoginStageLayout Layout
     {
@@ -154,7 +203,7 @@ internal sealed class LoginScreen : IDisposable
     /// <summary>logo.swf loads on root frame 3, after the opening; the logo timeline counts from there.</summary>
     public long LogoFrame => Math.Max(0, Clock.Frame - LoginOpeningArtwork.FrameCount);
 
-    private bool PointerIsFree => !IsOpeningPlaying && ActiveDialog is null && !IsLoginPending && !Account.CapturesPointer;
+    private bool PointerIsFree => !IsOpeningPlaying && ActiveDialog is null && !IsExchangePending && !Account.CapturesPointer;
 
     /// <summary>Advances every login timeline by one rendered frame.</summary>
     public void Advance(TimeSpan elapsed)
@@ -203,7 +252,7 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
-        if (IsLoginPending)
+        if (IsExchangePending)
         {
             return;
         }
@@ -241,7 +290,7 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
-        if (IsLoginPending)
+        if (IsExchangePending)
         {
             return;
         }
@@ -298,7 +347,7 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
-        if (IsLoginPending)
+        if (IsExchangePending)
         {
             return;
         }
@@ -340,13 +389,21 @@ internal sealed class LoginScreen : IDisposable
 
         if (!IsOpeningPlaying && key.Key == DesktopKey.Escape && !key.IsRepeat && !Quit.IsOpen && !LoadingQuit.IsOpen)
         {
+            // The Sign Up flow is a project extension; Escape backs out of it before it can quit the client.
+            if (IsRegistering && ActiveDialog is null && !Account.CapturesPointer)
+            {
+                FocusLost();
+                RegistrationCancelRequested?.Invoke();
+                return;
+            }
+
             FocusLost();
-            (IsLoginPending ? LoadingQuit : Quit).Show(string.Empty);
+            (IsExchangePending ? LoadingQuit : Quit).Show(string.Empty);
             Play(LoginAudioCue.Error);
             return;
         }
 
-        if (IsOpeningPlaying || ActiveDialog is not null || IsLoginPending || Account.CapturesPointer)
+        if (IsOpeningPlaying || ActiveDialog is not null || IsExchangePending || Account.CapturesPointer)
         {
             return;
         }
@@ -356,7 +413,7 @@ internal sealed class LoginScreen : IDisposable
                 DesktopKeyModifiers.Super)) == 0 &&
             Credentials.Focus != LoginCredentialFocus.None)
         {
-            LoginRequested?.Invoke();
+            RequestEnter();
             return;
         }
 
@@ -371,7 +428,7 @@ internal sealed class LoginScreen : IDisposable
 
     public void TextEntered(char character)
     {
-        if (IsOpeningPlaying || ActiveDialog is not null || IsLoginPending || Account.CapturesPointer)
+        if (IsOpeningPlaying || ActiveDialog is not null || IsExchangePending || Account.CapturesPointer)
         {
             return;
         }
@@ -448,11 +505,27 @@ internal sealed class LoginScreen : IDisposable
                 ExitRequested?.Invoke();
                 break;
             case LoginButton.Enter:
-                LoginRequested?.Invoke();
+                RequestEnter();
+                break;
+            case LoginButton.Register:
+                // Retail opened a signup website; OpenConquer registers in the account panel instead.
+                RegistrationToggleRequested?.Invoke();
                 break;
             default:
-                // Register, Purchase and Help open publisher-era URLs, which stay disabled.
+                // Purchase and Help open publisher-era URLs, which stay disabled.
                 break;
+        }
+    }
+
+    private void RequestEnter()
+    {
+        if (IsRegistering)
+        {
+            RegistrationSubmitRequested?.Invoke();
+        }
+        else
+        {
+            LoginRequested?.Invoke();
         }
     }
 
