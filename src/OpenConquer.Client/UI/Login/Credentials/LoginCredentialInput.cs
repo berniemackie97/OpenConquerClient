@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Platform.Windowing.Desktop;
@@ -17,20 +15,16 @@ internal enum LoginCredentialFocus
 /// Account and password editor for ASCII input, with length limits. Rendering and clipboard code never see
 /// password characters.
 /// </summary>
-internal sealed class LoginCredentialInput : IDisposable
+internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
 {
     internal const int MaximumAccountLength = 32;
     internal const int MaximumPasswordLength = 15; // start.dat text field 364 maxLength
 
     private readonly LoginServerSelection _selection;
     private readonly LoginCredentialLayout _layout;
-    private readonly char[] _account = new char[MaximumAccountLength];
-    private readonly char[] _password = new char[MaximumPasswordLength];
+    private readonly LoginTextField _account = new(MaximumAccountLength, masked: false);
+    private readonly LoginTextField _password = new(MaximumPasswordLength, masked: true);
     private LoginServerCatalog? _catalog;
-    private int _accountLength;
-    private int _passwordLength;
-    private int _caret;
-    private int _anchor;
     private int _revision;
     private int _editRevision;
     private int _contentRevision;
@@ -46,14 +40,14 @@ internal sealed class LoginCredentialInput : IDisposable
     public int ContentRevision => _contentRevision;
     public bool Enabled => !_disposed; // Editing never depends on authenticated realm selection.
     public bool IsSelecting => _dragging && Focus != LoginCredentialFocus.None;
-    public int AccountLength => _accountLength;
-    public int PasswordLength => _passwordLength;
-    public int CaretIndex => _caret;
-    public int SelectionStart => Math.Min(_anchor, _caret);
-    public int SelectionEnd => Math.Max(_anchor, _caret);
-    public bool HasSelection => _anchor != _caret;
-    public string AccountDisplay => new(_account, 0, _accountLength);
-    public string PasswordMask => new('*', _passwordLength);
+    public int AccountLength => _account.Length;
+    public int PasswordLength => _password.Length;
+    public int CaretIndex => Active?.CaretIndex ?? 0;
+    public int SelectionStart => Active?.SelectionStart ?? 0;
+    public int SelectionEnd => Active?.SelectionEnd ?? 0;
+    public bool HasSelection => Active?.HasSelection ?? false;
+    public string AccountDisplay => _account.Display;
+    public string PasswordMask => _password.Display;
 
     public LoginCredentialInput(LoginServerSelection selection, LoginCredentialLayout layout)
     {
@@ -94,7 +88,8 @@ internal sealed class LoginCredentialInput : IDisposable
             SetFocus(target);
         }
 
-        MoveTo(caretIndex ?? ActiveLength, extendSelection && sameField);
+        LoginTextField field = Active!;
+        MoveTo(field, caretIndex ?? field.Length, extendSelection && sameField);
         _dragging = true;
         return true;
     }
@@ -104,7 +99,7 @@ internal sealed class LoginCredentialInput : IDisposable
         Synchronize();
         if (IsSelecting && Enabled)
         {
-            MoveTo(caretIndex, extend: true);
+            MoveTo(Active!, caretIndex, extend: true);
         }
     }
 
@@ -114,7 +109,7 @@ internal sealed class LoginCredentialInput : IDisposable
     public bool KeyPressed(DesktopKeyEvent key)
     {
         Synchronize();
-        if (!Enabled || Focus == LoginCredentialFocus.None)
+        if (!Enabled || Active is not { } field)
         {
             return false;
         }
@@ -122,14 +117,14 @@ internal sealed class LoginCredentialInput : IDisposable
         bool shortcut = (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) != 0;
         if (shortcut || (key.Modifiers & DesktopKeyModifiers.Alt) != 0)
         {
-            if (shortcut && (key.Modifiers & DesktopKeyModifiers.Alt) == 0 && key.Key == DesktopKey.A && !key.IsRepeat)
+            if (shortcut && (key.Modifiers & DesktopKeyModifiers.Alt) == 0 && key.Key == DesktopKey.A && !key.IsRepeat &&
+                field.SelectAll())
             {
-                MoveTo(ActiveLength, extend: false, anchor: 0);
+                _revision++;
             }
 
             return true;
         }
-        bool shift = (key.Modifiers & DesktopKeyModifiers.Shift) != 0;
         switch (key.Key)
         {
             case DesktopKey.Escape:
@@ -143,38 +138,18 @@ internal sealed class LoginCredentialInput : IDisposable
                     SetFocus(LoginCredentialFocus.Password);
                     // Retail selects the existing password when Tab moves focus from account.
                     // A further Tab (including Shift+Tab) in password is ignored.
-                    MoveTo(_passwordLength, extend: false, anchor: 0);
+                    if (_password.SelectAll())
+                    {
+                        _revision++;
+                    }
                 }
                 break;
             case DesktopKey.Enter:
                 // Retail sends a synthetic Enter-button press here; focus stays where it is.
                 // Sending credentials to the account server is left out on purpose.
                 break;
-            case DesktopKey.Left:
-                MoveTo(!shift && HasSelection ? SelectionStart : _caret - 1, shift);
-                break;
-            case DesktopKey.Right:
-                MoveTo(!shift && HasSelection ? SelectionEnd : _caret + 1, shift);
-                break;
-            case DesktopKey.Home:
-                MoveTo(0, shift);
-                break;
-            case DesktopKey.End:
-                MoveTo(ActiveLength, shift);
-                break;
-            case DesktopKey.Backspace:
-                if (!DeleteSelection() && _caret > 0)
-                {
-                    Remove(_caret - 1, 1);
-                }
-
-                break;
-            case DesktopKey.Delete:
-                if (!DeleteSelection() && _caret < ActiveLength)
-                {
-                    Remove(_caret, 1);
-                }
-
+            default:
+                Apply(field.EditKey(key.Key, (key.Modifiers & DesktopKeyModifiers.Shift) != 0));
                 break;
         }
         return true;
@@ -183,9 +158,9 @@ internal sealed class LoginCredentialInput : IDisposable
     public void TextEntered(char character)
     {
         Synchronize();
-        if (Enabled && Focus != LoginCredentialFocus.None && IsSupportedCharacter(character))
+        if (Enabled && Active is { } field && field.TextEntered(character))
         {
-            Insert(stackalloc char[] { character });
+            ChangedText();
         }
     }
 
@@ -193,20 +168,13 @@ internal sealed class LoginCredentialInput : IDisposable
     public bool Paste(string? text)
     {
         Synchronize();
-        if (!Enabled || Focus == LoginCredentialFocus.None || string.IsNullOrEmpty(text) || text.Length > ActiveBuffer.Length)
+        if (!Enabled || Active is not { } field || !field.Paste(text))
         {
             return false;
         }
 
-        foreach (char character in text)
-        {
-            if (!IsSupportedCharacter(character))
-            {
-                return false;
-            }
-        }
-
-        return Insert(text.AsSpan());
+        ChangedText();
+        return true;
     }
 
     /// <summary>Applies a retail history choice, clearing secrets only when the account actually changes.</summary>
@@ -222,14 +190,12 @@ internal sealed class LoginCredentialInput : IDisposable
         if (!string.Equals(AccountDisplay, account, StringComparison.Ordinal))
         {
             ClearPassword();
-            Array.Clear(_account);
-            account.AsSpan().CopyTo(_account);
-            _accountLength = account.Length;
+            _account.Replace(account);
             _contentRevision++;
             _revision++;
         }
         SetFocus(LoginCredentialFocus.Account);
-        MoveTo(_accountLength, extend: false);
+        MoveTo(_account, _account.Length, extend: false);
         _dragging = false;
         return true;
     }
@@ -244,17 +210,18 @@ internal sealed class LoginCredentialInput : IDisposable
         Synchronize();
         accountName = [];
         password = [];
-        if (_accountLength == 0 || _passwordLength is < 1 or > 14)
+        if (_account.Length == 0 || _password.Length is < 1 or > 14)
         {
             return false;
         }
 
-        accountName = new byte[_accountLength];
+        ReadOnlySpan<char> account = _account.Characters;
+        accountName = new byte[account.Length];
         for (int index = 0; index < accountName.Length; index++)
         {
-            accountName[index] = checked((byte)_account[index]);
+            accountName[index] = checked((byte)account[index]);
         }
-        password = _password.AsSpan(0, _passwordLength).ToArray();
+        password = _password.Characters.ToArray();
         ClearPassword();
         return true;
     }
@@ -263,13 +230,19 @@ internal sealed class LoginCredentialInput : IDisposable
     public string? SelectedAccountText()
     {
         Synchronize();
-        return Enabled && Focus == LoginCredentialFocus.Account && HasSelection ? new string(_account, SelectionStart, SelectionEnd - SelectionStart) : null;
+        return Enabled && Focus == LoginCredentialFocus.Account ? _account.SelectedText() : null;
     }
 
     public bool CutSelectedAccount()
     {
         Synchronize();
-        return Enabled && Focus == LoginCredentialFocus.Account && DeleteSelection();
+        if (!Enabled || Focus != LoginCredentialFocus.Account || !_account.DeleteSelection())
+        {
+            return false;
+        }
+
+        ChangedText();
+        return true;
     }
 
     public void FocusLost()
@@ -295,72 +268,35 @@ internal sealed class LoginCredentialInput : IDisposable
         _disposed = true;
     }
 
-    private int ActiveLength => Focus == LoginCredentialFocus.Account ? _accountLength : _passwordLength;
-    private Span<char> ActiveBuffer => Focus == LoginCredentialFocus.Account ? _account : _password;
+    bool ILoginTextEditor.HasFocus => Focus != LoginCredentialFocus.None;
 
-    private bool Insert(ReadOnlySpan<char> characters)
+    string? ILoginTextEditor.SelectedText() => SelectedAccountText();
+
+    bool ILoginTextEditor.CutSelection() => CutSelectedAccount();
+
+    private LoginTextField? Active => Focus switch
     {
-        int start = SelectionStart;
-        int end = SelectionEnd;
-        int length = ActiveLength;
-        int newLength = length - (end - start) + characters.Length;
-        Span<char> buffer = ActiveBuffer;
-        if (newLength > buffer.Length)
+        LoginCredentialFocus.Account => _account,
+        LoginCredentialFocus.Password => _password,
+        _ => null,
+    };
+
+    private void Apply(LoginTextChange change)
+    {
+        if (change == LoginTextChange.Text)
         {
-            return false;
+            ChangedText();
         }
-
-        buffer.Slice(end, length - end).CopyTo(buffer[(start + characters.Length)..]);
-        characters.CopyTo(buffer[start..]);
-        buffer[newLength..].Clear();
-        SetActiveLength(newLength);
-        _caret = _anchor = start + characters.Length;
-        ChangedText();
-        return true;
-    }
-
-    private bool DeleteSelection()
-    {
-        if (!HasSelection)
+        else if (change == LoginTextChange.Caret)
         {
-            return false;
-        }
-
-        Remove(SelectionStart, SelectionEnd - SelectionStart);
-        return true;
-    }
-
-    private void Remove(int start, int count)
-    {
-        int length = ActiveLength;
-        Span<char> buffer = ActiveBuffer;
-        buffer.Slice(start + count, length - start - count).CopyTo(buffer[start..]);
-        buffer[(length - count)..].Clear();
-        SetActiveLength(length - count);
-        _caret = _anchor = start;
-        ChangedText();
-    }
-
-    private void SetActiveLength(int length)
-    {
-        if (Focus == LoginCredentialFocus.Account)
-        {
-            _accountLength = length;
-        }
-        else
-        {
-            _passwordLength = length;
+            _revision++;
         }
     }
 
-    private void MoveTo(int position, bool extend, int? anchor = null)
+    private void MoveTo(LoginTextField field, int position, bool extend)
     {
-        int target = Math.Clamp(position, 0, ActiveLength);
-        int newAnchor = anchor ?? (extend ? _anchor : target);
-        if (target != _caret || newAnchor != _anchor)
+        if (field.MoveTo(position, extend))
         {
-            _caret = target;
-            _anchor = newAnchor;
             _revision++;
         }
     }
@@ -373,18 +309,20 @@ internal sealed class LoginCredentialInput : IDisposable
         }
 
         Focus = target;
-        _caret = _anchor = target == LoginCredentialFocus.None ? 0 : ActiveLength;
+        if (Active is { } field)
+        {
+            _ = field.MoveTo(field.Length, extend: false);
+        }
+
         _dragging = false;
         _revision++;
     }
 
     private void ClearAll()
     {
-        Array.Clear(_account);
-        _accountLength = 0;
+        _ = _account.Clear();
         ClearPassword();
         Focus = LoginCredentialFocus.None;
-        _caret = _anchor = 0;
         _dragging = false;
         _contentRevision++;
         _revision++;
@@ -392,16 +330,10 @@ internal sealed class LoginCredentialInput : IDisposable
 
     private void ClearPassword()
     {
-        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(_password.AsSpan()));
-        if (_passwordLength != 0)
+        if (_password.Clear())
         {
-            _passwordLength = 0;
             _contentRevision++;
             _revision++;
-        }
-        if (Focus == LoginCredentialFocus.Password)
-        {
-            MoveTo(0, extend: false);
         }
     }
 
@@ -417,6 +349,4 @@ internal sealed class LoginCredentialInput : IDisposable
         _contentRevision++;
         _revision++;
     }
-
-    private static bool IsSupportedCharacter(char value) => LoginAccountHistory.IsAccountCharacter(value);
 }

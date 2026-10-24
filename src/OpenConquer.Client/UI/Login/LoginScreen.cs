@@ -3,6 +3,7 @@ using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
 using OpenConquer.Client.UI.Login.Controls;
 using OpenConquer.Client.UI.Login.Credentials;
+using OpenConquer.Client.UI.Login.Registration;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
@@ -14,7 +15,8 @@ namespace OpenConquer.Client.UI.Login;
 /// <summary>
 /// The login screen's state and input handling, independent of any OpenGL context. Pointer coordinates are on
 /// the logical stage. Input reaches the screen in the retail order: an open dialog first, then the saved-account
-/// list, the buttons, the credential fields and finally the region and server tiles.
+/// list, the buttons, the credential fields and finally the region and server tiles. The OpenConquer Sign Up
+/// dialog is modal beneath errorMC and the quit dialogs.
 /// </summary>
 internal sealed class LoginScreen : IDisposable
 {
@@ -41,6 +43,7 @@ internal sealed class LoginScreen : IDisposable
         Error = new LoginErrorDialog(layout);
         Quit = new LoginErrorDialog(layout, quit: true);
         LoadingQuit = new LoginErrorDialog(layout, quit: true, loading: true);
+        Registration = new LoginRegistrationForm(new LoginRegistrationLayout(layout));
         _sounds = new LoginAudioFeedback(layout);
     }
 
@@ -69,17 +72,14 @@ internal sealed class LoginScreen : IDisposable
     internal bool IsLoginPending => AttemptStatus is LoginAttemptStatus.ConnectingAccount or
         LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter;
 
-    /// <summary>The OpenConquer Sign Up flow's current step; retail opened a website instead.</summary>
-    internal LoginRegistrationStep RegistrationStep
+    /// <summary>The OpenConquer Sign Up dialog; retail opened a website instead.</summary>
+    internal LoginRegistrationForm Registration
     {
-        get; private set;
+        get;
     }
 
-    /// <summary>While the account panel collects a new account, Enter and Escape belong to Sign Up.</summary>
-    internal bool IsRegistering => RegistrationStep is LoginRegistrationStep.EnterCredentials or LoginRegistrationStep.ConfirmPassword;
-
     /// <summary>A login or registration exchange is in flight; the stage takes no input but Escape.</summary>
-    private bool IsExchangePending => IsLoginPending || RegistrationStep == LoginRegistrationStep.Submitting;
+    private bool IsExchangePending => IsLoginPending || Registration.IsSubmitting;
 
     internal void ApplyFeedback(LoginAttemptFeedback feedback, LoginErrorMessages messages)
     {
@@ -94,9 +94,7 @@ internal sealed class LoginScreen : IDisposable
         AttemptStatus = feedback.Status;
         if (feedback.Failure is { OpensErrorMovie: true } failure)
         {
-            FocusLost();
-            Error.Show(messages.Format(failure));
-            Play(LoginAudioCue.Error);
+            ShowError(messages.Format(failure));
         }
         else if (IsLoginPending)
         {
@@ -107,13 +105,13 @@ internal sealed class LoginScreen : IDisposable
     /// <summary>The native Enter activation requests login; the host owns all network work.</summary>
     internal event Action? LoginRequested;
 
-    /// <summary>Sign Up was clicked: enter or leave the registration flow.</summary>
-    internal event Action? RegistrationToggleRequested;
+    /// <summary>Sign Up was clicked; the host decides whether the dialog opens.</summary>
+    internal event Action? RegistrationRequested;
 
-    /// <summary>Enter while registering submits the current registration step.</summary>
+    /// <summary>Ok or Enter in the Sign Up dialog.</summary>
     internal event Action? RegistrationSubmitRequested;
 
-    /// <summary>Escape while registering leaves the flow instead of opening the quit dialog.</summary>
+    /// <summary>Cancel or Escape in the Sign Up dialog.</summary>
     internal event Action? RegistrationCancelRequested;
 
     internal void ApplyRegistrationFeedback(LoginRegistrationFeedback feedback, LoginErrorMessages messages)
@@ -126,22 +124,52 @@ internal sealed class LoginScreen : IDisposable
         }
 
         _registrationFeedback = feedback;
-        RegistrationStep = feedback.Step;
-        if (feedback.Notice is { } notice)
+        switch (feedback.Status)
         {
-            FocusLost();
-            Error.Show(messages.Format(notice));
-            Play(LoginAudioCue.Error);
-        }
-        else if (RegistrationStep == LoginRegistrationStep.Submitting)
-        {
-            FocusLost();
+            case LoginRegistrationStatus.Closed:
+                Registration.Close();
+                if (feedback.Notice is { } refusal)
+                {
+                    ShowError(messages.Format(refusal));
+                }
+
+                break;
+            case LoginRegistrationStatus.Editing:
+                if (!Registration.IsOpen)
+                {
+                    // flashLogin.ini [dialogBox] show.
+                    FocusLost();
+                    Registration.Open(LoginRegistrationText.For(LoginRegistrationNotice.Guidance));
+                    Play(LoginAudioCue.Error);
+                }
+
+                if (feedback.Notice is { } problem)
+                {
+                    Registration.ShowProblem(messages.Format(problem), feedback.Focus);
+                    Play(LoginAudioCue.Error);
+                }
+                else
+                {
+                    Registration.ShowGuidance(LoginRegistrationText.For(LoginRegistrationNotice.Guidance));
+                }
+
+                break;
+            case LoginRegistrationStatus.Submitting:
+                Registration.BeginSubmitting(LoginRegistrationText.For(LoginRegistrationNotice.Submitting));
+                break;
+            case LoginRegistrationStatus.Created:
+                // The new name fills the login account field; the player then enters the password to log in.
+                string account = Registration.AccountName;
+                Registration.Close();
+                Credentials.ReplaceAccount(account);
+                if (feedback.Notice is { } created)
+                {
+                    ShowError(messages.Format(created));
+                }
+
+                break;
         }
     }
-
-    /// <summary>The state a button is drawn in. Sign Up stays held down while the panel collects a new account.</summary>
-    internal LoginButtonState ButtonState(LoginButton button) =>
-        button == LoginButton.Register && IsRegistering ? LoginButtonState.Down : Buttons.StateOf(button);
 
     public LoginStageLayout Layout
     {
@@ -197,13 +225,20 @@ internal sealed class LoginScreen : IDisposable
         get; set;
     }
 
+    /// <summary>Measures caret positions in the Sign Up fields; set while an OpenGL context renders them.</summary>
+    internal ILoginRegistrationCaretLocator? RegistrationCaretLocator
+    {
+        get; set;
+    }
+
     /// <summary>The opening covers the stage and takes no input until its last frame has played.</summary>
     public bool IsOpeningPlaying => Clock.Frame < LoginOpeningArtwork.FrameCount;
 
     /// <summary>logo.swf loads on root frame 3, after the opening; the logo timeline counts from there.</summary>
     public long LogoFrame => Math.Max(0, Clock.Frame - LoginOpeningArtwork.FrameCount);
 
-    private bool PointerIsFree => !IsOpeningPlaying && ActiveDialog is null && !IsExchangePending && !Account.CapturesPointer;
+    private bool PointerIsFree => !IsOpeningPlaying && ActiveDialog is null && !Registration.IsOpen && !IsExchangePending &&
+        !Account.CapturesPointer;
 
     /// <summary>Advances every login timeline by one rendered frame.</summary>
     public void Advance(TimeSpan elapsed)
@@ -213,6 +248,7 @@ internal sealed class LoginScreen : IDisposable
         int frames = Clock.Advance(elapsed);
         Credentials.Synchronize();
         Account.Advance(Clock.Step, frames);
+        Registration.Advance(frames);
         Error.Advance(frames);
         bool quit = Quit.Advance(frames);
         bool loadingQuit = LoadingQuit.Advance(frames);
@@ -252,6 +288,12 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
+        if (Registration.IsOpen)
+        {
+            Play(Registration.PointerMoved(mapped, x, y) is not null ? LoginAudioCue.ButtonHover : null);
+            return;
+        }
+
         if (IsExchangePending)
         {
             return;
@@ -282,6 +324,18 @@ internal sealed class LoginScreen : IDisposable
         if (ActiveDialog is { } dialog)
         {
             Play(dialog.PointerPressed(mapped, x, y) switch
+            {
+                LoginDialogButton.Ok => LoginAudioCue.ButtonClick,
+                LoginDialogButton.Cancel => LoginAudioCue.ButtonHover,
+                _ => null,
+            });
+            return;
+        }
+
+        if (Registration.IsOpen)
+        {
+            // flashLogin.ini [dialogBox]: click_ok is Button_1.mp3, click_cancel Button_2.mp3.
+            Play(Registration.PointerPressed(mapped, x, y, RegistrationCaretLocator, extendSelection) switch
             {
                 LoginDialogButton.Ok => LoginAudioCue.ButtonClick,
                 LoginDialogButton.Cancel => LoginAudioCue.ButtonHover,
@@ -347,6 +401,12 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
+        if (Registration.IsOpen)
+        {
+            Handle(Registration.PointerReleased(mapped, x, y));
+            return;
+        }
+
         if (IsExchangePending)
         {
             return;
@@ -376,11 +436,18 @@ internal sealed class LoginScreen : IDisposable
     /// <summary>Continues a held credential selection; <paramref name="x"/> is clamped to the stage.</summary>
     public void PointerDragged(int x)
     {
-        if (PointerIsFree && Credentials.IsSelecting && CaretLocator is { } locator)
+        if (ActiveDialog is null && Registration.IsSelecting && RegistrationCaretLocator is { } registration)
+        {
+            Registration.PointerDragged(registration.LocateWhileDragging(Registration, x));
+        }
+        else if (PointerIsFree && Credentials.IsSelecting && CaretLocator is { } locator)
         {
             Credentials.PointerDragged(locator.LocateWhileDragging(Credentials, x));
         }
     }
+
+    /// <summary>A text selection is being dragged in the credential or Sign Up fields.</summary>
+    internal bool IsSelectingText => Credentials.IsSelecting || Registration.IsSelecting;
 
     public void KeyPressed(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard)
     {
@@ -389,11 +456,14 @@ internal sealed class LoginScreen : IDisposable
 
         if (!IsOpeningPlaying && key.Key == DesktopKey.Escape && !key.IsRepeat && !Quit.IsOpen && !LoadingQuit.IsOpen)
         {
-            // The Sign Up flow is a project extension; Escape backs out of it before it can quit the client.
-            if (IsRegistering && ActiveDialog is null && !Account.CapturesPointer)
+            // Sign Up is a project extension; Escape cancels it before it can quit the client.
+            if (Registration.IsOpen && !Registration.IsSubmitting)
             {
-                FocusLost();
-                RegistrationCancelRequested?.Invoke();
+                if (ActiveDialog is null)
+                {
+                    Handle(Registration.KeyPressed(key));
+                }
+
                 return;
             }
 
@@ -403,7 +473,24 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
-        if (IsOpeningPlaying || ActiveDialog is not null || IsExchangePending || Account.CapturesPointer)
+        if (IsOpeningPlaying || ActiveDialog is not null)
+        {
+            return;
+        }
+
+        if (Registration.IsOpen)
+        {
+            int edits = Registration.EditRevision;
+            if (!TryHandleClipboard(Registration, key, readClipboard, writeClipboard))
+            {
+                Handle(Registration.KeyPressed(key));
+            }
+
+            PlayTypingSound(edits, Registration.EditRevision);
+            return;
+        }
+
+        if (IsExchangePending || Account.CapturesPointer)
         {
             return;
         }
@@ -413,29 +500,42 @@ internal sealed class LoginScreen : IDisposable
                 DesktopKeyModifiers.Super)) == 0 &&
             Credentials.Focus != LoginCredentialFocus.None)
         {
-            RequestEnter();
+            LoginRequested?.Invoke();
             return;
         }
 
         int revision = Credentials.EditRevision;
-        if (!TryHandleClipboard(key, readClipboard, writeClipboard))
+        if (!TryHandleClipboard(Credentials, key, readClipboard, writeClipboard))
         {
             Credentials.KeyPressed(key);
         }
 
-        PlayTypingSound(revision);
+        PlayTypingSound(revision, Credentials.EditRevision);
     }
 
     public void TextEntered(char character)
     {
-        if (IsOpeningPlaying || ActiveDialog is not null || IsExchangePending || Account.CapturesPointer)
+        if (IsOpeningPlaying || ActiveDialog is not null)
+        {
+            return;
+        }
+
+        if (Registration.IsOpen)
+        {
+            int edits = Registration.EditRevision;
+            Registration.TextEntered(character);
+            PlayTypingSound(edits, Registration.EditRevision);
+            return;
+        }
+
+        if (IsExchangePending || Account.CapturesPointer)
         {
             return;
         }
 
         int revision = Credentials.EditRevision;
         Credentials.TextEntered(character);
-        PlayTypingSound(revision);
+        PlayTypingSound(revision, Credentials.EditRevision);
     }
 
     public void FocusLost()
@@ -445,6 +545,7 @@ internal sealed class LoginScreen : IDisposable
         Credentials.FocusLost();
         Buttons.Reset();
         Account.FocusLost();
+        Registration.FocusLost();
         Error.FocusLost();
         Quit.FocusLost();
         LoadingQuit.FocusLost();
@@ -460,6 +561,7 @@ internal sealed class LoginScreen : IDisposable
 
         _disposed = true;
         Credentials.Dispose();
+        Registration.Dispose();
     }
 
     /// <summary>Returns whether the account list or a dialog took the press.</summary>
@@ -505,11 +607,11 @@ internal sealed class LoginScreen : IDisposable
                 ExitRequested?.Invoke();
                 break;
             case LoginButton.Enter:
-                RequestEnter();
+                LoginRequested?.Invoke();
                 break;
             case LoginButton.Register:
-                // Retail opened a signup website; OpenConquer registers in the account panel instead.
-                RegistrationToggleRequested?.Invoke();
+                // Retail opened a signup website; OpenConquer opens its Sign Up dialog instead.
+                RegistrationRequested?.Invoke();
                 break;
             default:
                 // Purchase and Help open publisher-era URLs, which stay disabled.
@@ -517,16 +619,26 @@ internal sealed class LoginScreen : IDisposable
         }
     }
 
-    private void RequestEnter()
+    private void Handle(LoginRegistrationCommand command)
     {
-        if (IsRegistering)
+        switch (command)
         {
-            RegistrationSubmitRequested?.Invoke();
+            case LoginRegistrationCommand.Submit:
+                RegistrationSubmitRequested?.Invoke();
+                break;
+            case LoginRegistrationCommand.Cancel:
+                // flashLogin.ini [dialogBox] hide.
+                Play(LoginAudioCue.Error);
+                RegistrationCancelRequested?.Invoke();
+                break;
         }
-        else
-        {
-            LoginRequested?.Invoke();
-        }
+    }
+
+    private void ShowError(string text)
+    {
+        FocusLost();
+        Error.Show(text);
+        Play(LoginAudioCue.Error);
     }
 
     private void OpenDialog(LoginAccountDialog dialog)
@@ -539,11 +651,12 @@ internal sealed class LoginScreen : IDisposable
         }
     }
 
-    private bool TryHandleClipboard(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard)
+    private static bool TryHandleClipboard(ILoginTextEditor editor, DesktopKeyEvent key, Func<string?> readClipboard,
+        Action<string> writeClipboard)
     {
         bool shortcut = (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) != 0 &&
             (key.Modifiers & DesktopKeyModifiers.Alt) == 0;
-        if (!shortcut || key.IsRepeat || Credentials.Focus == LoginCredentialFocus.None ||
+        if (!shortcut || key.IsRepeat || !editor.HasFocus ||
             key.Key is not (DesktopKey.C or DesktopKey.X or DesktopKey.V))
         {
             return false;
@@ -553,14 +666,14 @@ internal sealed class LoginScreen : IDisposable
         {
             if (key.Key == DesktopKey.V)
             {
-                Credentials.Paste(readClipboard());
+                editor.Paste(readClipboard());
             }
-            else if (Credentials.SelectedAccountText() is { } text)
+            else if (editor.SelectedText() is { } text)
             {
                 writeClipboard(text);
                 if (key.Key == DesktopKey.X)
                 {
-                    Credentials.CutSelectedAccount();
+                    editor.CutSelection();
                 }
             }
         }
@@ -572,9 +685,9 @@ internal sealed class LoginScreen : IDisposable
         return true;
     }
 
-    private void PlayTypingSound(int previousRevision)
+    private void PlayTypingSound(int previousRevision, int currentRevision)
     {
-        if (Credentials.EditRevision != previousRevision)
+        if (currentRevision != previousRevision)
         {
             _playSound(_sounds.NextKeySound());
         }

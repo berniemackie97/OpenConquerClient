@@ -1,9 +1,9 @@
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Credentials;
+using OpenConquer.Client.UI.Login.Registration;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
-using OpenConquer.Content.Login;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.Presentation;
 
@@ -17,49 +17,72 @@ public sealed class LoginScreenRegistrationTests : IDisposable
     private readonly string _folder = Directory.CreateTempSubdirectory("oc-login-registration-").FullName;
 
     [Fact]
-    public void SignUpClickRequestsTheRegistrationToggle()
+    public void SignUpClickAsksTheHostToOpenTheDialog()
     {
         using LoginScreen screen = CreateReady();
-        int toggles = 0;
-        screen.RegistrationToggleRequested += () => toggles++;
+        int requests = 0;
+        screen.RegistrationRequested += () => requests++;
 
         Click(screen, SignUpX, SignUpY);
 
-        Assert.Equal(1, toggles);
+        Assert.Equal(1, requests);
+        Assert.False(screen.Registration.IsOpen);
     }
 
     [Fact]
-    public void RegisteringRoutesEnterToRegistrationAndHoldsSignUpDown()
+    public void EditingOpensTheDialogWhichTakesEveryKey()
     {
-        using LoginScreen screen = CreateReady();
+        using LoginScreen screen = CreateOpen();
         int logins = 0, submits = 0;
         screen.LoginRequested += () => logins++;
         screen.RegistrationSubmitRequested += () => submits++;
 
-        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStep.EnterCredentials));
-        Assert.Equal(LoginButtonState.Down, screen.ButtonState(LoginButton.Register));
-        Type(screen, s_fields.AccountField, "newuser");
-        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Enter, default, false), static () => null, static _ => { });
+        Assert.Equal(LoginRegistrationText.For(LoginRegistrationNotice.Guidance), screen.Registration.Message);
+        TypeText(screen, "newuser");
+        Press(screen, DesktopKey.Enter);
 
-        Assert.Equal(1, submits);
-        Assert.Equal(0, logins);
-
-        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStep.None));
-        Assert.NotEqual(LoginButtonState.Down, screen.ButtonState(LoginButton.Register));
-        Type(screen, s_fields.AccountField, "x");
-        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Enter, default, false), static () => null, static _ => { });
-        Assert.Equal(1, logins);
+        Assert.Equal("newuser", screen.Registration.AccountName);
+        Assert.Equal(string.Empty, screen.Credentials.AccountDisplay);
+        Assert.Equal((1, 0), (submits, logins));
     }
 
     [Fact]
-    public void EscapeLeavesRegistrationWithoutOpeningQuit()
+    public void TheDialogIsModal()
     {
-        using LoginScreen screen = CreateReady();
+        using LoginScreen screen = CreateOpen();
+        int requests = 0;
+        screen.RegistrationRequested += () => requests++;
+
+        Click(screen, SignUpX, SignUpY);
+        Click(screen, s_fields.AccountField.X + 2, s_fields.AccountField.Y + 2);
+
+        Assert.Equal(0, requests);
+        Assert.Equal(LoginCredentialFocus.None, screen.Credentials.Focus);
+    }
+
+    [Fact]
+    public void OkAndCancelButtonsRequestTheirCommands()
+    {
+        using LoginScreen screen = CreateOpen();
+        int submits = 0, cancels = 0;
+        screen.RegistrationSubmitRequested += () => submits++;
+        screen.RegistrationCancelRequested += () => cancels++;
+        LoginRegistrationLayout layout = screen.Registration.Layout;
+
+        Click(screen, layout.Ok.X + 4, layout.Ok.Y + 4);
+        Click(screen, layout.Cancel.X + 4, layout.Cancel.Y + 4);
+
+        Assert.Equal((1, 1), (submits, cancels));
+    }
+
+    [Fact]
+    public void EscapeCancelsTheDialogWithoutOpeningQuit()
+    {
+        using LoginScreen screen = CreateOpen();
         int cancels = 0;
         screen.RegistrationCancelRequested += () => cancels++;
-        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStep.ConfirmPassword));
 
-        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Escape, default, false), static () => null, static _ => { });
+        Press(screen, DesktopKey.Escape);
 
         Assert.Equal(1, cancels);
         Assert.False(screen.Quit.IsOpen);
@@ -67,29 +90,78 @@ public sealed class LoginScreenRegistrationTests : IDisposable
     }
 
     [Fact]
-    public void SubmittingBlocksInputAndEscapeOpensTheLoadingQuitDialog()
+    public void ClosedFeedbackClosesTheDialog()
     {
-        using LoginScreen screen = CreateReady();
-        Type(screen, s_fields.AccountField, "newuser");
-        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStep.Submitting));
+        using LoginScreen screen = CreateOpen();
 
-        screen.TextEntered('z');
-        Assert.Equal("newuser", screen.Credentials.AccountDisplay);
+        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStatus.Closed));
+        Settle(screen);
 
-        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Escape, default, false), static () => null, static _ => { });
+        Assert.False(screen.Registration.IsOpen);
+        Assert.False(screen.Error.IsOpen);
+    }
+
+    [Fact]
+    public void SubmittingLocksTheDialogAndEscapeOpensTheLoadingQuitDialog()
+    {
+        using LoginScreen screen = CreateOpen();
+        TypeText(screen, "newuser");
+
+        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStatus.Submitting));
+        TypeText(screen, "z");
+
+        Assert.Equal("newuser", screen.Registration.AccountName);
+        Assert.Equal(LoginRegistrationText.For(LoginRegistrationNotice.Submitting), screen.Registration.Message);
+        Press(screen, DesktopKey.Escape);
         Assert.True(screen.LoadingQuit.IsOpen);
     }
 
     [Fact]
-    public void NoticeOpensTheErrorDialogWithProjectText()
+    public void ProblemsAreShownInsideTheDialog()
+    {
+        using LoginScreen screen = CreateOpen();
+        TypeText(screen, "newuser");
+        Press(screen, DesktopKey.Tab);
+        TypeText(screen, "secret1");
+
+        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStatus.Editing,
+            LoginFailure.Registration(LoginRegistrationNotice.PasswordMismatch), LoginRegistrationField.Password));
+
+        Assert.False(screen.Error.IsOpen);
+        Assert.True(screen.Registration.MessageIsError);
+        Assert.Equal("The passwords do not match.", screen.Registration.Message);
+        Assert.Equal(LoginRegistrationField.Password, screen.Registration.Focus);
+        Assert.Equal(0, screen.Registration.Field(LoginRegistrationField.Password).Length);
+    }
+
+    [Fact]
+    public void RefusalToOpenUsesTheErrorDialog()
     {
         using LoginScreen screen = CreateReady();
 
-        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStep.EnterCredentials,
-            LoginFailure.Registration(LoginRegistrationNotice.Begin)));
+        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStatus.Closed,
+            LoginFailure.Registration(LoginRegistrationNotice.ServerNotSelected)));
 
+        Assert.False(screen.Registration.IsOpen);
         Assert.True(screen.Error.IsOpen);
-        Assert.Equal("Enter a new account name and password, then press Enter.", screen.Error.Text);
+        Assert.Equal("Select a server before signing up.", screen.Error.Text);
+    }
+
+    [Fact]
+    public void CreatedAccountClosesTheDialogAndFillsTheLoginAccount()
+    {
+        using LoginScreen screen = CreateOpen();
+        TypeText(screen, "newuser");
+
+        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStatus.Created,
+            LoginFailure.Registration(LoginRegistrationNotice.Created)));
+
+        Assert.Equal("newuser", screen.Credentials.AccountDisplay);
+        Assert.Equal(0, screen.Credentials.PasswordLength);
+        Assert.True(screen.Error.IsOpen);
+        Assert.Equal(LoginRegistrationText.For(LoginRegistrationNotice.Created), screen.Error.Text);
+        Settle(screen);
+        Assert.False(screen.Registration.IsOpen);
     }
 
     [Fact]
@@ -119,6 +191,18 @@ public sealed class LoginScreenRegistrationTests : IDisposable
         return screen;
     }
 
+    private LoginScreen CreateOpen()
+    {
+        LoginScreen screen = CreateReady();
+        Apply(screen, new LoginRegistrationFeedback(LoginRegistrationStatus.Editing));
+        Settle(screen);
+        Assert.True(screen.Registration.AcceptsInput);
+        return screen;
+    }
+
+    /// <summary>Runs the dialog timeline to its next resting frame.</summary>
+    private static void Settle(LoginScreen screen) => screen.Advance(TimeSpan.FromSeconds(1));
+
     private static void Click(LoginScreen screen, int x, int y)
     {
         screen.PointerMoved(true, x, y);
@@ -126,9 +210,11 @@ public sealed class LoginScreenRegistrationTests : IDisposable
         screen.PointerReleased(true, x, y);
     }
 
-    private static void Type(LoginScreen screen, LoginRect field, string text)
+    private static void Press(LoginScreen screen, DesktopKey key) =>
+        screen.KeyPressed(new DesktopKeyEvent(key, default, false), static () => null, static _ => { });
+
+    private static void TypeText(LoginScreen screen, string text)
     {
-        Click(screen, field.X + 2, field.Y + 2);
         foreach (char character in text)
         {
             screen.TextEntered(character);

@@ -1,4 +1,5 @@
 using System.Text;
+using OpenConquer.Client.UI.Login.Controls;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Login;
@@ -69,8 +70,7 @@ internal sealed class LoginErrorPresentation : IDisposable
             return;
         }
 
-        int alpha = LoginAccountArtwork.MaskAlpha(dialog.Frame) * 255 / 256;
-        SpriteColor mask = new(0, 0, 0, (byte)alpha);
+        SpriteColor mask = LoginModalMask.At(dialog.Frame);
         LoginRect band = _layout.Place(dialog.IsLoadingQuit ? 0 : -1, 90, 1024, 570);
         if (dialog.Frame != 6)
         {
@@ -95,10 +95,7 @@ internal sealed class LoginErrorPresentation : IDisposable
         }
         (int x, int y) = LoginErrorArtwork.Position;
         LoginRect area = _layout.Place(x + (dialog.IsLoadingQuit ? 1 : 0), y, picture.Width, picture.Height);
-        renderer.DrawSolidRectangle(band.X, band.Y, band.Width, area.Y - band.Y, mask);
-        renderer.DrawSolidRectangle(band.X, area.Y + area.Height, band.Width, band.Y + band.Height - area.Y - area.Height, mask);
-        renderer.DrawSolidRectangle(band.X, area.Y, area.X - band.X, area.Height, mask);
-        renderer.DrawSolidRectangle(area.X + area.Width, area.Y, band.X + band.Width - area.X - area.Width, area.Height, mask);
+        LoginModalMask.DrawAround(renderer, band, area, mask);
         renderer.DrawSprite(picture, area.X, area.Y, area.Width, area.Height);
         if (dialog.IsQuit)
         {

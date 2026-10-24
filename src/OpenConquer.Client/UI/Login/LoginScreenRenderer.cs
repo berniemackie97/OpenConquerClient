@@ -1,6 +1,7 @@
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Controls;
 using OpenConquer.Client.UI.Login.Credentials;
+using OpenConquer.Client.UI.Login.Registration;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
@@ -26,6 +27,7 @@ internal sealed class LoginScreenRenderer : IDisposable
     private readonly LoginCredentialPresentation _credentials;
     private readonly LoginButtonPresentation _buttons;
     private readonly LoginAccountPresentation _account;
+    private readonly LoginRegistrationPresentation _registration;
     private readonly LoginLogoPresentation _logo;
     private readonly LoginVersionPresentation _version;
     private readonly LoginOpeningPresentation _opening;
@@ -48,6 +50,7 @@ internal sealed class LoginScreenRenderer : IDisposable
             _credentials = _ownership.Track(new LoginCredentialPresentation(graphicsDevice, layout));
             _buttons = _ownership.Track(new LoginButtonPresentation(graphicsDevice));
             _account = _ownership.Track(new LoginAccountPresentation(graphicsDevice, screen.AccountLayout));
+            _registration = _ownership.Track(new LoginRegistrationPresentation(graphicsDevice, screen.Registration.Layout));
             _logo = _ownership.Track(new LoginLogoPresentation(graphicsDevice, layout));
             _version = _ownership.Track(new LoginVersionPresentation(graphicsDevice, layout, screen.VersionLabel));
             _opening = _ownership.Track(new LoginOpeningPresentation(graphicsDevice, layout));
@@ -61,6 +64,9 @@ internal sealed class LoginScreenRenderer : IDisposable
 
     /// <summary>Glyph measurements of the credential fields, for caret placement.</summary>
     public ILoginCaretLocator CaretLocator => _credentials;
+
+    /// <summary>Glyph measurements of the Sign Up fields, for caret placement.</summary>
+    public ILoginRegistrationCaretLocator RegistrationCaretLocator => _registration;
 
     public void Draw(OpenGLRenderer renderer, LoginScreen screen, LoginDirectoryAvailability directoryAvailability)
     {
@@ -98,10 +104,13 @@ internal sealed class LoginScreenRenderer : IDisposable
         _credentials.Draw(renderer, screen.Credentials);
         foreach (LoginButton button in LoginControlLayout.Buttons)
         {
-            _buttons.Draw(renderer, button, screen.ButtonState(button), screen.Buttons.BoundsOf(button));
+            _buttons.Draw(renderer, button, screen.Buttons.StateOf(button), screen.Buttons.BoundsOf(button));
         }
 
         _account.Draw(renderer, screen.Account);
+
+        // The OpenConquer Sign Up dialog takes the account dialogs' place in enterMC.
+        _registration.Draw(renderer, screen.Registration);
 
         // Depths 274 and 276: logo and version, shown from root frame 3 once the opening has finished.
         if (!screen.IsOpeningPlaying)

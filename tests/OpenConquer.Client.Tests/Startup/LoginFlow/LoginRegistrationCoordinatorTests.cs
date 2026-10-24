@@ -7,157 +7,142 @@ using OpenConquer.Client.Startup.Catalog;
 using OpenConquer.Client.Startup.LoginFlow;
 using OpenConquer.Client.Tests.Networking;
 using OpenConquer.Client.Tests.Startup.Catalog;
-using OpenConquer.Client.UI.Login;
-using OpenConquer.Client.UI.Login.Account;
-using OpenConquer.Client.UI.Login.Credentials;
-using OpenConquer.Client.UI.Login.Stage;
+using OpenConquer.Client.Tests.UI.Login.Registration;
+using OpenConquer.Client.UI.Login.Registration;
+using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Client.UI.Login.Status;
-using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests.Startup.LoginFlow;
 
-public sealed class LoginRegistrationCoordinatorTests : IDisposable
+public sealed class LoginRegistrationCoordinatorTests
 {
     private static readonly DateTimeOffset s_now = new(2026, 10, 17, 22, 0, 0, TimeSpan.Zero);
-    private readonly string _folder = Directory.CreateTempSubdirectory("oc-registration-flow-").FullName;
 
     [Fact]
-    public async Task SignUpTogglesTheFlowAndCancelKeepsNothing()
+    public async Task OpeningWithoutAUsableRealmRefusesWithErrorText()
     {
-        using LoginScreen screen = CreateScreen(null, "newuser", "secret1");
-        await using LoginRegistrationCoordinator registration = new();
+        await using LoginRegistrationCoordinator registration = new(new FixedClock(s_now));
 
-        registration.Toggle();
-        Assert.Equal(LoginRegistrationStep.EnterCredentials, registration.Step);
-        Assert.Equal(LoginRegistrationNotice.Begin, Notice(registration));
+        registration.Open(new LoginServerSelection(), null);
 
-        Assert.True(registration.TrySubmit(screen, null));
-        Assert.Equal(LoginRegistrationStep.ConfirmPassword, registration.Step);
+        Assert.Equal(LoginRegistrationStatus.Closed, registration.Status);
+        Assert.Equal(LoginRegistrationNotice.ServerNotSelected, Notice(registration));
+    }
 
-        registration.Toggle();
-        Assert.Equal(LoginRegistrationStep.None, registration.Step);
+    [Fact]
+    public async Task OpeningForAUsableRealmEditsAndCloseLeavesNothingBehind()
+    {
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, 1);
+        await using LoginRegistrationCoordinator registration = new(new FixedClock(s_now));
+
+        registration.Open(Select(catalog), catalog);
+        Assert.Equal(LoginRegistrationStatus.Editing, registration.Status);
         Assert.Null(registration.Feedback.Notice);
-        Assert.False(registration.TrySubmit(screen, null));
+
+        LoginRegistrationFeedback editing = registration.Feedback;
+        registration.Open(Select(catalog), catalog);
+        Assert.Same(editing, registration.Feedback);
+
+        registration.Close();
+        Assert.Equal(LoginRegistrationStatus.Closed, registration.Status);
+        Assert.Null(registration.Feedback.Notice);
+        using LoginRegistrationForm form = LoginRegistrationFormTests.Open();
+        Assert.False(registration.TrySubmit(form, Select(catalog), catalog));
     }
 
     [Theory]
-    [InlineData("", "secret1", (int)LoginFailureKind.EmptyAccount, 0u)]
-    [InlineData("newuser", "", (int)LoginFailureKind.EmptyPassword, 0u)]
-    [InlineData("abc", "secret1", (int)LoginFailureKind.RegistrationNotice, (uint)LoginRegistrationNotice.InvalidAccountName)]
-    [InlineData("abcdefghijklmnopq", "secret1", (int)LoginFailureKind.RegistrationNotice, (uint)LoginRegistrationNotice.InvalidAccountName)]
-    [InlineData("newuser", "12345", (int)LoginFailureKind.RegistrationNotice, (uint)LoginRegistrationNotice.InvalidPassword)]
-    [InlineData("newuser", "123456789012345", (int)LoginFailureKind.RegistrationNotice, (uint)LoginRegistrationNotice.InvalidPassword)]
-    public async Task FirstEntryEnforcesPolicyAndKeepsTheStep(string account, string password, int kind, uint code)
+    [InlineData("", "secret1", "secret1", (int)LoginRegistrationNotice.InvalidAccountName, (int)LoginRegistrationField.Account)]
+    [InlineData("abc", "secret1", "secret1", (int)LoginRegistrationNotice.InvalidAccountName, (int)LoginRegistrationField.Account)]
+    [InlineData("newuser", "", "", (int)LoginRegistrationNotice.InvalidPassword, (int)LoginRegistrationField.Password)]
+    [InlineData("newuser", "12345", "12345", (int)LoginRegistrationNotice.InvalidPassword, (int)LoginRegistrationField.Password)]
+    [InlineData("newuser", "secret1", "secret2", (int)LoginRegistrationNotice.PasswordMismatch, (int)LoginRegistrationField.Password)]
+    [InlineData("newuser", "secret1", "", (int)LoginRegistrationNotice.PasswordMismatch, (int)LoginRegistrationField.Password)]
+    public async Task EntriesAreCheckedInFieldOrderWithoutSending(string account, string password, string confirmation, int notice, int field)
     {
-        using LoginScreen screen = CreateScreen(null, account, password);
-        await using LoginRegistrationCoordinator registration = new();
-        registration.Toggle();
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, 1);
+        LoginServerSelection selection = Select(catalog);
+        await using LoginRegistrationCoordinator registration = new(new FixedClock(s_now));
+        registration.Open(selection, catalog);
+        using LoginRegistrationForm form = LoginRegistrationFormTests.Open();
+        LoginRegistrationFormTests.Fill(form, account, password, confirmation);
 
-        Assert.False(registration.TrySubmit(screen, null));
+        Assert.False(registration.TrySubmit(form, selection, catalog));
 
-        Assert.Equal(LoginRegistrationStep.EnterCredentials, registration.Step);
-        Assert.Equal((LoginFailureKind)kind, registration.Feedback.Notice!.Kind);
-        Assert.Equal(code, registration.Feedback.Notice.Code);
+        Assert.Equal(LoginRegistrationStatus.Editing, registration.Status);
+        Assert.Equal((LoginRegistrationNotice)notice, Notice(registration));
+        Assert.Equal((LoginRegistrationField)field, registration.Feedback.Focus);
+        Assert.Equal(password.Length, form.Field(LoginRegistrationField.Password).Length);
     }
 
     [Fact]
-    public async Task MismatchedConfirmationRestartsWithoutSending()
+    public async Task ValidEntriesWithoutAUsableRealmStayInTheDialog()
     {
-        using LoginScreen screen = CreateScreen(null, "newuser", "secret1");
-        await using LoginRegistrationCoordinator registration = new();
-        registration.Toggle();
-        Assert.True(registration.TrySubmit(screen, null));
-        Assert.Equal(0, screen.Credentials.PasswordLength);
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, 1);
+        await using LoginRegistrationCoordinator registration = new(new FixedClock(s_now));
+        registration.Open(Select(catalog), catalog);
+        using LoginRegistrationForm form = LoginRegistrationFormTests.Open();
+        LoginRegistrationFormTests.Fill(form, "newuser", "secret1", "secret1");
 
-        Type(screen, password: "secret2");
-        Assert.False(registration.TrySubmit(screen, null));
+        Assert.False(registration.TrySubmit(form, new LoginServerSelection(), null));
 
-        Assert.Equal(LoginRegistrationStep.EnterCredentials, registration.Step);
-        Assert.Equal(LoginRegistrationNotice.PasswordMismatch, Notice(registration));
-        Assert.Equal(0, screen.Credentials.PasswordLength);
+        Assert.Equal(LoginRegistrationStatus.Editing, registration.Status);
+        Assert.Equal(LoginRegistrationNotice.ServerNotSelected, Notice(registration));
+        Assert.Equal(7, form.Field(LoginRegistrationField.Password).Length);
     }
 
     [Fact]
-    public async Task EditedAccountBetweenEntriesStartsOver()
-    {
-        using LoginScreen screen = CreateScreen(null, "newuser", "secret1");
-        await using LoginRegistrationCoordinator registration = new();
-        registration.Toggle();
-        Assert.True(registration.TrySubmit(screen, null));
-
-        Type(screen, account: "x", password: "secret1");
-        Assert.False(registration.TrySubmit(screen, null));
-
-        Assert.Equal(LoginRegistrationStep.EnterCredentials, registration.Step);
-        Assert.Equal(LoginRegistrationNotice.Begin, Notice(registration));
-    }
-
-    [Fact]
-    public async Task ConfirmedEntryWithoutUsableRealmUsesTheLoginRealmResource()
-    {
-        using LoginScreen screen = CreateScreen(null, "newuser", "secret1");
-        await using LoginRegistrationCoordinator registration = new();
-        registration.Toggle();
-        Assert.True(registration.TrySubmit(screen, null));
-        Type(screen, password: "secret1");
-
-        Assert.False(registration.TrySubmit(screen, null));
-
-        Assert.Equal(LoginRegistrationStep.EnterCredentials, registration.Step);
-        Assert.Equal(LoginFailureKind.Resource, registration.Feedback.Notice!.Kind);
-        Assert.Equal(10012u, registration.Feedback.Notice.Code);
-    }
-
-    [Fact]
-    public async Task CreatedAccountLeavesTheFlowWithTheNamePrefilled()
+    public async Task CreatedAccountSendsOneRequestAndReportsCreation()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener listener = Listen();
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, Port(listener));
-        using LoginScreen screen = CreateScreen(catalog, "testacc", "password1");
         Task<byte[]> peer = RegisterPeerAsync(listener, 0, token);
-
         await using LoginRegistrationCoordinator registration = new(new FixedClock(s_now));
-        registration.Toggle();
-        Assert.True(registration.TrySubmit(screen, catalog));
-        Type(screen, password: "password1");
-        Assert.True(registration.TrySubmit(screen, catalog));
-        Assert.Equal(LoginRegistrationStep.Submitting, registration.Step);
-        Assert.Equal(0, screen.Credentials.PasswordLength);
+        using LoginRegistrationForm form = LoginRegistrationFormTests.Open();
+
+        LoginServerSelection selection = Submit(registration, form, catalog);
+        Assert.Equal(LoginRegistrationStatus.Submitting, registration.Status);
+        Assert.Equal(0, form.Field(LoginRegistrationField.Password).Length);
+        Assert.Equal(0, form.Field(LoginRegistrationField.Confirm).Length);
+        Assert.False(registration.TrySubmit(form, selection, catalog));
 
         byte[] request = await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await CollectAsync(registration, catalog);
 
-        Assert.Equal(LoginRegistrationStep.None, registration.Step);
+        Assert.Equal(LoginRegistrationStatus.Created, registration.Status);
         Assert.Equal(LoginRegistrationNotice.Created, Notice(registration));
-        Assert.Equal("testacc", screen.Credentials.AccountDisplay);
+        Assert.Equal("testacc", form.AccountName);
         AccountServerTestWire.DecodeClientRequest(request);
         Assert.Equal(0xF001, BinaryPrimitives.ReadUInt16LittleEndian(request.AsSpan(2)));
         Assert.Equal(AccountServerTestWire.TestAccountCredential, Convert.ToHexString(request.AsSpan(132, 32)));
     }
 
     [Theory]
-    [InlineData(1u, (int)LoginRegistrationNotice.Rejected)]
-    [InlineData(2u, (int)LoginRegistrationNotice.AccountNameTaken)]
-    [InlineData(3u, (int)LoginRegistrationNotice.Failed)]
-    [InlineData(4u, (int)LoginRegistrationNotice.Unavailable)]
-    public async Task RefusedRegistrationReturnsToEntry(uint code, int expected)
+    [InlineData(1u, (int)LoginRegistrationNotice.Rejected, (int)LoginRegistrationField.Account)]
+    [InlineData(2u, (int)LoginRegistrationNotice.AccountNameTaken, (int)LoginRegistrationField.Account)]
+    [InlineData(3u, (int)LoginRegistrationNotice.Failed, (int)LoginRegistrationField.Password)]
+    [InlineData(4u, (int)LoginRegistrationNotice.Unavailable, (int)LoginRegistrationField.Password)]
+    public async Task RefusedRegistrationReturnsToTheDialog(uint code, int notice, int field)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener listener = Listen();
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, Port(listener));
-        using LoginScreen screen = CreateScreen(catalog, "testacc", "password1");
         Task<byte[]> peer = RegisterPeerAsync(listener, code, token);
-
         await using LoginRegistrationCoordinator registration = new(new FixedClock(s_now));
-        await SubmitConfirmedAsync(registration, screen, catalog);
+        using LoginRegistrationForm form = LoginRegistrationFormTests.Open();
+
+        Submit(registration, form, catalog);
         await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await CollectAsync(registration, catalog);
 
-        Assert.Equal(LoginRegistrationStep.EnterCredentials, registration.Step);
-        Assert.Equal((LoginRegistrationNotice)expected, Notice(registration));
+        Assert.Equal(LoginRegistrationStatus.Editing, registration.Status);
+        Assert.Equal((LoginRegistrationNotice)notice, Notice(registration));
+        Assert.Equal((LoginRegistrationField)field, registration.Feedback.Focus);
     }
 
     [Fact]
@@ -171,49 +156,89 @@ public sealed class LoginRegistrationCoordinatorTests : IDisposable
 
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, port);
-        using LoginScreen screen = CreateScreen(catalog, "testacc", "password1");
-
         await using LoginRegistrationCoordinator registration = new(new FixedClock(s_now));
-        await SubmitConfirmedAsync(registration, screen, catalog);
+        using LoginRegistrationForm form = LoginRegistrationFormTests.Open();
+
+        Submit(registration, form, catalog);
         await CollectAsync(registration, catalog);
 
-        Assert.Equal(LoginRegistrationStep.EnterCredentials, registration.Step);
+        Assert.Equal(LoginRegistrationStatus.Editing, registration.Status);
         Assert.Equal(LoginFailureKind.Resource, registration.Feedback.Notice!.Kind);
         Assert.Equal(10397u, registration.Feedback.Notice.Code);
+        Assert.Equal(LoginRegistrationField.Password, registration.Feedback.Focus);
     }
 
     [Fact]
-    public async Task LostReplyClaimsNoOutcomeAndUsesTheNativeLossResource()
+    public async Task LostReplyClaimsNoOutcome()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener listener = Listen();
         using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, Port(listener));
-        using LoginScreen screen = CreateScreen(catalog, "testacc", "password1");
         Task peer = ClosingPeerAsync(listener, token);
-
         await using LoginRegistrationCoordinator registration = new(new FixedClock(s_now));
-        await SubmitConfirmedAsync(registration, screen, catalog);
+        using LoginRegistrationForm form = LoginRegistrationFormTests.Open();
+
+        Submit(registration, form, catalog);
         await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await CollectAsync(registration, catalog);
 
-        Assert.Equal(LoginRegistrationStep.EnterCredentials, registration.Step);
-        Assert.Equal(100116u, registration.Feedback.Notice!.Code);
+        Assert.Equal(LoginRegistrationStatus.Editing, registration.Status);
+        Assert.Equal(LoginRegistrationNotice.OutcomeUnknown, Notice(registration));
+    }
+
+    [Fact]
+    public async Task RevokedCatalogCancelsTheRequestAndClaimsNoOutcome()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener listener = Listen();
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, Port(listener));
+        TaskCompletionSource received = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task peer = SilentPeerAsync(listener, received, token);
+        await using LoginRegistrationCoordinator registration = new(new FixedClock(s_now));
+        using LoginRegistrationForm form = LoginRegistrationFormTests.Open();
+
+        Submit(registration, form, catalog);
+        await received.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await CollectAsync(registration, null);
+        await peer.WaitAsync(TimeSpan.FromSeconds(5), token);
+
+        Assert.Equal(LoginRegistrationStatus.Editing, registration.Status);
+        Assert.Equal(LoginRegistrationNotice.OutcomeUnknown, Notice(registration));
     }
 
     [Fact]
     public async Task DisposedCoordinatorRejectsUse()
     {
-        using LoginScreen screen = CreateScreen(null, "newuser", "secret1");
+        using LoginRegistrationForm form = LoginRegistrationFormTests.Open();
         LoginRegistrationCoordinator registration = new();
-        registration.Toggle();
-        Assert.True(registration.TrySubmit(screen, null));
         await registration.DisposeAsync();
         await registration.DisposeAsync();
 
-        Assert.Throws<ObjectDisposedException>(registration.Toggle);
-        Assert.Throws<ObjectDisposedException>(() => registration.TrySubmit(screen, null));
+        Assert.Throws<ObjectDisposedException>(() => registration.Open(new LoginServerSelection(), null));
+        Assert.Throws<ObjectDisposedException>(registration.Close);
+        Assert.Throws<ObjectDisposedException>(() => registration.TrySubmit(form, new LoginServerSelection(), null));
     }
+
+    [Theory]
+    [InlineData("abcd", true)]
+    [InlineData("abcdefghijklmnop", true)]
+    [InlineData("abc", false)]
+    [InlineData("abcdefghijklmnopq", false)]
+    [InlineData("ab cd", false)]
+    [InlineData("abcé", false)]
+    public void AccountPolicyChecksLengthAndAlphabet(string name, bool valid) =>
+        Assert.Equal(valid, LoginRegistrationPolicy.IsValidAccount(name));
+
+    [Theory]
+    [InlineData("secret", true)]
+    [InlineData("12345678901234", true)]
+    [InlineData("12345", false)]
+    [InlineData("123456789012345", false)]
+    [InlineData("secret 1", false)]
+    public void PasswordPolicyChecksLengthAndAlphabet(string password, bool valid) =>
+        Assert.Equal(valid, LoginRegistrationPolicy.IsValidPassword(password));
 
     private static LoginRegistrationNotice Notice(LoginRegistrationCoordinator registration)
     {
@@ -222,68 +247,34 @@ public sealed class LoginRegistrationCoordinatorTests : IDisposable
         return (LoginRegistrationNotice)notice.Code;
     }
 
-    private static async Task SubmitConfirmedAsync(LoginRegistrationCoordinator registration, LoginScreen screen, SignedLoginCatalog catalog)
+    /// <summary>Opens the flow and submits the account the shared credential vector was computed for.</summary>
+    private static LoginServerSelection Submit(LoginRegistrationCoordinator registration, LoginRegistrationForm form, SignedLoginCatalog catalog)
     {
-        registration.Toggle();
-        Assert.True(registration.TrySubmit(screen, catalog));
-        Type(screen, password: "password1");
-        Assert.True(registration.TrySubmit(screen, catalog));
-        await Task.CompletedTask;
+        LoginServerSelection selection = Select(catalog);
+        registration.Open(selection, catalog);
+        LoginRegistrationFormTests.Fill(form, "testacc", "password1", "password1");
+        Assert.True(registration.TrySubmit(form, selection, catalog));
+        return selection;
     }
 
-    private static async Task CollectAsync(LoginRegistrationCoordinator registration, SignedLoginCatalog catalog)
+    private static async Task CollectAsync(LoginRegistrationCoordinator registration, SignedLoginCatalog? catalog)
     {
         using CancellationTokenSource budget = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         budget.CancelAfter(TimeSpan.FromSeconds(12));
-        while (registration.Step == LoginRegistrationStep.Submitting)
+        while (registration.Status == LoginRegistrationStatus.Submitting)
         {
             registration.Update(catalog);
             await Task.Delay(10, budget.Token);
         }
     }
 
-    private LoginScreen CreateScreen(SignedLoginCatalog? catalog, string account, string password)
+    private static LoginServerSelection Select(SignedLoginCatalog catalog)
     {
-        LoginStageLayout layout = LoginStageLayout.Create(new LogicalRenderSize(1024, 768));
-        LoginScreen screen = new(layout, new LoginAccountHistory(_folder), "5517", _ => { });
-        if (catalog is not null)
-        {
-            screen.Selection.ReplaceCatalog(catalog.View);
-            Assert.True(screen.Selection.SelectRegionSlot(0));
-            Assert.True(screen.Selection.SelectServerSlot(0));
-        }
-
-        screen.Advance(TimeSpan.Zero);
-        Type(screen, account, password);
-        return screen;
-    }
-
-    private static void Type(LoginScreen screen, string? account = null, string? password = null)
-    {
-        LoginCredentialLayout fields = LoginCredentialLayout.Create(screen.Layout);
-        if (account is not null)
-        {
-            Assert.True(screen.Credentials.PointerPressed(true, fields.AccountField.X + 2, fields.AccountField.Y + 2));
-            while (screen.Credentials.AccountLength > 0)
-            {
-                screen.Credentials.KeyPressed(new(Platform.Windowing.Desktop.DesktopKey.End, default, false));
-                screen.Credentials.KeyPressed(new(Platform.Windowing.Desktop.DesktopKey.Backspace, default, false));
-            }
-
-            foreach (char letter in account)
-            {
-                screen.Credentials.TextEntered(letter);
-            }
-        }
-
-        if (password is not null)
-        {
-            Assert.True(screen.Credentials.PointerPressed(true, fields.PasswordField.X + 2, fields.PasswordField.Y + 2));
-            foreach (char letter in password)
-            {
-                screen.Credentials.TextEntered(letter);
-            }
-        }
+        LoginServerSelection selection = new();
+        selection.ReplaceCatalog(catalog.View);
+        Assert.True(selection.SelectRegionSlot(0));
+        Assert.True(selection.SelectServerSlot(0));
+        return selection;
     }
 
     private static TcpListener Listen()
@@ -314,6 +305,26 @@ public sealed class LoginRegistrationCoordinatorTests : IDisposable
         await stream.ReadExactlyAsync(new byte[260], token);
     }
 
+    /// <summary>Takes the request and never answers; returns once the client closes the connection.</summary>
+    private static async Task SilentPeerAsync(TcpListener listener, TaskCompletionSource received, CancellationToken token)
+    {
+        using TcpClient client = await listener.AcceptTcpClientAsync(token);
+        NetworkStream stream = client.GetStream();
+        await stream.WriteAsync(Convert.FromHexString(AccountServerTestWire.SeedWire), token);
+        await stream.ReadExactlyAsync(new byte[260], token);
+        received.SetResult();
+        try
+        {
+            while (await stream.ReadAsync(new byte[1], token) > 0)
+            {
+            }
+        }
+        catch (IOException)
+        {
+            // A reset is as good as a close.
+        }
+    }
+
     private static SignedLoginCatalog CreateSignedLocalCatalog(ECDsa signer, int port)
     {
         byte[] data = Encoding.UTF8.GetBytes(
@@ -331,6 +342,4 @@ public sealed class LoginRegistrationCoordinatorTests : IDisposable
     {
         public override DateTimeOffset GetUtcNow() => now;
     }
-
-    public void Dispose() => Directory.Delete(_folder, recursive: true);
 }

@@ -172,7 +172,7 @@ internal sealed class ClientApplication : IDisposable
         _loginErrors = LoginErrorMessages.Load(contentSource, LoginErrorEncoding.ForCurrentHost());
         _login.LoginRequested += OnLoginRequested;
         _registrationFlow = new LoginRegistrationCoordinator();
-        _login.RegistrationToggleRequested += OnRegistrationToggleRequested;
+        _login.RegistrationRequested += OnRegistrationRequested;
         _login.RegistrationSubmitRequested += OnRegistrationSubmitRequested;
         _login.RegistrationCancelRequested += OnRegistrationCancelRequested;
 
@@ -199,6 +199,7 @@ internal sealed class ClientApplication : IDisposable
             _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy));
             _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
             login.CaretLocator = _loginRenderer.CaretLocator;
+            login.RegistrationCaretLocator = _loginRenderer.RegistrationCaretLocator;
             _graphics = graphics;
         }
         catch
@@ -217,6 +218,7 @@ internal sealed class ClientApplication : IDisposable
         if (_login is not null)
         {
             _login.CaretLocator = null;
+            _login.RegistrationCaretLocator = null;
         }
 
         ResourceOwnership? graphics = _graphics;
@@ -284,11 +286,11 @@ internal sealed class ClientApplication : IDisposable
         }
     }
 
-    private void OnRegistrationToggleRequested()
+    private void OnRegistrationRequested()
     {
         if (_login is { } login && _registrationFlow is { } registration)
         {
-            registration.Toggle();
+            registration.Open(login.Selection, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
             login.ApplyRegistrationFeedback(registration.Feedback, _loginErrors!);
         }
     }
@@ -297,7 +299,7 @@ internal sealed class ClientApplication : IDisposable
     {
         if (_login is { } login && _registrationFlow is { } registration)
         {
-            registration.TrySubmit(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
+            registration.TrySubmit(login.Registration, login.Selection, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
             login.ApplyRegistrationFeedback(registration.Feedback, _loginErrors!);
         }
     }
@@ -306,7 +308,7 @@ internal sealed class ClientApplication : IDisposable
     {
         if (_login is { } login && _registrationFlow is { } registration)
         {
-            registration.Cancel();
+            registration.Close();
             login.ApplyRegistrationFeedback(registration.Feedback, _loginErrors!);
         }
     }
@@ -364,7 +366,7 @@ internal sealed class ClientApplication : IDisposable
     /// <summary>A held credential selection keeps tracking the pointer, clamped to the stage, beyond the field.</summary>
     private void ContinueCredentialDrag()
     {
-        if (_login is { Credentials.IsSelecting: true } login && _renderer is { Viewport.IsEmpty: false } renderer)
+        if (_login is { IsSelectingText: true } login && _renderer is { Viewport.IsEmpty: false } renderer)
         {
             login.PointerDragged(renderer.Viewport.MapPointerXClamped(_lastPointer.X));
         }
