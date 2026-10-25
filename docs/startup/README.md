@@ -35,3 +35,4 @@ For the current state of the client, see the [README](../../README.md) and the
 | [STARTUP-001X](STARTUP-001X.md) | Original 5517 cursor and login sounds |
 | [STARTUP-001Y](STARTUP-001Y.md) | 5517 login credential editing |
 | [STARTUP-001Z](STARTUP-001Z.md) | Retail 5517 login screen |
+| [ROLE-001A](ROLE-001A.md) | Retail 5517 create-role movies on a Flash stage |
