@@ -10,6 +10,9 @@
     <EmbeddedResource Include="Assets/Login/**/*"
                       WithCulture="false"
                       LogicalName="Assets/Login/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Assets/Role/**/*"
+                      WithCulture="false"
+                      LogicalName="Assets/Role/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
