@@ -202,7 +202,22 @@ public sealed class DisplaySettingsTests : IDisposable
         CancellationToken token = TestContext.Current.CancellationToken;
         DisplaySettingsStore writer = new(_root);
         Assert.Null(await writer.SaveAsync(DisplayPreferences.Default, null, false, token));
-        async Task WriteAsync()
+        TaskCompletionSource replaced = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task ReadAsync()
+        {
+            DisplaySettingsStore reader = new(_root);
+            while (!replaced.Task.IsCompleted)
+            {
+                // A missing document reads as the defaults without a revision.
+                SettingsReadResult.Loaded read = Assert.IsType<SettingsReadResult.Loaded>(await reader.LoadAsync(token));
+                Assert.NotNull(read.Revision);
+                Assert.InRange(read.Preferences.Width, 1280, 1330);
+            }
+        }
+
+        // Both readers are loading before the first replacement starts and keep loading until the last one ends.
+        Task[] readers = [ReadAsync(), ReadAsync()];
+        try
         {
             for (int index = 1; index <= 50; index++)
             {
@@ -210,22 +225,12 @@ public sealed class DisplaySettingsTests : IDisposable
                 Assert.Null(await writer.SaveAsync(new DisplayPreferences(1280 + index, 720, GameWindowMode.Resizable, GamePresentation.Fit), previous.Revision, false, token));
             }
         }
-
-        Task writing = WriteAsync();
-        async Task ReadAsync()
+        finally
         {
-            DisplaySettingsStore reader = new(_root);
-            do
-            {
-                // A missing document reads as the defaults without a revision.
-                SettingsReadResult.Loaded read = Assert.IsType<SettingsReadResult.Loaded>(await reader.LoadAsync(token));
-                Assert.NotNull(read.Revision);
-                Assert.InRange(read.Preferences.Width, 1280, 1330);
-            }
-            while (!writing.IsCompleted);
+            replaced.SetResult();
         }
 
-        await Task.WhenAll(writing, ReadAsync(), ReadAsync());
+        await Task.WhenAll(readers);
         Assert.Single(Directory.EnumerateFiles(_root));
     }
 
