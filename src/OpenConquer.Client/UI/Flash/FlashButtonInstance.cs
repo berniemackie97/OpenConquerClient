@@ -14,6 +14,12 @@ internal interface IFlashPointerTarget
     void Release();
 
     void ReleaseOutside();
+
+    /// <summary>The pointer left this target while pressed on it.</summary>
+    void DragOut();
+
+    /// <summary>The pointer came back over this target while still pressed on it.</summary>
+    void DragOver();
 }
 
 /// <summary>
@@ -69,6 +75,16 @@ internal sealed class FlashButtonInstance : FlashDisplayObject, IFlashPointerTar
         get; set;
     }
 
+    public Action<FlashButtonInstance>? OnDragOut
+    {
+        get; set;
+    }
+
+    public Action<FlashButtonInstance>? OnDragOver
+    {
+        get; set;
+    }
+
     /// <summary>AS2 <c>enabled</c>: a disabled button shows its up state and ignores the pointer.</summary>
     public bool Enabled { get; set; } = true;
 
@@ -97,6 +113,18 @@ internal sealed class FlashButtonInstance : FlashDisplayObject, IFlashPointerTar
     {
         _pressed = false;
         OnRelease?.Invoke(this);
+    }
+
+    void IFlashPointerTarget.DragOut()
+    {
+        _hovered = false;
+        OnDragOut?.Invoke(this);
+    }
+
+    void IFlashPointerTarget.DragOver()
+    {
+        _hovered = true;
+        OnDragOver?.Invoke(this);
     }
 
     void IFlashPointerTarget.ReleaseOutside()

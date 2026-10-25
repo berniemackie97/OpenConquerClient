@@ -210,6 +210,51 @@ public sealed class FlashStageTests
         Assert.Equal((2, 4), (holder.CurrentFrame, holder.Children[0].Depth));
     }
 
+    [Fact]
+    public void LoadedClip_SurvivesTheParentsNextFrame()
+    {
+        FlashMovie host = Movie(Shapes + ""","2":{"kind":"sprite"}""", """
+            "root":{"frames":[[{"d":1,"c":2,"p":1,"n":"holder"}],[{"d":1,"c":2,"p":1,"n":"holder"}]],"labels":{}},"2":{"frames":[[]],"labels":{}}
+            """);
+        FlashMovie loaded = Movie(Shapes, """
+            "root":{"frames":[[{"d":4,"c":1,"p":1}],[{"d":4,"c":1,"p":1}]],"labels":{}}
+            """, name: "loaded");
+        FlashStage stage = Start(host, new FlashScriptTable());
+        FlashClip holder = stage.Root.ChildClip("holder");
+
+        holder.LoadMovie(loaded);
+        stage.Tick();
+
+        Assert.Equal(2, stage.Root.CurrentFrame);
+        Assert.Same(holder, stage.Root.ChildClip("holder"));
+        Assert.Same(loaded, holder.Movie);
+    }
+
+    [Fact]
+    public void ClipPlacedByAnEnterFrameHandler_RunsItsFirstFrameBeforeItAdvances()
+    {
+        FlashMovie movie = Movie(Shapes + ""","2":{"kind":"sprite"}""", """
+            "root":{"frames":[[],[{"d":1,"c":2,"p":2,"n":"button"}]],"labels":{}},"2":{"frames":[[],[]],"labels":{}}
+            """);
+        FlashScriptTable scripts = new();
+        scripts.Frame("test", "root", 1, root =>
+        {
+            root.Stop();
+            root.OnEnterFrame = clip =>
+            {
+                clip.NextFrame();
+                clip.OnEnterFrame = null;
+            };
+        });
+        scripts.Frame("test", "2", 1, clip => clip.Stop());
+        FlashStage stage = Start(movie, scripts);
+
+        stage.Tick();
+        stage.Tick();
+
+        Assert.Equal(1, stage.Root.ChildClip("button").CurrentFrame);
+    }
+
     private static FlashStage Start(FlashMovie movie, FlashScriptTable scripts)
     {
         FlashStage stage = new(movie, scripts, new SquareRasters());

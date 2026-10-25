@@ -16,12 +16,14 @@ namespace OpenConquer.Client.UI.Flash;
 internal sealed class FlashStagePresentation : IDisposable
 {
     private const int TextGutter = 2;
+    private const int CaretBlinkFrames = 15;
 
     private readonly OpenGLGraphicsDevice _graphicsDevice;
     private readonly IFlashRasterSource _rasters;
     private readonly Dictionary<(FlashMovie Movie, int Raster), OpenGLTexture2D> _textures = [];
     private readonly Dictionary<(string Font, int Size), OpenGLTextContext> _fonts = [];
     private readonly Dictionary<(OpenGLTextContext Context, string Text), OpenGLTextLayout> _layouts = [];
+    private FlashStage? _drawing;
     private bool _disposed;
 
     public FlashStagePresentation(OpenGLGraphicsDevice graphicsDevice, IFlashRasterSource rasters)
@@ -39,7 +41,15 @@ internal sealed class FlashStagePresentation : IDisposable
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(stage);
 
-        DrawChildren(renderer, stage.Root, FlashTransforms.ToMatrix(stage.Root.Matrix), Color(stage.Root.ColorTransform));
+        _drawing = stage;
+        try
+        {
+            DrawChildren(renderer, stage.Root, FlashTransforms.ToMatrix(stage.Root.Matrix), Color(stage.Root.ColorTransform));
+        }
+        finally
+        {
+            _drawing = null;
+        }
     }
 
     public void Dispose()
@@ -175,7 +185,8 @@ internal sealed class FlashStagePresentation : IDisposable
     {
         FlashEditTextCharacter field = text.Definition;
         string value = text.Text;
-        if (value.Length == 0 || color.AlphaMultiplier <= 0f)
+        bool focused = ReferenceEquals(_drawing?.FocusedText, text);
+        if (value.Length == 0 && !focused || color.AlphaMultiplier <= 0f)
         {
             return;
         }
@@ -204,6 +215,14 @@ internal sealed class FlashStagePresentation : IDisposable
             }
 
             lineY += Math.Max(1, (int)MathF.Round(field.FontHeight + field.Leading)) + TextGutter;
+        }
+
+        // The focused field's caret blinks every 15 frames (0.5 s at 30 fps), close to the Windows default of 530 ms; the
+        // Flash 7 player's own rate is not verified.
+        if (focused && _drawing!.FrameCount / CaretBlinkFrames % 2 == 0)
+        {
+            int caretX = (int)MathF.Round(origin.X) + (text.Caret == 0 ? 0 : Layout(font, value[..text.Caret]).WidthPixels);
+            renderer.DrawSolidRectangle(caretX, (int)MathF.Round(origin.Y), 1, Math.Max(1, (int)MathF.Round(field.FontHeight)), tint);
         }
     }
 

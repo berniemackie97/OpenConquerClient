@@ -21,6 +21,7 @@ internal abstract class FlashDisplayObject
         Character = character;
         Parent = parent;
         Depth = placement.Depth;
+        PlacedCharacterId = placement.CharacterId;
         Name = placement.Name;
         PlacedFrame = placement.PlacedFrame;
         _matrix = placement.Matrix;
@@ -50,6 +51,15 @@ internal abstract class FlashDisplayObject
     }
 
     public string? Name
+    {
+        get;
+    }
+
+    /// <summary>
+    /// The character its PlaceObject named. It identifies the instance across seeks even after <c>loadMovie</c>
+    /// has replaced the clip's content.
+    /// </summary>
+    public int PlacedCharacterId
     {
         get;
     }
@@ -133,7 +143,7 @@ internal abstract class FlashDisplayObject
     }
 
     internal bool IsSameInstance(FlashPlacement placement) =>
-        placement.CharacterId == Character.Id && placement.PlacedFrame == PlacedFrame && placement.Depth == Depth;
+        placement.CharacterId == PlacedCharacterId && placement.PlacedFrame == PlacedFrame && placement.Depth == Depth;
 
     private void SetMatrix(FlashMatrix matrix)
     {
@@ -146,14 +156,19 @@ internal abstract class FlashDisplayObject
 internal sealed class FlashShapeInstance(FlashMovie movie, FlashCharacter character, FlashPlacement placement, FlashClip parent)
     : FlashDisplayObject(movie, character, placement, parent);
 
-/// <summary>A dynamic or input text field; scripts set its text.</summary>
+/// <summary>
+/// A dynamic or input text field. Scripts set its text; an input field (not read-only) also takes typing at a
+/// caret while it has the stage's focus. Only the caret is modelled: there is no range selection.
+/// </summary>
 internal sealed class FlashTextInstance : FlashDisplayObject
 {
+    private string _text;
+
     public FlashTextInstance(FlashMovie movie, FlashEditTextCharacter character, FlashPlacement placement, FlashClip parent)
         : base(movie, character, placement, parent)
     {
         Definition = character;
-        Text = character.InitialText;
+        _text = character.InitialText;
     }
 
     public FlashEditTextCharacter Definition
@@ -161,9 +176,65 @@ internal sealed class FlashTextInstance : FlashDisplayObject
         get;
     }
 
-    /// <summary>AS2 <c>text</c>.</summary>
+    public bool IsInput => !Definition.ReadOnly;
+
+    /// <summary>AS2 <c>text</c>. Setting it from a script does not raise <see cref="OnChanged"/>.</summary>
     public string Text
+    {
+        get => _text;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _text = value;
+            Caret = Math.Min(Caret, value.Length);
+        }
+    }
+
+    /// <summary>Insertion point, in UTF-16 units.</summary>
+    public int Caret
+    {
+        get; private set;
+    }
+
+    /// <summary>AS2 <c>onChanged</c>: raised after each edit the user makes.</summary>
+    public Action<FlashTextInstance>? OnChanged
     {
         get; set;
     }
+
+    /// <summary>AS2 <c>Selection.setSelection(begin, end)</c>: without range selection, the caret moves to <paramref name="end"/>.</summary>
+    public void SetSelection(int begin, int end) => Caret = Math.Clamp(Math.Max(begin, end), 0, _text.Length);
+
+    internal void Insert(char character)
+    {
+        if (!IsInput || char.IsControl(character) || Definition.MaxLength > 0 && _text.Length >= Definition.MaxLength)
+        {
+            return;
+        }
+
+        _text = _text.Insert(Caret, character.ToString());
+        Caret++;
+        OnChanged?.Invoke(this);
+    }
+
+    internal void Backspace()
+    {
+        if (IsInput && Caret > 0)
+        {
+            _text = _text.Remove(Caret - 1, 1);
+            Caret--;
+            OnChanged?.Invoke(this);
+        }
+    }
+
+    internal void Delete()
+    {
+        if (IsInput && Caret < _text.Length)
+        {
+            _text = _text.Remove(Caret, 1);
+            OnChanged?.Invoke(this);
+        }
+    }
+
+    internal void MoveCaret(int position) => Caret = Math.Clamp(position, 0, _text.Length);
 }

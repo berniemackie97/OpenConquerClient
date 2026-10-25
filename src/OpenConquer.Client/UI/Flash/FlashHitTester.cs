@@ -70,6 +70,34 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
         return FindIn(root, point);
     }
 
+    /// <summary>The topmost visible input field under the point, inside every mask over it.</summary>
+    public FlashTextInstance? InputTextAt(FlashClip root, Vector2 point)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        IReadOnlyList<FlashDisplayObject> children = root.Children;
+        for (int index = children.Count - 1; index >= 0; index--)
+        {
+            FlashDisplayObject child = children[index];
+            if (!child.Visible || child.ClipDepth is not null || !InsideMasks(children, index, point))
+            {
+                continue;
+            }
+
+            if (child is FlashTextInstance { IsInput: true } text && Contains(text, point, ignoreVisibility: false))
+            {
+                return text;
+            }
+
+            if (child is FlashClip nested && InputTextAt(nested, point) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
     private IFlashPointerTarget? FindIn(FlashClip clip, Vector2 point)
     {
         IReadOnlyList<FlashDisplayObject> children = clip.Children;
@@ -86,6 +114,11 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
                 case FlashButtonInstance button when button.Enabled && ContainsButton(button, point):
                     return button;
                 case FlashClip target when target.HandlesPointer:
+                    if (!target.Enabled)
+                    {
+                        break;
+                    }
+
                     if (target.HitArea is { } hitArea ? Contains(hitArea, point, ignoreVisibility: true) : Contains(target, point, ignoreVisibility: false))
                     {
                         return target;

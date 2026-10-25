@@ -20,7 +20,7 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
 
         Stage = stage;
         Timeline = sprite.Timeline;
-        TimelineKey = sprite.Id == 0 ? "root" : sprite.Id.ToString(CultureInfo.InvariantCulture);
+        TimelineKey = sprite.Id != 0 ? sprite.Id.ToString(CultureInfo.InvariantCulture) : parent is null ? "root" : "empty";
     }
 
     public FlashStage Stage
@@ -33,7 +33,7 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
         get; private set;
     }
 
-    /// <summary>"root" for a movie's main timeline, otherwise the sprite's character id; scripts register by it.</summary>
+    /// <summary>"root" for a movie's main timeline, "empty" for a script-created clip, otherwise the sprite's character id; scripts register by it.</summary>
     public string TimelineKey
     {
         get; private set;
@@ -85,15 +85,28 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
         get; set;
     }
 
+    public Action<FlashClip>? OnDragOut
+    {
+        get; set;
+    }
+
+    public Action<FlashClip>? OnDragOver
+    {
+        get; set;
+    }
+
     /// <summary>AS2 <c>onMouseMove</c>, broadcast to every clip on each pointer move.</summary>
     public Action<FlashClip>? OnMouseMove
     {
         get; set;
     }
 
+    /// <summary>AS2 <c>enabled</c>: a disabled clip receives no pointer events.</summary>
+    public bool Enabled { get; set; } = true;
+
     /// <summary>A clip that handles the pointer is targeted as a whole; its children are not targeted separately.</summary>
     public bool HandlesPointer => OnRollOver is not null || OnRollOut is not null || OnPress is not null || OnRelease is not null ||
-                                  OnReleaseOutside is not null;
+                                  OnReleaseOutside is not null || OnDragOut is not null || OnDragOver is not null;
 
     /// <summary>
     /// AS2 <c>hitArea</c>. Instance names are properties in AS2, so a child named "hitArea" is the hit area unless a
@@ -172,6 +185,30 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
     }
 
     /// <summary>
+    /// AS2 <c>createEmptyMovieClip(name, depth)</c>: an empty one-frame clip that scripts drive, e.g. a key poller.
+    /// </summary>
+    public FlashClip CreateEmptyMovieClip(string name, int depth)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        if (At(depth) is { } occupant)
+        {
+            _children.Remove(occupant);
+            Stage.Detach(occupant);
+        }
+
+        FlashTimeline empty = new([[]], new Dictionary<string, int>());
+        FlashClip clip = new(Stage, Movie, new FlashSpriteCharacter(0, empty),
+            new FlashPlacement(depth, 0, name, FlashMatrix.Identity, FlashColorTransform.Identity, null, null, CurrentFrame), this)
+        {
+            ScriptOwnsDepth = true,
+        };
+        clip.Initialize();
+        Insert(clip);
+        return clip;
+    }
+
+    /// <summary>
     /// AS2 <c>loadMovie</c> of an already baked movie: this clip keeps its name, depth and transform and plays the
     /// other movie's main timeline from frame 1.
     /// </summary>
@@ -187,7 +224,7 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
         _children.Clear();
         _variables.Clear();
         _hitArea = null;
-        OnEnterFrame = OnRollOver = OnRollOut = OnPress = OnRelease = OnReleaseOutside = OnMouseMove = null;
+        OnEnterFrame = OnRollOver = OnRollOut = OnPress = OnRelease = OnReleaseOutside = OnDragOut = OnDragOver = OnMouseMove = null;
 
         FlashSpriteCharacter root = new(0, movie.Root);
         Movie = movie;
@@ -208,6 +245,10 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
     void IFlashPointerTarget.Release() => Invoke(OnRelease);
 
     void IFlashPointerTarget.ReleaseOutside() => Invoke(OnReleaseOutside);
+
+    void IFlashPointerTarget.DragOut() => Invoke(OnDragOut);
+
+    void IFlashPointerTarget.DragOver() => Invoke(OnDragOver);
 
     private void Invoke(Action<FlashClip>? handler)
     {

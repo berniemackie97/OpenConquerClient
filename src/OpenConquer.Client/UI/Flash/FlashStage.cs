@@ -17,6 +17,7 @@ internal sealed class FlashStage
 
     private IFlashPointerTarget? _hovered;
     private IFlashPointerTarget? _pressed;
+    private bool _pressedOver;
     private bool _started;
 
     public FlashStage(FlashMovie movie, FlashScriptTable scripts, IFlashRasterSource rasters)
@@ -39,6 +40,18 @@ internal sealed class FlashStage
     public FlashScriptTable Scripts
     {
         get;
+    }
+
+    /// <summary>Frames played since <see cref="Start"/>; drives the caret blink.</summary>
+    public long FrameCount
+    {
+        get; private set;
+    }
+
+    /// <summary>The input field that has keyboard focus, if any (AS2 <c>Selection.getFocus</c>).</summary>
+    public FlashTextInstance? FocusedText
+    {
+        get; private set;
     }
 
     /// <summary>The pointer in stage pixels.</summary>
@@ -72,8 +85,11 @@ internal sealed class FlashStage
 
         // Work queued outside a script (a screen calling loadMovie or gotoAndPlay) runs before the frame advances.
         RunPendingScripts();
+        FrameCount++;
 
-        foreach (FlashClip clip in Clips())
+        // Only clips that existed when the frame began advance; a clip placed during it starts on the next one.
+        List<FlashClip> clips = Clips();
+        foreach (FlashClip clip in clips)
         {
             if (clip.IsOnStage)
             {
@@ -81,7 +97,9 @@ internal sealed class FlashStage
             }
         }
 
-        foreach (FlashClip clip in Clips())
+        RunPendingScripts();
+
+        foreach (FlashClip clip in clips)
         {
             if (clip.IsOnStage)
             {
@@ -98,6 +116,58 @@ internal sealed class FlashStage
         ArgumentNullException.ThrowIfNull(clip);
 
         return Matrix3x2.Invert(FlashTransforms.World(clip), out Matrix3x2 inverse) ? Vector2.Transform(Pointer, inverse) : Vector2.Zero;
+    }
+
+    /// <summary>
+    /// AS2 <c>Selection.setFocus</c>: focuses an input field, with the caret after its text (Flash selects the
+    /// whole text, and this model has no range selection), or clears the focus.
+    /// </summary>
+    public void SetFocus(FlashTextInstance? text)
+    {
+        FocusedText = text is { IsInput: true, Parent.IsOnStage: true } ? text : null;
+        FocusedText?.MoveCaret(FocusedText.Text.Length);
+    }
+
+    /// <summary>A typed character for the focused input field.</summary>
+    public void TextEntered(char character)
+    {
+        EnsureStarted();
+        FocusedText?.Insert(character);
+        RunPendingScripts();
+    }
+
+    /// <summary>An editing key for the focused input field.</summary>
+    public void EditKey(FlashEditKey key)
+    {
+        EnsureStarted();
+        if (FocusedText is not { } text)
+        {
+            return;
+        }
+
+        switch (key)
+        {
+            case FlashEditKey.Backspace:
+                text.Backspace();
+                break;
+            case FlashEditKey.Delete:
+                text.Delete();
+                break;
+            case FlashEditKey.Left:
+                text.MoveCaret(text.Caret - 1);
+                break;
+            case FlashEditKey.Right:
+                text.MoveCaret(text.Caret + 1);
+                break;
+            case FlashEditKey.Home:
+                text.MoveCaret(0);
+                break;
+            case FlashEditKey.End:
+                text.MoveCaret(text.Text.Length);
+                break;
+        }
+
+        RunPendingScripts();
     }
 
     /// <summary>AS2 <c>Key.isDown</c> by virtual key code (13 Enter, 27 Escape).</summary>
@@ -140,7 +210,13 @@ internal sealed class FlashStage
         if (_hovered is not null)
         {
             _pressed = _hovered;
+            _pressedOver = true;
             _pressed.Press();
+        }
+        else
+        {
+            // A press on an input field focuses it; a press anywhere else clears the focus.
+            SetFocus(_hitTester.InputTextAt(Root, Pointer));
         }
 
         RunPendingScripts();
@@ -190,6 +266,11 @@ internal sealed class FlashStage
             }
         }
 
+        if (ReferenceEquals(FocusedText, removed) || FocusedText is not null && removed is FlashClip && !FocusedText.Parent!.IsOnStage)
+        {
+            FocusedText = null;
+        }
+
         if (ReferenceEquals(_hovered, removed))
         {
             _hovered = null;
@@ -236,12 +317,27 @@ internal sealed class FlashStage
 
     private void UpdateHover()
     {
-        if (_pressed is not null)
+        IFlashPointerTarget? target = _hitTester.Target(Root, Pointer);
+        if (_pressed is { } pressed)
         {
+            // While pressed, Flash tracks only whether the pointer is over the pressed target.
+            bool over = ReferenceEquals(target, pressed);
+            if (over != _pressedOver)
+            {
+                _pressedOver = over;
+                if (over)
+                {
+                    pressed.DragOver();
+                }
+                else
+                {
+                    pressed.DragOut();
+                }
+            }
+
             return;
         }
 
-        IFlashPointerTarget? target = _hitTester.Target(Root, Pointer);
         if (ReferenceEquals(target, _hovered))
         {
             return;
@@ -279,4 +375,15 @@ internal sealed class FlashStage
             throw new InvalidOperationException("Start the Flash stage before driving it.");
         }
     }
+}
+
+/// <summary>Editing keys an input field handles.</summary>
+internal enum FlashEditKey
+{
+    Backspace,
+    Delete,
+    Left,
+    Right,
+    Home,
+    End,
 }
