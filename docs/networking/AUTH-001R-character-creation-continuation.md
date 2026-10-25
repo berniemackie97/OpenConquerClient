@@ -17,9 +17,10 @@ Verified in the 5517 client:
 | `CMyShellDlg_HandleCreateRoleStatusSystemTalk` | `0x5DCDDF` | `ANSWER_OK` → `CConnectionFlow__SendGameSessionBootstrap` |
 | `CConnectionFlow__SendGameSessionBootstrap` | `0x6DF1D0` | re-sends 1052 on the same socket |
 
-The companion server's `GameCharacterCreationLoginProcessor` answers each 1001 on channel 2100, accepts
-one repeated 1052 after `ANSWER_OK` without redeeming the ticket again, and then runs the
-existing-character bootstrap: `1004 ANSWER_OK` (2101) → 2078 → 2079 → 1006.
+The companion server's creation route (`GameCharacterCreationLoginProcessor`, not yet merged into
+OpenConquerServer `main`) answers each 1001 on channel 2100, accepts one repeated 1052 after `ANSWER_OK`
+without redeeming the ticket again, and then runs the existing-character bootstrap: `1004 ANSWER_OK`
+(2101) → 2078 → 2079 → 1006.
 
 ## How it works
 
