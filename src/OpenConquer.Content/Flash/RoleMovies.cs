@@ -14,7 +14,7 @@ public static class RoleMovies
 
     /// <summary><c>data/main/flash/characterInAndOut.swf</c>: the class portraits role.dat loads into its stage.</summary>
     public static FlashMovie LoadCharacterInAndOut() =>
-        Load("characterInAndOut", 271221, "F8FBFE17DF5E8F9D9675ACFD0FA28691B82D23C4EEF05D280F7DC8677CCC8F35");
+        Load("characterInAndOut", 271221, "41EA797775495B1F6C13D872D0C87D1411D32E051FEDCCACB691689B0795CE22");
 
     private static FlashMovie Load(string name, int length, string sha256)
     {
