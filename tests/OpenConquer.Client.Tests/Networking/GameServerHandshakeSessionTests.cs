@@ -11,7 +11,7 @@ using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Client.Tests.Networking;
 
-public sealed class GameServerHandshakeSessionTests
+public sealed partial class GameServerHandshakeSessionTests
 {
     private const string SeedWire = "C54869128E317C0F";
     private const string SuccessWire =
@@ -788,200 +788,256 @@ public sealed class GameServerHandshakeSessionTests
     private static async Task SecuredGamePeerAsync(TcpListener listener, PeerResponse response,
         CancellationToken token, string? expectedProof = null)
     {
-        using TcpClient peer = await listener.AcceptTcpClientAsync(token);
-        NetworkStream stream = peer.GetStream();
-        await stream.WriteAsync(Convert.FromHexString(EncryptedChallenge), token);
+        using SecuredTestPeer peer = await AcceptSecuredPeerAsync(listener, token);
+        NetworkStream stream = peer.Stream;
+        GameSessionCipher server = peer.Cipher;
 
-        // Server-side interpretation of the client's unframed DH answer:
-        // seven random prefix bytes, including length, two chunks, trailer.
-        byte[] header = new byte[11];
-        await stream.ReadExactlyAsync(header, token);
-        using GameHandshakeBootstrapCipher decryptor = GameHandshakeBootstrapCipher.CreateDecryptor();
-        decryptor.Transform(header, header);
-        int declared = BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(7));
-        Assert.InRange(declared, 31, 1017);
-        byte[] body = new byte[declared - sizeof(int)];
-        await stream.ReadExactlyAsync(body, token);
-        decryptor.Transform(body, body);
-        int offset = 0;
-        int paddingLength = BinaryPrimitives.ReadInt32LittleEndian(body);
-        Assert.InRange(paddingLength, 10, 49);
-        offset += sizeof(int) + paddingLength;
-        int publicLength = BinaryPrimitives.ReadInt32LittleEndian(body.AsSpan(offset));
-        offset += sizeof(int);
-        Assert.InRange(publicLength, 1, 128);
-        Assert.True(GameServerChallengeDecoder.TryParsePublicKey(
-            body.AsSpan(offset, publicLength), out BigInteger publicKey));
-        offset += publicLength;
-        Assert.Equal("TQClient"u8.ToArray(), body.AsSpan(offset).ToArray());
+        byte[] proofWire = new byte[36];
+        await stream.ReadExactlyAsync(proofWire, token);
+        server.DecryptInbound(proofWire, proofWire);
+        Assert.Equal(
+            expectedProof ?? "1C001C0444332211EFCDAB897C00456E001122AABBCC00008D150000" +
+            "5451436C69656E74", Convert.ToHexString(proofWire));
 
-        BigInteger prime = new(Convert.FromHexString(GameServerChallengeDecoder.PrimeHex),
-            isUnsigned: true, isBigEndian: true);
-        BigInteger shared = BigInteger.ModPow(publicKey, new BigInteger(2), prime);
-        byte[] minimal = shared.ToByteArray(isUnsigned: true, isBigEndian: true);
-        byte[] key = new byte[64];
-        minimal.CopyTo(key, 0);
-        try
+        switch (response)
         {
-            using GameSessionCipher server = new(key,
-                [21, 22, 23, 24, 25, 26, 27, 28], [1, 2, 3, 4, 5, 6, 7, 8]);
+            case PeerResponse.TwoFrames:
+                byte[] first = Convert.FromHexString("08001C04556677885451536572766572");
+                byte[] second = Convert.FromHexString("0400F1035451536572766572");
+                server.EncryptOutbound(first, first);
+                server.EncryptOutbound(second, second);
+                byte[] both = new byte[first.Length + second.Length];
+                first.CopyTo(both, 0);
+                second.CopyTo(both, first.Length);
+                await stream.WriteAsync(both, token);
+                Assert.Equal(0, await ObserveCloseAsync(stream, token));
+                return;
 
-            byte[] proofWire = new byte[36];
-            await stream.ReadExactlyAsync(proofWire, token);
-            server.DecryptInbound(proofWire, proofWire);
-            Assert.Equal(
-                expectedProof ?? "1C001C0444332211EFCDAB897C00456E001122AABBCC00008D150000" +
-                "5451436C69656E74", Convert.ToHexString(proofWire));
+            case PeerResponse.InvalidSignature:
+                byte[] invalid = Convert.FromHexString("08001C04556677885451436C69656E74");
+                server.EncryptOutbound(invalid, invalid);
+                await stream.WriteAsync(invalid, token);
+                Assert.Equal(0, await ObserveCloseAsync(stream, token));
+                return;
 
-            switch (response)
-            {
-                case PeerResponse.TwoFrames:
-                    byte[] first = Convert.FromHexString("08001C04556677885451536572766572");
-                    byte[] second = Convert.FromHexString("0400F1035451536572766572");
-                    server.EncryptOutbound(first, first);
-                    server.EncryptOutbound(second, second);
-                    byte[] both = new byte[first.Length + second.Length];
-                    first.CopyTo(both, 0);
-                    second.CopyTo(both, first.Length);
-                    await stream.WriteAsync(both, token);
-                    Assert.Equal(0, await ObserveCloseAsync(stream, token));
-                    return;
+            case PeerResponse.PartialFrameEof:
+                byte[] partial = Convert.FromHexString("08001C04556677885451536572766572");
+                server.EncryptOutbound(partial, partial);
+                await stream.WriteAsync(partial.AsMemory(0, 5), token);
+                return;
 
-                case PeerResponse.InvalidSignature:
-                    byte[] invalid = Convert.FromHexString("08001C04556677885451436C69656E74");
-                    server.EncryptOutbound(invalid, invalid);
-                    await stream.WriteAsync(invalid, token);
-                    Assert.Equal(0, await ObserveCloseAsync(stream, token));
-                    return;
+            case PeerResponse.AcceptedThenHistory:
+            case PeerResponse.AcceptedFullPrelude:
+            case PeerResponse.AcceptedWrongPreludeOrder:
+            case PeerResponse.AcceptedCharacterInfo:
+            case PeerResponse.AcceptedWrongCharacterInfo:
+            case PeerResponse.AcceptedNoCharacterInfo:
+            case PeerResponse.AcceptedSilentCharacterInfo:
+            case PeerResponse.NewRole:
+            case PeerResponse.LoginRefused:
+            case PeerResponse.WrongLoginChannel:
+            case PeerResponse.WrongFirstPacket:
+                // Independently composed GameChatPacket 1004 and GameLoginHistoryPacket
+                // 2078 plaintext fixtures; only wire encryption uses session cipher.
+                byte[] talk = Convert.FromHexString(response switch
+                {
+                    PeerResponse.NewRole =>
+                        "2500EC03000000003508000000000000000000000000000004000000084E45575F524F4C45",
+                    PeerResponse.LoginRefused =>
+                        "4800EC030000000035080000000000000000000000000000040000002B546865207365727665722069732066756C6C2E20506C656173652074727920616761696E206C617465722E",
+                    _ => "2600EC0300000000350800000000000000000000000000000400000009414E535745525F4F4B",
+                });
+                if (response == PeerResponse.WrongLoginChannel)
+                {
+                    talk[8] = 0x34;
+                }
+                else if (response == PeerResponse.WrongFirstPacket)
+                {
+                    talk[2] = 0xED;
+                }
 
-                case PeerResponse.PartialFrameEof:
-                    byte[] partial = Convert.FromHexString("08001C04556677885451536572766572");
-                    server.EncryptOutbound(partial, partial);
-                    await stream.WriteAsync(partial.AsMemory(0, 5), token);
-                    return;
+                byte[] firstWire = new byte[talk.Length + 8];
+                talk.CopyTo(firstWire, 0);
+                "TQServer"u8.CopyTo(firstWire.AsSpan(talk.Length));
+                server.EncryptOutbound(firstWire, firstWire);
 
-                case PeerResponse.AcceptedThenHistory:
-                case PeerResponse.AcceptedFullPrelude:
-                case PeerResponse.AcceptedWrongPreludeOrder:
-                case PeerResponse.AcceptedCharacterInfo:
-                case PeerResponse.AcceptedWrongCharacterInfo:
-                case PeerResponse.AcceptedNoCharacterInfo:
-                case PeerResponse.AcceptedSilentCharacterInfo:
-                case PeerResponse.NewRole:
-                case PeerResponse.LoginRefused:
-                case PeerResponse.WrongLoginChannel:
-                case PeerResponse.WrongFirstPacket:
-                    // Independently composed GameChatPacket 1004 and GameLoginHistoryPacket
-                    // 2078 plaintext fixtures; only wire encryption uses session cipher.
-                    byte[] talk = Convert.FromHexString(response switch
+                if (response is PeerResponse.AcceptedThenHistory or
+                    PeerResponse.AcceptedFullPrelude or PeerResponse.AcceptedWrongPreludeOrder or
+                    PeerResponse.AcceptedCharacterInfo or PeerResponse.AcceptedWrongCharacterInfo or
+                    PeerResponse.AcceptedNoCharacterInfo or PeerResponse.AcceptedSilentCharacterInfo)
+                {
+                    // 2078, 2079 and the type-1009 continuation are independently
+                    // composed wire fixtures, not retail-server captures.
+                    byte[] historyWire =
+                        Convert.FromHexString("0A001E080000000000005451536572766572");
+                    byte[] stateWire =
+                        Convert.FromHexString("08001F08010000005451536572766572");
+                    byte[] followupWire =
+                        Convert.FromHexString("0800F103556677885451536572766572");
+                    byte[] joined;
+                    if (response == PeerResponse.AcceptedWrongPreludeOrder)
                     {
-                        PeerResponse.NewRole =>
-                            "2500EC03000000003508000000000000000000000000000004000000084E45575F524F4C45",
-                        PeerResponse.LoginRefused =>
-                            "4800EC030000000035080000000000000000000000000000040000002B546865207365727665722069732066756C6C2E20506C656173652074727920616761696E206C617465722E",
-                        _ => "2600EC0300000000350800000000000000000000000000000400000009414E535745525F4F4B",
-                    });
-                    if (response == PeerResponse.WrongLoginChannel)
-                    {
-                        talk[8] = 0x34;
-                    }
-                    else if (response == PeerResponse.WrongFirstPacket)
-                    {
-                        talk[2] = 0xED;
-                    }
-
-                    byte[] firstWire = new byte[talk.Length + 8];
-                    talk.CopyTo(firstWire, 0);
-                    "TQServer"u8.CopyTo(firstWire.AsSpan(talk.Length));
-                    server.EncryptOutbound(firstWire, firstWire);
-
-                    if (response is PeerResponse.AcceptedThenHistory or
-                        PeerResponse.AcceptedFullPrelude or PeerResponse.AcceptedWrongPreludeOrder or
-                        PeerResponse.AcceptedCharacterInfo or PeerResponse.AcceptedWrongCharacterInfo or
-                        PeerResponse.AcceptedNoCharacterInfo or PeerResponse.AcceptedSilentCharacterInfo)
-                    {
-                        // 2078, 2079 and the type-1009 continuation are independently
-                        // composed wire fixtures, not retail-server captures.
-                        byte[] historyWire =
-                            Convert.FromHexString("0A001E080000000000005451536572766572");
-                        byte[] stateWire =
-                            Convert.FromHexString("08001F08010000005451536572766572");
-                        byte[] followupWire =
-                            Convert.FromHexString("0800F103556677885451536572766572");
-                        byte[] joined;
-                        if (response == PeerResponse.AcceptedWrongPreludeOrder)
-                        {
-                            // The peer's outbound cipher advances only over bytes
-                            // actually transmitted; do not encrypt omitted history.
-                            server.EncryptOutbound(stateWire, stateWire);
-                            joined = [.. firstWire, .. stateWire];
-                        }
-                        else
-                        {
-                            server.EncryptOutbound(historyWire, historyWire);
-                            if (response == PeerResponse.AcceptedThenHistory)
-                            {
-                                joined = [.. firstWire, .. historyWire];
-                            }
-                            else
-                            {
-                                server.EncryptOutbound(stateWire, stateWire);
-                                if (response is PeerResponse.AcceptedCharacterInfo or
-                                    PeerResponse.AcceptedWrongCharacterInfo)
-                                {
-                                    byte[] characterWire = CreateCharacterInfoWire(
-                                        invalidType: response == PeerResponse.AcceptedWrongCharacterInfo);
-                                    server.EncryptOutbound(characterWire, characterWire);
-
-                                    if (response == PeerResponse.AcceptedCharacterInfo)
-                                    {
-                                        server.EncryptOutbound(followupWire, followupWire);
-                                        joined = [.. firstWire, .. historyWire, .. stateWire,
-                                            .. characterWire, .. followupWire];
-                                    }
-                                    else
-                                    {
-                                        joined = [.. firstWire, .. historyWire, .. stateWire, .. characterWire];
-                                    }
-                                }
-                                else if (response is PeerResponse.AcceptedNoCharacterInfo or
-                                    PeerResponse.AcceptedSilentCharacterInfo)
-                                {
-                                    joined = [.. firstWire, .. historyWire, .. stateWire];
-                                }
-                                else
-                                {
-                                    server.EncryptOutbound(followupWire, followupWire);
-                                    joined = [.. firstWire, .. historyWire, .. stateWire, .. followupWire];
-                                }
-                            }
-                        }
-                        await stream.WriteAsync(joined, token);
-                        if (response == PeerResponse.AcceptedNoCharacterInfo)
-                        {
-                            return;
-                        }
+                        // The peer's outbound cipher advances only over bytes
+                        // actually transmitted; do not encrypt omitted history.
+                        server.EncryptOutbound(stateWire, stateWire);
+                        joined = [.. firstWire, .. stateWire];
                     }
                     else
                     {
-                        await stream.WriteAsync(firstWire, token);
+                        server.EncryptOutbound(historyWire, historyWire);
+                        if (response == PeerResponse.AcceptedThenHistory)
+                        {
+                            joined = [.. firstWire, .. historyWire];
+                        }
+                        else
+                        {
+                            server.EncryptOutbound(stateWire, stateWire);
+                            if (response is PeerResponse.AcceptedCharacterInfo or
+                                PeerResponse.AcceptedWrongCharacterInfo)
+                            {
+                                byte[] characterWire = CreateCharacterInfoWire(
+                                    invalidType: response == PeerResponse.AcceptedWrongCharacterInfo);
+                                server.EncryptOutbound(characterWire, characterWire);
+
+                                if (response == PeerResponse.AcceptedCharacterInfo)
+                                {
+                                    server.EncryptOutbound(followupWire, followupWire);
+                                    joined = [.. firstWire, .. historyWire, .. stateWire,
+                                        .. characterWire, .. followupWire];
+                                }
+                                else
+                                {
+                                    joined = [.. firstWire, .. historyWire, .. stateWire, .. characterWire];
+                                }
+                            }
+                            else if (response is PeerResponse.AcceptedNoCharacterInfo or
+                                PeerResponse.AcceptedSilentCharacterInfo)
+                            {
+                                joined = [.. firstWire, .. historyWire, .. stateWire];
+                            }
+                            else
+                            {
+                                server.EncryptOutbound(followupWire, followupWire);
+                                joined = [.. firstWire, .. historyWire, .. stateWire, .. followupWire];
+                            }
+                        }
                     }
+                    await stream.WriteAsync(joined, token);
+                    if (response == PeerResponse.AcceptedNoCharacterInfo)
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    await stream.WriteAsync(firstWire, token);
+                }
 
-                    Assert.Equal(0, await ObserveCloseAsync(stream, token));
-                    return;
+                Assert.Equal(0, await ObserveCloseAsync(stream, token));
+                return;
 
-                case PeerResponse.NoLoginResponse:
-                    return;
+            case PeerResponse.NoLoginResponse:
+                return;
 
-                case PeerResponse.SilentAfterProof:
-                    Assert.Equal(0, await ObserveCloseAsync(stream, token));
-                    return;
+            case PeerResponse.SilentAfterProof:
+                Assert.Equal(0, await ObserveCloseAsync(stream, token));
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Accepts one client and plays the GameServer side of the DH handshake with the independent challenge
+    /// fixture, leaving the peer ready to read the client's first secured frame.
+    /// </summary>
+    private static async Task<SecuredTestPeer> AcceptSecuredPeerAsync(TcpListener listener, CancellationToken token)
+    {
+        TcpClient client = await listener.AcceptTcpClientAsync(token);
+        try
+        {
+            NetworkStream stream = client.GetStream();
+            await stream.WriteAsync(Convert.FromHexString(EncryptedChallenge), token);
+
+            // Server-side interpretation of the client's unframed DH answer:
+            // seven random prefix bytes, including length, two chunks, trailer.
+            byte[] header = new byte[11];
+            await stream.ReadExactlyAsync(header, token);
+            using GameHandshakeBootstrapCipher decryptor = GameHandshakeBootstrapCipher.CreateDecryptor();
+            decryptor.Transform(header, header);
+            int declared = BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(7));
+            Assert.InRange(declared, 31, 1017);
+            byte[] body = new byte[declared - sizeof(int)];
+            await stream.ReadExactlyAsync(body, token);
+            decryptor.Transform(body, body);
+            int offset = 0;
+            int paddingLength = BinaryPrimitives.ReadInt32LittleEndian(body);
+            Assert.InRange(paddingLength, 10, 49);
+            offset += sizeof(int) + paddingLength;
+            int publicLength = BinaryPrimitives.ReadInt32LittleEndian(body.AsSpan(offset));
+            offset += sizeof(int);
+            Assert.InRange(publicLength, 1, 128);
+            Assert.True(GameServerChallengeDecoder.TryParsePublicKey(
+                body.AsSpan(offset, publicLength), out BigInteger publicKey));
+            offset += publicLength;
+            Assert.Equal("TQClient"u8.ToArray(), body.AsSpan(offset).ToArray());
+
+            BigInteger prime = new(Convert.FromHexString(GameServerChallengeDecoder.PrimeHex),
+                isUnsigned: true, isBigEndian: true);
+            BigInteger shared = BigInteger.ModPow(publicKey, new BigInteger(2), prime);
+            byte[] minimal = shared.ToByteArray(isUnsigned: true, isBigEndian: true);
+            byte[] key = new byte[64];
+            minimal.CopyTo(key, 0);
+            try
+            {
+                return new SecuredTestPeer(client, new GameSessionCipher(key,
+                    [21, 22, 23, 24, 25, 26, 27, 28], [1, 2, 3, 4, 5, 6, 7, 8]));
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(minimal);
+                CryptographicOperations.ZeroMemory(key);
             }
         }
-        finally
+        catch
         {
-            CryptographicOperations.ZeroMemory(minimal);
-            CryptographicOperations.ZeroMemory(key);
+            client.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>The GameServer end of one secured test connection.</summary>
+    private sealed class SecuredTestPeer(TcpClient client, GameSessionCipher cipher) : IDisposable
+    {
+        internal NetworkStream Stream => client.GetStream();
+        internal GameSessionCipher Cipher => cipher;
+
+        /// <summary>Reads one client frame of a known plaintext length and checks its <c>TQClient</c> trailer.</summary>
+        internal async Task<byte[]> ReadPacketAsync(int packetLength, CancellationToken token)
+        {
+            byte[] wire = new byte[packetLength + 8];
+            await Stream.ReadExactlyAsync(wire, token);
+            cipher.DecryptInbound(wire, wire);
+            Assert.Equal("TQClient"u8.ToArray(), wire.AsSpan(packetLength).ToArray());
+            return wire[..packetLength];
+        }
+
+        /// <summary>Signs each packet with the <c>TQServer</c> trailer and sends them in one write.</summary>
+        internal async Task WritePacketsAsync(CancellationToken token, params byte[][] packets)
+        {
+            List<byte> joined = [];
+            foreach (byte[] packet in packets)
+            {
+                byte[] wire = [.. packet, .. "TQServer"u8];
+                cipher.EncryptOutbound(wire, wire);
+                joined.AddRange(wire);
+            }
+
+            await Stream.WriteAsync(joined.ToArray(), token);
+        }
+
+        public void Dispose()
+        {
+            cipher.Dispose();
+            client.Dispose();
         }
     }
 

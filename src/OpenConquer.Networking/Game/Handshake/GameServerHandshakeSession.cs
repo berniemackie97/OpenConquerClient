@@ -13,6 +13,11 @@ namespace OpenConquer.Networking.Game.Handshake;
 /// CAST5 streams after exactly one server-initiated DH exchange. This is NOT
 /// authentication, proof submission or admission to the world.
 /// </summary>
+/// <remarks>
+/// A <c>NEW_ROLE</c> login control opens the create-role continuation on the same socket: 1001 requests, each
+/// answered on the create-role channel, until one is accepted or the request is cancelled; then exactly one
+/// repeated 1052 proof, after which the existing-character control, prelude and 1006 reads apply again.
+/// </remarks>
 internal sealed class GameServerHandshakeSession : IAsyncDisposable
 {
     private readonly TcpClient _client;
@@ -30,6 +35,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     private int _loginControlState; // 0: unclaimed, 1: reading, 2: resolved, 3: raw-read bypassed
     private int _existingCharacterPreludeState; // 0: unclaimed, 1: reading, 2: resolved, 3: bypassed
     private int _characterInfoState; // 0: unclaimed, 1: reading, 2: resolved, 3: bypassed
+    private CreationState _creationState;
     private bool _existingCharacterRoute;
     private bool _disposed;
 
@@ -247,8 +253,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     /// </summary>
     internal Task<GameSecuredInboundFrame?> ReadFrameAsync(
         TimeSpan timeout, CancellationToken cancellationToken = default) =>
-        ReadFrameCoreAsync(timeout, loginControlRead: false, preludeRead: false,
-            characterInfoRead: false, cancellationToken);
+        ReadFrameCoreAsync(timeout, SecuredRead.Raw, cancellationToken);
 
     /// <summary>
     /// Resolves the first post-proof login-channel 1004 once. Accepted routes
@@ -266,7 +271,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_phase != 2 || _loginControlState != 0)
             {
-                throw new InvalidOperationException("The first GameServer login control can only be read once, before any raw secured reads.");
+                throw new InvalidOperationException("The GameServer login control can only be read once per proof, before any raw secured reads.");
             }
 
             _loginControlState = 1;
@@ -275,8 +280,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         try
         {
             using GameSecuredInboundFrame? frame = await ReadFrameCoreAsync(
-                timeout, loginControlRead: true, preludeRead: false,
-                characterInfoRead: false, cancellationToken).ConfigureAwait(false);
+                timeout, SecuredRead.LoginControl, cancellationToken).ConfigureAwait(false);
 
             if (frame is null)
             {
@@ -293,8 +297,19 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
                     throw new InvalidOperationException("GameServer session left its secured read phase before resolving login control.");
                 }
 
+                if (_creationState == CreationState.ProofRepeated &&
+                    outcome.Kind != GameLoginControlKind.ExistingCharacter)
+                {
+                    throw new InvalidDataException("GameServer did not continue the created character after the repeated proof.");
+                }
+
                 _loginControlState = 2;
                 _existingCharacterRoute = outcome.Kind == GameLoginControlKind.ExistingCharacter;
+                if (outcome.Kind == GameLoginControlKind.CharacterCreation)
+                {
+                    _creationState = CreationState.AwaitingRequest;
+                }
+
                 if (outcome.Kind == GameLoginControlKind.Refused)
                 {
                     // Publish terminal state before releasing the gate: no raw
@@ -349,8 +364,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         try
         {
             using GameSecuredInboundFrame? historyFrame = await ReadFrameCoreAsync(
-                timeout, loginControlRead: false, preludeRead: true,
-                characterInfoRead: false, deadline.Token).ConfigureAwait(false);
+                timeout, SecuredRead.Prelude, deadline.Token).ConfigureAwait(false);
             if (historyFrame is null)
             {
                 throw new EndOfStreamException("GameServer closed before account login history.");
@@ -359,8 +373,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
             GameLoginHistory2078 history = GameLoginHistory2078.Read(historyFrame.Packet.Span);
 
             using GameSecuredInboundFrame? stateFrame = await ReadFrameCoreAsync(
-                timeout, loginControlRead: false, preludeRead: true,
-                characterInfoRead: false, deadline.Token).ConfigureAwait(false);
+                timeout, SecuredRead.Prelude, deadline.Token).ConfigureAwait(false);
             if (stateFrame is null)
             {
                 throw new EndOfStreamException("GameServer closed before the server state packet.");
@@ -424,8 +437,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         try
         {
             using GameSecuredInboundFrame? frame = await ReadFrameCoreAsync(
-                timeout, loginControlRead: false, preludeRead: false,
-                characterInfoRead: true, cancellationToken).ConfigureAwait(false);
+                timeout, SecuredRead.CharacterInfo, cancellationToken).ConfigureAwait(false);
             if (frame is null)
             {
                 throw new EndOfStreamException("GameServer closed before character information.");
@@ -455,6 +467,210 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Sends one 1001 create request after a <c>NEW_ROLE</c> control, or after a refused request. Its result must
+    /// be read with <see cref="ReadCharacterCreationResultAsync"/> before anything else is sent or read.
+    /// </summary>
+    internal async Task SendCharacterCreationAsync(ReadOnlyMemory<byte> name, ushort body, ushort profession,
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        ValidateTimeout(timeout);
+        GameCharacterCreation1001.ValidateName(name.Span);
+        cancellationToken.ThrowIfCancellationRequested();
+        EnterCreationWrite(CreationState.AwaitingRequest);
+
+        bool completed = false;
+        byte[] packet = new byte[GameCharacterCreation1001.PacketLength];
+        try
+        {
+            GameCharacterCreation1001.WriteCreate(packet, name.Span, body, profession, _account.Response.SessionToken);
+            await WriteSecuredPacketAsync(packet, timeout, "GameServer 1001 request write timed out.", cancellationToken)
+                .ConfigureAwait(false);
+            lock (_lifetimeGate)
+            {
+                _creationState = CreationState.AwaitingResult;
+            }
+
+            completed = true;
+        }
+        catch
+        {
+            TerminateLoginControlSession();
+            throw;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(packet);
+            ExitOperation(completed);
+        }
+    }
+
+    /// <summary>
+    /// Reads the create-role channel answer to the last 1001. A refusal reopens the request step on the same
+    /// socket; <c>ANSWER_OK</c> allows exactly one <see cref="SendRepeatedLoginProofAsync"/>. Any other frame,
+    /// a close or a timeout is terminal.
+    /// </summary>
+    internal async Task<GameCharacterCreationOutcome> ReadCharacterCreationResultAsync(
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        ValidateTimeout(timeout);
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2 || _creationState != CreationState.AwaitingResult)
+            {
+                throw new InvalidOperationException("No 1001 request is waiting for its result.");
+            }
+        }
+
+        try
+        {
+            using GameSecuredInboundFrame? frame = await ReadFrameCoreAsync(
+                timeout, SecuredRead.CreationResult, cancellationToken).ConfigureAwait(false);
+            if (frame is null)
+            {
+                throw new EndOfStreamException("GameServer closed without a character creation result.");
+            }
+
+            GameCharacterCreationOutcome outcome = GameCharacterCreationResult1004.Read(frame.Packet.Span);
+            lock (_lifetimeGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (_phase != 2 || _creationState != CreationState.AwaitingResult)
+                {
+                    throw new InvalidOperationException("The character creation result lost its secured-read ownership.");
+                }
+
+                _creationState = outcome.Kind == GameCharacterCreationKind.Created
+                    ? CreationState.Accepted
+                    : CreationState.AwaitingRequest;
+            }
+
+            return outcome;
+        }
+        catch
+        {
+            TerminateLoginControlSession();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Sends the native create-role cancel (<c>CMD_DRIVERBACK</c>) and closes the socket, as the native
+    /// <c>0x481</c> handler does. The session is terminal afterwards.
+    /// </summary>
+    internal async Task SendCharacterCreationCancelAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        ValidateTimeout(timeout);
+        cancellationToken.ThrowIfCancellationRequested();
+        EnterCreationWrite(CreationState.AwaitingRequest);
+
+        byte[] packet = new byte[GameCharacterCreation1001.PacketLength];
+        try
+        {
+            GameCharacterCreation1001.WriteCancel(packet, _account.Response.SessionToken);
+            await WriteSecuredPacketAsync(packet, timeout, "GameServer 1001 cancel write timed out.", cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(packet);
+            lock (_lifetimeGate)
+            {
+                _creationState = CreationState.Cancelled;
+            }
+
+            TerminateLoginControlSession();
+            ExitOperation(succeeded: false);
+        }
+    }
+
+    /// <summary>
+    /// Re-sends the 1052 login proof once after <c>ANSWER_OK</c>, on the same socket
+    /// (<c>CConnectionFlow__SendGameSessionBootstrap</c> <c>0x6DF1D0</c>). The next login control must accept the
+    /// created character, after which the existing-character prelude and 1006 reads apply.
+    /// </summary>
+    internal async Task SendRepeatedLoginProofAsync(ushort localeTag, ReadOnlyMemory<byte> hardwareAddress,
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        ValidateTimeout(timeout);
+        cancellationToken.ThrowIfCancellationRequested();
+        EnterCreationWrite(CreationState.Accepted);
+
+        bool completed = false;
+        byte[] packet = new byte[GameLoginProof1052.PacketLength];
+        try
+        {
+            _account.WriteRepeatedGameLoginProof(packet, localeTag, hardwareAddress.Span);
+            await WriteSecuredPacketAsync(packet, timeout, "GameServer repeated login proof write timed out.", cancellationToken)
+                .ConfigureAwait(false);
+            lock (_lifetimeGate)
+            {
+                // The repeated proof opens a second login control; its bootstrap reads start over.
+                _creationState = CreationState.ProofRepeated;
+                _loginControlState = 0;
+            }
+
+            completed = true;
+        }
+        catch
+        {
+            TerminateLoginControlSession();
+            throw;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(packet);
+            ExitOperation(completed);
+        }
+    }
+
+    private void EnterCreationWrite(CreationState required)
+    {
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2 || _creationState != required)
+            {
+                throw new InvalidOperationException("The GameServer create-role exchange is not at this step.");
+            }
+
+            _phase = 1;
+            _activeOperations++;
+        }
+    }
+
+    /// <summary>Encodes and writes one secured frame. Any attempted write failure leaves the socket unusable.</summary>
+    private async Task WriteSecuredPacketAsync(byte[] packet, TimeSpan timeout, string timeoutMessage,
+        CancellationToken cancellationToken)
+    {
+        byte[] wire = new byte[packet.Length + GameSecuredFrameProtocol.SignatureLength];
+        try
+        {
+            using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken, _lifetimeCancellation.Token);
+            deadline.CancelAfter(timeout);
+            deadline.Token.ThrowIfCancellationRequested();
+
+            int written = _encoder.Write(packet, wire);
+            try
+            {
+                await _client.GetStream().WriteAsync(wire.AsMemory(0, written), deadline.Token).ConfigureAwait(false);
+                deadline.Token.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
+                !_lifetimeCancellation.IsCancellationRequested)
+            {
+                throw new TimeoutException(timeoutMessage);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(wire);
+        }
+    }
+
     private void TerminateLoginControlSession()
     {
         lock (_lifetimeGate)
@@ -466,12 +682,11 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     }
 
     private async Task<GameSecuredInboundFrame?> ReadFrameCoreAsync(
-        TimeSpan timeout, bool loginControlRead, bool preludeRead, bool characterInfoRead,
-        CancellationToken cancellationToken)
+        TimeSpan timeout, SecuredRead read, CancellationToken cancellationToken)
     {
         ValidateTimeout(timeout);
         cancellationToken.ThrowIfCancellationRequested();
-        EnterReadOperation(loginControlRead, preludeRead, characterInfoRead);
+        EnterReadOperation(read);
 
         bool completed = false;
         byte[] encrypted = new byte[GameSecuredFrameProtocol.MaximumWireLength];
@@ -572,8 +787,10 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
     }
 
-    private void EnterReadOperation(bool loginControlRead, bool preludeRead, bool characterInfoRead)
+    private void EnterReadOperation(SecuredRead read)
     {
+        bool preludeRead = read == SecuredRead.Prelude;
+        bool characterInfoRead = read == SecuredRead.CharacterInfo;
         lock (_lifetimeGate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -582,14 +799,23 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
                 throw new InvalidOperationException("GameServer secured operation is not valid in this phase.");
             }
 
-            if (loginControlRead)
+            // A creation result needs a sent request; while the create-role exchange is open no other read may
+            // consume its frames.
+            bool creationOpen = _creationState is CreationState.AwaitingRequest or CreationState.AwaitingResult or
+                CreationState.Accepted;
+            if (read == SecuredRead.CreationResult ? _creationState != CreationState.AwaitingResult : creationOpen)
             {
-                if (_loginControlState != 1 || preludeRead || characterInfoRead)
+                throw new InvalidOperationException("The GameServer create-role exchange owns the secured reads.");
+            }
+
+            if (read == SecuredRead.LoginControl)
+            {
+                if (_loginControlState != 1)
                 {
-                    throw new InvalidOperationException("The first GameServer login control was not claimed.");
+                    throw new InvalidOperationException("The GameServer login control was not claimed.");
                 }
             }
-            else
+            else if (read != SecuredRead.CreationResult)
             {
                 if (_loginControlState == 1)
                 {
@@ -603,8 +829,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
                 if (preludeRead)
                 {
-                    if (characterInfoRead || !_existingCharacterRoute ||
-                        _existingCharacterPreludeState != 1)
+                    if (!_existingCharacterRoute || _existingCharacterPreludeState != 1)
                     {
                         throw new InvalidOperationException("Existing-character prelude is not claimed.");
                     }
@@ -705,5 +930,24 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         _encoder.Dispose();
         _cipher.Dispose();
         _lifetimeCancellation.Dispose();
+    }
+
+    private enum SecuredRead
+    {
+        Raw,
+        LoginControl,
+        Prelude,
+        CharacterInfo,
+        CreationResult,
+    }
+
+    private enum CreationState
+    {
+        None,
+        AwaitingRequest,
+        AwaitingResult,
+        Accepted,
+        ProofRepeated,
+        Cancelled,
     }
 }
