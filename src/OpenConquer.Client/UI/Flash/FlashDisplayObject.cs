@@ -1,0 +1,240 @@
+using OpenConquer.Content.Flash;
+
+namespace OpenConquer.Client.UI.Flash;
+
+/// <summary>
+/// One instance on a Flash display list. The timeline places and moves it until a script writes one of its
+/// transform properties; from then on, as in Flash Player, the timeline no longer changes its matrix or color.
+/// </summary>
+internal abstract class FlashDisplayObject
+{
+    private FlashMatrix _matrix;
+    private FlashColorTransform _colorTransform;
+
+    protected FlashDisplayObject(FlashMovie movie, FlashCharacter character, FlashPlacement placement, FlashClip? parent)
+    {
+        ArgumentNullException.ThrowIfNull(movie);
+        ArgumentNullException.ThrowIfNull(character);
+        ArgumentNullException.ThrowIfNull(placement);
+
+        Movie = movie;
+        Character = character;
+        Parent = parent;
+        Depth = placement.Depth;
+        PlacedCharacterId = placement.CharacterId;
+        Name = placement.Name;
+        PlacedFrame = placement.PlacedFrame;
+        _matrix = placement.Matrix;
+        _colorTransform = placement.ColorTransform;
+        ClipDepth = placement.ClipDepth;
+        Ratio = placement.Ratio;
+    }
+
+    public FlashMovie Movie
+    {
+        get; protected set;
+    }
+
+    public FlashCharacter Character
+    {
+        get; protected set;
+    }
+
+    public FlashClip? Parent
+    {
+        get;
+    }
+
+    public int Depth
+    {
+        get; internal set;
+    }
+
+    public string? Name
+    {
+        get;
+    }
+
+    /// <summary>
+    /// The character its PlaceObject named. It identifies the instance across seeks even after <c>loadMovie</c>
+    /// has replaced the clip's content.
+    /// </summary>
+    public int PlacedCharacterId
+    {
+        get;
+    }
+
+    /// <summary>The timeline frame whose PlaceObject created this instance; identifies it across seeks.</summary>
+    public int PlacedFrame
+    {
+        get;
+    }
+
+    /// <summary>Set when this object masks the depths above it, up to and including this depth.</summary>
+    public int? ClipDepth
+    {
+        get; private set;
+    }
+
+    public int? Ratio
+    {
+        get; private set;
+    }
+
+    public bool Visible { get; set; } = true;
+
+    /// <summary>True once a script has written a transform property (<c>_x</c>, <c>_alpha</c>, …).</summary>
+    public bool ScriptOwnsTransform
+    {
+        get; private set;
+    }
+
+    /// <summary>True once <c>swapDepths</c> has moved it: the timeline no longer removes or moves it.</summary>
+    public bool ScriptOwnsDepth
+    {
+        get; internal set;
+    }
+
+    public FlashMatrix Matrix => _matrix;
+
+    public FlashColorTransform ColorTransform => _colorTransform;
+
+    /// <summary>AS2 <c>_x</c>.</summary>
+    public float X
+    {
+        get => _matrix.Tx;
+        set => SetMatrix(_matrix with { Tx = value });
+    }
+
+    /// <summary>AS2 <c>_y</c>.</summary>
+    public float Y
+    {
+        get => _matrix.Ty;
+        set => SetMatrix(_matrix with { Ty = value });
+    }
+
+    /// <summary>AS2 <c>_alpha</c>, in percent. Flash keeps the multiplier in 1/256 steps.</summary>
+    public float Alpha
+    {
+        get => _colorTransform.AlphaMultiplier * 100f / 256f;
+        set
+        {
+            ScriptOwnsTransform = true;
+            _colorTransform = _colorTransform with
+            {
+                AlphaMultiplier = (int)(value * 256f / 100f)
+            };
+        }
+    }
+
+    /// <summary>Applies the timeline's placement for the current frame, unless a script owns the transform.</summary>
+    internal void ApplyPlacement(FlashPlacement placement)
+    {
+        ArgumentNullException.ThrowIfNull(placement);
+
+        if (!ScriptOwnsTransform)
+        {
+            _matrix = placement.Matrix;
+            _colorTransform = placement.ColorTransform;
+        }
+
+        ClipDepth = placement.ClipDepth;
+        Ratio = placement.Ratio;
+    }
+
+    internal bool IsSameInstance(FlashPlacement placement) =>
+        placement.CharacterId == PlacedCharacterId && placement.PlacedFrame == PlacedFrame && placement.Depth == Depth;
+
+    private void SetMatrix(FlashMatrix matrix)
+    {
+        ScriptOwnsTransform = true;
+        _matrix = matrix;
+    }
+}
+
+/// <summary>A shape, static text or morph shape.</summary>
+internal sealed class FlashShapeInstance(FlashMovie movie, FlashCharacter character, FlashPlacement placement, FlashClip parent)
+    : FlashDisplayObject(movie, character, placement, parent);
+
+/// <summary>
+/// A dynamic or input text field. Scripts set its text; an input field (not read-only) also takes typing at a
+/// caret while it has the stage's focus. Only the caret is modelled: there is no range selection.
+/// </summary>
+internal sealed class FlashTextInstance : FlashDisplayObject
+{
+    private string _text;
+
+    public FlashTextInstance(FlashMovie movie, FlashEditTextCharacter character, FlashPlacement placement, FlashClip parent)
+        : base(movie, character, placement, parent)
+    {
+        Definition = character;
+        _text = character.InitialText;
+    }
+
+    public FlashEditTextCharacter Definition
+    {
+        get;
+    }
+
+    public bool IsInput => !Definition.ReadOnly;
+
+    /// <summary>AS2 <c>text</c>. Setting it from a script does not raise <see cref="OnChanged"/>.</summary>
+    public string Text
+    {
+        get => _text;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _text = value;
+            Caret = Math.Min(Caret, value.Length);
+        }
+    }
+
+    /// <summary>Insertion point, in UTF-16 units.</summary>
+    public int Caret
+    {
+        get; private set;
+    }
+
+    /// <summary>AS2 <c>onChanged</c>: raised after each edit the user makes.</summary>
+    public Action<FlashTextInstance>? OnChanged
+    {
+        get; set;
+    }
+
+    /// <summary>AS2 <c>Selection.setSelection(begin, end)</c>: without range selection, the caret moves to <paramref name="end"/>.</summary>
+    public void SetSelection(int begin, int end) => Caret = Math.Clamp(Math.Max(begin, end), 0, _text.Length);
+
+    internal void Insert(char character)
+    {
+        if (!IsInput || char.IsControl(character) || Definition.MaxLength > 0 && _text.Length >= Definition.MaxLength)
+        {
+            return;
+        }
+
+        _text = _text.Insert(Caret, character.ToString());
+        Caret++;
+        OnChanged?.Invoke(this);
+    }
+
+    internal void Backspace()
+    {
+        if (IsInput && Caret > 0)
+        {
+            _text = _text.Remove(Caret - 1, 1);
+            Caret--;
+            OnChanged?.Invoke(this);
+        }
+    }
+
+    internal void Delete()
+    {
+        if (IsInput && Caret < _text.Length)
+        {
+            _text = _text.Remove(Caret, 1);
+            OnChanged?.Invoke(this);
+        }
+    }
+
+    internal void MoveCaret(int position) => Caret = Math.Clamp(position, 0, _text.Length);
+}

@@ -1,16 +1,17 @@
-using OpenConquer.Content.Login;
+using OpenConquer.Content.Media;
 
 namespace OpenConquer.Content.Tests.Login;
 
 public sealed class EmbeddedMediaTests
 {
     [Fact]
-    public void EveryEmbeddedLoginResource_UsesItsAssetPathAsItsName()
+    public void EveryEmbeddedResource_UsesItsAssetPathAsItsName()
     {
         string[] names = typeof(EmbeddedMedia).Assembly.GetManifestResourceNames();
 
         Assert.NotEmpty(names);
-        Assert.All(names, name => Assert.StartsWith("Assets/Login/", name, StringComparison.Ordinal));
+        Assert.All(names, name => Assert.True(name.StartsWith("Assets/Login/", StringComparison.Ordinal) ||
+            name.StartsWith("Assets/Role/", StringComparison.Ordinal), name));
         Assert.DoesNotContain(names, name => name.Contains('\\', StringComparison.Ordinal));
     }
 

@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Runtime.ExceptionServices;
 using OpenConquer.Rendering.OpenGL.Primitives;
 using OpenConquer.Rendering.OpenGL.Resources;
@@ -17,6 +18,8 @@ public sealed class OpenGLRenderer : IDisposable
     private readonly LogicalRenderSize _logicalRenderSize;
     private readonly OpenGLRenderTarget _renderTarget;
     private readonly OpenGLSpriteRenderer _spriteRenderer;
+    private readonly OpenGLTransformedSpriteRenderer _transformedSpriteRenderer;
+    private readonly OpenGLMaskStack _maskStack;
     private readonly OpenGLSolidRectangleRenderer _solidRectangleRenderer;
     private readonly OpenGLLineRectangleRenderer _lineRectangleRenderer;
     private readonly OpenGLTextRenderer _textRenderer;
@@ -42,6 +45,7 @@ public sealed class OpenGLRenderer : IDisposable
 
         OpenGLRenderTarget renderTarget = new(gl, logicalRenderSize.Width, logicalRenderSize.Height);
         OpenGLSpriteRenderer? spriteRenderer = null;
+        OpenGLTransformedSpriteRenderer? transformedSpriteRenderer = null;
         OpenGLSolidRectangleRenderer? solidRectangleRenderer = null;
         OpenGLLineRectangleRenderer? lineRectangleRenderer = null;
         OpenGLTextRenderer? textRenderer = null;
@@ -49,12 +53,15 @@ public sealed class OpenGLRenderer : IDisposable
         try
         {
             spriteRenderer = new OpenGLSpriteRenderer(gl);
+            transformedSpriteRenderer = new OpenGLTransformedSpriteRenderer(gl);
             solidRectangleRenderer = new OpenGLSolidRectangleRenderer(gl);
             lineRectangleRenderer = new OpenGLLineRectangleRenderer(gl);
             textRenderer = new OpenGLTextRenderer(gl);
 
             _renderTarget = renderTarget;
             _spriteRenderer = spriteRenderer;
+            _transformedSpriteRenderer = transformedSpriteRenderer;
+            _maskStack = new OpenGLMaskStack(gl, logicalRenderSize.Width, logicalRenderSize.Height);
             _solidRectangleRenderer = solidRectangleRenderer;
             _lineRectangleRenderer = lineRectangleRenderer;
             _textRenderer = textRenderer;
@@ -82,6 +89,15 @@ public sealed class OpenGLRenderer : IDisposable
             try
             {
                 solidRectangleRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the original initialization failure.
+            }
+
+            try
+            {
+                transformedSpriteRenderer?.Dispose();
             }
             catch
             {
@@ -243,6 +259,51 @@ public sealed class OpenGLRenderer : IDisposable
         public void Dispose() => _owner?.EndClip();
     }
 
+    /// <summary>
+    /// Draws a region of a premultiplied-alpha texture through <paramref name="transform"/>, which maps source-local
+    /// pixels (0,0 at the region's top-left) to top-left logical pixels, sampling bilinearly and applying
+    /// <paramref name="colorTransform"/> to straight color. Inside <see cref="BeginMask"/> it adds the region's
+    /// shape (alpha of at least one half) to the mask instead; after <see cref="BeginMaskedContent"/> it is limited
+    /// by every open mask. The other draw methods ignore masks.
+    /// </summary>
+    public void DrawTransformedSprite(OpenGLTexture2D texture, SpriteSourceRectangle sourceRectangle, Matrix3x2 transform,
+        SpriteColorTransform colorTransform)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(texture);
+        EnsureFrameActiveForDrawing();
+
+        _transformedSpriteRenderer.Draw(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceRectangle, transform,
+            colorTransform, _maskStack.LimitingTexture, _maskStack.IsWritingCoverage);
+    }
+
+    /// <summary>Starts a nested mask: until <see cref="BeginMaskedContent"/>, transformed sprites define its shape.</summary>
+    public void BeginMask()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureFrameActiveForDrawing();
+
+        _maskStack.Begin();
+    }
+
+    /// <summary>Ends the current mask's shapes; following transformed sprites are clipped by it.</summary>
+    public void BeginMaskedContent()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureFrameActiveForDrawing();
+
+        _maskStack.BeginContent(_renderTarget);
+    }
+
+    /// <summary>Closes the innermost mask.</summary>
+    public void EndMask()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureFrameActiveForDrawing();
+
+        _maskStack.End(_renderTarget);
+    }
+
     public void DrawSolidRectangle(int x, int y, int width, int height, SpriteColor color)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -290,8 +351,11 @@ public sealed class OpenGLRenderer : IDisposable
             throw new InvalidOperationException("No rendering frame is active.");
         }
 
+        bool masksOpen = _maskStack.Depth != 0;
+
         try
         {
+            _maskStack.Reset(_renderTarget);
             EndClip();
             BlitToHostFramebuffer();
         }
@@ -299,6 +363,11 @@ public sealed class OpenGLRenderer : IDisposable
         {
             _clipActive = false;
             _frameActive = false;
+        }
+
+        if (masksOpen)
+        {
+            throw new InvalidOperationException("The rendering frame ended with masks still open.");
         }
     }
 
@@ -338,6 +407,24 @@ public sealed class OpenGLRenderer : IDisposable
         try
         {
             _solidRectangleRenderer.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            _maskStack.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            _transformedSpriteRenderer.Dispose();
         }
         catch (Exception exception)
         {

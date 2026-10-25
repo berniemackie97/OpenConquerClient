@@ -1,3 +1,4 @@
+using OpenConquer.Content.Media;
 namespace OpenConquer.Content.Login;
 
 /// <summary>The sound events named by the retail <c>flashLogin.ini</c>.</summary>
