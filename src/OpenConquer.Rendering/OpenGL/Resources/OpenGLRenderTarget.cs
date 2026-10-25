@@ -66,6 +66,15 @@ internal sealed class OpenGLRenderTarget : IDisposable
         _gl.Clear(mask: (uint)(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit));
     }
 
+    /// <summary>Makes this target current again mid-frame without clearing it.</summary>
+    public void BindForDrawing()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, instance: this);
+
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _framebuffer);
+        _gl.Viewport(0, 0, (uint)_width, (uint)_height);
+    }
+
     public void BindForRead()
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);
