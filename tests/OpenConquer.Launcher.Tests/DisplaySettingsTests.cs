@@ -203,7 +203,9 @@ public sealed class DisplaySettingsTests : IDisposable
         DisplaySettingsStore writer = new(_root);
         Assert.Null(await writer.SaveAsync(DisplayPreferences.Default, null, false, token));
         TaskCompletionSource replaced = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        async Task ReadAsync()
+        TaskCompletionSource[] ready = [new(TaskCreationOptions.RunContinuationsAsynchronously), new(TaskCreationOptions.RunContinuationsAsynchronously)];
+        TaskCompletionSource[] observedReplacement = [new(TaskCreationOptions.RunContinuationsAsynchronously), new(TaskCreationOptions.RunContinuationsAsynchronously)];
+        async Task ReadAsync(int index)
         {
             DisplaySettingsStore reader = new(_root);
             while (!replaced.Task.IsCompleted)
@@ -212,25 +214,36 @@ public sealed class DisplaySettingsTests : IDisposable
                 SettingsReadResult.Loaded read = Assert.IsType<SettingsReadResult.Loaded>(await reader.LoadAsync(token));
                 Assert.NotNull(read.Revision);
                 Assert.InRange(read.Preferences.Width, 1280, 1330);
+                ready[index].TrySetResult();
+                if (read.Preferences.Width > 1280)
+                {
+                    observedReplacement[index].TrySetResult();
+                }
             }
         }
 
-        // Both readers are loading before the first replacement starts and keep loading until the last one ends.
-        Task[] readers = [ReadAsync(), ReadAsync()];
+        Task[] readers = [ReadAsync(0), ReadAsync(1)];
         try
         {
+            // Require completed reads before writing, then prove both readers see a replacement
+            // while further writes remain. Readers continue independently throughout the burst.
+            await Task.WhenAll(ready.Select(signal => signal.Task)).WaitAsync(TimeSpan.FromSeconds(10), token);
             for (int index = 1; index <= 50; index++)
             {
                 SettingsReadResult.Loaded previous = Assert.IsType<SettingsReadResult.Loaded>(await writer.LoadAsync(token));
                 Assert.Null(await writer.SaveAsync(new DisplayPreferences(1280 + index, 720, GameWindowMode.Resizable, GamePresentation.Fit), previous.Revision, false, token));
+                if (index == 1)
+                {
+                    await Task.WhenAll(observedReplacement.Select(signal => signal.Task)).WaitAsync(TimeSpan.FromSeconds(10), token);
+                }
             }
         }
         finally
         {
             replaced.SetResult();
+            await Task.WhenAll(readers);
         }
 
-        await Task.WhenAll(readers);
         Assert.Single(Directory.EnumerateFiles(_root));
     }
 
