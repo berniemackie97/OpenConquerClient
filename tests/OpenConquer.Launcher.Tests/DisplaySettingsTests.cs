@@ -159,27 +159,96 @@ public sealed class DisplaySettingsTests : IDisposable
     public async Task Readers_ObserveCompleteDocumentsDuringReplacement()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
+        DisplayPreferences[] generations = [.. Enumerable.Range(0, 4).Select(index => new DisplayPreferences(1280 + index, 720, GameWindowMode.Resizable, GamePresentation.Fit))];
+        DisplaySettingsStore writer = new(_root);
+        Assert.Null(await writer.SaveAsync(generations[0], null, false, token));
+        List<FileStream> readers = [];
+        try
+        {
+            for (int index = 1; index < generations.Length; index++)
+            {
+                // Each reader is part-way through one generation when the next replaces it.
+                FileStream reader = SettingsFile.OpenRead(FilePath);
+                readers.Add(reader);
+                Assert.Equal('{', reader.ReadByte());
+                SettingsReadResult.Loaded previous = Assert.IsType<SettingsReadResult.Loaded>(await writer.LoadAsync(token));
+                Assert.Null(await writer.SaveAsync(generations[index], previous.Revision, false, token));
+            }
+
+            for (int index = 0; index < readers.Count; index++)
+            {
+                byte[] observed = new byte[readers[index].Length];
+                readers[index].Position = 0;
+                readers[index].ReadExactly(observed);
+                Assert.Equal(DisplaySettingsDocument.Serialize(generations[index]), observed);
+            }
+        }
+        finally
+        {
+            foreach (FileStream reader in readers)
+            {
+                reader.Dispose();
+            }
+        }
+
+        SettingsReadResult.Loaded current = Assert.IsType<SettingsReadResult.Loaded>(await new DisplaySettingsStore(_root).LoadAsync(token));
+        Assert.Equal(generations[^1], current.Preferences);
+        Assert.Single(Directory.EnumerateFiles(_root));
+    }
+
+    [Fact]
+    public async Task ConcurrentReaders_NeverObserveAMissingOrLockedDocument()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
         DisplaySettingsStore writer = new(_root);
         Assert.Null(await writer.SaveAsync(DisplayPreferences.Default, null, false, token));
         async Task WriteAsync()
         {
-            for (int index = 0; index < 20; index++)
+            for (int index = 1; index <= 50; index++)
             {
                 SettingsReadResult.Loaded previous = Assert.IsType<SettingsReadResult.Loaded>(await writer.LoadAsync(token));
                 Assert.Null(await writer.SaveAsync(new DisplayPreferences(1280 + index, 720, GameWindowMode.Resizable, GamePresentation.Fit), previous.Revision, false, token));
             }
         }
+
+        Task writing = WriteAsync();
         async Task ReadAsync()
         {
             DisplaySettingsStore reader = new(_root);
-            for (int index = 0; index < 40; index++)
+            do
             {
+                // A missing document reads as the defaults without a revision.
                 SettingsReadResult.Loaded read = Assert.IsType<SettingsReadResult.Loaded>(await reader.LoadAsync(token));
-                Assert.InRange(read.Preferences.Width, 1280, 1299);
-                Assert.Equal(720, read.Preferences.Height);
+                Assert.NotNull(read.Revision);
+                Assert.InRange(read.Preferences.Width, 1280, 1330);
             }
+            while (!writing.IsCompleted);
         }
-        await Task.WhenAll(WriteAsync(), ReadAsync(), ReadAsync());
+
+        await Task.WhenAll(writing, ReadAsync(), ReadAsync());
+        Assert.Single(Directory.EnumerateFiles(_root));
+    }
+
+    [Fact]
+    public async Task ReaderWithoutDeleteSharing_BlocksReplacementWithoutLosingTheDocument()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // Only Windows enforces share modes.
+        }
+
+        CancellationToken token = TestContext.Current.CancellationToken;
+        DisplaySettingsStore store = new(_root);
+        Assert.Null(await store.SaveAsync(DisplayPreferences.Default, null, false, token));
+        SettingsReadResult.Loaded loaded = Assert.IsType<SettingsReadResult.Loaded>(await store.LoadAsync(token));
+        byte[] before = await File.ReadAllBytesAsync(FilePath, token);
+        using (FileStream reader = new(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            DisplayPreferences next = new(1920, 1080, GameWindowMode.Fixed, GamePresentation.Stretch);
+            Assert.Equal(SettingsIssue.Unavailable, await store.SaveAsync(next, loaded.Revision, false, token));
+        }
+
+        Assert.Equal(before, await File.ReadAllBytesAsync(FilePath, token));
         Assert.Single(Directory.EnumerateFiles(_root));
     }
 
