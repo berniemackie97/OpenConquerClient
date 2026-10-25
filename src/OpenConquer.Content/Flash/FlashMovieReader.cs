@@ -8,7 +8,7 @@ namespace OpenConquer.Content.Flash;
 /// Parses the baked movie format (format 1) strictly: every reference must resolve, every value must be in range,
 /// and anything unknown is rejected rather than ignored.
 /// </summary>
-internal static partial class FlashMovieReader
+public static partial class FlashMovieReader
 {
     private const int MaximumRasterExtent = 4096;
     private const int MaximumDepth = 65535;
