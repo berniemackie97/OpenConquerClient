@@ -144,13 +144,36 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
         for (int below = index - 1; below >= 0; below--)
         {
             if (siblings[below].ClipDepth is int clipDepth && clipDepth >= depth &&
-                !Contains(siblings[below], point, ignoreVisibility: true))
+                !MaskContains(siblings[below], point))
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+    // Clip masks use the union of their non-mask descendants as coverage, regardless of
+    // nested masks or visibility. Match DrawCoverage rather than interactive hit testing.
+    private bool MaskContains(FlashDisplayObject mask, Vector2 point)
+    {
+        switch (mask)
+        {
+            case FlashShapeInstance shape:
+                return RasterContains(shape.Movie, shape.Character, shape.Ratio, FlashTransforms.World(shape), point);
+            case FlashClip clip:
+                foreach (FlashDisplayObject child in clip.Children)
+                {
+                    if (child.ClipDepth is null && MaskContains(child, point))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            default:
+                return false;
+        }
     }
 
     private bool Contains(FlashDisplayObject displayObject, Vector2 point, bool ignoreVisibility)
