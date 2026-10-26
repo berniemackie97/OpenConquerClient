@@ -143,9 +143,10 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
         int depth = siblings[index].Depth;
         for (int below = index - 1; below >= 0; below--)
         {
-            if (siblings[below].ClipDepth is int clipDepth && clipDepth >= depth)
+            if (siblings[below].ClipDepth is int clipDepth && clipDepth >= depth &&
+                !Contains(siblings[below], point, ignoreVisibility: true))
             {
-                return Contains(siblings[below], point, ignoreVisibility: true);
+                return false;
             }
         }
 
