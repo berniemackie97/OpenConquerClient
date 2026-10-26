@@ -170,6 +170,44 @@ public sealed class FlashStageTests
     }
 
     [Fact]
+    public void Pointer_RequiresEveryOverlappingMaskToContainThePointer()
+    {
+        FlashStage stage = Start(Movie(Shapes + ""","2":{"kind":"sprite"}""", """
+            "root":{"frames":[[{"d":1,"c":1,"p":1,"clip":3},
+                {"d":2,"c":1,"p":1,"clip":3,"m":[1,0,0,1,5,0]},
+                {"d":3,"c":2,"p":1,"n":"btn","m":[1,0,0,1,5,0]}]],"labels":{}},
+            "2":{"frames":[[{"d":1,"c":1,"p":1}]],"labels":{}}
+            """), new FlashScriptTable());
+
+        int rollOvers = 0;
+        stage.Root.ChildClip("btn").OnRollOver = _ => rollOvers++;
+
+        stage.PointerMoved(new Vector2(12, 5));
+        Assert.Equal(0, rollOvers);
+
+        stage.PointerMoved(new Vector2(7, 5));
+        Assert.Equal(1, rollOvers);
+    }
+
+    [Fact]
+    public void Pointer_ClipMaskCoverageIgnoresItsNestedMasks()
+    {
+        FlashStage stage = Start(Movie(Shapes + ""","2":{"kind":"sprite"},"3":{"kind":"sprite"}""", """
+            "root":{"frames":[[{"d":1,"c":2,"p":1,"clip":2},
+                {"d":2,"c":3,"p":1,"n":"btn"}]],"labels":{}},
+            "2":{"frames":[[{"d":1,"c":1,"p":1,"clip":2,"m":[1,0,0,1,30,0]},
+                {"d":2,"c":1,"p":1}]],"labels":{}},
+            "3":{"frames":[[{"d":1,"c":1,"p":1}]],"labels":{}}
+            """), new FlashScriptTable());
+
+        int rollOvers = 0;
+        stage.Root.ChildClip("btn").OnRollOver = _ => rollOvers++;
+
+        stage.PointerMoved(new Vector2(5, 5));
+        Assert.Equal(1, rollOvers);
+    }
+
+    [Fact]
     public void SwapDepths_ExchangesPlacesAndTheTimelineLeavesBothAlone()
     {
         FlashStage stage = Start(Movie(Shapes + ""","2":{"kind":"sprite"}""", """
