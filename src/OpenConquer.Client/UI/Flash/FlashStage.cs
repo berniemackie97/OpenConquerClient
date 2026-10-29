@@ -130,7 +130,17 @@ internal sealed class FlashStage
     public void SetFocus(FlashTextInstance? text)
     {
         FocusedText = text is { IsInput: true, Parent.IsOnStage: true } ? text : null;
-        FocusedText?.SetSelection(0, FocusedText.Text.Length);
+        if (FocusedText is { } focused)
+        {
+            if (focused.Definition.NoSelect)
+            {
+                focused.MoveCaret(focused.Text.Length);
+            }
+            else
+            {
+                focused.SetSelection(0, focused.Text.Length);
+            }
+        }
     }
 
     /// <summary>A typed character for the focused input field.</summary>
@@ -149,14 +159,20 @@ internal sealed class FlashStage
         RunPendingScripts();
     }
 
-    public void SelectAll() => FocusedText?.SetSelection(0, FocusedText.Text.Length);
+    public void SelectAll()
+    {
+        if (FocusedText is { Definition.NoSelect: false } text)
+        {
+            text.SetSelection(0, text.Text.Length);
+        }
+    }
 
     public string SelectedText() => FocusedText?.SelectedText ?? string.Empty;
 
     public bool CutSelection()
     {
         EnsureStarted();
-        bool changed = FocusedText?.DeleteSelection() ?? false;
+        bool changed = FocusedText is { Definition.Password: false, Definition.NoSelect: false } text && text.DeleteSelection();
         RunPendingScripts();
         return changed;
     }
@@ -217,7 +233,7 @@ internal sealed class FlashStage
 
         if (_draggingText is { } text && TextCaretAt is { } locate)
         {
-            text.MoveCaret(locate(text, position), extendSelection: true);
+            text.MoveCaret(locate(text, position), extendSelection: !text.Definition.NoSelect);
             return;
         }
 
@@ -248,7 +264,7 @@ internal sealed class FlashStage
         {
             // A press on an input field focuses it; a press anywhere else clears the focus.
             FlashTextInstance? text = _hitTester.InputTextAt(Root, Pointer);
-            bool keepAnchor = extendSelection && ReferenceEquals(text, FocusedText);
+            bool keepAnchor = extendSelection && text is { Definition.NoSelect: false } && ReferenceEquals(text, FocusedText);
             if (!ReferenceEquals(text, FocusedText))
             {
                 SetFocus(text);

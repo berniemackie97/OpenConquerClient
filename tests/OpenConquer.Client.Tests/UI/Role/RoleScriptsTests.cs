@@ -84,6 +84,29 @@ public sealed class RoleScriptsTests
     }
 
     [Fact]
+    public void Name_PasteAndMiddleInsertionRejectOverflowWithoutChangingExistingName()
+    {
+        Flow flow = Flow.ToBodyStage();
+        FlashTextInstance name = flow.Root.ChildClip("sb").ChildText("userNameTxt");
+
+        flow.Type("abcdefghijklmn");
+        name.MoveCaret(7);
+        flow.EnterText("XY");
+        Assert.Equal("abcdefghijklmn", name.Text);
+        Assert.Equal(7, name.Caret);
+
+        name.SetSelection(5, 9);
+        flow.EnterText("PQ");
+        Assert.Equal("abcdePQjklmn", name.Text);
+        Assert.Equal(7, name.Caret);
+
+        name.MoveCaret(0);
+        flow.EnterText("éééééééé");
+        Assert.Equal("abcdePQjklmn", name.Text);
+        Assert.Equal(0, name.Caret);
+    }
+
+    [Fact]
     public void HostError_ShowsItsTextAndStopsTheLoadingClip()
     {
         Flow flow = Flow.ToClassStage();
@@ -194,6 +217,8 @@ public sealed class RoleScriptsTests
                 _stage.TextEntered(character);
             }
         }
+
+        public void EnterText(string text) => _stage.TextEntered(text);
 
         /// <summary>Moves to the middle of the first shape of <paramref name="shapeOwner"/>, presses and releases.</summary>
         public void Click(FlashDisplayObject shapeOwner)

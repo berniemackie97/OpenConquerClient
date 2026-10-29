@@ -293,6 +293,47 @@ public sealed class FlashStageTests
         Assert.Equal(1, stage.Root.ChildClip("button").CurrentFrame);
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void InputSelection_PasswordAndNoSelectFlagsPreventUserClipboardAccess(bool password, bool noSelect)
+    {
+        FlashStage stage = EditableStage(password, noSelect);
+        FlashTextInstance input = stage.Root.ChildText("input");
+        stage.SetFocus(input);
+
+        if (password)
+        {
+            Assert.True(input.HasSelection);
+        }
+        else
+        {
+            Assert.False(input.HasSelection);
+            stage.SelectAll();
+            Assert.False(input.HasSelection);
+            stage.EditKey(FlashEditKey.Home, extendSelection: true);
+            Assert.False(input.HasSelection);
+        }
+
+        Assert.Equal(string.Empty, stage.SelectedText());
+        Assert.False(stage.CutSelection());
+        Assert.Equal("secret", input.Text);
+    }
+
+    private static FlashStage EditableStage(bool password, bool noSelect)
+    {
+        string character = $"""
+            "1":{"kind":"edittext","bounds":[0,0,100,20],"font":"Arial","fontHeight":12,"color":[255,255,255,255],
+            "align":0,"leftMargin":0,"rightMargin":0,"indent":0,"leading":0,"maxLength":15,"variable":"",
+            "text":"secret","readOnly":false,"password":{{password.ToString().ToLowerInvariant()}},
+            "multiline":false,"wordWrap":false,"html":false,"noSelect":{{noSelect.ToString().ToLowerInvariant()}},
+            "border":false,"autoSize":false}
+            """;
+        return Start(Movie(character, """
+            "root":{"frames":[[{"d":1,"c":1,"p":1,"n":"input"}]],"labels":{}}
+            """), new FlashScriptTable());
+    }
+
     private static FlashStage Start(FlashMovie movie, FlashScriptTable scripts)
     {
         FlashStage stage = new(movie, scripts, new SquareRasters());

@@ -145,6 +145,7 @@ internal sealed partial class RoleScripts
 
             FlashTextInstance name = body.ChildText("userNameTxt");
             name.OnChanged = NameChanged;
+            name.AcceptInsertion = static value => ByteLength(value) <= MaximumNameBytes;
             name.Visible = false;
             body.ChildClip("bb1").GotoAndStop(SelectJob);
             body.ChildClip("sb1").GotoAndStop(SelectJob);
@@ -181,18 +182,10 @@ internal sealed partial class RoleScripts
         SelectJob is >= 1 and <= 12 ? TurnToNewline(_ini.Get("info", $"infoII{(SelectJob - 1) / 2}") ?? string.Empty) : string.Empty;
 
     /// <summary>
-    /// <c>userNameTxt.onChanged</c>: past 15 bytes (characters above U+0080 count two) the last character is dropped;
-    /// otherwise one of three key sounds plays, never the same twice in a row.
+    /// <c>userNameTxt.onChanged</c>: plays one of three key sounds, never repeating the previous sound.
     /// </summary>
     private void NameChanged(FlashTextInstance name)
     {
-        if (ByteLength(name.Text) > MaximumNameBytes)
-        {
-            name.Text = name.Text[..^1];
-            name.SetSelection(100, 100);
-            return;
-        }
-
         int sound;
         do
         {

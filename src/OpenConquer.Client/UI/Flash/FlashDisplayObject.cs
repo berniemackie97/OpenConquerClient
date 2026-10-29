@@ -204,7 +204,9 @@ internal sealed class FlashTextInstance : FlashDisplayObject
 
     public bool HasSelection => _anchor != Caret;
 
-    public string SelectedText => _text[SelectionStart..SelectionEnd];
+    public string SelectedText => Definition.Password || Definition.NoSelect ? string.Empty : _text[SelectionStart..SelectionEnd];
+
+    internal Func<string, bool>? AcceptInsertion { get; set; }
 
     /// <summary>AS2 <c>onChanged</c>: raised after each edit the user makes.</summary>
     public Action<FlashTextInstance>? OnChanged
@@ -242,12 +244,18 @@ internal sealed class FlashTextInstance : FlashDisplayObject
             count = Math.Min(count, Definition.MaxLength - (_text.Length - (end - start)));
         }
 
-        if (count <= 0)
+        if (count <= 0 || AcceptInsertion is not null && count != characters.Length)
         {
             return;
         }
 
-        _text = string.Concat(_text.AsSpan(0, start), characters[..count], _text.AsSpan(end));
+        string candidate = string.Concat(_text.AsSpan(0, start), characters[..count], _text.AsSpan(end));
+        if (AcceptInsertion is not null && !AcceptInsertion(candidate))
+        {
+            return;
+        }
+
+        _text = candidate;
         Caret = _anchor = start + count;
         OnChanged?.Invoke(this);
     }
@@ -284,7 +292,7 @@ internal sealed class FlashTextInstance : FlashDisplayObject
 
     internal bool DeleteSelection()
     {
-        if (!IsInput || !HasSelection)
+        if (!IsInput || !HasSelection || Definition.NoSelect)
         {
             return false;
         }
@@ -299,7 +307,7 @@ internal sealed class FlashTextInstance : FlashDisplayObject
     internal void MoveCaret(int position, bool extendSelection = false)
     {
         Caret = Math.Clamp(position, 0, _text.Length);
-        if (!extendSelection)
+        if (!extendSelection || Definition.NoSelect)
         {
             _anchor = Caret;
         }
