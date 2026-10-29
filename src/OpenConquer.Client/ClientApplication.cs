@@ -50,10 +50,12 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLRenderer? _renderer;
     private LoginScreenRenderer? _loginRenderer;
     private RoleCreationScreen? _role;
+    private IClientContentSource? _roleContent;
     private SelectCharacterIni? _roleIni;
     private FlashRasterCache? _roleRasters;
     private FlashStagePresentation? _rolePresentation;
     private bool _returnFromRole;
+    private Task? _roleClosing;
     private PixelPoint _lastPointer;
     private bool _runStarted;
     private bool _disposed;
@@ -136,6 +138,8 @@ internal sealed class ClientApplication : IDisposable
             {
                 _role?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 _role = null;
+                _roleClosing?.GetAwaiter().GetResult();
+                _roleClosing = null;
                 _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
             finally
@@ -175,7 +179,7 @@ internal sealed class ClientApplication : IDisposable
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
 
-        _roleIni = SelectCharacterIni.Load(contentSource);
+        _roleContent = contentSource;
         _roleRasters = new FlashRasterCache();
         _login = new LoginScreen(LoginStageLayout.Create(_logicalRenderSize), LoginAccountHistory.ForCurrentUser(),
             ClientVersionLabel.Load(contentSource), cue => _audio?.Play(cue));
@@ -264,13 +268,21 @@ internal sealed class ClientApplication : IDisposable
         _catalog?.Update(login, now);
         _loginFlow?.Update(_catalog?.CurrentCatalog(now));
         _registrationFlow?.Update(_catalog?.CurrentCatalog(now));
-        if (_role is null && _loginFlow is { Status: LoginAttemptStatus.CharacterCreation } creation &&
+        if (_roleClosing is { IsCompleted: true } closed)
+        {
+            _roleClosing = null;
+            closed.GetAwaiter().GetResult();
+        }
+
+        if (_role is null && _roleClosing is null &&
+            _loginFlow is { Status: LoginAttemptStatus.CharacterCreation } creation &&
             creation.TryTakeAcceptedGame(out var accepted, out string accountName))
         {
             try
             {
-                _role = new RoleCreationScreen(accepted!, accountName,
-                    _roleIni ?? throw new InvalidOperationException("Role creation content is unavailable."),
+                _roleIni ??= SelectCharacterIni.Load(_roleContent ??
+                    throw new InvalidOperationException("Role content source was not initialized."));
+                _role = new RoleCreationScreen(accepted!, accountName, _roleIni,
                     _roleRasters ?? throw new InvalidOperationException("Role raster source is unavailable."));
                 if (_rolePresentation is { } presentation)
                 {
@@ -280,9 +292,15 @@ internal sealed class ClientApplication : IDisposable
                 _role.ReturnRequested += () => _returnFromRole = true;
                 _role.ExitRequested += () => _window?.RequestClose();
             }
+            catch (Exception exception) when (exception is FileNotFoundException or InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine($"OpenConquer: retail role content is unavailable ({exception.Message}).");
+                _roleClosing = accepted?.DisposeAsync().AsTask();
+                creation.FailAcceptedGame();
+            }
             catch
             {
-                accepted?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                _roleClosing = accepted?.DisposeAsync().AsTask();
                 throw;
             }
         }
@@ -295,7 +313,7 @@ internal sealed class ClientApplication : IDisposable
             {
                 _returnFromRole = false;
                 _role = null;
-                activeRole.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                _roleClosing = activeRole.DisposeAsync().AsTask();
             }
         }
 
@@ -348,7 +366,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnLoginRequested()
     {
-        if (_login is { } login && _loginFlow is { } flow)
+        if (_roleClosing is null && _login is { } login && _loginFlow is { } flow)
         {
             flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
             login.ApplyFeedback(flow.Feedback, _loginErrors!);

@@ -168,6 +168,13 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         return true;
     }
 
+    internal void FailAcceptedGame()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _acceptedAccountName = string.Empty;
+        Publish(LoginAttemptStatus.Unavailable, LoginFailure.Resource(100116));
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
