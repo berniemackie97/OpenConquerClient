@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using OpenConquer.Client.Startup;
 using OpenConquer.Client.Startup.LoginFlow;
 using OpenConquer.Client.UI;
@@ -20,7 +21,6 @@ using OpenConquer.Platform.OpenGL;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
-using System.Runtime.ExceptionServices;
 
 namespace OpenConquer.Client;
 
