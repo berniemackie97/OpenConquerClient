@@ -10,6 +10,8 @@ using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Credentials;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
+using OpenConquer.Networking.Game.Handshake;
+using OpenConquer.Networking.Game.Login;
 using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests.Startup.LoginFlow;
@@ -251,6 +253,40 @@ public sealed class LoginAttemptCoordinatorTests : IDisposable
             Assert.Equal(100100u, attempts.Feedback.Failure!.Code);
         }
         Assert.Equal(0, screen.Credentials.PasswordLength);
+        await Task.WhenAll(accountPeer, gamePeer).WaitAsync(budget.Token);
+    }
+
+    [Fact]
+    public async Task ExistingCharacterWorldAdmission_TransfersGameSessionAndMapSnapshotOnce()
+    {
+        using CancellationTokenSource budget = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        budget.CancelAfter(TimeSpan.FromSeconds(15));
+        using TcpListener account = new(IPAddress.Loopback, 0);
+        account.Start();
+        using TcpListener game = new(IPAddress.Loopback, 0);
+        game.Start();
+
+        Task accountPeer = RedirectAccountAsync(account, ((IPEndPoint)game.LocalEndpoint).Port, budget.Token);
+        Task gamePeer = Networking.GameServerHandshakeSessionTests.AcceptedCoordinatorWorldPeerAsync(game, budget.Token);
+        DateTimeOffset now = new(2026, 10, 17, 22, 0, 0, TimeSpan.Zero);
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        SignedLoginCatalog catalog = CreateSignedLocalCatalog(signer, ((IPEndPoint)account.LocalEndpoint).Port, now);
+        using LoginScreen screen = CreateFilledScreen(catalog);
+        await using LoginAttemptCoordinator attempts = new(_folder, new FixedClock(now));
+
+        Assert.True(attempts.TryStart(screen, catalog));
+        await CollectAsync(attempts, catalog);
+        Assert.Equal(LoginAttemptStatus.CharacterReceived, attempts.Status);
+        Assert.True(attempts.TryTakeAdmittedWorld(out GameServerHandshakeSession? accepted,
+            out GameWorldEntrySnapshot? admitted));
+        Assert.NotNull(accepted);
+        Assert.NotNull(admitted);
+        Assert.Equal(0x11223344u, admitted.Character.EntityId);
+        Assert.Equal(1002u, admitted.MapId);
+        Assert.Equal(1015u, admitted.MapDataId);
+        Assert.False(attempts.TryTakeAdmittedWorld(out _, out _));
+
+        await accepted.DisposeAsync();
         await Task.WhenAll(accountPeer, gamePeer).WaitAsync(budget.Token);
     }
 
