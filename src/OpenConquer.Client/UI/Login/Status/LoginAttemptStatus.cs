@@ -12,7 +12,7 @@ internal enum LoginAttemptStatus
     ConnectingGame,
     ReadingCharacter,
     GameRefused,
-    NewRoleUnavailable,
+    CharacterCreation,
     CharacterReceived,
     Timeout,
     Unavailable,

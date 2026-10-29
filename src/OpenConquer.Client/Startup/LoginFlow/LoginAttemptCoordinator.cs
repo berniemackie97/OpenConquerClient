@@ -23,6 +23,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private Task<AttemptResult>? _pending;
     private CancellationTokenSource? _cancellation;
     private GameServerHandshakeSession? _acceptedGame;
+    private string _acceptedAccountName = string.Empty;
     private Task? _revocation;
     private SignedLoginCatalog? _catalog;
     private LoginServerSelection? _selection;
@@ -93,6 +94,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 
         GameServerHandshakeSession? previous = _acceptedGame;
         _acceptedGame = null;
+        _acceptedAccountName = screen.Credentials.AccountDisplay;
         _catalog = catalog;
         _selection = selected;
         _revision = selected.Revision;
@@ -138,6 +140,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
                 _revocation = DisposeRevokedAsync(revokedGame);
             }
 
+            _acceptedAccountName = string.Empty;
             Publish(LoginAttemptStatus.Cancelled);
         }
         else
@@ -145,6 +148,24 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
             _acceptedGame = result.Game;
             Publish(result.Status, result.Failure);
         }
+    }
+
+    internal bool TryTakeAcceptedGame(out GameServerHandshakeSession? game, out string accountName)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (Status is not (LoginAttemptStatus.CharacterCreation or LoginAttemptStatus.CharacterReceived) ||
+            _acceptedGame is null)
+        {
+            game = null;
+            accountName = string.Empty;
+            return false;
+        }
+
+        game = _acceptedGame;
+        accountName = _acceptedAccountName;
+        _acceptedGame = null;
+        _acceptedAccountName = string.Empty;
+        return true;
     }
 
     public async ValueTask DisposeAsync()
@@ -155,6 +176,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
 
         _disposed = true;
+        _acceptedAccountName = string.Empty;
         _cancellation?.Cancel();
         if (_pending is { } pending)
         {
@@ -235,7 +257,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 
                 if (control.Kind == GameLoginControlKind.CharacterCreation)
                 {
-                    return new(LoginAttemptStatus.NewRoleUnavailable, null);
+                    transferred = true;
+                    return new(LoginAttemptStatus.CharacterCreation, game);
                 }
 
                 _ = await game.ReadExistingCharacterPreludeAsync(s_timeout, cancellationToken)
