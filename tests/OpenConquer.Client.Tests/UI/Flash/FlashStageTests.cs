@@ -322,13 +322,15 @@ public sealed class FlashStageTests
 
     private static FlashStage EditableStage(bool password, bool noSelect)
     {
-        string character = $"""
+        string character = """
             "1":{"kind":"edittext","bounds":[0,0,100,20],"font":"Arial","fontHeight":12,"color":[255,255,255,255],
             "align":0,"leftMargin":0,"rightMargin":0,"indent":0,"leading":0,"maxLength":15,"variable":"",
-            "text":"secret","readOnly":false,"password":{{password.ToString().ToLowerInvariant()}},
-            "multiline":false,"wordWrap":false,"html":false,"noSelect":{{noSelect.ToString().ToLowerInvariant()}},
+            "text":"secret","readOnly":false,"password":PASSWORD,
+            "multiline":false,"wordWrap":false,"html":false,"noSelect":NOSELECT,
             "border":false,"autoSize":false}
-            """;
+            """
+            .Replace("PASSWORD", password ? "true" : "false", StringComparison.Ordinal)
+            .Replace("NOSELECT", noSelect ? "true" : "false", StringComparison.Ordinal);
         return Start(Movie(character, """
             "root":{"frames":[[{"d":1,"c":1,"p":1,"n":"input"}]],"labels":{}}
             """), new FlashScriptTable());
