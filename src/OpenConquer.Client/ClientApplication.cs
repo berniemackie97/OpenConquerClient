@@ -136,11 +136,23 @@ internal sealed class ClientApplication : IDisposable
         {
             try
             {
-                _role?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-                _role = null;
-                _roleClosing?.GetAwaiter().GetResult();
-                _roleClosing = null;
-                _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                try
+                {
+                    _role?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
+                finally
+                {
+                    _role = null;
+                    try
+                    {
+                        _roleClosing?.GetAwaiter().GetResult();
+                    }
+                    finally
+                    {
+                        _roleClosing = null;
+                        _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    }
+                }
             }
             finally
             {

@@ -153,8 +153,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     internal bool TryTakeAcceptedGame(out GameServerHandshakeSession? game, out string accountName)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (Status is not (LoginAttemptStatus.CharacterCreation or LoginAttemptStatus.CharacterReceived) ||
-            _acceptedGame is null)
+        if (Status != LoginAttemptStatus.CharacterCreation || _acceptedGame is null)
         {
             game = null;
             accountName = string.Empty;
