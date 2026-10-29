@@ -47,7 +47,10 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
     }
 
     public FlashStage Stage => _stage;
-    public GameCharacterInfo1006? CreatedCharacter { get; private set; }
+    public GameCharacterInfo1006? CreatedCharacter
+    {
+        get; private set;
+    }
     public event Action? ReturnRequested;
     public event Action? ExitRequested;
 

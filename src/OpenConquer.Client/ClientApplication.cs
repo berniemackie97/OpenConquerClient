@@ -1,19 +1,18 @@
-using System.Runtime.ExceptionServices;
 using OpenConquer.Client.Startup;
 using OpenConquer.Client.Startup.LoginFlow;
 using OpenConquer.Client.UI;
+using OpenConquer.Client.UI.Flash;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
-using OpenConquer.Client.UI.Flash;
 using OpenConquer.Client.UI.Role;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
-using OpenConquer.Content.Role;
 using OpenConquer.Content.Login;
+using OpenConquer.Content.Role;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
 using OpenConquer.Platform.Geometry;
@@ -21,6 +20,7 @@ using OpenConquer.Platform.OpenGL;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
+using System.Runtime.ExceptionServices;
 
 namespace OpenConquer.Client;
 
