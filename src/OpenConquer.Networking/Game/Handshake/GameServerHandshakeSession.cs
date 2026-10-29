@@ -626,6 +626,46 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
     }
 
+    /// <summary>Sends one fixed world-entry 10010 action after typed character information is accepted.</summary>
+    internal async Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair,
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        ValidateTimeout(timeout);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2 || !_existingCharacterRoute || _characterInfoState != 2)
+            {
+                throw new InvalidOperationException("World-entry actions require a completed character-info read.");
+            }
+
+            _phase = 1;
+            _activeOperations++;
+        }
+
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        bool completed = false;
+        try
+        {
+            GameWorldAction10010.Write(packet, action, entityId, parameterPair);
+            await WriteSecuredPacketAsync(packet, timeout, "GameServer world-entry action write timed out.",
+                cancellationToken).ConfigureAwait(false);
+            completed = true;
+        }
+        catch
+        {
+            TerminateLoginControlSession();
+            throw;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(packet);
+            ExitOperation(completed);
+        }
+    }
+
     private void EnterCreationWrite(CreationState required)
     {
         lock (_lifetimeGate)
