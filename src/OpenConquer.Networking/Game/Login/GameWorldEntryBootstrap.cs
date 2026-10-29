@@ -94,7 +94,7 @@ internal static class GameWorldEntryBootstrap
             s_timeout, cancellationToken).ConfigureAwait(false);
         return new GameWorldEntrySnapshot(character, mapId, mapDataId, flags, weatherKind, x, y, hydration);
 
-        async Task ExchangeAsync(ushort expectedAction, uint entityId, ReadOnlyMemory<ushort> acceptedPayloads)
+        async Task ExchangeAsync(ushort expectedAction, uint entityId, ushort[] acceptedPayloads)
         {
             await session.SendWorldActionAsync(expectedAction, entityId, 0, s_timeout, cancellationToken)
                 .ConfigureAwait(false);
@@ -114,7 +114,7 @@ internal static class GameWorldEntryBootstrap
                     break;
                 }
 
-                if (!acceptedPayloads.Span.Contains(frame.PacketType))
+                if (!acceptedPayloads.AsSpan().Contains(frame.PacketType))
                 {
                     throw new InvalidDataException($"World entry action {expectedAction} received an unexpected packet {frame.PacketType}.");
                 }

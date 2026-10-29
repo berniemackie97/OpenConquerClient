@@ -263,7 +263,9 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 
                 _ = await game.ReadExistingCharacterPreludeAsync(s_timeout, cancellationToken)
                     .ConfigureAwait(false);
-                _ = await game.ReadCharacterInfoAsync(s_timeout, cancellationToken)
+                GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(s_timeout, cancellationToken)
+                    .ConfigureAwait(false);
+                _ = await GameWorldEntryBootstrap.RunAsync(game, character, cancellationToken)
                     .ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
 

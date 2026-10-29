@@ -47,7 +47,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
     }
 
     public FlashStage Stage => _stage;
-    public GameCharacterInfo1006? CreatedCharacter
+    public GameWorldEntrySnapshot? WorldEntry
     {
         get; private set;
     }
@@ -100,10 +100,11 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         {
             _scripts.Receive("ERROR|" + refusal);
         }
-        else if (response.Character is { } created)
+        else if (response.World is { } entered)
         {
-            CreatedCharacter = created;
-            _scripts.Receive("LOADING_TRACE|Initializing...");
+            WorldEntry = entered;
+            _scripts.Receive("PROGRESS|80");
+            _scripts.Receive("LOADING_TRACE|Starting... Please wait...");
         }
     }
 
@@ -209,7 +210,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
 
     private void Submit()
     {
-        if (_pending is not null || _stoppingRequested || CreatedCharacter is not null)
+        if (_pending is not null || _stoppingRequested || WorldEntry is not null)
         {
             return;
         }
@@ -267,7 +268,9 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
 
         _ = await _game.ReadExistingCharacterPreludeAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         GameCharacterInfo1006 character = await _game.ReadCharacterInfoAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
-        return new CreationResponse(character, null);
+        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(_game, character, cancellationToken)
+            .ConfigureAwait(false);
+        return new CreationResponse(world, null);
     }
 
     private async Task<CreationResponse> SendCancelAsync()
@@ -310,5 +313,5 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         }
     }
 
-    private sealed record CreationResponse(GameCharacterInfo1006? Character, string? Refusal);
+    private sealed record CreationResponse(GameWorldEntrySnapshot? World, string? Refusal);
 }
