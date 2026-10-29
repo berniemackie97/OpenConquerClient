@@ -212,6 +212,11 @@ internal sealed class ClientApplication : IDisposable
             _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
             _rolePresentation = graphics.Track(new FlashStagePresentation(device,
                 _roleRasters ?? throw new InvalidOperationException("Role raster source is missing.")));
+            if (_role is { } activeRole)
+            {
+                activeRole.Stage.TextCaretAt = _rolePresentation.LocateCaret;
+            }
+
             login.CaretLocator = _loginRenderer.CaretLocator;
             login.RegistrationCaretLocator = _loginRenderer.RegistrationCaretLocator;
             _graphics = graphics;
@@ -230,6 +235,11 @@ internal sealed class ClientApplication : IDisposable
     {
         _catalog?.Cancel();
         _login?.FocusLost();
+        if (_role is { } activeRole)
+        {
+            activeRole.Stage.TextCaretAt = null;
+        }
+
         if (_login is not null)
         {
             _login.CaretLocator = null;
@@ -262,6 +272,11 @@ internal sealed class ClientApplication : IDisposable
                 _role = new RoleCreationScreen(accepted!, accountName,
                     _roleIni ?? throw new InvalidOperationException("Role creation content is unavailable."),
                     _roleRasters ?? throw new InvalidOperationException("Role raster source is unavailable."));
+                if (_rolePresentation is { } presentation)
+                {
+                    _role.Stage.TextCaretAt = presentation.LocateCaret;
+                }
+
                 _role.ReturnRequested += () => _returnFromRole = true;
                 _role.ExitRequested += () => _window?.RequestClose();
             }
