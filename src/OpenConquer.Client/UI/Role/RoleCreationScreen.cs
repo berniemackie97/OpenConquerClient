@@ -215,7 +215,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
             return;
         }
 
-        if (_name.Length is < 4 or > 15 || _name.Any(static c => c is < ' ' or > '\u00FF' or ';' or ',' or '/' or '\\' or '=' or '%' or '@' or '\'' or '"' or '[' or ']'))
+        if (_name.Length is < 4 or > 15 || _name.Any(static c => c is < ' ' or >= '\u007F' and <= '\u009F' or > '\u00FF' or ' ' or ';' or ',' or '/' or '\\' or '=' or '%' or '@' or '\'' or '"' or '[' or ']'))
         {
             _localError = "First Name should be 4-15 characters!";
             return;
@@ -308,8 +308,14 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         }
         finally
         {
-            await _game.DisposeAsync().ConfigureAwait(false);
-            _stopping.Dispose();
+            try
+            {
+                await _game.DisposeAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                _stopping.Dispose();
+            }
         }
     }
 
