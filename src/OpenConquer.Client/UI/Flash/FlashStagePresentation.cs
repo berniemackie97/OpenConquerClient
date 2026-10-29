@@ -17,6 +17,7 @@ internal sealed class FlashStagePresentation : IDisposable
 {
     private const int TextGutter = 2;
     private const int CaretBlinkFrames = 15;
+    private const int MaximumCachedLayouts = 512;
 
     private readonly OpenGLGraphicsDevice _graphicsDevice;
     private readonly IFlashRasterSource _rasters;
@@ -181,10 +182,46 @@ internal sealed class FlashStagePresentation : IDisposable
         renderer.DrawTransformedSprite(Texture(movie, raster), new SpriteSourceRectangle(0, 0, info.Width, info.Height), transform, color);
     }
 
+    internal int LocateCaret(FlashTextInstance text, Vector2 pointer)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(text);
+
+        FlashEditTextCharacter field = text.Definition;
+        OpenGLTextContext font = Font(field.Font, (int)MathF.Round(field.FontHeight));
+        string value = field.Password ? new string('*', text.Text.Length) : text.Text;
+        float width = field.Bounds.Right - field.Bounds.Left - 2 * TextGutter - field.LeftMargin - field.RightMargin;
+        Matrix3x2 world = FlashTransforms.World(text);
+        Vector2 origin = Vector2.Transform(new Vector2(field.Bounds.Left + TextGutter + field.LeftMargin,
+            field.Bounds.Top + TextGutter), world);
+        OpenGLTextLayout layout = Layout(font, value);
+        float offset = field.Alignment switch
+        {
+            FlashTextAlignment.Center => (width - layout.WidthPixels) / 2f,
+            FlashTextAlignment.Right => width - layout.WidthPixels,
+            _ => 0f,
+        };
+
+        float x = pointer.X - origin.X - offset;
+        int best = 0;
+        float distance = MathF.Abs(x);
+        for (int index = 1; index <= value.Length; index++)
+        {
+            float next = MathF.Abs(x - Layout(font, value[..index]).WidthPixels);
+            if (next < distance)
+            {
+                best = index;
+                distance = next;
+            }
+        }
+
+        return best;
+    }
+
     private void DrawText(OpenGLRenderer renderer, FlashTextInstance text, Matrix3x2 world, SpriteColorTransform color)
     {
         FlashEditTextCharacter field = text.Definition;
-        string value = text.Text;
+        string value = field.Password ? new string('*', text.Text.Length) : text.Text;
         bool focused = ReferenceEquals(_drawing?.FocusedText, text);
         if (value.Length == 0 && !focused || color.AlphaMultiplier <= 0f)
         {
@@ -209,6 +246,15 @@ internal sealed class FlashStagePresentation : IDisposable
                 _ => 0f,
             };
 
+            if (focused && !field.Multiline && text.HasSelection && !field.NoSelect)
+            {
+                int start = Layout(font, value[..text.SelectionStart]).WidthPixels;
+                int end = Layout(font, value[..text.SelectionEnd]).WidthPixels;
+                renderer.DrawSolidRectangle((int)MathF.Round(origin.X + offset) + start, lineY,
+                    Math.Max(1, end - start), Math.Max(1, (int)MathF.Round(field.FontHeight)),
+                    new SpriteColor(48, 111, 207, 160));
+            }
+
             if (line.Length != 0)
             {
                 font.Draw(renderer, layout, style, (int)MathF.Round(origin.X + offset), lineY);
@@ -221,8 +267,17 @@ internal sealed class FlashStagePresentation : IDisposable
         // Flash 7 player's own rate is not verified.
         if (focused && _drawing!.FrameCount / CaretBlinkFrames % 2 == 0)
         {
-            int caretX = (int)MathF.Round(origin.X) + (text.Caret == 0 ? 0 : Layout(font, value[..text.Caret]).WidthPixels);
-            renderer.DrawSolidRectangle(caretX, (int)MathF.Round(origin.Y), 1, Math.Max(1, (int)MathF.Round(field.FontHeight)), tint);
+            float width = field.Bounds.Right - field.Bounds.Left - 2 * TextGutter - field.LeftMargin - field.RightMargin;
+            float lineWidth = Layout(font, value).WidthPixels;
+            float offset = field.Alignment switch
+            {
+                FlashTextAlignment.Center => (width - lineWidth) / 2f,
+                FlashTextAlignment.Right => width - lineWidth,
+                _ => 0f,
+            };
+            int caretX = (int)MathF.Round(origin.X + offset) + Layout(font, value[..text.Caret]).WidthPixels;
+            renderer.DrawSolidRectangle(caretX, (int)MathF.Round(origin.Y), 1,
+                Math.Max(1, (int)MathF.Round(field.FontHeight)), tint);
         }
     }
 
@@ -304,6 +359,11 @@ internal sealed class FlashStagePresentation : IDisposable
     {
         if (!_layouts.TryGetValue((font, text), out OpenGLTextLayout? layout))
         {
+            if (_layouts.Count == MaximumCachedLayouts)
+            {
+                _layouts.Clear();
+            }
+
             layout = font.LayoutUnicode(text);
             _layouts.Add((font, text), layout);
         }
