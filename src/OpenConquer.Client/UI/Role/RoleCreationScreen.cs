@@ -131,13 +131,45 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         }
     }
 
-    public void PointerMoved(Vector2 position) => _stage.PointerMoved(position);
-    public void PointerPressed(bool extendSelection) => _stage.PointerPressed(extendSelection);
-    public void PointerReleased() => _stage.PointerReleased();
-    public void TextEntered(char character) => _stage.TextEntered(character);
+    public void PointerMoved(Vector2 position)
+    {
+        if (!_worldTransferred)
+        {
+            _stage.PointerMoved(position);
+        }
+    }
+
+    public void PointerPressed(bool extendSelection)
+    {
+        if (!_worldTransferred)
+        {
+            _stage.PointerPressed(extendSelection);
+        }
+    }
+
+    public void PointerReleased()
+    {
+        if (!_worldTransferred)
+        {
+            _stage.PointerReleased();
+        }
+    }
+
+    public void TextEntered(char character)
+    {
+        if (!_worldTransferred)
+        {
+            _stage.TextEntered(character);
+        }
+    }
 
     public void KeyPressed(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard)
     {
+        if (_worldTransferred)
+        {
+            return;
+        }
+
         if (key.Key is DesktopKey.Enter or DesktopKey.Escape)
         {
             _stage.SetKey(key.Key == DesktopKey.Enter ? 13 : 27, true);
@@ -205,6 +237,11 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
                 Submit();
                 break;
             case "CMD_DRIVERBACK":
+                if (_worldTransferred || WorldEntry is not null)
+                {
+                    break;
+                }
+
                 if (_pending is null)
                 {
                     _stoppingRequested = true;

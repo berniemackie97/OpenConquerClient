@@ -343,11 +343,11 @@ internal sealed class ClientApplication : IDisposable
             activeRole.Tick(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
                 TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
             if (_worldGame is null && activeRole.TryTakeAdmittedWorld(
-                    out GameServerHandshakeSession? acceptedGame, out GameWorldEntrySnapshot? acceptedWorld))
+                    out GameServerHandshakeSession? createdGame, out GameWorldEntrySnapshot? createdWorld))
             {
-                _worldGame = acceptedGame;
-                _worldEntry = acceptedWorld;
-                Console.WriteLine($"OpenConquer: world-entry ladder submitted for map {acceptedWorld!.MapId}, character {acceptedWorld.Character.EntityId}.");
+                _worldGame = createdGame;
+                _worldEntry = createdWorld;
+                Console.WriteLine($"OpenConquer: world-entry ladder submitted for map {createdWorld!.MapId}, character {createdWorld.Character.EntityId}.");
             }
 
             if (_returnFromRole)
