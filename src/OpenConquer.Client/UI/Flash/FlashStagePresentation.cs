@@ -267,7 +267,6 @@ internal sealed class FlashStagePresentation : IDisposable
         // Flash 7 player's own rate is not verified.
         if (focused && _drawing!.FrameCount / CaretBlinkFrames % 2 == 0)
         {
-            float width = field.Bounds.Right - field.Bounds.Left - 2 * TextGutter - field.LeftMargin - field.RightMargin;
             float lineWidth = Layout(font, value).WidthPixels;
             float offset = field.Alignment switch
             {
