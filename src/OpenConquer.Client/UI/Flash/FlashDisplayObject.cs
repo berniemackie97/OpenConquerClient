@@ -206,7 +206,10 @@ internal sealed class FlashTextInstance : FlashDisplayObject
 
     public string SelectedText => Definition.Password || Definition.NoSelect ? string.Empty : _text[SelectionStart..SelectionEnd];
 
-    internal Func<string, bool>? AcceptInsertion { get; set; }
+    internal Func<string, bool>? AcceptInsertion
+    {
+        get; set;
+    }
 
     /// <summary>AS2 <c>onChanged</c>: raised after each edit the user makes.</summary>
     public Action<FlashTextInstance>? OnChanged
