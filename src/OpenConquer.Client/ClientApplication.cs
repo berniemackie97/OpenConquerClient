@@ -313,6 +313,7 @@ internal sealed class ClientApplication : IDisposable
             {
                 _returnFromRole = false;
                 _role = null;
+                _loginFlow?.CompleteRoleReturn(activeRole.ConnectionLost);
                 _roleClosing = activeRole.DisposeAsync().AsTask();
             }
         }

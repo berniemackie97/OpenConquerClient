@@ -168,6 +168,14 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         return true;
     }
 
+    internal void CompleteRoleReturn(bool connectionLost)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _acceptedAccountName = string.Empty;
+        Publish(connectionLost ? LoginAttemptStatus.Unavailable : LoginAttemptStatus.Idle,
+            connectionLost ? LoginFailure.Resource(10249) : null);
+    }
+
     internal void FailAcceptedGame()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

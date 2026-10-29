@@ -31,6 +31,11 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
     private bool _stoppingRequested;
     private bool _disposed;
 
+    public bool ConnectionLost
+    {
+        get; private set;
+    }
+
     public RoleCreationScreen(GameServerHandshakeSession game, string account, SelectCharacterIni ini, IFlashRasterSource rasters)
     {
         _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -90,7 +95,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         if (completed.IsCanceled || completed.IsFaulted)
         {
             // The write/read path is terminal on an unexpected transport failure.
-            _localError = "The connection to the game server was lost.";
+            ConnectionLost = true;
             _stoppingRequested = true;
             _stopping.Cancel();
             ReturnRequested?.Invoke();
