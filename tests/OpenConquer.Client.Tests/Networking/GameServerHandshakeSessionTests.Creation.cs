@@ -302,6 +302,21 @@ public sealed partial class GameServerHandshakeSessionTests
         Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
     }
 
+    internal static async Task AcceptedCoordinatorWorldPeerAsync(TcpListener listener, CancellationToken token)
+    {
+        using SecuredTestPeer peer = await AcceptSecuredPeerAsync(listener, token);
+        byte[] proof = await peer.ReadPacketAsync(28, token);
+        Assert.Equal(0x6E45, BinaryPrimitives.ReadUInt16LittleEndian(proof.AsSpan(14)));
+        Assert.All(proof.AsSpan(16, 6).ToArray(), value => Assert.Equal(0, value));
+
+        byte[] character = CreateCharacterInfoWire(invalidType: false);
+        await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
+            Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
+            character[..^8]);
+        await WorldEntryPeerAsync(peer, token);
+        Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
+    }
+
     private static async Task WorldEntryPeerAsync(SecuredTestPeer peer, CancellationToken token)
     {
         const uint hero = 0x11223344;
