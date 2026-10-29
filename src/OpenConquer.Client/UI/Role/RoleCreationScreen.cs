@@ -1,0 +1,311 @@
+using System.Globalization;
+using System.Numerics;
+using System.Text;
+using OpenConquer.Client.UI.Flash;
+using OpenConquer.Content.Flash;
+using OpenConquer.Content.Role;
+using OpenConquer.Networking.Game.Handshake;
+using OpenConquer.Networking.Game.Login;
+using OpenConquer.Platform.Windowing.Desktop;
+
+namespace OpenConquer.Client.UI.Role;
+
+/// <summary>Owns the retail create-role stage and its authenticated GameServer connection.</summary>
+internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDisposable
+{
+    private static readonly TimeSpan s_networkTimeout = TimeSpan.FromSeconds(10);
+    private static readonly Encoding s_nameEncoding = Encoding.Latin1;
+
+    private readonly GameServerHandshakeSession _game;
+    private readonly CancellationTokenSource _stopping = new();
+    private readonly RoleScripts _scripts;
+    private readonly FlashStage _stage;
+    private Task<CreationResponse>? _pending;
+    private string _name = string.Empty;
+    private int _body = -1;
+    private int _vocation = -1;
+    private string? _localError;
+    private double _frameRemainder;
+    private bool _stoppingRequested;
+    private bool _disposed;
+
+    public RoleCreationScreen(GameServerHandshakeSession game, string account, SelectCharacterIni ini, IFlashRasterSource rasters)
+    {
+        _game = game ?? throw new ArgumentNullException(nameof(game));
+        ArgumentNullException.ThrowIfNull(account);
+        ArgumentNullException.ThrowIfNull(ini);
+        ArgumentNullException.ThrowIfNull(rasters);
+
+        FlashScriptTable table = new();
+        _scripts = new RoleScripts(ini, RoleMovies.LoadCharacterInAndOut(), this, this);
+        _scripts.Register(table);
+        new CharacterInAndOutScripts(_scripts).Register(table);
+        _stage = new FlashStage(RoleMovies.LoadRole(), table, rasters);
+        _stage.Start();
+        _scripts.Receive("USERACCOUNT|" + account);
+        _scripts.Receive("PATH|");
+    }
+
+    public FlashStage Stage => _stage;
+    public GameCharacterInfo1006? CreatedCharacter { get; private set; }
+    public event Action? ReturnRequested;
+    public event Action? ExitRequested;
+
+    public void Tick(TimeSpan elapsed)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        _frameRemainder = Math.Min(_frameRemainder + Math.Max(0, elapsed.TotalSeconds), 0.25);
+        while (_frameRemainder >= 1d / 30d)
+        {
+            _stage.Tick();
+            _stage.SetKey(13, false);
+            _stage.SetKey(27, false);
+            _frameRemainder -= 1d / 30d;
+        }
+
+        if (_localError is { } localError)
+        {
+            _localError = null;
+            _scripts.Receive("ERROR|" + localError);
+        }
+
+        if (_pending is not { IsCompleted: true } completed)
+        {
+            return;
+        }
+
+        _pending = null;
+        if (_stoppingRequested)
+        {
+            ReturnRequested?.Invoke();
+            return;
+        }
+
+        if (completed.IsCanceled || completed.IsFaulted)
+        {
+            // The write/read path is terminal on an unexpected transport failure.
+            _localError = "The connection to the game server was lost.";
+            _stoppingRequested = true;
+            _stopping.Cancel();
+            ReturnRequested?.Invoke();
+            return;
+        }
+
+        CreationResponse response = completed.Result;
+        if (response.Refusal is { } refusal)
+        {
+            _scripts.Receive("ERROR|" + refusal);
+        }
+        else if (response.Character is { } created)
+        {
+            CreatedCharacter = created;
+            _scripts.Receive("LOADING_TRACE|Initializing...");
+        }
+    }
+
+    public void PointerMoved(Vector2 position) => _stage.PointerMoved(position);
+    public void PointerPressed(bool extendSelection) => _stage.PointerPressed(extendSelection);
+    public void PointerReleased() => _stage.PointerReleased();
+    public void TextEntered(char character) => _stage.TextEntered(character);
+
+    public void KeyPressed(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard)
+    {
+        if (key.Key is DesktopKey.Enter or DesktopKey.Escape)
+        {
+            _stage.SetKey(key.Key == DesktopKey.Enter ? 13 : 27, true);
+            return;
+        }
+
+        bool shortcut = (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) != 0;
+        if (shortcut && !key.IsRepeat)
+        {
+            switch (key.Key)
+            {
+                case DesktopKey.A:
+                    _stage.SelectAll();
+                    return;
+                case DesktopKey.C:
+                    writeClipboard(_stage.SelectedText());
+                    return;
+                case DesktopKey.X:
+                    string selected = _stage.SelectedText();
+                    if (selected.Length != 0 && _stage.CutSelection())
+                    {
+                        writeClipboard(selected);
+                    }
+                    return;
+                case DesktopKey.V:
+                    if (readClipboard() is { } paste)
+                    {
+                        _stage.TextEntered(paste);
+                    }
+                    return;
+            }
+        }
+
+        FlashEditKey? edit = key.Key switch
+        {
+            DesktopKey.Backspace => FlashEditKey.Backspace,
+            DesktopKey.Delete => FlashEditKey.Delete,
+            DesktopKey.Left => FlashEditKey.Left,
+            DesktopKey.Right => FlashEditKey.Right,
+            DesktopKey.Home => FlashEditKey.Home,
+            DesktopKey.End => FlashEditKey.End,
+            _ => null,
+        };
+
+        if (edit is { } action && !shortcut && (key.Modifiers & DesktopKeyModifiers.Alt) == 0)
+        {
+            _stage.EditKey(action, (key.Modifiers & DesktopKeyModifiers.Shift) != 0);
+        }
+    }
+
+    void IRoleCommands.Command(string command, string argument)
+    {
+        switch (command)
+        {
+            case "CMD_NICK":
+                _name = argument;
+                break;
+            case "CMD_BODYSIZE":
+                _body = int.TryParse(argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out int body) ? body : -1;
+                break;
+            case "CMD_VOCATION":
+                _vocation = int.TryParse(argument, NumberStyles.Integer, CultureInfo.InvariantCulture, out int job) ? job : -1;
+                break;
+            case "CMD_ENTERGAME":
+                Submit();
+                break;
+            case "CMD_DRIVERBACK":
+                if (_pending is null)
+                {
+                    _stoppingRequested = true;
+                    _pending = SendCancelAsync();
+                }
+                else
+                {
+                    _stoppingRequested = true;
+                    _stopping.Cancel();
+                }
+                break;
+            case "CMD_EXIT":
+                ExitRequested?.Invoke();
+                break;
+            case "CMD_GAMESTART":
+            case "CMD_CLOSE":
+                // The world-entry coordinator must establish the map before hiding this stage.
+                break;
+        }
+    }
+
+    void IRoleSounds.Play(string set, string handle)
+    {
+        // Sound playback is not used as authority for state transitions.
+    }
+
+    private void Submit()
+    {
+        if (_pending is not null || _stoppingRequested || CreatedCharacter is not null)
+        {
+            return;
+        }
+
+        if (_name.Length is < 4 or > 15 || _name.Any(static c => c is < ' ' or > '\u00FF' or ';' or ',' or '/' or '\\' or '=' or '%' or '@' or '\'' or '"' or '[' or ']'))
+        {
+            _localError = "First Name should be 4-15 characters!";
+            return;
+        }
+
+        if (_body is < 0 or > 1 || _vocation is < 0 or > 11)
+        {
+            _localError = "Invalid character selection.";
+            return;
+        }
+
+        ushort profession = (ushort)(_vocation / 2 switch
+        {
+            0 => 100,
+            1 => 10,
+            2 => 40,
+            3 => 20,
+            4 => 50,
+            5 => 60,
+            _ => throw new InvalidOperationException("Unsupported role profession."),
+        });
+
+        bool female = (_vocation & 1) != 0;
+        ushort body = (ushort)(female ? (_body == 0 ? 2001 : 2002) : (_body == 0 ? 1003 : 1004));
+        _pending = CreateAsync(s_nameEncoding.GetBytes(_name), body, profession, _stopping.Token);
+    }
+
+    private async Task<CreationResponse> CreateAsync(byte[] name, ushort body, ushort profession, CancellationToken cancellationToken)
+    {
+        await _game.SendCharacterCreationAsync(name, body, profession, s_networkTimeout, cancellationToken)
+            .ConfigureAwait(false);
+
+        GameCharacterCreationOutcome response = await _game.ReadCharacterCreationResultAsync(s_networkTimeout, cancellationToken)
+            .ConfigureAwait(false);
+        if (response.Kind == GameCharacterCreationKind.Refused)
+        {
+            string message = Encoding.Latin1.GetString(response.RefusalBytes.Span);
+            return new CreationResponse(null, message.Length == 0 ? "Character creation was rejected." :
+                new string(message.Where(static c => !char.IsControl(c) && c != '|').Take(160).ToArray()));
+        }
+
+        await _game.SendRepeatedLoginProofAsync(0x6E45, ReadOnlyMemory<byte>.Empty, s_networkTimeout, cancellationToken)
+            .ConfigureAwait(false);
+
+        GameLoginControlOutcome next = await _game.ReadLoginControlAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
+        if (next.Kind != GameLoginControlKind.ExistingCharacter)
+        {
+            throw new InvalidDataException("Created character was not admitted to the existing-character login route.");
+        }
+
+        _ = await _game.ReadExistingCharacterPreludeAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
+        GameCharacterInfo1006 character = await _game.ReadCharacterInfoAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
+        return new CreationResponse(character, null);
+    }
+
+    private async Task<CreationResponse> SendCancelAsync()
+    {
+        try
+        {
+            await _game.SendCharacterCreationCancelAsync(s_networkTimeout, _stopping.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            _stopping.Cancel();
+        }
+
+        return new CreationResponse(null, null);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        await _stopping.CancelAsync().ConfigureAwait(false);
+        try
+        {
+            if (_pending is not null)
+            {
+                await _pending.ConfigureAwait(false);
+            }
+        }
+        catch (Exception) when (_stopping.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            await _game.DisposeAsync().ConfigureAwait(false);
+            _stopping.Dispose();
+        }
+    }
+
+    private sealed record CreationResponse(GameCharacterInfo1006? Character, string? Refusal);
+}
