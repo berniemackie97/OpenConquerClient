@@ -14,7 +14,9 @@ namespace OpenConquer.Client.UI.Role;
 internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDisposable
 {
     private static readonly TimeSpan s_networkTimeout = TimeSpan.FromSeconds(10);
-    private static readonly Encoding s_nameEncoding = Encoding.Latin1;
+    private static readonly Encoding s_nameEncoding = CodePagesEncodingProvider.Instance.GetEncoding(1252,
+        EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback) ??
+        throw new InvalidOperationException("The native 5517 name code page is unavailable.");
 
     private readonly GameServerHandshakeSession _game;
     private readonly CancellationTokenSource _stopping = new();
@@ -215,7 +217,25 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
             return;
         }
 
-        if (_name.Length is < 4 or > 15 || _name.Any(static c => c is < ' ' or >= '\u007F' and <= '\u009F' or > '\u00FF' or ' ' or ';' or ',' or '/' or '\\' or '=' or '%' or '@' or '\'' or '"' or '[' or ']'))
+        if (string.IsNullOrEmpty(_name) || _name.Any(static c => c < ' ' ||
+                " ;,/\\=%@'\"[]".Contains(c, StringComparison.Ordinal)))
+        {
+            _localError = "First Name should be 4-15 characters!";
+            return;
+        }
+
+        byte[] encodedName;
+        try
+        {
+            encodedName = s_nameEncoding.GetBytes(_name);
+        }
+        catch (EncoderFallbackException)
+        {
+            _localError = "First Name should be 4-15 characters!";
+            return;
+        }
+
+        if (encodedName.Length is < 4 or > 15)
         {
             _localError = "First Name should be 4-15 characters!";
             return;
@@ -240,7 +260,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
 
         bool female = (_vocation & 1) != 0;
         ushort body = (ushort)(female ? (_body == 0 ? 2001 : 2002) : (_body == 0 ? 1003 : 1004));
-        _pending = CreateAsync(s_nameEncoding.GetBytes(_name), body, profession, _stopping.Token);
+        _pending = CreateAsync(encodedName, body, profession, _stopping.Token);
     }
 
     private async Task<CreationResponse> CreateAsync(byte[] name, ushort body, ushort profession, CancellationToken cancellationToken)
