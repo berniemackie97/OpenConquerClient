@@ -14,6 +14,8 @@ using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Login;
 using OpenConquer.Content.Role;
+using OpenConquer.Networking.Game.Handshake;
+using OpenConquer.Networking.Game.Login;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
 using OpenConquer.Platform.Geometry;
@@ -50,6 +52,8 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLRenderer? _renderer;
     private LoginScreenRenderer? _loginRenderer;
     private RoleCreationScreen? _role;
+    private GameServerHandshakeSession? _worldGame;
+    private GameWorldEntrySnapshot? _worldEntry;
     private IClientContentSource? _roleContent;
     private SelectCharacterIni? _roleIni;
     private FlashRasterCache? _roleRasters;
@@ -156,7 +160,16 @@ internal sealed class ClientApplication : IDisposable
             }
             finally
             {
-                _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                try
+                {
+                    _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
+                finally
+                {
+                    _worldGame = null;
+                    _worldEntry = null;
+                    _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
             }
         }
         finally
@@ -280,6 +293,14 @@ internal sealed class ClientApplication : IDisposable
         _catalog?.Update(login, now);
         _loginFlow?.Update(_catalog?.CurrentCatalog(now));
         _registrationFlow?.Update(_catalog?.CurrentCatalog(now));
+        if (_worldGame is null && _loginFlow is { } existing &&
+            existing.TryTakeAdmittedWorld(out GameServerHandshakeSession? acceptedGame,
+                out GameWorldEntrySnapshot? acceptedWorld))
+        {
+            _worldGame = acceptedGame;
+            _worldEntry = acceptedWorld;
+            Console.WriteLine($"OpenConquer: world-entry ladder submitted for map {acceptedWorld!.MapId}, character {acceptedWorld.Character.EntityId}.");
+        }
         if (_roleClosing is { IsCompleted: true } closed)
         {
             _roleClosing = null;
@@ -321,6 +342,14 @@ internal sealed class ClientApplication : IDisposable
         {
             activeRole.Tick(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
                 TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
+            if (_worldGame is null && activeRole.TryTakeAdmittedWorld(
+                    out GameServerHandshakeSession? acceptedGame, out GameWorldEntrySnapshot? acceptedWorld))
+            {
+                _worldGame = acceptedGame;
+                _worldEntry = acceptedWorld;
+                Console.WriteLine($"OpenConquer: world-entry ladder submitted for map {acceptedWorld!.MapId}, character {acceptedWorld.Character.EntityId}.");
+            }
+
             if (_returnFromRole)
             {
                 _returnFromRole = false;
@@ -344,6 +373,11 @@ internal sealed class ClientApplication : IDisposable
         }
         login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
         ContinueCredentialDrag();
+
+        if (_worldEntry is not null && _worldGame is null)
+        {
+            throw new InvalidOperationException("World admission lost its authenticated connection.");
+        }
 
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
@@ -379,7 +413,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnLoginRequested()
     {
-        if (_roleClosing is null && _login is { } login && _loginFlow is { } flow)
+        if (_worldGame is null && _roleClosing is null && _login is { } login && _loginFlow is { } flow)
         {
             flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
             login.ApplyFeedback(flow.Feedback, _loginErrors!);

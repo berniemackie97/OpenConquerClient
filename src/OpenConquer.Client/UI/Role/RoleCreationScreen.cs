@@ -29,6 +29,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
     private string? _localError;
     private double _frameRemainder;
     private bool _stoppingRequested;
+    private bool _worldTransferred;
     private bool _disposed;
 
     public bool ConnectionLost
@@ -54,6 +55,21 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
     }
 
     public FlashStage Stage => _stage;
+
+    internal bool TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? world)
+    {
+        if (_disposed || _worldTransferred || _pending is not null || WorldEntry is not { } admitted)
+        {
+            game = null;
+            world = null;
+            return false;
+        }
+
+        _worldTransferred = true;
+        game = _game;
+        world = admitted;
+        return true;
+    }
     public GameWorldEntrySnapshot? WorldEntry
     {
         get; private set;
@@ -335,7 +351,10 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         {
             try
             {
-                await _game.DisposeAsync().ConfigureAwait(false);
+                if (!_worldTransferred)
+                {
+                    await _game.DisposeAsync().ConfigureAwait(false);
+                }
             }
             finally
             {
