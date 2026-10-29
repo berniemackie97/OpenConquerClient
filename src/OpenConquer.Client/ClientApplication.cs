@@ -7,9 +7,12 @@ using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
+using OpenConquer.Client.UI.Flash;
+using OpenConquer.Client.UI.Role;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
+using OpenConquer.Content.Role;
 using OpenConquer.Content.Login;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
@@ -46,6 +49,11 @@ internal sealed class ClientApplication : IDisposable
     private ResourceOwnership? _graphics;
     private OpenGLRenderer? _renderer;
     private LoginScreenRenderer? _loginRenderer;
+    private RoleCreationScreen? _role;
+    private SelectCharacterIni? _roleIni;
+    private FlashRasterCache? _roleRasters;
+    private FlashStagePresentation? _rolePresentation;
+    private bool _returnFromRole;
     private PixelPoint _lastPointer;
     private bool _runStarted;
     private bool _disposed;
@@ -126,6 +134,8 @@ internal sealed class ClientApplication : IDisposable
         {
             try
             {
+                _role?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                _role = null;
                 _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
             finally
@@ -165,6 +175,8 @@ internal sealed class ClientApplication : IDisposable
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
 
+        _roleIni = SelectCharacterIni.Load(contentSource);
+        _roleRasters = new FlashRasterCache();
         _login = new LoginScreen(LoginStageLayout.Create(_logicalRenderSize), LoginAccountHistory.ForCurrentUser(),
             ClientVersionLabel.Load(contentSource), cue => _audio?.Play(cue));
         _login.ExitRequested += () => _window?.RequestClose();
@@ -198,6 +210,8 @@ internal sealed class ClientApplication : IDisposable
             PixelSize framebuffer = window.FramebufferSize;
             _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy));
             _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
+            _rolePresentation = graphics.Track(new FlashStagePresentation(device,
+                _roleRasters ?? throw new InvalidOperationException("Role raster source is missing.")));
             login.CaretLocator = _loginRenderer.CaretLocator;
             login.RegistrationCaretLocator = _loginRenderer.RegistrationCaretLocator;
             _graphics = graphics;
@@ -206,6 +220,7 @@ internal sealed class ClientApplication : IDisposable
         {
             _renderer = null;
             _loginRenderer = null;
+            _rolePresentation = null;
             graphics.DisposeAfterInitializationFailure();
             throw;
         }
@@ -225,6 +240,7 @@ internal sealed class ClientApplication : IDisposable
         _graphics = null;
         _renderer = null;
         _loginRenderer = null;
+        _rolePresentation = null;
         graphics?.Dispose();
     }
 
@@ -238,6 +254,36 @@ internal sealed class ClientApplication : IDisposable
         _catalog?.Update(login, now);
         _loginFlow?.Update(_catalog?.CurrentCatalog(now));
         _registrationFlow?.Update(_catalog?.CurrentCatalog(now));
+        if (_role is null && _loginFlow is { Status: LoginAttemptStatus.CharacterCreation } creation &&
+            creation.TryTakeAcceptedGame(out var accepted, out string accountName))
+        {
+            try
+            {
+                _role = new RoleCreationScreen(accepted!, accountName,
+                    _roleIni ?? throw new InvalidOperationException("Role creation content is unavailable."),
+                    _roleRasters ?? throw new InvalidOperationException("Role raster source is unavailable."));
+                _role.ReturnRequested += () => _returnFromRole = true;
+                _role.ExitRequested += () => _window?.RequestClose();
+            }
+            catch
+            {
+                accepted?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                throw;
+            }
+        }
+
+        if (_role is { } activeRole)
+        {
+            activeRole.Tick(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
+                TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
+            if (_returnFromRole)
+            {
+                _returnFromRole = false;
+                _role = null;
+                activeRole.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+        }
+
         if (_loginErrors is { } messages)
         {
             if (_loginFlow is { } flow)
@@ -258,7 +304,15 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            loginRenderer.Draw(renderer, login, _catalog?.Availability(login.Selection) ?? default);
+            if (_role is { } role)
+            {
+                (_rolePresentation ?? throw new InvalidOperationException("Role renderer is unavailable."))
+                    .Draw(renderer, role.Stage);
+            }
+            else
+            {
+                loginRenderer.Draw(renderer, login, _catalog?.Availability(login.Selection) ?? default);
+            }
         }
         catch (Exception exception)
         {
@@ -320,8 +374,18 @@ internal sealed class ClientApplication : IDisposable
         _lastPointer = point;
         if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
-            _login?.PointerMoved(mapped, x, y);
-            ContinueCredentialDrag();
+            if (_role is { } role)
+            {
+                if (mapped)
+                {
+                    role.PointerMoved(new System.Numerics.Vector2(x, y));
+                }
+            }
+            else
+            {
+                _login?.PointerMoved(mapped, x, y);
+                ContinueCredentialDrag();
+            }
         }
     }
 
@@ -331,7 +395,17 @@ internal sealed class ClientApplication : IDisposable
         if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
             bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
-            _login?.PointerPressed(mapped, x, y, extend);
+            if (_role is { } role)
+            {
+                if (mapped)
+                {
+                    role.PointerPressed(extend);
+                }
+            }
+            else
+            {
+                _login?.PointerPressed(mapped, x, y, extend);
+            }
         }
     }
 
@@ -339,7 +413,14 @@ internal sealed class ClientApplication : IDisposable
     {
         if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
-            _login?.PointerReleased(mapped, x, y);
+            if (_role is { } role)
+            {
+                role.PointerReleased();
+            }
+            else
+            {
+                _login?.PointerReleased(mapped, x, y);
+            }
         }
     }
 
@@ -347,17 +428,35 @@ internal sealed class ClientApplication : IDisposable
     {
         if (_window is { } window)
         {
-            _login?.KeyPressed(key, window.ReadClipboardText, window.WriteClipboardText);
+            if (_role is { } role)
+            {
+                role.KeyPressed(key, window.ReadClipboardText, window.WriteClipboardText);
+            }
+            else
+            {
+                _login?.KeyPressed(key, window.ReadClipboardText, window.WriteClipboardText);
+            }
         }
     }
 
-    private void OnTextEntered(char character) => _login?.TextEntered(character);
+    private void OnTextEntered(char character)
+    {
+        if (_role is { } role)
+        {
+            role.TextEntered(character);
+        }
+        else
+        {
+            _login?.TextEntered(character);
+        }
+    }
 
     private void OnFocusChanged(bool focused)
     {
         if (!focused)
         {
             _login?.FocusLost();
+            _role?.Stage.SetFocus(null);
         }
 
         _audio?.SetFocused(focused);
