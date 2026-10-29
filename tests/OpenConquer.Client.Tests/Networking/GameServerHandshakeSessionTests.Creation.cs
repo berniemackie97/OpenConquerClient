@@ -57,6 +57,40 @@ public sealed partial class GameServerHandshakeSessionTests
     }
 
     [Fact]
+    public async Task CreatedCharacter_CompletesWorldAdmissionRequestsOnTheOriginalSocket()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = CreationPeerAsync(games, CreationScript.AcceptAndEnterWorld, token);
+
+        await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game = await OpenCreationAsync(account, token);
+
+        await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
+        Assert.Equal(GameCharacterCreationKind.Created,
+            (await game.ReadCharacterCreationResultAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        await game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token);
+        Assert.Equal(GameLoginControlKind.ExistingCharacter,
+            (await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
+        GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
+
+        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(game, character, token);
+
+        Assert.Equal(0x11223344u, world.Character.EntityId);
+        Assert.Equal((1002u, 1015u, (ushort)61, (ushort)101),
+            (world.MapId, world.MapDataId, world.X, world.Y));
+        Assert.Equal(1u, world.WeatherKind);
+        Assert.Empty(world.HydrationPackets);
+
+        await game.DisposeAsync();
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
     public async Task CancelSendsTheNativeCancelAndClosesTheSession()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
@@ -189,6 +223,7 @@ public sealed partial class GameServerHandshakeSessionTests
         ResultOnLoginChannel,
         CloseInsteadOfResult,
         NewRoleAfterProof,
+        AcceptAndEnterWorld,
     }
 
     private static async Task<GameServerHandshakeSession> OpenCreationAsync(LoginAccountExchangeResult account,
@@ -235,6 +270,7 @@ public sealed partial class GameServerHandshakeSessionTests
 
             case CreationScript.RefuseThenAccept:
             case CreationScript.NewRoleAfterProof:
+            case CreationScript.AcceptAndEnterWorld:
                 if (script == CreationScript.RefuseThenAccept)
                 {
                     Assert.Equal(s_heroRequest, Convert.ToHexString(await peer.ReadPacketAsync(124, token)));
@@ -256,10 +292,64 @@ public sealed partial class GameServerHandshakeSessionTests
                 await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
                     Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
                     characterWire[..^8]);
+                if (script == CreationScript.AcceptAndEnterWorld)
+                {
+                    await WorldEntryPeerAsync(peer, token);
+                }
                 break;
         }
 
         Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
+    }
+
+    private static async Task WorldEntryPeerAsync(SecuredTestPeer peer, CancellationToken token)
+    {
+        const uint hero = 0x11223344;
+        await RequireWorldRequestAsync(GameWorldAction10010.EnterMap, hero);
+
+        byte[] map = new byte[20];
+        BinaryPrimitives.WriteUInt16LittleEndian(map, 20);
+        BinaryPrimitives.WriteUInt16LittleEndian(map.AsSpan(2), 1110);
+        BinaryPrimitives.WriteUInt32LittleEndian(map.AsSpan(4), 1002);
+        BinaryPrimitives.WriteUInt32LittleEndian(map.AsSpan(8), 1015);
+        byte[] weather = new byte[20];
+        BinaryPrimitives.WriteUInt16LittleEndian(weather, 20);
+        BinaryPrimitives.WriteUInt16LittleEndian(weather.AsSpan(2), 1016);
+        BinaryPrimitives.WriteUInt32LittleEndian(weather.AsSpan(4), 1);
+        byte[] entered = WorldAction(GameWorldAction10010.EnterMap, hero, 1015);
+        BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(24), 61);
+        BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(26), 101);
+        await peer.WritePacketsAsync(token, map, weather, entered);
+
+        await RequireWorldRequestAsync(GameWorldAction10010.ClientStateApplied, 0);
+        foreach (ushort action in new ushort[]
+                 {
+                     GameWorldAction10010.GetItems, GameWorldAction10010.GetFriends,
+                     GameWorldAction10010.GetWeaponSkills, GameWorldAction10010.GetMagic,
+                     GameWorldAction10010.GetSyndicate, GameWorldAction10010.ReportSilentInfo,
+                 })
+        {
+            await RequireWorldRequestAsync(action,
+                action == GameWorldAction10010.ReportSilentInfo ? 0u : hero);
+            await peer.WritePacketsAsync(token, WorldAction(action, hero));
+        }
+        await RequireWorldRequestAsync(GameWorldAction10010.GetStatistics, hero);
+
+        async Task RequireWorldRequestAsync(ushort expected, uint expectedEntity)
+        {
+            byte[] request = await peer.ReadPacketAsync(GameWorldAction10010.PacketLength, token);
+            Assert.True(GameWorldAction10010.TryRead(request, out ushort action, out uint entity, out uint pair,
+                out ushort x, out ushort y));
+            Assert.Equal((expected, expectedEntity, 0u, (ushort)0, (ushort)0),
+                (action, entity, pair, x, y));
+        }
+    }
+
+    private static byte[] WorldAction(ushort action, uint entityId, uint parameterPair = 0)
+    {
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(packet, action, entityId, parameterPair);
+        return packet;
     }
 
     private static string Zeros(int byteCount) => new('0', byteCount * 2);
