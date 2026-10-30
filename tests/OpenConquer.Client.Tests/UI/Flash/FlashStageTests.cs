@@ -153,6 +153,30 @@ public sealed class FlashStageTests
     }
 
     [Fact]
+    public void Pointer_UsesAuthoredHitAreaGeometryEvenWhenItsBakedRasterIsTransparent()
+    {
+        FlashMovie movie = Movie(Shapes + ""","2":{"kind":"sprite"},"3":{"kind":"sprite"}""", """
+            "root":{"frames":[[{"d":1,"c":2,"p":1,"n":"figure"}]],"labels":{}},
+            "2":{"frames":[[{"d":1,"c":3,"p":1,"n":"hitArea","m":[1,0,0,1,50,0]}]],"labels":{}},
+            "3":{"frames":[[{"d":1,"c":1,"p":1}]],"labels":{}}
+            """);
+        FlashStage stage = new(movie, new FlashScriptTable(), new TransparentRasters());
+        stage.Start();
+
+        int presses = 0;
+        stage.Root.ChildClip("figure").OnPress = _ => presses++;
+        stage.PointerMoved(new Vector2(5, 5));
+        stage.PointerPressed();
+        stage.PointerReleased();
+        Assert.Equal(0, presses);
+
+        stage.PointerMoved(new Vector2(55, 5));
+        stage.PointerPressed();
+        stage.PointerReleased();
+        Assert.Equal(1, presses);
+    }
+
+    [Fact]
     public void Pointer_IgnoresTheMaskedPartOfAClip()
     {
         FlashStage stage = Start(Movie(Shapes + ""","2":{"kind":"sprite"}""", """
@@ -354,6 +378,11 @@ public sealed class FlashStageTests
 
     private static string Raster(int index, string digest) =>
         "{\"path\":\"r" + index + ".rgba.br\",\"width\":10,\"height\":10,\"sha256\":\"" + digest + "\"}";
+
+    private sealed class TransparentRasters : IFlashRasterSource
+    {
+        public ReadOnlyMemory<byte> Pixels(FlashMovie movie, int index) => new byte[10 * 10 * 4];
+    }
 
     private sealed class SquareRasters : IFlashRasterSource
     {

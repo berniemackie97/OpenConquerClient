@@ -119,7 +119,7 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
                         break;
                     }
 
-                    if (target.HitArea is { } hitArea ? Contains(hitArea, point, ignoreVisibility: true) : Contains(target, point, ignoreVisibility: false))
+                    if (target.HitArea is { } hitArea ? Contains(hitArea, point, ignoreVisibility: true, hitGeometry: true) : Contains(target, point, ignoreVisibility: false))
                     {
                         return target;
                     }
@@ -176,7 +176,7 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
         }
     }
 
-    private bool Contains(FlashDisplayObject displayObject, Vector2 point, bool ignoreVisibility)
+    private bool Contains(FlashDisplayObject displayObject, Vector2 point, bool ignoreVisibility, bool hitGeometry = false)
     {
         if (!ignoreVisibility && !displayObject.Visible)
         {
@@ -186,7 +186,7 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
         switch (displayObject)
         {
             case FlashShapeInstance shape:
-                return RasterContains(shape.Movie, shape.Character, shape.Ratio, FlashTransforms.World(shape), point);
+                return RasterContains(shape.Movie, shape.Character, shape.Ratio, FlashTransforms.World(shape), point, hitGeometry);
             case FlashTextInstance text:
                 return Local(FlashTransforms.World(text), point) is { } local &&
                        local.X >= text.Definition.Bounds.Left && local.X < text.Definition.Bounds.Right &&
@@ -197,7 +197,7 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
                 IReadOnlyList<FlashDisplayObject> children = clip.Children;
                 for (int index = 0; index < children.Count; index++)
                 {
-                    if (children[index].ClipDepth is null && InsideMasks(children, index, point) && Contains(children[index], point, ignoreVisibility))
+                    if (children[index].ClipDepth is null && InsideMasks(children, index, point) && Contains(children[index], point, ignoreVisibility, hitGeometry))
                     {
                         return true;
                     }
@@ -224,7 +224,7 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
         return false;
     }
 
-    private bool RasterContains(FlashMovie movie, FlashCharacter character, int? ratio, Matrix3x2 world, Vector2 point)
+    private bool RasterContains(FlashMovie movie, FlashCharacter character, int? ratio, Matrix3x2 world, Vector2 point, bool hitGeometry = false)
     {
         if (Local(world, point) is not { } local)
         {
@@ -240,7 +240,7 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
             return false;
         }
 
-        return rasters.Pixels(movie, raster).Span[(y * info.Width + x) * 4 + 3] != 0;
+        return hitGeometry || rasters.Pixels(movie, raster).Span[(y * info.Width + x) * 4 + 3] != 0;
     }
 
     private static Vector2? Local(Matrix3x2 world, Vector2 point) =>

@@ -56,22 +56,11 @@ public sealed class RoleScriptsTests
         FlashClip body = flow.Root.ChildClip("sb");
 
         flow.ClickAt(285, 430);
-        FlashClip[] inspected = [body, body.ChildClip("sb"), body.ChildClip("sm")];
-        string description = string.Join("; ", inspected
-            .Select(clip => $"{clip.Name}/{clip.TimelineKey}/f{clip.CurrentFrame}/m{FlashTransforms.World(clip)}: " +
-                string.Join(", ", clip.Children.Select(child =>
-                {
-                    string shape = child is FlashShapeInstance raster ?
-                        $"{raster.Character.Id}:{raster.Movie.Rasters[FlashTransforms.RasterOf(raster.Character, raster.Ratio).Raster].Width}x" +
-                        $"{raster.Movie.Rasters[FlashTransforms.RasterOf(raster.Character, raster.Ratio).Raster].Height}" :
-                        child.Character.GetType().Name;
-                    return $"{child.Name}/{shape}/m{FlashTransforms.World(child)}";
-                }))));
-        Assert.True(body.Get<int>("nSelectBody") == 1, description);
+        Assert.Equal(1, body.Get<int>("nSelectBody"));
         Assert.Equal(3, body.ChildClip("sb").CurrentFrame);
         Assert.Equal(3, body.ChildClip("bodySizeBtn_0").CurrentFrame);
 
-        flow.ClickAt(567, 510);
+        flow.ClickAt(567, 550);
         Assert.Equal(2, body.Get<int>("nSelectBody"));
         Assert.Equal(3, body.ChildClip("sm").CurrentFrame);
         Assert.Equal(3, body.ChildClip("bodySizeBtn_1").CurrentFrame);
