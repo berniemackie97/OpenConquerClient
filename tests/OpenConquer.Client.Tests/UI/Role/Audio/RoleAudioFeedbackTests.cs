@@ -1,5 +1,6 @@
 using System.Text;
 using OpenConquer.Client.UI.Role.Audio;
+using OpenConquer.Content;
 using OpenConquer.Content.Login;
 using OpenConquer.Content.Role;
 

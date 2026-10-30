@@ -101,7 +101,8 @@ OpenAL effect voices. The two previously missing cues, `Button_3.mp3`
 and `click_1.mp3`, were decoded offline from retail 5517 to signed
 16-bit mono PCM at 22050 Hz. Their original sound identities remain
 distinct; neither maps to a substitute. The source PCM lengths and
-SHA-256 digests are tested alongside the existing startup sound bank.
+SHA-256 digests are recorded in the embedded audio manifest and verified
+alongside the existing startup sound bank, not hardcoded in C# source.
 
 The login and creation stages share the original `music.mp3` loop at
 the configured 40% music gain, and effects use the configured 100% gain.
