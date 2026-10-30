@@ -28,7 +28,12 @@ there is no second authentication attempt for character creation.
 The role screen uses the existing translated SWF timeline, not hand-drawn
 screen replacements. The name is validated at edit time and at submission
 using strict Windows-1252 encoding; both are needed because the native
-packet uses encoded bytes, not UTF-16 character count.
+packet uses encoded bytes, not UTF-16 character count. The native client
+also tests rendered glyph ink before submission; that FreeType-based gate
+is not implemented here. The companion server retains a stricter name
+policy, so it may refuse names the retail client would submit (including
+`ab=cd`). Do not replace the native glyph check with the server's
+punctuation blacklist in the client.
 
 ## Ownership and failure handling
 
