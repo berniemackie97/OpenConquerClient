@@ -41,17 +41,19 @@ never be treated as world admission.
 
 ## Verified inputs needed for the complete retail transition
 
-- The English retail 5517 `ini/selectCharacter.ini` has SHA-256
+- Character creation requires the original English retail 5517
+  `ini/selectCharacter.ini`, SHA-256
   `45192235789d6c5ff43d963ce65b531b61d4b9f9423b669fa5e0496536cda92d`,
-  as recorded with `20_notes/Architecture/12_create_role_flow.md`. Its original
-  bytes are not in the tracked retail payload or the uploaded archives; the
-  older ZFSERVER copy lacks the Ninja/Monk/Saint labels. The client therefore
-  embeds a **clearly reconstructed** English role configuration with the
-  5517 movie's six class-description pairs and twelve vocation labels.
-  If an authentic loose `ini/selectCharacter.ini` is installed, it takes
-  precedence. No reconstructed prose is claimed as original retail text.
-  Both builds and published clients embed the same configuration, avoiding
-  a missing runtime file after `NEW_ROLE`.
+  recorded in `20_notes/Architecture/12_create_role_flow.md`.
+  The role INI is a **loose retail file**, not generated localization or an
+  embedded replacement. The client refuses missing or mismatched bytes.
+  The older ZFSERVER file does not match this release and must not be copied.
+  The captured source file must be staged under
+  `content/retail-5517/payload/ini/selectcharacter.ini` through the
+  verified retail-content import process, with its manifest regenerated and
+  the implemented content closure extended to require the file.
+  Until those source bytes are available, character creation is intentionally
+  blocked; a green CI run does not prove that the retail content is staged.
 - The GameServer only activates runtime creation with a validated
   `GameServer:CharacterCreation` configuration. Production defaults omit
   it. The server's Development configuration uses Birth Village

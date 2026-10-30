@@ -45,29 +45,12 @@ public sealed class SelectCharacterIniTests
     }
 
     [Fact]
-    public void Load_WithoutRetailIni_ProvidesCompleteEnglish5517RoleLabels()
+    public void Load_WithoutOriginalRetailIni_FailsClosed()
     {
         string root = Directory.CreateTempSubdirectory("oc-role-ini-").FullName;
         try
         {
-            SelectCharacterIni ini = SelectCharacterIni.Load(new ClientContentRoot(root));
-            Assert.Equal("776", ini.Get("logo", "xPos"));
-            Assert.Equal("2", ini.Get("logo", "yPos"));
-            for (int index = 0; index < 6; index++)
-            {
-                Assert.False(string.IsNullOrWhiteSpace(ini.Get("info", $"info{index}")));
-                Assert.False(string.IsNullOrWhiteSpace(ini.Get("info", $"infoII{index}")));
-            }
-            for (int index = 0; index < 12; index++)
-            {
-                Assert.False(string.IsNullOrWhiteSpace(ini.Get("affirmPanel", $"vocation{index}")));
-            }
-            for (int index = 0; index < 4; index++)
-            {
-                Assert.False(string.IsNullOrWhiteSpace(ini.Get("affirmPanel", $"shape{index}")));
-            }
-            Assert.Equal("Monk", ini.Get("affirmPanel", "vocation10"));
-            Assert.Equal("Saint", ini.Get("affirmPanel", "vocation11"));
+            Assert.Throws<FileNotFoundException>(() => SelectCharacterIni.Load(new ClientContentRoot(root)));
         }
         finally
         {
@@ -76,19 +59,19 @@ public sealed class SelectCharacterIniTests
     }
 
     [Fact]
-    public void Load_WithRetailIni_PreservesLooseFilePrecedence()
+    public void Load_RejectsAReconstructedOrMismatchedRetailIni()
     {
         string root = Directory.CreateTempSubdirectory("oc-role-ini-").FullName;
         try
         {
-            string ini = Path.Combine(root, "ini", "selectCharacter.ini");
-            Directory.CreateDirectory(Path.GetDirectoryName(ini)!);
-            File.WriteAllText(ini, "[logo]\r\nxPos=42\r\n", Encoding.ASCII);
+            string path = Path.Combine(root, "ini", "selectCharacter.ini");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, "[logo]\r\nxPos=42\r\n", Encoding.ASCII);
 
-            SelectCharacterIni selected = SelectCharacterIni.Load(new ClientContentRoot(root));
+            InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+                SelectCharacterIni.Load(new ClientContentRoot(root)));
 
-            Assert.Equal("42", selected.Get("logo", "xPos"));
-            Assert.Null(selected.Get("affirmPanel", "vocation10"));
+            Assert.Contains("verified retail 5517 SHA-256", error.Message, StringComparison.Ordinal);
         }
         finally
         {

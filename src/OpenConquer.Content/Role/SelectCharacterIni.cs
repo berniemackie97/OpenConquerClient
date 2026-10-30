@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 
 namespace OpenConquer.Content.Role;
@@ -16,26 +17,20 @@ public sealed class SelectCharacterIni
 
     private SelectCharacterIni(Dictionary<string, Dictionary<string, string>> sections) => _sections = sections;
 
-    /// <summary>
-    /// Uses the original loose retail INI when installed, otherwise the bundled English role labels.
-    /// The bundled labels are compatible with the 5517 Flash movie, not a byte-for-byte retail capture.
-    /// </summary>
+    /// <summary>Requires the original retail 5517 INI and verifies its recorded source digest.</summary>
     public static SelectCharacterIni Load(IClientContentSource contentSource)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        if (contentSource.TryOpenRead(RelativePath, ContentLookupMode.LooseOnly, out Stream? retail))
+        using Stream stream = contentSource.OpenRequiredRead(RelativePath, ContentLookupMode.LooseOnly);
+        byte[] data = ContentReader.ReadBytes(stream, RelativePath, MaximumLength);
+        const string ExpectedSha256 = "45192235789d6c5ff43d963ce65b531b61d4b9f9423b669fa5e0496536cda92d";
+        if (!string.Equals(Convert.ToHexStringLower(SHA256.HashData(data)), ExpectedSha256, StringComparison.Ordinal))
         {
-            using (retail)
-            {
-                return Parse(ContentReader.ReadBytes(retail, RelativePath, MaximumLength));
-            }
+            throw new InvalidDataException("Client content 'ini/selectCharacter.ini' does not match the verified retail 5517 SHA-256.");
         }
 
-        const string resource = "Assets/Role/selectCharacter.ini";
-        using Stream bundled = typeof(SelectCharacterIni).Assembly.GetManifestResourceStream(resource)
-            ?? throw new InvalidDataException("Bundled English character-selection data is missing.");
-        return Parse(ContentReader.ReadBytes(bundled, resource, MaximumLength));
+        return Parse(data);
     }
 
     /// <summary>
