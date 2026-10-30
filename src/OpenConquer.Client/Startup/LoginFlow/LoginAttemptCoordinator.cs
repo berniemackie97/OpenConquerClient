@@ -354,10 +354,9 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         {
             await game.DisposeAsync().ConfigureAwait(false);
         }
-        catch (Exception)
+        catch (Exception failure)
         {
-            // Shutdown failure must not revive an unauthorized session or
-            // leak untrusted transport exception contents onto the UI thread.
+            Console.Error.WriteLine($"OpenConquer: revoked GameServer session disposal failed ({failure.GetType().Name}).");
         }
     }
 
