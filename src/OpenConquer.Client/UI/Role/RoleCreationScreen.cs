@@ -319,6 +319,8 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
 
         bool female = (_vocation & 1) != 0;
         ushort body = (ushort)(female ? (_body == 0 ? 2001 : 2002) : (_body == 0 ? 1003 : 1004));
+        _gameStartRequested = false;
+        _loadingResumed = false;
         _pending = CreateAsync(encodedName, body, profession, _stopping.Token);
     }
 
