@@ -31,6 +31,8 @@ public sealed partial class GameServerHandshakeSessionTests
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await using GameServerHandshakeSession game = await OpenCreationAsync(account, token);
+        // The login coordinator disposes the AccountServer exchange before the role screen submits a name.
+        await account.DisposeAsync();
 
         await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
         GameCharacterCreationOutcome refused = await game.ReadCharacterCreationResultAsync(TimeSpan.FromSeconds(5), token);
@@ -42,9 +44,9 @@ public sealed partial class GameServerHandshakeSessionTests
         Assert.Equal(GameCharacterCreationKind.Created, created.Kind);
         Assert.True(created.RefusalBytes.IsEmpty);
 
-        await game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token);
+        await game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token));
+            game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token));
         Assert.Equal(GameLoginControlKind.ExistingCharacter,
             (await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token)).Kind);
         GameExistingCharacterPrelude prelude = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
@@ -72,7 +74,7 @@ public sealed partial class GameServerHandshakeSessionTests
         await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
         Assert.Equal(GameCharacterCreationKind.Created,
             (await game.ReadCharacterCreationResultAsync(TimeSpan.FromSeconds(5), token)).Kind);
-        await game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token);
+        await game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token);
         Assert.Equal(GameLoginControlKind.ExistingCharacter,
             (await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token)).Kind);
         _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
@@ -129,7 +131,7 @@ public sealed partial class GameServerHandshakeSessionTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token));
+            game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token));
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token));
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -208,7 +210,7 @@ public sealed partial class GameServerHandshakeSessionTests
         await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
         Assert.Equal(GameCharacterCreationKind.Created,
             (await game.ReadCharacterCreationResultAsync(TimeSpan.FromSeconds(5), token)).Kind);
-        await game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token);
+        await game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token);
 
         await Assert.ThrowsAsync<InvalidDataException>(() => game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token));
 

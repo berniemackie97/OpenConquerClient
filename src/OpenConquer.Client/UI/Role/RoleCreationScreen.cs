@@ -340,7 +340,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
                 new string(message.Where(static c => !char.IsControl(c) && c != '|').Take(160).ToArray()));
         }
 
-        await _game.SendRepeatedLoginProofAsync(0x6E45, ReadOnlyMemory<byte>.Empty, s_networkTimeout, cancellationToken)
+        await _game.SendRepeatedLoginProofAsync(s_networkTimeout, cancellationToken)
             .ConfigureAwait(false);
 
         GameLoginControlOutcome next = await _game.ReadLoginControlAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
