@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 
 namespace OpenConquer.Content.Role;
@@ -17,20 +16,13 @@ public sealed class SelectCharacterIni
 
     private SelectCharacterIni(Dictionary<string, Dictionary<string, string>> sections) => _sections = sections;
 
-    /// <summary>Requires the original retail 5517 INI and verifies its recorded source digest.</summary>
+    /// <summary>Requires the origin    /// <summary>Reads the original role configuration from the client content source.</summary>
     public static SelectCharacterIni Load(IClientContentSource contentSource)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
         using Stream stream = contentSource.OpenRequiredRead(RelativePath, ContentLookupMode.LooseOnly);
-        byte[] data = ContentReader.ReadBytes(stream, RelativePath, MaximumLength);
-        const string ExpectedSha256 = "45192235789d6c5ff43d963ce65b531b61d4b9f9423b669fa5e0496536cda92d";
-        if (!string.Equals(Convert.ToHexStringLower(SHA256.HashData(data)), ExpectedSha256, StringComparison.Ordinal))
-        {
-            throw new InvalidDataException("Client content 'ini/selectCharacter.ini' does not match the verified retail 5517 SHA-256.");
-        }
-
-        return Parse(data);
+        return Parse(ContentReader.ReadBytes(stream, RelativePath, MaximumLength));
     }
 
     /// <summary>
