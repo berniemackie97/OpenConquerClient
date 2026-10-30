@@ -2,7 +2,9 @@ using System.Globalization;
 using System.Numerics;
 using System.Text;
 using OpenConquer.Client.UI.Flash;
+using OpenConquer.Client.UI.Role.Audio;
 using OpenConquer.Content.Flash;
+using OpenConquer.Content.Login;
 using OpenConquer.Content.Role;
 using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Login;
@@ -11,7 +13,7 @@ using OpenConquer.Platform.Windowing.Desktop;
 namespace OpenConquer.Client.UI.Role;
 
 /// <summary>Owns the retail create-role stage and its authenticated GameServer connection.</summary>
-internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDisposable
+internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
 {
     private static readonly TimeSpan s_networkTimeout = TimeSpan.FromSeconds(10);
     private readonly GameServerHandshakeSession _game;
@@ -35,7 +37,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
     }
 
     public RoleCreationScreen(GameServerHandshakeSession game, string account, SelectCharacterIni ini, IFlashRasterSource rasters,
-        Func<Rune, bool> hasGlyphInk)
+        Func<Rune, bool> hasGlyphInk, Action<LoginAudioCue> playSound)
     {
         _game = game ?? throw new ArgumentNullException(nameof(game));
         _hasGlyphInk = hasGlyphInk ?? throw new ArgumentNullException(nameof(hasGlyphInk));
@@ -44,7 +46,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         ArgumentNullException.ThrowIfNull(rasters);
 
         FlashScriptTable table = new();
-        _scripts = new RoleScripts(ini, RoleMovies.LoadCharacterInAndOut(), this, this);
+        _scripts = new RoleScripts(ini, RoleMovies.LoadCharacterInAndOut(), this, new RoleAudioFeedback(ini, playSound));
         _scripts.Register(table);
         new CharacterInAndOutScripts(_scripts).Register(table);
         _stage = new FlashStage(RoleMovies.LoadRole(), table, rasters);
@@ -264,11 +266,6 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
                 // The world-entry coordinator must establish the map before hiding this stage.
                 break;
         }
-    }
-
-    void IRoleSounds.Play(string set, string handle)
-    {
-        // Sound playback is not used as authority for state transitions.
     }
 
     private void Submit()

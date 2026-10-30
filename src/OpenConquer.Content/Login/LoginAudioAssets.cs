@@ -16,6 +16,8 @@ public enum LoginAudioCue
     KeyTwo,
     KeyThree,
     Error,
+    CharacterHover,
+    CharacterSelect,
 }
 
 /// <summary>A decoded, signed 16-bit PCM clip.</summary>
@@ -50,7 +52,7 @@ public sealed class LoginAudioClip
     }
 }
 
-/// <summary>The login sounds, decoded offline from the retail MP3 files to PCM.</summary>
+/// <summary>Startup and role sounds, decoded offline from the retail MP3 files to PCM.</summary>
 public static class LoginAudioAssets
 {
     private readonly record struct Clip(LoginAudioCue Cue, int SampleRate, int ChannelCount, int Length, string Sha256);
@@ -70,6 +72,8 @@ public static class LoginAudioAssets
         new(LoginAudioCue.KeyTwo, 22050, 1, 31104, "B6186B1DA76A320E38E0C6490E251DEB9AF1D1A97BF4752D1D22B02AD5B4A0BB"), // key_2.mp3
         new(LoginAudioCue.KeyThree, 22050, 1, 23040, "141BCC2FA5F83987B5423D259BCF637C9324A85880B78CAD1354C9DFC1B79BAE"), // key_3.mp3
         new(LoginAudioCue.Error, 22050, 1, 41472, "25B43D6597E9F320E6895A0363B5EFCFB9A3911DDFC45600AC66875FC5B9E067"), // error.mp3
+        new(LoginAudioCue.CharacterHover, 22050, 1, 20736, "4050100296A5C84B03AA8FC72BB4F015D4135C1091BAF49024B94EA51C952A1B"), // Button_3.mp3
+        new(LoginAudioCue.CharacterSelect, 22050, 1, 44928, "C167E81BA7DD21118B6BDCFC2A3CE991D0E5410E5F9A895A8A0987184D08988B"), // click_1.mp3
     ];
 
     public static LoginAudioClip Load(LoginAudioCue cue)

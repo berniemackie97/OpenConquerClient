@@ -95,21 +95,21 @@ present in the 5517 source archive. The Flash translation already emits
 `snd_cs`, `snd_bs` and `snd_db` events using the retail INI's
 `[classSelection]`, `[bodySelection]` and `[dialogBox]` mappings.
 
-**Role sound effects are not yet implemented:** `RoleCreationScreen.IRoleSounds.Play`
-currently discards the events. The login OpenAL backend owns derived,
-offline-decoded retail PCM for ten of these sounds, including the shared
-`music.mp3` background track; `Button_3.mp3` and `click_1.mp3` are
-not in its asset bank. An audio-capable login does not prove the role
-stage has working sound. Do not map either missing cue to another effect.
+The role script's `playSound(set, handle)` events now resolve against
+the retail INI's original event-to-filename map and reuse the startup
+OpenAL effect voices. The two previously missing cues, `Button_3.mp3`
+and `click_1.mp3`, were decoded offline from retail 5517 to signed
+16-bit mono PCM at 22050 Hz. Their original sound identities remain
+distinct; neither maps to a substitute. The source PCM lengths and
+SHA-256 digests are tested alongside the existing startup sound bank.
 
-To close this gate, use the existing retail-source verification and
-offline-decode process to add the two missing clips, then connect the
-role events to the same bounded OpenAL effect voices and preserve their
-original per-event mapping, music and effect volumes, looping and
-focus/shutdown behavior. Test every event key against the retail INI,
-the decoded source files, and real playback. Do not include all 527
-retail audio files in the startup closure solely because they exist;
-future map/world sound assets belong to their implementing subsystems.
+The login and creation stages share the original `music.mp3` loop at
+the configured 40% music gain, and effects use the configured 100% gain.
+Existing focus behavior pauses the loop and stops effects on loss of
+focus; the shared OpenAL bank owns disposal at application shutdown.
+Unknown asset filenames are configuration errors, never silently replaced.
+Live playback on the target audio device still requires a desktop smoke
+test. Future world sound assets remain outside the startup closure.
 
 The separate world-sound contract is defined in
 `20_notes/Sound/02_map_sound_path.md` and

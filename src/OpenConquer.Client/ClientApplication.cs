@@ -328,7 +328,7 @@ internal sealed class ClientApplication : IDisposable
 
                 _role = new RoleCreationScreen(accepted!, accountName, _roleIni,
                     _roleRasters ?? throw new InvalidOperationException("Role raster source is unavailable."),
-                    _roleGlyphInk.HasMoreThanFivePixels);
+                    _roleGlyphInk.HasMoreThanFivePixels, cue => _audio?.Play(cue));
                 if (_rolePresentation is { } presentation)
                 {
                     _role.Stage.TextCaretAt = presentation.LocateCaret;
