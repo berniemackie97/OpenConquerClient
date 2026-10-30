@@ -43,12 +43,15 @@ never be treated as world admission.
 
 - The English retail 5517 `ini/selectCharacter.ini` has SHA-256
   `45192235789d6c5ff43d963ce65b531b61d4b9f9423b669fa5e0496536cda92d`,
-  as recorded with `20_notes/Architecture/12_create_role_flow.md`. It
-  **is not present** in the tracked `content/retail-5517/payload/ini`.
-  The source-provided ZFSERVER INI has a different hash and lacks the
-  Monk/Saint selection entries; it must not be silently substituted.
-  Loading the role INI is deferred until actual `NEW_ROLE`, so returning
-  players remain able to log in even when the role content is absent.
+  as recorded with `20_notes/Architecture/12_create_role_flow.md`. Its original
+  bytes are not in the tracked retail payload or the uploaded archives; the
+  older ZFSERVER copy lacks the Ninja/Monk/Saint labels. The client therefore
+  embeds a **clearly reconstructed** English role configuration with the
+  5517 movie's six class-description pairs and twelve vocation labels.
+  If an authentic loose `ini/selectCharacter.ini` is installed, it takes
+  precedence. No reconstructed prose is claimed as original retail text.
+  Both builds and published clients embed the same configuration, avoiding
+  a missing runtime file after `NEW_ROLE`.
 - The GameServer only activates runtime creation with a validated
   `GameServer:CharacterCreation` configuration. Production defaults omit
   it. The server's Development configuration uses Birth Village

@@ -44,5 +44,57 @@ public sealed class SelectCharacterIniTests
         Assert.Equal("2", ini.Get("s", "b"));
     }
 
+    [Fact]
+    public void Load_WithoutRetailIni_ProvidesCompleteEnglish5517RoleLabels()
+    {
+        string root = Directory.CreateTempSubdirectory("oc-role-ini-").FullName;
+        try
+        {
+            SelectCharacterIni ini = SelectCharacterIni.Load(new ClientContentRoot(root));
+            Assert.Equal("776", ini.Get("logo", "xPos"));
+            Assert.Equal("2", ini.Get("logo", "yPos"));
+            for (int index = 0; index < 6; index++)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(ini.Get("info", $"info{index}")));
+                Assert.False(string.IsNullOrWhiteSpace(ini.Get("info", $"infoII{index}")));
+            }
+            for (int index = 0; index < 12; index++)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(ini.Get("affirmPanel", $"vocation{index}")));
+            }
+            for (int index = 0; index < 4; index++)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(ini.Get("affirmPanel", $"shape{index}")));
+            }
+            Assert.Equal("Monk", ini.Get("affirmPanel", "vocation10"));
+            Assert.Equal("Saint", ini.Get("affirmPanel", "vocation11"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Load_WithRetailIni_PreservesLooseFilePrecedence()
+    {
+        string root = Directory.CreateTempSubdirectory("oc-role-ini-").FullName;
+        try
+        {
+            string ini = Path.Combine(root, "ini", "selectCharacter.ini");
+            Directory.CreateDirectory(Path.GetDirectoryName(ini)!);
+            File.WriteAllText(ini, "[logo]\\r\\nxPos=42\\r\\n", Encoding.ASCII);
+
+            SelectCharacterIni selected = SelectCharacterIni.Load(new ClientContentRoot(root));
+
+            Assert.Equal("42", selected.Get("logo", "xPos"));
+            Assert.Null(selected.Get("affirmPanel", "vocation10"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static SelectCharacterIni Parse(string file) => SelectCharacterIni.Parse(Encoding.ASCII.GetBytes(file));
 }

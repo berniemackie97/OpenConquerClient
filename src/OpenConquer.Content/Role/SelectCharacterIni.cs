@@ -16,13 +16,26 @@ public sealed class SelectCharacterIni
 
     private SelectCharacterIni(Dictionary<string, Dictionary<string, string>> sections) => _sections = sections;
 
-    /// <summary>Reads the file from the client install. role.dat cannot start without it.</summary>
+    /// <summary>
+    /// Uses the original loose retail INI when installed, otherwise the bundled English role labels.
+    /// The bundled labels are compatible with the 5517 Flash movie, not a byte-for-byte retail capture.
+    /// </summary>
     public static SelectCharacterIni Load(IClientContentSource contentSource)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
-        using Stream stream = contentSource.OpenRequiredRead(RelativePath, ContentLookupMode.LooseOnly);
-        return Parse(ContentReader.ReadBytes(stream, RelativePath, MaximumLength));
+        if (contentSource.TryOpenRead(RelativePath, ContentLookupMode.LooseOnly, out Stream? retail))
+        {
+            using (retail)
+            {
+                return Parse(ContentReader.ReadBytes(retail, RelativePath, MaximumLength));
+            }
+        }
+
+        const string resource = "Assets/Role/selectCharacter.ini";
+        using Stream bundled = typeof(SelectCharacterIni).Assembly.GetManifestResourceStream(resource)
+            ?? throw new InvalidDataException("Bundled English character-selection data is missing.");
+        return Parse(ContentReader.ReadBytes(bundled, resource, MaximumLength));
     }
 
     /// <summary>
