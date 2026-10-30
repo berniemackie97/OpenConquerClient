@@ -36,7 +36,7 @@ public sealed class RoleAudioFeedbackTests
             }
         }
 
-        Assert.True(total > 0);
+        Assert.Equal(25, total);
         sounds.Play("snd_bs", "does_not_exist");
         Assert.Empty(played);
     }
