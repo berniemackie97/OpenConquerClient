@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace OpenConquer.Content.Map;
@@ -16,7 +17,7 @@ public sealed class GameMapCatalog
 
     public int Count => _terrains.Count;
 
-    public bool TryGetTerrain(uint mapDataId, out Terrain? terrain) =>
+    public bool TryGetTerrain(uint mapDataId, [NotNullWhen(true)] out Terrain? terrain) =>
         _terrains.TryGetValue(mapDataId, out terrain);
 
     public static GameMapCatalog Load(IClientContentSource contentSource)

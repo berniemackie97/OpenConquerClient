@@ -12,10 +12,12 @@ public sealed class GameMapCatalogTests
         GameMapCatalog catalog = GameMapCatalog.Load(new ClientContentRoot(retailRoot));
 
         Assert.Equal(261, catalog.Count);
-        Assert.True(catalog.TryGetTerrain(1002, out GameMapCatalog.Terrain? twinCity));
+        Assert.True(catalog.TryGetTerrain(1002, out GameMapCatalog.Terrain? foundCity));
+        GameMapCatalog.Terrain twinCity = Assert.IsType<GameMapCatalog.Terrain>(foundCity);
         Assert.Equal("map/map/newplain.7z", twinCity.Path);
         Assert.Equal(256u, twinCity.CompanionValue);
-        Assert.True(catalog.TryGetTerrain(1067, out GameMapCatalog.Terrain? duplicate));
+        Assert.True(catalog.TryGetTerrain(1067, out GameMapCatalog.Terrain? foundDuplicate));
+        GameMapCatalog.Terrain duplicate = Assert.IsType<GameMapCatalog.Terrain>(foundDuplicate);
         Assert.Equal("map/map/09Christmas02.7z", duplicate.Path);
         Assert.Equal(128u, duplicate.CompanionValue);
         Assert.False(catalog.TryGetTerrain(uint.MaxValue, out _));
@@ -29,7 +31,8 @@ public sealed class GameMapCatalogTests
             (1067u, "map/map/09Christmas02.7z", 128u)));
 
         Assert.Equal(1, catalog.Count);
-        Assert.True(catalog.TryGetTerrain(1067, out GameMapCatalog.Terrain? terrain));
+        Assert.True(catalog.TryGetTerrain(1067, out GameMapCatalog.Terrain? foundTerrain));
+        GameMapCatalog.Terrain terrain = Assert.IsType<GameMapCatalog.Terrain>(foundTerrain);
         Assert.Equal("map/map/09Christmas02.7z", terrain.Path);
         Assert.Equal(128u, terrain.CompanionValue);
     }
