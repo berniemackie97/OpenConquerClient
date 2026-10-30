@@ -86,6 +86,12 @@ admission.
   collision at that tile and the older blocked candidate (61,101).
   The Development candidate does not replace an independent production
   spawn approval or live runtime smoke test.
+- The original retail 5517 `ini/GameMap.dat` terrain index (8,131 bytes)
+  is included in the curated runtime closure. On admission the client uses
+  packet-1110 `MapDataId` as an exact unsigned key, rejecting missing keys.
+  The index contains 262 records and 261 effective keys; the last duplicate
+  entry for 1067 wins. World `MapId` does not imply a terrain identity.
+  This determines a terrain source path, not a rendered scene.
 - The current client has no map/world scene renderer or gameplay input
   host. Completing the action ladder reaches the server's admission
   boundary but does **not** yet display or drive the real map. The

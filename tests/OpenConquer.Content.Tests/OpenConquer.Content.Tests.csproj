@@ -8,6 +8,9 @@
     <None Include="../../content/retail-5517/payload/ini/selectcharacter.ini"
           Link="RetailFixture/ini/selectCharacter.ini"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../content/retail-5517/payload/ini/gamemap.dat"
+          Link="RetailFixture/ini/GameMap.dat"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

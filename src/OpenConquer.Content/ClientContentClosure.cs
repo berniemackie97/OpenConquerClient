@@ -1,6 +1,7 @@
 using OpenConquer.Content.Ani;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Login;
+using OpenConquer.Content.Map;
 using OpenConquer.Content.Role;
 
 namespace OpenConquer.Content;
@@ -59,6 +60,7 @@ public static class ClientContentClosure
             new(StartupLogoConfiguration.RelativePath, ContentLookupMode.LooseOnly),
             new(ClientVersionLabel.RelativePath, ContentLookupMode.LooseOnly),
             new(SelectCharacterIni.RelativePath, ContentLookupMode.LooseOnly),
+            new(GameMapCatalog.RelativePath, ContentLookupMode.LooseOnly),
             new(ControlAniPath, ContentLookupMode.LooseOnly),
         ];
 

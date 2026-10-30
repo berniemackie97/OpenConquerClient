@@ -13,6 +13,7 @@ using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Login;
+using OpenConquer.Content.Map;
 using OpenConquer.Content.Role;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
@@ -55,6 +56,7 @@ internal sealed class ClientApplication : IDisposable
     private RoleCreationScreen? _role;
     private GameServerHandshakeSession? _worldGame;
     private GameWorldEntrySnapshot? _worldEntry;
+    private GameMapCatalog? _terrainCatalog;
     private IClientContentSource? _roleContent;
     private SelectCharacterIni? _roleIni;
     private FontGlyphInk? _roleGlyphInk;
@@ -300,9 +302,7 @@ internal sealed class ClientApplication : IDisposable
             existing.TryTakeAdmittedWorld(out GameServerHandshakeSession? acceptedGame,
                 out GameWorldEntrySnapshot? acceptedWorld))
         {
-            _worldGame = acceptedGame;
-            _worldEntry = acceptedWorld;
-            Console.WriteLine($"OpenConquer: world-entry ladder submitted for map {acceptedWorld!.MapId}, character {acceptedWorld.Character.EntityId}.");
+            AcceptWorld(acceptedGame!, acceptedWorld!);
         }
         if (_roleClosing is { IsCompleted: true } closed)
         {
@@ -357,9 +357,7 @@ internal sealed class ClientApplication : IDisposable
             if (_worldGame is null && activeRole.TryTakeAdmittedWorld(
                     out GameServerHandshakeSession? createdGame, out GameWorldEntrySnapshot? createdWorld))
             {
-                _worldGame = createdGame;
-                _worldEntry = createdWorld;
-                Console.WriteLine($"OpenConquer: world-entry ladder submitted for map {createdWorld!.MapId}, character {createdWorld.Character.EntityId}.");
+                AcceptWorld(createdGame!, createdWorld!);
             }
 
             if (_returnFromRole)
@@ -421,6 +419,22 @@ internal sealed class ClientApplication : IDisposable
         }
 
         firstFailure?.Throw();
+    }
+
+    private void AcceptWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot world)
+    {
+        // Own the authenticated connection before any content operation can fail.
+        _worldGame = game;
+        _worldEntry = world;
+        _terrainCatalog ??= GameMapCatalog.Load(_roleContent ??
+            throw new InvalidOperationException("World content source was not initialized."));
+
+        if (!_terrainCatalog.TryGetTerrain(world.MapDataId, out GameMapCatalog.Terrain? terrain))
+        {
+            throw new InvalidDataException($"Retail terrain index has no entry for data ID {world.MapDataId}.");
+        }
+
+        Console.WriteLine($"OpenConquer: world bootstrap for map {world.MapId} resolved terrain {terrain.Path} (data ID {world.MapDataId}); world rendering is not yet available.");
     }
 
     private void OnLoginRequested()
