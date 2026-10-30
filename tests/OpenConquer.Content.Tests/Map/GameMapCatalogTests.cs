@@ -38,7 +38,7 @@ public sealed class GameMapCatalogTests
     public void TruncatedOrTrailingDataIsRejected()
     {
         byte[] valid = Build((1002u, "map/map/newplain.7z", 256u));
-        Assert.Throws<InvalidDataException>(() => GameMapCatalog.Parse(valid[..^1]));
+        Assert.Throws<InvalidDataException>(() => GameMapCatalog.Parse(valid.AsSpan(0, valid.Length - 1)));
         Assert.Throws<InvalidDataException>(() => GameMapCatalog.Parse([.. valid, 0]));
         Assert.Throws<InvalidDataException>(() => GameMapCatalog.Parse([1, 0, 0, 0]));
     }
