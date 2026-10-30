@@ -305,7 +305,21 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
             return;
         }
 
-        ushort profession = (ushort)(_vocation / 2 switch
+        ushort profession = ProfessionFromVocation(_vocation);
+
+        bool female = (_vocation & 1) != 0;
+        ushort body = (ushort)(female ? (_body == 0 ? 2001 : 2002) : (_body == 0 ? 1003 : 1004));
+        _pending = CreateAsync(encodedName, body, profession, _stopping.Token);
+    }
+
+    internal static ushort ProfessionFromVocation(int vocation)
+    {
+        if (vocation is < 0 or > 11)
+        {
+            throw new ArgumentOutOfRangeException(nameof(vocation));
+        }
+
+        return (vocation / 2) switch
         {
             0 => 100,
             1 => 10,
@@ -314,11 +328,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
             4 => 50,
             5 => 60,
             _ => throw new InvalidOperationException("Unsupported role profession."),
-        });
-
-        bool female = (_vocation & 1) != 0;
-        ushort body = (ushort)(female ? (_body == 0 ? 2001 : 2002) : (_body == 0 ? 1003 : 1004));
-        _pending = CreateAsync(encodedName, body, profession, _stopping.Token);
+        };
     }
 
     private async Task<CreationResponse> CreateAsync(byte[] name, ushort body, ushort profession, CancellationToken cancellationToken)
