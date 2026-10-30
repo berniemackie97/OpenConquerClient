@@ -150,6 +150,34 @@ public sealed class RoleScriptsTests
     }
 
     [Fact]
+    public void LoadingMovieStopsAtGameStartAndResumesOnlyOnHostProgress()
+    {
+        Flow flow = Flow.ToBodyStage();
+        FlashClip loading = flow.Root.ChildClip("inGameMC");
+
+        flow.Scripts.Receive("LOADING_TRACE|Your character has been successfully created!");
+        Assert.Equal("Your character has been successfully created!", loading.ChildText("txtMsg1").Text);
+        Assert.True(loading.Visible);
+
+        flow.Scripts.Receive("PROGRESS|1");
+        flow.TickUntil(() => loading.CurrentFrame == 71);
+        Assert.Contains("CMD_GAMESTART 100", flow.Commands);
+        Assert.False(loading.IsPlaying);
+
+        flow.Scripts.Receive("LOADING_TRACE|Creating maps...");
+        flow.Tick();
+        Assert.Equal("Creating maps...", loading.ChildText("txtMsg1").Text);
+        Assert.Equal(71, loading.CurrentFrame);
+
+        flow.Scripts.Receive("LOADING_TRACE|Starting... Please wait...");
+        flow.Scripts.Receive("PROGRESS|80");
+        flow.TickUntil(() => loading.CurrentFrame == 201);
+        Assert.Equal("Starting... Please wait...", loading.ChildText("txtMsg1").Text);
+        Assert.Contains("CMD_CLOSE 1", flow.Commands);
+        Assert.False(loading.IsPlaying);
+    }
+
+    [Fact]
     public void Back_OnTheClassStage_AsksTheHostToReturnToLogin()
     {
         Flow flow = Flow.ToClassStage();

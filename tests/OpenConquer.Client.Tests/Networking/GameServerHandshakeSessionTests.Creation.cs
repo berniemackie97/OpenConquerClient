@@ -80,8 +80,11 @@ public sealed partial class GameServerHandshakeSessionTests
         _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
         GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
 
-        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(game, character, token);
+        int mapEntered = 0;
+        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(game, character, token,
+            () => mapEntered++);
 
+        Assert.Equal(1, mapEntered);
         Assert.Equal(0x11223344u, world.Character.EntityId);
         Assert.Equal((1002u, 1015u, (ushort)61, (ushort)101),
             (world.MapId, world.MapDataId, world.X, world.Y));

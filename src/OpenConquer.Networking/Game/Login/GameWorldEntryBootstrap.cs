@@ -15,7 +15,7 @@ internal static class GameWorldEntryBootstrap
     private const int MaximumHydrationBytes = 4 * 1024 * 1024;
 
     internal static async Task<GameWorldEntrySnapshot> RunAsync(GameServerHandshakeSession session,
-        GameCharacterInfo1006 character, CancellationToken cancellationToken = default)
+        GameCharacterInfo1006 character, CancellationToken cancellationToken = default, Action? onMapEntered = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(character);
@@ -77,6 +77,8 @@ internal static class GameWorldEntryBootstrap
                 throw new InvalidDataException("World entry received a mismatched EnterMap acknowledgement.");
             }
         }
+
+        onMapEntered?.Invoke();
 
         // The native client emits action 0x198 once the server EnterMap state has been applied.
         await session.SendWorldActionAsync(GameWorldAction10010.ClientStateApplied, 0, 0,

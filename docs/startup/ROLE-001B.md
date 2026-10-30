@@ -26,7 +26,14 @@ there is no second authentication attempt for character creation.
    silent-info and statistics requests in the server's required order.
 
 The role screen uses the existing translated SWF timeline, not hand-drawn
-screen replacements. The name is validated at edit time and at submission
+screen replacements. The host now forwards the 5517 loading traces on the
+render thread in native order: creation-submit progress, creation success,
+existing-character initialization, map creation after the matching EnterMap
+acknowledgement, and start-up after world bootstrap. The loading movie stops
+at frame 71 and does not receive its continuation until both the stage's
+CMD_GAMESTART and authenticated world bootstrap have completed. Frame 201's
+CMD_CLOSE remains presentation-gated while the playable world renderer is
+absent; it must not hide the role stage in favour of a fake scene. The name is validated at edit time and at submission
 using strict Windows-1252 encoding; both are needed because the native
 packet uses encoded bytes, not UTF-16 character count. The native client
 also tests monochrome rendered glyph ink before submission: each ordinary

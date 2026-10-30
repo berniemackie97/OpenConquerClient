@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -21,6 +22,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
     private readonly CancellationTokenSource _stopping = new();
     private readonly RoleScripts _scripts;
     private readonly FlashStage _stage;
+    private readonly ConcurrentQueue<string> _loadingMessages = new();
     private Task<CreationResponse>? _pending;
     private string _name = string.Empty;
     private int _body = -1;
@@ -28,6 +30,8 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
     private string? _localError;
     private double _frameRemainder;
     private bool _stoppingRequested;
+    private bool _gameStartRequested;
+    private bool _loadingResumed;
     private bool _worldTransferred;
     private bool _disposed;
 
@@ -97,6 +101,14 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
             _scripts.Receive("ERROR|" + localError);
         }
 
+        while (_loadingMessages.TryDequeue(out string? message))
+        {
+            if (!_stoppingRequested)
+            {
+                _scripts.Receive(message);
+            }
+        }
+
         if (_pending is not { IsCompleted: true } completed)
         {
             return;
@@ -129,7 +141,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
         else if (response.World is { } entered)
         {
             WorldEntry = entered;
-            _scripts.Receive("PROGRESS|80");
+            ResumeLoadingIfReady();
         }
     }
 
@@ -262,9 +274,22 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
                 ExitRequested?.Invoke();
                 break;
             case "CMD_GAMESTART":
-            case "CMD_CLOSE":
-                // The world-entry coordinator must establish the map before hiding this stage.
+                _gameStartRequested = true;
+                ResumeLoadingIfReady();
                 break;
+            case "CMD_CLOSE":
+                // Keep the role stage visible until an actual world presentation owns the display.
+                break;
+        }
+    }
+
+    private void ResumeLoadingIfReady()
+    {
+        if (!_loadingResumed && _gameStartRequested && WorldEntry is not null)
+        {
+            _loadingResumed = true;
+            _scripts.Receive("LOADING_TRACE|Starting... Please wait...");
+            _scripts.Receive("PROGRESS|80");
         }
     }
 
@@ -312,6 +337,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
     {
         await _game.SendCharacterCreationAsync(name, body, profession, s_networkTimeout, cancellationToken)
             .ConfigureAwait(false);
+        _loadingMessages.Enqueue("PROGRESS|1");
 
         GameCharacterCreationOutcome response = await _game.ReadCharacterCreationResultAsync(s_networkTimeout, cancellationToken)
             .ConfigureAwait(false);
@@ -322,6 +348,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
                 new string(message.Where(static c => !char.IsControl(c) && c != '|').Take(160).ToArray()));
         }
 
+        _loadingMessages.Enqueue("LOADING_TRACE|Your character has been successfully created!");
         await _game.SendRepeatedLoginProofAsync(s_networkTimeout, cancellationToken)
             .ConfigureAwait(false);
 
@@ -331,9 +358,11 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
             throw new InvalidDataException("Created character was not admitted to the existing-character login route.");
         }
 
+        _loadingMessages.Enqueue("LOADING_TRACE|Initializing...");
         _ = await _game.ReadExistingCharacterPreludeAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         GameCharacterInfo1006 character = await _game.ReadCharacterInfoAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
-        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(_game, character, cancellationToken)
+        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(_game, character, cancellationToken,
+                () => _loadingMessages.Enqueue("LOADING_TRACE|Creating maps..."))
             .ConfigureAwait(false);
         return new CreationResponse(world, null);
     }
