@@ -47,13 +47,14 @@ never be treated as world admission.
   recorded in `20_notes/Architecture/12_create_role_flow.md`.
   The role INI is a **loose retail file**, not generated localization or an
   embedded replacement. The client refuses missing or mismatched bytes.
-  The older ZFSERVER file does not match this release and must not be copied.
-  The captured source file must be staged under
-  `content/retail-5517/payload/ini/selectcharacter.ini` through the
-  verified retail-content import process, with its manifest regenerated and
-  the implemented content closure extended to require the file.
-  Until those source bytes are available, character creation is intentionally
-  blocked; a green CI run does not prove that the retail content is staged.
+  The uploaded retail 5517 archive supplies the byte-identical original
+  (3,612 bytes). Its original CRLF bytes are now tracked at
+  `content/retail-5517/payload/ini/selectcharacter.ini`, listed in the
+  content-set manifest, and included in the runtime content closure.
+  The existing content importer re-creates this same payload entry from
+  `ini/selectCharacter.ini` in an authorized retail root. Client build
+  and publish stage that tracked payload without a separate manual copy.
+  The older ZFSERVER file does not match this release.
 - The GameServer only activates runtime creation with a validated
   `GameServer:CharacterCreation` configuration. Production defaults omit
   it. The server's Development configuration uses Birth Village

@@ -45,6 +45,18 @@ public sealed class SelectCharacterIniTests
     }
 
     [Fact]
+    public void Load_ValidatesOriginalRetail5517IniFromTrackedPayload()
+    {
+        string retailRoot = Path.Combine(AppContext.BaseDirectory, "RetailFixture");
+        SelectCharacterIni ini = SelectCharacterIni.Load(new ClientContentRoot(retailRoot));
+
+        Assert.Equal("776", ini.Get("logo", "xPos"));
+        Assert.Equal("Back", ini.Get("tip", "returnLogin"));
+        Assert.Equal("Monk", ini.Get("affirmPanel", "vocation10"));
+        Assert.Equal("Saint", ini.Get("affirmPanel", "vocation11"));
+    }
+
+    [Fact]
     public void Load_WithoutOriginalRetailIni_FailsClosed()
     {
         string root = Directory.CreateTempSubdirectory("oc-role-ini-").FullName;
