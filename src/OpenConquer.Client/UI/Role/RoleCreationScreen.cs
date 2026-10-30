@@ -108,7 +108,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
             return;
         }
 
-        if (completed.IsCanceled || completed.IsFaulted)
+        if (completed.IsCanceled || completed.Exception is not null)
         {
             // The write/read path is terminal on an unexpected transport failure.
             ConnectionLost = true;
