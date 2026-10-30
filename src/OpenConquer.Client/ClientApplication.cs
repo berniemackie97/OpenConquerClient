@@ -22,8 +22,8 @@ using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.OpenGL;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
-using OpenConquer.Rendering.Text.Fonts;
 using OpenConquer.Rendering.Presentation;
+using OpenConquer.Rendering.Text.Fonts;
 
 namespace OpenConquer.Client;
 
