@@ -215,6 +215,8 @@ internal sealed partial class RoleScripts
         FlashClip small = body.ChildClip("bodySizeBtn_1");
         FlashClip bigFigure = body.ChildClip("sb");
         FlashClip smallFigure = body.ChildClip("sm");
+        bigFigure.HitArea = body.ChildClip("bb1");
+        smallFigure.HitArea = body.ChildClip("sb1");
 
         big.OnRelease = _ => SelectSize(body, 1);
         small.OnRelease = _ => SelectSize(body, 2);

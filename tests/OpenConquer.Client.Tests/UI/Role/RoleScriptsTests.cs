@@ -56,23 +56,7 @@ public sealed class RoleScriptsTests
         FlashClip body = flow.Root.ChildClip("sb");
 
         flow.ClickAt(285, 430);
-        FlashHitTester hitTester = new(new FlashRasterCache());
-        int[] xs = [170, 230, 285, 350, 390, 520, 567, 620];
-        int[] ys = [320, 380, 430, 490, 530, 600];
-        List<string> hits = [];
-        foreach (int x in xs)
-        {
-            foreach (int y in ys)
-            {
-                IFlashPointerTarget? hit = hitTester.Target(flow.Root, new Vector2(x, y));
-                string target = hit is FlashClip clip ? $"{clip.Name}/{clip.TimelineKey}/{clip.Parent?.Name}"
-                    : hit?.GetType().Name ?? "null";
-                hits.Add($"{x},{y}:{target}");
-            }
-        }
-
-        Assert.True(body.Get<int>("nSelectBody") == 1,
-            $"Big figure frame {body.ChildClip("sb").CurrentFrame}, handler {body.ChildClip("sb").OnPress is not null}, hits: {string.Join("; ", hits)}");
+        Assert.Equal(1, body.Get<int>("nSelectBody"));
         Assert.Equal(3, body.ChildClip("sb").CurrentFrame);
         Assert.Equal(3, body.ChildClip("bodySizeBtn_0").CurrentFrame);
 
