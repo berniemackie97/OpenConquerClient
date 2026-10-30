@@ -363,8 +363,8 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
         _loadingMessages.Enqueue("LOADING_TRACE|Initializing...");
         _ = await _game.ReadExistingCharacterPreludeAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         GameCharacterInfo1006 character = await _game.ReadCharacterInfoAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
-        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(_game, character, cancellationToken,
-                () => _loadingMessages.Enqueue("LOADING_TRACE|Creating maps..."))
+        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(_game, character,
+                () => _loadingMessages.Enqueue("LOADING_TRACE|Creating maps..."), cancellationToken)
             .ConfigureAwait(false);
         return new CreationResponse(world, null);
     }

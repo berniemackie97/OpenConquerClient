@@ -15,7 +15,7 @@ internal static class GameWorldEntryBootstrap
     private const int MaximumHydrationBytes = 4 * 1024 * 1024;
 
     internal static async Task<GameWorldEntrySnapshot> RunAsync(GameServerHandshakeSession session,
-        GameCharacterInfo1006 character, CancellationToken cancellationToken = default, Action? onMapEntered = null)
+        GameCharacterInfo1006 character, Action? onMapEntered = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(character);
