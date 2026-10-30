@@ -49,6 +49,23 @@ public sealed class RoleScriptsTests
         Assert.True(flow.Root.ChildClip("inGameMC").Get<bool>("isLoading"));
     }
 
+    [Fact]
+    public void ClickingBodySilhouettesSelectsTheirRespectiveSizes()
+    {
+        Flow flow = Flow.ToBodyStage();
+        FlashClip body = flow.Root.ChildClip("sb");
+
+        flow.ClickAt(285, 430);
+        Assert.Equal(1, body.Get<int>("nSelectBody"));
+        Assert.Equal(3, body.ChildClip("sb").CurrentFrame);
+        Assert.Equal(3, body.ChildClip("bodySizeBtn_0").CurrentFrame);
+
+        flow.ClickAt(567, 510);
+        Assert.Equal(2, body.Get<int>("nSelectBody"));
+        Assert.Equal(3, body.ChildClip("sm").CurrentFrame);
+        Assert.Equal(3, body.ChildClip("bodySizeBtn_1").CurrentFrame);
+    }
+
     [Theory]
     [InlineData(false, true, "Please enter your First Name!")]
     [InlineData(true, false, "Please select your body size.")]
@@ -219,6 +236,13 @@ public sealed class RoleScriptsTests
         }
 
         public void EnterText(string text) => _stage.TextEntered(text);
+
+        public void ClickAt(float x, float y)
+        {
+            _stage.PointerMoved(new Vector2(x, y));
+            _stage.PointerPressed();
+            _stage.PointerReleased();
+        }
 
         /// <summary>Moves to the middle of the first shape of <paramref name="shapeOwner"/>, presses and releases.</summary>
         public void Click(FlashDisplayObject shapeOwner)
