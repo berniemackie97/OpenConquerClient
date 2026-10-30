@@ -22,7 +22,7 @@ public sealed class RoleNameValidationTests
         Assert.Equal(expected, result);
         if (expected == RoleNameValidationResult.Valid)
         {
-            Assert.Equal(Encoding.GetEncoding(1252).GetBytes(name), encoded);
+            Assert.Equal(CodePagesEncodingProvider.Instance.GetEncoding(1252)!.GetBytes(name), encoded);
         }
     }
 
