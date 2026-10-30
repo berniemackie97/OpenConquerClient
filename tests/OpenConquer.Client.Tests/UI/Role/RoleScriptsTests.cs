@@ -56,7 +56,8 @@ public sealed class RoleScriptsTests
         FlashClip body = flow.Root.ChildClip("sb");
 
         flow.ClickAt(285, 430);
-        string description = string.Join("; ", new[] { body, body.ChildClip("sb"), body.ChildClip("sm") }
+        FlashClip[] inspected = [body, body.ChildClip("sb"), body.ChildClip("sm")];
+        string description = string.Join("; ", inspected
             .Select(clip => $"{clip.Name}/{clip.TimelineKey}/f{clip.CurrentFrame}/m{FlashTransforms.World(clip)}: " +
                 string.Join(", ", clip.Children.Select(child =>
                 {
