@@ -66,6 +66,17 @@ public sealed class RoleScriptsTests
         Assert.Equal(3, body.ChildClip("bodySizeBtn_1").CurrentFrame);
     }
 
+    [Fact]
+    public void ReleasingBodySilhouetteOutsideTheStageDoesNotSelectIt()
+    {
+        Flow flow = Flow.ToBodyStage();
+        FlashClip body = flow.Root.ChildClip("sb");
+
+        flow.PressAndReleaseOutside(285, 430);
+
+        Assert.Equal(0, body.Get<int>("nSelectBody"));
+    }
+
     [Theory]
     [InlineData(false, true, "Please enter your First Name!")]
     [InlineData(true, false, "Please select your body size.")]
@@ -243,6 +254,15 @@ public sealed class RoleScriptsTests
             _stage.PointerPressed();
             _stage.PointerReleased();
         }
+
+        public void PressAndReleaseOutside(float x, float y)
+        {
+            _stage.PointerMoved(new Vector2(x, y));
+            _stage.PointerPressed();
+            _stage.PointerMoved(new Vector2(-1, -1));
+            _stage.PointerReleased();
+        }
+
 
         /// <summary>Moves to the middle of the first shape of <paramref name="shapeOwner"/>, presses and releases.</summary>
         public void Click(FlashDisplayObject shapeOwner)

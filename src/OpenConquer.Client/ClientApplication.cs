@@ -456,10 +456,7 @@ internal sealed class ClientApplication : IDisposable
         {
             if (_role is { } role)
             {
-                if (mapped)
-                {
-                    role.PointerMoved(new System.Numerics.Vector2(x, y));
-                }
+                role.PointerMoved(mapped ? new System.Numerics.Vector2(x, y) : new System.Numerics.Vector2(-1, -1));
             }
             else
             {
@@ -479,6 +476,7 @@ internal sealed class ClientApplication : IDisposable
             {
                 if (mapped)
                 {
+                    role.PointerMoved(new System.Numerics.Vector2(x, y));
                     role.PointerPressed(extend);
                 }
             }
@@ -495,6 +493,7 @@ internal sealed class ClientApplication : IDisposable
         {
             if (_role is { } role)
             {
+                role.PointerMoved(mapped ? new System.Numerics.Vector2(x, y) : new System.Numerics.Vector2(-1, -1));
                 role.PointerReleased();
             }
             else
