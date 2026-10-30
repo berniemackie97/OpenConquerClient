@@ -451,6 +451,7 @@ public sealed class ContentSetImporterTests
             "data/main/mainDialog1.dds",
             "ini/Font.ini",
             "ini/GameSetUp.ini",
+            "ini/selectCharacter.ini",
             "ini/info.ini",
             "version.dat",
         ];

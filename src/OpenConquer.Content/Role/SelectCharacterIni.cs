@@ -16,7 +16,7 @@ public sealed class SelectCharacterIni
 
     private SelectCharacterIni(Dictionary<string, Dictionary<string, string>> sections) => _sections = sections;
 
-    /// <summary>Requires the origin    /// <summary>Reads the original role configuration from the client content source.</summary>
+    /// <summary>Reads the original role configuration from the client content source.</summary>
     public static SelectCharacterIni Load(IClientContentSource contentSource)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
