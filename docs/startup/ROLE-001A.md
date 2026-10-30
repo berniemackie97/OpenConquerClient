@@ -59,7 +59,8 @@ The runtime follows Flash Player where the movies depend on it:
   placed, as in AVM1.
 - The pointer targets the topmost enabled button, or clip with handlers, inside every mask over it. A child
   named `hitArea` is the hit area. Its authored baked bounds remain interactive even when the
-  hit-area raster is fully transparent; visual shapes and clipping masks still use pixel-alpha coverage.
+  hit-area raster is fully transparent; hit areas with painted pixels, visual shapes, and clipping masks
+  still use pixel-alpha coverage.
   The body-selection silhouettes exercise this path. Press, release, release-outside, drag-out and
   drag-over follow Flash.
 - Masks clip with nested coverage levels. A mask covers where its raster's alpha is at least one half.

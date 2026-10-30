@@ -63,6 +63,8 @@ internal static class FlashTransforms
 /// </summary>
 internal sealed class FlashHitTester(IFlashRasterSource rasters)
 {
+    private readonly Dictionary<(FlashMovie Movie, int Raster), bool> _rasterHasVisiblePixels = [];
+
     public IFlashPointerTarget? Target(FlashClip root, Vector2 point)
     {
         ArgumentNullException.ThrowIfNull(root);
@@ -240,7 +242,33 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
             return false;
         }
 
-        return hitGeometry || rasters.Pixels(movie, raster).Span[(y * info.Width + x) * 4 + 3] != 0;
+        ReadOnlySpan<byte> pixels = rasters.Pixels(movie, raster).Span;
+        if (hitGeometry)
+        {
+            if (!_rasterHasVisiblePixels.TryGetValue((movie, raster), out bool hasVisiblePixels))
+            {
+                hasVisiblePixels = false;
+                for (int offset = 3; offset < pixels.Length; offset += 4)
+                {
+                    if (pixels[offset] == 0)
+                    {
+                        continue;
+                    }
+
+                    hasVisiblePixels = true;
+                    break;
+                }
+
+                _rasterHasVisiblePixels.Add((movie, raster), hasVisiblePixels);
+            }
+
+            if (!hasVisiblePixels)
+            {
+                return true;
+            }
+        }
+
+        return pixels[(y * info.Width + x) * 4 + 3] != 0;
     }
 
     private static Vector2? Local(Matrix3x2 world, Vector2 point) =>
