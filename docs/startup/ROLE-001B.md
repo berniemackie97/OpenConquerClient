@@ -50,11 +50,14 @@ never be treated as world admission.
   Loading the role INI is deferred until actual `NEW_ROLE`, so returning
   players remain able to log in even when the role content is absent.
 - The GameServer only activates runtime creation with a validated
-  `GameServer:CharacterCreation` configuration. The repository's default
-  omits it. A retail-supported starting location on map 1010 and all six
-  known allotments must be approved against 5517 native content and
-  composed collision before it can be enabled. Map 1010 at (61,101)
-  is blocked and is **not** an acceptable default.
+  `GameServer:CharacterCreation` configuration. Production defaults omit
+  it. The server's Development configuration uses Birth Village
+  (map 1010) at portal0 (60,108), as recorded in the archived 5517 map
+  catalog and historical creation routine, with all six corrected
+  allotments. Its released-content test checks the effective composed
+  collision at that tile and the older blocked candidate (61,101).
+  The Development candidate does not replace an independent production
+  spawn approval or live runtime smoke test.
 - The current client has no map/world scene renderer or gameplay input
   host. Completing the action ladder reaches the server's admission
   boundary but does **not** yet display or drive the real map. The
