@@ -11,7 +11,6 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
     private bool _postAuthenticationCompleted;
     private int _reportedResourceVersion;
     private bool _gameProofWritten;
-    private bool _gameProofRepeated;
     private bool _gameHandoffClaimed;
     private readonly CancellationTokenSource _gameHandoffLifetime = new();
     private bool _disposed;
@@ -85,34 +84,6 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
             GameLoginProof1052.Write(destination, Response.SessionToken,
                 Response.AuthenticationKeyOrFailureCode, localeTag, hardwareAddress, _reportedResourceVersion);
             _gameProofWritten = true;
-        }
-    }
-
-    /// <summary>
-    /// Writes the second and last GameServer login proof. Native 5517 re-sends it on the same session after a
-    /// create-role <c>ANSWER_OK</c> (<c>CConnectionFlow__SendGameSessionBootstrap</c> <c>0x6DF1D0</c>), with the
-    /// same fields as the first; the GameServer consumes it without redeeming the ticket again. The caller owns
-    /// and must clear the resulting sensitive packet.
-    /// </summary>
-    internal void WriteRepeatedGameLoginProof(Span<byte> destination, ushort localeTag,
-        ReadOnlySpan<byte> hardwareAddress)
-    {
-        lock (_lifetimeGate)
-        {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            if (!_gameProofWritten)
-            {
-                throw new InvalidOperationException("The first GameServer login proof has not been composed.");
-            }
-
-            if (_gameProofRepeated)
-            {
-                throw new InvalidOperationException("The GameServer login proof has already been repeated.");
-            }
-
-            GameLoginProof1052.Write(destination, Response.SessionToken,
-                Response.AuthenticationKeyOrFailureCode, localeTag, hardwareAddress, _reportedResourceVersion);
-            _gameProofRepeated = true;
         }
     }
 

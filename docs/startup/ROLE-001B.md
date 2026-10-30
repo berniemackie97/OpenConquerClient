@@ -40,9 +40,13 @@ punctuation blacklist in the client.
 A revoked signed catalog or a failed login cannot publish an authenticated
 GameServer session. Creating a role transfers the connection out of the
 login coordinator; cancellation and transport loss dispose that owner
-without reusing a half-completed proof. A canceled role screen returns to
-login with a cleared role status. Network and role-content failures must
-never be treated as world admission.
+without reusing a half-completed proof. The GameServer session retains the
+initial 1052 proof until the login route is known: it clears that copy
+immediately for existing characters or after the one permitted repeat
+following creation. It does not depend on a live AccountServer exchange
+after login. A canceled role screen returns to login with a cleared role
+status. Network and role-content failures must never be treated as world
+admission.
 
 ## Verified inputs needed for the complete retail transition
 
