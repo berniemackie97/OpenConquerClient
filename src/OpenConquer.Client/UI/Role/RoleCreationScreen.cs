@@ -14,11 +14,8 @@ namespace OpenConquer.Client.UI.Role;
 internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDisposable
 {
     private static readonly TimeSpan s_networkTimeout = TimeSpan.FromSeconds(10);
-    private static readonly Encoding s_nameEncoding = CodePagesEncodingProvider.Instance.GetEncoding(1252,
-        EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback) ??
-        throw new InvalidOperationException("The native 5517 name code page is unavailable.");
-
     private readonly GameServerHandshakeSession _game;
+    private readonly Func<Rune, bool> _hasGlyphInk;
     private readonly CancellationTokenSource _stopping = new();
     private readonly RoleScripts _scripts;
     private readonly FlashStage _stage;
@@ -37,9 +34,11 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         get; private set;
     }
 
-    public RoleCreationScreen(GameServerHandshakeSession game, string account, SelectCharacterIni ini, IFlashRasterSource rasters)
+    public RoleCreationScreen(GameServerHandshakeSession game, string account, SelectCharacterIni ini, IFlashRasterSource rasters,
+        Func<Rune, bool> hasGlyphInk)
     {
         _game = game ?? throw new ArgumentNullException(nameof(game));
+        _hasGlyphInk = hasGlyphInk ?? throw new ArgumentNullException(nameof(hasGlyphInk));
         ArgumentNullException.ThrowIfNull(account);
         ArgumentNullException.ThrowIfNull(ini);
         ArgumentNullException.ThrowIfNull(rasters);
@@ -279,26 +278,12 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
             return;
         }
 
-        if (string.IsNullOrEmpty(_name))
+        RoleNameValidationResult nameResult = RoleNameValidation.Validate(_name, _hasGlyphInk, out byte[] encodedName);
+        if (nameResult != RoleNameValidationResult.Valid)
         {
-            _localError = "First Name should be 4-15 characters!";
-            return;
-        }
-
-        byte[] encodedName;
-        try
-        {
-            encodedName = s_nameEncoding.GetBytes(_name);
-        }
-        catch (EncoderFallbackException)
-        {
-            _localError = "First Name should be 4-15 characters!";
-            return;
-        }
-
-        if (encodedName.Length is < 4 or > 15)
-        {
-            _localError = "First Name should be 4-15 characters!";
+            _localError = nameResult == RoleNameValidationResult.InvalidLength ?
+                "First Name should be 4-15 characters!" :
+                "Sorry, the name you specified contains invalid characters.";
             return;
         }
 

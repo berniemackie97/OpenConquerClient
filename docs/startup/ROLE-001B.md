@@ -29,11 +29,15 @@ The role screen uses the existing translated SWF timeline, not hand-drawn
 screen replacements. The name is validated at edit time and at submission
 using strict Windows-1252 encoding; both are needed because the native
 packet uses encoded bytes, not UTF-16 character count. The native client
-also tests rendered glyph ink before submission; that FreeType-based gate
-is not implemented here. The companion server retains a stricter name
-policy, so it may refuse names the retail client would submit (including
-`ab=cd`). Do not replace the native glyph check with the server's
-punctuation blacklist in the client.
+also tests monochrome rendered glyph ink before submission: each ordinary
+character must render more than five lit pixels, while a period is accepted
+only within the name. The client uses the configured GUI font face and
+normal height through the existing FreeType renderer. Host font selection
+and the exact retail FreeType revision remain conformance variables; a
+successful managed test is not proof of identical glyph bitmaps on every
+platform. The companion server retains a stricter name policy, so it may
+refuse names the retail client would submit (including `ab=cd`).
+Do not replace the native glyph check with the server's punctuation blacklist.
 
 ## Ownership and failure handling
 

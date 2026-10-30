@@ -22,6 +22,7 @@ using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.OpenGL;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
+using OpenConquer.Rendering.Text.Fonts;
 using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client;
@@ -56,6 +57,7 @@ internal sealed class ClientApplication : IDisposable
     private GameWorldEntrySnapshot? _worldEntry;
     private IClientContentSource? _roleContent;
     private SelectCharacterIni? _roleIni;
+    private FontGlyphInk? _roleGlyphInk;
     private FlashRasterCache? _roleRasters;
     private FlashStagePresentation? _rolePresentation;
     private bool _returnFromRole;
@@ -186,6 +188,7 @@ internal sealed class ClientApplication : IDisposable
                 {
                     _catalog?.Dispose();
                     _audio?.Dispose();
+                    _roleGlyphInk?.Dispose();
                 }
                 finally
                 {
@@ -313,10 +316,19 @@ internal sealed class ClientApplication : IDisposable
         {
             try
             {
-                _roleIni ??= SelectCharacterIni.Load(_roleContent ??
-                    throw new InvalidOperationException("Role content source was not initialized."));
+                IClientContentSource roleContent = _roleContent ??
+                    throw new InvalidOperationException("Role content source was not initialized.");
+                _roleIni ??= SelectCharacterIni.Load(roleContent);
+                if (_roleGlyphInk is null)
+                {
+                    ClientFontSettingsConfiguration fontSettings = ClientFontSettingsConfiguration.Load(roleContent);
+                    GameFontConfiguration font = GameFontConfiguration.Load(roleContent);
+                    _roleGlyphInk = new FontGlyphInk(fontSettings.GuiFontFaceName, font.NominalPixelHeight);
+                }
+
                 _role = new RoleCreationScreen(accepted!, accountName, _roleIni,
-                    _roleRasters ?? throw new InvalidOperationException("Role raster source is unavailable."));
+                    _roleRasters ?? throw new InvalidOperationException("Role raster source is unavailable."),
+                    _roleGlyphInk.HasMoreThanFivePixels);
                 if (_rolePresentation is { } presentation)
                 {
                     _role.Stage.TextCaretAt = presentation.LocateCaret;
