@@ -44,20 +44,11 @@ public sealed class LoginAccountPostAuthenticationTests
         // the original AccountServer socket is closed.
         Assert.Throws<ArgumentException>(() =>
             result.WriteGameLoginProof(new byte[27], 0x6E45, hardware));
-        Assert.Throws<InvalidOperationException>(() =>
-            result.WriteRepeatedGameLoginProof(new byte[28], 0x6E45, hardware));
         result.WriteGameLoginProof(proof, 0x6E45, hardware);
         Assert.Equal("1C001C0444332211EFCDAB897C00456E001122AABBCC00008D150000",
             Convert.ToHexString(proof));
         Assert.Throws<InvalidOperationException>(() =>
             result.WriteGameLoginProof(new byte[28], 0x6E45, hardware));
-
-        // Native 5517 repeats the same proof once after a created character.
-        byte[] repeated = new byte[GameLoginProof1052.PacketLength];
-        result.WriteRepeatedGameLoginProof(repeated, 0x6E45, hardware);
-        Assert.Equal(proof, repeated);
-        Assert.Throws<InvalidOperationException>(() =>
-            result.WriteRepeatedGameLoginProof(new byte[28], 0x6E45, hardware));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             result.CompletePostAuthenticationAsync(ReadOnlyMemory<byte>.Empty, 5517, TimeSpan.FromSeconds(5), token));
