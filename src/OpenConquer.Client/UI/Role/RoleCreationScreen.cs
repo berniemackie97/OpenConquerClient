@@ -382,7 +382,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
                 await _pending.ConfigureAwait(false);
             }
         }
-        catch (Exception) when (_stopping.IsCancellationRequested)
+        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
         {
         }
         finally
