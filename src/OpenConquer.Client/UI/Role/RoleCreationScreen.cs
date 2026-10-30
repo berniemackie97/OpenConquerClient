@@ -102,13 +102,15 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         }
 
         _pending = null;
+        Exception? failure = completed.Exception;
         if (_stoppingRequested)
         {
+            ConnectionLost = failure is not null;
             ReturnRequested?.Invoke();
             return;
         }
 
-        if (completed.IsCanceled || completed.Exception is not null)
+        if (completed.IsCanceled || failure is not null)
         {
             // The write/read path is terminal on an unexpected transport failure.
             ConnectionLost = true;
