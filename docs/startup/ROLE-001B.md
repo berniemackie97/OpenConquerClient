@@ -46,7 +46,9 @@ never be treated as world admission.
   `45192235789d6c5ff43d963ce65b531b61d4b9f9423b669fa5e0496536cda92d`,
   recorded in `20_notes/Architecture/12_create_role_flow.md`.
   The role INI is a **loose retail file**, not generated localization or an
-  embedded replacement. The client refuses missing or mismatched bytes.
+  embedded replacement. The runtime refuses a missing file and parses the
+  supplied bytes; SHA-256 matching is enforced by the content-set verifier
+  during import, CI and publish, not by a baked-in runtime fingerprint.
   The uploaded retail 5517 archive supplies the byte-identical original
   (3,612 bytes). Its original CRLF bytes are now tracked at
   `content/retail-5517/payload/ini/selectcharacter.ini`, listed in the
@@ -69,6 +71,38 @@ never be treated as world admission.
   boundary but does **not** yet display or drive the real map. The
   role-loading movie and existing-character login screen therefore
   cannot be declared a completed native world transition.
+
+## Sound-parity boundary
+
+The verified retail `ini/selectCharacter.ini` names twelve distinct MP3s:
+`music.mp3`, `page.mp3`, `error.mp3`, `Button_1.mp3`,
+`Button_2.mp3`, `Button_3.mp3`, `click_1.mp3`, `Confirm.mp3`,
+`Glide.mp3` and `key_1.mp3` through `key_3.mp3`. All twelve are
+present in the 5517 source archive. The Flash translation already emits
+`snd_cs`, `snd_bs` and `snd_db` events using the retail INI's
+`[classSelection]`, `[bodySelection]` and `[dialogBox]` mappings.
+
+**Role sound effects are not yet implemented:** `RoleCreationScreen.IRoleSounds.Play`
+currently discards the events. The login OpenAL backend owns derived,
+offline-decoded retail PCM for ten of these sounds, including the shared
+`music.mp3` background track; `Button_3.mp3` and `click_1.mp3` are
+not in its asset bank. An audio-capable login does not prove the role
+stage has working sound. Do not map either missing cue to another effect.
+
+To close this gate, use the existing retail-source verification and
+offline-decode process to add the two missing clips, then connect the
+role events to the same bounded OpenAL effect voices and preserve their
+original per-event mapping, music and effect volumes, looping and
+focus/shutdown behavior. Test every event key against the retail INI,
+the decoded source files, and real playback. Do not include all 527
+retail audio files in the startup closure solely because they exist;
+future map/world sound assets belong to their implementing subsystems.
+
+The separate world-sound contract is defined in
+`20_notes/Sound/02_map_sound_path.md` and
+`20_notes/Rendering/ndsound_dll/`: retail map sounds use the 5517
+map-scene subcomponent and positional WAV playback, not the ancestor
+`CMapSound` interval model.
 
 ## Acceptance gate
 
