@@ -58,7 +58,10 @@ The runtime follows Flash Player where the movies depend on it:
   the queued frame scripts. A parent's frame script runs before the first-frame scripts of the children it
   placed, as in AVM1.
 - The pointer targets the topmost enabled button, or clip with handlers, inside every mask over it. A child
-  named `hitArea` is the hit area. Press, release, release-outside, drag-out and drag-over follow Flash.
+  named `hitArea` is the hit area. Its authored baked bounds remain interactive even when the
+  hit-area raster is fully transparent; visual shapes and clipping masks still use pixel-alpha coverage.
+  The body-selection silhouettes exercise this path. Press, release, release-outside, drag-out and
+  drag-over follow Flash.
 - Masks clip with nested coverage levels. A mask covers where its raster's alpha is at least one half.
 - Input text fields take focus on a click (a click elsewhere clears it) and from `Selection.setFocus`.
 - Edit text uses device fonts (Arial, and SimSun for `宋体`) with Flash's 2-pixel gutter.
