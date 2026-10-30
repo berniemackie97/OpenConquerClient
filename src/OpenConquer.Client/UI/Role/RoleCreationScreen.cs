@@ -127,7 +127,6 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         {
             WorldEntry = entered;
             _scripts.Receive("PROGRESS|80");
-            _scripts.Receive("LOADING_TRACE|Starting... Please wait...");
         }
     }
 
@@ -312,24 +311,16 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
         _pending = CreateAsync(encodedName, body, profession, _stopping.Token);
     }
 
-    internal static ushort ProfessionFromVocation(int vocation)
+    internal static ushort ProfessionFromVocation(int vocation) => vocation switch
     {
-        if (vocation is < 0 or > 11)
-        {
-            throw new ArgumentOutOfRangeException(nameof(vocation));
-        }
-
-        return (vocation / 2) switch
-        {
-            0 => 100,
-            1 => 10,
-            2 => 40,
-            3 => 20,
-            4 => 50,
-            5 => 60,
-            _ => throw new InvalidOperationException("Unsupported role profession."),
-        };
-    }
+        0 or 1 => 100,
+        2 or 3 => 10,
+        4 or 5 => 40,
+        6 or 7 => 20,
+        8 or 9 => 50,
+        10 or 11 => 60,
+        _ => throw new ArgumentOutOfRangeException(nameof(vocation)),
+    };
 
     private async Task<CreationResponse> CreateAsync(byte[] name, ushort body, ushort profession, CancellationToken cancellationToken)
     {

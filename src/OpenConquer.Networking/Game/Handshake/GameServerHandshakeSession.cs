@@ -661,7 +661,6 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(packet);
             ExitOperation(completed);
         }
     }

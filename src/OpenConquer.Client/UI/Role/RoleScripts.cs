@@ -37,11 +37,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
 
     private FlashClip? _root;
 
-    public long? LogoStartFrame
-    {
-        get; private set;
-    }
-
     public RoleScripts(SelectCharacterIni ini, FlashMovie characterInAndOut, IRoleCommands commands, IRoleSounds sounds)
     {
         ArgumentNullException.ThrowIfNull(ini);
@@ -218,7 +213,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         FlashClip root = Root;
         root.Play();
         FlashClip logo = root.ChildClip("logoMC");
-        LogoStartFrame = root.Stage.FrameCount;
         if (Number(_ini.Get("logo", "xPos")) is { } x && Number(_ini.Get("logo", "yPos")) is { } y)
         {
             logo.X = x;

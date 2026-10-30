@@ -71,19 +71,19 @@ public sealed class SelectCharacterIniTests
     }
 
     [Fact]
-    public void Load_RejectsAReconstructedOrMismatchedRetailIni()
+    public void Load_ParsesLooseRoleConfigurationWithoutEmbeddedProvenanceRules()
     {
         string root = Directory.CreateTempSubdirectory("oc-role-ini-").FullName;
         try
         {
             string path = Path.Combine(root, "ini", "selectCharacter.ini");
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, "[logo]\r\nxPos=42\r\n", Encoding.ASCII);
+            File.WriteAllText(path, "[logo]\\r\\nxPos=42\\r\\n", Encoding.ASCII);
 
-            InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
-                SelectCharacterIni.Load(new ClientContentRoot(root)));
+            SelectCharacterIni configuration = SelectCharacterIni.Load(new ClientContentRoot(root));
 
-            Assert.Contains("verified retail 5517 SHA-256", error.Message, StringComparison.Ordinal);
+            Assert.Equal("42", configuration.Get("logo", "xPos"));
+            Assert.Null(configuration.Get("affirmPanel", "vocation10"));
         }
         finally
         {
