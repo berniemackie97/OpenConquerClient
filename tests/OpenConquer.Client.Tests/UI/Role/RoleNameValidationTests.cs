@@ -6,24 +6,40 @@ namespace OpenConquer.Client.Tests.UI.Role;
 public sealed class RoleNameValidationTests
 {
     [Theory]
-    [InlineData("Abcd", RoleNameValidationResult.Valid)]
-    [InlineData("ab=cd", RoleNameValidationResult.Valid)]
-    [InlineData("ab.cd", RoleNameValidationResult.Valid)]
-    [InlineData(".abcd", RoleNameValidationResult.InvalidGlyph)]
-    [InlineData("abcd.", RoleNameValidationResult.InvalidGlyph)]
-    [InlineData("abc", RoleNameValidationResult.InvalidLength)]
-    [InlineData("abcdefghijklmnop", RoleNameValidationResult.InvalidLength)]
-    [InlineData("abcd😀", RoleNameValidationResult.InvalidGlyph)]
-    public void ValidationUsesRetailPixelGateAndEncodedByteLimits(string name, RoleNameValidationResult expected)
+    [InlineData("Abcd")]
+    [InlineData("ab=cd")]
+    [InlineData("ab.cd")]
+    [InlineData("Åbcd")]
+    public void ValidNamesUseNativeGlyphRuleAndWindows1252Encoding(string name)
     {
         RoleNameValidationResult result = RoleNameValidation.Validate(name,
             static rune => rune.Value != '.' && rune.Value != ' ', out byte[] encoded);
 
-        Assert.Equal(expected, result);
-        if (expected == RoleNameValidationResult.Valid)
-        {
-            Assert.Equal(CodePagesEncodingProvider.Instance.GetEncoding(1252)!.GetBytes(name), encoded);
-        }
+        Assert.Equal(RoleNameValidationResult.Valid, result);
+        Assert.Equal(CodePagesEncodingProvider.Instance.GetEncoding(1252)!.GetBytes(name), encoded);
+    }
+
+    [Theory]
+    [InlineData(".abcd")]
+    [InlineData("abcd.")]
+    [InlineData("abcd😀")]
+    public void NonRenderingOrNonEncodableCharactersAreRejected(string name)
+    {
+        RoleNameValidationResult result = RoleNameValidation.Validate(name,
+            static rune => rune.Value != '.' && rune.Value != ' ', out _);
+
+        Assert.Equal(RoleNameValidationResult.InvalidGlyph, result);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("abcdefghijklmnop")]
+    public void EncodedLengthMustBeFourThroughFifteenBytes(string name)
+    {
+        RoleNameValidationResult result = RoleNameValidation.Validate(name,
+            static _ => true, out _);
+
+        Assert.Equal(RoleNameValidationResult.InvalidLength, result);
     }
 
     [Fact]
