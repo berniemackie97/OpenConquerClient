@@ -83,7 +83,7 @@ public sealed class SelectCharacterIniTests
         {
             string ini = Path.Combine(root, "ini", "selectCharacter.ini");
             Directory.CreateDirectory(Path.GetDirectoryName(ini)!);
-            File.WriteAllText(ini, "[logo]\\r\\nxPos=42\\r\\n", Encoding.ASCII);
+            File.WriteAllText(ini, "[logo]\r\nxPos=42\r\n", Encoding.ASCII);
 
             SelectCharacterIni selected = SelectCharacterIni.Load(new ClientContentRoot(root));
 
