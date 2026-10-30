@@ -279,8 +279,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
             return;
         }
 
-        if (string.IsNullOrEmpty(_name) || _name.Any(static c => c < ' ' ||
-                " ;,/\\=%@'\"[]".Contains(c, StringComparison.Ordinal)))
+        if (string.IsNullOrEmpty(_name))
         {
             _localError = "First Name should be 4-15 characters!";
             return;
