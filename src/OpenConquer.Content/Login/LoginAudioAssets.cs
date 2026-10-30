@@ -60,6 +60,10 @@ public static class LoginAudioAssets
 {
     private readonly record struct Clip(LoginAudioCue Cue, int SampleRate, int ChannelCount, int Length, string Sha256);
 
+    private static readonly JsonSerializerOptions s_manifestOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter<LoginAudioCue>() },
+    };
     private static readonly Clip[] s_clips = LoadManifest();
 
     public static LoginAudioClip Load(LoginAudioCue cue)
@@ -79,9 +83,7 @@ public static class LoginAudioAssets
         using Stream manifest = typeof(LoginAudioAssets).Assembly.GetManifestResourceStream("Assets/Login/Audio/manifest.json") ??
             throw new InvalidDataException("The startup sound manifest is missing.");
 
-        JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
-        options.Converters.Add(new JsonStringEnumConverter<LoginAudioCue>());
-        Clip[] clips = JsonSerializer.Deserialize<Clip[]>(manifest, options) ??
+        Clip[] clips = JsonSerializer.Deserialize<Clip[]>(manifest, s_manifestOptions) ??
             throw new InvalidDataException("The startup sound manifest is empty.");
         if (clips.Length != Enum.GetValues<LoginAudioCue>().Length)
         {
