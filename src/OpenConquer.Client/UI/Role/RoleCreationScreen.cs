@@ -186,7 +186,10 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleSounds, IAsyncDis
                     _stage.SelectAll();
                     return;
                 case DesktopKey.C:
-                    writeClipboard(_stage.SelectedText());
+                    if (_stage.SelectedText() is { Length: > 0 } selection)
+                    {
+                        writeClipboard(selection);
+                    }
                     return;
                 case DesktopKey.X:
                     string selected = _stage.SelectedText();
