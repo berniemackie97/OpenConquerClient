@@ -7,7 +7,7 @@ namespace OpenConquer.Content.Map;
 /// <summary>Extracts the single DMap payload from a retail 5517 map archive.</summary>
 public static class GameMapArchive
 {
-    private const int MaximumArchiveBytes = 128 * 1024;
+    internal const int MaximumArchiveBytes = 128 * 1024;
     private const int MaximumDecodedBytes = 32 * 1024 * 1024;
 
     public static byte[] Decode(ReadOnlySpan<byte> encoded, string contentPath)
