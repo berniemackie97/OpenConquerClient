@@ -143,6 +143,7 @@ internal static class GameWorldEntryBootstrap
 
                     hydration.Add(frame.Packet.ToArray());
                 }
+            }
         }
         catch (OperationCanceledException) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
