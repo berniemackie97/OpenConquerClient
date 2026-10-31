@@ -14,10 +14,15 @@ public sealed class GameMapPuzzleResources
 
     public GameMapPuzzleBitmap Ground { get; }
 
-    public GameMapPuzzleBitmap GetRequired(string contentPath) =>
-        _puzzles.TryGetValue(contentPath, out GameMapPuzzleBitmap? puzzle)
-            ? puzzle
-            : throw new KeyNotFoundException($"Puzzle bitmap '{contentPath}' does not belong to this map.");
+    public GameMapPuzzleBitmap GetRequired(string contentPath)
+    {
+        if (!_puzzles.TryGetValue(contentPath, out GameMapPuzzleBitmap? puzzle))
+        {
+            throw new KeyNotFoundException($"Puzzle bitmap '{contentPath}' does not belong to this map.");
+        }
+
+        return puzzle;
+    }
 
     public static GameMapPuzzleResources Load(IClientContentSource contentSource, GameMapContent map)
     {
