@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - bernie/world-003-lock-probe
   pull_request:
   workflow_dispatch:
 
@@ -36,7 +37,18 @@ jobs:
           global-json-file: global.json
 
       - name: Restore locked dependencies
-        run: dotnet restore OpenConquer.Client.slnx --locked-mode
+        run: |
+          dotnet restore OpenConquer.Client.slnx --force-evaluate -p:RestoreLockedMode=false
+          echo "== SHARPCOMPRESS_LOCK_BEGIN =="
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for file in Path('.').rglob('packages.lock.json'):
+              try: item=json.loads(file.read_text())['dependencies']['net10.0'].get('SharpCompress')
+              except (KeyError, ValueError): continue
+              if item is not None: print(file, json.dumps(item,sort_keys=True))
+          PY
+          echo "== SHARPCOMPRESS_LOCK_END =="
 
       - name: Verify formatting
         run: dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
