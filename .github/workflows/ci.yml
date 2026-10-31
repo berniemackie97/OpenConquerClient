@@ -49,6 +49,11 @@ jobs:
               if item is not None: print(file, json.dumps(item,sort_keys=True))
           PY
           echo "== SHARPCOMPRESS_LOCK_END =="
+          echo "== FULL_LOCK_CONTENT_BEGIN =="
+          cat src/OpenConquer.Content/packages.lock.json
+          echo "== FULL_LOCK_CONTENT_END =="
+          echo "== SHARPCOMPRESS_ASSET_CHECK =="
+          grep -n -i 'sharpcompress' src/OpenConquer.Content/obj/project.assets.json | head -15
 
       - name: Verify formatting
         run: dotnet format OpenConquer.Client.slnx --verify-no-changes --no-restore
