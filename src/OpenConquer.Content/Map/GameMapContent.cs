@@ -12,15 +12,30 @@ public sealed class GameMapContent
         Scene = scene;
     }
 
-    public uint MapDataId { get; }
+    public uint MapDataId
+    {
+        get;
+    }
 
-    public string ArchivePath { get; }
+    public string ArchivePath
+    {
+        get;
+    }
 
-    public uint CompanionValue { get; }
+    public uint CompanionValue
+    {
+        get;
+    }
 
-    public GameMapCellGrid CellGrid { get; }
+    public GameMapCellGrid CellGrid
+    {
+        get;
+    }
 
-    public GameMapSceneSections Scene { get; }
+    public GameMapSceneSections Scene
+    {
+        get;
+    }
 
     public static GameMapContent Load(IClientContentSource contentSource, GameMapCatalog catalog, uint mapDataId)
     {
