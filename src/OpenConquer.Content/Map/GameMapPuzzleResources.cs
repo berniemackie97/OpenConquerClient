@@ -12,7 +12,10 @@ public sealed class GameMapPuzzleResources
         _puzzles = puzzles;
     }
 
-    public GameMapPuzzleBitmap Ground { get; }
+    public GameMapPuzzleBitmap Ground
+    {
+        get;
+    }
 
     public GameMapPuzzleBitmap GetRequired(string contentPath)
     {
