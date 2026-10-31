@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 
 namespace OpenConquer.Content.Tool.CommandLine;
 
@@ -11,7 +12,9 @@ internal static class ContentToolCommandLine
     private const string ValidateStartupVerb = "validate-startup";
     private const string VerifyContentSetVerb = "verify-content-set";
     private const string InspectServerDatVerb = "inspect-server-dat";
+    private const string ValidateMapPuzzlesVerb = "validate-map-puzzles";
     private const string FileOption = "--file";
+    private const string MapDataIdOption = "--map-data-id";
 
     private const string SourceOption = "--source";
     private const string DestinationOption = "--destination";
@@ -29,6 +32,7 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
         $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root>",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
+        $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <retail-root> {MapDataIdOption} <map-data-id>",
     ];
 
     public static bool TryParse(IReadOnlyList<string> args, string workingDirectoryPath, [NotNullWhen(true)] out ContentToolCommand? command, [NotNullWhen(false)] out string? errorMessage)
@@ -82,6 +86,18 @@ internal static class ContentToolCommandLine
                     return true;
                 }
 
+            case ValidateMapPuzzlesVerb:
+                {
+                    if (!TryParseMapPuzzleOptions(remainingArgs, workingDirectoryPath,
+                        out string? sourceRoot, out uint mapDataId, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    command = new ValidateMapPuzzlesCommand(sourceRoot, mapDataId);
+                    return true;
+                }
+
             case InspectServerDatVerb:
                 {
                     if (!TryParseOptions(remainingArgs, [FileOption], workingDirectoryPath, out IReadOnlyList<string>? values, out errorMessage))
@@ -97,6 +113,49 @@ internal static class ContentToolCommandLine
                 errorMessage = $"Unknown command '{verb}'.";
                 return false;
         }
+    }
+
+    private static bool TryParseMapPuzzleOptions(IReadOnlyList<string> args, string workingDirectoryPath,
+        [NotNullWhen(true)] out string? sourceRoot, out uint mapDataId, out string? errorMessage)
+    {
+        sourceRoot = null;
+        mapDataId = 0;
+        errorMessage = null;
+
+        if (args.Count != 4)
+        {
+            errorMessage = "Expected --source and --map-data-id, each with one value.";
+            return false;
+        }
+
+        bool hasMapDataId = false;
+        for (int i = 0; i < args.Count; i += 2)
+        {
+            if (args[i] == SourceOption && sourceRoot is null &&
+                TryResolvePath(args[i + 1], workingDirectoryPath, out string? resolved))
+            {
+                sourceRoot = resolved;
+            }
+            else if (args[i] == MapDataIdOption && !hasMapDataId &&
+                uint.TryParse(args[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out uint parsed) && parsed != 0)
+            {
+                mapDataId = parsed;
+                hasMapDataId = true;
+            }
+            else
+            {
+                errorMessage = $"Invalid, repeated or missing value for '{args[i]}'.";
+                return false;
+            }
+        }
+
+        if (sourceRoot is null || !hasMapDataId)
+        {
+            errorMessage = "Both --source and --map-data-id are required.";
+            return false;
+        }
+
+        return true;
     }
 
     private static bool TryParseOptions(IReadOnlyList<string> args, IReadOnlyList<string> expectedOptions, string workingDirectoryPath, [NotNullWhen(true)] out IReadOnlyList<string>? values, [NotNullWhen(false)] out string? errorMessage)
