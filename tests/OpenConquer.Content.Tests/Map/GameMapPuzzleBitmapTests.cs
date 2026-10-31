@@ -11,15 +11,13 @@ public sealed class GameMapPuzzleBitmapTests
         GameMapPuzzleBitmap ground = GameMapPuzzleBitmap.Parse(ReadFixture("newbie.pul"));
         GameMapPuzzleBitmap backdrop = GameMapPuzzleBitmap.Parse(ReadFixture("newbiebg.pul"));
 
-        Assert.Equal((15, 9), (ground.Width, ground.Height));
-        Assert.Equal((6, 6), (backdrop.Width, backdrop.Height));
+        Assert.Equal((15, 9), (ground.Columns, ground.Rows));
+        Assert.Equal((6, 6), (backdrop.Columns, backdrop.Rows));
         Assert.Equal("ani/newbie.ani", ground.TextureIndexPath);
         Assert.Equal("ani/newbie.ani", backdrop.TextureIndexPath);
-        Assert.False(ground.IsPuzzle2);
-        Assert.False(backdrop.IsPuzzle2);
-        Assert.Equal(ushort.MaxValue, ground.GetTileIndex(0, 0));
-        Assert.Equal((ushort)50, backdrop.GetTileIndex(0, 0));
-        Assert.Equal((ushort)85, backdrop.GetTileIndex(5, 5));
+        Assert.Equal(ushort.MaxValue, ground.Tiles[0]);
+        Assert.Equal((ushort)50, backdrop.Tiles[0]);
+        Assert.Equal((ushort)85, backdrop.Tiles[^1]);
     }
 
     [Fact]
@@ -27,13 +25,10 @@ public sealed class GameMapPuzzleBitmapTests
     {
         GameMapPuzzleBitmap bitmap = GameMapPuzzleBitmap.Parse(ReadFixture("jokul01.pul"));
 
-        Assert.True(bitmap.IsPuzzle2);
-        Assert.Equal((4, 5), (bitmap.Width, bitmap.Height));
+        Assert.Equal((4, 5), (bitmap.Columns, bitmap.Rows));
         Assert.Equal("ani/color3map.ani", bitmap.TextureIndexPath);
-        Assert.Equal((ushort)90, bitmap.GetTileIndex(0, 1));
+        Assert.Equal((ushort)90, bitmap.Tiles[4]);
         Assert.Equal((0, 0), (bitmap.ScrollVelocityX, bitmap.ScrollVelocityY));
-        Assert.Throws<ArgumentOutOfRangeException>(() => bitmap.GetTileIndex(4, 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => bitmap.GetTileIndex(0, -1));
     }
 
     [Fact]

@@ -3,6 +3,7 @@ namespace OpenConquer.Content.Map;
 /// <summary>Ground and positioned puzzle bitmaps referenced by one loaded DMap.</summary>
 public sealed class GameMapPuzzleResources
 {
+    private const int MaximumPuzzleFileBytes = 128 * 1024;
     private readonly Dictionary<string, GameMapPuzzleBitmap> _puzzles;
 
     private GameMapPuzzleResources(GameMapPuzzleBitmap ground, Dictionary<string, GameMapPuzzleBitmap> puzzles)
@@ -29,7 +30,9 @@ public sealed class GameMapPuzzleResources
         {
             if (!puzzles.TryGetValue(path, out GameMapPuzzleBitmap? puzzle))
             {
-                puzzle = GameMapPuzzleBitmap.Load(contentSource, path);
+                byte[] payload = ContentReader.ReadRequiredBytes(contentSource, path,
+                    ContentLookupMode.LooseOnly, MaximumPuzzleFileBytes);
+                puzzle = GameMapPuzzleBitmap.Parse(payload);
                 puzzles.Add(path, puzzle);
             }
 

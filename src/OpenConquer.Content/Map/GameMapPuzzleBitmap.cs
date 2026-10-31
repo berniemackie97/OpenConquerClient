@@ -3,122 +3,112 @@ using System.Text;
 
 namespace OpenConquer.Content.Map;
 
-/// <summary>Tile indices and ANI source for a retail PUZZLE or PUZZLE2 bitmap.</summary>
+/// <summary>PUZZLE/PUZZLE2 tile indices used by the retail map's ground and positioned-overlay layers.</summary>
 public sealed class GameMapPuzzleBitmap
 {
-    internal const int MaximumEncodedBytes = 128 * 1024;
-    private const int HeaderLength = 8 + 0x100 + 8;
+    private const int HeaderLength = 272;
+    private const int MaximumFileLength = 16 * 1024 * 1024;
+    private readonly ushort[] _tiles;
 
-    private readonly ushort[] _tileIndices;
-
-    private GameMapPuzzleBitmap(string textureIndexPath, int width, int height,
-        ushort[] tileIndices, bool isPuzzle2, int scrollVelocityX, int scrollVelocityY)
+    private GameMapPuzzleBitmap(string textureIndexPath, int columns, int rows, ushort[] tiles,
+        int scrollVelocityX, int scrollVelocityY)
     {
         TextureIndexPath = textureIndexPath;
-        Width = width;
-        Height = height;
-        _tileIndices = tileIndices;
-        IsPuzzle2 = isPuzzle2;
+        Columns = columns;
+        Rows = rows;
+        _tiles = tiles;
         ScrollVelocityX = scrollVelocityX;
         ScrollVelocityY = scrollVelocityY;
     }
 
-    public string TextureIndexPath { get; }
-    public int Width { get; }
-    public int Height { get; }
-    public bool IsPuzzle2 { get; }
-    public int ScrollVelocityX { get; }
-    public int ScrollVelocityY { get; }
-
-    public ushort GetTileIndex(int x, int y)
+    public string TextureIndexPath
     {
-        if ((uint)x >= (uint)Width)
-        {
-            throw new ArgumentOutOfRangeException(nameof(x));
-        }
-
-        if ((uint)y >= (uint)Height)
-        {
-            throw new ArgumentOutOfRangeException(nameof(y));
-        }
-
-        return _tileIndices[y * Width + x];
+        get;
     }
 
-    public static GameMapPuzzleBitmap Load(IClientContentSource contentSource, string contentPath)
+    public int Columns
     {
-        byte[] payload = ContentReader.ReadRequiredBytes(contentSource, contentPath,
-            ContentLookupMode.LooseOnly, MaximumEncodedBytes);
-        return Parse(payload);
+        get;
     }
 
-    public static GameMapPuzzleBitmap Parse(ReadOnlySpan<byte> payload)
+    public int Rows
     {
-        if (payload.Length < HeaderLength || payload.Length > MaximumEncodedBytes)
+        get;
+    }
+
+    public ReadOnlySpan<ushort> Tiles => _tiles;
+
+    public int ScrollVelocityX
+    {
+        get;
+    }
+
+    public int ScrollVelocityY
+    {
+        get;
+    }
+
+    public static GameMapPuzzleBitmap Parse(ReadOnlySpan<byte> data)
+    {
+        if (data.Length < HeaderLength || data.Length > MaximumFileLength)
         {
-            throw new InvalidDataException("Puzzle bitmap length is invalid.");
+            throw new InvalidDataException("Puzzle bitmap size is invalid.");
         }
 
-        ReadOnlySpan<byte> signature = payload[..8];
-        bool isPuzzle2;
-        if (signature.SequenceEqual("PUZZLE\0\0"u8))
-        {
-            isPuzzle2 = false;
-        }
-        else if (signature.SequenceEqual("PUZZLE2\0"u8))
-        {
-            isPuzzle2 = true;
-        }
-        else
+        bool scrolling = data[..8].SequenceEqual("PUZZLE2\0"u8);
+        if (!scrolling && !data[..8].SequenceEqual("PUZZLE\0\0"u8))
         {
             throw new InvalidDataException("Puzzle bitmap signature is invalid.");
         }
 
-        ReadOnlySpan<byte> pathField = payload.Slice(8, 0x100);
+        ReadOnlySpan<byte> pathField = data.Slice(8, 0x100);
         int pathLength = pathField.IndexOf((byte)0);
         if (pathLength <= 0)
         {
-            throw new InvalidDataException("Puzzle bitmap ANI path is missing or unterminated.");
+            throw new InvalidDataException("Puzzle bitmap has no terminated texture index path.");
         }
 
         string textureIndexPath;
         try
         {
             textureIndexPath = ClientContentPath.NormalizeVirtualPath(
-                Encoding.Latin1.GetString(pathField[..pathLength]), nameof(payload), 0x100);
+                Encoding.Latin1.GetString(pathField[..pathLength]), nameof(data), 0x100);
         }
         catch (ArgumentException exception)
         {
-            throw new InvalidDataException("Puzzle bitmap ANI path is invalid.", exception);
+            throw new InvalidDataException("Puzzle bitmap has an invalid texture index path.", exception);
         }
 
-        int width = BinaryPrimitives.ReadInt32LittleEndian(payload[264..]);
-        int height = BinaryPrimitives.ReadInt32LittleEndian(payload[268..]);
-        long tileCount = (long)width * height;
-        int suffixLength = isPuzzle2 ? 8 : 0;
-
-        if (width <= 0 || height <= 0 ||
-            tileCount > (payload.Length - HeaderLength - suffixLength) / sizeof(ushort) ||
-            HeaderLength + tileCount * sizeof(ushort) + suffixLength != payload.Length)
+        int columns = BinaryPrimitives.ReadInt32LittleEndian(data[264..]);
+        int rows = BinaryPrimitives.ReadInt32LittleEndian(data[268..]);
+        if (columns <= 0 || rows <= 0)
         {
-            throw new InvalidDataException("Puzzle bitmap dimensions do not match the tile data.");
+            throw new InvalidDataException("Puzzle bitmap dimensions must be positive.");
         }
 
-        ushort[] indices = new ushort[(int)tileCount];
-        int offset = HeaderLength;
-        for (int i = 0; i < indices.Length; i++, offset += sizeof(ushort))
+        long count = (long)columns * rows;
+        long requiredLength = HeaderLength + count * sizeof(ushort) + (scrolling ? 8 : 0);
+        if (requiredLength != data.Length)
         {
-            indices[i] = BinaryPrimitives.ReadUInt16LittleEndian(payload[offset..]);
+            throw new InvalidDataException("Puzzle bitmap tile grid is truncated or contains trailing bytes.");
         }
 
-        int scrollX = 0;
-        int scrollY = 0;
-        if (isPuzzle2)
+        ushort[] tiles = new ushort[(int)count];
+        ReadOnlySpan<byte> encodedTiles = data.Slice(HeaderLength, tiles.Length * sizeof(ushort));
+        for (int index = 0; index < tiles.Length; index++)
         {
-            scrollX = BinaryPrimitives.ReadInt32LittleEndian(payload[offset..]);
-            scrollY = BinaryPrimitives.ReadInt32LittleEndian(payload[(offset + sizeof(int))..]);
+            tiles[index] = BinaryPrimitives.ReadUInt16LittleEndian(encodedTiles[(index * 2)..]);
         }
 
-        return new GameMapPuzzleBitmap(textureIndexPath, width, height, indices, isPuzzle2, scrollX, scrollY);
+        int velocityX = 0;
+        int velocityY = 0;
+        if (scrolling)
+        {
+            int offset = HeaderLength + encodedTiles.Length;
+            velocityX = BinaryPrimitives.ReadInt32LittleEndian(data[offset..]);
+            velocityY = BinaryPrimitives.ReadInt32LittleEndian(data[(offset + 4)..]);
+        }
+
+        return new GameMapPuzzleBitmap(textureIndexPath, columns, rows, tiles, velocityX, velocityY);
     }
 }

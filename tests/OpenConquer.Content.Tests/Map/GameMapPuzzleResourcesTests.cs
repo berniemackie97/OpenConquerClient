@@ -15,11 +15,11 @@ public sealed class GameMapPuzzleResourcesTests
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), 1010);
         GameMapPuzzleResources resources = GameMapPuzzleResources.Load(source, map);
 
-        Assert.Equal((15, 9), (resources.Ground.Width, resources.Ground.Height));
+        Assert.Equal((15, 9), (resources.Ground.Columns, resources.Ground.Rows));
         GameMapPuzzleOverlayEntry backdropEntry =
             Assert.IsType<GameMapPuzzleOverlayEntry>(Assert.Single(Assert.Single(map.Scene.PositionedOverlays).Entries));
         GameMapPuzzleBitmap backdrop = resources.GetRequired(backdropEntry.PuzzlePath);
-        Assert.Equal((6, 6), (backdrop.Width, backdrop.Height));
+        Assert.Equal((6, 6), (backdrop.Columns, backdrop.Rows));
         Assert.Equal("ani/newbie.ani", backdrop.TextureIndexPath);
         Assert.Same(resources.Ground, resources.GetRequired("MAP/PUZZLE/NEWBIE.PUL"));
         Assert.Throws<KeyNotFoundException>(() => resources.GetRequired("map/puzzle/missing.pul"));
