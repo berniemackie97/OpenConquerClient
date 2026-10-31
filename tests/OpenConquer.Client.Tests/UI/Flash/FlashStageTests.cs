@@ -369,7 +369,7 @@ public sealed class FlashStageTests
     }
 
     [Fact]
-    public void RemovingTheDraggedInputStopsPointerEditsToTheDetachedField()
+    public void ReplacingTheDraggedInputAtItsDepthStopsEditsToTheRemovedField()
     {
         FlashStage stage = EditableStage(password: false, noSelect: false);
         FlashTextInstance input = stage.Root.ChildText("input");
@@ -384,7 +384,7 @@ public sealed class FlashStageTests
         stage.PointerPressed();
         Assert.Equal(1, caretLookups);
 
-        stage.Detach(input);
+        stage.Root.CreateEmptyMovieClip("replacement", 1);
         stage.PointerMoved(new Vector2(6, 5));
 
         Assert.Null(stage.FocusedText);

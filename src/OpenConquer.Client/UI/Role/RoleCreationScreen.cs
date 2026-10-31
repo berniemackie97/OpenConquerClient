@@ -311,7 +311,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
 
         if (_body is < 0 or > 1 || _vocation is < 0 or > 11)
         {
-            _localError = "Invalid character selection.";
+            _localError = _body is < 0 or > 1 ? "Please select your body size." : "Please select your profession!";
             return;
         }
 
