@@ -51,7 +51,7 @@ ANI frames can use these image formats:
 
 ```text
 .tga
-.dds / single-level DXT3
+.dds / single-level DXT1 or DXT3
 ```
 
 Decoded images are handed to Rendering as RGBA with a top-left origin.
@@ -71,8 +71,8 @@ Only this subset is supported:
 ```text
 2D
 single level
-DXT3 / BC2
-explicit 4-bit alpha
+DXT1 / BC1 (opaque four-color or three-color with transparent fourth entry)
+DXT3 / BC2 (explicit 4-bit alpha, four-color interpolation)
 RGB565 color endpoints
 no cubemaps
 no volume textures
