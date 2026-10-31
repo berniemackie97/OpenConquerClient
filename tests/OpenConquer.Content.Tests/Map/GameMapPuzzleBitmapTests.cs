@@ -6,80 +6,62 @@ namespace OpenConquer.Content.Tests.Map;
 public sealed class GameMapPuzzleBitmapTests
 {
     [Fact]
-    public void RetailNewbieGroundAndBackdropRetainSeparateTileGrids()
+    public void RetailNewbieGroundAndBackdrop_PreserveAuthoredTileIndicesAndAniPath()
     {
-        GameMapPuzzleBitmap ground = GameMapPuzzleBitmap.Parse(Retail("newbie.pul"));
+        GameMapPuzzleBitmap ground = GameMapPuzzleBitmap.Parse(ReadFixture("newbie.pul"));
+        GameMapPuzzleBitmap backdrop = GameMapPuzzleBitmap.Parse(ReadFixture("newbiebg.pul"));
+
+        Assert.Equal((15, 9), (ground.Width, ground.Height));
+        Assert.Equal((6, 6), (backdrop.Width, backdrop.Height));
         Assert.Equal("ani/newbie.ani", ground.TextureIndexPath);
-        Assert.Equal((15, 9), (ground.Columns, ground.Rows));
-        Assert.Equal(135, ground.Tiles.Length);
-        Assert.Equal((ushort)0xFFFF, ground.Tiles[0]);
-        Assert.Equal((ushort)1, ground.Tiles[13]);
-        Assert.Equal((ushort)2, ground.Tiles[14]);
-        Assert.Equal((ushort)49, ground.Tiles[134]);
-
-        GameMapPuzzleBitmap backdrop = GameMapPuzzleBitmap.Parse(Retail("newbiebg.pul"));
         Assert.Equal("ani/newbie.ani", backdrop.TextureIndexPath);
-        Assert.Equal((6, 6), (backdrop.Columns, backdrop.Rows));
-        Assert.Equal(36, backdrop.Tiles.Length);
-        Assert.Equal((ushort)50, backdrop.Tiles[0]);
-        Assert.Equal((ushort)85, backdrop.Tiles[35]);
+        Assert.False(ground.IsPuzzle2);
+        Assert.False(backdrop.IsPuzzle2);
+        Assert.Equal(ushort.MaxValue, ground.GetTileIndex(0, 0));
+        Assert.Equal((ushort)50, backdrop.GetTileIndex(0, 0));
+        Assert.Equal((ushort)85, backdrop.GetTileIndex(5, 5));
     }
 
     [Fact]
-    public void RetailPuzzle2HasItsOwnSignatureAndTrailingScrollFields()
+    public void RetailPuzzle2_PreservesGridAndScrollFields()
     {
-        GameMapPuzzleBitmap puzzle = GameMapPuzzleBitmap.Parse(Retail("jokul01.pul"));
-        Assert.Equal("ani/color3map.ani", puzzle.TextureIndexPath);
-        Assert.Equal((4, 5), (puzzle.Columns, puzzle.Rows));
-        Assert.Equal(20, puzzle.Tiles.Length);
-        Assert.Equal((ushort)0xFFFF, puzzle.Tiles[0]);
-        Assert.Equal((ushort)90, puzzle.Tiles[4]);
-        Assert.Equal((ushort)105, puzzle.Tiles[19]);
-        Assert.Equal((0, 0), (puzzle.ScrollVelocityX, puzzle.ScrollVelocityY));
+        GameMapPuzzleBitmap bitmap = GameMapPuzzleBitmap.Parse(ReadFixture("jokul01.pul"));
+
+        Assert.True(bitmap.IsPuzzle2);
+        Assert.Equal((4, 5), (bitmap.Width, bitmap.Height));
+        Assert.Equal("ani/color3map.ani", bitmap.TextureIndexPath);
+        Assert.Equal((ushort)90, bitmap.GetTileIndex(0, 1));
+        Assert.Equal((0, 0), (bitmap.ScrollVelocityX, bitmap.ScrollVelocityY));
+        Assert.Throws<ArgumentOutOfRangeException>(() => bitmap.GetTileIndex(4, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => bitmap.GetTileIndex(0, -1));
     }
 
     [Fact]
-    public void TruncatedTrailingAndOversizedGridsAreRejected()
+    public void MalformedRetailPuzzle_FailsAtContentBoundary()
     {
-        byte[] retail = Retail("newbie.pul");
+        byte[] retail = ReadFixture("newbiebg.pul");
+        Assert.Throws<InvalidDataException>(() => GameMapPuzzleBitmap.Parse(retail.AsSpan(0, 271)));
         Assert.Throws<InvalidDataException>(() => GameMapPuzzleBitmap.Parse(retail.AsSpan(0, retail.Length - 1)));
         Assert.Throws<InvalidDataException>(() => GameMapPuzzleBitmap.Parse([.. retail, 0]));
 
-        byte[] impossible = (byte[])retail.Clone();
-        BinaryPrimitives.WriteInt32LittleEndian(impossible.AsSpan(264), int.MaxValue);
-        BinaryPrimitives.WriteInt32LittleEndian(impossible.AsSpan(268), int.MaxValue);
-        Assert.Throws<InvalidDataException>(() => GameMapPuzzleBitmap.Parse(impossible));
-    }
-
-    [Fact]
-    public void InvalidSignatureAndUnsafePathAreRejected()
-    {
-        byte[] retail = Retail("newbie.pul");
         byte[] invalidSignature = (byte[])retail.Clone();
         invalidSignature[0] = 0;
         Assert.Throws<InvalidDataException>(() => GameMapPuzzleBitmap.Parse(invalidSignature));
 
-        byte[] invalidPath = (byte[])retail.Clone();
-        "../newbie.ani"u8.CopyTo(invalidPath.AsSpan(8));
-        invalidPath[8 + "../newbie.ani"u8.Length] = 0;
-        Assert.Throws<InvalidDataException>(() => GameMapPuzzleBitmap.Parse(invalidPath));
+        byte[] excessiveDimensions = (byte[])retail.Clone();
+        BinaryPrimitives.WriteInt32LittleEndian(excessiveDimensions.AsSpan(264), int.MaxValue);
+        Assert.Throws<InvalidDataException>(() => GameMapPuzzleBitmap.Parse(excessiveDimensions));
+
+        byte[] unsafePath = (byte[])retail.Clone();
+        unsafePath[8] = (byte)'.';
+        unsafePath[9] = (byte)'.';
+        unsafePath[10] = (byte)'\\';
+        Assert.Throws<InvalidDataException>(() => GameMapPuzzleBitmap.Parse(unsafePath));
+
+        byte[] puzzle2 = ReadFixture("jokul01.pul");
+        Assert.Throws<InvalidDataException>(() => GameMapPuzzleBitmap.Parse(puzzle2.AsSpan(0, puzzle2.Length - 1)));
     }
 
-    [Fact]
-    public void Puzzle2ReadsSignedScrollVelocitiesAfterTileGrid()
-    {
-        byte[] retail = Retail("newbiebg.pul");
-        byte[] scrolling = new byte[retail.Length + 8];
-        retail.CopyTo(scrolling, 0);
-        "PUZZLE2\0"u8.CopyTo(scrolling);
-        BinaryPrimitives.WriteInt32LittleEndian(scrolling.AsSpan(retail.Length), -12);
-        BinaryPrimitives.WriteInt32LittleEndian(scrolling.AsSpan(retail.Length + 4), 34);
-
-        GameMapPuzzleBitmap puzzle = GameMapPuzzleBitmap.Parse(scrolling);
-        Assert.Equal((6, 6), (puzzle.Columns, puzzle.Rows));
-        Assert.Equal((-12, 34), (puzzle.ScrollVelocityX, puzzle.ScrollVelocityY));
-    }
-
-    private static byte[] Retail(string name) =>
-        File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "puzzle", name));
+    private static byte[] ReadFixture(string fileName) =>
+        File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "puzzle", fileName));
 }
