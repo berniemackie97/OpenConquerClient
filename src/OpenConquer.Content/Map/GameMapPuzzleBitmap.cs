@@ -21,12 +21,32 @@ public sealed class GameMapPuzzleBitmap
         ScrollVelocityY = scrollVelocityY;
     }
 
-    public string TextureIndexPath { get; }
-    public int Columns { get; }
-    public int Rows { get; }
+    public string TextureIndexPath
+    {
+        get;
+    }
+
+    public int Columns
+    {
+        get;
+    }
+
+    public int Rows
+    {
+        get;
+    }
+
     public ReadOnlySpan<ushort> Tiles => _tiles;
-    public int ScrollVelocityX { get; }
-    public int ScrollVelocityY { get; }
+
+    public int ScrollVelocityX
+    {
+        get;
+    }
+
+    public int ScrollVelocityY
+    {
+        get;
+    }
 
     public static GameMapPuzzleBitmap Parse(ReadOnlySpan<byte> data)
     {

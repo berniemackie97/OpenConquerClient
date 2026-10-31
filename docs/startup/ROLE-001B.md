@@ -103,6 +103,22 @@ admission.
   role-loading movie and existing-character login screen therefore
   cannot be declared a completed native world transition.
 
+## World terrain input boundary
+
+The first world-rendering content reader now parses the retail `PUZZLE` and
+`PUZZLE2` index grids, including the optional signed scrolling fields.
+Regression fixtures preserve the original 5517 `newbie.pul`,
+`newbiebg.pul` and `jokul01.pul` bytes. These are test inputs, not
+substitute runtime assets. The Newbie Village ground and positioned backdrop
+reference the same `ani/newbie.ani` but carry different tile grids.
+
+The runtime still needs a bounded reader for the indexed `.7z` map archive,
+then authenticated map-scene materialization, original ANI frame resources,
+projection and rendering. No world scene is enabled merely by parsing the
+puzzle files. The native map/overlay contracts are documented in
+`20_notes/Game_Map/cgamemap_class.md` and
+`20_notes/Rendering/05_dmap_positioned_overlay_system.md`.
+
 ## Sound-parity boundary
 
 The verified retail `ini/selectCharacter.ini` names twelve distinct MP3s:

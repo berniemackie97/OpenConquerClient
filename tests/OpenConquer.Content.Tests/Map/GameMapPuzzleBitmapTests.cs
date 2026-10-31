@@ -26,6 +26,19 @@ public sealed class GameMapPuzzleBitmapTests
     }
 
     [Fact]
+    public void RetailPuzzle2HasItsOwnSignatureAndTrailingScrollFields()
+    {
+        GameMapPuzzleBitmap puzzle = GameMapPuzzleBitmap.Parse(Retail("jokul01.pul"));
+        Assert.Equal("ani/color3map.ani", puzzle.TextureIndexPath);
+        Assert.Equal((4, 5), (puzzle.Columns, puzzle.Rows));
+        Assert.Equal(20, puzzle.Tiles.Length);
+        Assert.Equal((ushort)0xFFFF, puzzle.Tiles[0]);
+        Assert.Equal((ushort)90, puzzle.Tiles[4]);
+        Assert.Equal((ushort)105, puzzle.Tiles[19]);
+        Assert.Equal((0, 0), (puzzle.ScrollVelocityX, puzzle.ScrollVelocityY));
+    }
+
+    [Fact]
     public void TruncatedTrailingAndOversizedGridsAreRejected()
     {
         byte[] retail = Retail("newbie.pul");
