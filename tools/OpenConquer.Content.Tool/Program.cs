@@ -31,11 +31,13 @@ internal static class Program
         try
         {
             Execute(command);
+
             return SuccessExitCode;
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
         {
             Console.Error.WriteLine($"OpenConquer.Content.Tool: {exception.Message}");
+
             return OperationFailedExitCode;
         }
     }
@@ -47,7 +49,9 @@ internal static class Program
             case ImportContentSetCommand import:
                 {
                     ContentManifest manifest = ContentSetImporter.Import(import.SourceRootPath, import.DestinationRootPath);
+
                     Console.WriteLine($"Imported {manifest.FileCount} file(s) ({manifest.Length} bytes) for {ContentManifest.SourceSetName}.");
+
                     foreach (ContentManifestEntry entry in manifest.Entries)
                     {
                         Console.WriteLine($"  {entry.SourcePath} ({entry.Length} bytes, {entry.Signature})");
@@ -69,7 +73,9 @@ internal static class Program
             case VerifyContentSetCommand verify:
                 {
                     ContentManifest manifest = ContentSetVerifier.Verify(verify.ContentSetRootPath);
+
                     Console.WriteLine($"Verified {manifest.FileCount} file(s) ({manifest.Length} bytes) for {ContentManifest.SourceSetName}.");
+
                     break;
                 }
 
@@ -77,14 +83,17 @@ internal static class Program
                 {
                     WorldMapPuzzleValidationResult result =
                         WorldMapPuzzleValidator.Validate(validateMap.SourceRootPath, validateMap.MapDataId);
+
                     Console.WriteLine($"Validated MapDataId {validateMap.MapDataId}: {result.PuzzleCount} puzzle bitmaps, " +
                         $"{result.TileAnimationCount} tile animations, {result.FrameCount} decoded source frames.");
+
                     break;
                 }
 
             case InspectServerDatCommand inspect:
                 {
                     ServerDatInspectionReport report = ServerDatInspectionReport.Create(inspect.FilePath);
+
                     foreach (string line in report.ToReportLines())
                     {
                         Console.WriteLine(line);
