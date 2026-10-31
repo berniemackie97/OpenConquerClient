@@ -58,9 +58,14 @@ public sealed class GameMapCellGrid
 
     public GameMapCell GetCell(int x, int y)
     {
-        if ((uint)x >= (uint)Width || (uint)y >= (uint)Height)
+        if ((uint)x >= (uint)Width)
         {
-            throw new ArgumentOutOfRangeException(nameof(x), "Map cell coordinates are outside the grid.");
+            throw new ArgumentOutOfRangeException(nameof(x));
+        }
+
+        if ((uint)y >= (uint)Height)
+        {
+            throw new ArgumentOutOfRangeException(nameof(y));
         }
 
         return _cells[y * Width + x];

@@ -36,7 +36,10 @@ public sealed class GameMapCellGridTests
         Assert.Equal(new GameMapCell(201, 2, -25), grid.GetCell(1, 0));
         Assert.Equal(new GameMapCell(201, 1, -24), grid.GetCell(0, 1));
         Assert.Equal(new GameMapCell(202, 2, -24), grid.GetCell(1, 1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => grid.GetCell(2, 0));
+        Assert.Equal(0xFFFFDE11u, BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(276 + 2 * 6)));
+        Assert.Equal(0xFFFFDF7Fu, BinaryPrimitives.ReadUInt32LittleEndian(payload.AsSpan(payload.Length - 4)));
+        Assert.Equal("x", Assert.Throws<ArgumentOutOfRangeException>(() => grid.GetCell(2, 0)).ParamName);
+        Assert.Equal("y", Assert.Throws<ArgumentOutOfRangeException>(() => grid.GetCell(0, 2)).ParamName);
     }
 
     [Fact]
