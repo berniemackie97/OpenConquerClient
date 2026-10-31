@@ -116,7 +116,7 @@ internal static class ContentToolCommandLine
     }
 
     private static bool TryParseMapPuzzleOptions(IReadOnlyList<string> args, string workingDirectoryPath,
-        [NotNullWhen(true)] out string? sourceRoot, out uint mapDataId, out string? errorMessage)
+        [NotNullWhen(true)] out string? sourceRoot, out uint mapDataId, [NotNullWhen(false)] out string? errorMessage)
     {
         sourceRoot = null;
         mapDataId = 0;
