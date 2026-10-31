@@ -390,7 +390,7 @@ Image formats the closure needs (both supported in production):
 
 ```text
 TGA
-DDS / single-level DXT3
+DDS / single-level DXT1 or DXT3
 ```
 
 Decoders check the format structure before allocating memory and reject unsupported variants.
