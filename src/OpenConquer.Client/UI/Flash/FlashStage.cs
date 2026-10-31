@@ -327,6 +327,11 @@ internal sealed class FlashStage
             FocusedText = null;
         }
 
+        if (ReferenceEquals(_draggingText, removed))
+        {
+            _draggingText = null;
+        }
+
         if (ReferenceEquals(_hovered, removed))
         {
             _hovered = null;

@@ -368,6 +368,29 @@ public sealed class FlashStageTests
         Assert.Equal("secret", input.Text);
     }
 
+    [Fact]
+    public void RemovingTheDraggedInputStopsPointerEditsToTheDetachedField()
+    {
+        FlashStage stage = EditableStage(password: false, noSelect: false);
+        FlashTextInstance input = stage.Root.ChildText("input");
+        int caretLookups = 0;
+        stage.TextCaretAt = (_, _) =>
+        {
+            caretLookups++;
+            return 0;
+        };
+
+        stage.PointerMoved(new Vector2(5, 5));
+        stage.PointerPressed();
+        Assert.Equal(1, caretLookups);
+
+        stage.Detach(input);
+        stage.PointerMoved(new Vector2(6, 5));
+
+        Assert.Null(stage.FocusedText);
+        Assert.Equal(1, caretLookups);
+    }
+
     private static FlashStage EditableStage(bool password, bool noSelect)
     {
         string character = """

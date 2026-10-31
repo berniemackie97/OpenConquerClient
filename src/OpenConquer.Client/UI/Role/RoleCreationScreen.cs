@@ -288,8 +288,8 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
         if (!_loadingResumed && _gameStartRequested && WorldEntry is not null)
         {
             _loadingResumed = true;
-            _scripts.Receive("LOADING_TRACE|Starting... Please wait...");
             _scripts.Receive("PROGRESS|80");
+            _scripts.Receive("LOADING_TRACE|Starting... Please wait...");
         }
     }
 

@@ -169,8 +169,8 @@ public sealed class RoleScriptsTests
         Assert.Equal("Creating maps...", loading.ChildText("txtMsg1").Text);
         Assert.Equal(71, loading.CurrentFrame);
 
-        flow.Scripts.Receive("LOADING_TRACE|Starting... Please wait...");
         flow.Scripts.Receive("PROGRESS|80");
+        flow.Scripts.Receive("LOADING_TRACE|Starting... Please wait...");
         flow.TickUntil(() => loading.CurrentFrame == 201);
         Assert.Equal("Starting... Please wait...", loading.ChildText("txtMsg1").Text);
         Assert.Contains("CMD_CLOSE 1", flow.Commands);
