@@ -86,6 +86,11 @@ admission.
   collision at that tile and the older blocked candidate (61,101).
   The Development candidate does not replace an independent production
   spawn approval or live runtime smoke test.
+- World-entry hydration is bounded by 4 MiB, 4,096 frames and a two-minute
+  overall deadline in addition to its 10-second per-operation timeout. A peer
+  cannot extend admission indefinitely by sending intermittent valid packets.
+  The overall timeout is an OpenConquer operational safety policy, not a
+  claim that the retail client used the same threshold.
 - The original retail 5517 `ini/GameMap.dat` terrain index (8,131 bytes)
   is included in the curated runtime closure. On admission the client uses
   packet-1110 `MapDataId` as an exact unsigned key, rejecting missing keys.

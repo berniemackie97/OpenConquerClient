@@ -81,7 +81,7 @@ public sealed partial class GameServerHandshakeSessionTests
         GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
 
         int mapEntered = 0;
-        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(game, character, () => mapEntered++, token);
+        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(game, character, () => mapEntered++, cancellationToken: token);
 
         Assert.Equal(1, mapEntered);
         Assert.Equal(0x11223344u, world.Character.EntityId);
@@ -91,6 +91,37 @@ public sealed partial class GameServerHandshakeSessionTests
         Assert.Empty(world.HydrationPackets);
 
         await game.DisposeAsync();
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task WorldEntryDeadlineClosesTheSessionEvenWhenIndividualReadsHaveTimeRemaining()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = CreationPeerAsync(games, CreationScript.StallWorldEntry, token);
+
+        await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game = await OpenCreationAsync(account, token);
+
+        await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
+        Assert.Equal(GameCharacterCreationKind.Created,
+            (await game.ReadCharacterCreationResultAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        await game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token);
+        Assert.Equal(GameLoginControlKind.ExistingCharacter,
+            (await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
+        GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
+
+        await Assert.ThrowsAsync<TimeoutException>(() => GameWorldEntryBootstrap.RunAsync(game,
+            character, completionTimeout: TimeSpan.FromMilliseconds(250), cancellationToken: token));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.SendWorldActionAsync(GameWorldAction10010.GetItems, character.EntityId, 0,
+                TimeSpan.FromSeconds(5), token));
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
@@ -228,6 +259,7 @@ public sealed partial class GameServerHandshakeSessionTests
         CloseInsteadOfResult,
         NewRoleAfterProof,
         AcceptAndEnterWorld,
+        StallWorldEntry,
     }
 
     private static async Task<GameServerHandshakeSession> OpenCreationAsync(LoginAccountExchangeResult account,
@@ -275,6 +307,7 @@ public sealed partial class GameServerHandshakeSessionTests
             case CreationScript.RefuseThenAccept:
             case CreationScript.NewRoleAfterProof:
             case CreationScript.AcceptAndEnterWorld:
+            case CreationScript.StallWorldEntry:
                 if (script == CreationScript.RefuseThenAccept)
                 {
                     Assert.Equal(s_heroRequest, Convert.ToHexString(await peer.ReadPacketAsync(124, token)));
@@ -299,6 +332,14 @@ public sealed partial class GameServerHandshakeSessionTests
                 if (script == CreationScript.AcceptAndEnterWorld)
                 {
                     await WorldEntryPeerAsync(peer, token);
+                }
+                else if (script == CreationScript.StallWorldEntry)
+                {
+                    byte[] request = await peer.ReadPacketAsync(GameWorldAction10010.PacketLength, token);
+                    Assert.True(GameWorldAction10010.TryRead(request, out ushort action, out uint hero,
+                        out uint parameter, out _, out _));
+                    Assert.Equal((GameWorldAction10010.EnterMap, 0x11223344u, 0u),
+                        (action, hero, parameter));
                 }
                 break;
         }
