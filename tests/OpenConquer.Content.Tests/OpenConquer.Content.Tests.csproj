@@ -11,6 +11,9 @@
     <None Include="../../content/retail-5517/payload/ini/gamemap.dat"
           Link="RetailFixture/ini/GameMap.dat"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures/Map/*.pul"
+          Link="RetailFixture/map/puzzle/%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
