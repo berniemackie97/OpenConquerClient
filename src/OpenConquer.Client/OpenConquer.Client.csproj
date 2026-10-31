@@ -41,6 +41,13 @@
              CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="third-party/sharpcompress/LICENSE.txt"
+             Link="third-party/sharpcompress/LICENSE.txt"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(OpenConquerCatalogAuthorityFile)' != ''">
     <EmbeddedResource Include="$(OpenConquerCatalogAuthorityFile)" LogicalName="OpenConquer.Client.Startup.Catalog.Authority.json" />
   </ItemGroup>

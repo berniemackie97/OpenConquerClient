@@ -24,6 +24,12 @@ The regression fixture is the original, unmodified 1,275-byte retail
 `GameMapCellGrid` and `GameMapSceneSections` readers, including the
 132×132 cell grid, 38 scenery records and positioned backdrop.
 
+The compressed input is copied to an owned buffer after the input-length
+check; signature validation and decompression read from that same immutable
+snapshot. SharpCompress is distributed under the MIT license, which is
+included with published client files under
+`third-party/sharpcompress/LICENSE.txt`.
+
 This slice does not enable world rendering, alter network packet
 contracts, or extend the runtime content closure, payload, or product
 staging. The operator will regenerate retail runtime content locally

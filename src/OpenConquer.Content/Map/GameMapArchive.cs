@@ -20,17 +20,22 @@ public static class GameMapArchive
             throw new ArgumentException("Map archives must have the retail .7z extension.", nameof(contentPath));
         }
 
-        ReadOnlySpan<byte> signature = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C];
-        if (encoded.Length < 32 || encoded.Length > MaximumArchiveBytes ||
-            !encoded[..6].SequenceEqual(signature))
+        if (encoded.Length < 32 || encoded.Length > MaximumArchiveBytes)
         {
-            throw new InvalidDataException("Map archive has an invalid signature or size.");
+            throw new InvalidDataException("Map archive size is invalid.");
+        }
+
+        byte[] archiveBytes = encoded.ToArray();
+        ReadOnlySpan<byte> signature = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C];
+        if (!archiveBytes.AsSpan(0, signature.Length).SequenceEqual(signature))
+        {
+            throw new InvalidDataException("Map archive signature is invalid.");
         }
 
         string archiveName = path[(path.LastIndexOf('/') + 1)..];
         string expectedEntry = $"{archiveName[..^3]}.DMap";
 
-        using MemoryStream stream = new(encoded.ToArray(), writable: false);
+        using MemoryStream stream = new(archiveBytes, writable: false);
         using IArchive archive = SevenZipArchive.OpenArchive(stream, ReaderOptions.ForExternalStream);
 
         byte[]? result = null;

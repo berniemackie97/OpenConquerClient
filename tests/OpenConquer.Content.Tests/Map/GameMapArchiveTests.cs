@@ -1,4 +1,7 @@
 using OpenConquer.Content.Map;
+using SharpCompress.Common;
+using SharpCompress.Writers;
+using SharpCompress.Writers.SevenZip;
 
 namespace OpenConquer.Content.Tests.Map;
 
@@ -40,7 +43,19 @@ public sealed class GameMapArchiveTests
     [Fact]
     public void Decode_RejectsOversizeCompressedInputBeforeCodec()
     {
-        byte[] oversized = new byte[128 * 1024 + 1];
+        byte[] noise = new byte[256 * 1024];
+        new Random(12345).NextBytes(noise);
+
+        using MemoryStream output = new();
+        using (Stream data = new MemoryStream(noise, writable: false))
+        using (var writer = WriterFactory.OpenWriter(output, ArchiveType.SevenZip,
+                   new SevenZipWriterOptions(CompressionType.LZMA2) { CompressHeader = true }))
+        {
+            writer.Write("newbie.DMap", data, DateTime.UnixEpoch);
+        }
+
+        byte[] oversized = output.ToArray();
+        Assert.True(oversized.Length > 128 * 1024);
         Assert.Throws<InvalidDataException>(() => GameMapArchive.Decode(oversized, "map/map/newbie.7z"));
     }
 
