@@ -132,6 +132,7 @@ internal static class ContentToolCommandLine
         for (int i = 0; i < args.Count; i += 2)
         {
             if (args[i] == SourceOption && sourceRoot is null &&
+                !args[i + 1].StartsWith("--", StringComparison.Ordinal) &&
                 TryResolvePath(args[i + 1], workingDirectoryPath, out string? resolved))
             {
                 sourceRoot = resolved;
