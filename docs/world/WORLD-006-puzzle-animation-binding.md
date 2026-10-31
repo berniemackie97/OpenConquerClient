@@ -30,8 +30,9 @@ Evidence: `20_notes/Rendering/05_dmap_positioned_overlay_system.md`
 `20_notes/Rendering/07_ani_frame_animation_runtime.md`, and the
 original archived map-puzzle runtime's `Puzzle{puzzleIdx}` query path.
 
-**Boundary:** This binds authored ANI frame paths; it does not yet load or
-decode DDS texture bytes, construct GPU sprites, render the map, expand the
-managed retail content closure, or alter authenticated world admission.
-The runtime path remains disabled until its actual graphics and asset
-dependencies are imported and verified.
+**Boundary at WORLD-006:** This binds authored ANI frame paths but does not itself
+load DDS bytes or create GPU sprites. WORLD-007 added DXT1 decoding, and
+WORLD-008 added operator-only puzzle-frame validation. Neither change activates
+a world renderer, expands the shipped content closure or changes world admission.
+The runtime path remains disabled until its scene and asset dependencies
+are imported, verified and owned by a real world session.

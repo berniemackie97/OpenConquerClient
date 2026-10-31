@@ -6,3 +6,4 @@ internal sealed record ImportContentSetCommand(string SourceRootPath, string Des
 internal sealed record ValidateStartupCommand(string ContentRootPath) : ContentToolCommand;
 internal sealed record VerifyContentSetCommand(string ContentSetRootPath) : ContentToolCommand;
 internal sealed record InspectServerDatCommand(string FilePath) : ContentToolCommand;
+internal sealed record ValidateMapPuzzlesCommand(string SourceRootPath, uint MapDataId) : ContentToolCommand;

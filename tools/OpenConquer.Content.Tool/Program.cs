@@ -4,6 +4,7 @@ using OpenConquer.Content.Tool.Legacy.ServerDat;
 using OpenConquer.Content.Tool.Manifest;
 using OpenConquer.Content.Tool.Startup;
 using OpenConquer.Content.Tool.Verify;
+using OpenConquer.Content.Tool.World;
 
 namespace OpenConquer.Content.Tool;
 
@@ -74,6 +75,17 @@ internal static class Program
                     ContentManifest manifest = ContentSetVerifier.Verify(verify.ContentSetRootPath);
 
                     Console.WriteLine($"Verified {manifest.FileCount} file(s) ({manifest.Length} bytes) for {ContentManifest.SourceSetName}.");
+
+                    break;
+                }
+
+            case ValidateMapPuzzlesCommand validateMap:
+                {
+                    WorldMapPuzzleValidationResult result =
+                        WorldMapPuzzleValidator.Validate(validateMap.SourceRootPath, validateMap.MapDataId);
+
+                    Console.WriteLine($"Validated MapDataId {validateMap.MapDataId}: {result.PuzzleCount} puzzle bitmaps, " +
+                        $"{result.TileAnimationCount} tile animations, {result.FrameCount} decoded source frames.");
 
                     break;
                 }
