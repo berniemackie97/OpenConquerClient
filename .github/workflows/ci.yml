@@ -52,6 +52,10 @@ jobs:
           echo "== FULL_LOCK_CONTENT_BEGIN =="
           cat src/OpenConquer.Content/packages.lock.json
           echo "== FULL_LOCK_CONTENT_END =="
+          echo "== GENERATED_LOCK_DIFF_BEGIN =="
+          git diff -- '*/packages.lock.json' '**/packages.lock.json'
+          echo "== GENERATED_LOCK_DIFF_END =="
+          exit 1
           echo "== SHARPCOMPRESS_ASSET_CHECK =="
           grep -n -i 'sharpcompress' src/OpenConquer.Content/obj/project.assets.json | head -15
 
