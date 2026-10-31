@@ -158,11 +158,12 @@ internal sealed class FlashShapeInstance(FlashMovie movie, FlashCharacter charac
 
 /// <summary>
 /// A dynamic or input text field. Scripts set its text; an input field (not read-only) also takes typing at a
-/// caret while it has the stage's focus. Only the caret is modelled: there is no range selection.
+/// caret while it has the stage's focus. The anchor and caret delimit the current selection.
 /// </summary>
 internal sealed class FlashTextInstance : FlashDisplayObject
 {
     private string _text;
+    private int _anchor;
 
     public FlashTextInstance(FlashMovie movie, FlashEditTextCharacter character, FlashPlacement placement, FlashClip parent)
         : base(movie, character, placement, parent)
@@ -187,6 +188,7 @@ internal sealed class FlashTextInstance : FlashDisplayObject
             ArgumentNullException.ThrowIfNull(value);
             _text = value;
             Caret = Math.Min(Caret, value.Length);
+            _anchor = Math.Min(_anchor, value.Length);
         }
     }
 
@@ -196,39 +198,94 @@ internal sealed class FlashTextInstance : FlashDisplayObject
         get; private set;
     }
 
+    public int SelectionStart => Math.Min(_anchor, Caret);
+
+    public int SelectionEnd => Math.Max(_anchor, Caret);
+
+    public bool HasSelection => _anchor != Caret;
+
+    public string SelectedText => Definition.Password || Definition.NoSelect ? string.Empty : _text[SelectionStart..SelectionEnd];
+
+    internal Func<string, bool>? AcceptInsertion
+    {
+        get; set;
+    }
+
     /// <summary>AS2 <c>onChanged</c>: raised after each edit the user makes.</summary>
     public Action<FlashTextInstance>? OnChanged
     {
         get; set;
     }
 
-    /// <summary>AS2 <c>Selection.setSelection(begin, end)</c>: without range selection, the caret moves to <paramref name="end"/>.</summary>
-    public void SetSelection(int begin, int end) => Caret = Math.Clamp(Math.Max(begin, end), 0, _text.Length);
-
-    internal void Insert(char character)
+    /// <summary>AS2 <c>Selection.setSelection(begin, end)</c>, clamped to the field's text.</summary>
+    public void SetSelection(int begin, int end)
     {
-        if (!IsInput || char.IsControl(character) || Definition.MaxLength > 0 && _text.Length >= Definition.MaxLength)
+        _anchor = Math.Clamp(begin, 0, _text.Length);
+        Caret = Math.Clamp(end, 0, _text.Length);
+    }
+
+    internal void Insert(ReadOnlySpan<char> characters)
+    {
+        if (!IsInput || characters.IsEmpty)
         {
             return;
         }
 
-        _text = _text.Insert(Caret, character.ToString());
-        Caret++;
+        foreach (char character in characters)
+        {
+            if (char.IsControl(character))
+            {
+                return;
+            }
+        }
+
+        int start = SelectionStart;
+        int end = SelectionEnd;
+        int count = characters.Length;
+        if (Definition.MaxLength > 0)
+        {
+            count = Math.Min(count, Definition.MaxLength - (_text.Length - (end - start)));
+        }
+
+        if (count <= 0 || AcceptInsertion is not null && count != characters.Length)
+        {
+            return;
+        }
+
+        string candidate = string.Concat(_text.AsSpan(0, start), characters[..count], _text.AsSpan(end));
+        if (AcceptInsertion is not null && !AcceptInsertion(candidate))
+        {
+            return;
+        }
+
+        _text = candidate;
+        Caret = _anchor = start + count;
         OnChanged?.Invoke(this);
     }
 
     internal void Backspace()
     {
+        if (DeleteSelection())
+        {
+            return;
+        }
+
         if (IsInput && Caret > 0)
         {
             _text = _text.Remove(Caret - 1, 1);
             Caret--;
+            _anchor = Caret;
             OnChanged?.Invoke(this);
         }
     }
 
     internal void Delete()
     {
+        if (DeleteSelection())
+        {
+            return;
+        }
+
         if (IsInput && Caret < _text.Length)
         {
             _text = _text.Remove(Caret, 1);
@@ -236,5 +293,26 @@ internal sealed class FlashTextInstance : FlashDisplayObject
         }
     }
 
-    internal void MoveCaret(int position) => Caret = Math.Clamp(position, 0, _text.Length);
+    internal bool DeleteSelection()
+    {
+        if (!IsInput || !HasSelection || Definition.NoSelect)
+        {
+            return false;
+        }
+
+        int start = SelectionStart;
+        _text = _text.Remove(start, SelectionEnd - start);
+        Caret = _anchor = start;
+        OnChanged?.Invoke(this);
+        return true;
+    }
+
+    internal void MoveCaret(int position, bool extendSelection = false)
+    {
+        Caret = Math.Clamp(position, 0, _text.Length);
+        if (!extendSelection || Definition.NoSelect)
+        {
+            _anchor = Caret;
+        }
+    }
 }

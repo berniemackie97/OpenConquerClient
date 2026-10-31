@@ -49,6 +49,35 @@ public sealed class RoleScriptsTests
         Assert.True(flow.Root.ChildClip("inGameMC").Get<bool>("isLoading"));
     }
 
+    [Fact]
+    public void ClickingBodySilhouettesSelectsTheirRespectiveSizes()
+    {
+        Flow flow = Flow.ToBodyStage();
+        FlashClip body = flow.Root.ChildClip("sb");
+
+        flow.ClickAt(285, 430);
+        Assert.Equal(1, body.Get<int>("nSelectBody"));
+        Assert.Equal(3, body.ChildClip("sb").CurrentFrame);
+        Assert.Equal(3, body.ChildClip("bodySizeBtn_0").CurrentFrame);
+
+        flow.ClickAt(567, 550);
+        Assert.Equal(2, body.Get<int>("nSelectBody"));
+        Assert.Equal(3, body.ChildClip("sm").CurrentFrame);
+        Assert.Equal(3, body.ChildClip("bodySizeBtn_1").CurrentFrame);
+    }
+
+    [Fact]
+    public void ReleasingBodySizeButtonOutsideTheStageDoesNotSelectIt()
+    {
+        Flow flow = Flow.ToBodyStage();
+        FlashClip body = flow.Root.ChildClip("sb");
+
+        flow.PressAndReleaseOutside(body.ChildClip("bodySizeBtn_0"));
+
+        Assert.Equal(0, body.Get<int>("nSelectBody"));
+        Assert.Equal(1, body.ChildClip("bodySizeBtn_0").CurrentFrame);
+    }
+
     [Theory]
     [InlineData(false, true, "Please enter your First Name!")]
     [InlineData(true, false, "Please select your body size.")]
@@ -84,6 +113,29 @@ public sealed class RoleScriptsTests
     }
 
     [Fact]
+    public void Name_PasteAndMiddleInsertionRejectOverflowWithoutChangingExistingName()
+    {
+        Flow flow = Flow.ToBodyStage();
+        FlashTextInstance name = flow.Root.ChildClip("sb").ChildText("userNameTxt");
+
+        flow.Type("abcdefghijklmn");
+        name.MoveCaret(7);
+        flow.EnterText("XY");
+        Assert.Equal("abcdefghijklmn", name.Text);
+        Assert.Equal(7, name.Caret);
+
+        name.SetSelection(5, 9);
+        flow.EnterText("PQ");
+        Assert.Equal("abcdePQjklmn", name.Text);
+        Assert.Equal(7, name.Caret);
+
+        name.MoveCaret(0);
+        flow.EnterText("éééééééé");
+        Assert.Equal("abcdePQjklmn", name.Text);
+        Assert.Equal(0, name.Caret);
+    }
+
+    [Fact]
     public void HostError_ShowsItsTextAndStopsTheLoadingClip()
     {
         Flow flow = Flow.ToClassStage();
@@ -95,6 +147,34 @@ public sealed class RoleScriptsTests
 
         Assert.Equal("First Name should be 4-15 characters!", error.ChildText("txt").Text);
         Assert.Equal(1, flow.Root.ChildClip("inGameMC").CurrentFrame);
+    }
+
+    [Fact]
+    public void LoadingMovieStopsAtGameStartAndResumesOnlyOnHostProgress()
+    {
+        Flow flow = Flow.ToBodyStage();
+        FlashClip loading = flow.Root.ChildClip("inGameMC");
+
+        flow.Scripts.Receive("LOADING_TRACE|Your character has been successfully created!");
+        Assert.Equal("Your character has been successfully created!", loading.ChildText("txtMsg1").Text);
+        Assert.True(loading.Visible);
+
+        flow.Scripts.Receive("PROGRESS|1");
+        flow.TickUntil(() => loading.CurrentFrame == 71);
+        Assert.Contains("CMD_GAMESTART 100", flow.Commands);
+        Assert.False(loading.IsPlaying);
+
+        flow.Scripts.Receive("LOADING_TRACE|Creating maps...");
+        flow.Tick();
+        Assert.Equal("Creating maps...", loading.ChildText("txtMsg1").Text);
+        Assert.Equal(71, loading.CurrentFrame);
+
+        flow.Scripts.Receive("PROGRESS|80");
+        flow.Scripts.Receive("LOADING_TRACE|Starting... Please wait...");
+        flow.TickUntil(() => loading.CurrentFrame == 201);
+        Assert.Equal("Starting... Please wait...", loading.ChildText("txtMsg1").Text);
+        Assert.Contains("CMD_CLOSE 1", flow.Commands);
+        Assert.False(loading.IsPlaying);
     }
 
     [Fact]
@@ -193,6 +273,23 @@ public sealed class RoleScriptsTests
             {
                 _stage.TextEntered(character);
             }
+        }
+
+        public void EnterText(string text) => _stage.TextEntered(text);
+
+        public void ClickAt(float x, float y)
+        {
+            _stage.PointerMoved(new Vector2(x, y));
+            _stage.PointerPressed();
+            _stage.PointerReleased();
+        }
+
+        public void PressAndReleaseOutside(FlashDisplayObject control)
+        {
+            _stage.PointerMoved(Center(control));
+            _stage.PointerPressed();
+            _stage.PointerMoved(new Vector2(-1, -1));
+            _stage.PointerReleased();
         }
 
         /// <summary>Moves to the middle of the first shape of <paramref name="shapeOwner"/>, presses and releases.</summary>

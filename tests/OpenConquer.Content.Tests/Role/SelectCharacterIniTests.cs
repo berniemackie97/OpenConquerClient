@@ -44,5 +44,52 @@ public sealed class SelectCharacterIniTests
         Assert.Equal("2", ini.Get("s", "b"));
     }
 
+    [Fact]
+    public void Load_ValidatesOriginalRetail5517IniFromTrackedPayload()
+    {
+        string retailRoot = Path.Combine(AppContext.BaseDirectory, "RetailFixture");
+        SelectCharacterIni ini = SelectCharacterIni.Load(new ClientContentRoot(retailRoot));
+
+        Assert.Equal("776", ini.Get("logo", "xPos"));
+        Assert.Equal("Back", ini.Get("tip", "returnLogin"));
+        Assert.Equal("Monk", ini.Get("affirmPanel", "vocation10"));
+        Assert.Equal("Saint", ini.Get("affirmPanel", "vocation11"));
+    }
+
+    [Fact]
+    public void Load_WithoutOriginalRetailIni_FailsClosed()
+    {
+        string root = Directory.CreateTempSubdirectory("oc-role-ini-").FullName;
+        try
+        {
+            Assert.Throws<FileNotFoundException>(() => SelectCharacterIni.Load(new ClientContentRoot(root)));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Load_ParsesLooseRoleConfigurationWithoutEmbeddedProvenanceRules()
+    {
+        string root = Directory.CreateTempSubdirectory("oc-role-ini-").FullName;
+        try
+        {
+            string path = Path.Combine(root, "ini", "selectCharacter.ini");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, "[logo]\r\nxPos=42\r\n", Encoding.ASCII);
+
+            SelectCharacterIni configuration = SelectCharacterIni.Load(new ClientContentRoot(root));
+
+            Assert.Equal("42", configuration.Get("logo", "xPos"));
+            Assert.Null(configuration.Get("affirmPanel", "vocation10"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static SelectCharacterIni Parse(string file) => SelectCharacterIni.Parse(Encoding.ASCII.GetBytes(file));
 }

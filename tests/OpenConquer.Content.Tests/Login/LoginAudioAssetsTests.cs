@@ -18,6 +18,8 @@ public sealed class LoginAudioAssetsTests
     [InlineData(LoginAudioCue.KeyTwo, 22050, 1, 31104, "b6186b1da76a320e38e0c6490e251deb9af1d1a97bf4752d1d22b02ad5b4a0bb")]
     [InlineData(LoginAudioCue.KeyThree, 22050, 1, 23040, "141bcc2fa5f83987b5423d259bcf637c9324a85880b78cad1354c9dfc1b79bae")]
     [InlineData(LoginAudioCue.Error, 22050, 1, 41472, "25b43d6597e9f320e6895a0363b5efcfb9a3911ddfc45600ac66875fc5b9e067")]
+    [InlineData(LoginAudioCue.CharacterHover, 22050, 1, 20736, "4050100296a5c84b03aa8fc72bb4f015d4135c1091baf49024b94ea51c952a1b")]
+    [InlineData(LoginAudioCue.CharacterSelect, 22050, 1, 44928, "c167e81ba7dd21118b6bdcfc2a3ce991d0e5410e5f9a895a8a0987184d08988b")]
     public void RetailSoundMatchesSourceDerivedPcm(LoginAudioCue cue, int sampleRate, int channels, int expectedBytes, string sha256)
     {
         LoginAudioClip clip = LoginAudioAssets.Load(cue);

@@ -4,4 +4,10 @@
     <ProjectReference Include="../../src/OpenConquer.Client/OpenConquer.Client.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="../../content/retail-5517/payload/ini/selectcharacter.ini"
+          Link="RetailFixture/ini/selectCharacter.ini"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

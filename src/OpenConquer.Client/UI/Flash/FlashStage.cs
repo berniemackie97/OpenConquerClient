@@ -17,6 +17,7 @@ internal sealed class FlashStage
 
     private IFlashPointerTarget? _hovered;
     private IFlashPointerTarget? _pressed;
+    private FlashTextInstance? _draggingText;
     private bool _pressedOver;
     private bool _started;
 
@@ -52,6 +53,11 @@ internal sealed class FlashStage
     public FlashTextInstance? FocusedText
     {
         get; private set;
+    }
+
+    public Func<FlashTextInstance, Vector2, int>? TextCaretAt
+    {
+        get; set;
     }
 
     /// <summary>The pointer in stage pixels.</summary>
@@ -119,25 +125,60 @@ internal sealed class FlashStage
     }
 
     /// <summary>
-    /// AS2 <c>Selection.setFocus</c>: focuses an input field, with the caret after its text (Flash selects the
-    /// whole text, and this model has no range selection), or clears the focus.
+    /// AS2 <c>Selection.setFocus</c>: focuses an input field and selects its text, or clears the focus.
     /// </summary>
     public void SetFocus(FlashTextInstance? text)
     {
         FocusedText = text is { IsInput: true, Parent.IsOnStage: true } ? text : null;
-        FocusedText?.MoveCaret(FocusedText.Text.Length);
+        if (FocusedText is { } focused)
+        {
+            if (focused.Definition.NoSelect)
+            {
+                focused.MoveCaret(focused.Text.Length);
+            }
+            else
+            {
+                focused.SetSelection(0, focused.Text.Length);
+            }
+        }
     }
 
     /// <summary>A typed character for the focused input field.</summary>
     public void TextEntered(char character)
     {
         EnsureStarted();
-        FocusedText?.Insert(character);
+        FocusedText?.Insert([character]);
         RunPendingScripts();
     }
 
+    public void TextEntered(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        EnsureStarted();
+        FocusedText?.Insert(text);
+        RunPendingScripts();
+    }
+
+    public void SelectAll()
+    {
+        if (FocusedText is { Definition.NoSelect: false } text)
+        {
+            text.SetSelection(0, text.Text.Length);
+        }
+    }
+
+    public string SelectedText() => FocusedText?.SelectedText ?? string.Empty;
+
+    public bool CutSelection()
+    {
+        EnsureStarted();
+        bool changed = FocusedText is { Definition.Password: false, Definition.NoSelect: false } text && text.DeleteSelection();
+        RunPendingScripts();
+        return changed;
+    }
+
     /// <summary>An editing key for the focused input field.</summary>
-    public void EditKey(FlashEditKey key)
+    public void EditKey(FlashEditKey key, bool extendSelection = false)
     {
         EnsureStarted();
         if (FocusedText is not { } text)
@@ -154,16 +195,16 @@ internal sealed class FlashStage
                 text.Delete();
                 break;
             case FlashEditKey.Left:
-                text.MoveCaret(text.Caret - 1);
+                text.MoveCaret(!extendSelection && text.HasSelection ? text.SelectionStart : text.Caret - 1, extendSelection);
                 break;
             case FlashEditKey.Right:
-                text.MoveCaret(text.Caret + 1);
+                text.MoveCaret(!extendSelection && text.HasSelection ? text.SelectionEnd : text.Caret + 1, extendSelection);
                 break;
             case FlashEditKey.Home:
-                text.MoveCaret(0);
+                text.MoveCaret(0, extendSelection);
                 break;
             case FlashEditKey.End:
-                text.MoveCaret(text.Text.Length);
+                text.MoveCaret(text.Text.Length, extendSelection);
                 break;
         }
 
@@ -190,6 +231,12 @@ internal sealed class FlashStage
         EnsureStarted();
         Pointer = position;
 
+        if (_draggingText is { } text && TextCaretAt is { } locate)
+        {
+            text.MoveCaret(locate(text, position), extendSelection: !text.Definition.NoSelect);
+            return;
+        }
+
         foreach (FlashClip clip in Clips())
         {
             if (clip.IsOnStage)
@@ -202,7 +249,7 @@ internal sealed class FlashStage
         RunPendingScripts();
     }
 
-    public void PointerPressed()
+    public void PointerPressed(bool extendSelection = false)
     {
         EnsureStarted();
         UpdateHover();
@@ -216,7 +263,15 @@ internal sealed class FlashStage
         else
         {
             // A press on an input field focuses it; a press anywhere else clears the focus.
-            SetFocus(_hitTester.InputTextAt(Root, Pointer));
+            FlashTextInstance? text = _hitTester.InputTextAt(Root, Pointer);
+            bool keepAnchor = extendSelection && text is { Definition.NoSelect: false } && ReferenceEquals(text, FocusedText);
+            if (!ReferenceEquals(text, FocusedText))
+            {
+                SetFocus(text);
+            }
+
+            text?.MoveCaret(TextCaretAt?.Invoke(text, Pointer) ?? text.Text.Length, keepAnchor);
+            _draggingText = text;
         }
 
         RunPendingScripts();
@@ -225,6 +280,7 @@ internal sealed class FlashStage
     public void PointerReleased()
     {
         EnsureStarted();
+        _draggingText = null;
 
         if (_pressed is { } pressed)
         {
@@ -269,6 +325,11 @@ internal sealed class FlashStage
         if (ReferenceEquals(FocusedText, removed) || FocusedText is not null && removed is FlashClip && !FocusedText.Parent!.IsOnStage)
         {
             FocusedText = null;
+        }
+
+        if (ReferenceEquals(_draggingText, removed))
+        {
+            _draggingText = null;
         }
 
         if (ReferenceEquals(_hovered, removed))

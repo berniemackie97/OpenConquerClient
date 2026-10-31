@@ -36,3 +36,4 @@ For the current state of the client, see the [README](../../README.md) and the
 | [STARTUP-001Y](STARTUP-001Y.md) | 5517 login credential editing |
 | [STARTUP-001Z](STARTUP-001Z.md) | Retail 5517 login screen |
 | [ROLE-001A](ROLE-001A.md) | Retail 5517 create-role movies on a Flash stage |
+| [ROLE-001B](ROLE-001B.md) | Authenticated role creation and world-entry boundary |

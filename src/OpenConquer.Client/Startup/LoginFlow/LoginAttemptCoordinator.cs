@@ -23,6 +23,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private Task<AttemptResult>? _pending;
     private CancellationTokenSource? _cancellation;
     private GameServerHandshakeSession? _acceptedGame;
+    private GameWorldEntrySnapshot? _acceptedWorld;
+    private string _acceptedAccountName = string.Empty;
     private Task? _revocation;
     private SignedLoginCatalog? _catalog;
     private LoginServerSelection? _selection;
@@ -93,6 +95,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 
         GameServerHandshakeSession? previous = _acceptedGame;
         _acceptedGame = null;
+        _acceptedWorld = null;
+        _acceptedAccountName = screen.Credentials.AccountDisplay;
         _catalog = catalog;
         _selection = selected;
         _revision = selected.Revision;
@@ -138,13 +142,70 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
                 _revocation = DisposeRevokedAsync(revokedGame);
             }
 
+            _acceptedAccountName = string.Empty;
+            _acceptedWorld = null;
             Publish(LoginAttemptStatus.Cancelled);
         }
         else
         {
             _acceptedGame = result.Game;
+            _acceptedWorld = result.World;
+            if (result.Game is null)
+            {
+                _acceptedAccountName = string.Empty;
+            }
             Publish(result.Status, result.Failure);
         }
+    }
+
+    internal bool TryTakeAcceptedGame(out GameServerHandshakeSession? game, out string accountName)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (Status != LoginAttemptStatus.CharacterCreation || _acceptedGame is null)
+        {
+            game = null;
+            accountName = string.Empty;
+            return false;
+        }
+
+        game = _acceptedGame;
+        accountName = _acceptedAccountName;
+        _acceptedGame = null;
+        _acceptedAccountName = string.Empty;
+        return true;
+    }
+
+    internal bool TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? world)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (Status != LoginAttemptStatus.CharacterReceived || _acceptedGame is null || _acceptedWorld is null)
+        {
+            game = null;
+            world = null;
+            return false;
+        }
+
+        game = _acceptedGame;
+        world = _acceptedWorld;
+        _acceptedGame = null;
+        _acceptedWorld = null;
+        _acceptedAccountName = string.Empty;
+        return true;
+    }
+
+    internal void CompleteRoleReturn(bool connectionLost)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _acceptedAccountName = string.Empty;
+        Publish(connectionLost ? LoginAttemptStatus.Unavailable : LoginAttemptStatus.Idle,
+            connectionLost ? LoginFailure.Resource(10249) : null);
+    }
+
+    internal void FailAcceptedGame()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _acceptedAccountName = string.Empty;
+        Publish(LoginAttemptStatus.Unavailable, LoginFailure.Resource(100116));
     }
 
     public async ValueTask DisposeAsync()
@@ -155,6 +216,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
 
         _disposed = true;
+        _acceptedAccountName = string.Empty;
+        _acceptedWorld = null;
         _cancellation?.Cancel();
         if (_pending is { } pending)
         {
@@ -235,17 +298,20 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 
                 if (control.Kind == GameLoginControlKind.CharacterCreation)
                 {
-                    return new(LoginAttemptStatus.NewRoleUnavailable, null);
+                    transferred = true;
+                    return new(LoginAttemptStatus.CharacterCreation, game);
                 }
 
                 _ = await game.ReadExistingCharacterPreludeAsync(s_timeout, cancellationToken)
                     .ConfigureAwait(false);
-                _ = await game.ReadCharacterInfoAsync(s_timeout, cancellationToken)
+                GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(s_timeout, cancellationToken)
+                    .ConfigureAwait(false);
+                GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(game, character, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 transferred = true;
-                return new(LoginAttemptStatus.CharacterReceived, game);
+                return new(LoginAttemptStatus.CharacterReceived, game, World: world);
             }
             finally
             {
@@ -288,10 +354,9 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         {
             await game.DisposeAsync().ConfigureAwait(false);
         }
-        catch (Exception)
+        catch (Exception failure)
         {
-            // Shutdown failure must not revive an unauthorized session or
-            // leak untrusted transport exception contents onto the UI thread.
+            Console.Error.WriteLine($"OpenConquer: revoked GameServer session disposal failed ({failure.GetType().Name}).");
         }
     }
 
@@ -326,5 +391,6 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private void Publish(LoginAttemptStatus value, LoginFailure? failure = null) =>
         Volatile.Write(ref _feedback, new LoginAttemptFeedback(value, failure));
 
-    private sealed record AttemptResult(LoginAttemptStatus Status, GameServerHandshakeSession? Game, LoginFailure? Failure = null);
+    private sealed record AttemptResult(LoginAttemptStatus Status, GameServerHandshakeSession? Game,
+        LoginFailure? Failure = null, GameWorldEntrySnapshot? World = null);
 }

@@ -72,6 +72,8 @@ internal sealed class TemporarySourceTree : IDisposable
 
         WriteText("version.dat", "5517");
         WriteText("ini/Font.ini", "Arial 12");
+        WriteText("ini/selectCharacter.ini", "[logo]\r\nxPos=776\r\n");
+        WriteBytes("ini/GameMap.dat", [0, 0, 0, 0]);
         WriteText("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=2\n");
         WriteText("ini/info.ini", $"[DlgLogo]\nBgFormat={backgroundFormat}\n");
         WriteText("ini/StrRes.ini", "0=ERROR\n10070=Walk/Run\n10071=Chat On/Off\n10072=Map On/Off\n10073=Shift Screen: Off\n10074=Shift Screen: On\n10370=View Equipment\n10426=English\n");

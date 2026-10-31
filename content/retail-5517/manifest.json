@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 3785,
-  "length": 21319841,
+  "fileCount": 3787,
+  "length": 21331584,
   "entries": [
     {
       "sourcePath": "Data/Pic/BlueLight/01.dds",
@@ -26432,6 +26432,13 @@
       "signature": "unknown"
     },
     {
+      "sourcePath": "ini/GameMap.dat",
+      "pathKey": "ini/gamemap.dat",
+      "length": 8131,
+      "sha256": "0676b7d6969dd8277438704a289b1f57e8debb89fe5d3f912819c3a7880686a0",
+      "signature": "unknown"
+    },
+    {
       "sourcePath": "ini/GameSetUp.ini",
       "pathKey": "ini/gamesetup.ini",
       "length": 157,
@@ -26492,6 +26499,13 @@
       "pathKey": "ini/info.ini",
       "length": 17145,
       "sha256": "da9400900fc84898b428f302723c7949197bb1e94b00475010d72ff937e6790a",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ini/selectCharacter.ini",
+      "pathKey": "ini/selectcharacter.ini",
+      "length": 3612,
+      "sha256": "45192235789d6c5ff43d963ce65b531b61d4b9f9423b669fa5e0496536cda92d",
       "signature": "unknown"
     },
     {

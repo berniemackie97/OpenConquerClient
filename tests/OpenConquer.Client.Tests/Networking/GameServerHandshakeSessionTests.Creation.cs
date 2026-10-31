@@ -31,6 +31,8 @@ public sealed partial class GameServerHandshakeSessionTests
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await using GameServerHandshakeSession game = await OpenCreationAsync(account, token);
+        // The login coordinator disposes the AccountServer exchange before the role screen submits a name.
+        await account.DisposeAsync();
 
         await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
         GameCharacterCreationOutcome refused = await game.ReadCharacterCreationResultAsync(TimeSpan.FromSeconds(5), token);
@@ -42,9 +44,9 @@ public sealed partial class GameServerHandshakeSessionTests
         Assert.Equal(GameCharacterCreationKind.Created, created.Kind);
         Assert.True(created.RefusalBytes.IsEmpty);
 
-        await game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token);
+        await game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token));
+            game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token));
         Assert.Equal(GameLoginControlKind.ExistingCharacter,
             (await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token)).Kind);
         GameExistingCharacterPrelude prelude = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
@@ -53,6 +55,73 @@ public sealed partial class GameServerHandshakeSessionTests
         Assert.Equal(0x11223344u, character.EntityId);
 
         await game.DisposeAsync();
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task CreatedCharacter_CompletesWorldAdmissionRequestsOnTheOriginalSocket()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = CreationPeerAsync(games, CreationScript.AcceptAndEnterWorld, token);
+
+        await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game = await OpenCreationAsync(account, token);
+
+        await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
+        Assert.Equal(GameCharacterCreationKind.Created,
+            (await game.ReadCharacterCreationResultAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        await game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token);
+        Assert.Equal(GameLoginControlKind.ExistingCharacter,
+            (await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
+        GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
+
+        int mapEntered = 0;
+        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(game, character, () => mapEntered++, cancellationToken: token);
+
+        Assert.Equal(1, mapEntered);
+        Assert.Equal(0x11223344u, world.Character.EntityId);
+        Assert.Equal((1002u, 1015u, (ushort)61, (ushort)101),
+            (world.MapId, world.MapDataId, world.X, world.Y));
+        Assert.Equal(1u, world.WeatherKind);
+        Assert.Empty(world.HydrationPackets);
+
+        await game.DisposeAsync();
+        await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+    }
+
+    [Fact]
+    public async Task WorldEntryDeadlineClosesTheSessionEvenWhenIndividualReadsHaveTimeRemaining()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        using TcpListener accounts = Listen();
+        using TcpListener games = Listen();
+        Task accountPeer = AccountPeerAsync(accounts, token);
+        Task gamePeer = CreationPeerAsync(games, CreationScript.StallWorldEntry, token);
+
+        await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
+        await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
+        await using GameServerHandshakeSession game = await OpenCreationAsync(account, token);
+
+        await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
+        Assert.Equal(GameCharacterCreationKind.Created,
+            (await game.ReadCharacterCreationResultAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        await game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token);
+        Assert.Equal(GameLoginControlKind.ExistingCharacter,
+            (await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
+        GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
+
+        await Assert.ThrowsAsync<TimeoutException>(() => GameWorldEntryBootstrap.RunAsync(game,
+            character, completionTimeout: TimeSpan.FromMilliseconds(250), cancellationToken: token));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.SendWorldActionAsync(GameWorldAction10010.GetItems, character.EntityId, 0,
+                TimeSpan.FromSeconds(5), token));
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
@@ -95,7 +164,7 @@ public sealed partial class GameServerHandshakeSessionTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token));
+            game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token));
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token));
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -174,7 +243,7 @@ public sealed partial class GameServerHandshakeSessionTests
         await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
         Assert.Equal(GameCharacterCreationKind.Created,
             (await game.ReadCharacterCreationResultAsync(TimeSpan.FromSeconds(5), token)).Kind);
-        await game.SendRepeatedLoginProofAsync(0x6E45, s_hardwareAddress, TimeSpan.FromSeconds(5), token);
+        await game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token);
 
         await Assert.ThrowsAsync<InvalidDataException>(() => game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token));
 
@@ -189,6 +258,8 @@ public sealed partial class GameServerHandshakeSessionTests
         ResultOnLoginChannel,
         CloseInsteadOfResult,
         NewRoleAfterProof,
+        AcceptAndEnterWorld,
+        StallWorldEntry,
     }
 
     private static async Task<GameServerHandshakeSession> OpenCreationAsync(LoginAccountExchangeResult account,
@@ -235,6 +306,8 @@ public sealed partial class GameServerHandshakeSessionTests
 
             case CreationScript.RefuseThenAccept:
             case CreationScript.NewRoleAfterProof:
+            case CreationScript.AcceptAndEnterWorld:
+            case CreationScript.StallWorldEntry:
                 if (script == CreationScript.RefuseThenAccept)
                 {
                     Assert.Equal(s_heroRequest, Convert.ToHexString(await peer.ReadPacketAsync(124, token)));
@@ -256,10 +329,87 @@ public sealed partial class GameServerHandshakeSessionTests
                 await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
                     Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
                     characterWire[..^8]);
+                if (script == CreationScript.AcceptAndEnterWorld)
+                {
+                    await WorldEntryPeerAsync(peer, token);
+                }
+                else if (script == CreationScript.StallWorldEntry)
+                {
+                    byte[] request = await peer.ReadPacketAsync(GameWorldAction10010.PacketLength, token);
+                    Assert.True(GameWorldAction10010.TryRead(request, out ushort action, out uint hero,
+                        out uint parameter, out _, out _));
+                    Assert.Equal((GameWorldAction10010.EnterMap, 0x11223344u, 0u),
+                        (action, hero, parameter));
+                }
                 break;
         }
 
         Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
+    }
+
+    internal static async Task AcceptedCoordinatorWorldPeerAsync(TcpListener listener, CancellationToken token)
+    {
+        using SecuredTestPeer peer = await AcceptSecuredPeerAsync(listener, token);
+        byte[] proof = await peer.ReadPacketAsync(28, token);
+        Assert.Equal(0x6E45, BinaryPrimitives.ReadUInt16LittleEndian(proof.AsSpan(14)));
+        Assert.All(proof.AsSpan(16, 6).ToArray(), value => Assert.Equal(0, value));
+
+        byte[] character = CreateCharacterInfoWire(invalidType: false);
+        await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
+            Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
+            character[..^8]);
+        await WorldEntryPeerAsync(peer, token);
+        Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
+    }
+
+    private static async Task WorldEntryPeerAsync(SecuredTestPeer peer, CancellationToken token)
+    {
+        const uint hero = 0x11223344;
+        await RequireWorldRequestAsync(GameWorldAction10010.EnterMap, hero);
+
+        byte[] map = new byte[20];
+        BinaryPrimitives.WriteUInt16LittleEndian(map, 20);
+        BinaryPrimitives.WriteUInt16LittleEndian(map.AsSpan(2), 1110);
+        BinaryPrimitives.WriteUInt32LittleEndian(map.AsSpan(4), 1002);
+        BinaryPrimitives.WriteUInt32LittleEndian(map.AsSpan(8), 1015);
+        byte[] weather = new byte[20];
+        BinaryPrimitives.WriteUInt16LittleEndian(weather, 20);
+        BinaryPrimitives.WriteUInt16LittleEndian(weather.AsSpan(2), 1016);
+        BinaryPrimitives.WriteUInt32LittleEndian(weather.AsSpan(4), 1);
+        byte[] entered = WorldAction(GameWorldAction10010.EnterMap, hero, 1015);
+        BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(24), 61);
+        BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(26), 101);
+        await peer.WritePacketsAsync(token, map, weather, entered);
+
+        await RequireWorldRequestAsync(GameWorldAction10010.ClientStateApplied, 0);
+        foreach (ushort action in new ushort[]
+                 {
+                     GameWorldAction10010.GetItems, GameWorldAction10010.GetFriends,
+                     GameWorldAction10010.GetWeaponSkills, GameWorldAction10010.GetMagic,
+                     GameWorldAction10010.GetSyndicate, GameWorldAction10010.ReportSilentInfo,
+                 })
+        {
+            await RequireWorldRequestAsync(action,
+                action == GameWorldAction10010.ReportSilentInfo ? 0u : hero);
+            await peer.WritePacketsAsync(token, WorldAction(action, hero));
+        }
+        await RequireWorldRequestAsync(GameWorldAction10010.GetStatistics, hero);
+
+        async Task RequireWorldRequestAsync(ushort expected, uint expectedEntity)
+        {
+            byte[] request = await peer.ReadPacketAsync(GameWorldAction10010.PacketLength, token);
+            Assert.True(GameWorldAction10010.TryRead(request, out ushort action, out uint entity, out uint pair,
+                out ushort x, out ushort y));
+            Assert.Equal((expected, expectedEntity, 0u, (ushort)0, (ushort)0),
+                (action, entity, pair, x, y));
+        }
+    }
+
+    private static byte[] WorldAction(ushort action, uint entityId, uint parameterPair = 0)
+    {
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(packet, action, entityId, parameterPair);
+        return packet;
     }
 
     private static string Zeros(int byteCount) => new('0', byteCount * 2);

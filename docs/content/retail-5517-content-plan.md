@@ -24,8 +24,8 @@ client's dependency on it has been confirmed.
 Current closure:
 
 ```text
-files: 3,785
-bytes: 21,319,841
+files: 3,787
+bytes: 21,331,584
 ```
 
 The full path list is kept in:
@@ -46,6 +46,7 @@ Current consumer groups:
 | Startup | `ini/GameSetUp.ini`, `ini/info.ini`, startup logos | configuration/logo-specific |
 | Login version label | `version.dat` (start.dat `setVer`) | `LooseOnly` |
 | GUI font | `ini/Font.ini` | `LooseOnly` |
+| World terrain index | `ini/GameMap.dat` | `LooseOnly` |
 | Main HUD fixed controls | `ani/Control.ani` | `LooseThenPackage` frames |
 | Quickbar fixed controls | `ani/Control.ani` | `LooseThenPackage` frames |
 | Quickbar magic / XP magic | `ani/Magic.ani` | `LooseThenPackage` |

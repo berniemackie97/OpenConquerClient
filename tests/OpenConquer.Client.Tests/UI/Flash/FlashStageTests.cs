@@ -153,6 +153,54 @@ public sealed class FlashStageTests
     }
 
     [Fact]
+    public void Pointer_UsesAuthoredHitAreaGeometryEvenWhenItsBakedRasterIsTransparent()
+    {
+        FlashMovie movie = Movie(Shapes + ""","2":{"kind":"sprite"},"3":{"kind":"sprite"}""", """
+            "root":{"frames":[[{"d":1,"c":2,"p":1,"n":"figure"}]],"labels":{}},
+            "2":{"frames":[[{"d":1,"c":3,"p":1,"n":"hitArea","m":[1,0,0,1,50,0]}]],"labels":{}},
+            "3":{"frames":[[{"d":1,"c":1,"p":1}]],"labels":{}}
+            """);
+        FlashStage stage = new(movie, new FlashScriptTable(), new TransparentRasters());
+        stage.Start();
+
+        int presses = 0;
+        stage.Root.ChildClip("figure").OnPress = _ => presses++;
+        stage.PointerMoved(new Vector2(5, 5));
+        stage.PointerPressed();
+        stage.PointerReleased();
+        Assert.Equal(0, presses);
+
+        stage.PointerMoved(new Vector2(55, 5));
+        stage.PointerPressed();
+        stage.PointerReleased();
+        Assert.Equal(1, presses);
+    }
+
+    [Fact]
+    public void Pointer_PreservesRasterAlphaForNonemptyAuthoredHitAreas()
+    {
+        FlashMovie movie = Movie(Shapes + ""","2":{"kind":"sprite"},"3":{"kind":"sprite"}""", """
+            "root":{"frames":[[{"d":1,"c":2,"p":1,"n":"figure"}]],"labels":{}},
+            "2":{"frames":[[{"d":1,"c":3,"p":1,"n":"hitArea","m":[1,0,0,1,50,0]}]],"labels":{}},
+            "3":{"frames":[[{"d":1,"c":1,"p":1}]],"labels":{}}
+            """);
+        FlashStage stage = new(movie, new FlashScriptTable(), new SparseRasters());
+        stage.Start();
+
+        int presses = 0;
+        stage.Root.ChildClip("figure").OnPress = _ => presses++;
+        stage.PointerMoved(new Vector2(51, 1));
+        stage.PointerPressed();
+        stage.PointerReleased();
+        Assert.Equal(0, presses);
+
+        stage.PointerMoved(new Vector2(55, 5));
+        stage.PointerPressed();
+        stage.PointerReleased();
+        Assert.Equal(1, presses);
+    }
+
+    [Fact]
     public void Pointer_IgnoresTheMaskedPartOfAClip()
     {
         FlashStage stage = Start(Movie(Shapes + ""","2":{"kind":"sprite"}""", """
@@ -293,6 +341,72 @@ public sealed class FlashStageTests
         Assert.Equal(1, stage.Root.ChildClip("button").CurrentFrame);
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void InputSelection_PasswordAndNoSelectFlagsPreventUserClipboardAccess(bool password, bool noSelect)
+    {
+        FlashStage stage = EditableStage(password, noSelect);
+        FlashTextInstance input = stage.Root.ChildText("input");
+        stage.SetFocus(input);
+
+        if (password)
+        {
+            Assert.True(input.HasSelection);
+        }
+        else
+        {
+            Assert.False(input.HasSelection);
+            stage.SelectAll();
+            Assert.False(input.HasSelection);
+            stage.EditKey(FlashEditKey.Home, extendSelection: true);
+            Assert.False(input.HasSelection);
+        }
+
+        Assert.Equal(string.Empty, stage.SelectedText());
+        Assert.False(stage.CutSelection());
+        Assert.Equal("secret", input.Text);
+    }
+
+    [Fact]
+    public void ReplacingTheDraggedInputAtItsDepthStopsEditsToTheRemovedField()
+    {
+        FlashStage stage = EditableStage(password: false, noSelect: false);
+        FlashTextInstance input = stage.Root.ChildText("input");
+        int caretLookups = 0;
+        stage.TextCaretAt = (_, _) =>
+        {
+            caretLookups++;
+            return 0;
+        };
+
+        stage.PointerMoved(new Vector2(5, 5));
+        stage.PointerPressed();
+        Assert.Equal(1, caretLookups);
+
+        stage.Root.CreateEmptyMovieClip("replacement", 1);
+        stage.PointerMoved(new Vector2(6, 5));
+
+        Assert.Null(stage.FocusedText);
+        Assert.Equal(1, caretLookups);
+    }
+
+    private static FlashStage EditableStage(bool password, bool noSelect)
+    {
+        string character = """
+            "1":{"kind":"edittext","bounds":[0,0,100,20],"font":"Arial","fontHeight":12,"color":[255,255,255,255],
+            "align":0,"leftMargin":0,"rightMargin":0,"indent":0,"leading":0,"maxLength":15,"variable":"",
+            "text":"secret","readOnly":false,"password":PASSWORD,
+            "multiline":false,"wordWrap":false,"html":false,"noSelect":NOSELECT,
+            "border":false,"autoSize":false}
+            """
+            .Replace("PASSWORD", password ? "true" : "false", StringComparison.Ordinal)
+            .Replace("NOSELECT", noSelect ? "true" : "false", StringComparison.Ordinal);
+        return Start(Movie(character, """
+            "root":{"frames":[[{"d":1,"c":1,"p":1,"n":"input"}]],"labels":{}}
+            """), new FlashScriptTable());
+    }
+
     private static FlashStage Start(FlashMovie movie, FlashScriptTable scripts)
     {
         FlashStage stage = new(movie, scripts, new SquareRasters());
@@ -311,6 +425,21 @@ public sealed class FlashStageTests
 
     private static string Raster(int index, string digest) =>
         "{\"path\":\"r" + index + ".rgba.br\",\"width\":10,\"height\":10,\"sha256\":\"" + digest + "\"}";
+
+    private sealed class SparseRasters : IFlashRasterSource
+    {
+        public ReadOnlyMemory<byte> Pixels(FlashMovie movie, int index)
+        {
+            byte[] pixels = new byte[10 * 10 * 4];
+            pixels[(5 * 10 + 5) * 4 + 3] = byte.MaxValue;
+            return pixels;
+        }
+    }
+
+    private sealed class TransparentRasters : IFlashRasterSource
+    {
+        public ReadOnlyMemory<byte> Pixels(FlashMovie movie, int index) => new byte[10 * 10 * 4];
+    }
 
     private sealed class SquareRasters : IFlashRasterSource
     {

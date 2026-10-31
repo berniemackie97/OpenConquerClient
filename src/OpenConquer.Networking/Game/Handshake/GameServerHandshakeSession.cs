@@ -23,7 +23,9 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     private readonly TcpClient _client;
     private readonly GameSessionCipher _cipher;
     private readonly Lock _lifetimeGate = new();
-    private readonly LoginAccountExchangeResult _account;
+    private LoginAccountExchangeResult? _account;
+    private readonly uint _sessionToken;
+    private byte[]? _repeatedProof;
     private readonly GameSecuredFrameEncoder _encoder;
     private readonly GameSecuredFrameDecoder _decoder;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -45,6 +47,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         _client = client;
         _cipher = cipher;
         _account = account;
+        _sessionToken = account.Response.SessionToken;
         _encoder = new GameSecuredFrameEncoder(cipher);
         _decoder = new GameSecuredFrameDecoder(cipher);
     }
@@ -216,7 +219,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
             deadline.CancelAfter(timeout);
             deadline.Token.ThrowIfCancellationRequested();
 
-            _account.WriteGameLoginProof(packet, localeTag, hardwareAddress.Span);
+            (_account ?? throw new InvalidOperationException("Account proof state was already released.")).WriteGameLoginProof(packet, localeTag, hardwareAddress.Span);
             int written = _encoder.Write(packet, wire);
             try
             {
@@ -228,6 +231,13 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
                 !_lifetimeCancellation.IsCancellationRequested)
             {
                 throw new TimeoutException("GameServer login proof write timed out.");
+            }
+
+            lock (_lifetimeGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                _repeatedProof = (byte[])packet.Clone();
+                _account = null;
             }
 
             completed = true;
@@ -308,6 +318,10 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
                 if (outcome.Kind == GameLoginControlKind.CharacterCreation)
                 {
                     _creationState = CreationState.AwaitingRequest;
+                }
+                else
+                {
+                    ClearRepeatedProofUnderLock();
                 }
 
                 if (outcome.Kind == GameLoginControlKind.Refused)
@@ -483,7 +497,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         byte[] packet = new byte[GameCharacterCreation1001.PacketLength];
         try
         {
-            GameCharacterCreation1001.WriteCreate(packet, name.Span, body, profession, _account.Response.SessionToken);
+            GameCharacterCreation1001.WriteCreate(packet, name.Span, body, profession, _sessionToken);
             await WriteSecuredPacketAsync(packet, timeout, "GameServer 1001 request write timed out.", cancellationToken)
                 .ConfigureAwait(false);
             lock (_lifetimeGate)
@@ -569,7 +583,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         byte[] packet = new byte[GameCharacterCreation1001.PacketLength];
         try
         {
-            GameCharacterCreation1001.WriteCancel(packet, _account.Response.SessionToken);
+            GameCharacterCreation1001.WriteCancel(packet, _sessionToken);
             await WriteSecuredPacketAsync(packet, timeout, "GameServer 1001 cancel write timed out.", cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -591,25 +605,29 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     /// (<c>CConnectionFlow__SendGameSessionBootstrap</c> <c>0x6DF1D0</c>). The next login control must accept the
     /// created character, after which the existing-character prelude and 1006 reads apply.
     /// </summary>
-    internal async Task SendRepeatedLoginProofAsync(ushort localeTag, ReadOnlyMemory<byte> hardwareAddress,
-        TimeSpan timeout, CancellationToken cancellationToken = default)
+    internal async Task SendRepeatedLoginProofAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         ValidateTimeout(timeout);
         cancellationToken.ThrowIfCancellationRequested();
         EnterCreationWrite(CreationState.Accepted);
 
         bool completed = false;
-        byte[] packet = new byte[GameLoginProof1052.PacketLength];
         try
         {
-            _account.WriteRepeatedGameLoginProof(packet, localeTag, hardwareAddress.Span);
-            await WriteSecuredPacketAsync(packet, timeout, "GameServer repeated login proof write timed out.", cancellationToken)
-                .ConfigureAwait(false);
+            byte[] proof;
             lock (_lifetimeGate)
             {
-                // The repeated proof opens a second login control; its bootstrap reads start over.
+                proof = _repeatedProof ?? throw new InvalidOperationException("The initial GameServer proof is unavailable.");
+            }
+
+            await WriteSecuredPacketAsync(proof, timeout, "GameServer repeated login proof write timed out.",
+                cancellationToken).ConfigureAwait(false);
+            lock (_lifetimeGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 _creationState = CreationState.ProofRepeated;
                 _loginControlState = 0;
+                ClearRepeatedProofUnderLock();
             }
 
             completed = true;
@@ -621,7 +639,45 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(packet);
+            ExitOperation(completed);
+        }
+    }
+
+    /// <summary>Sends one fixed world-entry 10010 action after typed character information is accepted.</summary>
+    internal async Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair,
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        ValidateTimeout(timeout);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2 || !_existingCharacterRoute || _characterInfoState != 2)
+            {
+                throw new InvalidOperationException("World-entry actions require a completed character-info read.");
+            }
+
+            _phase = 1;
+            _activeOperations++;
+        }
+
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        bool completed = false;
+        try
+        {
+            GameWorldAction10010.Write(packet, action, entityId, parameterPair);
+            await WriteSecuredPacketAsync(packet, timeout, "GameServer world-entry action write timed out.",
+                cancellationToken).ConfigureAwait(false);
+            completed = true;
+        }
+        catch
+        {
+            TerminateLoginControlSession();
+            throw;
+        }
+        finally
+        {
             ExitOperation(completed);
         }
     }
@@ -676,9 +732,19 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         lock (_lifetimeGate)
         {
             _phase = 4;
+            ClearRepeatedProofUnderLock();
         }
 
         _client.Dispose();
+    }
+
+    private void ClearRepeatedProofUnderLock()
+    {
+        if (_repeatedProof is { } proof)
+        {
+            _repeatedProof = null;
+            CryptographicOperations.ZeroMemory(proof);
+        }
     }
 
     private async Task<GameSecuredInboundFrame?> ReadFrameCoreAsync(
@@ -926,6 +992,12 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         _client.Dispose();
         await _lifetimeCancellation.CancelAsync().ConfigureAwait(false);
         await operationsDrained.ConfigureAwait(false);
+        lock (_lifetimeGate)
+        {
+            ClearRepeatedProofUnderLock();
+            _account = null;
+        }
+
         _decoder.Dispose();
         _encoder.Dispose();
         _cipher.Dispose();

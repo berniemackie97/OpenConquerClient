@@ -16,7 +16,7 @@ public sealed class SelectCharacterIni
 
     private SelectCharacterIni(Dictionary<string, Dictionary<string, string>> sections) => _sections = sections;
 
-    /// <summary>Reads the file from the client install. role.dat cannot start without it.</summary>
+    /// <summary>Reads the original role configuration from the client content source.</summary>
     public static SelectCharacterIni Load(IClientContentSource contentSource)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
@@ -38,9 +38,9 @@ public sealed class SelectCharacterIni
         string[] lines = text.Split('\n');
         lines[^1] += " ";
 
-        Dictionary<string, Dictionary<string, string>> sections = new(StringComparer.Ordinal)
+        Dictionary<string, Dictionary<string, string>> sections = new(StringComparer.OrdinalIgnoreCase)
         {
-            [string.Empty] = new(StringComparer.Ordinal)
+            [string.Empty] = new(StringComparer.OrdinalIgnoreCase)
         };
         Dictionary<string, string> current = sections[string.Empty];
 
@@ -51,7 +51,7 @@ public sealed class SelectCharacterIni
             {
                 int end = line.IndexOf(']', StringComparison.Ordinal);
                 string name = ClearEdge(end < 0 ? line[1..Math.Max(1, line.Length - 1)] : line[1..end]);
-                current = new Dictionary<string, string>(StringComparer.Ordinal);
+                current = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 sections[name] = current;
                 continue;
             }

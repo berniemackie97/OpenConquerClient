@@ -20,7 +20,7 @@ public sealed class ContentSetImporterTests
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destination);
         string[] expectedPaths = ExpectedImportedPaths();
 
-        Assert.Equal(109, expectedPaths.Length);
+        Assert.Equal(111, expectedPaths.Length);
         Assert.Equal(expectedPaths, manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data.wdf", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "Server.dat", StringComparison.OrdinalIgnoreCase));
@@ -53,6 +53,10 @@ public sealed class ContentSetImporterTests
         string payloadRoot = Path.Combine(destination, "payload");
 
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/Font.ini");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/GameMap.dat" &&
+            entry.PathKey == "ini/gamemap.dat");
+        Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "ini/selectCharacter.ini" &&
+            entry.PathKey == "ini/selectcharacter.ini");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/ProgressBk.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/mainDialog1.dds" && entry.Signature == "dds");
         Assert.Contains(manifest.Entries, static entry => entry.SourcePath == "data/main/MainDialog2.dds" && entry.Signature == "dds");
@@ -160,7 +164,7 @@ public sealed class ContentSetImporterTests
         ContentManifestEntry selectedSkill = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MainImgMagic.dds");
         ContentManifestEntry statusHint = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MsgDlg.dds");
 
-        Assert.Equal(109, manifest.FileCount);
+        Assert.Equal(111, manifest.FileCount);
 
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
@@ -448,7 +452,9 @@ public sealed class ContentSetImporterTests
             "data/main/SkillBtnL.dds",
             "data/main/mainDialog1.dds",
             "ini/Font.ini",
+            "ini/GameMap.dat",
             "ini/GameSetUp.ini",
+            "ini/selectCharacter.ini",
             "ini/info.ini",
             "version.dat",
         ];
