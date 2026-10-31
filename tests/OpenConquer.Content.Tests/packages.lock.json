@@ -122,7 +122,16 @@
         }
       },
       "openconquer.content": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "SharpCompress": "[0.50.7, )"
+        }
+      },
+      "SharpCompress": {
+        "type": "CentralTransitive",
+        "requested": "[0.50.7, )",
+        "resolved": "0.50.7",
+        "contentHash": "amxjOlPKUFb33ohAVahPCCBHLtToYOOb6JGyM40q8DnT6KYoBLW1TtW6uLEXbv40S7ej6ikf6VmAXGBaFL6Klg=="
       }
     }
   }
