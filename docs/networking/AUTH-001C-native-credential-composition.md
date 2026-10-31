@@ -31,6 +31,32 @@ client's descending selection-swap algorithm, using the weights
 when two weights are equal. The encoder writes the 1-based permutation index of each
 mapped character into a fixed 32-byte field padded with zeros.
 
+### Native password-mode selection (2026-10-30)
+
+The complete recovered direct-caller set for
+`CGameInputString_ProcessFrameInputAndSelection` (`0x59E59F`) confirms
+that ordinary password input at `0x4ADE26` **always passes 1 as the
+third, `encodeCredential` argument** (`0x4ADE1C`). The branch at
+`0x4ADDFF` computes the distinct fourth argument, `softKeyOnly`:
+`dlg+0x158 != 0 || dlg+0x150 == 1 || dlg+0x155 != 0`.
+The raw-input branch is used by other input fields; neither server
+charge type nor account switching selects raw password encoding.
+Consequently, the standard composer has no charge-dependent raw-password
+mode. This result comes from the recovered argument pushes and all six
+deduplicated direct call sites, not merely a successful reconstructed
+client/server round trip.
+
+A separate startup initializer (`0x4AC4D7`) can copy a supplied
+password without encoding when its input object is absent. That is an
+exceptional preload/failure path, **not** ordinary password entry;
+successful 5517 login through it has not been demonstrated. French/OEM
+variants, non-ASCII account names and unusual passwords retain the
+existing verification limits. Input protection policy and credential
+encoding must not be conflated.
+
+Source: `20_notes/Server/credential-mode-selection-5517.md`
+(2026-10-30, native byte validation, direct-call census and BN annotations).
+
 RC5-32/12/16 derives its key from the login seed 1059, which the server sends
 separately, and not from the account-name sum. The 16-byte key is produced with
 MSVCRT and changes with every server seed. The retail client also XORs the credential
