@@ -1,3 +1,4 @@
+using System.Globalization;
 using OpenConquer.Content.Map;
 
 namespace OpenConquer.Content.Tests.Map;
@@ -34,7 +35,7 @@ public sealed class GameMapContentTests
         InvalidDataException exception = Assert.Throws<InvalidDataException>(
             () => GameMapContent.Load(source, catalog, uint.MaxValue));
 
-        Assert.Contains(uint.MaxValue.ToString(), exception.Message, StringComparison.Ordinal);
+        Assert.Contains(uint.MaxValue.ToString(CultureInfo.InvariantCulture), exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
