@@ -11,6 +11,7 @@ public sealed class GameMapCellGrid
     private const int HeaderLength = 0x114;
     private const int PuzzlePathFieldLength = 0x104;
     private const int CellLength = 6;
+    private const int MaximumCellCount = 4 * 1024 * 1024;
 
     private readonly GameMapCell[] _cells;
 
@@ -113,7 +114,13 @@ public sealed class GameMapCellGrid
             throw new InvalidDataException("DMap cell grid exceeds its decoded payload.");
         }
 
-        GameMapCell[] cells = new GameMapCell[(int)((long)width * height)];
+        long cellCount = (long)width * height;
+        if (cellCount > MaximumCellCount)
+        {
+            throw new InvalidDataException("DMap cell grid exceeds the supported cell limit.");
+        }
+
+        GameMapCell[] cells = new GameMapCell[(int)cellCount];
         int offset = HeaderLength;
 
         for (int y = 0; y < height; y++)

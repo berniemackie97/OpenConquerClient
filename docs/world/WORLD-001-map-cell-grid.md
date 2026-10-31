@@ -14,6 +14,18 @@ next section parser. It validates the referenced puzzle path and rejects
 truncated or implausible dimensions before allocating a grid. Remaining
 decoded bytes are not rejected because they belong to subsequent sections.
 
+The decoded format does not have one universally required magic header:
+the Newbie Village map begins with `DMAP101\\0`, while the independently
+verified retail Desert map begins with `1004u, 0u`. The native loader reads
+these first two dwords but does not reject the latter header variant. We
+preserve them rather than incorrectly enforcing one signature.
+
+The reader enforces a maximum of 4,194,304 cells before allocating a grid.
+That bound covers the shipped 5517 archive census: across all 192 map
+archives, the largest decoded payload is 24,754,428 bytes (`task06.DMap`),
+so its cell grid cannot exceed 4,125,738 six-byte cells. Larger input
+fails explicitly instead of requiring a potentially unbounded allocation.
+
 The clean retail `map/map/newbie.7z` archive extracted to a
 118,644-byte `newbie.DMap`. Its grid is 132 × 132, uses
 `map\\puzzle\\newbie.pul`, and ends the first section at offset 105,348.

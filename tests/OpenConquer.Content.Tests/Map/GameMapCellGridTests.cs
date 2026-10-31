@@ -43,6 +43,21 @@ public sealed class GameMapCellGridTests
     }
 
     [Fact]
+    public void Parse_AcceptsBothVerifiedRetailHeaderVariants()
+    {
+        byte[] payload = Build(1, 1, static (_, _) => new GameMapCell(0, 1, 0));
+        GameMapCellGrid latest = GameMapCellGrid.Parse(payload);
+        Assert.Equal(0x50414D44u, latest.HeaderField0);
+        Assert.Equal(0x00313031u, latest.HeaderField1);
+
+        BinaryPrimitives.WriteUInt32LittleEndian(payload, 1004u);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4), 0u);
+        GameMapCellGrid legacy = GameMapCellGrid.Parse(payload);
+        Assert.Equal(1004u, legacy.HeaderField0);
+        Assert.Equal(0u, legacy.HeaderField1);
+    }
+
+    [Fact]
     public void Parse_RejectsCorruptedCellsAndRowChecksums()
     {
         byte[] payload = Build(2, 2, static (_, _) => new GameMapCell(3, 1, -1));
@@ -66,6 +81,12 @@ public sealed class GameMapCellGridTests
         BinaryPrimitives.WriteInt32LittleEndian(hugeGrid.AsSpan(268), int.MaxValue);
         BinaryPrimitives.WriteInt32LittleEndian(hugeGrid.AsSpan(272), int.MaxValue);
         Assert.Throws<InvalidDataException>(() => GameMapCellGrid.Parse(hugeGrid));
+
+        byte[] excessiveCells = (byte[])payload.Clone();
+        BinaryPrimitives.WriteInt32LittleEndian(excessiveCells.AsSpan(268), 2_097_153);
+        BinaryPrimitives.WriteInt32LittleEndian(excessiveCells.AsSpan(272), 2);
+        InvalidDataException limit = Assert.Throws<InvalidDataException>(() => GameMapCellGrid.Parse(excessiveCells));
+        Assert.Contains("cell limit", limit.Message, StringComparison.Ordinal);
 
         byte[] unsafePath = (byte[])payload.Clone();
         unsafePath.AsSpan(8, 0x104).Clear();
