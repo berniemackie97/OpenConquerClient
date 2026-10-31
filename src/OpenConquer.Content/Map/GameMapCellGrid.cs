@@ -107,17 +107,17 @@ public sealed class GameMapCellGrid
             throw new InvalidDataException("DMap cell-grid dimensions must be positive.");
         }
 
+        long cellCount = (long)width * height;
+        if (cellCount > MaximumCellCount)
+        {
+            throw new InvalidDataException("DMap cell grid exceeds the supported cell limit.");
+        }
+
         long rowLength = (long)width * CellLength + sizeof(uint);
         long remainingBytes = data.Length - HeaderLength;
         if (rowLength > remainingBytes || height > remainingBytes / rowLength)
         {
             throw new InvalidDataException("DMap cell grid exceeds its decoded payload.");
-        }
-
-        long cellCount = (long)width * height;
-        if (cellCount > MaximumCellCount)
-        {
-            throw new InvalidDataException("DMap cell grid exceeds the supported cell limit.");
         }
 
         GameMapCell[] cells = new GameMapCell[(int)cellCount];
