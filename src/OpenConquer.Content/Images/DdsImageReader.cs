@@ -24,15 +24,40 @@ internal static class DdsImageReader
     private const uint DdsdDepth = 0x00800000;
 
     private const uint DdpfFourCc = 0x00000004;
+    private const uint Dxt1FourCc = 0x31545844;
     private const uint Dxt3FourCc = 0x33545844;
 
     private const uint DdsCapsComplex = 0x00000008;
     private const uint DdsCapsTexture = 0x00001000;
     private const uint DdsCapsMipMap = 0x00400000;
 
+    public static RgbaImage Decode(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length < EncodedHeaderLength)
+        {
+            throw new InvalidDataException("The DDS image header is truncated.");
+        }
+
+        uint fourCc = BinaryPrimitives.ReadUInt32LittleEndian(payload[84..]);
+        return fourCc switch
+        {
+            Dxt1FourCc => DecodeDxt1(payload),
+            Dxt3FourCc => DecodeDxt3(payload),
+            _ => throw new InvalidDataException($"Unsupported DDS compression FourCC 0x{fourCc:X8}."),
+        };
+    }
+
+    private static RgbaImage DecodeDxt1(ReadOnlySpan<byte> payload)
+    {
+        DdsImageLayout layout = ReadCompressedLayout(payload, Dxt1FourCc, 8);
+        byte[] pixels = GC.AllocateUninitializedArray<byte>(layout.DecodedLength);
+        DecodeDxt1Blocks(payload.Slice(EncodedHeaderLength, layout.EncodedLength), layout.Width, layout.Height, pixels);
+        return new RgbaImage(layout.Width, layout.Height, pixels);
+    }
+
     public static RgbaImage DecodeDxt3(ReadOnlySpan<byte> payload)
     {
-        DdsImageLayout layout = ReadDxt3Layout(payload);
+        DdsImageLayout layout = ReadCompressedLayout(payload, Dxt3FourCc, 16);
 
         byte[] pixels = GC.AllocateUninitializedArray<byte>(layout.DecodedLength);
 
@@ -41,7 +66,7 @@ internal static class DdsImageReader
         return new RgbaImage(layout.Width, layout.Height, pixels);
     }
 
-    private static DdsImageLayout ReadDxt3Layout(ReadOnlySpan<byte> payload)
+    private static DdsImageLayout ReadCompressedLayout(ReadOnlySpan<byte> payload, uint expectedFourCc, int bytesPerBlock)
     {
         if (payload.Length < EncodedHeaderLength)
         {
@@ -89,14 +114,14 @@ internal static class DdsImageReader
 
         if ((flags & DdsdDepth) != 0 || depth != 0)
         {
-            throw new InvalidDataException("Volume DDS textures are not supported by the DXT3 image path.");
+            throw new InvalidDataException("Volume DDS textures are not supported by the compressed image path.");
         }
 
         if ((flags & DdsdMipMapCount) != 0)
         {
             if (mipMapCount != 1)
             {
-                throw new InvalidDataException("Mipmapped DDS textures are not supported by the DXT3 image path.");
+                throw new InvalidDataException("Mipmapped DDS textures are not supported by the compressed image path.");
             }
         }
         else if (mipMapCount != 0)
@@ -122,9 +147,9 @@ internal static class DdsImageReader
 
         uint fourCc = BinaryPrimitives.ReadUInt32LittleEndian(pixelFormat[8..]);
 
-        if (fourCc != Dxt3FourCc)
+        if (fourCc != expectedFourCc)
         {
-            throw new InvalidDataException($"The DDS FourCC is 0x{fourCc:X8}; expected DXT3.");
+            throw new InvalidDataException($"The DDS FourCC is 0x{fourCc:X8}; expected 0x{expectedFourCc:X8}.");
         }
 
         uint caps = BinaryPrimitives.ReadUInt32LittleEndian(header[104..]);
@@ -137,21 +162,21 @@ internal static class DdsImageReader
 
         if ((caps & (DdsCapsComplex | DdsCapsMipMap)) != 0)
         {
-            throw new InvalidDataException("Complex or mipmapped DDS textures are not supported by the DXT3 image path.");
+            throw new InvalidDataException("Complex or mipmapped DDS textures are not supported by the compressed image path.");
         }
 
         if (caps2 != 0)
         {
-            throw new InvalidDataException("Cubemap and volume DDS texture capabilities are not supported by the DXT3 image path.");
+            throw new InvalidDataException("Cubemap and volume DDS texture capabilities are not supported by the compressed image path.");
         }
 
         int blockCountX = (width + 3) / 4;
         int blockCountY = (height + 3) / 4;
-        int encodedLength = checked(blockCountX * blockCountY * 16);
+        int encodedLength = checked(blockCountX * blockCountY * bytesPerBlock);
 
         if (linearSize != (uint)encodedLength)
         {
-            throw new InvalidDataException($"The DDS linear size is {linearSize} bytes; expected {encodedLength} bytes for the declared DXT3 dimensions.");
+            throw new InvalidDataException($"The DDS linear size is {linearSize} bytes; expected {encodedLength} bytes for the declared DDS dimensions.");
         }
 
         long decodedLength = checked((long)width * height * 4);
@@ -166,11 +191,77 @@ internal static class DdsImageReader
         if (payload.Length != expectedPayloadLength)
         {
             throw new InvalidDataException(payload.Length < expectedPayloadLength
-                ? "The DDS DXT3 payload is truncated."
+                ? "The compressed DDS payload is truncated."
                 : "The DDS image contains unsupported trailing data.");
         }
 
         return new DdsImageLayout(width, height, encodedLength, (int)decodedLength);
+    }
+
+    private static void DecodeDxt1Blocks(ReadOnlySpan<byte> encodedBlocks, int width, int height, Span<byte> destination)
+    {
+        int blockCountX = (width + 3) / 4;
+        int blockCountY = (height + 3) / 4;
+        int sourceOffset = 0;
+
+        for (int blockY = 0; blockY < blockCountY; blockY++)
+        {
+            for (int blockX = 0; blockX < blockCountX; blockX++)
+            {
+                DecodeDxt1Block(encodedBlocks.Slice(sourceOffset, 8), blockX, blockY, width, height, destination);
+                sourceOffset += 8;
+            }
+        }
+    }
+
+    private static void DecodeDxt1Block(ReadOnlySpan<byte> block, int blockX, int blockY, int width, int height, Span<byte> destination)
+    {
+        ushort color0 = BinaryPrimitives.ReadUInt16LittleEndian(block);
+        ushort color1 = BinaryPrimitives.ReadUInt16LittleEndian(block[2..]);
+        uint colorSelectors = BinaryPrimitives.ReadUInt32LittleEndian(block[4..]);
+        bool transparentMode = color0 <= color1;
+
+        Span<byte> red = stackalloc byte[4];
+        Span<byte> green = stackalloc byte[4];
+        Span<byte> blue = stackalloc byte[4];
+
+        DecodeRgb565(color0, out red[0], out green[0], out blue[0]);
+        DecodeRgb565(color1, out red[1], out green[1], out blue[1]);
+
+        if (transparentMode)
+        {
+            red[2] = (byte)((red[0] + red[1]) / 2);
+            green[2] = (byte)((green[0] + green[1]) / 2);
+            blue[2] = (byte)((blue[0] + blue[1]) / 2);
+            red[3] = green[3] = blue[3] = 0;
+        }
+        else
+        {
+            red[2] = InterpolateTwoThirds(red[0], red[1]);
+            green[2] = InterpolateTwoThirds(green[0], green[1]);
+            blue[2] = InterpolateTwoThirds(blue[0], blue[1]);
+            red[3] = InterpolateTwoThirds(red[1], red[0]);
+            green[3] = InterpolateTwoThirds(green[1], green[0]);
+            blue[3] = InterpolateTwoThirds(blue[1], blue[0]);
+        }
+
+        for (int pixelIndex = 0; pixelIndex < 16; pixelIndex++)
+        {
+            int x = (blockX * 4) + (pixelIndex & 3);
+            int y = (blockY * 4) + (pixelIndex >> 2);
+
+            if (x >= width || y >= height)
+            {
+                continue;
+            }
+
+            int paletteIndex = (int)((colorSelectors >> (pixelIndex * 2)) & 0x03);
+            int destinationOffset = ((y * width) + x) * 4;
+            destination[destinationOffset] = red[paletteIndex];
+            destination[destinationOffset + 1] = green[paletteIndex];
+            destination[destinationOffset + 2] = blue[paletteIndex];
+            destination[destinationOffset + 3] = transparentMode && paletteIndex == 3 ? (byte)0 : byte.MaxValue;
+        }
     }
 
     private static void DecodeDxt3Blocks(ReadOnlySpan<byte> encodedBlocks, int width, int height, Span<byte> destination)
