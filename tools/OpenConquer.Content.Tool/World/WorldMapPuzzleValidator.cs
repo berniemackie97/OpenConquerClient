@@ -1,4 +1,3 @@
-using OpenConquer.Content;
 using OpenConquer.Content.Ani;
 using OpenConquer.Content.Map;
 
