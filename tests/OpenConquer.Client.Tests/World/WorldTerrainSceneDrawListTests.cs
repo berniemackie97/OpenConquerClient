@@ -104,7 +104,7 @@ public sealed class WorldTerrainSceneDrawListTests
 
     private static AniIndexSection Animation(int frameCount)
     {
-        StringBuilder index = new("[Test]\nFrameAmount=").Append(frameCount).Append('\n');
+        StringBuilder index = new StringBuilder("[Test]\nFrameAmount=").Append(frameCount).Append('\n');
         for (int i = 0; i < frameCount; i++)
         {
             index.Append("Frame").Append(i).Append("=data/map/test").Append(i).Append(".dds\n");
