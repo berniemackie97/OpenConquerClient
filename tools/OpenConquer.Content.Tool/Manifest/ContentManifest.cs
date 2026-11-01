@@ -40,9 +40,18 @@ internal sealed class ContentManifest
 
     public IReadOnlyList<MissingMapArchive>? MissingMapArchives { get; }
 
-    public int SchemaVersion => MissingMapArchives is null
-        ? SupportedSchemaVersion
-        : AvailableMapsSchemaVersion;
+    public int SchemaVersion
+    {
+        get
+        {
+            if (MissingMapArchives is null)
+            {
+                return SupportedSchemaVersion;
+            }
+
+            return AvailableMapsSchemaVersion;
+        }
+    }
 
     public int FileCount => Entries.Count;
 
