@@ -47,7 +47,8 @@ public static class ClientContentClosure
         ("Button411", 2),
     ];
 
-    public static IReadOnlyList<ClientContentRequirement> Resolve(IClientContentSource contentSource, uint? mapDataId = null, bool allMaps = false)
+    public static IReadOnlyList<ClientContentRequirement> Resolve(IClientContentSource contentSource, uint? mapDataId = null,
+        bool allMaps = false, IReadOnlySet<uint>? excludedMapDataIds = null)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
@@ -93,6 +94,11 @@ public static class ClientContentClosure
         MainHudSelectedSkillContentRequirements.Add(requirements, contentSource, controlAni);
         MainHudStatusHintContentRequirements.Add(requirements, contentSource, controlAni);
 
+        if (excludedMapDataIds is not null && !allMaps)
+        {
+            throw new ArgumentException("Map exclusions require a catalog-wide selection.");
+        }
+
         if (allMaps && mapDataId is not null)
         {
             throw new ArgumentException("Select either a map-data ID or all maps.");
@@ -104,6 +110,11 @@ public static class ClientContentClosure
             IEnumerable<uint> selectedMaps = allMaps ? catalog.MapDataIds.Order() : [mapDataId!.Value];
             foreach (uint selectedMap in selectedMaps)
             {
+                if (excludedMapDataIds?.Contains(selectedMap) == true)
+                {
+                    continue;
+                }
+
                 try
                 {
                     ClientWorldContentRequirements.Add(requirements, contentSource, catalog, selectedMap);

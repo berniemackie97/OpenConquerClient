@@ -78,6 +78,96 @@ public sealed class WorldContentImportTests
     }
 
     [Fact]
+    public void Import_AvailableMaps_DeclaresMissingArchivesAndVerifiesExactClosure()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        WriteMapSource(source);
+        WriteCatalog(source, (1010u, "map/map/newbie.7z"), (1712u, "map/map/kunlun1.7z"));
+
+        string contentSet = destination.ChildPath("available");
+        ContentManifest manifest = ContentSetImporter.Import(source.RootPath, contentSet, availableMaps: true);
+
+        MissingMapArchive missing = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<MissingMapArchive>>(manifest.MissingMapArchives));
+        Assert.Equal(1712u, missing.MapDataId);
+        Assert.Equal("map/map/kunlun1.7z", missing.ArchivePath);
+        Assert.Equal(ContentManifest.AvailableMapsSchemaVersion, manifest.SchemaVersion);
+        Assert.Contains(manifest.Entries, static entry => entry.PathKey == "map/map/newbie.7z");
+        Assert.DoesNotContain(manifest.Entries, static entry => entry.PathKey == "map/map/kunlun1.7z");
+
+        ContentManifest verified = ContentSetVerifier.Verify(contentSet, availableMaps: true);
+        Assert.Equal(manifest.Entries, verified.Entries);
+        Assert.Equal(manifest.MissingMapArchives, verified.MissingMapArchives);
+        Assert.Equal(File.ReadAllBytes(source.ChildPath("ini/GameMap.dat")),
+            File.ReadAllBytes(Path.Combine(contentSet, "payload/ini/gamemap.dat")));
+
+        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet, allMaps: true));
+    }
+
+    [Fact]
+    public void Import_AvailableMaps_StillRejectsMissingDependenciesForExistingMap()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        WriteMapSource(source);
+        WriteCatalog(source, (1010u, "map/map/newbie.7z"), (1712u, "map/map/kunlun1.7z"));
+        File.Delete(source.ChildPath("map/Scene/stand08.scene"));
+
+        string target = destination.ChildPath("available");
+        Assert.Throws<FileNotFoundException>(() =>
+            ContentSetImporter.Import(source.RootPath, target, availableMaps: true));
+        Assert.False(Directory.Exists(target));
+    }
+
+    [Fact]
+    public void Verify_AvailableMaps_RejectsInventedMissingArchivePaths()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        WriteMapSource(source);
+        WriteCatalog(source, (1010u, "map/map/newbie.7z"), (1712u, "map/map/kunlun1.7z"));
+
+        string target = destination.ChildPath("available");
+        ContentSetImporter.Import(source.RootPath, target, availableMaps: true);
+
+        string manifestPath = Path.Combine(target, "manifest.json");
+        string manifest = File.ReadAllText(manifestPath);
+        Assert.Contains("map/map/kunlun1.7z", manifest, StringComparison.Ordinal);
+        File.WriteAllText(manifestPath,
+            manifest.Replace("map/map/kunlun1.7z", "map/map/unrelated.7z", StringComparison.Ordinal));
+
+        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(target, availableMaps: true));
+    }
+
+    [Fact]
+    public void Import_AvailableMaps_FailsWhenEveryArchiveIsMissing()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        WriteMapSource(source);
+        WriteCatalog(source, (1712u, "map/map/kunlun1.7z"));
+
+        string target = destination.ChildPath("available");
+        Assert.Throws<InvalidDataException>(() =>
+            ContentSetImporter.Import(source.RootPath, target, availableMaps: true));
+        Assert.False(Directory.Exists(target));
+    }
+
+    [Fact]
+    public void Import_AvailableMaps_RejectsConflictingSelection()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        source.WriteStartupSnapshot();
+
+        Assert.Throws<ArgumentException>(() => ContentSetImporter.Import(
+            source.RootPath, destination.ChildPath("invalid"), allMaps: true, availableMaps: true));
+        Assert.Throws<ArgumentException>(() => ContentSetImporter.Import(
+            source.RootPath, destination.ChildPath("invalid"), 1010, availableMaps: true));
+    }
+
+    [Fact]
     public void Import_AllMapsCannotBeCombinedWithOneMap()
     {
         using TemporarySourceTree source = new();

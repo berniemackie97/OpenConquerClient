@@ -49,9 +49,18 @@ internal static class Program
         {
             case ImportContentSetCommand import:
                 {
-                    ContentManifest manifest = ContentSetImporter.Import(import.SourceRootPath, import.DestinationRootPath, import.MapDataId, import.AllMaps);
+                    ContentManifest manifest = ContentSetImporter.Import(import.SourceRootPath, import.DestinationRootPath, import.MapDataId, import.AllMaps, import.AvailableMaps);
 
                     Console.WriteLine($"Imported {manifest.FileCount} file(s) ({manifest.Length} bytes) for {ContentManifest.SourceSetName}.");
+
+                    if (manifest.MissingMapArchives is { } missing)
+                    {
+                        Console.WriteLine($"Available-map content: {missing.Count} missing catalog archive(s).");
+                        foreach (MissingMapArchive map in missing)
+                        {
+                            Console.WriteLine($"  MapDataId {map.MapDataId}: {JsonEncodedText.Encode(map.ArchivePath)}");
+                        }
+                    }
 
                     foreach (ContentManifestEntry entry in manifest.Entries)
                     {
@@ -73,9 +82,13 @@ internal static class Program
 
             case VerifyContentSetCommand verify:
                 {
-                    ContentManifest manifest = ContentSetVerifier.Verify(verify.ContentSetRootPath, verify.MapDataId, verify.AllMaps);
+                    ContentManifest manifest = ContentSetVerifier.Verify(verify.ContentSetRootPath, verify.MapDataId, verify.AllMaps, verify.AvailableMaps);
 
                     Console.WriteLine($"Verified {manifest.FileCount} file(s) ({manifest.Length} bytes) for {ContentManifest.SourceSetName}.");
+                    if (manifest.MissingMapArchives is { } missing)
+                    {
+                        Console.WriteLine($"Available-map content: {missing.Count} missing catalog archive(s).");
+                    }
 
                     break;
                 }

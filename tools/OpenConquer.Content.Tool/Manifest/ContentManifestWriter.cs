@@ -25,12 +25,25 @@ internal static class ContentManifestWriter
         using Utf8JsonWriter writer = new(destination, s_writerOptions);
 
         writer.WriteStartObject();
-        writer.WriteNumber("schemaVersion", ContentManifest.SupportedSchemaVersion);
+        writer.WriteNumber("schemaVersion", manifest.SchemaVersion);
         writer.WriteString("sourceSet", ContentManifest.SourceSetName);
         writer.WriteString("clientVersion", manifest.ClientVersion);
         writer.WriteString("versionMarkerSha256", manifest.VersionMarkerSha256);
         writer.WriteNumber("fileCount", manifest.FileCount);
         writer.WriteNumber("length", manifest.Length);
+        if (manifest.MissingMapArchives is { } missing)
+        {
+            writer.WriteString("mapCoverage", "available");
+            writer.WriteStartArray("missingMapArchives");
+            foreach (MissingMapArchive archive in missing)
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("mapDataId", archive.MapDataId);
+                writer.WriteString("archivePath", archive.ArchivePath);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
         writer.WriteStartArray("entries");
 
         foreach (ContentManifestEntry entry in manifest.Entries)
