@@ -129,8 +129,15 @@ public sealed class WorldPuzzleDrawListTests
             }
         }
 
-        public GameMapContent Map { get; }
-        public GameMapPuzzleResources Puzzles { get; }
+        public GameMapContent Map
+        {
+            get;
+        }
+
+        public GameMapPuzzleResources Puzzles
+        {
+            get;
+        }
 
         public void Dispose()
         {
