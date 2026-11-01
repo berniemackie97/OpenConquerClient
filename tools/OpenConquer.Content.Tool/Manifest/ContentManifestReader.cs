@@ -54,7 +54,7 @@ internal static class ContentManifestReader
         return manifest;
     }
 
-    private static IReadOnlyList<MissingMapArchive> ReadMissingMaps(JsonElement root)
+    private static List<MissingMapArchive> ReadMissingMaps(JsonElement root)
     {
         if (ReadString(root, "mapCoverage") != "available" ||
             !root.TryGetProperty("missingMapArchives", out JsonElement encoded) ||

@@ -114,7 +114,7 @@ internal static class ContentSetImporter
         return manifest;
     }
 
-    private static IReadOnlyList<MissingMapArchive> FindMissingMapArchives(ImportSourceRoot source)
+    private static List<MissingMapArchive> FindMissingMapArchives(ImportSourceRoot source)
     {
         GameMapCatalog catalog = GameMapCatalog.Load(source.ContentSource);
         List<MissingMapArchive> missing = [];
