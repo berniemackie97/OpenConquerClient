@@ -29,7 +29,7 @@ public sealed class GameMapArchiveTests
     [Fact]
     public void Decode_RejectsInvalidSignatureAndWrongEntryIdentity()
     {
-        byte[] archive = Retail();
+        byte[] archive = ReadFixture();
         byte[] invalidSignature = (byte[])archive.Clone();
         invalidSignature[0] = 0;
 
@@ -59,6 +59,6 @@ public sealed class GameMapArchiveTests
         Assert.Throws<InvalidDataException>(() => GameMapArchive.Decode(oversized, "map/map/newbie.7z"));
     }
 
-    private static byte[] Retail() =>
+    private static byte[] ReadFixture() =>
         File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "newbie.7z"));
 }
