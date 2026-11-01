@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 namespace OpenConquer.Networking.Game.Framing;
 
 /// <summary>
-/// Native 5517 secured GameServer frame limits. The packet-length field excludes
+/// The GameServer packet-length field excludes
 /// the trailing eight-byte direction-specific protocol signature.
 /// </summary>
 internal static class GameSecuredFrameProtocol

@@ -126,7 +126,7 @@ public sealed partial class GameServerHandshakeSessionTests
     }
 
     [Fact]
-    public async Task CancelSendsTheNativeCancelAndClosesTheSession()
+    public async Task CancelSendsCreateRoleCancellationAndClosesTheSession()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
