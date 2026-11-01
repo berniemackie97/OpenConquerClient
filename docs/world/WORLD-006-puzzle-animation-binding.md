@@ -1,4 +1,4 @@
-# WORLD-006: Bind retail puzzle tile indices to ANI frames
+# WORLD-006: Bind puzzle tile indices to ANI frames
 
 The DMap reader selects map-data ID 1010; WORLD-005 loads its ground and
 positioned-overlay PUZZLE bitmaps. This slice completes the next content
@@ -15,24 +15,20 @@ sentinel is never resolved. An unavailable ANI file or missing/empty
 referenced section fails map loading rather than silently dropping artwork.
 Duplicate puzzle paths and shared ANI files do not trigger extra loads.
 
-The unchanged retail `ani/newbie.ani` (6,860 bytes, SHA-256
+The `ani/newbie.ani` fixture (6,860 bytes, SHA-256
 `458d1714f455576df74c866bdd5027b1fc79d227bf6134353374bba2876c79c3`)
-was extracted directly from `5517.7z`. Its 96 sections, `Puzzle0`
+contains 96 sections, `Puzzle0`
 through `Puzzle95`, each contain one original DDS frame reference.
 The ground `newbie.pul` references 58 distinct non-empty tile indices;
 the positioned backdrop `newbiebg.pul` references 36. Every referenced
-section exists in this retail ANI. Regression tests restore the original
-ANI bytes from a compressed fixture and use the unchanged retail DMap and
-puzzle files. Invalid ANI references are tested by mutating the fixture.
+section exists in this ANI index. Regression tests restore ANI bytes from a compressed fixture and use
+the committed DMap and puzzle files. Invalid ANI references are tested by mutating the fixture.
 
-Evidence: `20_notes/Rendering/05_dmap_positioned_overlay_system.md`
-(`CMapPuzzleBitmap_RenderAtOffset`, 0x63A04B),
-`20_notes/Rendering/07_ani_frame_animation_runtime.md`, and the
-original archived map-puzzle runtime's `Puzzle{puzzleIdx}` query path.
+The `Puzzle{puzzleIdx}` query names are part of the encoded ANI section contract.
 
 **Boundary at WORLD-006:** This binds authored ANI frame paths but does not itself
 load DDS bytes or create GPU sprites. WORLD-007 added DXT1 decoding, and
 WORLD-008 added operator-only puzzle-frame validation. Neither change activates
 a world renderer, expands the shipped content closure or changes world admission.
 The runtime path remains disabled until its scene and asset dependencies
-are imported, verified and owned by a real world session.
+are imported, verified and owned by the scene lifecycle.
