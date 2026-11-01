@@ -30,13 +30,13 @@ internal static class ContentToolCommandLine
     } =
     [
         "Usage:",
-        $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <retail-root> {DestinationOption} <content-set-root>",
+        $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <client-root> {DestinationOption} <content-set-root>",
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
         $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root>",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
-        $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <retail-root> {MapDataIdOption} <map-data-id>",
-        $"  OpenConquer.Content.Tool {ValidateMapSceneryAniVerb} {SourceOption} <retail-root> {MapDataIdOption} <map-data-id>",
-        $"  OpenConquer.Content.Tool {ValidateMapTerrainScenesVerb} {SourceOption} <retail-root> {MapDataIdOption} <map-data-id>",
+        $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
+        $"  OpenConquer.Content.Tool {ValidateMapSceneryAniVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
+        $"  OpenConquer.Content.Tool {ValidateMapTerrainScenesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
     ];
 
     public static bool TryParse(IReadOnlyList<string> args, string workingDirectoryPath, [NotNullWhen(true)] out ContentToolCommand? command, [NotNullWhen(false)] out string? errorMessage)
@@ -92,7 +92,7 @@ internal static class ContentToolCommandLine
 
             case ValidateMapPuzzlesVerb:
                 {
-                    if (!TryParseMapPuzzleOptions(remainingArgs, workingDirectoryPath,
+                    if (!TryParseMapSourceOptions(remainingArgs, workingDirectoryPath,
                         out string? sourceRoot, out uint mapDataId, out errorMessage))
                     {
                         return false;
@@ -104,7 +104,7 @@ internal static class ContentToolCommandLine
 
             case ValidateMapSceneryAniVerb:
                 {
-                    if (!TryParseMapPuzzleOptions(remainingArgs, workingDirectoryPath,
+                    if (!TryParseMapSourceOptions(remainingArgs, workingDirectoryPath,
                         out string? sourceRoot, out uint mapDataId, out errorMessage))
                     {
                         return false;
@@ -116,7 +116,7 @@ internal static class ContentToolCommandLine
 
             case ValidateMapTerrainScenesVerb:
                 {
-                    if (!TryParseMapPuzzleOptions(remainingArgs, workingDirectoryPath,
+                    if (!TryParseMapSourceOptions(remainingArgs, workingDirectoryPath,
                         out string? sourceRoot, out uint mapDataId, out errorMessage))
                     {
                         return false;
@@ -143,7 +143,7 @@ internal static class ContentToolCommandLine
         }
     }
 
-    private static bool TryParseMapPuzzleOptions(IReadOnlyList<string> args, string workingDirectoryPath,
+    private static bool TryParseMapSourceOptions(IReadOnlyList<string> args, string workingDirectoryPath,
         [NotNullWhen(true)] out string? sourceRoot, out uint mapDataId, [NotNullWhen(false)] out string? errorMessage)
     {
         sourceRoot = null;

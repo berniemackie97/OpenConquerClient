@@ -8,9 +8,9 @@ internal readonly record struct WorldMapSceneryAniValidationResult(
 
 internal static class WorldMapSceneryAniValidator
 {
-    public static WorldMapSceneryAniValidationResult Validate(string retailRootPath, uint mapDataId)
+    public static WorldMapSceneryAniValidationResult Validate(string clientRootPath, uint mapDataId)
     {
-        PackagedClientContentSource source = PackagedClientContentSource.Open(retailRootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(clientRootPath);
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), mapDataId);
         IReadOnlyList<GameMapSceneryAniBinding> bindings = GameMapSceneryAniBindings.Load(source, map.Scene);
 

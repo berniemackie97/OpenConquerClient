@@ -7,9 +7,9 @@ internal readonly record struct WorldMapPuzzleValidationResult(int PuzzleCount, 
 
 internal static class WorldMapPuzzleValidator
 {
-    public static WorldMapPuzzleValidationResult Validate(string retailRootPath, uint mapDataId)
+    public static WorldMapPuzzleValidationResult Validate(string clientRootPath, uint mapDataId)
     {
-        PackagedClientContentSource source = PackagedClientContentSource.Open(retailRootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(clientRootPath);
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), mapDataId);
         GameMapPuzzleResources resources = GameMapPuzzleResources.Load(source, map);
 

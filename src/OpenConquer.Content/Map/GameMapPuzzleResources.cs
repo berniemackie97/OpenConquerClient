@@ -78,17 +78,11 @@ public sealed class GameMapPuzzleResources
             }
         }
 
-        Dictionary<string, AniIndexFile> aniFiles = new(StringComparer.OrdinalIgnoreCase);
+        AniSectionResolver animationSections = new(contentSource, ContentLookupMode.LooseOnly);
         Dictionary<string, PuzzleResource> puzzles = new(bitmaps.Count, StringComparer.OrdinalIgnoreCase);
 
         foreach ((string path, GameMapPuzzleBitmap bitmap) in bitmaps)
         {
-            if (!aniFiles.TryGetValue(bitmap.TextureIndexPath, out AniIndexFile? index))
-            {
-                index = AniIndexFile.Load(contentSource, bitmap.TextureIndexPath, ContentLookupMode.LooseOnly);
-                aniFiles.Add(bitmap.TextureIndexPath, index);
-            }
-
             Dictionary<ushort, AniIndexSection> animations = [];
             foreach (ushort tileIndex in bitmap.Tiles)
             {
@@ -98,13 +92,7 @@ public sealed class GameMapPuzzleResources
                 }
 
                 string sectionName = $"Puzzle{tileIndex.ToString(CultureInfo.InvariantCulture)}";
-                if (!index.TryGetSection(sectionName, out AniIndexSection? section) || section.FrameCount == 0)
-                {
-                    throw new InvalidDataException(
-                        $"Puzzle bitmap '{path}' references missing or empty [{sectionName}] in '{bitmap.TextureIndexPath}'.");
-                }
-
-                animations.Add(tileIndex, section);
+                animations.Add(tileIndex, animationSections.Resolve(bitmap.TextureIndexPath, sectionName));
             }
 
             puzzles.Add(path, new PuzzleResource(bitmap, animations));

@@ -3,33 +3,35 @@ using OpenConquer.Content.Map;
 
 namespace OpenConquer.Content.Tool.World;
 
+/// <summary>Counts from validating a map's terrain scenes, including decoding every referenced frame.</summary>
 internal readonly record struct WorldMapTerrainSceneValidationResult(
     int PlacementCount, int SceneFileCount, int ObjectCount, int FrameCount);
 
 internal static class WorldMapTerrainSceneValidator
 {
-    public static WorldMapTerrainSceneValidationResult Validate(string retailRootPath, uint mapDataId)
+    public static WorldMapTerrainSceneValidationResult Validate(string clientRootPath, uint mapDataId)
     {
-        PackagedClientContentSource source = PackagedClientContentSource.Open(retailRootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(clientRootPath);
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), mapDataId);
         GameMapTerrainSceneResources resources = GameMapTerrainSceneResources.Load(source, map);
 
-        HashSet<GameMapTerrainObjectBinding> objects = [];
+        // Placements of one scene file share bindings; count each object once.
+        HashSet<GameMapTerrainObjectBinding> objects = new(ReferenceEqualityComparer.Instance);
         HashSet<string> decodedFrames = new(StringComparer.OrdinalIgnoreCase);
         foreach (GameMapTerrainScenePlacement placement in resources.Placements)
         {
-            foreach (GameMapTerrainObjectBinding obj in placement.Objects)
+            foreach (GameMapTerrainObjectBinding binding in placement.Objects)
             {
-                if (!objects.Add(obj))
+                if (!objects.Add(binding))
                 {
                     continue;
                 }
 
-                for (int frame = 0; frame < obj.Animation.FrameCount; frame++)
+                for (int frame = 0; frame < binding.Animation.FrameCount; frame++)
                 {
-                    if (decodedFrames.Add(obj.Animation.FramePaths[frame]))
+                    if (decodedFrames.Add(binding.Animation.FramePaths[frame]))
                     {
-                        _ = AniFrameLoader.LoadWrappedFrame(source, obj.Animation, (uint)frame,
+                        _ = AniFrameLoader.LoadWrappedFrame(source, binding.Animation, (uint)frame,
                             ContentLookupMode.LooseThenPackage);
                     }
                 }

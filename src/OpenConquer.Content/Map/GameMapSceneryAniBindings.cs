@@ -12,7 +12,7 @@ public static class GameMapSceneryAniBindings
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(scene);
 
-        Dictionary<string, AniIndexFile> indexes = new(StringComparer.OrdinalIgnoreCase);
+        AniSectionResolver animations = new(source, ContentLookupMode.LooseOnly);
         List<GameMapSceneryAniBinding> bindings = [];
 
         foreach (GameMapSceneryRecord record in scene.Scenery)
@@ -28,24 +28,7 @@ public static class GameMapSceneryAniBindings
                 throw new InvalidDataException("Type-4 map scenery has no ANI path or section name.");
             }
 
-            if (!indexes.TryGetValue(path, out AniIndexFile? index))
-            {
-                index = AniIndexFile.Load(source, path, ContentLookupMode.LooseOnly);
-                indexes.Add(path, index);
-            }
-
-            AniIndexSection animation = index.GetRequiredSection(sectionName);
-            if (!string.Equals(animation.Name, sectionName, StringComparison.Ordinal))
-            {
-                throw new InvalidDataException($"Map scenery ANI section [{sectionName}] in '{path}' resolved to [{animation.Name}].");
-            }
-
-            if (animation.FrameCount == 0)
-            {
-                throw new InvalidDataException($"Map scenery ANI section [{sectionName}] in '{path}' has no frames.");
-            }
-
-            bindings.Add(new GameMapSceneryAniBinding(record, animation));
+            bindings.Add(new GameMapSceneryAniBinding(record, animations.Resolve(path, sectionName)));
         }
 
         return Array.AsReadOnly(bindings.ToArray());

@@ -85,7 +85,7 @@ internal static class Program
                         WorldMapPuzzleValidator.Validate(validateMap.SourceRootPath, validateMap.MapDataId);
 
                     Console.WriteLine($"Validated MapDataId {validateMap.MapDataId}: {result.PuzzleCount} puzzle bitmaps, " +
-                        $"{result.TileAnimationCount} tile animations, {result.FrameCount} decoded source frames.");
+                        $"{result.TileAnimationCount} tile animations, {result.FrameCount} decoded frames.");
 
                     break;
                 }
@@ -96,7 +96,7 @@ internal static class Program
                         WorldMapSceneryAniValidator.Validate(validateScenery.SourceRootPath, validateScenery.MapDataId);
 
                     Console.WriteLine($"Validated MapDataId {validateScenery.MapDataId}: {result.SceneryCount} ANI-backed scenery records, " +
-                        $"{result.AnimationCount} distinct animations, {result.FrameCount} decoded source frames.");
+                        $"{result.AnimationCount} distinct animations, {result.FrameCount} decoded frames.");
 
                     break;
                 }
@@ -107,7 +107,7 @@ internal static class Program
                         WorldMapTerrainSceneValidator.Validate(validateTerrain.SourceRootPath, validateTerrain.MapDataId);
 
                     Console.WriteLine($"Validated MapDataId {validateTerrain.MapDataId}: {result.PlacementCount} terrain-scene placements, " +
-                        $"{result.SceneFileCount} scene files, {result.ObjectCount} objects, {result.FrameCount} decoded source frames.");
+                        $"{result.SceneFileCount} scene files, {result.ObjectCount} objects, {result.FrameCount} decoded frames.");
 
                     break;
                 }
