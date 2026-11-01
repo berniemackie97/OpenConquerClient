@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using OpenConquer.Content.Ani;
 using OpenConquer.Content.Map;
 
 namespace OpenConquer.Content.Tests.Map;
@@ -43,6 +44,26 @@ public sealed class GameMapSceneryAniBindingsTests
         string original = Encoding.Latin1.GetString(ReadSourceSections());
         root.WriteFile("ani/MapScene.ani", original.Replace("[newbie17.tga]", "[unrelated.tga]", StringComparison.Ordinal));
         Assert.Throws<InvalidDataException>(() => GameMapSceneryAniBindings.Load(source, scene));
+    }
+
+    [Fact]
+    public void HashCollidingSectionName_CannotSatisfyRetailSceneryReference()
+    {
+        GameMapSceneSections scene = ReadRetailScene();
+        using TemporaryContentDirectory root = new();
+        string original = Encoding.Latin1.GetString(ReadSourceSections());
+        string collision = original.Replace("[newbie17.tga]", "[newbjD17.tga]", StringComparison.Ordinal);
+        Assert.NotEqual(original, collision);
+        root.WriteFile("ani/MapScene.ani", collision);
+
+        ClientContentRoot source = new(root.RootPath);
+        AniIndexFile index = AniIndexFile.Load(source, "ani/MapScene.ani", ContentLookupMode.LooseOnly);
+        Assert.Equal("newbjD17.tga", index.GetRequiredSection("newbie17.tga").Name);
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+            GameMapSceneryAniBindings.Load(source, scene));
+        Assert.Contains("newbie17.tga", error.Message, StringComparison.Ordinal);
+        Assert.Contains("newbjD17.tga", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
