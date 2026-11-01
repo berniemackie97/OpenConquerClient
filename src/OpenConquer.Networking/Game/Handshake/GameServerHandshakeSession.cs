@@ -207,32 +207,21 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     {
         ValidateTimeout(timeout);
         cancellationToken.ThrowIfCancellationRequested();
+        using CancellationTokenSource proofDeadline = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, _lifetimeCancellation.Token);
+        proofDeadline.CancelAfter(timeout);
         EnterOperation(expectedPhase: 0, activePhase: 1);
 
         bool completed = false;
         byte[] packet = new byte[GameLoginProof1052.PacketLength];
-        byte[] wire = new byte[GameLoginProof1052.PacketLength +
-            GameSecuredFrameProtocol.SignatureLength];
         try
         {
-            using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken, _lifetimeCancellation.Token);
-            deadline.CancelAfter(timeout);
-            deadline.Token.ThrowIfCancellationRequested();
-
-            (_account ?? throw new InvalidOperationException("Account proof state was already released.")).WriteGameLoginProof(packet, localeTag, hardwareAddress.Span);
-            int written = _encoder.Write(packet, wire);
-            try
-            {
-                await _client.GetStream().WriteAsync(wire.AsMemory(0, written), deadline.Token)
-                    .ConfigureAwait(false);
-                deadline.Token.ThrowIfCancellationRequested();
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
-                !_lifetimeCancellation.IsCancellationRequested)
-            {
-                throw new TimeoutException("GameServer login proof write timed out.");
-            }
+            proofDeadline.Token.ThrowIfCancellationRequested();
+            (_account ?? throw new InvalidOperationException("Account proof state was already released."))
+                .WriteGameLoginProof(packet, localeTag, hardwareAddress.Span);
+            proofDeadline.Token.ThrowIfCancellationRequested();
+            await WriteSecuredPacketAsync(packet, timeout, "GameServer login proof write timed out.",
+                proofDeadline.Token).ConfigureAwait(false);
 
             lock (_lifetimeGate)
             {
@@ -243,15 +232,21 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
             completed = true;
         }
-        catch
+        catch (OperationCanceledException) when (
+            proofDeadline.IsCancellationRequested &&
+            !cancellationToken.IsCancellationRequested &&
+            !_lifetimeCancellation.IsCancellationRequested)
         {
-            _client.Dispose();
-            throw;
+            throw new TimeoutException("GameServer login proof write timed out.");
         }
         finally
         {
+            if (!completed)
+            {
+                _client.Dispose();
+            }
+
             CryptographicOperations.ZeroMemory(packet);
-            CryptographicOperations.ZeroMemory(wire);
             ExitOperation(completed);
         }
     }
@@ -349,8 +344,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
     /// <summary>
     /// Reads the current companion server's existing-character account-history
-    /// and server-state prelude as one exclusive secured-read operation. Native
-    /// 5517 does not require either packet as a prerequisite for 1006/EnterMap.
+    /// and server-state prelude as one exclusive secured-read operation.
     /// This method is not a world-admission or character-ready transition.
     /// </summary>
     internal async Task<GameExistingCharacterPrelude> ReadExistingCharacterPreludeAsync(
@@ -427,7 +421,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     /// <summary>
     /// Consumes the companion server's next secured 1006 as a bounded, owned
     /// character-information snapshot, after the accepted control and its
-    /// 2078/2079 prelude. Native 5517 does not require that prelude globally.
+    /// 2078/2079 prelude in this bootstrap sequence.
     /// This does not hydrate a hero, send EnterMap or establish world admission.
     /// </summary>
     internal async Task<GameCharacterInfo1006> ReadCharacterInfoAsync(
@@ -572,8 +566,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Sends the native create-role cancel (<c>CMD_DRIVERBACK</c>) and closes the socket, as the native
-    /// <c>0x481</c> handler does. The session is terminal afterwards.
+    /// Sends the create-role cancellation command and closes the socket.
     /// </summary>
     internal async Task SendCharacterCreationCancelAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
     {
@@ -602,8 +595,8 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Re-sends the 1052 login proof once after <c>ANSWER_OK</c>, on the same socket
-    /// (<c>CConnectionFlow__SendGameSessionBootstrap</c> <c>0x6DF1D0</c>). The next login control must accept the
+    /// Re-sends the 1052 login proof once after <c>ANSWER_OK</c>, on the same socket.
+    /// The next login control must accept the
     /// created character, after which the existing-character prelude and 1006 reads apply.
     /// </summary>
     internal async Task SendRepeatedLoginProofAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
