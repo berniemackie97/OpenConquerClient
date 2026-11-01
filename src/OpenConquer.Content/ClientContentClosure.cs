@@ -111,7 +111,7 @@ public static class ClientContentClosure
                 catch (Exception exception) when (allMaps &&
                     exception is InvalidDataException or IOException or UnauthorizedAccessException)
                 {
-                    throw new InvalidDataException($"Unable to resolve content for map data ID {selectedMap}.", exception);
+                    throw new InvalidDataException($"Unable to resolve content for map data ID {selectedMap}: {exception.Message}", exception);
                 }
             }
         }

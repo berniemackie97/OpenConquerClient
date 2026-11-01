@@ -72,6 +72,8 @@ public sealed class WorldContentImportTests
             () => ContentSetImporter.Import(source.RootPath, target, allMaps: true));
 
         Assert.Contains("1011", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("map/map/missing.7z", exception.Message, StringComparison.Ordinal);
+        Assert.IsType<FileNotFoundException>(exception.InnerException);
         Assert.False(Directory.Exists(target));
     }
 
