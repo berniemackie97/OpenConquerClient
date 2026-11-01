@@ -29,8 +29,9 @@ scenery, actors, and animated overlays at their actual native component slots.
 `WorldPuzzleDrawList.Ground` uses the projection offset supplied by the
 future camera owner. `PositionedPuzzles` uses each map record's parallax
 headers, the viewport and projected center, then centers type-8 bitmap
-children. Empty cells are omitted, each animation selects its authored frame
-by index, and the output is culled to the logical viewport. The native
+children. Empty cells are omitted; ground animation uses the supplied frame
+counter while native positioned puzzles always request frame zero. The output
+is culled to the logical viewport. The native
 800×600 range remains fixed regardless of host window size.
 
 `WorldPuzzleTextureRenderer.Prepare` resolves frames with the existing
