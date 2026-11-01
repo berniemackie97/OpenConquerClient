@@ -125,6 +125,11 @@ internal static class ContentSetImporter
                 ? found
                 : throw new InvalidOperationException("Map catalog changed during import.");
 
+            if (!terrain.Path.EndsWith(".7z", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException($"Map data ID {id} does not reference a .7z archive.");
+            }
+
             if (!source.ContainsLooseFile(terrain.Path))
             {
                 missing.Add(new MissingMapArchive(id, terrain.Path));

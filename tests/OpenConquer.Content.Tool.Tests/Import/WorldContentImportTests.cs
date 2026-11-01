@@ -157,6 +157,21 @@ public sealed class WorldContentImportTests
     }
 
     [Fact]
+    public void Import_AvailableMaps_RejectsUnsupportedCatalogArchivePath()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        WriteMapSource(source);
+        WriteCatalog(source, (1010u, "map/map/newbie.7z"), (1712u, "map/map/unexpected.dat"));
+
+        string target = destination.ChildPath("available");
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+            ContentSetImporter.Import(source.RootPath, target, availableMaps: true));
+        Assert.Contains("1712", error.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(target));
+    }
+
+    [Fact]
     public void Import_AvailableMaps_RejectsConflictingSelection()
     {
         using TemporarySourceTree source = new();
