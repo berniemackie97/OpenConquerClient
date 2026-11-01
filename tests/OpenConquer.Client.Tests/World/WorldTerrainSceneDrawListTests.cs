@@ -12,7 +12,7 @@ public sealed class WorldTerrainSceneDrawListTests
     {
         using WorldMapFixture fixture = new();
         AniIndexSection animation = Animation(3);
-        GameMapTerrainScenePlacement placement = Placement(animation, 60, 108, -60, -48, 200);
+        GameMapTerrainScenePlacement placement = Placement(animation, 58, 110, -60, -48, 125, anchorOffsetX: 2, anchorOffsetY: -2);
 
         IReadOnlyList<WorldTerrainSprite> sprites = WorldTerrainSceneDrawList.Build(
             fixture.Map, [placement],
@@ -21,7 +21,7 @@ public sealed class WorldTerrainSceneDrawListTests
 
         WorldTerrainSprite sprite = Assert.Single(sprites);
         Assert.Same(animation, sprite.Animation);
-        Assert.Equal(2, sprite.FrameIndex);
+        Assert.Equal(0, sprite.FrameIndex);
         Assert.Equal((128, 56), (sprite.X, sprite.Y));
         Assert.Equal((60, 108), (sprite.TileX, sprite.TileY));
     }
@@ -30,14 +30,14 @@ public sealed class WorldTerrainSceneDrawListTests
     public void SceneObject_ScalesAroundViewportCenterAndWrapsAnimation()
     {
         using WorldMapFixture fixture = new();
-        GameMapTerrainScenePlacement placement = Placement(Animation(3), 60, 108, -60, -48, 200);
+        GameMapTerrainScenePlacement placement = Placement(Animation(3), 60, 108, -60, -48, 125);
         WorldPuzzleProjection projection = new(800, 600, 0, 0, 2500, 2600, 384, 256);
 
         WorldTerrainSprite sprite = Assert.Single(WorldTerrainSceneDrawList.Build(
             fixture.Map, [placement], projection, nowMilliseconds: 1600, sceneStartMilliseconds: 1000));
 
         Assert.Equal((-8, -66), (sprite.X, sprite.Y));
-        Assert.Equal(0, sprite.FrameIndex);
+        Assert.Equal(1, sprite.FrameIndex);
         Assert.Equal((384, 256), (sprite.ScaleNumerator, sprite.ScaleDenominator));
     }
 
@@ -81,23 +81,36 @@ public sealed class WorldTerrainSceneDrawListTests
     }
 
     [Fact]
-    public void SceneObject_OutsideVisibilityMargin_IsNotDrawn()
+    public void SceneObject_OutsideAnchorRegion_RemainsDrawableAfterRenderOffset()
     {
         using WorldMapFixture fixture = new();
         WorldPuzzleProjection projection = new(800, 600, 0, 0, 2500, 2600, 256, 256);
+        (int worldX, int worldY) = WorldCameraProjection.ProjectTile(fixture.Map, 10, 10);
 
-        IReadOnlyList<WorldTerrainSprite> sprites = WorldTerrainSceneDrawList.Build(
-            fixture.Map, [Placement(Animation(1), 10, 10, 0, 0, 100)],
-            projection, 1000, 1000);
+        WorldTerrainSprite sprite = Assert.Single(WorldTerrainSceneDrawList.Build(
+            fixture.Map, [Placement(Animation(1), 10, 10,
+                projection.CenterX - worldX + 100, projection.CenterY - worldY + 100, 100)],
+            projection, 1000, 1000));
 
-        Assert.Empty(sprites);
+        Assert.Equal((100, 100), (sprite.X, sprite.Y));
+        Assert.True(sprite.IntersectsViewport(50, 50, projection.ScreenWidth, projection.ScreenHeight));
+    }
+
+    [Fact]
+    public void SpriteBounds_UseFrameExtentForViewportCulling()
+    {
+        WorldTerrainSprite sprite = new(Animation(1), 0, -300, 100, 256, 256, 10, 10, 1, 1);
+        Assert.True(sprite.IntersectsViewport(400, 100, 800, 600));
+        Assert.False(sprite.IntersectsViewport(300, 100, 800, 600));
+        Assert.False((sprite with { X = 850 }).IntersectsViewport(400, 100, 800, 600));
     }
 
     private static GameMapTerrainScenePlacement Placement(AniIndexSection animation, int x, int y,
-        int offsetX, int offsetY, int frameInterval, int width = 1)
+        int offsetX, int offsetY, int frameInterval, int width = 1,
+        int anchorOffsetX = 0, int anchorOffsetY = 0)
     {
         GameMapTerrainObject terrain = new("ani/MapScene.ani", animation.Name, offsetX, offsetY,
-            frameInterval, width, 1, 0, 0, 0, 0, []);
+            frameInterval, width, 1, 0, anchorOffsetX, anchorOffsetY, 0, []);
         GameMapSceneryRecord scenery = new(1, "map/Scene/test.scene", null, x, y, ReadOnlyMemory<byte>.Empty);
         return new GameMapTerrainScenePlacement(scenery, [new GameMapTerrainObjectBinding(terrain, animation)]);
     }

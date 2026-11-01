@@ -53,7 +53,8 @@ internal sealed class WorldMapTextureRenderer : IDisposable
         }
     }
 
-    public void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldTerrainSprite> sprites, SpriteColor worldColor)
+    public void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldTerrainSprite> sprites,
+        WorldPuzzleProjection projection, SpriteColor worldColor)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
@@ -64,7 +65,7 @@ internal sealed class WorldMapTextureRenderer : IDisposable
             OpenGLTexture2D texture = GetPrepared(path);
             int width = checked((int)((long)texture.Width * sprite.ScaleNumerator / sprite.ScaleDenominator));
             int height = checked((int)((long)texture.Height * sprite.ScaleNumerator / sprite.ScaleDenominator));
-            if (width > 0 && height > 0)
+            if (sprite.IntersectsViewport(width, height, projection.ScreenWidth, projection.ScreenHeight))
             {
                 renderer.DrawSprite(texture, sprite.X, sprite.Y, width, height, worldColor);
             }

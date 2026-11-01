@@ -6,12 +6,15 @@ namespace OpenConquer.Client.World;
 internal readonly record struct WorldTerrainSprite(
     AniIndexSection Animation, int FrameIndex, int X, int Y,
     int ScaleNumerator, int ScaleDenominator,
-    int TileX, int TileY, int FootprintWidth, int FootprintHeight);
+    int TileX, int TileY, int FootprintWidth, int FootprintHeight)
+{
+    internal bool IntersectsViewport(int width, int height, int screenWidth, int screenHeight) =>
+        width > 0 && height > 0 && (long)X + width > 0 && (long)Y + height > 0 &&
+        X < screenWidth && Y < screenHeight;
+}
 
 internal static class WorldTerrainSceneDrawList
 {
-    private const int VisibilityMargin = 8;
-
     public static IReadOnlyList<WorldTerrainSprite> Build(GameMapContent map,
         IReadOnlyList<GameMapTerrainScenePlacement> placements, WorldPuzzleProjection projection,
         uint nowMilliseconds, uint sceneStartMilliseconds)
@@ -24,9 +27,7 @@ internal static class WorldTerrainSceneDrawList
             throw new ArgumentOutOfRangeException(nameof(projection));
         }
 
-        long marginX = (long)projection.ScaleDenominator * VisibilityMargin * 64 / projection.ScaleNumerator;
-        long marginY = (long)projection.ScaleDenominator * VisibilityMargin * 32 / projection.ScaleNumerator;
-        List<WorldTerrainSprite> visible = [];
+        List<WorldTerrainSprite> sprites = [];
 
         foreach (GameMapTerrainScenePlacement placement in placements)
         {
@@ -40,14 +41,6 @@ internal static class WorldTerrainSceneDrawList
                 int tileY = checked(groupY + terrain.AnchorOffsetY);
                 (int worldX, int worldY) = WorldCameraProjection.ProjectTile(map, tileX, tileY);
 
-                if (worldX < (long)projection.CenterX - marginX ||
-                    worldX > (long)projection.CenterX + projection.ScreenWidth + marginX ||
-                    worldY < (long)projection.CenterY - marginY ||
-                    worldY > (long)projection.CenterY + projection.ScreenHeight + marginY)
-                {
-                    continue;
-                }
-
                 long x = (long)worldX - projection.CenterX + terrain.RenderOffsetX;
                 long y = (long)worldY - projection.CenterY + terrain.RenderOffsetY;
                 x = (long)projection.ScaleNumerator * (x - projection.ScreenWidth / 2) /
@@ -59,13 +52,13 @@ internal static class WorldTerrainSceneDrawList
                 int frameIndex = (int)((unchecked(nowMilliseconds - sceneStartMilliseconds) / interval) %
                     (uint)binding.Animation.FrameCount);
 
-                InsertByDepth(visible, new WorldTerrainSprite(binding.Animation, frameIndex,
+                InsertByDepth(sprites, new WorldTerrainSprite(binding.Animation, frameIndex,
                     checked((int)x), checked((int)y), projection.ScaleNumerator, projection.ScaleDenominator,
                     tileX, tileY, terrain.GridWidth, terrain.GridHeight));
             }
         }
 
-        return visible;
+        return sprites;
     }
 
     private static void InsertByDepth(List<WorldTerrainSprite> sorted, WorldTerrainSprite item)
