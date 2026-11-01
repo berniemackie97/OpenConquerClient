@@ -11,7 +11,7 @@ internal static class MagicHintTextFormatter
         ArgumentNullException.ThrowIfNull(arguments);
 
         string format = Encoding.Latin1.GetString(encodedFormat);
-        StringBuilder output = new(Math.Min(format.Length + 32, 1024));
+        StringBuilder output = new(Math.Min(Math.Min(format.Length, 1024), maximumBytes));
         int argumentIndex = 0;
 
         for (int index = 0; index < format.Length; index++)
@@ -20,7 +20,10 @@ internal static class MagicHintTextFormatter
 
             if (character != '%')
             {
-                output.Append(character);
+                if (output.Length < maximumBytes)
+                {
+                    output.Append(character);
+                }
                 continue;
             }
 
@@ -33,7 +36,10 @@ internal static class MagicHintTextFormatter
 
             if (format[index] == '%')
             {
-                output.Append('%');
+                if (output.Length < maximumBytes)
+                {
+                    output.Append('%');
+                }
                 continue;
             }
 
@@ -44,7 +50,7 @@ internal static class MagicHintTextFormatter
                     ? value
                     : throw new InvalidDataException("The percentage directive requires a double.");
 
-                output.Append(percentage.ToString("F3", CultureInfo.InvariantCulture));
+                AppendBounded(output, percentage.ToString("F3", CultureInfo.InvariantCulture), maximumBytes);
                 index += 3;
                 continue;
             }
@@ -54,31 +60,38 @@ internal static class MagicHintTextFormatter
             switch (format[index])
             {
                 case 'u':
-                    output.Append(next switch
+                    AppendBounded(output, next switch
                     {
                         uint value => value.ToString(CultureInfo.InvariantCulture),
                         int value => unchecked((uint)value).ToString(CultureInfo.InvariantCulture),
                         _ => throw new InvalidDataException("The unsigned directive requires a 32-bit integer."),
-                    });
+                    }, maximumBytes);
                     break;
 
                 case 'd':
-                    output.Append(next switch
+                    AppendBounded(output, next switch
                     {
                         int value => value.ToString(CultureInfo.InvariantCulture),
                         uint value => unchecked((int)value).ToString(CultureInfo.InvariantCulture),
                         _ => throw new InvalidDataException("The signed directive requires a 32-bit integer."),
-                    });
+                    }, maximumBytes);
                     break;
 
                 case 's':
-                    output.Append(next switch
+                    switch (next)
                     {
-                        ReadOnlyMemory<byte> value => Encoding.Latin1.GetString(value.Span),
-                        byte[] value => Encoding.Latin1.GetString(value),
-                        string value => value,
-                        _ => throw new InvalidDataException("The string directive requires an encoded string."),
-                    });
+                        case ReadOnlyMemory<byte> value:
+                            AppendEncoded(output, value.Span, maximumBytes);
+                            break;
+                        case byte[] value:
+                            AppendEncoded(output, value, maximumBytes);
+                            break;
+                        case string value:
+                            AppendBounded(output, value, maximumBytes);
+                            break;
+                        default:
+                            throw new InvalidDataException("The string directive requires an encoded string.");
+                    }
                     break;
 
                 default:
@@ -91,9 +104,7 @@ internal static class MagicHintTextFormatter
             throw new InvalidDataException("Magic text received unused formatting arguments.");
         }
 
-        byte[] encoded = Encoding.Latin1.GetBytes(output.ToString());
-
-        return encoded.Length <= maximumBytes ? encoded : encoded.AsSpan(0, maximumBytes).ToArray();
+        return Encoding.Latin1.GetBytes(output.ToString());
     }
 
     public static byte[] TranslateEscapes(ReadOnlySpan<byte> encoded)
@@ -125,6 +136,24 @@ internal static class MagicHintTextFormatter
 
         Array.Resize(ref output, length);
         return output;
+    }
+
+    private static void AppendBounded(StringBuilder output, ReadOnlySpan<char> value, int maximumBytes)
+    {
+        int remaining = Math.Min(maximumBytes - output.Length, value.Length);
+        if (remaining > 0)
+        {
+            output.Append(value[..remaining]);
+        }
+    }
+
+    private static void AppendEncoded(StringBuilder output, ReadOnlySpan<byte> value, int maximumBytes)
+    {
+        int remaining = Math.Min(maximumBytes - output.Length, value.Length);
+        if (remaining > 0)
+        {
+            output.Append(Encoding.Latin1.GetString(value[..remaining]));
+        }
     }
 
     private static object NextArgument(object[] arguments, ref int index)
