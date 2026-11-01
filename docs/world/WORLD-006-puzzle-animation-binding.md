@@ -17,12 +17,13 @@ Duplicate puzzle paths and shared ANI files do not trigger extra loads.
 
 The `ani/newbie.ani` fixture (6,860 bytes, SHA-256
 `458d1714f455576df74c866bdd5027b1fc79d227bf6134353374bba2876c79c3`)
-contains 96 sections, `Puzzle0`
-through `Puzzle95`, each contain one original DDS frame reference.
+contains 96 sections (`Puzzle0` through `Puzzle95`), each with one DDS
+frame reference.
 The ground `newbie.pul` references 58 distinct non-empty tile indices;
 the positioned backdrop `newbiebg.pul` references 36. Every referenced
-section exists in this ANI index. Regression tests restore ANI bytes from a compressed fixture and use
-the committed DMap and puzzle files. Invalid ANI references are tested by mutating the fixture.
+section exists in this ANI index. Regression tests restore ANI bytes from a
+compressed fixture and use the committed DMap and puzzle files. Invalid ANI
+references are tested by mutating the fixture.
 
 The `Puzzle{puzzleIdx}` query names are part of the encoded ANI section contract.
 
