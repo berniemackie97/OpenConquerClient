@@ -35,6 +35,11 @@ public static class GameMapSceneryAniBindings
             }
 
             AniIndexSection animation = index.GetRequiredSection(sectionName);
+            if (!string.Equals(animation.Name, sectionName, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException($"Map scenery ANI section [{sectionName}] in '{path}' resolved to [{animation.Name}].");
+            }
+
             if (animation.FrameCount == 0)
             {
                 throw new InvalidDataException($"Map scenery ANI section [{sectionName}] in '{path}' has no frames.");
