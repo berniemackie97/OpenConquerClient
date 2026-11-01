@@ -3,12 +3,9 @@ using System.Globalization;
 
 namespace OpenConquer.Content.Tool.CommandLine;
 
-/// <summary>
-/// Parses the content tool's command line into a typed command.
-/// </summary>
 internal static class ContentToolCommandLine
 {
-    private const string ImportVerb = "import-retail-5517";
+    private const string ImportVerb = "import-client-content";
     private const string ValidateStartupVerb = "validate-startup";
     private const string VerifyContentSetVerb = "verify-content-set";
     private const string InspectServerDatVerb = "inspect-server-dat";
@@ -23,7 +20,6 @@ internal static class ContentToolCommandLine
     private const string ContentRootOption = "--content-root";
     private const string ContentSetOption = "--content-set";
 
-    /// <summary>The usage text shown when parsing fails.</summary>
     public static IReadOnlyList<string> UsageLines
     {
         get;

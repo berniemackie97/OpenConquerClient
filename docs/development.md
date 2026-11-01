@@ -138,7 +138,7 @@ Runtime content:
 content/retail-5517/payload
 ```
 
-Current runtime closure: 3,785 files totaling 21,319,841 bytes.
+The content manifest defines the inventory and file lengths.
 
 It covers:
 
@@ -211,15 +211,15 @@ Compatibility-only assets do not expand the runtime closure.
 
 `Server.dat` is reference material for offline tooling only and must not ship with the client.
 
-### Import Retail Content
+### Import Client Content
 
 ```bash
 dotnet run \
   --project tools/OpenConquer.Content.Tool \
   -c Release \
   -- \
-  import-retail-5517 \
-  --source /path/to/retail-5517-root \
+  import-client-content \
+  --source /path/to/client-root \
   --destination /path/to/content-set
 ```
 
@@ -262,8 +262,6 @@ manifest
         ==
 payload
 ```
-
-The checked-in retail-5517 manifest currently records 3,785 files and 21,319,841 bytes.
 
 ### Inspect Server.dat
 

@@ -14,7 +14,7 @@ public sealed class ContentToolCommandLineTests
     {
         Assert.True(
             ContentToolCommandLine.TryParse(
-                ["import-retail-5517", "--destination", "out", "--source", "in"],
+                ["import-client-content", "--destination", "out", "--source", "in"],
                 s_workingDirectory,
                 out ContentToolCommand? command,
                 out string? errorMessage
@@ -88,13 +88,13 @@ public sealed class ContentToolCommandLineTests
     public void TryParse_ReadsValidateMapSceneryAniCommand()
     {
         Assert.True(ContentToolCommandLine.TryParse(
-            ["validate-map-scenery-ani", "--map-data-id", "1010", "--source", "retail"],
+            ["validate-map-scenery-ani", "--map-data-id", "1010", "--source", "client"],
             s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
 
         Assert.Null(errorMessage);
         ValidateMapSceneryAniCommand validate = Assert.IsType<ValidateMapSceneryAniCommand>(command);
         Assert.Equal(1010u, validate.MapDataId);
-        Assert.Equal(Path.Combine(s_workingDirectory, "retail"), validate.SourceRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "client"), validate.SourceRootPath);
     }
 
     [Fact]
@@ -123,11 +123,11 @@ public sealed class ContentToolCommandLineTests
         "Option '--content-set' requires a path value."
     )]
     [InlineData(
-        new[] { "import-retail-5517", "--source", "in", "--source", "other" },
+        new[] { "import-client-content", "--source", "in", "--source", "other" },
         "Option '--source' was specified more than once."
     )]
     [InlineData(
-        new[] { "import-retail-5517", "--source", "in" },
+        new[] { "import-client-content", "--source", "in" },
         "Expected --source and --destination, each with one value."
     )]
     [InlineData(new[] { "inspect-server-dat", "--file" }, "Expected --file, each with one value.")]
@@ -160,7 +160,7 @@ public sealed class ContentToolCommandLineTests
 
         Assert.Contains(
             ContentToolCommandLine.UsageLines,
-            line => line.Contains("import-retail-5517", StringComparison.Ordinal)
+            line => line.Contains("import-client-content", StringComparison.Ordinal)
         );
 
         Assert.Contains(

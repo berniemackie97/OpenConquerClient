@@ -17,8 +17,6 @@ behavior has been verified.
 
 ## retail-5517
 
-The current runtime closure has 3,785 files totaling 21,319,841 bytes.
-
 `manifest.json` lists the path, length, signature, and SHA-256 hash of every file in the curated
 `payload/`. It is the source of truth for the file list and is written deterministically. The full
 list is not repeated in Markdown. See
@@ -50,7 +48,7 @@ categories, per-control tooltips, and downstream HUD effects are not implemented
 
 ```bash
 dotnet run --project tools/OpenConquer.Content.Tool -- \
-  import-retail-5517 \
+  import-client-content \
   --source /path/to/retail/5517 \
   --destination /path/to/new/retail-5517
 ```
