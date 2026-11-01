@@ -7,14 +7,14 @@ internal readonly record struct WorldMapPuzzleValidationResult(int PuzzleCount, 
 
 internal static class WorldMapPuzzleValidator
 {
-    public static WorldMapPuzzleValidationResult Validate(string retailRootPath, uint mapDataId)
+    public static WorldMapPuzzleValidationResult Validate(string clientRootPath, uint mapDataId)
     {
-        PackagedClientContentSource source = PackagedClientContentSource.Open(retailRootPath);
+        PackagedClientContentSource source = PackagedClientContentSource.Open(clientRootPath);
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), mapDataId);
         GameMapPuzzleResources resources = GameMapPuzzleResources.Load(source, map);
 
         HashSet<string> puzzlePaths = new(StringComparer.OrdinalIgnoreCase);
-        HashSet<string> decodedFrames = new(StringComparer.OrdinalIgnoreCase);
+        WorldFrameValidation frames = new(source);
         int animationCount = 0;
 
         void ValidateBitmap(string path)
@@ -37,14 +37,7 @@ internal static class WorldMapPuzzleValidator
                 AniIndexSection section = resources.GetRequiredTileAnimation(path, tileIndex);
                 animationCount++;
 
-                for (int frame = 0; frame < section.FrameCount; frame++)
-                {
-                    if (decodedFrames.Add(section.FramePaths[frame]))
-                    {
-                        _ = AniFrameLoader.LoadWrappedFrame(source, section, (uint)frame,
-                            ContentLookupMode.LooseThenPackage);
-                    }
-                }
+                frames.Validate(section);
             }
         }
 
@@ -61,6 +54,6 @@ internal static class WorldMapPuzzleValidator
             }
         }
 
-        return new WorldMapPuzzleValidationResult(puzzlePaths.Count, animationCount, decodedFrames.Count);
+        return new WorldMapPuzzleValidationResult(puzzlePaths.Count, animationCount, frames.FrameCount);
     }
 }
