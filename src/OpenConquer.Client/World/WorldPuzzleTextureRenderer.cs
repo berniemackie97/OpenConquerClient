@@ -4,6 +4,7 @@ using OpenConquer.Content.Ani;
 using OpenConquer.Content.Images;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;
+using OpenConquer.Rendering.Sprites;
 
 namespace OpenConquer.Client.World;
 
@@ -51,7 +52,7 @@ internal sealed class WorldPuzzleTextureRenderer : IDisposable
     }
 
     /// <summary>Issues only GPU draws; I/O and texture uploads must have completed in Prepare.</summary>
-    public void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldPuzzleTile> tiles)
+    public void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldPuzzleTile> tiles, SpriteColor worldColor)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
@@ -65,7 +66,7 @@ internal sealed class WorldPuzzleTextureRenderer : IDisposable
                 throw new InvalidOperationException($"Puzzle frame '{path}' has not been prepared.");
             }
 
-            renderer.DrawSprite(texture, tile.X, tile.Y, tile.Size, tile.Size);
+            renderer.DrawSprite(texture, tile.X, tile.Y, tile.Size, tile.Size, worldColor);
         }
     }
 
