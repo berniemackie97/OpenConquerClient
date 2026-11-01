@@ -97,6 +97,19 @@ public sealed class ContentToolCommandLineTests
         Assert.Equal(Path.Combine(s_workingDirectory, "retail"), validate.SourceRootPath);
     }
 
+    [Fact]
+    public void TryParse_ReadsValidateMapTerrainScenesCommand()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["validate-map-terrain-scenes", "--map-data-id", "1010", "--source", "retail"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        ValidateMapTerrainScenesCommand validate = Assert.IsType<ValidateMapTerrainScenesCommand>(command);
+        Assert.Equal(1010u, validate.MapDataId);
+        Assert.Equal(Path.Combine(s_workingDirectory, "retail"), validate.SourceRootPath);
+    }
+
     [Theory]
     [InlineData(new string[0], "No command was specified.")]
     [InlineData(new[] { "unknown-verb" }, "Unknown command 'unknown-verb'.")]
@@ -142,6 +155,8 @@ public sealed class ContentToolCommandLineTests
     {
         Assert.Contains(ContentToolCommandLine.UsageLines,
             line => line.Contains("validate-map-scenery-ani", StringComparison.Ordinal));
+        Assert.Contains(ContentToolCommandLine.UsageLines,
+            line => line.Contains("validate-map-terrain-scenes", StringComparison.Ordinal));
 
         Assert.Contains(
             ContentToolCommandLine.UsageLines,

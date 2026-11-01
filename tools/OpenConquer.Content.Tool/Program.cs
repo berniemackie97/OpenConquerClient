@@ -101,6 +101,17 @@ internal static class Program
                     break;
                 }
 
+            case ValidateMapTerrainScenesCommand validateTerrain:
+                {
+                    WorldMapTerrainSceneValidationResult result =
+                        WorldMapTerrainSceneValidator.Validate(validateTerrain.SourceRootPath, validateTerrain.MapDataId);
+
+                    Console.WriteLine($"Validated MapDataId {validateTerrain.MapDataId}: {result.PlacementCount} terrain-scene placements, " +
+                        $"{result.SceneFileCount} scene files, {result.ObjectCount} objects, {result.FrameCount} decoded source frames.");
+
+                    break;
+                }
+
             case InspectServerDatCommand inspect:
                 {
                     ServerDatInspectionReport report = ServerDatInspectionReport.Create(inspect.FilePath);

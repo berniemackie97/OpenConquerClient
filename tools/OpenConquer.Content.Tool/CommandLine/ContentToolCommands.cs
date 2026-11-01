@@ -8,3 +8,4 @@ internal sealed record VerifyContentSetCommand(string ContentSetRootPath) : Cont
 internal sealed record InspectServerDatCommand(string FilePath) : ContentToolCommand;
 internal sealed record ValidateMapPuzzlesCommand(string SourceRootPath, uint MapDataId) : ContentToolCommand;
 internal sealed record ValidateMapSceneryAniCommand(string SourceRootPath, uint MapDataId) : ContentToolCommand;
+internal sealed record ValidateMapTerrainScenesCommand(string SourceRootPath, uint MapDataId) : ContentToolCommand;

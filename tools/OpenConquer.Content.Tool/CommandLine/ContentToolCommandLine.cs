@@ -14,6 +14,7 @@ internal static class ContentToolCommandLine
     private const string InspectServerDatVerb = "inspect-server-dat";
     private const string ValidateMapPuzzlesVerb = "validate-map-puzzles";
     private const string ValidateMapSceneryAniVerb = "validate-map-scenery-ani";
+    private const string ValidateMapTerrainScenesVerb = "validate-map-terrain-scenes";
     private const string FileOption = "--file";
     private const string MapDataIdOption = "--map-data-id";
 
@@ -35,6 +36,7 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
         $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <retail-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapSceneryAniVerb} {SourceOption} <retail-root> {MapDataIdOption} <map-data-id>",
+        $"  OpenConquer.Content.Tool {ValidateMapTerrainScenesVerb} {SourceOption} <retail-root> {MapDataIdOption} <map-data-id>",
     ];
 
     public static bool TryParse(IReadOnlyList<string> args, string workingDirectoryPath, [NotNullWhen(true)] out ContentToolCommand? command, [NotNullWhen(false)] out string? errorMessage)
@@ -109,6 +111,18 @@ internal static class ContentToolCommandLine
                     }
 
                     command = new ValidateMapSceneryAniCommand(sourceRoot, mapDataId);
+                    return true;
+                }
+
+            case ValidateMapTerrainScenesVerb:
+                {
+                    if (!TryParseMapPuzzleOptions(remainingArgs, workingDirectoryPath,
+                        out string? sourceRoot, out uint mapDataId, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    command = new ValidateMapTerrainScenesCommand(sourceRoot, mapDataId);
                     return true;
                 }
 
