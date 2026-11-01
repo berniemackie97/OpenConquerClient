@@ -12,10 +12,10 @@ namespace OpenConquer.Client.UI.Hud.StatusHints.Magic;
 
 internal sealed class MainHudMagicHintRenderer : IDisposable
 {
-    private const int NativeFontHeight = 12;
-    private const int NativeWrapCharacterLimit = 30;
-    private const int NativeWrapPixelLimit = 180;
-    private const int NativeDataIconWidth = 21;
+    private const int HintFontHeight = 12;
+    private const int WrapCharacterLimit = 30;
+    private const int WrapPixelLimit = 180;
+    private const int DataIconWidth = 21;
 
     private static readonly SpriteSourceRectangle s_backdropSource = new(0, 0, 100, 200);
     private static readonly SpriteColor s_outlineColor = new(204, 204, 204, 255);
@@ -53,7 +53,7 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
         _whiteOptions = CreateTextOptions(fontSettings, SpriteColor.White);
         _redOptions = CreateTextOptions(fontSettings, new SpriteColor(255, 0, 0, 255));
 
-        OpenGLTextContext magicText = new(graphicsDevice, fontSettings.GuiFontFaceName, NativeFontHeight, codePage.EffectiveCodePage, fontSettings.AntialiasEnabled);
+        OpenGLTextContext magicText = new(graphicsDevice, fontSettings.GuiFontFaceName, HintFontHeight, codePage.EffectiveCodePage, fontSettings.AntialiasEnabled);
 
         try
         {
@@ -146,7 +146,7 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
 
             foreach (byte[] line in lines)
             {
-                int width = _magicText.Layout(line, recognizeDataIcons: true, dataIconWidthPixels: NativeDataIconWidth).WidthPixels;
+                int width = _magicText.Layout(line, recognizeDataIcons: true, dataIconWidthPixels: DataIconWidth).WidthPixels;
                 maximumWidth = Math.Max(maximumWidth, width);
             }
         }
@@ -184,17 +184,17 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
 
         byte[] normalized = TranslateTildes(encoded);
 
-        if (normalized.Length <= NativeWrapCharacterLimit)
+        if (normalized.Length <= WrapCharacterLimit)
         {
             DrawLine(renderer, normalized, options, x, y);
-            y = checked(y + NativeFontHeight);
+            y = checked(y + HintFontHeight);
             return;
         }
 
         foreach (byte[] line in Wrap(normalized))
         {
             DrawLine(renderer, line, options, x, y);
-            y = checked(y + NativeFontHeight);
+            y = checked(y + HintFontHeight);
         }
     }
 
@@ -211,7 +211,7 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
 
     private IReadOnlyList<byte[]> Wrap(ReadOnlySpan<byte> encoded)
     {
-        return NativeMagicEnglishWrapper.Wrap(encoded, NativeWrapPixelLimit, _fontWidth, MeasureWidth);
+        return MagicHintTextWrapper.Wrap(encoded, WrapPixelLimit, _fontWidth, MeasureWidth);
     }
 
     private int MeasureWidth(ReadOnlySpan<byte> encoded) => _magicText.Layout(encoded).WidthPixels;
@@ -275,9 +275,9 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
             return;
         }
 
-        byte[] formatted = NativeMagicStringFormatter.Format(template.Span, 255, context.TryoutItemName, unchecked((int)context.TryoutRemainingSeconds));
+        byte[] formatted = MagicHintTextFormatter.Format(template.Span, 255, context.TryoutItemName, unchecked((int)context.TryoutRemainingSeconds));
 
-        DrawTryout(renderer, backdrop, anchorX, anchorY, NativeMagicStringFormatter.TranslateEscapes(formatted));
+        DrawTryout(renderer, backdrop, anchorX, anchorY, MagicHintTextFormatter.TranslateEscapes(formatted));
     }
 
     private void DrawRevive(OpenGLRenderer renderer, OpenGLTexture2D? backdrop, int anchorX, int anchorY, ReadOnlyMemory<byte> encoded)
