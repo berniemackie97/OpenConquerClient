@@ -11,7 +11,7 @@ internal static class ContentSetImporter
     private const string PayloadDirectoryName = "payload";
     private const int SignatureHeaderLength = 12;
 
-    public static ContentManifest Import(string sourceRootPath, string destinationRootPath, uint? mapDataId = null)
+    public static ContentManifest Import(string sourceRootPath, string destinationRootPath, uint? mapDataId = null, bool allMaps = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceRootPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationRootPath);
@@ -34,7 +34,7 @@ internal static class ContentSetImporter
 
         try
         {
-            ContentManifest manifest = BuildContentSet(sourceRoot, stagingRoot, mapDataId);
+            ContentManifest manifest = BuildContentSet(sourceRoot, stagingRoot, mapDataId, allMaps);
 
             Directory.Move(stagingRoot, destinationRoot);
 
@@ -58,9 +58,9 @@ internal static class ContentSetImporter
         }
     }
 
-    private static ContentManifest BuildContentSet(ImportSourceRoot sourceRoot, string stagingRoot, uint? mapDataId)
+    private static ContentManifest BuildContentSet(ImportSourceRoot sourceRoot, string stagingRoot, uint? mapDataId, bool allMaps)
     {
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(sourceRoot.ContentSource, mapDataId);
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(sourceRoot.ContentSource, mapDataId, allMaps);
 
         if (closure.Count == 0)
         {

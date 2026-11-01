@@ -81,6 +81,54 @@ public sealed class ContentToolCommandLineTests
     }
 
     [Fact]
+    public void TryParse_ImportsAllIndexedMaps()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["import-client-content", "--all-maps", "--destination", "out", "--source", "in"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        ImportContentSetCommand import = Assert.IsType<ImportContentSetCommand>(command);
+        Assert.True(import.AllMaps);
+        Assert.Null(import.MapDataId);
+        Assert.Equal(Path.Combine(s_workingDirectory, "in"), import.SourceRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "out"), import.DestinationRootPath);
+    }
+
+    [Fact]
+    public void TryParse_VerifiesAllIndexedMaps()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["verify-content-set", "--content-set", "world", "--all-maps"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        VerifyContentSetCommand verify = Assert.IsType<VerifyContentSetCommand>(command);
+        Assert.True(verify.AllMaps);
+        Assert.Null(verify.MapDataId);
+    }
+
+    [Fact]
+    public void TryParse_RejectsAmbiguousAllMapsSelection()
+    {
+        string[][] invalidInvocations =
+        [
+            ["import-client-content", "--source", "in", "--destination", "out",
+                "--map-data-id", "1010", "--all-maps"],
+            ["verify-content-set", "--content-set", "world", "--all-maps", "--all-maps"],
+            ["import-client-content", "--source", "in", "--all-maps"],
+        ];
+
+        foreach (string[] args in invalidInvocations)
+        {
+            Assert.False(ContentToolCommandLine.TryParse(
+                args, s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+            Assert.Null(command);
+            Assert.NotNull(errorMessage);
+        }
+    }
+
+    [Fact]
     public void TryParse_ReadsAValidateStartupCommand()
     {
         Assert.True(
@@ -162,12 +210,12 @@ public sealed class ContentToolCommandLineTests
 
     [Theory]
     [InlineData(new string[0], "No command was specified.")]
-    [InlineData(new[] { "unknown-verb" }, "Unknown command 'unknown-verb'.")]
+    [InlineData(new string[] { "unknown-verb" }, "Unknown command 'unknown-verb'.")]
     [InlineData(
         new[] { "verify-content-set", "--content-set" },
         "Expected --content-set, each with one value."
     )]
-    [InlineData(new[] { "verify-content-set", "--wrong", "set" }, "Unexpected argument '--wrong'.")]
+    [InlineData(new string[] { "verify-content-set", "--wrong", "set" }, "Unexpected argument '--wrong'.")]
     [InlineData(
         new[] { "verify-content-set", "--content-set", "--content-root" },
         "Option '--content-set' requires a path value."
@@ -180,7 +228,7 @@ public sealed class ContentToolCommandLineTests
         new[] { "import-client-content", "--source", "in" },
         "Expected --source and --destination, each with one value."
     )]
-    [InlineData(new[] { "inspect-server-dat", "--file" }, "Expected --file, each with one value.")]
+    [InlineData(new string[] { "inspect-server-dat", "--file" }, "Expected --file, each with one value.")]
     [InlineData(
         new[] { "inspect-server-dat", "--wrong", "Server.dat" },
         "Unexpected argument '--wrong'."

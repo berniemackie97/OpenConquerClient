@@ -16,6 +16,7 @@ public sealed class GameMapCatalog
     private GameMapCatalog(Dictionary<uint, Terrain> terrains) => _terrains = terrains;
 
     public int Count => _terrains.Count;
+    public IReadOnlyCollection<uint> MapDataIds => _terrains.Keys;
 
     public bool TryGetTerrain(uint mapDataId, [NotNullWhen(true)] out Terrain? terrain) =>
         _terrains.TryGetValue(mapDataId, out terrain);

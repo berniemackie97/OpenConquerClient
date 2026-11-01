@@ -72,6 +72,48 @@ publish only after complete success
 
 It never copies whole retail directories or WDF archives.
 
+## All indexed maps
+
+Use `--all-maps` to copy every map named by `ini/GameMap.dat` and the files
+referenced by its supported puzzle, scene, scenery animation, and positioned
+overlay records. The importer copies file bytes from the specified client
+installation, shares dependencies across maps, and does not generate substitute
+artwork. An unavailable or unsupported map fails the import with its data ID;
+the destination is not published.
+
+The same `manifest.json` / `payload/` layout is used. Import into a new
+sibling directory, verify, then replace the existing content set only after a
+successful verification. From the client repository root:
+
+```bash
+(
+set -euo pipefail
+SOURCE="/Volumes/EnderChest/Development/Repos/GameDev/Conquer/client-5517/00_clean/clean/5517"
+STAGED="content/retail-5517.next"
+PREVIOUS="content/retail-5517.previous"
+
+test ! -e "$STAGED" && test ! -e "$PREVIOUS" || {
+  printf '%s\n' "Remove or rename a previous staging/backup directory first." >&2
+  exit 1
+}
+
+dotnet run --project tools/OpenConquer.Content.Tool -c Release -- \
+  import-client-content --source "$SOURCE" --destination "$STAGED" --all-maps
+dotnet run --project tools/OpenConquer.Content.Tool -c Release -- \
+  verify-content-set --content-set "$STAGED" --all-maps
+
+mv content/retail-5517 "$PREVIOUS"
+mv "$STAGED" content/retail-5517
+
+dotnet run --project tools/OpenConquer.Content.Tool -c Release -- \
+  verify-content-set --content-set content/retail-5517 --all-maps
+)
+```
+
+The previous set is retained as a backup; restore it if the local switch cannot
+be completed. These commands read from the source installation without changing it.
+Check redistribution rights before publishing the resulting third-party content.
+
 ## Verify
 
 ```bash
