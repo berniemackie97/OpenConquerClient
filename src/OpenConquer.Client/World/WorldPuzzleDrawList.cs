@@ -32,7 +32,7 @@ internal static class WorldPuzzleDrawList
     }
 
     public static IReadOnlyList<WorldPuzzleTile> PositionedPuzzles(GameMapContent map,
-        GameMapPuzzleResources resources, WorldPuzzleProjection projection, uint frame)
+        GameMapPuzzleResources resources, WorldPuzzleProjection projection)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(resources);
@@ -59,7 +59,7 @@ internal static class WorldPuzzleDrawList
                 GameMapPuzzleBitmap bitmap = resources.GetRequired(puzzle.PuzzlePath);
                 long offsetX = halfMapWidth - (long)bitmap.Columns * TileSize / 2 - rootX;
                 long offsetY = halfMapHeight - (long)bitmap.Rows * TileSize / 2 - rootY;
-                Append(tiles, resources, bitmap, puzzle.PuzzlePath, checked((int)offsetX), checked((int)offsetY), projection, frame);
+                Append(tiles, resources, bitmap, puzzle.PuzzlePath, checked((int)offsetX), checked((int)offsetY), projection, frame: 0);
             }
         }
 
