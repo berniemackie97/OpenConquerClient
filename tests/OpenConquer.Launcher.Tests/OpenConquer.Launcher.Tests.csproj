@@ -10,4 +10,9 @@
     <ProjectReference Include="../Fixtures/OpenConquer.Launcher.InstanceProbe/OpenConquer.Launcher.InstanceProbe.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../Shared/TemporaryDirectory.cs" Link="TemporaryDirectory.cs" />
+    <Using Include="OpenConquer.Testing" />
+  </ItemGroup>
+
 </Project>
