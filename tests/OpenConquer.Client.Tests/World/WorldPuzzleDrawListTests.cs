@@ -7,11 +7,14 @@ namespace OpenConquer.Client.Tests.World;
 
 public sealed class WorldPuzzleDrawListTests
 {
+    private const int GroundOffsetX = -9 * 256;
+    private const int GroundOffsetY = -3 * 256;
+
     [Fact]
     public void RetailNewbieGround_EnumeratesVisibleANIFramesInTileOrder()
     {
         using RetailNewbieSource retail = new();
-        WorldPuzzleProjection projection = new(800, 600, 0, 0, 3500, 1400, 1, 1);
+        WorldPuzzleProjection projection = new(800, 600, GroundOffsetX, GroundOffsetY, 3500, 1400, 1, 1);
 
         IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.Ground(retail.Map, retail.Puzzles, projection, 0);
 
@@ -52,9 +55,9 @@ public sealed class WorldPuzzleDrawListTests
     {
         using RetailNewbieSource retail = new();
         IReadOnlyList<WorldPuzzleTile> baseTiles = WorldPuzzleDrawList.Ground(retail.Map, retail.Puzzles,
-            new WorldPuzzleProjection(800, 600, 0, 0, 3500, 1400, 1, 1), 0);
+            new WorldPuzzleProjection(800, 600, GroundOffsetX, GroundOffsetY, 3500, 1400, 1, 1), 0);
         IReadOnlyList<WorldPuzzleTile> larger = WorldPuzzleDrawList.Ground(retail.Map, retail.Puzzles,
-            new WorldPuzzleProjection(1024, 768, 0, 0, 3500, 1400, 1, 1), 0);
+            new WorldPuzzleProjection(1024, 768, GroundOffsetX, GroundOffsetY, 3500, 1400, 1, 1), 0);
 
         Assert.Equal(baseTiles.Count, larger.Count);
         Assert.Equal(baseTiles.Select(t => t.Animation.Name), larger.Select(t => t.Animation.Name));
