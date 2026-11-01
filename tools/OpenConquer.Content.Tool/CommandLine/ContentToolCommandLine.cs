@@ -26,9 +26,9 @@ internal static class ContentToolCommandLine
     } =
     [
         "Usage:",
-        $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <client-root> {DestinationOption} <content-set-root>",
+        $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <client-root> {DestinationOption} <content-set-root> [{MapDataIdOption} <map-data-id>]",
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
-        $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root>",
+        $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id>]",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
         $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapSceneryAniVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
@@ -55,12 +55,13 @@ internal static class ContentToolCommandLine
         {
             case ImportVerb:
                 {
-                    if (!TryParseOptions(remainingArgs, [SourceOption, DestinationOption], workingDirectoryPath, out IReadOnlyList<string>? values, out errorMessage))
+                    if (!TryParseContentSetOptions(remainingArgs, [SourceOption, DestinationOption],
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId, out errorMessage))
                     {
                         return false;
                     }
 
-                    command = new ImportContentSetCommand(values[0], values[1]);
+                    command = new ImportContentSetCommand(values[0], values[1], mapDataId);
                     return true;
                 }
 
@@ -77,12 +78,13 @@ internal static class ContentToolCommandLine
 
             case VerifyContentSetVerb:
                 {
-                    if (!TryParseOptions(remainingArgs, [ContentSetOption], workingDirectoryPath, out IReadOnlyList<string>? values, out errorMessage))
+                    if (!TryParseContentSetOptions(remainingArgs, [ContentSetOption],
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId, out errorMessage))
                     {
                         return false;
                     }
 
-                    command = new VerifyContentSetCommand(values[0]);
+                    command = new VerifyContentSetCommand(values[0], mapDataId);
                     return true;
                 }
 
@@ -137,6 +139,61 @@ internal static class ContentToolCommandLine
                 errorMessage = $"Unknown command '{verb}'.";
                 return false;
         }
+    }
+
+    private static bool TryParseContentSetOptions(IReadOnlyList<string> args,
+        IReadOnlyList<string> requiredOptions, string workingDirectoryPath,
+        [NotNullWhen(true)] out IReadOnlyList<string>? values, out uint? mapDataId, out string? errorMessage)
+    {
+        mapDataId = null;
+        if (args.Count == requiredOptions.Count * 2)
+        {
+            return TryParseOptions(args, requiredOptions, workingDirectoryPath, out values, out errorMessage);
+        }
+
+        if (args.Count != (requiredOptions.Count + 1) * 2)
+        {
+            return TryParseOptions(args, requiredOptions, workingDirectoryPath, out values, out errorMessage);
+        }
+
+        List<string> paths = [];
+        uint selectedMapDataId = 0;
+        bool hasMapDataId = false;
+        for (int index = 0; index < args.Count; index += 2)
+        {
+            if (args[index] == MapDataIdOption)
+            {
+                if (hasMapDataId || !uint.TryParse(args[index + 1], NumberStyles.None,
+                    CultureInfo.InvariantCulture, out selectedMapDataId) || selectedMapDataId == 0)
+                {
+                    values = null;
+                    errorMessage = "Invalid or repeated --map-data-id value.";
+                    return false;
+                }
+
+                hasMapDataId = true;
+            }
+            else
+            {
+                paths.Add(args[index]);
+                paths.Add(args[index + 1]);
+            }
+        }
+
+        if (!hasMapDataId)
+        {
+            values = null;
+            errorMessage = "Expected a single --map-data-id value.";
+            return false;
+        }
+
+        if (!TryParseOptions(paths, requiredOptions, workingDirectoryPath, out values, out errorMessage))
+        {
+            return false;
+        }
+
+        mapDataId = selectedMapDataId;
+        return true;
     }
 
     private static bool TryParseMapSourceOptions(IReadOnlyList<string> args, string workingDirectoryPath,

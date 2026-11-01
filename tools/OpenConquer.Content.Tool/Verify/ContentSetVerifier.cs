@@ -12,7 +12,7 @@ internal static class ContentSetVerifier
     private const string ManifestFileName = "manifest.json";
     private const string PayloadDirectoryName = "payload";
 
-    public static ContentManifest Verify(string contentSetRootPath)
+    public static ContentManifest Verify(string contentSetRootPath, uint? mapDataId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentSetRootPath);
 
@@ -40,7 +40,7 @@ internal static class ContentSetVerifier
             throw new InvalidDataException($"The content set is missing {missingSourcePaths.Length} declared payload file(s): {string.Join(", ", missingSourcePaths)}.");
         }
 
-        VerifyImplementedClosure(payloadRoot, manifest);
+        VerifyImplementedClosure(payloadRoot, manifest, mapDataId);
 
         return manifest;
     }
@@ -123,13 +123,13 @@ internal static class ContentSetVerifier
         }
     }
 
-    private static void VerifyImplementedClosure(string payloadRoot, ContentManifest manifest)
+    private static void VerifyImplementedClosure(string payloadRoot, ContentManifest manifest, uint? mapDataId)
     {
         IReadOnlyList<ClientContentRequirement> closure;
 
         try
         {
-            closure = ClientContentClosure.Resolve(new ClientContentRoot(payloadRoot));
+            closure = ClientContentClosure.Resolve(new ClientContentRoot(payloadRoot), mapDataId);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
