@@ -36,7 +36,6 @@ public static class GameMapSceneryAniBindings
 
     private static bool IsEmptyAnimationRecord(GameMapSceneryRecord record) =>
         record.ResourcePath == "AniTitle=" &&
-        record.PartName == "PosCell=[0,0]" &&
         record.TileX == 0 &&
         record.TileY == 0 &&
         record.EncodedPayload.Length == 0x1A0 &&
