@@ -115,8 +115,10 @@ public sealed class WorldContentImportTests
         File.Delete(source.ChildPath("map/Scene/stand08.scene"));
 
         string target = destination.ChildPath("available");
-        Assert.Throws<FileNotFoundException>(() =>
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
             ContentSetImporter.Import(source.RootPath, target, availableMaps: true));
+        Assert.Contains("map data ID 1010", error.Message, StringComparison.Ordinal);
+        Assert.IsType<FileNotFoundException>(error.InnerException);
         Assert.False(Directory.Exists(target));
     }
 
