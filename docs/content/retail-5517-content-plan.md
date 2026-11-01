@@ -21,13 +21,6 @@ client's dependency on it has been confirmed.
 
 ## Runtime Closure
 
-Current closure:
-
-```text
-files: 3,787
-bytes: 21,331,584
-```
-
 The full path list is kept in:
 
 ```text
@@ -35,7 +28,7 @@ content/retail-5517/manifest.json
 content/retail-5517/payload
 ```
 
-This document does not repeat all 3,785 manifest entries. The parametric quickbar consumers added in
+This document does not repeat the manifest entries. The parametric quickbar consumers added in
 GFX-UI-006 pull in whole families of action, magic, item-icon, and glow frames from their ANI
 catalogs. Copying that list here would create a second list that drifts out of date.
 
@@ -325,7 +318,7 @@ Each consumer declares its lookup mode.
 
 ## Import
 
-`import-retail-5517` runs these steps:
+`import-client-content` runs these steps:
 
 ```text
 validate retail version
