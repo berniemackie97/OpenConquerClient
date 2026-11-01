@@ -102,7 +102,8 @@ public sealed class WorldTerrainSceneDrawListTests
         WorldTerrainSprite sprite = new(Animation(1), 0, -300, 100, 256, 256, 10, 10, 1, 1);
         Assert.True(sprite.IntersectsViewport(400, 100, 800, 600));
         Assert.False(sprite.IntersectsViewport(300, 100, 800, 600));
-        Assert.False((sprite with { X = 850 }).IntersectsViewport(400, 100, 800, 600));
+        WorldTerrainSprite outsideViewport = new(Animation(1), 0, 850, 100, 256, 256, 10, 10, 1, 1);
+        Assert.False(outsideViewport.IntersectsViewport(400, 100, 800, 600));
     }
 
     private static GameMapTerrainScenePlacement Placement(AniIndexSection animation, int x, int y,
