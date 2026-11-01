@@ -8,6 +8,9 @@ namespace OpenConquer.Rendering.Text.Native;
 internal static class FreeTypeConstants
 {
     public const int LoadDefault = 0;
+
+    /// <summary><c>FT_LOAD_TARGET_MONO</c>: full grid fitting, so advances are the font's hinted (hdmx) widths.</summary>
+    public const int LoadTargetMono = 2 << 16;
 }
 
 [Flags]

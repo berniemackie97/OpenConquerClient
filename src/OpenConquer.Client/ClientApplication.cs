@@ -59,6 +59,7 @@ internal sealed class ClientApplication : IDisposable
     private GameMapCatalog? _terrainCatalog;
     private IClientContentSource? _roleContent;
     private SelectCharacterIni? _roleIni;
+    private RoleCreationText? _roleText;
     private FontGlyphInk? _roleGlyphInk;
     private FlashRasterCache? _roleRasters;
     private FlashStagePresentation? _rolePresentation;
@@ -242,7 +243,10 @@ internal sealed class ClientApplication : IDisposable
         {
             OpenGLGraphicsDevice device = graphics.Track(new OpenGLGraphicsDevice(context.GetProcAddress));
             PixelSize framebuffer = window.FramebufferSize;
-            _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy));
+            // The login and create-role screens are 8-bit-per-channel art; a 16-bit target would band it (retail drew them
+            // as 32-bit Flash windows, only the Direct3D world used RGB565).
+            _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy,
+                RenderColorFormat.Rgba8));
             _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
             _rolePresentation = graphics.Track(new FlashStagePresentation(device,
                 _roleRasters ?? throw new InvalidOperationException("Role raster source is missing.")));
@@ -326,7 +330,8 @@ internal sealed class ClientApplication : IDisposable
                     _roleGlyphInk = new FontGlyphInk(fontSettings.GuiFontFaceName, font.NominalPixelHeight);
                 }
 
-                _role = new RoleCreationScreen(accepted!, accountName, _roleIni,
+                _roleText ??= RoleCreationText.Load(roleContent, LoginErrorEncoding.ForCurrentHost());
+                _role = new RoleCreationScreen(accepted!, accountName, _roleIni, _roleText,
                     _roleRasters ?? throw new InvalidOperationException("Role raster source is unavailable."),
                     _roleGlyphInk.HasMoreThanFivePixels, cue => _audio?.Play(cue));
                 if (_rolePresentation is { } presentation)

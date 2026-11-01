@@ -27,7 +27,8 @@ internal sealed class FreeTypeGlyphRasterizerFactory
         _rasterizerCreator = rasterizerCreator;
     }
 
-    public IGlyphRasterizer Create(string? fontToken, int nominalPixelHeight, bool antialiasEnabled, bool bold = false)
+    public IGlyphRasterizer Create(string? fontToken, int nominalPixelHeight, bool antialiasEnabled, bool bold = false,
+        GlyphHinting hinting = GlyphHinting.Default)
     {
         if (nominalPixelHeight == 0)
         {
@@ -39,32 +40,32 @@ internal sealed class FreeTypeGlyphRasterizerFactory
         // A bold family request selects that family's bold face; file tokens and families without one take the regular chain.
         if (bold && !string.IsNullOrEmpty(fontToken) && fontToken[0] != '$' &&
             _fontResolver.TryResolveBold(fontToken, out ResolvedFont? boldFont) && boldFont is not null &&
-            TryCreate(boldFont, nominalPixelHeight, antialiasEnabled, ref lastFailure) is { } boldRasterizer)
+            TryCreate(boldFont, nominalPixelHeight, antialiasEnabled, hinting, ref lastFailure) is { } boldRasterizer)
         {
             return boldRasterizer;
         }
 
-        if (!string.IsNullOrEmpty(fontToken) && TryCreateFromToken(fontToken, nominalPixelHeight, antialiasEnabled, ref lastFailure) is { } requestedRasterizer)
+        if (!string.IsNullOrEmpty(fontToken) && TryCreateFromToken(fontToken, nominalPixelHeight, antialiasEnabled, hinting, ref lastFailure) is { } requestedRasterizer)
         {
             return requestedRasterizer;
         }
 
-        if (_fontResolver.TryResolveDefaultGuiFont(out ResolvedFont? defaultGuiFont) && defaultGuiFont is not null && TryCreate(defaultGuiFont, nominalPixelHeight, antialiasEnabled, ref lastFailure) is { } defaultGuiRasterizer)
+        if (_fontResolver.TryResolveDefaultGuiFont(out ResolvedFont? defaultGuiFont) && defaultGuiFont is not null && TryCreate(defaultGuiFont, nominalPixelHeight, antialiasEnabled, hinting, ref lastFailure) is { } defaultGuiRasterizer)
         {
             return defaultGuiRasterizer;
         }
 
-        if (TryCreateFromToken(SimSunCollectionToken, nominalPixelHeight, antialiasEnabled, ref lastFailure) is { } simSunCollectionRasterizer)
+        if (TryCreateFromToken(SimSunCollectionToken, nominalPixelHeight, antialiasEnabled, hinting, ref lastFailure) is { } simSunCollectionRasterizer)
         {
             return simSunCollectionRasterizer;
         }
 
-        if (TryCreateFromToken(SimSunFontToken, nominalPixelHeight, antialiasEnabled, ref lastFailure) is { } simSunRasterizer)
+        if (TryCreateFromToken(SimSunFontToken, nominalPixelHeight, antialiasEnabled, hinting, ref lastFailure) is { } simSunRasterizer)
         {
             return simSunRasterizer;
         }
 
-        if (TryCreateFromToken(CourierNewFamilyName, nominalPixelHeight, antialiasEnabled, ref lastFailure) is { } courierNewRasterizer)
+        if (TryCreateFromToken(CourierNewFamilyName, nominalPixelHeight, antialiasEnabled, hinting, ref lastFailure) is { } courierNewRasterizer)
         {
             return courierNewRasterizer;
         }
@@ -72,23 +73,23 @@ internal sealed class FreeTypeGlyphRasterizerFactory
         throw new InvalidOperationException("No usable font could be created from the requested font or fallback chain.", lastFailure);
     }
 
-    internal delegate IGlyphRasterizer RasterizerCreator(ResolvedFont font, int nominalPixelHeight, bool antialiasEnabled);
+    internal delegate IGlyphRasterizer RasterizerCreator(ResolvedFont font, int nominalPixelHeight, bool antialiasEnabled, GlyphHinting hinting);
 
-    private IGlyphRasterizer? TryCreateFromToken(string fontToken, int nominalPixelHeight, bool antialiasEnabled, ref Exception? lastFailure)
+    private IGlyphRasterizer? TryCreateFromToken(string fontToken, int nominalPixelHeight, bool antialiasEnabled, GlyphHinting hinting, ref Exception? lastFailure)
     {
         if (!_fontResolver.TryResolve(fontToken, out ResolvedFont? font) || font is null)
         {
             return null;
         }
 
-        return TryCreate(font, nominalPixelHeight, antialiasEnabled, ref lastFailure);
+        return TryCreate(font, nominalPixelHeight, antialiasEnabled, hinting, ref lastFailure);
     }
 
-    private IGlyphRasterizer? TryCreate(ResolvedFont font, int nominalPixelHeight, bool antialiasEnabled, ref Exception? lastFailure)
+    private IGlyphRasterizer? TryCreate(ResolvedFont font, int nominalPixelHeight, bool antialiasEnabled, GlyphHinting hinting, ref Exception? lastFailure)
     {
         try
         {
-            return _rasterizerCreator(font, nominalPixelHeight, antialiasEnabled) ?? throw new InvalidOperationException("Glyph rasterizer creator returned null.");
+            return _rasterizerCreator(font, nominalPixelHeight, antialiasEnabled, hinting) ?? throw new InvalidOperationException("Glyph rasterizer creator returned null.");
         }
         catch (FreeTypeFaceCreationException exception)
         {
@@ -114,6 +115,6 @@ internal sealed class FreeTypeGlyphRasterizerFactory
     {
         ArgumentNullException.ThrowIfNull(library);
 
-        return (font, nominalPixelHeight, antialiasEnabled) => new FreeTypeGlyphRasterizer(library, font, nominalPixelHeight, antialiasEnabled);
+        return (font, nominalPixelHeight, antialiasEnabled, hinting) => new FreeTypeGlyphRasterizer(library, font, nominalPixelHeight, antialiasEnabled, hinting);
     }
 }

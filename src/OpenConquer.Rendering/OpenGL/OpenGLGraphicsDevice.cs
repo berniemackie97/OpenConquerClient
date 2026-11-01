@@ -67,7 +67,8 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         get;
     }
 
-    public OpenGLRenderer CreateRenderer(LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy = PresentationPolicy.Fit)
+    public OpenGLRenderer CreateRenderer(LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy = PresentationPolicy.Fit,
+        RenderColorFormat colorFormat = RenderColorFormat.Rgb565)
     {
         ObjectDisposedException.ThrowIf(_disposed, instance: this);
 
@@ -81,7 +82,7 @@ public sealed class OpenGLGraphicsDevice : IDisposable
             throw new ArgumentOutOfRangeException(nameof(presentationPolicy), presentationPolicy, "Unknown presentation policy.");
         }
 
-        return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy);
+        return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy, colorFormat);
     }
 
     public OpenGLTexture2D CreateTexture2D(int width, int height, ReadOnlySpan<byte> rgbaPixels)

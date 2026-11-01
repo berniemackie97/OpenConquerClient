@@ -406,7 +406,12 @@ internal sealed class FlashStage
 
         IFlashPointerTarget? previous = _hovered;
         _hovered = target;
-        previous?.RollOut();
+        // A target disabled while hovered gets no rollOut: the confirm panel disables createBtn under the pointer and
+        // retail keeps its disabled frame when the pointer leaves (vm-runtime 36).
+        if (previous is { Enabled: true })
+        {
+            previous.RollOut();
+        }
         target?.RollOver();
     }
 

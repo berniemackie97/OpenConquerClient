@@ -5,22 +5,28 @@ namespace OpenConquer.Rendering.OpenGL.Resources;
 
 internal sealed class OpenGLRenderTarget : IDisposable
 {
-    private static readonly ColorFormatCandidate[] s_colorFormatCandidates =
+    private static readonly ColorFormatCandidate[] s_rgb565Candidates =
     [
-        new(InternalFormat.Rgb565, RedBits: 5, GreenBits: 6, BlueBits: 5, RequiresRgb565Support: true),
-        new(InternalFormat.Rgb5, RedBits: 5, GreenBits: 5, BlueBits: 5, RequiresRgb565Support: false),
+        new(InternalFormat.Rgb565, RedBits: 5, GreenBits: 6, BlueBits: 5, AlphaBits: 0, RequiresRgb565Support: true),
+        new(InternalFormat.Rgb5, RedBits: 5, GreenBits: 5, BlueBits: 5, AlphaBits: 0, RequiresRgb565Support: false),
+    ];
+
+    private static readonly ColorFormatCandidate[] s_rgba8Candidates =
+    [
+        new(InternalFormat.Rgba8, RedBits: 8, GreenBits: 8, BlueBits: 8, AlphaBits: 8, RequiresRgb565Support: false),
     ];
 
     private readonly GL _gl;
     private readonly int _width;
     private readonly int _height;
+    private readonly RenderColorFormat _colorFormat;
 
     private uint _framebuffer;
     private uint _colorTexture;
     private uint _depthRenderbuffer;
     private bool _disposed;
 
-    public OpenGLRenderTarget(GL gl, int width, int height)
+    public OpenGLRenderTarget(GL gl, int width, int height, RenderColorFormat colorFormat = RenderColorFormat.Rgb565)
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
@@ -29,6 +35,8 @@ internal sealed class OpenGLRenderTarget : IDisposable
         _gl = gl;
         _width = width;
         _height = height;
+        _colorFormat = Enum.IsDefined(colorFormat) ? colorFormat
+            : throw new ArgumentOutOfRangeException(nameof(colorFormat), colorFormat, "Unsupported render color format.");
 
         try
         {
@@ -134,7 +142,7 @@ internal sealed class OpenGLRenderTarget : IDisposable
 
         bool supportsRgb565 = SupportsRgb565();
 
-        foreach (ColorFormatCandidate candidate in s_colorFormatCandidates)
+        foreach (ColorFormatCandidate candidate in _colorFormat == RenderColorFormat.Rgba8 ? s_rgba8Candidates : s_rgb565Candidates)
         {
             if (candidate.RequiresRgb565Support && !supportsRgb565)
             {
@@ -147,7 +155,9 @@ internal sealed class OpenGLRenderTarget : IDisposable
             }
         }
 
-        throw new NotSupportedException("The OpenGL implementation cannot create a complete 16-bit RGB render target compatible with the retail 5517 color-buffer formats.");
+        throw new NotSupportedException(_colorFormat == RenderColorFormat.Rgba8
+            ? "The OpenGL implementation cannot create a complete RGBA8 render target."
+            : "The OpenGL implementation cannot create a complete 16-bit RGB render target compatible with the retail 5517 color-buffer formats.");
     }
 
     private void CreateDepthRenderbuffer()
@@ -257,7 +267,7 @@ internal sealed class OpenGLRenderTarget : IDisposable
         _gl.GetTexLevelParameter(TextureTarget.Texture2D, level: 0, pname: GetTextureParameter.TextureBlueSize, out int blueBits);
         _gl.GetTexLevelParameter(TextureTarget.Texture2D, level: 0, pname: GetTextureParameter.TextureAlphaSize, out int alphaBits);
 
-        return redBits == candidate.RedBits && greenBits == candidate.GreenBits && blueBits == candidate.BlueBits && alphaBits == 0;
+        return redBits == candidate.RedBits && greenBits == candidate.GreenBits && blueBits == candidate.BlueBits && alphaBits == candidate.AlphaBits;
     }
 
     private bool SupportsRgb565()
@@ -341,5 +351,5 @@ internal sealed class OpenGLRenderTarget : IDisposable
         firstFailure?.Throw();
     }
 
-    private readonly record struct ColorFormatCandidate(InternalFormat InternalFormat, int RedBits, int GreenBits, int BlueBits, bool RequiresRgb565Support);
+    private readonly record struct ColorFormatCandidate(InternalFormat InternalFormat, int RedBits, int GreenBits, int BlueBits, int AlphaBits, bool RequiresRgb565Support);
 }

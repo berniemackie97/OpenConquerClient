@@ -82,9 +82,9 @@ internal sealed partial class RoleScripts
             {
                 clip.GotoAndStop(2);
             }
-            else if (root.ChildClip("flash2").CurrentFrame == 1)
+            else if (root.ClipOrNull("flash2") is { CurrentFrame: 1 } flash)
             {
-                root.ChildClip("flash2").GotoAndPlay(2);
+                flash.GotoAndPlay(2);
             }
         };
         createButton.OnRollOut = createButton.OnDragOut = clip =>
@@ -95,7 +95,7 @@ internal sealed partial class RoleScripts
             }
             else
             {
-                root.ChildClip("flash2").GotoAndStop(1);
+                root.ClipOrNull("flash2")?.GotoAndStop(1);
             }
         };
         createButton.OnPress = clip =>

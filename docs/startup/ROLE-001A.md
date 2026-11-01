@@ -92,12 +92,17 @@ about 72.7% alpha rather than 70%, every Enter toggles the panel flag, `HIDERETU
 
 ## Differences from retail
 
-- Flash draws into its own 32-bit window in retail. This client draws every screen into the 16-bit target,
-  so gradients band slightly.
-- Sub-pixel placement differs by up to one pixel per element. The measured offset varies by element (0.5–1
-  px), and Flash 7's sampling rule for transformed bitmaps has not been isolated.
+- Sub-pixel placement follows the measured Flash rules (identity bitmap fills `ceil(x)`, other rasters `ceil(x - 0.5)`),
+  but the top chrome, Back and Create still land one pixel from retail; no single rule explains them yet.
 - Vector shapes are rasterized at their authored size, so they soften when a timeline scales them up.
-- Input fields keep a caret only: there is no range selection, no clipboard and no IME. The caret blinks
-  every half second, close to the Windows default, since Flash's own rate is not verified.
-- `logo.swf` (into `logoMC`), the sounds and the native host gate belong to the screen change that hosts this
-  stage.
+- Device text uses FreeType with GDI-style hinted advances and baseline, drawn with grayscale antialiasing rather than
+  ClearType.
+- Input fields have no range selection by mouse drag and no IME.
+
+## Later changes
+
+- Render parity pass (2026-10-31): `logo.swf` (a Sorenson video) baked and loaded into `logoMC`; edit-text variable binding (the
+  body stage's class text); the name box baked as Flash-placed bitmap pieces; per-piece pixel snapping; GDI text
+  metrics, whole-line clipping and no caret, as retail; the screens render into an RGBA8 target; script handlers no
+  longer throw on clips their frame removed, and a disabled clip gets no rollOut. Evidence:
+  `20_notes/Architecture/12_create_role_flow.md`, "Retail render parity".

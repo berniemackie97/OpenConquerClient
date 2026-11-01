@@ -5,6 +5,12 @@ namespace OpenConquer.Client.UI.Flash;
 /// <summary>Something the pointer can target: a button, or a clip with pointer handlers.</summary>
 internal interface IFlashPointerTarget
 {
+    /// <summary>AS2 <c>enabled</c>: a disabled target receives no pointer events.</summary>
+    bool Enabled
+    {
+        get;
+    }
+
     void RollOver();
 
     void RollOut();

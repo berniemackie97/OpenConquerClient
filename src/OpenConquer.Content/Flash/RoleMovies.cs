@@ -10,11 +10,15 @@ public static class RoleMovies
 {
     /// <summary><c>data/main/role.dat</c>: the create-role screen.</summary>
     public static FlashMovie LoadRole() =>
-        Load("role", 349550, "D5276A46D7E2D8D0207B7D062DADA83A944B0C6A3E79FB3BEF2F604F5FAC50AD");
+        Load("role", 354188, "890F8F74BEC7F794F71EE7AC89487F55346AF1C2EF9F0F4D5CC622396165B90E");
 
     /// <summary><c>data/main/flash/characterInAndOut.swf</c>: the class portraits role.dat loads into its stage.</summary>
     public static FlashMovie LoadCharacterInAndOut() =>
-        Load("characterInAndOut", 271221, "41EA797775495B1F6C13D872D0C87D1411D32E051FEDCCACB691689B0795CE22");
+        Load("characterInAndOut", 273802, "8A8FF5020AA0AFE8C235D5F5CFCD4663706C58378C878E1400E3331FEC591F4B");
+
+    /// <summary><c>data/main/flash/logo.swf</c>: the animated title role.dat loads into <c>logoMC</c>.</summary>
+    public static FlashMovie LoadLogo() =>
+        Load("logo", 3364, "3E3E20456681C9ED24D86FF510BEA5D5AAD8AD9AE0979A0F067A14ACB4CD01AB");
 
     private static FlashMovie Load(string name, int length, string sha256)
     {

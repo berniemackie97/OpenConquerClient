@@ -1,3 +1,4 @@
+using System.Globalization;
 using OpenConquer.Content.Flash;
 
 namespace OpenConquer.Client.UI.Flash;
@@ -170,6 +171,10 @@ internal sealed class FlashTextInstance : FlashDisplayObject
     {
         Definition = character;
         _text = character.InitialText;
+        if (Binding is { } variable && !parent.TryGet(variable, out _))
+        {
+            parent.Set(variable, _text);
+        }
     }
 
     public FlashEditTextCharacter Definition
@@ -182,13 +187,34 @@ internal sealed class FlashTextInstance : FlashDisplayObject
     /// <summary>AS2 <c>text</c>. Setting it from a script does not raise <see cref="OnChanged"/>.</summary>
     public string Text
     {
-        get => _text;
+        get => Value;
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            _text = value;
+            Value = value;
             Caret = Math.Min(Caret, value.Length);
             _anchor = Math.Min(_anchor, value.Length);
+        }
+    }
+
+    /// <summary>
+    /// The parent-timeline variable the field is bound to (<c>DefineEditText</c> <c>VariableName</c>). Flash reads the
+    /// field's text from that variable and writes edits back to it, so a field the timeline replaces keeps its text.
+    /// </summary>
+    private string? Binding => Definition.Variable.Length == 0 ? null : Definition.Variable;
+
+    private string Value
+    {
+        get => Binding is { } variable && Parent!.TryGet(variable, out object? bound) && bound is not null
+            ? Convert.ToString(bound, CultureInfo.InvariantCulture) ?? string.Empty
+            : _text;
+        set
+        {
+            _text = value;
+            if (Binding is { } variable)
+            {
+                Parent!.Set(variable, value);
+            }
         }
     }
 
@@ -204,7 +230,7 @@ internal sealed class FlashTextInstance : FlashDisplayObject
 
     public bool HasSelection => _anchor != Caret;
 
-    public string SelectedText => Definition.Password || Definition.NoSelect ? string.Empty : _text[SelectionStart..SelectionEnd];
+    public string SelectedText => Definition.Password || Definition.NoSelect ? string.Empty : Value[SelectionStart..SelectionEnd];
 
     internal Func<string, bool>? AcceptInsertion
     {
@@ -220,8 +246,8 @@ internal sealed class FlashTextInstance : FlashDisplayObject
     /// <summary>AS2 <c>Selection.setSelection(begin, end)</c>, clamped to the field's text.</summary>
     public void SetSelection(int begin, int end)
     {
-        _anchor = Math.Clamp(begin, 0, _text.Length);
-        Caret = Math.Clamp(end, 0, _text.Length);
+        _anchor = Math.Clamp(begin, 0, Value.Length);
+        Caret = Math.Clamp(end, 0, Value.Length);
     }
 
     internal void Insert(ReadOnlySpan<char> characters)
@@ -244,7 +270,7 @@ internal sealed class FlashTextInstance : FlashDisplayObject
         int count = characters.Length;
         if (Definition.MaxLength > 0)
         {
-            count = Math.Min(count, Definition.MaxLength - (_text.Length - (end - start)));
+            count = Math.Min(count, Definition.MaxLength - (Value.Length - (end - start)));
         }
 
         if (count <= 0 || AcceptInsertion is not null && count != characters.Length)
@@ -252,13 +278,13 @@ internal sealed class FlashTextInstance : FlashDisplayObject
             return;
         }
 
-        string candidate = string.Concat(_text.AsSpan(0, start), characters[..count], _text.AsSpan(end));
+        string candidate = string.Concat(Value.AsSpan(0, start), characters[..count], Value.AsSpan(end));
         if (AcceptInsertion is not null && !AcceptInsertion(candidate))
         {
             return;
         }
 
-        _text = candidate;
+        Value = candidate;
         Caret = _anchor = start + count;
         OnChanged?.Invoke(this);
     }
@@ -272,7 +298,7 @@ internal sealed class FlashTextInstance : FlashDisplayObject
 
         if (IsInput && Caret > 0)
         {
-            _text = _text.Remove(Caret - 1, 1);
+            Value = Value.Remove(Caret - 1, 1);
             Caret--;
             _anchor = Caret;
             OnChanged?.Invoke(this);
@@ -286,9 +312,9 @@ internal sealed class FlashTextInstance : FlashDisplayObject
             return;
         }
 
-        if (IsInput && Caret < _text.Length)
+        if (IsInput && Caret < Value.Length)
         {
-            _text = _text.Remove(Caret, 1);
+            Value = Value.Remove(Caret, 1);
             OnChanged?.Invoke(this);
         }
     }
@@ -301,7 +327,7 @@ internal sealed class FlashTextInstance : FlashDisplayObject
         }
 
         int start = SelectionStart;
-        _text = _text.Remove(start, SelectionEnd - start);
+        Value = Value.Remove(start, SelectionEnd - start);
         Caret = _anchor = start;
         OnChanged?.Invoke(this);
         return true;
@@ -309,7 +335,7 @@ internal sealed class FlashTextInstance : FlashDisplayObject
 
     internal void MoveCaret(int position, bool extendSelection = false)
     {
-        Caret = Math.Clamp(position, 0, _text.Length);
+        Caret = Math.Clamp(position, 0, Value.Length);
         if (!extendSelection || Definition.NoSelect)
         {
             _anchor = Caret;
