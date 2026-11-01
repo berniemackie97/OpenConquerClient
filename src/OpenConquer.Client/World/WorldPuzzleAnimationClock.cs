@@ -5,6 +5,7 @@ internal sealed class WorldPuzzleAnimationClock
 {
     private readonly uint _intervalMilliseconds;
     private uint _lastRenderMilliseconds;
+    private bool _initialized;
     private uint _frame;
 
     public WorldPuzzleAnimationClock(uint intervalMilliseconds)
@@ -15,9 +16,10 @@ internal sealed class WorldPuzzleAnimationClock
 
     public uint FrameForRender(uint nowMilliseconds)
     {
-        if (_lastRenderMilliseconds == 0)
+        if (!_initialized)
         {
             _lastRenderMilliseconds = nowMilliseconds;
+            _initialized = true;
         }
 
         uint frame = _frame;

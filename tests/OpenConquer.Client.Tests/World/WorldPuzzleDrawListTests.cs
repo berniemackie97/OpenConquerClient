@@ -72,6 +72,28 @@ public sealed class WorldPuzzleDrawListTests
     }
 
     [Fact]
+    public void PositionedPuzzle_UsesSuppliedNonzeroFrameForVisibleTiles()
+    {
+        using WorldMapFixture retail = new(twoFrameBackdrop: true);
+        WorldPuzzleProjection projection = new(800, 600, 0, 0, 3500, 1400, 1, 1);
+        GameMapPositionedOverlayRecord record = Assert.Single(retail.Map.Scene.PositionedOverlays);
+        GameMapPuzzleOverlayEntry overlay =
+            Assert.IsType<GameMapPuzzleOverlayEntry>(Assert.Single(record.Entries));
+
+        IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.PositionedPuzzle(
+            retail.Map, retail.Puzzles, projection, record, overlay, frame: 1);
+
+        Assert.NotEmpty(tiles);
+        Assert.All(tiles, tile =>
+        {
+            Assert.Equal(2, tile.Animation.FrameCount);
+            Assert.Equal(1, tile.FrameIndex);
+            Assert.Equal("data/map/puzzle/newbie/bg001.dds",
+                tile.Animation.FramePaths[tile.FrameIndex]);
+        });
+    }
+
+    [Fact]
     public void LargerViewport_DoesNotExpandTheRetail800By600TileEnumeration()
     {
         using WorldMapFixture retail = new();

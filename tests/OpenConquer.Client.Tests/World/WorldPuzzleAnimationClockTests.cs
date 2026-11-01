@@ -27,6 +27,17 @@ public sealed class WorldPuzzleAnimationClockTests
     }
 
     [Fact]
+    public void FirstRenderAtZero_AdvancesOnItsFirstElapsedInterval()
+    {
+        WorldPuzzleAnimationClock clock = new(1000);
+
+        Assert.Equal(0u, clock.FrameForRender(0));
+        Assert.Equal(0u, clock.FrameForRender(999));
+        Assert.Equal(0u, clock.FrameForRender(1000));
+        Assert.Equal(1u, clock.FrameForRender(1001));
+    }
+
+    [Fact]
     public void IntervalMustBePositive()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new WorldPuzzleAnimationClock(0));
