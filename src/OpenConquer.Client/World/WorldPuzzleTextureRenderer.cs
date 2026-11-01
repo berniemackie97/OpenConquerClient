@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using OpenConquer.Content;
 using OpenConquer.Content.Ani;
 using OpenConquer.Content.Images;
@@ -75,12 +76,21 @@ internal sealed class WorldPuzzleTextureRenderer : IDisposable
             return;
         }
 
-        _disposed = true;
+        ExceptionDispatchInfo? firstFailure = null;
         foreach (OpenGLTexture2D texture in _textures.Values)
         {
-            texture.Dispose();
+            try
+            {
+                texture.Dispose();
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
 
         _textures.Clear();
+        _disposed = true;
+        firstFailure?.Throw();
     }
 }
