@@ -3,110 +3,17 @@ using System.Text;
 
 namespace OpenConquer.Content.Map;
 
-/// <summary>One footprint cell of a terrain object, applied to the map cell it covers.</summary>
-/// <param name="PassabilityFlag">Non-zero blocks movement.</param>
-/// <param name="SurfaceId">Surface type used for footsteps and effects.</param>
-/// <param name="ElevationDelta">Height added to the elevation already attached to the map cell.</param>
 public readonly record struct GameMapTerrainCell(ushort PassabilityFlag, ushort SurfaceId, short ElevationDelta);
 
-/// <summary>A terrain object authored in a <c>.scene</c> file: an animated sprite with a cell footprint.</summary>
-public sealed class GameMapTerrainObject
-{
-    internal GameMapTerrainObject(string animationPath, string sectionName, int renderOffsetX, int renderOffsetY,
-        int frameIntervalMilliseconds, int gridWidth, int gridHeight, uint authoredColor, int anchorOffsetX,
-        int anchorOffsetY, int drawParameter, IReadOnlyList<GameMapTerrainCell> cells)
-    {
-        AnimationPath = animationPath;
-        SectionName = sectionName;
-        RenderOffsetX = renderOffsetX;
-        RenderOffsetY = renderOffsetY;
-        FrameIntervalMilliseconds = frameIntervalMilliseconds;
-        GridWidth = gridWidth;
-        GridHeight = gridHeight;
-        AuthoredColor = authoredColor;
-        AnchorOffsetX = anchorOffsetX;
-        AnchorOffsetY = anchorOffsetY;
-        DrawParameter = drawParameter;
-        Cells = cells;
-    }
+public sealed record GameMapTerrainObject(
+    string AnimationPath, string SectionName,
+    int RenderOffsetX, int RenderOffsetY, int FrameIntervalMilliseconds,
+    int GridWidth, int GridHeight, uint AuthoredColor,
+    int AnchorOffsetX, int AnchorOffsetY, int DrawParameter,
+    IReadOnlyList<GameMapTerrainCell> Cells);
 
-    /// <summary>Normalized content path of the animation index.</summary>
-    public string AnimationPath
-    {
-        get;
-    }
-
-    /// <summary>Section of <see cref="AnimationPath"/> holding the sprite frames.</summary>
-    public string SectionName
-    {
-        get;
-    }
-
-    /// <summary>Screen-pixel offset added to the projected anchor cell before drawing.</summary>
-    public int RenderOffsetX
-    {
-        get;
-    }
-
-    /// <inheritdoc cref="RenderOffsetX"/>
-    public int RenderOffsetY
-    {
-        get;
-    }
-
-    /// <summary>Milliseconds per animation frame as authored; a value below 1 is drawn as 1.</summary>
-    public int FrameIntervalMilliseconds
-    {
-        get;
-    }
-
-    /// <summary>Footprint width in map cells.</summary>
-    public int GridWidth
-    {
-        get;
-    }
-
-    /// <summary>Footprint height in map cells.</summary>
-    public int GridHeight
-    {
-        get;
-    }
-
-    /// <summary>Colour stored with the object. Drawing tints with the map world colour instead.</summary>
-    public uint AuthoredColor
-    {
-        get;
-    }
-
-    /// <summary>Cell offset from the placement's anchor cell to this object's anchor cell.</summary>
-    public int AnchorOffsetX
-    {
-        get;
-    }
-
-    /// <inheritdoc cref="AnchorOffsetX"/>
-    public int AnchorOffsetY
-    {
-        get;
-    }
-
-    /// <summary>Draw parameter stored with the object; terrain objects draw with the default blend.</summary>
-    public int DrawParameter
-    {
-        get;
-    }
-
-    /// <summary>Footprint cells, row by row (<see cref="GridWidth"/> per row).</summary>
-    public IReadOnlyList<GameMapTerrainCell> Cells
-    {
-        get;
-    }
-}
-
-/// <summary>Parses a <c>.scene</c> file: the terrain objects a type-1 map scenery placement draws.</summary>
 public sealed class GameMapTerrainSceneFile
 {
-    /// <summary>Upper bound on a scene file; the largest shipped file is about 11 KiB.</summary>
     internal const int MaximumFileBytes = 1024 * 1024;
 
     private const int AnimationPathBytes = 0x100;
@@ -125,7 +32,6 @@ public sealed class GameMapTerrainSceneFile
         get;
     }
 
-    /// <exception cref="InvalidDataException">The data is truncated, has trailing bytes, or holds an invalid field.</exception>
     public static GameMapTerrainSceneFile Parse(ReadOnlySpan<byte> source)
     {
         if (source.Length < sizeof(int) || source.Length > MaximumFileBytes)
@@ -177,7 +83,6 @@ public sealed class GameMapTerrainSceneFile
         GameMapTerrainCell[] cells = new GameMapTerrainCell[(int)cellCount];
         for (int cell = 0; cell < cells.Length; cell++)
         {
-            // Each value is stored as a 32-bit field of which only the low 16 bits are significant.
             ushort passability = unchecked((ushort)reader.ReadInt32());
             ushort surface = unchecked((ushort)reader.ReadInt32());
             short elevation = unchecked((short)reader.ReadInt32());

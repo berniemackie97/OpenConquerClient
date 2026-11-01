@@ -34,7 +34,7 @@ plus the object's anchor offset.
 
 - `GameMapTerrainSceneFile` parses a file. It rejects truncation, trailing bytes, counts or grids larger than the
   file, empty or unterminated names, and animation paths that are absolute or leave the content root. Files are
-  capped at 1 MiB; the largest shipped file is about 11 KiB.
+  capped at 1 MiB.
 - `GameMapTerrainSceneResources` loads each referenced scene file once, resolves every object's section through
   `AniSectionResolver`, and keeps the map's placements in authored order. Placements of the same file share one
   object list. Authored order is not a draw order.
@@ -42,7 +42,7 @@ plus the object's anchor offset.
   whose name only shares a hash with the requested one, and sections without frames. Scenery animation binding
   and puzzle resources use it too.
 
-Every scene file the shipped maps reference parses, and every animation section they name resolves.
+The validation command checks the scene resources and animation sections referenced by the selected map.
 
 ## Validation
 
@@ -58,8 +58,8 @@ referenced frame. Newbie Village (1010) has 20 placements of six scene files (`s
 ## Tests
 
 Parser tests cover every field and each rejection case. Resource tests load the Newbie map and check placement
-order, shared scene files, and missing files and sections. Resolver tests cover caching, path normalisation,
-missing and empty sections, and hash collisions. Scene, animation and image contents in tests are generated.
+order, shared scene files, and missing files and sections. Resolver and resource tests cover caching, path normalisation, missing and empty sections,
+and hash collisions. Scene, animation and image contents in tests are generated.
 
 ## Next
 

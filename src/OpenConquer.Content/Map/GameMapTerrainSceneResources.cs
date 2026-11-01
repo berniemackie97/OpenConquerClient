@@ -3,33 +3,13 @@ using OpenConquer.Content.Ani;
 
 namespace OpenConquer.Content.Map;
 
-/// <summary>A terrain object with its resolved animation section.</summary>
 public sealed record GameMapTerrainObjectBinding(GameMapTerrainObject Terrain, AniIndexSection Animation);
 
-/// <summary>A type-1 map scenery placement and the terrain objects of its scene file, in file order.</summary>
-public sealed class GameMapTerrainScenePlacement
-{
-    internal GameMapTerrainScenePlacement(GameMapSceneryRecord scenery, IReadOnlyList<GameMapTerrainObjectBinding> objects)
-    {
-        Scenery = scenery;
-        Objects = objects;
-    }
-
-    public GameMapSceneryRecord Scenery
-    {
-        get;
-    }
-
-    /// <summary>Terrain objects of the placement's scene file; placements of the same file share this list.</summary>
-    public IReadOnlyList<GameMapTerrainObjectBinding> Objects
-    {
-        get;
-    }
-}
+public sealed record GameMapTerrainScenePlacement(
+    GameMapSceneryRecord Scenery, IReadOnlyList<GameMapTerrainObjectBinding> Objects);
 
 /// <summary>
-/// Loads the scene files referenced by a map's type-1 scenery placements and resolves their animation sections.
-/// Placement order is the map's authored order, which is not a draw order.
+/// Placements preserve map file order, not depth order. Shared scene files reuse the same bound object list.
 /// </summary>
 public sealed class GameMapTerrainSceneResources
 {
@@ -46,19 +26,13 @@ public sealed class GameMapTerrainSceneResources
         get;
     }
 
-    /// <summary>Number of distinct scene files the placements reference.</summary>
     public int SceneFileCount
     {
         get;
     }
 
-    /// <exception cref="FileNotFoundException">A referenced scene file or animation index is missing.</exception>
-    /// <exception cref="InvalidDataException">A scene file or a referenced animation section is invalid.</exception>
     public static GameMapTerrainSceneResources Load(IClientContentSource source, GameMapContent map)
     {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(map);
-
         AniSectionResolver animations = new(source, ContentLookupMode.LooseOnly);
         Dictionary<string, IReadOnlyList<GameMapTerrainObjectBinding>> sceneFiles = new(StringComparer.OrdinalIgnoreCase);
         List<GameMapTerrainScenePlacement> placements = [];

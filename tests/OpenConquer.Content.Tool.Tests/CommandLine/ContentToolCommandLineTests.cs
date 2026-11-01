@@ -101,13 +101,13 @@ public sealed class ContentToolCommandLineTests
     public void TryParse_ReadsValidateMapTerrainScenesCommand()
     {
         Assert.True(ContentToolCommandLine.TryParse(
-            ["validate-map-terrain-scenes", "--map-data-id", "1010", "--source", "retail"],
+            ["validate-map-terrain-scenes", "--map-data-id", "1010", "--source", "client"],
             s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
 
         Assert.Null(errorMessage);
         ValidateMapTerrainScenesCommand validate = Assert.IsType<ValidateMapTerrainScenesCommand>(command);
         Assert.Equal(1010u, validate.MapDataId);
-        Assert.Equal(Path.Combine(s_workingDirectory, "retail"), validate.SourceRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "client"), validate.SourceRootPath);
     }
 
     [Theory]

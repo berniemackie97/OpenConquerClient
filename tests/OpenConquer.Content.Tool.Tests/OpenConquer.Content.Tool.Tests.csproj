@@ -5,6 +5,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../OpenConquer.Content.Tests/Fixtures/Map/TerrainSceneTestData.cs"
+             Link="Fixtures/TerrainSceneTestData.cs" />
     <None Include="../../content/retail-5517/payload/ini/gamemap.dat"
           Link="RetailFixture/ini/GameMap.dat"
           CopyToOutputDirectory="PreserveNewest" />

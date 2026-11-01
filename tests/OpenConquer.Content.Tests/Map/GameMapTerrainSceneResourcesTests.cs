@@ -1,4 +1,5 @@
 using System.Text;
+using OpenConquer.Tests.Fixtures;
 using OpenConquer.Content.Map;
 
 namespace OpenConquer.Content.Tests.Map;
@@ -47,13 +48,31 @@ public sealed class GameMapTerrainSceneResourcesTests
     public void Load_SceneReferencingAMissingAnimationSection_ThrowsInvalidData()
     {
         using TemporaryContentDirectory root = CreateNewbieContent();
-        root.WriteFile("map/Scene/stand06.scene", CreateScene("unlisted"));
+        root.WriteFile("map/Scene/stand06.scene", TerrainSceneTestData.Create("unlisted", 1, 1));
         ClientContentRoot source = new(root.RootPath);
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), 1010);
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => GameMapTerrainSceneResources.Load(source, map));
 
         Assert.Contains("unlisted.tga", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Load_CollidingAnimationSectionName_RejectsTheWrongSection()
+    {
+        using TemporaryContentDirectory root = CreateNewbieContent();
+        string path = Path.Combine(root.RootPath, "ani", "MapScene.ani");
+        string original = File.ReadAllText(path);
+        Assert.Contains("[stand06.tga]", original, StringComparison.Ordinal);
+        File.WriteAllText(path, original.Replace("[stand06.tga]", "[staoC06.tga]", StringComparison.Ordinal));
+
+        ClientContentRoot source = new(root.RootPath);
+        GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), 1010);
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+            GameMapTerrainSceneResources.Load(source, map));
+        Assert.Contains("stand06.tga", error.Message, StringComparison.Ordinal);
+        Assert.Contains("staoC06.tga", error.Message, StringComparison.Ordinal);
     }
 
     private static TemporaryContentDirectory CreateNewbieContent()
@@ -66,7 +85,7 @@ public sealed class GameMapTerrainSceneResourcesTests
         StringBuilder index = new();
         foreach (string name in s_sceneNames)
         {
-            root.WriteFile($"map/Scene/{name}.scene", CreateScene(name));
+            root.WriteFile($"map/Scene/{name}.scene", TerrainSceneTestData.Create(name, 1, 1));
             index.Append('[').Append(name).Append(".tga]\nFrameAmount=1\nFrame0=data/map/").Append(name).Append(".dds\n");
         }
 
@@ -74,26 +93,4 @@ public sealed class GameMapTerrainSceneResourcesTests
         return root;
     }
 
-    private static byte[] CreateScene(string sectionStem)
-    {
-        using MemoryStream stream = new();
-        using BinaryWriter writer = new(stream, Encoding.Latin1, leaveOpen: true);
-        writer.Write(1);
-        writer.Write(Field(@"ani\MapScene.ani", 0x100));
-        writer.Write(Field($"{sectionStem}.tga", 0x40));
-        foreach (int value in (ReadOnlySpan<int>)[-60, -48, 200, 1, 1, 0, 0, 0, 0, 0, 0, 0])
-        {
-            writer.Write(value);
-        }
-
-        writer.Flush();
-        return stream.ToArray();
-    }
-
-    private static byte[] Field(string value, int length)
-    {
-        byte[] field = new byte[length];
-        Encoding.Latin1.GetBytes(value).CopyTo(field, 0);
-        return field;
-    }
 }

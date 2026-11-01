@@ -1,4 +1,3 @@
-using OpenConquer.Content.Ani;
 using OpenConquer.Content.Map;
 
 namespace OpenConquer.Content.Tool.World;
@@ -15,9 +14,8 @@ internal static class WorldMapTerrainSceneValidator
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), mapDataId);
         GameMapTerrainSceneResources resources = GameMapTerrainSceneResources.Load(source, map);
 
-        // Placements of one scene file share bindings; count each object once.
         HashSet<GameMapTerrainObjectBinding> objects = new(ReferenceEqualityComparer.Instance);
-        HashSet<string> decodedFrames = new(StringComparer.OrdinalIgnoreCase);
+        WorldFrameValidation frames = new(source);
         foreach (GameMapTerrainScenePlacement placement in resources.Placements)
         {
             foreach (GameMapTerrainObjectBinding binding in placement.Objects)
@@ -27,18 +25,11 @@ internal static class WorldMapTerrainSceneValidator
                     continue;
                 }
 
-                for (int frame = 0; frame < binding.Animation.FrameCount; frame++)
-                {
-                    if (decodedFrames.Add(binding.Animation.FramePaths[frame]))
-                    {
-                        _ = AniFrameLoader.LoadWrappedFrame(source, binding.Animation, (uint)frame,
-                            ContentLookupMode.LooseThenPackage);
-                    }
-                }
+                frames.Validate(binding.Animation);
             }
         }
 
         return new WorldMapTerrainSceneValidationResult(
-            resources.Placements.Count, resources.SceneFileCount, objects.Count, decodedFrames.Count);
+            resources.Placements.Count, resources.SceneFileCount, objects.Count, frames.FrameCount);
     }
 }

@@ -15,7 +15,7 @@ internal static class WorldMapSceneryAniValidator
         IReadOnlyList<GameMapSceneryAniBinding> bindings = GameMapSceneryAniBindings.Load(source, map.Scene);
 
         HashSet<AniIndexSection> animations = [];
-        HashSet<string> decodedPaths = new(StringComparer.OrdinalIgnoreCase);
+        WorldFrameValidation frames = new(source);
 
         foreach (GameMapSceneryAniBinding binding in bindings)
         {
@@ -24,16 +24,9 @@ internal static class WorldMapSceneryAniValidator
                 continue;
             }
 
-            for (int frame = 0; frame < binding.Animation.FrameCount; frame++)
-            {
-                if (decodedPaths.Add(binding.Animation.FramePaths[frame]))
-                {
-                    _ = AniFrameLoader.LoadWrappedFrame(source, binding.Animation, (uint)frame,
-                        ContentLookupMode.LooseThenPackage);
-                }
-            }
+            frames.Validate(binding.Animation);
         }
 
-        return new WorldMapSceneryAniValidationResult(bindings.Count, animations.Count, decodedPaths.Count);
+        return new WorldMapSceneryAniValidationResult(bindings.Count, animations.Count, frames.FrameCount);
     }
 }

@@ -1,7 +1,7 @@
 namespace OpenConquer.Content.Ani;
 
 /// <summary>
-/// Resolves animation sections by exact name, loading each ANI index file once per content path.
+/// Reuses indexes by normalized content path within one resource-loading operation.
 /// </summary>
 public sealed class AniSectionResolver
 {
@@ -13,18 +13,10 @@ public sealed class AniSectionResolver
 
     public AniSectionResolver(IClientContentSource source, ContentLookupMode lookupMode)
     {
-        ArgumentNullException.ThrowIfNull(source);
-
         _source = source;
         _lookupMode = lookupMode;
     }
 
-    /// <summary>
-    /// Returns the section named <paramref name="sectionName"/> in the index at <paramref name="indexPath"/>.
-    /// </summary>
-    /// <exception cref="InvalidDataException">
-    /// The index has no section with exactly that name, or the section has no frames.
-    /// </exception>
     public AniIndexSection Resolve(string indexPath, string sectionName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sectionName);
@@ -41,7 +33,6 @@ public sealed class AniSectionResolver
             throw new InvalidDataException($"Animation index '{normalizedPath}' does not define section [{sectionName}].");
         }
 
-        // Index lookup is by name hash, so a different name with the same hash must not satisfy the reference.
         if (!string.Equals(section.Name, sectionName, StringComparison.Ordinal))
         {
             throw new InvalidDataException(

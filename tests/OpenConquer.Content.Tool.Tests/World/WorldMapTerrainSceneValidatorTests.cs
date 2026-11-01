@@ -1,4 +1,5 @@
 using System.Text;
+using OpenConquer.Tests.Fixtures;
 using OpenConquer.Content.Tool.World;
 
 namespace OpenConquer.Content.Tool.Tests.World;
@@ -57,7 +58,7 @@ public sealed class WorldMapTerrainSceneValidatorTests
         StringBuilder index = new();
         foreach (string name in s_sceneNames)
         {
-            source.WriteBytes($"map/Scene/{name}.scene", CreateScene(name));
+            source.WriteBytes($"map/Scene/{name}.scene", TerrainSceneTestData.Create(name, 2, 2));
             source.WriteBytes($"data/map/mapobj/sky/{name}.dds", WorldTestDds.CreateDxt1());
             index.Append('[').Append(name).Append(".tga]\nFrameAmount=1\nFrame0=data/map/mapobj/sky/")
                 .Append(name).Append(".dds\n");
@@ -67,27 +68,4 @@ public sealed class WorldMapTerrainSceneValidatorTests
         return source;
     }
 
-    private static byte[] CreateScene(string name)
-    {
-        using MemoryStream stream = new();
-        using BinaryWriter writer = new(stream, Encoding.Latin1, leaveOpen: true);
-        writer.Write(1);
-        writer.Write(Field(@"ani\MapScene.ani", 0x100));
-        writer.Write(Field($"{name}.tga", 0x40));
-        foreach (int value in (ReadOnlySpan<int>)[-60, -48, 200, 2, 2, 0, 0, 0, 0])
-        {
-            writer.Write(value);
-        }
-
-        writer.Write(new byte[2 * 2 * 3 * sizeof(int)]);
-        writer.Flush();
-        return stream.ToArray();
-    }
-
-    private static byte[] Field(string value, int length)
-    {
-        byte[] field = new byte[length];
-        Encoding.Latin1.GetBytes(value).CopyTo(field, 0);
-        return field;
-    }
 }
