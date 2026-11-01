@@ -38,7 +38,10 @@ internal sealed class ContentManifest
         get;
     }
 
-    public IReadOnlyList<MissingMapArchive>? MissingMapArchives { get; }
+    public IReadOnlyList<MissingMapArchive>? MissingMapArchives
+    {
+        get;
+    }
 
     public int SchemaVersion
     {
