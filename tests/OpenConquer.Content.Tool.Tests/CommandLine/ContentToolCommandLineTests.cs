@@ -108,17 +108,24 @@ public sealed class ContentToolCommandLineTests
         Assert.Null(verify.MapDataId);
     }
 
-    [Theory]
-    [InlineData(new string[] { "import-client-content", "--source", "in", "--destination", "out",
-        "--map-data-id", "1010", "--all-maps" })]
-    [InlineData(new string[] { "verify-content-set", "--content-set", "world", "--all-maps", "--all-maps" })]
-    [InlineData(new string[] { "import-client-content", "--source", "in", "--all-maps" })]
-    public void TryParse_RejectsAmbiguousAllMapsSelection(string[] args)
+    [Fact]
+    public void TryParse_RejectsAmbiguousAllMapsSelection()
     {
-        Assert.False(ContentToolCommandLine.TryParse(
-            args, s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
-        Assert.Null(command);
-        Assert.NotNull(errorMessage);
+        string[][] invalidInvocations =
+        [
+            ["import-client-content", "--source", "in", "--destination", "out",
+                "--map-data-id", "1010", "--all-maps"],
+            ["verify-content-set", "--content-set", "world", "--all-maps", "--all-maps"],
+            ["import-client-content", "--source", "in", "--all-maps"],
+        ];
+
+        foreach (string[] args in invalidInvocations)
+        {
+            Assert.False(ContentToolCommandLine.TryParse(
+                args, s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+            Assert.Null(command);
+            Assert.NotNull(errorMessage);
+        }
     }
 
     [Fact]
