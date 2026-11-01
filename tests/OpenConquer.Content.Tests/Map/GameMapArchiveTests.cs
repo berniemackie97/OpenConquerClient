@@ -8,9 +8,9 @@ namespace OpenConquer.Content.Tests.Map;
 public sealed class GameMapArchiveTests
 {
     [Fact]
-    public void RetailNewbieArchive_DecodesOriginalDMapAndSceneSections()
+    public void NewbieArchive_DecodesDMapAndSceneSections()
     {
-        byte[] decoded = GameMapArchive.Decode(Retail(), "map/map/newbie.7z");
+        byte[] decoded = GameMapArchive.Decode(ReadFixture(), "map/map/newbie.7z");
 
         Assert.Equal(118644, decoded.Length);
         GameMapCellGrid grid = GameMapCellGrid.Parse(decoded);
@@ -29,7 +29,7 @@ public sealed class GameMapArchiveTests
     [Fact]
     public void Decode_RejectsInvalidSignatureAndWrongEntryIdentity()
     {
-        byte[] archive = Retail();
+        byte[] archive = ReadFixture();
         byte[] invalidSignature = (byte[])archive.Clone();
         invalidSignature[0] = 0;
 
@@ -37,7 +37,7 @@ public sealed class GameMapArchiveTests
         Assert.Throws<InvalidDataException>(() => GameMapArchive.Decode(archive.AsSpan(0, 31), "map/map/newbie.7z"));
         Assert.Throws<InvalidDataException>(() => GameMapArchive.Decode(archive, "map/map/newplain.7z"));
         Assert.Throws<ArgumentException>(() => GameMapArchive.Decode(archive, "../newbie.7z"));
-        Assert.Throws<ArgumentException>(() => GameMapArchive.Decode(archive, "map/map/newbie.DMap"));
+        Assert.Throws<InvalidDataException>(() => GameMapArchive.Decode(archive, "map/map/newbie.DMap"));
     }
 
     [Fact]
@@ -59,6 +59,6 @@ public sealed class GameMapArchiveTests
         Assert.Throws<InvalidDataException>(() => GameMapArchive.Decode(oversized, "map/map/newbie.7z"));
     }
 
-    private static byte[] Retail() =>
+    private static byte[] ReadFixture() =>
         File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "newbie.7z"));
 }
