@@ -1,8 +1,8 @@
-# WORLD-007: Retail Newbie Village DDS compression support
+# WORLD-007: Newbie Village DDS compression support
 
-The original retail 5517 `ani/newbie.ani` references 96 unique DDS frame
+The `ani/newbie.ani` fixture references 96 unique DDS frame
 paths. All 96 resolve through the existing `data.wdf` package, not as
-loose source files. Direct inspection of each retail DDS header establishes:
+loose source files. The referenced DDS headers declare:
 
 - 70 DXT1 files (32,896 bytes each, 256×256).
 - 26 DXT3 files (65,664 bytes each, 256×256).
@@ -23,13 +23,13 @@ same bounded DDS header, dimensions, flags, and image-memory validation
 apply to both formats. Unsupported formats fail explicitly.
 
 A regression test includes the unchanged first compressed 8-byte block
-from retail `data/map/puzzle/newbie/newbie005.dds` (inside `data.wdf`),
+from `data/map/puzzle/newbie/newbie005.dds` (inside `data.wdf`),
 with pixel expectations independently checked using Pillow's DDS decoder.
-The complete retail DDS is 32,896 bytes and has SHA-256
+The complete DDS fixture is 32,896 bytes and has SHA-256
 `f414793043f137e30a458bfba645724ac711f87a9224b08a097eb2edcfdfb451`.
 Additional tests cover both BC1 color modes, transparency, partial-edge
 blocks, malformed input, and resolution through the existing WDF content
-source. Tests do not replace the retail source files in the product.
+source. Tests do not replace content files in the product.
 
 This slice is independent of WORLD-006 and does not activate map rendering.
 Runtime content closure, actual DDS asset staging, GPU resources and
