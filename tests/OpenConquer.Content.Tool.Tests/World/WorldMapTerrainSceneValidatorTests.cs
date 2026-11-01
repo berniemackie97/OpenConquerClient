@@ -48,6 +48,21 @@ public sealed class WorldMapTerrainSceneValidatorTests
         Assert.Throws(expected, () => WorldMapTerrainSceneValidator.Validate(source.RootPath, 1010));
     }
 
+    [Fact]
+    public void Validate_CollidingAnimationSectionName_RejectsTheWrongSection()
+    {
+        using TemporarySourceTree source = CreateSource();
+        const string indexPath = "ani/MapScene.ani";
+        string original = File.ReadAllText(source.ChildPath(indexPath));
+        Assert.Contains("[stand06.tga]", original, StringComparison.Ordinal);
+        source.WriteText(indexPath, original.Replace("[stand06.tga]", "[staoC06.tga]", StringComparison.Ordinal));
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+            WorldMapTerrainSceneValidator.Validate(source.RootPath, 1010));
+        Assert.Contains("stand06.tga", error.Message, StringComparison.Ordinal);
+        Assert.Contains("staoC06.tga", error.Message, StringComparison.Ordinal);
+    }
+
     private static TemporarySourceTree CreateSource()
     {
         TemporarySourceTree source = new();
@@ -67,5 +82,4 @@ public sealed class WorldMapTerrainSceneValidatorTests
         source.WriteText("ani/MapScene.ani", index.ToString());
         return source;
     }
-
 }
