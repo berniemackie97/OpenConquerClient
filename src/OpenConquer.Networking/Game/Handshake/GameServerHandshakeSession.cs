@@ -207,13 +207,13 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     {
         ValidateTimeout(timeout);
         cancellationToken.ThrowIfCancellationRequested();
+        using CancellationTokenSource proofDeadline = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, _lifetimeCancellation.Token);
+        proofDeadline.CancelAfter(timeout);
         EnterOperation(expectedPhase: 0, activePhase: 1);
 
         bool completed = false;
         byte[] packet = new byte[GameLoginProof1052.PacketLength];
-        using CancellationTokenSource proofDeadline = CancellationTokenSource.CreateLinkedTokenSource(
-            cancellationToken, _lifetimeCancellation.Token);
-        proofDeadline.CancelAfter(timeout);
         try
         {
             proofDeadline.Token.ThrowIfCancellationRequested();
