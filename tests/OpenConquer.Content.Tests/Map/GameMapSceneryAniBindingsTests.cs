@@ -63,6 +63,7 @@ public sealed class GameMapSceneryAniBindingsTests
         [
             SceneWithAdditionalScenery("ani/missing.ani", "c-city18.tga", 0, 0, 0),
             SceneWithAdditionalScenery("AniTitle=", "c-city18.tga", 1, 0, 0),
+            SceneWithAdditionalScenery("AniTitle=", "c-city18.tga", 0, 1, 0),
             SceneWithAdditionalScenery("AniTitle=", "c-city18.tga", 0, 0, 1),
         ];
 
