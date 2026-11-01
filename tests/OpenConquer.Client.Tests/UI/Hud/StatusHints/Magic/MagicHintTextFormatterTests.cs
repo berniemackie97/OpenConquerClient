@@ -79,6 +79,26 @@ public sealed class MagicHintTextFormatterTests
     }
 
     [Fact]
+    public void Format_CapsLargeEncodedArgumentAndValidatesRemainingDirectives()
+    {
+        byte[] source = Enumerable.Repeat((byte)'X', 100_000).ToArray();
+
+        byte[] result = MagicHintTextFormatter.Format("%s:%u"u8, 7,
+            (ReadOnlyMemory<byte>)source, 42u);
+
+        Assert.Equal("XXXXXXX"u8.ToArray(), result);
+        Assert.Throws<InvalidDataException>(() =>
+            MagicHintTextFormatter.Format("%s:%q"u8, 7, source, 42u));
+    }
+
+    [Fact]
+    public void Format_ZeroLengthOutputStillValidatesAllArguments()
+    {
+        Assert.Empty(MagicHintTextFormatter.Format("%u"u8, 0, 1u));
+        Assert.Throws<InvalidDataException>(() => MagicHintTextFormatter.Format("%u"u8, 0, 1u, 2u));
+    }
+
+    [Fact]
     public void Format_RejectsMismatchedDirectivesInsteadOfFabricatingValues()
     {
         Assert.Throws<InvalidDataException>(() => MagicHintTextFormatter.Format("%s"u8, 255));
