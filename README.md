@@ -140,8 +140,6 @@ reproduced safely in another way.
 
 ### Runtime Content
 
-The managed runtime closure currently contains 3,785 files totaling 21,319,841 bytes.
-
 The full set of paths is defined by:
 
 ```text
