@@ -17,7 +17,7 @@ public static class GameMapSceneryAniBindings
 
         foreach (GameMapSceneryRecord record in scene.Scenery)
         {
-            if (record.TypeCode != 4)
+            if (record.TypeCode != 4 || IsEmptyAnimationRecord(record))
             {
                 continue;
             }
@@ -33,4 +33,12 @@ public static class GameMapSceneryAniBindings
 
         return Array.AsReadOnly(bindings.ToArray());
     }
+
+    private static bool IsEmptyAnimationRecord(GameMapSceneryRecord record) =>
+        record.ResourcePath == "AniTitle=" &&
+        record.PartName == "PosCell=[0,0]" &&
+        record.TileX == 0 &&
+        record.TileY == 0 &&
+        record.EncodedPayload.Length == 0x1A0 &&
+        record.EncodedPayload.Span[0x18C..].IndexOfAnyExcept((byte)0) < 0;
 }

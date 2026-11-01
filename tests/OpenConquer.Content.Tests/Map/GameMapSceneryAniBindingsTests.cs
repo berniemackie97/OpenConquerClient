@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Text;
 using OpenConquer.Content.Ani;
@@ -30,6 +31,44 @@ public sealed class GameMapSceneryAniBindingsTests
         Assert.Same(bindings[1].Animation, bindings[17].Animation);
         Assert.Same(bindings[7].Animation, bindings[9].Animation);
         Assert.All(bindings, static binding => Assert.Equal(1, binding.Animation.FrameCount));
+    }
+
+    [Fact]
+    public void EmptyMapSceneryConfiguration_DoesNotRequestAnAnimationFile()
+    {
+        using TemporaryContentDirectory root = new();
+        root.WriteFile("ani/MapScene.ani", ReadSourceSections());
+
+        GameMapSceneSections scene = SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,0]", 0, 0, 0);
+        Assert.Equal(39, scene.Scenery.Count);
+        Assert.Equal("AniTitle=", scene.Scenery[0].ResourcePath);
+        Assert.Equal("PosCell=[0,0]", scene.Scenery[0].PartName);
+
+        IReadOnlyList<GameMapSceneryAniBinding> bindings =
+            GameMapSceneryAniBindings.Load(new ClientContentRoot(root.RootPath), scene);
+
+        Assert.Equal(18, bindings.Count);
+        Assert.DoesNotContain(bindings, static binding => binding.Scenery.ResourcePath == "AniTitle=");
+    }
+
+    [Fact]
+    public void IncompleteSceneryConfiguration_DoesNotSuppressOtherMissingReferences()
+    {
+        using TemporaryContentDirectory root = new();
+        root.WriteFile("ani/MapScene.ani", ReadSourceSections());
+
+        GameMapSceneSections[] invalid =
+        [
+            SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,1]", 0, 0, 0),
+            SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,0]", 1, 0, 0),
+            SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,0]", 0, 0, 1),
+        ];
+
+        foreach (GameMapSceneSections scene in invalid)
+        {
+            Assert.Throws<FileNotFoundException>(() =>
+                GameMapSceneryAniBindings.Load(new ClientContentRoot(root.RootPath), scene));
+        }
     }
 
     [Fact]
@@ -78,6 +117,33 @@ public sealed class GameMapSceneryAniBindingsTests
 
         Assert.Throws<InvalidDataException>(() =>
             GameMapSceneryAniBindings.Load(new ClientContentRoot(root.RootPath), scene));
+    }
+
+    private static GameMapSceneSections SceneWithAdditionalScenery(
+        string path, string section, int x, int y, int extraValue)
+    {
+        string fixture = Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "newbie.scene.zlib");
+        using FileStream source = File.OpenRead(fixture);
+        using ZLibStream decoded = new(source, CompressionMode.Decompress);
+        using MemoryStream stream = new();
+        decoded.CopyTo(stream);
+        byte[] original = stream.ToArray();
+
+        const int RecordLength = 4 + 0x1A0;
+        byte[] combined = new byte[original.Length + RecordLength];
+        original.AsSpan(0, 8).CopyTo(combined);
+        BinaryPrimitives.WriteInt32LittleEndian(combined.AsSpan(4), 39);
+        BinaryPrimitives.WriteInt32LittleEndian(combined.AsSpan(8), 4);
+
+        Span<byte> record = combined.AsSpan(12, 0x1A0);
+        Encoding.Latin1.GetBytes(path, record);
+        Encoding.Latin1.GetBytes(section, record[0x104..]);
+        BinaryPrimitives.WriteInt32LittleEndian(record[0x184..], x);
+        BinaryPrimitives.WriteInt32LittleEndian(record[0x188..], y);
+        BinaryPrimitives.WriteInt32LittleEndian(record[0x18C..], extraValue);
+
+        original.AsSpan(8).CopyTo(combined.AsSpan(8 + RecordLength));
+        return GameMapSceneSections.Parse(combined, 0);
     }
 
     private static byte[] ReadSourceSections() =>

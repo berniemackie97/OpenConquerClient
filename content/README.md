@@ -76,7 +76,8 @@ It never copies whole retail directories or WDF archives.
 
 Use `--all-maps` to copy every map named by `ini/GameMap.dat` and the files
 referenced by its supported puzzle, scene, scenery animation, and positioned
-overlay records. The importer copies file bytes from the specified client
+overlay records. Unconfigured scenery entries remain in their original map archives;
+their empty configuration fields are not treated as resource paths. The importer copies file bytes from the specified client
 installation, shares dependencies across maps, and does not generate substitute
 artwork. An unavailable or unsupported map fails the import with its data ID;
 the destination is not published.

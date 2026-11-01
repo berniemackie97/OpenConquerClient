@@ -33,12 +33,10 @@ internal static class ClientWorldContentRequirements
             }
         }
 
-        foreach (GameMapSceneryRecord scenery in map.Scene.Scenery)
+        foreach (GameMapSceneryAniBinding binding in GameMapSceneryAniBindings.Load(source, map.Scene))
         {
-            if (scenery.TypeCode == 4)
-            {
-                AddAnimation(scenery.ResourcePath!, scenery.PartName!);
-            }
+            Add(binding.Scenery.ResourcePath!, ContentLookupMode.LooseOnly);
+            AddFrames(binding.Animation);
         }
 
         HashSet<string> scenePaths = new(StringComparer.OrdinalIgnoreCase);
