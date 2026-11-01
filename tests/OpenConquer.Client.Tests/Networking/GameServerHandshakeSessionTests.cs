@@ -26,7 +26,7 @@ public sealed partial class GameServerHandshakeSessionTests
         new(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
     [Fact]
-    public async Task CompletesFragmentedLoopbackHandshakeAndTransfersNativeSession()
+    public async Task CompletesFragmentedLoopbackHandshakeAndTransfersNegotiatedSession()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener gameListener = Listen();
@@ -46,7 +46,7 @@ public sealed partial class GameServerHandshakeSessionTests
         byte[] plaintext = new byte[encrypted.Length];
         game.SessionCipher.DecryptInbound(encrypted.AsSpan(0, 5), plaintext.AsSpan(0, 5));
         game.SessionCipher.DecryptInbound(encrypted.AsSpan(5), plaintext.AsSpan(5));
-        Assert.Equal("native-server-session"u8.ToArray(), plaintext);
+        Assert.Equal("secured-game-session"u8.ToArray(), plaintext);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             GameServerHandshakeSession.OpenAsync(account, s_timeouts, token));
@@ -867,7 +867,7 @@ public sealed partial class GameServerHandshakeSessionTests
                     PeerResponse.AcceptedNoCharacterInfo or PeerResponse.AcceptedSilentCharacterInfo)
                 {
                     // 2078, 2079 and the type-1009 continuation are independently
-                    // composed wire fixtures, not retail-server captures.
+                    // composed wire fixtures.
                     byte[] historyWire =
                         Convert.FromHexString("0A001E080000000000005451536572766572");
                     byte[] stateWire =
@@ -1072,7 +1072,7 @@ public sealed partial class GameServerHandshakeSessionTests
                 "testacc"u8.ToArray(), "password1".AsMemory(), "LocalRealm"u8.ToArray(),
                 static () => true, TimeSpan.FromSeconds(5), token);
             Assert.True(response.IsSuccess);
-            // The local peer uses a fixed, independent native 1055 ciphertext.
+            // The local peer uses an independently encoded 1055 ciphertext.
             // The test only substitutes its loopback game-listener port.
             LoginAccountResponse1055 handoff = response with
             {
@@ -1150,7 +1150,7 @@ public sealed partial class GameServerHandshakeSessionTests
         int declared = BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(7));
         Assert.InRange(declared, 31, 1017);
 
-        // The 7-byte native prefix precedes a declared region that INCLUDES
+        // The 7-byte challenge prefix precedes a declared region that includes
         // its own four-byte length field, already consumed in 'header'.
         byte[] body = new byte[declared - sizeof(int)];
         await stream.ReadExactlyAsync(body, token);
@@ -1175,7 +1175,7 @@ public sealed partial class GameServerHandshakeSessionTests
         minimal.CopyTo(key, 0);
         try
         {
-            byte[] message = "native-server-session"u8.ToArray();
+            byte[] message = "secured-game-session"u8.ToArray();
             byte[] encoded = new byte[message.Length];
             using GameSessionCipher server = new(key,
                 [21, 22, 23, 24, 25, 26, 27, 28], [1, 2, 3, 4, 5, 6, 7, 8]);
