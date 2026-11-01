@@ -90,6 +90,17 @@ internal static class Program
                     break;
                 }
 
+            case ValidateMapSceneryAniCommand validateScenery:
+                {
+                    WorldMapSceneryAniValidationResult result =
+                        WorldMapSceneryAniValidator.Validate(validateScenery.SourceRootPath, validateScenery.MapDataId);
+
+                    Console.WriteLine($"Validated MapDataId {validateScenery.MapDataId}: {result.SceneryCount} ANI-backed scenery records, " +
+                        $"{result.AnimationCount} distinct animations, {result.FrameCount} decoded source frames.");
+
+                    break;
+                }
+
             case InspectServerDatCommand inspect:
                 {
                     ServerDatInspectionReport report = ServerDatInspectionReport.Create(inspect.FilePath);

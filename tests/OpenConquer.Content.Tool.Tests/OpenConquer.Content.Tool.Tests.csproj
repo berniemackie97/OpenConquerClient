@@ -14,6 +14,9 @@
     <None Include="../OpenConquer.Content.Tests/Fixtures/Map/*.pul"
           Link="RetailFixture/map/puzzle/%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../OpenConquer.Content.Tests/Fixtures/Map/mapscene-newbie-sections.ani"
+          Link="RetailFixture/ani/mapscene-newbie-sections.ani"
+          CopyToOutputDirectory="PreserveNewest" />
     <None Include="../OpenConquer.Content.Tests/Fixtures/Map/newbie.ani.zlib"
           Link="RetailFixture/ani/newbie.ani.zlib"
           CopyToOutputDirectory="PreserveNewest" />

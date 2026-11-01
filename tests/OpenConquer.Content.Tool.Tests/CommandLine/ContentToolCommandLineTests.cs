@@ -84,6 +84,19 @@ public sealed class ContentToolCommandLineTests
         );
     }
 
+    [Fact]
+    public void TryParse_ReadsValidateMapSceneryAniCommand()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["validate-map-scenery-ani", "--map-data-id", "1010", "--source", "retail"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        ValidateMapSceneryAniCommand validate = Assert.IsType<ValidateMapSceneryAniCommand>(command);
+        Assert.Equal(1010u, validate.MapDataId);
+        Assert.Equal(Path.Combine(s_workingDirectory, "retail"), validate.SourceRootPath);
+    }
+
     [Theory]
     [InlineData(new string[0], "No command was specified.")]
     [InlineData(new[] { "unknown-verb" }, "Unknown command 'unknown-verb'.")]
@@ -127,6 +140,9 @@ public sealed class ContentToolCommandLineTests
     [Fact]
     public void UsageLines_DescribeEveryVerb()
     {
+        Assert.Contains(ContentToolCommandLine.UsageLines,
+            line => line.Contains("validate-map-scenery-ani", StringComparison.Ordinal));
+
         Assert.Contains(
             ContentToolCommandLine.UsageLines,
             line => line.Contains("import-retail-5517", StringComparison.Ordinal)

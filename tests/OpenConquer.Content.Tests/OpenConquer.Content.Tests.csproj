@@ -20,6 +20,9 @@
     <None Update="Fixtures/Map/newbie.7z"
           Link="RetailFixture/map/newbie.7z"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures/Map/mapscene-newbie-sections.ani"
+          Link="RetailFixture/ani/mapscene-newbie-sections.ani"
+          CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/Map/newbie.scene.zlib"
           Link="RetailFixture/map/newbie.scene.zlib"
           CopyToOutputDirectory="PreserveNewest" />
