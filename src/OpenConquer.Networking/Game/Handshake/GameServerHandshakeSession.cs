@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -701,7 +702,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     private async Task WriteSecuredPacketAsync(byte[] packet, TimeSpan timeout, string timeoutMessage,
         CancellationToken cancellationToken)
     {
-        byte[] wire = new byte[packet.Length + GameSecuredFrameProtocol.SignatureLength];
+        byte[] wire = ArrayPool<byte>.Shared.Rent(packet.Length + GameSecuredFrameProtocol.SignatureLength);
         try
         {
             using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(
@@ -724,6 +725,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         finally
         {
             CryptographicOperations.ZeroMemory(wire);
+            ArrayPool<byte>.Shared.Return(wire);
         }
     }
 
@@ -755,7 +757,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         EnterReadOperation(read);
 
         bool completed = false;
-        byte[] encrypted = new byte[GameSecuredFrameProtocol.MaximumWireLength];
+        byte[] encrypted = ArrayPool<byte>.Shared.Rent(GameSecuredFrameProtocol.MaximumWireLength);
         try
         {
             using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(
@@ -835,6 +837,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         finally
         {
             CryptographicOperations.ZeroMemory(encrypted);
+            ArrayPool<byte>.Shared.Return(encrypted);
             if (!completed)
             {
                 _client.Dispose();
