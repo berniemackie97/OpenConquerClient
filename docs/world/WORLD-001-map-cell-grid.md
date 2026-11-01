@@ -20,16 +20,17 @@ uses `1004u, 0u`. Both variants are accepted; the first two words are retained
 rather than treated as a universal signature.
 
 The reader enforces a maximum of 4,194,304 cells before allocating a grid.
-The bound covers the inspected set of 192 map
-archives, the largest decoded payload is 24,754,428 bytes (`task06.DMap`),
-so its cell grid cannot exceed 4,125,738 six-byte cells. Larger input
+The bound covers the inventory of 192 map archives. Its largest decoded
+payload is 24,754,428 bytes (`task06.DMap`), so a six-byte cell grid in that
+payload cannot exceed 4,125,738 cells. Larger input
 fails explicitly instead of requiring a potentially unbounded allocation.
 
 The `map/map/newbie.7z` fixture contains a
 118,644-byte `newbie.DMap`. Its grid is 132 × 132, uses
 `map\\puzzle\\newbie.pul`, and ends the first section at offset 105,348.
-Every row is checked against the per-row checksum. The boundary test reconstructs those observed uniform first-grid
-values; it does not claim to bundle a full DMap asset.
+Every row is checked against the per-row checksum. The boundary test
+reconstructs the measured uniform first-grid values; it does not bundle
+a full DMap asset.
 
 This slice does **not** implement archive decompression, exit-marker or
 scenery records, map scene ownership, camera, terrain draw, or loading-screen
