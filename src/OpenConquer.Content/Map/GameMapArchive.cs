@@ -4,7 +4,7 @@ using SharpCompress.Readers;
 
 namespace OpenConquer.Content.Map;
 
-/// <summary>Extracts the single DMap payload from a retail 5517 map archive.</summary>
+/// <summary>Extracts the single DMap payload from a map archive.</summary>
 public static class GameMapArchive
 {
     internal const int MaximumArchiveBytes = 128 * 1024;
@@ -17,7 +17,7 @@ public static class GameMapArchive
         string path = ClientContentPath.NormalizeVirtualPath(contentPath, nameof(contentPath), 260);
         if (!path.EndsWith(".7z", StringComparison.OrdinalIgnoreCase))
         {
-            throw new ArgumentException("Map archives must have the retail .7z extension.", nameof(contentPath));
+            throw new InvalidDataException("Map archive path must have a .7z extension.");
         }
 
         if (encoded.Length < 32 || encoded.Length > MaximumArchiveBytes)

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using OpenConquer.Content.Tool.CommandLine;
 using OpenConquer.Content.Tool.Import;
 using OpenConquer.Content.Tool.Legacy.ServerDat;
@@ -36,7 +37,7 @@ internal static class Program
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
         {
-            Console.Error.WriteLine($"OpenConquer.Content.Tool: {exception.Message}");
+            Console.Error.WriteLine($"OpenConquer.Content.Tool: {JsonEncodedText.Encode(exception.Message)}");
 
             return OperationFailedExitCode;
         }
