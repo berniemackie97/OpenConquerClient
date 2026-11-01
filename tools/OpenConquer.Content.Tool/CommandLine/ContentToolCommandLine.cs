@@ -159,8 +159,8 @@ internal static class ContentToolCommandLine
                 return false;
             }
 
-            string[] paths = [.. args.Where(static value => value != AllMapsOption)];
-            if (!TryParseOptions(paths, requiredOptions, workingDirectoryPath, out values, out errorMessage))
+            string[] pathArguments = [.. args.Where(static value => value != AllMapsOption)];
+            if (!TryParseOptions(pathArguments, requiredOptions, workingDirectoryPath, out values, out errorMessage))
             {
                 return false;
             }
