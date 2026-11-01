@@ -1,6 +1,6 @@
 using System.Text;
-using OpenConquer.Tests.Fixtures;
 using OpenConquer.Content.Tool.World;
+using OpenConquer.Tests.Fixtures;
 
 namespace OpenConquer.Content.Tool.Tests.World;
 
