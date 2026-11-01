@@ -48,7 +48,7 @@ internal static class Program
         {
             case ImportContentSetCommand import:
                 {
-                    ContentManifest manifest = ContentSetImporter.Import(import.SourceRootPath, import.DestinationRootPath);
+                    ContentManifest manifest = ContentSetImporter.Import(import.SourceRootPath, import.DestinationRootPath, import.MapDataId);
 
                     Console.WriteLine($"Imported {manifest.FileCount} file(s) ({manifest.Length} bytes) for {ContentManifest.SourceSetName}.");
 
@@ -72,7 +72,7 @@ internal static class Program
 
             case VerifyContentSetCommand verify:
                 {
-                    ContentManifest manifest = ContentSetVerifier.Verify(verify.ContentSetRootPath);
+                    ContentManifest manifest = ContentSetVerifier.Verify(verify.ContentSetRootPath, verify.MapDataId);
 
                     Console.WriteLine($"Verified {manifest.FileCount} file(s) ({manifest.Length} bytes) for {ContentManifest.SourceSetName}.");
 

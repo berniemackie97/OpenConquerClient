@@ -47,7 +47,7 @@ public static class ClientContentClosure
         ("Button411", 2),
     ];
 
-    public static IReadOnlyList<ClientContentRequirement> Resolve(IClientContentSource contentSource)
+    public static IReadOnlyList<ClientContentRequirement> Resolve(IClientContentSource contentSource, uint? mapDataId = null)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
@@ -92,6 +92,11 @@ public static class ClientContentClosure
         MainHudQuickbarContentRequirements.Add(requirements, contentSource, controlAni);
         MainHudSelectedSkillContentRequirements.Add(requirements, contentSource, controlAni);
         MainHudStatusHintContentRequirements.Add(requirements, contentSource, controlAni);
+
+        if (mapDataId is { } selectedMap)
+        {
+            ClientWorldContentRequirements.Add(requirements, contentSource, GameMapCatalog.Load(contentSource), selectedMap);
+        }
 
         return Normalize(requirements);
     }

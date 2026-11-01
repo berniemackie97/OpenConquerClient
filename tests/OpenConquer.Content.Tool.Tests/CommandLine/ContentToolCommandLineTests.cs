@@ -31,6 +31,56 @@ public sealed class ContentToolCommandLineTests
     }
 
     [Fact]
+    public void TryParse_ImportsSelectedMapInEitherOptionOrder()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["import-client-content", "--map-data-id", "1010", "--destination", "out", "--source", "in"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        ImportContentSetCommand import = Assert.IsType<ImportContentSetCommand>(command);
+        Assert.Equal(1010u, import.MapDataId);
+        Assert.Equal(Path.Combine(s_workingDirectory, "in"), import.SourceRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "out"), import.DestinationRootPath);
+    }
+
+    [Fact]
+    public void TryParse_VerifiesSelectedMap()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["verify-content-set", "--content-set", "world", "--map-data-id", "1010"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        VerifyContentSetCommand verify = Assert.IsType<VerifyContentSetCommand>(command);
+        Assert.Equal(1010u, verify.MapDataId);
+        Assert.Equal(Path.Combine(s_workingDirectory, "world"), verify.ContentSetRootPath);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("invalid")]
+    [InlineData("4294967296")]
+    public void TryParse_RejectsInvalidSelectedMap(string value)
+    {
+        Assert.False(ContentToolCommandLine.TryParse(
+            ["import-client-content", "--source", "in", "--destination", "out", "--map-data-id", value],
+            s_workingDirectory, out ContentToolCommand? command, out _));
+        Assert.Null(command);
+    }
+
+    [Fact]
+    public void TryParse_RejectsRepeatedMapSelection()
+    {
+        Assert.False(ContentToolCommandLine.TryParse(
+            ["verify-content-set", "--content-set", "world", "--map-data-id", "1010",
+                "--map-data-id", "1010"],
+            s_workingDirectory, out ContentToolCommand? command, out _));
+        Assert.Null(command);
+    }
+
+    [Fact]
     public void TryParse_ReadsAValidateStartupCommand()
     {
         Assert.True(

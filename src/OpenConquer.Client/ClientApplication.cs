@@ -9,6 +9,7 @@ using OpenConquer.Client.UI.Login.Audio;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Client.UI.Role;
+using OpenConquer.Client.World;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
@@ -57,6 +58,8 @@ internal sealed class ClientApplication : IDisposable
     private GameServerHandshakeSession? _worldGame;
     private GameWorldEntrySnapshot? _worldEntry;
     private GameMapCatalog? _terrainCatalog;
+    private WorldMapScene? _worldScene;
+    private WorldMapTextureRenderer? _worldTextures;
     private IClientContentSource? _roleContent;
     private SelectCharacterIni? _roleIni;
     private RoleCreationText? _roleText;
@@ -65,6 +68,7 @@ internal sealed class ClientApplication : IDisposable
     private FlashStagePresentation? _rolePresentation;
     private bool _returnFromRole;
     private Task? _roleClosing;
+    private Task? _worldClosing;
     private PixelPoint _lastPointer;
     private bool _runStarted;
     private bool _disposed;
@@ -167,13 +171,22 @@ internal sealed class ClientApplication : IDisposable
             {
                 try
                 {
-                    _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    _worldClosing?.GetAwaiter().GetResult();
                 }
                 finally
                 {
-                    _worldGame = null;
-                    _worldEntry = null;
-                    _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    _worldClosing = null;
+                    try
+                    {
+                        _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    }
+                    finally
+                    {
+                        _worldGame = null;
+                        _worldEntry = null;
+                        _worldScene = null;
+                        _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    }
                 }
             }
         }
@@ -250,6 +263,8 @@ internal sealed class ClientApplication : IDisposable
             _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
             _rolePresentation = graphics.Track(new FlashStagePresentation(device,
                 _roleRasters ?? throw new InvalidOperationException("Role raster source is missing.")));
+            _worldTextures = graphics.Track(new WorldMapTextureRenderer(
+                _roleContent ?? throw new InvalidOperationException("World content source is missing."), device));
             if (_role is { } activeRole)
             {
                 activeRole.Stage.TextCaretAt = _rolePresentation.LocateCaret;
@@ -264,6 +279,7 @@ internal sealed class ClientApplication : IDisposable
             _renderer = null;
             _loginRenderer = null;
             _rolePresentation = null;
+            _worldTextures = null;
             graphics.DisposeAfterInitializationFailure();
             throw;
         }
@@ -289,6 +305,7 @@ internal sealed class ClientApplication : IDisposable
         _renderer = null;
         _loginRenderer = null;
         _rolePresentation = null;
+        _worldTextures = null;
         graphics?.Dispose();
     }
 
@@ -312,6 +329,13 @@ internal sealed class ClientApplication : IDisposable
         {
             _roleClosing = null;
             closed.GetAwaiter().GetResult();
+        }
+
+        if (_worldClosing is { IsCompleted: true } completedWorldClose)
+        {
+            _worldClosing = null;
+            completedWorldClose.GetAwaiter().GetResult();
+            _loginFlow?.FailWorldContent();
         }
 
         if (_role is null && _roleClosing is null &&
@@ -363,9 +387,11 @@ internal sealed class ClientApplication : IDisposable
                     out GameServerHandshakeSession? createdGame, out GameWorldEntrySnapshot? createdWorld))
             {
                 AcceptWorld(createdGame!, createdWorld!);
+                _role = null;
+                _roleClosing = activeRole.DisposeAsync().AsTask();
             }
 
-            if (_returnFromRole)
+            if (_returnFromRole && _worldScene is null)
             {
                 _returnFromRole = false;
                 _role = null;
@@ -386,12 +412,22 @@ internal sealed class ClientApplication : IDisposable
                 login.ApplyRegistrationFeedback(registration.Feedback, messages);
             }
         }
-        login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
-        ContinueCredentialDrag();
+        if (_worldScene is null)
+        {
+            login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
+                TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
+            ContinueCredentialDrag();
+        }
 
         if (_worldEntry is not null && _worldGame is null)
         {
             throw new InvalidOperationException("World admission lost its authenticated connection.");
+        }
+
+        if (_worldScene is { } scene)
+        {
+            scene.Prepare(_worldTextures ?? throw new InvalidOperationException("World textures are unavailable."),
+                _logicalRenderSize.Width, _logicalRenderSize.Height, unchecked((uint)Environment.TickCount));
         }
 
         renderer.BeginFrame();
@@ -399,7 +435,11 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            if (_role is { } role)
+            if (_worldScene is { } worldScene)
+            {
+                worldScene.Draw(_worldTextures!, renderer);
+            }
+            else if (_role is { } role)
             {
                 (_rolePresentation ?? throw new InvalidOperationException("Role renderer is unavailable."))
                     .Draw(renderer, role.Stage);
@@ -431,20 +471,37 @@ internal sealed class ClientApplication : IDisposable
         // Own the authenticated connection before any content operation can fail.
         _worldGame = game;
         _worldEntry = world;
-        _terrainCatalog ??= GameMapCatalog.Load(_roleContent ??
-            throw new InvalidOperationException("World content source was not initialized."));
-
-        if (!_terrainCatalog.TryGetTerrain(world.MapDataId, out GameMapCatalog.Terrain? terrain))
+        try
         {
-            throw new InvalidDataException($"Retail terrain index has no entry for data ID {world.MapDataId}.");
+            IClientContentSource source = _roleContent ??
+                throw new InvalidOperationException("World content source was not initialized.");
+            _terrainCatalog ??= GameMapCatalog.Load(source);
+            _worldScene = WorldMapScene.Load(source, _terrainCatalog,
+                world.MapDataId, world.X, world.Y, unchecked((uint)Environment.TickCount));
         }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"OpenConquer: unable to load map {world.MapDataId} ({exception.Message}).");
+            ReturnToLogin();
+        }
+    }
 
-        Console.WriteLine($"OpenConquer: world bootstrap for map {world.MapId} resolved terrain {terrain.Path} (data ID {world.MapDataId}); world rendering is not yet available.");
+    private void ReturnToLogin()
+    {
+        GameServerHandshakeSession? game = _worldGame;
+        _worldGame = null;
+        _worldEntry = null;
+        _worldScene = null;
+        if (game is not null)
+        {
+            _worldClosing = game.DisposeAsync().AsTask();
+        }
     }
 
     private void OnLoginRequested()
     {
-        if (_worldGame is null && _roleClosing is null && _login is { } login && _loginFlow is { } flow)
+        if (_worldGame is null && _worldScene is null && _worldClosing is null &&
+            _roleClosing is null && _login is { } login && _loginFlow is { } flow)
         {
             flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
             login.ApplyFeedback(flow.Feedback, _loginErrors!);
@@ -482,6 +539,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerMoved(PixelPoint point)
     {
+        if (_worldScene is not null)
+        {
+            return;
+        }
+
         _lastPointer = point;
         if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
@@ -499,6 +561,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerPressed(PixelPoint point)
     {
+        if (_worldScene is not null)
+        {
+            return;
+        }
+
         _lastPointer = point;
         if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
@@ -520,6 +587,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerReleased(PixelPoint point)
     {
+        if (_worldScene is not null)
+        {
+            return;
+        }
+
         if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
             if (_role is { } role)
@@ -536,6 +608,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnKeyPressed(DesktopKeyEvent key)
     {
+        if (_worldScene is not null)
+        {
+            return;
+        }
+
         if (_window is { } window)
         {
             if (_role is { } role)
@@ -551,6 +628,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnTextEntered(char character)
     {
+        if (_worldScene is not null)
+        {
+            return;
+        }
+
         if (_role is { } role)
         {
             role.TextEntered(character);

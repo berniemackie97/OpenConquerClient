@@ -33,6 +33,23 @@ public sealed class LoginAttemptCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task WorldContentFailureReturnsToRetryableLoginWithAnError()
+    {
+        using LoginScreen login = new(LoginStageLayout.Create(new LogicalRenderSize(1024, 768)),
+            new LoginAccountHistory(_folder), "5517", _ => { });
+        await using LoginAttemptCoordinator attempts = new(_folder);
+
+        attempts.FailWorldContent();
+
+        Assert.Equal(LoginAttemptStatus.Unavailable, attempts.Status);
+        Assert.Equal(LoginFailureKind.WorldContent, attempts.Feedback.Failure!.Kind);
+        login.ApplyFeedback(attempts.Feedback, OpenConquer.Client.Tests.UI.Login.LoginErrorTests.Messages());
+        Assert.Equal("Required world content is unavailable.", login.Error.Text);
+        Assert.False(attempts.TryStart(login, null));
+        Assert.Equal(LoginAttemptStatus.EnterCredentials, attempts.Status);
+    }
+
+    [Fact]
     public async Task DisposedAttemptCoordinatorRejectsNewSubmissions()
     {
         using LoginScreen login = new(LoginStageLayout.Create(new LogicalRenderSize(1024, 768)),

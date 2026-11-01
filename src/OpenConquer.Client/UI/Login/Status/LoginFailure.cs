@@ -8,6 +8,7 @@ internal enum LoginFailureKind
     AccountRefusal,
     GameRefusal,
     RegistrationNotice,
+    WorldContent,
 }
 
 /// <summary>Owned, bounded presentation evidence; never contains credentials or exception messages.</summary>
@@ -39,6 +40,7 @@ internal sealed class LoginFailure
     internal static LoginFailure EmptyAccount() => new(LoginFailureKind.EmptyAccount, 0, []);
     internal static LoginFailure EmptyPassword() => new(LoginFailureKind.EmptyPassword, 0, []);
     internal static LoginFailure Resource(uint id) => new(LoginFailureKind.Resource, id, []);
+    internal static LoginFailure WorldContent() => new(LoginFailureKind.WorldContent, 0, []);
     internal static LoginFailure Account(uint code) => new(LoginFailureKind.AccountRefusal, code, []);
     internal static LoginFailure Registration(LoginRegistrationNotice notice) =>
         Enum.IsDefined(notice) ? new(LoginFailureKind.RegistrationNotice, (uint)notice, [])
