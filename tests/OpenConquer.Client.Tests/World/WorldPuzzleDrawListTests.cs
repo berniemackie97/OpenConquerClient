@@ -38,7 +38,7 @@ public sealed class WorldPuzzleDrawListTests
         using RetailNewbieSource retail = new();
         WorldPuzzleProjection projection = new(800, 600, 0, 0, 3500, 1400, 1, 1);
 
-        IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.PositionedPuzzles(retail.Map, retail.Puzzles, projection, 0);
+        IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.PositionedPuzzles(retail.Map, retail.Puzzles, projection);
 
         Assert.NotEmpty(tiles);
         Assert.InRange(tiles.Count, 1, 30);
