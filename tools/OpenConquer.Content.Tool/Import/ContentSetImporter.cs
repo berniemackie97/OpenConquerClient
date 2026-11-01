@@ -1,3 +1,4 @@
+using OpenConquer.Content.Map;
 using OpenConquer.Content.Tool.Manifest;
 
 namespace OpenConquer.Content.Tool.Import;
@@ -11,10 +12,16 @@ internal static class ContentSetImporter
     private const string PayloadDirectoryName = "payload";
     private const int SignatureHeaderLength = 12;
 
-    public static ContentManifest Import(string sourceRootPath, string destinationRootPath, uint? mapDataId = null, bool allMaps = false)
+    public static ContentManifest Import(string sourceRootPath, string destinationRootPath, uint? mapDataId = null,
+        bool allMaps = false, bool availableMaps = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceRootPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationRootPath);
+
+        if (availableMaps && (allMaps || mapDataId is not null))
+        {
+            throw new ArgumentException("Available maps cannot be combined with another map selection.");
+        }
 
         ImportSourceRoot sourceRoot = ImportSourceRoot.Open(sourceRootPath);
         string destinationRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destinationRootPath));
@@ -34,7 +41,7 @@ internal static class ContentSetImporter
 
         try
         {
-            ContentManifest manifest = BuildContentSet(sourceRoot, stagingRoot, mapDataId, allMaps);
+            ContentManifest manifest = BuildContentSet(sourceRoot, stagingRoot, mapDataId, allMaps, availableMaps);
 
             Directory.Move(stagingRoot, destinationRoot);
 
@@ -58,9 +65,13 @@ internal static class ContentSetImporter
         }
     }
 
-    private static ContentManifest BuildContentSet(ImportSourceRoot sourceRoot, string stagingRoot, uint? mapDataId, bool allMaps)
+    private static ContentManifest BuildContentSet(ImportSourceRoot sourceRoot, string stagingRoot,
+        uint? mapDataId, bool allMaps, bool availableMaps)
     {
-        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(sourceRoot.ContentSource, mapDataId, allMaps);
+        IReadOnlyList<MissingMapArchive>? missingMaps = availableMaps ? FindMissingMapArchives(sourceRoot) : null;
+        HashSet<uint>? excluded = missingMaps is null ? null : [.. missingMaps.Select(static map => map.MapDataId)];
+        IReadOnlyList<ClientContentRequirement> closure = ClientContentClosure.Resolve(
+            sourceRoot.ContentSource, mapDataId, allMaps || availableMaps, excluded);
 
         if (closure.Count == 0)
         {
@@ -95,11 +106,42 @@ internal static class ContentSetImporter
             entriesByPathKey.Add(pathKey, new ContentManifestEntry(sourcePath, pathKey, length, sha256, signature));
         }
 
-        ContentManifest manifest = new(sourceRoot.ClientVersion, sourceRoot.VersionMarkerSha256, [.. entriesByPathKey.Values.OrderBy(entry => entry.SourcePath, StringComparer.Ordinal)]);
+        ContentManifest manifest = new(sourceRoot.ClientVersion, sourceRoot.VersionMarkerSha256,
+            [.. entriesByPathKey.Values.OrderBy(entry => entry.SourcePath, StringComparer.Ordinal)], missingMaps);
 
         WriteManifest(Path.Combine(stagingRoot, ManifestFileName), manifest);
 
         return manifest;
+    }
+
+    private static List<MissingMapArchive> FindMissingMapArchives(ImportSourceRoot source)
+    {
+        GameMapCatalog catalog = GameMapCatalog.Load(source.ContentSource);
+        List<MissingMapArchive> missing = [];
+
+        foreach (uint id in catalog.MapDataIds.Order())
+        {
+            GameMapCatalog.Terrain terrain = catalog.TryGetTerrain(id, out GameMapCatalog.Terrain? found)
+                ? found
+                : throw new InvalidOperationException("Map catalog changed during import.");
+
+            if (!terrain.Path.EndsWith(".7z", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException($"Map data ID {id} does not reference a .7z archive.");
+            }
+
+            if (!source.ContainsLooseFile(terrain.Path))
+            {
+                missing.Add(new MissingMapArchive(id, terrain.Path));
+            }
+        }
+
+        if (missing.Count == catalog.Count)
+        {
+            throw new InvalidDataException("The source contains none of its catalogued map archives.");
+        }
+
+        return missing;
     }
 
     private static string ClassifySignature(Stream source)

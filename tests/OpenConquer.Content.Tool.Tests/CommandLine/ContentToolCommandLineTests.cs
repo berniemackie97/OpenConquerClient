@@ -109,6 +109,53 @@ public sealed class ContentToolCommandLineTests
     }
 
     [Fact]
+    public void TryParse_ImportsAvailableMaps()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["import-client-content", "--destination", "out", "--available-maps", "--source", "in"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        ImportContentSetCommand import = Assert.IsType<ImportContentSetCommand>(command);
+        Assert.True(import.AvailableMaps);
+        Assert.False(import.AllMaps);
+        Assert.Null(import.MapDataId);
+    }
+
+    [Fact]
+    public void TryParse_VerifiesAvailableMaps()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["verify-content-set", "--available-maps", "--content-set", "world"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        VerifyContentSetCommand verify = Assert.IsType<VerifyContentSetCommand>(command);
+        Assert.True(verify.AvailableMaps);
+        Assert.False(verify.AllMaps);
+    }
+
+    [Fact]
+    public void TryParse_RejectsConflictingAvailableMapSelections()
+    {
+        string[][] invalid =
+        [
+            ["import-client-content", "--source", "in", "--destination", "out",
+                "--available-maps", "--all-maps"],
+            ["import-client-content", "--source", "in", "--destination", "out",
+                "--map-data-id", "1010", "--available-maps"],
+            ["verify-content-set", "--content-set", "world", "--available-maps", "--available-maps"],
+        ];
+
+        foreach (string[] args in invalid)
+        {
+            Assert.False(ContentToolCommandLine.TryParse(
+                args, s_workingDirectory, out ContentToolCommand? command, out _));
+            Assert.Null(command);
+        }
+    }
+
+    [Fact]
     public void TryParse_RejectsAmbiguousAllMapsSelection()
     {
         string[][] invalidInvocations =

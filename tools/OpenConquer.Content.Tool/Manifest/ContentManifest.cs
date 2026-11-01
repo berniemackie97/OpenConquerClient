@@ -6,10 +6,12 @@ namespace OpenConquer.Content.Tool.Manifest;
 internal sealed class ContentManifest
 {
     public const int SupportedSchemaVersion = 2;
+    public const int AvailableMapsSchemaVersion = 3;
 
     public const string SourceSetName = "retail-5517";
 
-    public ContentManifest(string clientVersion, string versionMarkerSha256, IReadOnlyList<ContentManifestEntry> entries)
+    public ContentManifest(string clientVersion, string versionMarkerSha256, IReadOnlyList<ContentManifestEntry> entries,
+        IReadOnlyList<MissingMapArchive>? missingMapArchives = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientVersion);
         ArgumentException.ThrowIfNullOrWhiteSpace(versionMarkerSha256);
@@ -18,6 +20,7 @@ internal sealed class ContentManifest
         ClientVersion = clientVersion;
         VersionMarkerSha256 = versionMarkerSha256;
         Entries = entries;
+        MissingMapArchives = missingMapArchives;
     }
 
     public string ClientVersion
@@ -33,6 +36,24 @@ internal sealed class ContentManifest
     public IReadOnlyList<ContentManifestEntry> Entries
     {
         get;
+    }
+
+    public IReadOnlyList<MissingMapArchive>? MissingMapArchives
+    {
+        get;
+    }
+
+    public int SchemaVersion
+    {
+        get
+        {
+            if (MissingMapArchives is null)
+            {
+                return SupportedSchemaVersion;
+            }
+
+            return AvailableMapsSchemaVersion;
+        }
     }
 
     public int FileCount => Entries.Count;

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using OpenConquer.Content.Map;
 using OpenConquer.Content.Tool.Import;
 using OpenConquer.Content.Tool.Manifest;
 
@@ -12,7 +13,8 @@ internal static class ContentSetVerifier
     private const string ManifestFileName = "manifest.json";
     private const string PayloadDirectoryName = "payload";
 
-    public static ContentManifest Verify(string contentSetRootPath, uint? mapDataId = null, bool allMaps = false)
+    public static ContentManifest Verify(string contentSetRootPath, uint? mapDataId = null,
+        bool allMaps = false, bool availableMaps = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentSetRootPath);
 
@@ -20,6 +22,12 @@ internal static class ContentSetVerifier
         HostFileSystemGuard.RequireDirectory(root, "content-set root");
 
         ContentManifest manifest = ReadManifest(Path.Combine(root, ManifestFileName));
+        if (availableMaps != (manifest.MissingMapArchives is not null) ||
+            (availableMaps && (allMaps || mapDataId is not null)))
+        {
+            throw new InvalidDataException("The requested map coverage does not match the content-set manifest.");
+        }
+
         string payloadRoot = Path.Combine(root, PayloadDirectoryName);
 
         HostFileSystemGuard.RequireDirectory(payloadRoot, "content-set payload directory");
@@ -40,7 +48,7 @@ internal static class ContentSetVerifier
             throw new InvalidDataException($"The content set is missing {missingSourcePaths.Length} declared payload file(s): {string.Join(", ", missingSourcePaths)}.");
         }
 
-        VerifyImplementedClosure(payloadRoot, manifest, mapDataId, allMaps);
+        VerifyImplementedClosure(payloadRoot, manifest, mapDataId, allMaps, availableMaps);
 
         return manifest;
     }
@@ -123,13 +131,44 @@ internal static class ContentSetVerifier
         }
     }
 
-    private static void VerifyImplementedClosure(string payloadRoot, ContentManifest manifest, uint? mapDataId, bool allMaps)
+    private static HashSet<uint> VerifyMissingMapArchives(ClientContentRoot content, ContentManifest manifest)
+    {
+        GameMapCatalog catalog = GameMapCatalog.Load(content);
+        HashSet<uint> excluded = [];
+        foreach (MissingMapArchive missing in manifest.MissingMapArchives!)
+        {
+            if (!catalog.TryGetTerrain(missing.MapDataId, out GameMapCatalog.Terrain? terrain) ||
+                !string.Equals(terrain.Path, missing.ArchivePath, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException($"Missing map archive {missing.MapDataId} does not match GameMap.dat.");
+            }
+
+            if (content.TryResolveFile(terrain.Path, out _))
+            {
+                throw new InvalidDataException($"Excluded map archive '{terrain.Path}' is present in the payload.");
+            }
+
+            excluded.Add(missing.MapDataId);
+        }
+
+        if (excluded.Count == catalog.Count)
+        {
+            throw new InvalidDataException("The available-map content set contains no indexed maps.");
+        }
+
+        return excluded;
+    }
+
+    private static void VerifyImplementedClosure(string payloadRoot, ContentManifest manifest,
+        uint? mapDataId, bool allMaps, bool availableMaps)
     {
         IReadOnlyList<ClientContentRequirement> closure;
 
         try
         {
-            closure = ClientContentClosure.Resolve(new ClientContentRoot(payloadRoot), mapDataId, allMaps);
+            ClientContentRoot content = new(payloadRoot);
+            HashSet<uint>? excluded = availableMaps ? VerifyMissingMapArchives(content, manifest) : null;
+            closure = ClientContentClosure.Resolve(content, mapDataId, allMaps || availableMaps, excluded);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException)
         {

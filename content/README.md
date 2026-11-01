@@ -116,6 +116,39 @@ The previous set is retained as a backup; restore it if the local switch cannot
 be completed. These commands read from the source installation without changing it.
 Check redistribution rights before publishing the resulting third-party content.
 
+## Available-map content sets
+
+`--available-maps` imports the map archives actually present in the specified
+client source, along with their resolved dependencies. Missing archives listed in
+`ini/GameMap.dat` are recorded by map-data ID and original path under
+`missingMapArchives` in the version-3 manifest, with `mapCoverage: available`.
+The `ini/GameMap.dat` file is copied unchanged. An existing archive whose puzzle,
+scene, animation index or texture dependencies are missing still fails the import.
+
+The default and `--all-maps` modes remain strict and use the existing version-2
+manifest layout. Verification of an available-map set requires `--available-maps`;
+it compares the manifest with the catalogue, validates the omitted IDs and paths,
+and checks every included dependency, payload file, and hash. This verifies the
+published set against its declared coverage; it cannot independently establish
+which archives existed in the original source after import.
+
+Create and verify a new set before replacing the current one:
+
+```bash
+SOURCE="/Volumes/EnderChest/Development/Repos/GameDev/Conquer/client-5517/00_clean/clean/5517"
+STAGED="content/retail-5517.next"
+test ! -e "$STAGED" || { echo "Staging destination exists" >&2; exit 1; }
+
+dotnet run --project tools/OpenConquer.Content.Tool -c Release -- \
+  import-client-content --source "$SOURCE" --destination "$STAGED" --available-maps
+dotnet run --project tools/OpenConquer.Content.Tool -c Release -- \
+  verify-content-set --content-set "$STAGED" --available-maps
+```
+
+After verification, use the backup-and-replacement procedure above with the
+existing `content/retail-5517` directory. Do not claim full catalogue coverage
+or publish the original asset files without appropriate rights.
+
 ## Verify
 
 ```bash

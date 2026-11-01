@@ -21,7 +21,7 @@ internal static class ContentManifestReader
 
         int schemaVersion = ReadInt32(root, "schemaVersion");
 
-        if (schemaVersion != ContentManifest.SupportedSchemaVersion)
+        if (schemaVersion is not (ContentManifest.SupportedSchemaVersion or ContentManifest.AvailableMapsSchemaVersion))
         {
             throw new InvalidDataException($"The content-set manifest declares schema version {schemaVersion}; this tool supports {ContentManifest.SupportedSchemaVersion}.");
         }
@@ -31,7 +31,17 @@ internal static class ContentManifestReader
             throw new InvalidDataException("The content-set manifest declares an unsupported source set.");
         }
 
-        ContentManifest manifest = new(ReadString(root, "clientVersion"), ReadSha256(root, "versionMarkerSha256"), ReadEntries(root));
+        IReadOnlyList<MissingMapArchive>? missingMaps = schemaVersion == ContentManifest.AvailableMapsSchemaVersion
+            ? ReadMissingMaps(root)
+            : null;
+
+        if (schemaVersion == ContentManifest.SupportedSchemaVersion &&
+            (root.TryGetProperty("mapCoverage", out _) || root.TryGetProperty("missingMapArchives", out _)))
+        {
+            throw new InvalidDataException("This content-set manifest version does not declare map coverage.");
+        }
+
+        ContentManifest manifest = new(ReadString(root, "clientVersion"), ReadSha256(root, "versionMarkerSha256"), ReadEntries(root), missingMaps);
 
         int declaredFileCount = ReadInt32(root, "fileCount");
         long declaredLength = ReadInt64(root, "length");
@@ -42,6 +52,47 @@ internal static class ContentManifestReader
         }
 
         return manifest;
+    }
+
+    private static List<MissingMapArchive> ReadMissingMaps(JsonElement root)
+    {
+        if (ReadString(root, "mapCoverage") != "available" ||
+            !root.TryGetProperty("missingMapArchives", out JsonElement encoded) ||
+            encoded.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException("Available-map manifests require a missing-map archive list.");
+        }
+
+        List<MissingMapArchive> missing = [];
+        uint previousId = 0;
+        foreach (JsonElement item in encoded.EnumerateArray())
+        {
+            uint id = ReadUInt32(item, "mapDataId");
+            string archivePath = ReadString(item, "archivePath");
+            ContentPath.Validate(archivePath);
+
+            if (id == 0 || id <= previousId)
+            {
+                throw new InvalidDataException("Missing map archive IDs must be positive, unique, and sorted.");
+            }
+
+            missing.Add(new MissingMapArchive(id, archivePath));
+            previousId = id;
+        }
+
+        return missing;
+    }
+
+    private static uint ReadUInt32(JsonElement item, string property)
+    {
+        if (item.ValueKind != JsonValueKind.Object ||
+            !item.TryGetProperty(property, out JsonElement value) ||
+            value.ValueKind != JsonValueKind.Number || !value.TryGetUInt32(out uint id))
+        {
+            throw new InvalidDataException($"Missing map archive has no valid {property}.");
+        }
+
+        return id;
     }
 
     private static ContentManifestEntry[] ReadEntries(JsonElement root)

@@ -15,6 +15,7 @@ internal static class ContentToolCommandLine
     private const string FileOption = "--file";
     private const string MapDataIdOption = "--map-data-id";
     private const string AllMapsOption = "--all-maps";
+    private const string AvailableMapsOption = "--available-maps";
 
     private const string SourceOption = "--source";
     private const string DestinationOption = "--destination";
@@ -27,9 +28,9 @@ internal static class ContentToolCommandLine
     } =
     [
         "Usage:",
-        $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <client-root> {DestinationOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption}]",
+        $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <client-root> {DestinationOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
-        $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption}]",
+        $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
         $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapSceneryAniVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
@@ -57,12 +58,12 @@ internal static class ContentToolCommandLine
             case ImportVerb:
                 {
                     if (!TryParseContentSetOptions(remainingArgs, [SourceOption, DestinationOption],
-                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId, out bool allMaps, out errorMessage))
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId, out bool allMaps, out bool availableMaps, out errorMessage))
                     {
                         return false;
                     }
 
-                    command = new ImportContentSetCommand(values[0], values[1], mapDataId, allMaps);
+                    command = new ImportContentSetCommand(values[0], values[1], mapDataId, allMaps, availableMaps);
                     return true;
                 }
 
@@ -80,12 +81,12 @@ internal static class ContentToolCommandLine
             case VerifyContentSetVerb:
                 {
                     if (!TryParseContentSetOptions(remainingArgs, [ContentSetOption],
-                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId, out bool allMaps, out errorMessage))
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId, out bool allMaps, out bool availableMaps, out errorMessage))
                     {
                         return false;
                     }
 
-                    command = new VerifyContentSetCommand(values[0], mapDataId, allMaps);
+                    command = new VerifyContentSetCommand(values[0], mapDataId, allMaps, availableMaps);
                     return true;
                 }
 
@@ -145,27 +146,32 @@ internal static class ContentToolCommandLine
     private static bool TryParseContentSetOptions(IReadOnlyList<string> args,
         IReadOnlyList<string> requiredOptions, string workingDirectoryPath,
         [NotNullWhen(true)] out IReadOnlyList<string>? values, out uint? mapDataId,
-        out bool allMaps, [NotNullWhen(false)] out string? errorMessage)
+        out bool allMaps, out bool availableMaps, [NotNullWhen(false)] out string? errorMessage)
     {
         mapDataId = null;
         allMaps = false;
-        if (args.Contains(AllMapsOption))
+        availableMaps = false;
+
+        string? selectedFlag = args.Contains(AllMapsOption) ? AllMapsOption :
+            args.Contains(AvailableMapsOption) ? AvailableMapsOption : null;
+        if (selectedFlag is not null)
         {
             if (args.Count != requiredOptions.Count * 2 + 1 ||
-                args.Count(static value => value == AllMapsOption) != 1)
+                args.Count(value => value == selectedFlag) != 1)
             {
                 values = null;
-                errorMessage = "Specify --all-maps once without --map-data-id.";
+                errorMessage = "Specify one map-selection option.";
                 return false;
             }
 
-            string[] pathArguments = [.. args.Where(static value => value != AllMapsOption)];
+            string[] pathArguments = [.. args.Where(value => value != selectedFlag)];
             if (!TryParseOptions(pathArguments, requiredOptions, workingDirectoryPath, out values, out errorMessage))
             {
                 return false;
             }
 
-            allMaps = true;
+            allMaps = selectedFlag == AllMapsOption;
+            availableMaps = selectedFlag == AvailableMapsOption;
             return true;
         }
         if (args.Count == requiredOptions.Count * 2)

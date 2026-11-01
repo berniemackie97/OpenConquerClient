@@ -40,6 +40,8 @@ internal sealed class ImportSourceRoot
     }
     public IClientContentSource ContentSource => _packagedContentSource;
 
+    public bool ContainsLooseFile(string path) => _contentRoot.TryResolveFile(path, out _);
+
     /// <summary>
     /// Validates <paramref name="rootPath"/> and reads its identity marker.
     /// </summary>
