@@ -211,12 +211,17 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
         bool completed = false;
         byte[] packet = new byte[GameLoginProof1052.PacketLength];
+        using CancellationTokenSource proofDeadline = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, _lifetimeCancellation.Token);
+        proofDeadline.CancelAfter(timeout);
         try
         {
+            proofDeadline.Token.ThrowIfCancellationRequested();
             (_account ?? throw new InvalidOperationException("Account proof state was already released."))
                 .WriteGameLoginProof(packet, localeTag, hardwareAddress.Span);
+            proofDeadline.Token.ThrowIfCancellationRequested();
             await WriteSecuredPacketAsync(packet, timeout, "GameServer login proof write timed out.",
-                cancellationToken).ConfigureAwait(false);
+                proofDeadline.Token).ConfigureAwait(false);
 
             lock (_lifetimeGate)
             {
@@ -227,13 +232,20 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
             completed = true;
         }
-        catch
+        catch (OperationCanceledException) when (
+            proofDeadline.IsCancellationRequested &&
+            !cancellationToken.IsCancellationRequested &&
+            !_lifetimeCancellation.IsCancellationRequested)
         {
-            _client.Dispose();
-            throw;
+            throw new TimeoutException("GameServer login proof write timed out.");
         }
         finally
         {
+            if (!completed)
+            {
+                _client.Dispose();
+            }
+
             CryptographicOperations.ZeroMemory(packet);
             ExitOperation(completed);
         }
