@@ -3,7 +3,7 @@ using OpenConquer.Networking.Game.Cryptography;
 namespace OpenConquer.Networking.Game.Framing;
 
 /// <summary>
-/// Encodes native client-to-GameServer packet frames under an already negotiated
+/// Encrypts client-to-GameServer packet frames under an already negotiated
 /// session cipher. The owner is responsible for transport ordering and lifetime.
 /// </summary>
 internal sealed class GameSecuredFrameEncoder : IDisposable
