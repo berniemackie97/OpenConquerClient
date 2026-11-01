@@ -42,7 +42,7 @@ public sealed class WorldTerrainSceneDrawListTests
     }
 
     [Fact]
-    public void SceneObjects_UseViewportMarginAndDepthOrderRatherThanFileOrder()
+    public void SceneObjects_AreDepthOrderedIndependentlyOfFileOrder()
     {
         using WorldMapFixture fixture = new();
         AniIndexSection animation = Animation(1);
@@ -57,7 +57,7 @@ public sealed class WorldTerrainSceneDrawListTests
         IReadOnlyList<WorldTerrainSprite> sprites = WorldTerrainSceneDrawList.Build(
             fixture.Map, placements, projection, nowMilliseconds: 1000, sceneStartMilliseconds: 1000);
 
-        Assert.Equal([(69, 69), (70, 70), (71, 70), (10, 10)],
+        Assert.Equal([(69, 69), (70, 70), (71, 70)],
             sprites.Select(static sprite => (sprite.TileX, sprite.TileY)));
     }
 
