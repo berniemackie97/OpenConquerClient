@@ -5,7 +5,7 @@ namespace OpenConquer.Client.Tests.World;
 public sealed class WorldCameraProjectionTests
 {
     [Fact]
-    public void RetailNewbie_HeroTileProjectionAndGroundCameraUseNativeCoordinates()
+    public void NewbieVillageTile_ProjectsToWorldPixelsAndClampedGroundOffset()
     {
         using WorldMapFixture fixture = new();
         Assert.Equal((5984, 2016), WorldCameraProjection.ProjectTile(fixture.Map, 90, 35));
@@ -19,7 +19,7 @@ public sealed class WorldCameraProjectionTests
     }
 
     [Fact]
-    public void RetailNewbie_ClampsToOriginalPuzzleExtentAtAllEdges()
+    public void CameraProjection_ClampsAtBothPuzzleExtents()
     {
         using WorldMapFixture fixture = new();
         WorldPuzzleProjection lower = WorldCameraProjection.FromHeroWorldPosition(
@@ -34,7 +34,7 @@ public sealed class WorldCameraProjectionTests
     }
 
     [Fact]
-    public void ZoomAndEdgeScrollFollowNativeDivisorAndClamp()
+    public void ZoomAndEdgeScroll_ApplyScaleAndClamp()
     {
         using WorldMapFixture fixture = new();
         WorldPuzzleProjection scaled = WorldCameraProjection.FromHeroWorldPosition(
