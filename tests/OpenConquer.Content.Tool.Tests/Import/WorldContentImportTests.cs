@@ -29,6 +29,8 @@ public sealed class WorldContentImportTests
         Assert.Contains(manifest.Entries, static entry => entry.PathKey == "map/puzzle/newbiebg.pul");
         Assert.Contains(manifest.Entries, static entry => entry.PathKey == "ani/newbie.ani");
         Assert.Contains(manifest.Entries, static entry => entry.PathKey == "ani/mapscene.ani");
+        Assert.Contains(manifest.Entries, static entry =>
+            entry.PathKey == "data/map/mapobj/newbie/newbie17.dds");
         Assert.Contains(manifest.Entries, static entry => entry.PathKey == "map/scene/stand06.scene");
         Assert.Contains(manifest.Entries, static entry => entry.PathKey == "data/map/stand06.dds");
         Assert.Contains(manifest.Entries, static entry =>
@@ -37,6 +39,51 @@ public sealed class WorldContentImportTests
         Assert.DoesNotContain(manifest.Entries, static entry => entry.PathKey == "ini/package.ini");
 
         Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+    }
+
+    [Fact]
+    public void Import_AllMaps_IncludesEveryCatalogEntryWithoutDuplicatingSharedFiles()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        WriteMapSource(source);
+        WriteCatalog(source, (1010u, "map/map/newbie.7z"), (1011u, "map/map/newbie.7z"));
+
+        string oneMapPath = destination.ChildPath("single");
+        string allMapsPath = destination.ChildPath("all");
+        ContentManifest single = ContentSetImporter.Import(source.RootPath, oneMapPath, 1010);
+        ContentManifest complete = ContentSetImporter.Import(source.RootPath, allMapsPath, allMaps: true);
+
+        Assert.Equal(single.Entries, complete.Entries);
+        Assert.Equal(complete.FileCount, ContentSetVerifier.Verify(allMapsPath, allMaps: true).FileCount);
+        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(allMapsPath));
+    }
+
+    [Fact]
+    public void Import_AllMaps_ReportsMissingCatalogMapAndDoesNotPublish()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        WriteMapSource(source);
+        WriteCatalog(source, (1010u, "map/map/newbie.7z"), (1011u, "map/map/missing.7z"));
+
+        string target = destination.ChildPath("all");
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(
+            () => ContentSetImporter.Import(source.RootPath, target, allMaps: true));
+
+        Assert.Contains("1011", exception.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(target));
+    }
+
+    [Fact]
+    public void Import_AllMapsCannotBeCombinedWithOneMap()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        source.WriteStartupSnapshot();
+
+        Assert.Throws<ArgumentException>(() => ContentSetImporter.Import(
+            source.RootPath, destination.ChildPath("invalid"), 1010, allMaps: true));
     }
 
     [Fact]
@@ -50,6 +97,25 @@ public sealed class WorldContentImportTests
         string contentSet = destination.ChildPath("world");
         Assert.Throws<FileNotFoundException>(() => ContentSetImporter.Import(source.RootPath, contentSet, 1010));
         Assert.False(Directory.Exists(contentSet));
+    }
+
+    private static void WriteCatalog(TemporarySourceTree source, params (uint Id, string Path)[] maps)
+    {
+        using MemoryStream stream = new();
+        using (BinaryWriter writer = new(stream, Encoding.Latin1, leaveOpen: true))
+        {
+            writer.Write((uint)maps.Length);
+            foreach ((uint id, string path) in maps)
+            {
+                byte[] encoded = Encoding.Latin1.GetBytes(path);
+                writer.Write(id);
+                writer.Write((uint)encoded.Length);
+                writer.Write(encoded);
+                writer.Write(0u);
+            }
+        }
+
+        source.WriteBytes("ini/GameMap.dat", stream.ToArray());
     }
 
     private static void WriteMapSource(TemporarySourceTree source)
@@ -72,6 +138,7 @@ public sealed class WorldContentImportTests
         }
 
         StringBuilder index = new();
+        index.Append(File.ReadAllText(Path.Combine(fixture, "ani", "mapscene-newbie-sections.ani"), Encoding.Latin1));
         foreach (string name in s_sceneNames)
         {
             source.WriteBytes($"map/Scene/{name}.scene", TerrainSceneTestData.Create(name, 1, 1));
@@ -86,6 +153,13 @@ public sealed class WorldContentImportTests
         PackagedClientContentSource contentSource = PackagedClientContentSource.Open(source.RootPath);
         GameMapContent map = GameMapContent.Load(contentSource, GameMapCatalog.Load(contentSource), 1010);
         GameMapPuzzleResources puzzles = GameMapPuzzleResources.Load(contentSource, map);
+        foreach (GameMapSceneryAniBinding binding in GameMapSceneryAniBindings.Load(contentSource, map.Scene))
+        {
+            foreach (string framePath in binding.Animation.FramePaths)
+            {
+                source.WriteText(framePath, "DDS scenery frame");
+            }
+        }
         HashSet<string> paths = new(StringComparer.OrdinalIgnoreCase)
         {
             map.CellGrid.PuzzlePath,

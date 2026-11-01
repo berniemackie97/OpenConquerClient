@@ -17,6 +17,7 @@ internal static class ClientWorldContentRequirements
         HashSet<string> puzzlePaths = new(StringComparer.OrdinalIgnoreCase);
         AddPuzzle(map.CellGrid.PuzzlePath);
 
+        AniSectionResolver animatedSections = new(source, ContentLookupMode.LooseOnly);
         foreach (GameMapPositionedOverlayRecord record in map.Scene.PositionedOverlays)
         {
             foreach (GameMapPositionedOverlayEntry entry in record.Entries)
@@ -25,6 +26,18 @@ internal static class ClientWorldContentRequirements
                 {
                     AddPuzzle(puzzle.PuzzlePath);
                 }
+                else if (entry is GameMapAnimatedOverlayEntry animated)
+                {
+                    AddAnimation(animated.ResourcePath, animated.PartName);
+                }
+            }
+        }
+
+        foreach (GameMapSceneryRecord scenery in map.Scene.Scenery)
+        {
+            if (scenery.TypeCode == 4)
+            {
+                AddAnimation(scenery.ResourcePath!, scenery.PartName!);
             }
         }
 
@@ -41,10 +54,7 @@ internal static class ClientWorldContentRequirements
             foreach (GameMapTerrainObjectBinding binding in placement.Objects)
             {
                 Add(binding.Terrain.AnimationPath, ContentLookupMode.LooseOnly);
-                foreach (string framePath in binding.Animation.FramePaths)
-                {
-                    Add(framePath, ContentLookupMode.LooseThenPackage);
-                }
+                AddFrames(binding.Animation);
             }
         }
 
@@ -67,11 +77,22 @@ internal static class ClientWorldContentRequirements
                     continue;
                 }
 
-                AniIndexSection animation = puzzles.GetRequiredTileAnimation(path, tileIndex);
-                foreach (string framePath in animation.FramePaths)
-                {
-                    Add(framePath, ContentLookupMode.LooseThenPackage);
-                }
+                AddFrames(puzzles.GetRequiredTileAnimation(path, tileIndex));
+            }
+        }
+
+        void AddAnimation(string path, string sectionName)
+        {
+            AniIndexSection animation = animatedSections.Resolve(path, sectionName);
+            Add(path, ContentLookupMode.LooseOnly);
+            AddFrames(animation);
+        }
+
+        void AddFrames(AniIndexSection animation)
+        {
+            foreach (string framePath in animation.FramePaths)
+            {
+                Add(framePath, ContentLookupMode.LooseThenPackage);
             }
         }
 

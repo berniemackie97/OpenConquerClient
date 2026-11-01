@@ -81,6 +81,47 @@ public sealed class ContentToolCommandLineTests
     }
 
     [Fact]
+    public void TryParse_ImportsAllIndexedMaps()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["import-client-content", "--all-maps", "--destination", "out", "--source", "in"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        ImportContentSetCommand import = Assert.IsType<ImportContentSetCommand>(command);
+        Assert.True(import.AllMaps);
+        Assert.Null(import.MapDataId);
+        Assert.Equal(Path.Combine(s_workingDirectory, "in"), import.SourceRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "out"), import.DestinationRootPath);
+    }
+
+    [Fact]
+    public void TryParse_VerifiesAllIndexedMaps()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["verify-content-set", "--content-set", "world", "--all-maps"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        VerifyContentSetCommand verify = Assert.IsType<VerifyContentSetCommand>(command);
+        Assert.True(verify.AllMaps);
+        Assert.Null(verify.MapDataId);
+    }
+
+    [Theory]
+    [InlineData(new[] { "import-client-content", "--source", "in", "--destination", "out",
+        "--map-data-id", "1010", "--all-maps" })]
+    [InlineData(new[] { "verify-content-set", "--content-set", "world", "--all-maps", "--all-maps" })]
+    [InlineData(new[] { "import-client-content", "--source", "in", "--all-maps" })]
+    public void TryParse_RejectsAmbiguousAllMapsSelection(string[] args)
+    {
+        Assert.False(ContentToolCommandLine.TryParse(
+            args, s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+        Assert.Null(command);
+        Assert.NotNull(errorMessage);
+    }
+
+    [Fact]
     public void TryParse_ReadsAValidateStartupCommand()
     {
         Assert.True(

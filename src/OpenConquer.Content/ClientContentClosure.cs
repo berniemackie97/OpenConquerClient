@@ -47,7 +47,7 @@ public static class ClientContentClosure
         ("Button411", 2),
     ];
 
-    public static IReadOnlyList<ClientContentRequirement> Resolve(IClientContentSource contentSource, uint? mapDataId = null)
+    public static IReadOnlyList<ClientContentRequirement> Resolve(IClientContentSource contentSource, uint? mapDataId = null, bool allMaps = false)
     {
         ArgumentNullException.ThrowIfNull(contentSource);
 
@@ -93,9 +93,27 @@ public static class ClientContentClosure
         MainHudSelectedSkillContentRequirements.Add(requirements, contentSource, controlAni);
         MainHudStatusHintContentRequirements.Add(requirements, contentSource, controlAni);
 
-        if (mapDataId is { } selectedMap)
+        if (allMaps && mapDataId is not null)
         {
-            ClientWorldContentRequirements.Add(requirements, contentSource, GameMapCatalog.Load(contentSource), selectedMap);
+            throw new ArgumentException("Select either a map-data ID or all maps.");
+        }
+
+        if (allMaps || mapDataId is not null)
+        {
+            GameMapCatalog catalog = GameMapCatalog.Load(contentSource);
+            IEnumerable<uint> selectedMaps = allMaps ? catalog.MapDataIds.Order() : [mapDataId!.Value];
+            foreach (uint selectedMap in selectedMaps)
+            {
+                try
+                {
+                    ClientWorldContentRequirements.Add(requirements, contentSource, catalog, selectedMap);
+                }
+                catch (Exception exception) when (allMaps &&
+                    exception is InvalidDataException or IOException or UnauthorizedAccessException)
+                {
+                    throw new InvalidDataException($"Unable to resolve content for map data ID {selectedMap}.", exception);
+                }
+            }
         }
 
         return Normalize(requirements);
