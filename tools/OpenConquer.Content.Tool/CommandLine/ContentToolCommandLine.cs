@@ -143,7 +143,8 @@ internal static class ContentToolCommandLine
 
     private static bool TryParseContentSetOptions(IReadOnlyList<string> args,
         IReadOnlyList<string> requiredOptions, string workingDirectoryPath,
-        [NotNullWhen(true)] out IReadOnlyList<string>? values, out uint? mapDataId, out string? errorMessage)
+        [NotNullWhen(true)] out IReadOnlyList<string>? values, out uint? mapDataId,
+        [NotNullWhen(false)] out string? errorMessage)
     {
         mapDataId = null;
         if (args.Count == requiredOptions.Count * 2)
