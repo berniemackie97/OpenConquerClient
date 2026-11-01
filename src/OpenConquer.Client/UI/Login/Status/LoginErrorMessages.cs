@@ -23,6 +23,7 @@ internal sealed class LoginErrorMessages(ClientStringResources numeric, ClientKe
             LoginFailureKind.AccountRefusal => FormatAccount(failure.Code),
             LoginFailureKind.GameRefusal => Decode(failure.Bytes.Span),
             LoginFailureKind.RegistrationNotice => LoginRegistrationText.For((LoginRegistrationNotice)failure.Code),
+            LoginFailureKind.WorldContent => "Required world content is unavailable.",
             _ => throw new ArgumentOutOfRangeException(nameof(failure)),
         };
     }

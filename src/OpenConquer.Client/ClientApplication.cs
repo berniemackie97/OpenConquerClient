@@ -68,6 +68,7 @@ internal sealed class ClientApplication : IDisposable
     private FlashStagePresentation? _rolePresentation;
     private bool _returnFromRole;
     private Task? _roleClosing;
+    private Task? _worldClosing;
     private PixelPoint _lastPointer;
     private bool _runStarted;
     private bool _disposed;
@@ -170,13 +171,22 @@ internal sealed class ClientApplication : IDisposable
             {
                 try
                 {
-                    _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    _worldClosing?.GetAwaiter().GetResult();
                 }
                 finally
                 {
-                    _worldGame = null;
-                    _worldEntry = null;
-                    _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    _worldClosing = null;
+                    try
+                    {
+                        _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    }
+                    finally
+                    {
+                        _worldGame = null;
+                        _worldEntry = null;
+                        _worldScene = null;
+                        _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    }
                 }
             }
         }
@@ -321,6 +331,13 @@ internal sealed class ClientApplication : IDisposable
             closed.GetAwaiter().GetResult();
         }
 
+        if (_worldClosing is { IsCompleted: true } completedWorldClose)
+        {
+            _worldClosing = null;
+            completedWorldClose.GetAwaiter().GetResult();
+            _loginFlow?.FailWorldContent();
+        }
+
         if (_role is null && _roleClosing is null &&
             _loginFlow is { Status: LoginAttemptStatus.CharacterCreation } creation &&
             creation.TryTakeAcceptedGame(out var accepted, out string accountName))
@@ -454,16 +471,37 @@ internal sealed class ClientApplication : IDisposable
         // Own the authenticated connection before any content operation can fail.
         _worldGame = game;
         _worldEntry = world;
-        IClientContentSource source = _roleContent ??
-            throw new InvalidOperationException("World content source was not initialized.");
-        _terrainCatalog ??= GameMapCatalog.Load(source);
-        _worldScene = WorldMapScene.Load(source, _terrainCatalog,
-            world.MapDataId, world.X, world.Y, unchecked((uint)Environment.TickCount));
+        try
+        {
+            IClientContentSource source = _roleContent ??
+                throw new InvalidOperationException("World content source was not initialized.");
+            _terrainCatalog ??= GameMapCatalog.Load(source);
+            _worldScene = WorldMapScene.Load(source, _terrainCatalog,
+                world.MapDataId, world.X, world.Y, unchecked((uint)Environment.TickCount));
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"OpenConquer: unable to load map {world.MapDataId} ({exception.Message}).");
+            ReturnToLogin();
+        }
+    }
+
+    private void ReturnToLogin()
+    {
+        GameServerHandshakeSession? game = _worldGame;
+        _worldGame = null;
+        _worldEntry = null;
+        _worldScene = null;
+        if (game is not null)
+        {
+            _worldClosing = game.DisposeAsync().AsTask();
+        }
     }
 
     private void OnLoginRequested()
     {
-        if (_worldGame is null && _roleClosing is null && _login is { } login && _loginFlow is { } flow)
+        if (_worldGame is null && _worldScene is null && _worldClosing is null &&
+            _roleClosing is null && _login is { } login && _loginFlow is { } flow)
         {
             flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
             login.ApplyFeedback(flow.Feedback, _loginErrors!);

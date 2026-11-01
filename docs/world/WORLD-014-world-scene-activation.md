@@ -45,6 +45,11 @@ dotnet run --project src/OpenConquer.Client -c Release -- \
 The importer requires a new destination directory and publishes it only after a complete
 import. Delete or choose another destination before repeating the command. The generated
 content set stays local; do not commit third-party assets to the public repository.
+If map resources are missing or malformed at world admission, the client closes the
+transferred game session before restoring login input, then displays a content error.
+No world session is retained behind the login screen. A future world packet reader must
+own disconnect detection; this slice does not consume or discard gameplay frames.
+
 The server must be running for an authenticated-world smoke test. CI validates the importer
 with small generated frame resources and the verified map data fixtures; it does not replace
 a live OpenGL smoke test.
