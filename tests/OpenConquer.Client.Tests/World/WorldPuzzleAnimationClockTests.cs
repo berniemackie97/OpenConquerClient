@@ -17,7 +17,7 @@ public sealed class WorldPuzzleAnimationClockTests
     }
 
     [Fact]
-    public void ClockUsesUnsignedNativeTimeDeltaAcrossWrap()
+    public void Clock_UsesUnsignedTimeDeltaAcrossWrap()
     {
         WorldPuzzleAnimationClock clock = new(16);
         Assert.Equal(0u, clock.FrameForRender(uint.MaxValue - 8));

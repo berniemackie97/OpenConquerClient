@@ -301,8 +301,6 @@ Text compatibility details are in
 `OpenConquer.Content` owns runtime content access and the legacy file formats. Format support is
 based on documented research into the retail files.
 
-The verified retail runtime closure currently contains 3,785 files totaling 21,319,841 bytes.
-
 Current runtime consumers cover:
 
 ```text

@@ -42,7 +42,7 @@ Next: bounded extraction of the retail `.7z` map payload using an audited
 codec, followed by post-grid sections and original puzzle/ANI texture
 dependencies. The runtime content closure and tracked payload stay unchanged
 until a real consumer is wired. The operator will run
-`OpenConquer.Content.Tool import-retail-5517` from the clean retail source
+`OpenConquer.Content.Tool import-client-content` from the clean retail source
 when that closure changes.
 
 Evidence: `20_notes/Game_Map/cgamemap_class.md`
