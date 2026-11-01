@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using OpenConquer.Client.World;
 using OpenConquer.Content;
@@ -18,8 +19,10 @@ public sealed class WorldPuzzleDrawListTests
 
         IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.Ground(retail.Map, retail.Puzzles, projection, 0);
 
-        Assert.NotEmpty(tiles);
-        Assert.InRange(tiles.Count, 1, 30);
+        Assert.Equal(
+            ["Puzzle14", "Puzzle15", "Puzzle16", "Puzzle17", "Puzzle20", "Puzzle21", "Puzzle22", "Puzzle23",
+             "Puzzle26", "Puzzle27", "Puzzle28", "Puzzle29"],
+            tiles.Select(tile => tile.Animation.Name));
         Assert.All(tiles, tile =>
         {
             Assert.Equal(256, tile.Size);
@@ -41,9 +44,27 @@ public sealed class WorldPuzzleDrawListTests
         IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.PositionedPuzzles(retail.Map, retail.Puzzles, projection);
 
         Assert.NotEmpty(tiles);
-        Assert.InRange(tiles.Count, 1, 30);
+        GameMapPositionedOverlayRecord record = Assert.Single(retail.Map.Scene.PositionedOverlays);
+        GameMapPuzzleOverlayEntry overlay = Assert.IsType<GameMapPuzzleOverlayEntry>(Assert.Single(record.Entries));
+        GameMapPuzzleBitmap backdrop = retail.Puzzles.GetRequired(overlay.PuzzlePath);
+
+        long halfMapWidth = (long)retail.Map.CellGrid.Width * 64 / 2;
+        long halfMapHeight = (long)retail.Map.CellGrid.Height * 32 / 2;
+        long rootX = (long)record.HeaderInt0 *
+            (projection.CenterX + projection.ScreenWidth / 2L - halfMapWidth) / 100 +
+            halfMapWidth - projection.ScreenWidth / 2;
+        long rootY = (long)record.HeaderInt1 *
+            (projection.CenterY + projection.ScreenHeight / 2L - halfMapHeight) / 100 +
+            halfMapHeight - projection.ScreenHeight / 2;
+        long originX = halfMapWidth - backdrop.Columns * 256L / 2 - rootX;
+        long originY = halfMapHeight - backdrop.Rows * 256L / 2 - rootY;
+
         Assert.All(tiles, tile =>
         {
+            int tileIndex = int.Parse(tile.Animation.Name.AsSpan(6), CultureInfo.InvariantCulture) - 50;
+            Assert.InRange(tileIndex, 0, backdrop.Columns * backdrop.Rows - 1);
+            Assert.Equal(checked((int)(originX + tileIndex % backdrop.Columns * 256L)), tile.X);
+            Assert.Equal(checked((int)(originY + tileIndex / backdrop.Columns * 256L)), tile.Y);
             Assert.Equal(256, tile.Size);
             Assert.Equal(0, tile.FrameIndex);
             Assert.StartsWith("data/map/puzzle/newbie/bg", tile.Animation.FramePaths[tile.FrameIndex], StringComparison.OrdinalIgnoreCase);
@@ -64,7 +85,7 @@ public sealed class WorldPuzzleDrawListTests
     }
 
     [Fact]
-    public void RejectsInvalidProjectionBeforeReadingTiles()
+    public void RejectsInvalidProjection()
     {
         using RetailNewbieSource retail = new();
 
