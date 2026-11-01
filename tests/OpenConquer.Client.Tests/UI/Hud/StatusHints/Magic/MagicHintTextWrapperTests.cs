@@ -3,7 +3,7 @@ using OpenConquer.Client.UI.Hud.StatusHints.Magic;
 
 namespace OpenConquer.Client.Tests.UI.Hud.StatusHints.Magic;
 
-public sealed class NativeMagicEnglishWrapperTests
+public sealed class MagicHintTextWrapperTests
 {
     [Fact]
     public void Wrap_UsesSingleLineFastPathWhenWidthIsStrictlyBelowLimit()
@@ -14,7 +14,7 @@ public sealed class NativeMagicEnglishWrapperTests
     }
 
     [Fact]
-    public void Wrap_UsesNativeBoundaryWhenWidthEqualsLimit()
+    public void Wrap_HandlesWidthEqualToPixelLimit()
     {
         IReadOnlyList<byte[]> lines = Wrap("abc", 18);
 
@@ -22,7 +22,7 @@ public sealed class NativeMagicEnglishWrapperTests
     }
 
     [Fact]
-    public void Wrap_PreservesNativeUnbrokenWordAdvanceQuirk()
+    public void Wrap_PreservesUnbrokenWordBoundaryPosition()
     {
         IReadOnlyList<byte[]> lines = Wrap(new string('a', 61), 180);
 
@@ -52,7 +52,7 @@ public sealed class NativeMagicEnglishWrapperTests
     {
         byte[] encoded = [0xD6, 0xD0, 0xD6, 0xD0];
 
-        IReadOnlyList<byte[]> lines = NativeMagicEnglishWrapper.Wrap(encoded, 12, 6, Measure);
+        IReadOnlyList<byte[]> lines = MagicHintTextWrapper.Wrap(encoded, 12, 6, Measure);
 
         Assert.Equal(encoded, lines.SelectMany(static line => line).ToArray());
     }
@@ -60,21 +60,21 @@ public sealed class NativeMagicEnglishWrapperTests
     [Fact]
     public void Wrap_RejectsEmptyInputAndZeroPixelLimit()
     {
-        Assert.Empty(NativeMagicEnglishWrapper.Wrap(ReadOnlySpan<byte>.Empty, 180, 6, Measure));
-        Assert.Empty(NativeMagicEnglishWrapper.Wrap("abc"u8, 0, 6, Measure));
+        Assert.Empty(MagicHintTextWrapper.Wrap(ReadOnlySpan<byte>.Empty, 180, 6, Measure));
+        Assert.Empty(MagicHintTextWrapper.Wrap("abc"u8, 0, 6, Measure));
     }
 
     [Fact]
-    public void Wrap_StopsAtNativeCStringTerminator()
+    public void Wrap_StopsAtZeroByte()
     {
         byte[] source = [(byte)'A', 0, (byte)'B'];
 
-        Assert.Equal(["A"], Decode(NativeMagicEnglishWrapper.Wrap(source, 180, 6, Measure)));
+        Assert.Equal(["A"], Decode(MagicHintTextWrapper.Wrap(source, 180, 6, Measure)));
     }
 
     private static IReadOnlyList<byte[]> Wrap(string text, int pixelLimit)
     {
-        return NativeMagicEnglishWrapper.Wrap(Encoding.Latin1.GetBytes(text), pixelLimit, 6, Measure);
+        return MagicHintTextWrapper.Wrap(Encoding.Latin1.GetBytes(text), pixelLimit, 6, Measure);
     }
 
     private static int Measure(ReadOnlySpan<byte> bytes)

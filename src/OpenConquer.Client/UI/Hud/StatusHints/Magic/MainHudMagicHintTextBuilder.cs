@@ -71,7 +71,7 @@ internal sealed class MainHudMagicHintTextBuilder
 
         Add(groups, record.Level == 0
             ? _numericStrings.GetEncoded(ElementaryLevelStringId)
-            : NativeMagicStringFormatter.Format(_numericStrings.GetEncoded(SkillLevelStringId).Span, ShortFormatLimit, record.Level),
+            : MagicHintTextFormatter.Format(_numericStrings.GetEncoded(SkillLevelStringId).Span, ShortFormatLimit, record.Level),
             SpriteColor.White);
 
         AppendSubprofessionRequirement(groups, record, name, runtime);
@@ -132,7 +132,7 @@ internal sealed class MainHudMagicHintTextBuilder
 
         if (!template.IsEmpty)
         {
-            Add(groups, NativeMagicStringFormatter.Format(template.Span, RequirementFormatLimit, arguments), color);
+            Add(groups, MagicHintTextFormatter.Format(template.Span, RequirementFormatLimit, arguments), color);
         }
     }
 
@@ -148,7 +148,7 @@ internal sealed class MainHudMagicHintTextBuilder
 
         if (mount is null)
         {
-            Add(groups, NativeMagicStringFormatter.TranslateEscapes(_keyedStrings.GetEncoded("STR_MOUNT_MAGIC_TIP_NO_EQUITMENT").Span), SpriteColor.White);
+            Add(groups, MagicHintTextFormatter.TranslateEscapes(_keyedStrings.GetEncoded("STR_MOUNT_MAGIC_TIP_NO_EQUITMENT").Span), SpriteColor.White);
             return;
         }
 
@@ -159,9 +159,9 @@ internal sealed class MainHudMagicHintTextBuilder
             return;
         }
 
-        byte[] formatted = NativeMagicStringFormatter.Format(template.Span, ShortFormatLimit, mount.EncodedDisplayName, mount.LineageLevel);
+        byte[] formatted = MagicHintTextFormatter.Format(template.Span, ShortFormatLimit, mount.EncodedDisplayName, mount.LineageLevel);
 
-        Add(groups, NativeMagicStringFormatter.TranslateEscapes(formatted), SpriteColor.White);
+        Add(groups, MagicHintTextFormatter.TranslateEscapes(formatted), SpriteColor.White);
     }
 
     private void AppendProgress(List<MainHudMagicHintTextGroup> groups, MagicTypeRecord record, MainHudLearnedMagic learned, MainHudMagicHintRuntimeSnapshot runtime)
@@ -178,7 +178,7 @@ internal sealed class MainHudMagicHintTextBuilder
 
             if (!description.IsEmpty)
             {
-                Add(groups, NativeMagicStringFormatter.Format(description.Span, ShortFormatLimit), SpriteColor.White);
+                Add(groups, MagicHintTextFormatter.Format(description.Span, ShortFormatLimit), SpriteColor.White);
             }
 
             return;
@@ -186,7 +186,7 @@ internal sealed class MainHudMagicHintTextBuilder
 
         double percentage = CalculateExperiencePercentage(learned.CurrentExperience, record.RequiredExperience);
 
-        Add(groups, NativeMagicStringFormatter.Format(_numericStrings.GetEncoded(ExperienceStringId).Span, ShortFormatLimit, percentage), SpriteColor.White);
+        Add(groups, MagicHintTextFormatter.Format(_numericStrings.GetEncoded(ExperienceStringId).Span, ShortFormatLimit, percentage), SpriteColor.White);
     }
 
     private void AppendDanceWarning(List<MainHudMagicHintTextGroup> groups, MagicTypeRecord record, MainHudMagicHintRuntimeSnapshot runtime, bool isLearned)

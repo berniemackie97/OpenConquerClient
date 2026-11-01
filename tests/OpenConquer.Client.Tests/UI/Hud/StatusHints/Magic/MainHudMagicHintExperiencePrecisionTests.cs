@@ -14,7 +14,7 @@ public sealed class MainHudMagicHintExperiencePrecisionTests
     public void CalculateExperiencePercentage_UsesNativeFloat32DivisionBeforeDoubleFormatting(uint current, uint required, string expected)
     {
         double percentage = MainHudMagicHintTextBuilder.CalculateExperiencePercentage(current, required);
-        byte[] formatted = NativeMagicStringFormatter.Format("EXP: %0.3f%% "u8, 255, percentage);
+        byte[] formatted = MagicHintTextFormatter.Format("EXP: %0.3f%% "u8, 255, percentage);
 
         Assert.Equal(expected, System.Text.Encoding.ASCII.GetString(formatted));
     }

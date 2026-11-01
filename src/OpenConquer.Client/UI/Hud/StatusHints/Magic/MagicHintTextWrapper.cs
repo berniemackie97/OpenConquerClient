@@ -1,12 +1,12 @@
 namespace OpenConquer.Client.UI.Hud.StatusHints.Magic;
 
-internal delegate int NativeMagicTextWidth(ReadOnlySpan<byte> encodedText);
+internal delegate int MagicHintTextWidth(ReadOnlySpan<byte> encodedText);
 
-internal static class NativeMagicEnglishWrapper
+internal static class MagicHintTextWrapper
 {
-    private const int MaximumNativeBoundaries = 513;
+    private const int MaximumLineBoundaries = 513;
 
-    public static IReadOnlyList<byte[]> Wrap(ReadOnlySpan<byte> encodedText, int pixelLimit, int globalFontWidth, NativeMagicTextWidth measure)
+    public static IReadOnlyList<byte[]> Wrap(ReadOnlySpan<byte> encodedText, int pixelLimit, int globalFontWidth, MagicHintTextWidth measure)
     {
         ArgumentNullException.ThrowIfNull(measure);
         ArgumentOutOfRangeException.ThrowIfNegative(globalFontWidth);
@@ -30,7 +30,7 @@ internal static class NativeMagicEnglishWrapper
 
         int effectiveLimit = Math.Max(pixelLimit, checked(2 * globalFontWidth + 1));
 
-        Span<int> boundaries = stackalloc int[MaximumNativeBoundaries];
+        Span<int> boundaries = stackalloc int[MaximumLineBoundaries];
         boundaries.Clear();
 
         int boundaryIndex = 0;
@@ -133,9 +133,9 @@ internal static class NativeMagicEnglishWrapper
 
     private static void ValidateBoundary(int index)
     {
-        if ((uint)index >= MaximumNativeBoundaries)
+        if ((uint)index >= MaximumLineBoundaries)
         {
-            throw new InvalidDataException("Native magic hint wrapping exceeded the supported line-vector boundary.");
+            throw new InvalidDataException("Magic hint wrapping exceeded the supported line-vector boundary.");
         }
     }
 }

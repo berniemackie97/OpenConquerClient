@@ -277,7 +277,7 @@ internal static class MainHudContextHintConformance
     }
 
     private static IReadOnlyList<byte[]> WrapReference(OpenGLTextContext text, ReadOnlySpan<byte> encoded, int fontWidth)
-        => NativeMagicEnglishWrapper.Wrap(encoded, MagicWrapPixelLimit, fontWidth, span => text.Layout(span).WidthPixels);
+        => MagicHintTextWrapper.Wrap(encoded, MagicWrapPixelLimit, fontWidth, span => text.Layout(span).WidthPixels);
 
     private static void DrawReferenceLine(OpenGLRenderer renderer, OpenGLTextContext text, ReadOnlySpan<byte> encoded,
         NativeTextRenderOptions options, int x, int y)
