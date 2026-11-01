@@ -1,8 +1,8 @@
-namespace OpenConquer.Launcher.Tests;
+namespace OpenConquer.Testing;
 
 internal sealed class TemporaryDirectory : IDisposable
 {
-    public TemporaryDirectory(string prefix = "openconquer-launcher-tests")
+    public TemporaryDirectory(string prefix = "openconquer-tests")
     {
         RootPath = Path.Combine(Path.GetTempPath(), $"{prefix}-{Guid.NewGuid():N}");
         Directory.CreateDirectory(RootPath);
@@ -22,11 +22,9 @@ internal sealed class TemporaryDirectory : IDisposable
 
     public void Dispose()
     {
-        try
+        if (Directory.Exists(RootPath))
         {
             Directory.Delete(RootPath, recursive: true);
         }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
     }
 }
