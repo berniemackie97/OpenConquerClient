@@ -137,11 +137,13 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
     {
         int maximumWidth = 0;
         int lineCount = 0;
+        List<(MainHudMagicHintTextGroup Group, byte[] Normalized, IReadOnlyList<byte[]> Lines)> prepared = new(groups.Count);
 
         foreach (MainHudMagicHintTextGroup group in groups)
         {
             byte[] normalized = TranslateTildes(group.EncodedText.Span);
             IReadOnlyList<byte[]> lines = Wrap(normalized);
+            prepared.Add((group, normalized, lines));
             lineCount = checked(lineCount + lines.Count);
 
             foreach (byte[] line in lines)
@@ -163,17 +165,16 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
 
         int textY = geometry.TextY;
 
-        foreach (MainHudMagicHintTextGroup group in groups)
+        foreach ((MainHudMagicHintTextGroup group, byte[] normalized, IReadOnlyList<byte[]> lines) in prepared)
         {
-            DrawGroup(renderer, group, geometry.TextX, ref textY);
+            DrawGroup(renderer, group, normalized, lines, geometry.TextX, ref textY);
         }
     }
 
-    private void DrawGroup(OpenGLRenderer renderer, MainHudMagicHintTextGroup group, int x, ref int y)
+    private void DrawGroup(OpenGLRenderer renderer, MainHudMagicHintTextGroup group, byte[] normalized,
+        IReadOnlyList<byte[]> lines, int x, ref int y)
     {
-        ReadOnlySpan<byte> encoded = group.EncodedText.Span;
-
-        if (encoded.IsEmpty)
+        if (normalized.Length == 0)
         {
             return;
         }
@@ -182,8 +183,6 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
             ? _redOptions
             : _whiteOptions;
 
-        byte[] normalized = TranslateTildes(encoded);
-
         if (normalized.Length <= WrapCharacterLimit)
         {
             DrawLine(renderer, normalized, options, x, y);
@@ -191,7 +190,7 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
             return;
         }
 
-        foreach (byte[] line in Wrap(normalized))
+        foreach (byte[] line in lines)
         {
             DrawLine(renderer, line, options, x, y);
             y = checked(y + HintFontHeight);
