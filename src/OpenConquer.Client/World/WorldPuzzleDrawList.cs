@@ -31,38 +31,32 @@ internal static class WorldPuzzleDrawList
         return tiles;
     }
 
-    public static IReadOnlyList<WorldPuzzleTile> PositionedPuzzles(GameMapContent map,
-        GameMapPuzzleResources resources, WorldPuzzleProjection projection)
+    public static IReadOnlyList<WorldPuzzleTile> PositionedPuzzle(
+        GameMapContent map, GameMapPuzzleResources resources, WorldPuzzleProjection projection,
+        GameMapPositionedOverlayRecord record, GameMapPuzzleOverlayEntry puzzle, uint frame)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(resources);
+        ArgumentNullException.ThrowIfNull(record);
+        ArgumentNullException.ThrowIfNull(puzzle);
         Validate(projection);
 
-        List<WorldPuzzleTile> tiles = [];
         long halfMapWidth = (long)map.CellGrid.Width * 64 / 2;
         long halfMapHeight = (long)map.CellGrid.Height * 32 / 2;
+        long rootX = (long)record.HeaderInt0 *
+            (projection.CenterX + (long)projection.ScreenWidth / 2 - halfMapWidth) / 100
+            + halfMapWidth - projection.ScreenWidth / 2;
+        long rootY = (long)record.HeaderInt1 *
+            (projection.CenterY + (long)projection.ScreenHeight / 2 - halfMapHeight) / 100
+            + halfMapHeight - projection.ScreenHeight / 2;
 
-        foreach (GameMapPositionedOverlayRecord record in map.Scene.PositionedOverlays)
-        {
-            long rootX = ((long)record.HeaderInt0 * (projection.CenterX + (long)projection.ScreenWidth / 2 - halfMapWidth)) / 100
-                + halfMapWidth - projection.ScreenWidth / 2;
-            long rootY = ((long)record.HeaderInt1 * (projection.CenterY + (long)projection.ScreenHeight / 2 - halfMapHeight)) / 100
-                + halfMapHeight - projection.ScreenHeight / 2;
+        GameMapPuzzleBitmap bitmap = resources.GetRequired(puzzle.PuzzlePath);
+        long offsetX = halfMapWidth - (long)bitmap.Columns * TileSize / 2 - rootX;
+        long offsetY = halfMapHeight - (long)bitmap.Rows * TileSize / 2 - rootY;
 
-            foreach (GameMapPositionedOverlayEntry entry in record.Entries)
-            {
-                if (entry is not GameMapPuzzleOverlayEntry puzzle)
-                {
-                    continue;
-                }
-
-                GameMapPuzzleBitmap bitmap = resources.GetRequired(puzzle.PuzzlePath);
-                long offsetX = halfMapWidth - (long)bitmap.Columns * TileSize / 2 - rootX;
-                long offsetY = halfMapHeight - (long)bitmap.Rows * TileSize / 2 - rootY;
-                Append(tiles, resources, bitmap, puzzle.PuzzlePath, checked((int)offsetX), checked((int)offsetY), projection, frame: 0);
-            }
-        }
-
+        List<WorldPuzzleTile> tiles = [];
+        Append(tiles, resources, bitmap, puzzle.PuzzlePath,
+            checked((int)offsetX), checked((int)offsetY), projection, frame);
         return tiles;
     }
 
