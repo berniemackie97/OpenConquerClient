@@ -10,12 +10,12 @@ public sealed class WorldPuzzleDrawListTests
     private const int GroundOffsetY = -3 * 256;
 
     [Fact]
-    public void RetailNewbieGround_EnumeratesVisibleANIFramesInTileOrder()
+    public void NewbieVillageGround_EnumeratesVisibleFramesInTileOrder()
     {
-        using WorldMapFixture retail = new();
+        using WorldMapFixture fixture = new();
         WorldPuzzleProjection projection = new(800, 600, GroundOffsetX, GroundOffsetY, 3500, 1400, 1, 1);
 
-        IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.Ground(retail.Map, retail.Puzzles, projection, 0);
+        IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.Ground(fixture.Map, fixture.Puzzles, projection, 0);
 
         Assert.Equal(
             ["Puzzle14", "Puzzle15", "Puzzle16", "Puzzle17", "Puzzle20", "Puzzle21", "Puzzle22", "Puzzle23",
@@ -34,22 +34,22 @@ public sealed class WorldPuzzleDrawListTests
     }
 
     [Fact]
-    public void RetailNewbieBackdrop_UsesPositionedPuzzleAndParallax()
+    public void NewbieVillageBackdrop_UsesPositionedPuzzleAndParallax()
     {
-        using WorldMapFixture retail = new();
+        using WorldMapFixture fixture = new();
         WorldPuzzleProjection projection = new(800, 600, 0, 0, 3500, 1400, 1, 1);
 
-        GameMapPositionedOverlayRecord record = Assert.Single(retail.Map.Scene.PositionedOverlays);
+        GameMapPositionedOverlayRecord record = Assert.Single(fixture.Map.Scene.PositionedOverlays);
         Assert.Equal(0, record.InsertIndex);
         GameMapPuzzleOverlayEntry overlay = Assert.IsType<GameMapPuzzleOverlayEntry>(Assert.Single(record.Entries));
         IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.PositionedPuzzle(
-            retail.Map, retail.Puzzles, projection, record, overlay, frame: 0);
+            fixture.Map, fixture.Puzzles, projection, record, overlay, frame: 0);
 
         Assert.NotEmpty(tiles);
-        GameMapPuzzleBitmap backdrop = retail.Puzzles.GetRequired(overlay.PuzzlePath);
+        GameMapPuzzleBitmap backdrop = fixture.Puzzles.GetRequired(overlay.PuzzlePath);
 
-        long halfMapWidth = (long)retail.Map.CellGrid.Width * 64 / 2;
-        long halfMapHeight = (long)retail.Map.CellGrid.Height * 32 / 2;
+        long halfMapWidth = (long)fixture.Map.CellGrid.Width * 64 / 2;
+        long halfMapHeight = (long)fixture.Map.CellGrid.Height * 32 / 2;
         long rootX = (long)record.HeaderInt0 *
             (projection.CenterX + projection.ScreenWidth / 2L - halfMapWidth) / 100 +
             halfMapWidth - projection.ScreenWidth / 2;
@@ -74,14 +74,14 @@ public sealed class WorldPuzzleDrawListTests
     [Fact]
     public void PositionedPuzzle_UsesSuppliedNonzeroFrameForVisibleTiles()
     {
-        using WorldMapFixture retail = new(twoFrameBackdrop: true);
+        using WorldMapFixture fixture = new(twoFrameBackdrop: true);
         WorldPuzzleProjection projection = new(800, 600, 0, 0, 3500, 1400, 1, 1);
-        GameMapPositionedOverlayRecord record = Assert.Single(retail.Map.Scene.PositionedOverlays);
+        GameMapPositionedOverlayRecord record = Assert.Single(fixture.Map.Scene.PositionedOverlays);
         GameMapPuzzleOverlayEntry overlay =
             Assert.IsType<GameMapPuzzleOverlayEntry>(Assert.Single(record.Entries));
 
         IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.PositionedPuzzle(
-            retail.Map, retail.Puzzles, projection, record, overlay, frame: 1);
+            fixture.Map, fixture.Puzzles, projection, record, overlay, frame: 1);
 
         Assert.NotEmpty(tiles);
         Assert.All(tiles, tile =>
@@ -94,12 +94,12 @@ public sealed class WorldPuzzleDrawListTests
     }
 
     [Fact]
-    public void LargerViewport_DoesNotExpandTheRetail800By600TileEnumeration()
+    public void LargerViewport_DoesNotExpandThe800By600TileEnumeration()
     {
-        using WorldMapFixture retail = new();
-        IReadOnlyList<WorldPuzzleTile> baseTiles = WorldPuzzleDrawList.Ground(retail.Map, retail.Puzzles,
+        using WorldMapFixture fixture = new();
+        IReadOnlyList<WorldPuzzleTile> baseTiles = WorldPuzzleDrawList.Ground(fixture.Map, fixture.Puzzles,
             new WorldPuzzleProjection(800, 600, GroundOffsetX, GroundOffsetY, 3500, 1400, 1, 1), 0);
-        IReadOnlyList<WorldPuzzleTile> larger = WorldPuzzleDrawList.Ground(retail.Map, retail.Puzzles,
+        IReadOnlyList<WorldPuzzleTile> larger = WorldPuzzleDrawList.Ground(fixture.Map, fixture.Puzzles,
             new WorldPuzzleProjection(1024, 768, GroundOffsetX, GroundOffsetY, 3500, 1400, 1, 1), 0);
 
         Assert.Equal(baseTiles.Count, larger.Count);
@@ -109,9 +109,9 @@ public sealed class WorldPuzzleDrawListTests
     [Fact]
     public void RejectsInvalidProjection()
     {
-        using WorldMapFixture retail = new();
+        using WorldMapFixture fixture = new();
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => WorldPuzzleDrawList.Ground(retail.Map, retail.Puzzles,
+        Assert.Throws<ArgumentOutOfRangeException>(() => WorldPuzzleDrawList.Ground(fixture.Map, fixture.Puzzles,
             new WorldPuzzleProjection(800, 600, 0, 0, 0, 0, 1, 0), 0));
     }
 
