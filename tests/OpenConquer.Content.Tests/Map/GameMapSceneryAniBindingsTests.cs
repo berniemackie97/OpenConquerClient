@@ -9,11 +9,11 @@ namespace OpenConquer.Content.Tests.Map;
 public sealed class GameMapSceneryAniBindingsTests
 {
     [Fact]
-    public void RetailNewbieScene_BindsEighteenAnimatedSceneryRecordsInSourceOrder()
+    public void NewbieScene_BindsEighteenAnimatedSceneryRecordsInSourceOrder()
     {
         using TemporaryContentDirectory root = new();
         root.WriteFile("ani/MapScene.ani", ReadSourceSections());
-        GameMapSceneSections scene = ReadRetailScene();
+        GameMapSceneSections scene = ReadScene();
 
         IReadOnlyList<GameMapSceneryAniBinding> bindings =
             GameMapSceneryAniBindings.Load(new ClientContentRoot(root.RootPath), scene);
@@ -33,16 +33,18 @@ public sealed class GameMapSceneryAniBindingsTests
         Assert.All(bindings, static binding => Assert.Equal(1, binding.Animation.FrameCount));
     }
 
-    [Fact]
-    public void EmptyMapSceneryConfiguration_DoesNotRequestAnAnimationFile()
+    [Theory]
+    [InlineData("PosCell=[0,0]")]
+    [InlineData("c-city18.tga")]
+    public void UnconfiguredMapScenery_DoesNotRequestAnAnimationFile(string partName)
     {
         using TemporaryContentDirectory root = new();
         root.WriteFile("ani/MapScene.ani", ReadSourceSections());
 
-        GameMapSceneSections scene = SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,0]", 0, 0, 0);
+        GameMapSceneSections scene = SceneWithAdditionalScenery("AniTitle=", partName, 0, 0, 0);
         Assert.Equal(39, scene.Scenery.Count);
         Assert.Equal("AniTitle=", scene.Scenery[0].ResourcePath);
-        Assert.Equal("PosCell=[0,0]", scene.Scenery[0].PartName);
+        Assert.Equal(partName, scene.Scenery[0].PartName);
 
         IReadOnlyList<GameMapSceneryAniBinding> bindings =
             GameMapSceneryAniBindings.Load(new ClientContentRoot(root.RootPath), scene);
@@ -59,9 +61,9 @@ public sealed class GameMapSceneryAniBindingsTests
 
         GameMapSceneSections[] invalid =
         [
-            SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,1]", 0, 0, 0),
-            SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,0]", 1, 0, 0),
-            SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,0]", 0, 0, 1),
+            SceneWithAdditionalScenery("ani/missing.ani", "c-city18.tga", 0, 0, 0),
+            SceneWithAdditionalScenery("AniTitle=", "c-city18.tga", 1, 0, 0),
+            SceneWithAdditionalScenery("AniTitle=", "c-city18.tga", 0, 0, 1),
         ];
 
         foreach (GameMapSceneSections scene in invalid)
@@ -74,7 +76,7 @@ public sealed class GameMapSceneryAniBindingsTests
     [Fact]
     public void MissingAniOrReferencedSection_FailsInsteadOfDiscardingScenery()
     {
-        GameMapSceneSections scene = ReadRetailScene();
+        GameMapSceneSections scene = ReadScene();
         using TemporaryContentDirectory root = new();
         ClientContentRoot source = new(root.RootPath);
 
@@ -88,7 +90,7 @@ public sealed class GameMapSceneryAniBindingsTests
     [Fact]
     public void HashCollidingSectionName_CannotSatisfyRetailSceneryReference()
     {
-        GameMapSceneSections scene = ReadRetailScene();
+        GameMapSceneSections scene = ReadScene();
         using TemporaryContentDirectory root = new();
         string original = Encoding.Latin1.GetString(ReadSourceSections());
         string collision = original.Replace("[newbie17.tga]", "[newbjD17.tga]", StringComparison.Ordinal);
@@ -108,7 +110,7 @@ public sealed class GameMapSceneryAniBindingsTests
     [Fact]
     public void EmptyReferencedSection_FailsRatherThanProducingAnUnrenderableBinding()
     {
-        GameMapSceneSections scene = ReadRetailScene();
+        GameMapSceneSections scene = ReadScene();
         using TemporaryContentDirectory root = new();
         string original = Encoding.Latin1.GetString(ReadSourceSections());
         root.WriteFile("ani/MapScene.ani", original.Replace(
@@ -149,7 +151,7 @@ public sealed class GameMapSceneryAniBindingsTests
     private static byte[] ReadSourceSections() =>
         File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "ani", "mapscene-newbie-sections.ani"));
 
-    private static GameMapSceneSections ReadRetailScene()
+    private static GameMapSceneSections ReadScene()
     {
         string path = Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "newbie.scene.zlib");
         using FileStream source = File.OpenRead(path);
