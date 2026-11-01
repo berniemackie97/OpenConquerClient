@@ -83,8 +83,15 @@ internal static class WorldPuzzleDrawList
 
         int startCol = -(offsetX / TileSize);
         int startRow = -(offsetY / TileSize);
-        if (offsetX > 0) startCol--;
-        if (offsetY > 0) startRow--;
+        if (offsetX > 0)
+        {
+            startCol--;
+        }
+
+        if (offsetY > 0)
+        {
+            startRow--;
+        }
 
         int colsAtScale = NativeRangeWidth / size;
         int rowsAtScale = NativeRangeHeight / size;
@@ -112,15 +119,24 @@ internal static class WorldPuzzleDrawList
         for (int row = firstRow; row < lastRow; row++)
         {
             int gridRow = row + startRow;
-            if ((uint)gridRow >= (uint)bitmap.Rows) continue;
+            if ((uint)gridRow >= (uint)bitmap.Rows)
+            {
+                continue;
+            }
 
             for (int col = firstCol; col < lastCol; col++)
             {
                 int gridCol = col + startCol;
-                if ((uint)gridCol >= (uint)bitmap.Columns) continue;
+                if ((uint)gridCol >= (uint)bitmap.Columns)
+                {
+                    continue;
+                }
 
                 ushort tileIndex = indices[gridRow * bitmap.Columns + gridCol];
-                if (tileIndex == ushort.MaxValue) continue;
+                if (tileIndex == ushort.MaxValue)
+                {
+                    continue;
+                }
 
                 long x = (long)TileSize * (col + startCol) + offsetX;
                 long y = (long)TileSize * (row + startRow) + offsetY;
@@ -134,8 +150,7 @@ internal static class WorldPuzzleDrawList
                     continue;
                 }
 
-                AniIndexSection animation = resources.GetRequiredTileAnimation(
-                    path, tileIndex);
+                AniIndexSection animation = resources.GetRequiredTileAnimation(path, tileIndex);
                 result.Add(new WorldPuzzleTile(animation, (int)(frame % (uint)animation.FrameCount),
                     checked((int)x), checked((int)y), size));
             }
