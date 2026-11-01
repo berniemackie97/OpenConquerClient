@@ -109,10 +109,10 @@ public sealed class ContentToolCommandLineTests
     }
 
     [Theory]
-    [InlineData(new[] { "import-client-content", "--source", "in", "--destination", "out",
+    [InlineData(new string[] { "import-client-content", "--source", "in", "--destination", "out",
         "--map-data-id", "1010", "--all-maps" })]
-    [InlineData(new[] { "verify-content-set", "--content-set", "world", "--all-maps", "--all-maps" })]
-    [InlineData(new[] { "import-client-content", "--source", "in", "--all-maps" })]
+    [InlineData(new string[] { "verify-content-set", "--content-set", "world", "--all-maps", "--all-maps" })]
+    [InlineData(new string[] { "import-client-content", "--source", "in", "--all-maps" })]
     public void TryParse_RejectsAmbiguousAllMapsSelection(string[] args)
     {
         Assert.False(ContentToolCommandLine.TryParse(
@@ -203,12 +203,12 @@ public sealed class ContentToolCommandLineTests
 
     [Theory]
     [InlineData(new string[0], "No command was specified.")]
-    [InlineData(new[] { "unknown-verb" }, "Unknown command 'unknown-verb'.")]
+    [InlineData(new string[] { "unknown-verb" }, "Unknown command 'unknown-verb'.")]
     [InlineData(
         new[] { "verify-content-set", "--content-set" },
         "Expected --content-set, each with one value."
     )]
-    [InlineData(new[] { "verify-content-set", "--wrong", "set" }, "Unexpected argument '--wrong'.")]
+    [InlineData(new string[] { "verify-content-set", "--wrong", "set" }, "Unexpected argument '--wrong'.")]
     [InlineData(
         new[] { "verify-content-set", "--content-set", "--content-root" },
         "Option '--content-set' requires a path value."
@@ -221,7 +221,7 @@ public sealed class ContentToolCommandLineTests
         new[] { "import-client-content", "--source", "in" },
         "Expected --source and --destination, each with one value."
     )]
-    [InlineData(new[] { "inspect-server-dat", "--file" }, "Expected --file, each with one value.")]
+    [InlineData(new string[] { "inspect-server-dat", "--file" }, "Expected --file, each with one value.")]
     [InlineData(
         new[] { "inspect-server-dat", "--wrong", "Server.dat" },
         "Unexpected argument '--wrong'."
