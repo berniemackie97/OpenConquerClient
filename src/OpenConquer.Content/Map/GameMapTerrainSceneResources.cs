@@ -2,7 +2,7 @@ using OpenConquer.Content.Ani;
 
 namespace OpenConquer.Content.Map;
 
-public sealed record GameMapTerrainObjectBinding(GameMapTerrainObject Object, AniIndexSection Animation);
+public sealed record GameMapTerrainObjectBinding(GameMapTerrainObject Terrain, AniIndexSection Animation);
 public sealed record GameMapTerrainScenePlacement(
     GameMapSceneryRecord Scenery, IReadOnlyList<GameMapTerrainObjectBinding> Objects);
 
@@ -18,7 +18,10 @@ public sealed class GameMapTerrainSceneResources
     }
 
     public IReadOnlyList<GameMapTerrainScenePlacement> Placements => _placements;
-    public int SceneFileCount { get; }
+    public int SceneFileCount
+    {
+        get;
+    }
 
     public static GameMapTerrainSceneResources Load(IClientContentSource source, GameMapContent map)
     {
