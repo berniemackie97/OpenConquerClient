@@ -33,22 +33,25 @@ public sealed class GameMapSceneryAniBindingsTests
         Assert.All(bindings, static binding => Assert.Equal(1, binding.Animation.FrameCount));
     }
 
-    [Fact]
-    public void EmptyMapSceneryConfiguration_DoesNotRequestAnAnimationFile()
+    [Theory]
+    [InlineData("PosCell=[0,0]")]
+    [InlineData("c-city18.tga")]
+    public void EmptyMapSceneryConfiguration_DoesNotRequestAnAnimationFile(string section)
     {
         using TemporaryContentDirectory root = new();
         root.WriteFile("ani/MapScene.ani", ReadSourceSections());
 
-        GameMapSceneSections scene = SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,0]", 0, 0, 0);
+        GameMapSceneSections scene = SceneWithAdditionalScenery("AniTitle=", section, 0, 0, 0);
         Assert.Equal(39, scene.Scenery.Count);
         Assert.Equal("AniTitle=", scene.Scenery[0].ResourcePath);
-        Assert.Equal("PosCell=[0,0]", scene.Scenery[0].PartName);
+        Assert.Equal(section, scene.Scenery[0].PartName);
 
         IReadOnlyList<GameMapSceneryAniBinding> bindings =
             GameMapSceneryAniBindings.Load(new ClientContentRoot(root.RootPath), scene);
 
         Assert.Equal(18, bindings.Count);
         Assert.DoesNotContain(bindings, static binding => binding.Scenery.ResourcePath == "AniTitle=");
+        Assert.Equal("newbie17.tga", bindings[0].Animation.Name);
     }
 
     [Fact]
@@ -59,9 +62,10 @@ public sealed class GameMapSceneryAniBindingsTests
 
         GameMapSceneSections[] invalid =
         [
-            SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,1]", 0, 0, 0),
-            SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,0]", 1, 0, 0),
+            SceneWithAdditionalScenery("AniTitle=", "c-city18.tga", 1, 0, 0),
+            SceneWithAdditionalScenery("AniTitle=", "c-city18.tga", 0, 1, 0),
             SceneWithAdditionalScenery("AniTitle=", "PosCell=[0,0]", 0, 0, 1),
+            SceneWithAdditionalScenery("ani/missing.ani", "c-city18.tga", 0, 0, 0),
         ];
 
         foreach (GameMapSceneSections scene in invalid)
