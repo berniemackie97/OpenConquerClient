@@ -31,19 +31,19 @@ internal static class ClientWorldContentRequirements
         HashSet<string> scenePaths = new(StringComparer.OrdinalIgnoreCase);
         foreach (GameMapTerrainScenePlacement placement in terrain.Placements)
         {
-            string path = placement.Scenery.ResourcePath!;
-            if (!scenePaths.Add(path))
+            string scenePath = placement.Scenery.ResourcePath!;
+            if (!scenePaths.Add(scenePath))
             {
                 continue;
             }
 
-            Add(path, ContentLookupMode.LooseOnly);
+            Add(scenePath, ContentLookupMode.LooseOnly);
             foreach (GameMapTerrainObjectBinding binding in placement.Objects)
             {
                 Add(binding.Terrain.AnimationPath, ContentLookupMode.LooseOnly);
-                foreach (string path in binding.Animation.FramePaths)
+                foreach (string framePath in binding.Animation.FramePaths)
                 {
-                    Add(path, ContentLookupMode.LooseThenPackage);
+                    Add(framePath, ContentLookupMode.LooseThenPackage);
                 }
             }
         }

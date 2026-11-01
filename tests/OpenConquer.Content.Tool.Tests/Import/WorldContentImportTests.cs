@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using System.Text;
-using OpenConquer.Content;
 using OpenConquer.Content.Map;
 using OpenConquer.Content.Tool.Import;
 using OpenConquer.Content.Tool.Manifest;

@@ -49,8 +49,9 @@ The server must be running for an authenticated-world smoke test. CI validates t
 with small generated frame resources and the verified map data fixtures; it does not replace
 a live OpenGL smoke test.
 
-Type-4 animated scenery, the local hero, HUD, ongoing world packets, movement, and
-remaining scenery kinds are not drawn yet. Those require a shared world-entity depth
+Type-4 animated scenery, positioned animated overlays, the local hero, HUD, ongoing
+world packets, movement, and remaining scenery kinds are not drawn yet. Unsupported
+positioned animation entries are skipped without suppressing supported puzzle layers. Those require a shared world-entity depth
 ordering pass. The current frame is an authenticated map presentation, not a playable world.
 
 ## Verification

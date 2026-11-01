@@ -82,7 +82,7 @@ internal sealed class WorldMapScene
             {
                 if (entry is not GameMapPuzzleOverlayEntry puzzle)
                 {
-                    throw new NotSupportedException("Animated positioned map overlays are not implemented.");
+                    continue;
                 }
 
                 uint frame = _overlayClocks[puzzle].FrameForRender(nowMilliseconds);
