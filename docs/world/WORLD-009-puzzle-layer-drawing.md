@@ -24,7 +24,7 @@ children. Empty cells are omitted; ground animation uses the supplied frame
 counter while positioned puzzles request frame zero. The output
 is culled to the logical viewport. The 800×600 range remains fixed regardless of host window size.
 
-`WorldPuzzleTextureRenderer.Prepare` resolves frames with the existing
+`WorldMapTextureRenderer.Prepare` resolves frames with the existing
 `AniFrameLoader`, decodes actual DDS/TGA bytes through
 `LooseThenPackage`, and uploads a texture once per distinct frame path.
 `Draw` performs GPU draws only; `Dispose` releases its owned textures.
