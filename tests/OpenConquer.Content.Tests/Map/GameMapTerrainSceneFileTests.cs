@@ -27,7 +27,7 @@ public sealed class GameMapTerrainSceneFileTests
     public void RejectsTruncationTrailingDataUnsafePathsAndInvalidGrids()
     {
         byte[] valid = CreateFile();
-        Assert.Throws<InvalidDataException>(() => GameMapTerrainSceneFile.Parse(valid[..^1]));
+        Assert.Throws<InvalidDataException>(() => GameMapTerrainSceneFile.Parse(valid.AsSpan(0, valid.Length - 1)));
         Assert.Throws<InvalidDataException>(() => GameMapTerrainSceneFile.Parse([.. valid, 0]));
 
         byte[] negativeCount = (byte[])valid.Clone();
