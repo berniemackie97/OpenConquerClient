@@ -37,9 +37,14 @@ internal sealed class WorldPuzzleTextureRenderer : IDisposable
             RgbaImage frame = AniFrameLoader.LoadWrappedFrame(_source, tile.Animation,
                 (uint)tile.FrameIndex, ContentLookupMode.LooseThenPackage);
             OpenGLTexture2D texture = _device.CreateTexture2D(frame.Width, frame.Height, frame.Pixels.Span);
-            if (!_textures.TryAdd(path, texture))
+            try
+            {
+                _textures.Add(path, texture);
+            }
+            catch
             {
                 texture.Dispose();
+                throw;
             }
         }
     }
