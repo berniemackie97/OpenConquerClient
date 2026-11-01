@@ -18,14 +18,15 @@ internal static class WorldPuzzleDrawList
     private const int NativeRangeWidth = 800;
     private const int NativeRangeHeight = 600;
 
-    public static IReadOnlyList<WorldPuzzleTile> Ground(GameMapPuzzleResources resources,
+    public static IReadOnlyList<WorldPuzzleTile> Ground(GameMapContent map, GameMapPuzzleResources resources,
         WorldPuzzleProjection projection, uint frame)
     {
+        ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(resources);
         Validate(projection);
 
         List<WorldPuzzleTile> tiles = [];
-        Append(tiles, resources, resources.Ground, projection.GroundOffsetX, projection.GroundOffsetY,
+        Append(tiles, resources, resources.Ground, map.CellGrid.PuzzlePath, projection.GroundOffsetX, projection.GroundOffsetY,
             projection, frame);
         return tiles;
     }
@@ -58,7 +59,7 @@ internal static class WorldPuzzleDrawList
                 GameMapPuzzleBitmap bitmap = resources.GetRequired(puzzle.PuzzlePath);
                 long offsetX = halfMapWidth - (long)bitmap.Columns * TileSize / 2 - rootX;
                 long offsetY = halfMapHeight - (long)bitmap.Rows * TileSize / 2 - rootY;
-                Append(tiles, resources, bitmap, checked((int)offsetX), checked((int)offsetY), projection, frame);
+                Append(tiles, resources, bitmap, puzzle.PuzzlePath, checked((int)offsetX), checked((int)offsetY), projection, frame);
             }
         }
 
@@ -66,7 +67,7 @@ internal static class WorldPuzzleDrawList
     }
 
     private static void Append(List<WorldPuzzleTile> result, GameMapPuzzleResources resources,
-        GameMapPuzzleBitmap bitmap, int offsetX, int offsetY, WorldPuzzleProjection projection, uint frame)
+        GameMapPuzzleBitmap bitmap, string path, int offsetX, int offsetY, WorldPuzzleProjection projection, uint frame)
     {
         // Scrolling puzzle offsets are time-dependent; a static frame must not render them as stationary.
         if (bitmap.ScrollVelocityX != 0 || bitmap.ScrollVelocityY != 0)
@@ -134,7 +135,7 @@ internal static class WorldPuzzleDrawList
                 }
 
                 AniIndexSection animation = resources.GetRequiredTileAnimation(
-                    bitmap == resources.Ground ? bitmap.TextureIndexPath : bitmap.TextureIndexPath, tileIndex);
+                    path, tileIndex);
                 result.Add(new WorldPuzzleTile(animation, (int)(frame % (uint)animation.FrameCount),
                     checked((int)x), checked((int)y), size));
             }
