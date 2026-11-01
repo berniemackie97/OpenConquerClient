@@ -1,5 +1,4 @@
 using OpenConquer.Content.Configuration;
-using OpenConquer.Tests.Fixtures;
 
 namespace OpenConquer.Content.Tests.Configuration;
 

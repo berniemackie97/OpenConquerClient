@@ -1,5 +1,4 @@
 using OpenConquer.Client.World;
-using OpenConquer.Content.Map;
 
 namespace OpenConquer.Client.Tests.World;
 
