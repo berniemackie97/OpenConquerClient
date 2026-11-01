@@ -1,47 +1,42 @@
-# WORLD-010: Retail scenery ANI resource binding
+# WORLD-010: Scenery ANI resource binding
 
-This slice resolves type-4 scenery records in the retail DMap to their authored ANI
-sections and validates referenced frames offline. It does not create visual
-positions, animation clocks, draw order, visibility rules, or a live world scene.
+The scenery binder resolves type-4 DMap records to animation index sections and
+validates referenced frames. This stage does not determine visual positions,
+animation clocks, draw order, visibility, or live scene activation.
 
-## Evidence
+## Resource contract
 
-- The original 5517 \`map/map/newbie.7z\` decodes to \`newbie.DMap\`, whose scene has
-  38 scenery records. Eighteen type-4 records reference 16 distinct ANI sections.
-- Those records reference \`ani/MapScene.ani\` and names such as
-  \`newbie17.tga\`; the original 129,051-byte retail ANI maps that section to
-  \`data/map/mapobj/newbie/newbie17.dds\` as its sole frame.
-- The fixture \`mapscene-newbie-sections.ani\` contains only the 16 source-extracted
-  sections, not the full 1,379-section original ANI. The original Newbie scene
-  and DMap fixtures are retained unchanged.
-- \`20_notes/Rendering/00_rendering_gap_analysis.md\` §2.2: native
-  \`CMapSceneryComponent_PerFrameTick\` (\`0x63537B\`) builds the active render deque
-  through self-registration; \`CMapSceneryComponent_Render\` (\`0x6352F4\`) draws
-  that deque, **not** the raw loaded scenery list. For subtype 4,
-  \`+0x0C/+0x10\` hold tile coordinates and \`+0x34/+0x38\` depth spans.
+- The Newbie Village DMap fixture contains 38 scenery records. Eighteen type-4
+  records reference 16 distinct animation sections.
+- Those records use `ani/MapScene.ani` and section names such as `newbie17.tga`.
+  The 129,051-byte index maps `newbie17.tga` to its single frame path,
+  `data/map/mapobj/newbie/newbie17.dds`.
+- The `mapscene-newbie-sections.ani` fixture contains the 16 referenced
+  sections, rather than all 1,379 sections in the complete index.
+- A type-4 record stores tile coordinates and authored depth spans.
+  The records do not establish the final draw order.
 
-\`GameMapSceneryAniBindings.Load\` preserves the original file association for
-traceability, loads each distinct ANI index once, and fails on missing/empty
-referenced sections. It deliberately does not resolve type-1 external
-\`.scene\` objects, interpret tile coordinates, or claim source order is
-visual order.
+`GameMapSceneryAniBindings.Load` retains each file association, loads each
+distinct ANI index once, and rejects missing or empty referenced sections.
+It does not resolve type-1 external `.scene` resources or interpret tile
+coordinates as final screen positions.
 
-## Operator verification
+## Operator validation
 
-From the client repository root, on the full unmodified retail installation:
+From the client repository root, run:
 
-\`\`\`bash
+```bash
 dotnet run --project tools/OpenConquer.Content.Tool -c Release -- \
-  validate-map-scenery-ani --source "/absolute/path/to/clean/5517" \
+  validate-map-scenery-ani --source "/absolute/path/to/client" \
   --map-data-id 1010
-\`\`\`
+```
 
-This read-only command decodes each unique referenced DDS/TGA frame through
-\`LooseThenPackage\`. Automated tests use original retail DMap and selected
-ANI section **references**, with separately generated DXT1 images to exercise
-the decoder. They do not replace the operator's real-texture verification.
+This read-only command decodes each distinct referenced DDS/TGA frame through
+`LooseThenPackage`. Automated tests use committed DMap and selected ANI
+section fixtures, with generated DXT1 images to exercise the decoder.
+The generated images do not replace a full-content source preflight.
 
-The missing native scene-activation, depth/nesting, animation-clock,
-projection and external \`.scene\` contracts remain explicit prerequisites
-for live drawing. No shipped content, GameServer, camera, or world-entry
-behavior is changed.
+Live scene drawing additionally requires scene activation, spatial/depth
+ordering, animation timing, projection, and external `.scene` resources.
+This stage does not alter shipped content, GameServer behavior, camera state,
+or world-entry transitions.
