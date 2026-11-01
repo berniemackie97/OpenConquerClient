@@ -8,7 +8,10 @@ internal sealed class TemporaryDirectory : IDisposable
         Directory.CreateDirectory(RootPath);
     }
 
-    public string RootPath { get; }
+    public string RootPath
+    {
+        get;
+    }
 
     public string CreateDirectory(string name)
     {
