@@ -5,6 +5,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="../../content/retail-5517/payload/ini/gamemap.dat"
+          Link="RetailMapFixture/ini/GameMap.dat"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../OpenConquer.Content.Tests/Fixtures/Map/newbie.7z"
+          Link="RetailMapFixture/map/newbie.7z"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../OpenConquer.Content.Tests/Fixtures/Map/*.pul"
+          Link="RetailMapFixture/map/puzzle/%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../OpenConquer.Content.Tests/Fixtures/Map/newbie.ani.zlib"
+          Link="RetailMapFixture/ani/newbie.ani.zlib"
+          CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/retail-5517/payload/ini/selectcharacter.ini"
           Link="RetailFixture/ini/selectCharacter.ini"
           CopyToOutputDirectory="PreserveNewest" />
