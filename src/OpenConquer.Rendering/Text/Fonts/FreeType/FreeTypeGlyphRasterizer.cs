@@ -13,8 +13,11 @@ internal sealed unsafe class FreeTypeGlyphRasterizer : IGlyphRasterizer
     private readonly FreeTypeFace _face;
     private readonly int _nominalPixelHeight;
     private readonly FreeTypeRenderMode _renderMode;
+    private readonly int _loadFlags;
+    private readonly int _baselinePixels;
 
-    public FreeTypeGlyphRasterizer(FreeTypeLibrary library, ResolvedFont font, int nominalPixelHeight, bool antialiasEnabled)
+    public FreeTypeGlyphRasterizer(FreeTypeLibrary library, ResolvedFont font, int nominalPixelHeight, bool antialiasEnabled,
+        GlyphHinting hinting = GlyphHinting.Default)
     {
         ArgumentNullException.ThrowIfNull(library);
         ArgumentNullException.ThrowIfNull(font);
@@ -39,6 +42,8 @@ internal sealed unsafe class FreeTypeGlyphRasterizer : IGlyphRasterizer
         _face = face;
         _nominalPixelHeight = nominalPixelHeight;
         _renderMode = antialiasEnabled ? FreeTypeRenderMode.Normal : FreeTypeRenderMode.Mono;
+        _loadFlags = hinting == GlyphHinting.Gdi ? FreeTypeConstants.LoadTargetMono : FreeTypeConstants.LoadDefault;
+        _baselinePixels = hinting == GlyphHinting.Gdi ? GdiAscentPixels(face, nominalPixelHeight) : nominalPixelHeight;
     }
 
     public bool AntialiasEnabled => _renderMode == FreeTypeRenderMode.Normal;
@@ -81,7 +86,7 @@ internal sealed unsafe class FreeTypeGlyphRasterizer : IGlyphRasterizer
             return null;
         }
 
-        int error = FreeTypeNative.LoadGlyph(face, glyphIndex, FreeTypeConstants.LoadDefault);
+        int error = FreeTypeNative.LoadGlyph(face, glyphIndex, _loadFlags);
 
         if (error != 0)
         {
@@ -107,8 +112,15 @@ internal sealed unsafe class FreeTypeGlyphRasterizer : IGlyphRasterizer
         int heightPixels = checked((int)bitmap.Rows);
         byte[] coverage = FreeTypeBitmapNormalizer.CopyCoverage(bitmap);
 
-        return new RasterizedGlyph(widthPixels, heightPixels, glyphSlot->BitmapLeft, checked(_nominalPixelHeight - glyphSlot->BitmapTop), Convert26Dot6ToPixels(glyphSlot->Advance.X), coverage);
+        return new RasterizedGlyph(widthPixels, heightPixels, glyphSlot->BitmapLeft, checked(_baselinePixels - glyphSlot->BitmapTop), Convert26Dot6ToPixels(glyphSlot->Advance.X), coverage);
     }
+
+    private static int GdiAscentPixels(FreeTypeFace face, int nominalPixelHeight) => face.UseHandle(nativeFace =>
+    {
+        FreeTypeFaceRecord* record = (FreeTypeFaceRecord*)nativeFace;
+        return record->UnitsPerEm == 0 ? nominalPixelHeight
+            : (int)Math.Ceiling(record->Ascender * (double)Math.Abs(nominalPixelHeight) / record->UnitsPerEm);
+    });
 
     private static int Convert26Dot6ToPixels(CLong value)
     {

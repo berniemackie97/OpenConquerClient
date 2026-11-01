@@ -4,6 +4,7 @@ using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;
 using OpenConquer.Rendering.OpenGL.Text;
 using OpenConquer.Rendering.Sprites;
+using OpenConquer.Rendering.Text.Fonts;
 using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Flash;
@@ -16,7 +17,6 @@ namespace OpenConquer.Client.UI.Flash;
 internal sealed class FlashStagePresentation : IDisposable
 {
     private const int TextGutter = 2;
-    private const int CaretBlinkFrames = 15;
     private const int MaximumCachedLayouts = 512;
 
     private readonly OpenGLGraphicsDevice _graphicsDevice;
@@ -168,18 +168,12 @@ internal sealed class FlashStagePresentation : IDisposable
             return;
         }
 
-        (int raster, float originX, float originY) = FlashTransforms.RasterOf(character, ratio);
-        Matrix3x2 transform = Matrix3x2.CreateTranslation(originX, originY) * world;
-
-        // Flash draws an untransformed bitmap on whole pixels; a half pixel rounds down (start.dat y 41.5 shows at 41).
-        if (transform.M11 == 1f && transform.M22 == 1f && transform.M12 == 0f && transform.M21 == 0f)
+        foreach (FlashRasterPiece piece in FlashTransforms.PiecesOf(character, ratio))
         {
-            transform.M31 = MathF.Ceiling(transform.M31 - 0.5f);
-            transform.M32 = MathF.Ceiling(transform.M32 - 0.5f);
+            Matrix3x2 transform = FlashTransforms.DevicePlacement(piece, world);
+            FlashRaster info = movie.Rasters[piece.Raster];
+            renderer.DrawTransformedSprite(Texture(movie, piece.Raster), new SpriteSourceRectangle(0, 0, info.Width, info.Height), transform, color);
         }
-
-        FlashRaster info = movie.Rasters[raster];
-        renderer.DrawTransformedSprite(Texture(movie, raster), new SpriteSourceRectangle(0, 0, info.Width, info.Height), transform, color);
     }
 
     internal int LocateCaret(FlashTextInstance text, Vector2 pointer)
@@ -222,8 +216,10 @@ internal sealed class FlashStagePresentation : IDisposable
     {
         FlashEditTextCharacter field = text.Definition;
         string value = field.Password ? new string('*', text.Text.Length) : text.Text;
+        // Retail never shows the player's caret: the role.dat captures with a focused field (vm-runtime 18, 20, 21, 23, 34)
+        // have none, and the login host draws its own caret from CMD_TEXTSELECT, which role.dat does not send.
         bool focused = ReferenceEquals(_drawing?.FocusedText, text);
-        if (value.Length == 0 && !focused || color.AlphaMultiplier <= 0f)
+        if (value.Length == 0 || color.AlphaMultiplier <= 0f)
         {
             return;
         }
@@ -235,9 +231,24 @@ internal sealed class FlashStagePresentation : IDisposable
             Channel(field.Blue, color.BlueMultiplier, color.BlueOffset), Channel(field.Alpha, color.AlphaMultiplier, color.AlphaOffset));
         NativeTextRenderOptions style = new(NativeTextRenderStyle.Normal, tint, tint, 0, 0, NativeTextVertexColors.Solid(tint));
 
-        int lineY = (int)MathF.Round(origin.Y);
+        // Flash clips a field's text to its bounds and draws only the lines that fit whole: jobInfo's fourth line stays
+        // hidden on the class stage (vm-runtime 33).
+        DeviceRectangle? bounds = FieldBounds(field, world);
+        if (bounds is { IsEmpty: true })
+        {
+            return;
+        }
+
+        using OpenGLRenderer.ClipScope clip = bounds is { } area ? renderer.Clip(area.Left, area.Top, area.Width, area.Height) : default;
+        int lineAdvance = Math.Max(1, (int)MathF.Round(field.FontHeight + field.Leading)) + TextGutter;
+        int lineY = DevicePixel(origin.Y);
         foreach (string line in Lines(font, value, field.Multiline && field.WordWrap ? width : float.PositiveInfinity, field.Multiline))
         {
+            if (bounds is { } limit && lineY + lineAdvance > limit.Bottom)
+            {
+                break;
+            }
+
             OpenGLTextLayout layout = Layout(font, line);
             float offset = field.Alignment switch
             {
@@ -250,35 +261,40 @@ internal sealed class FlashStagePresentation : IDisposable
             {
                 int start = Layout(font, value[..text.SelectionStart]).WidthPixels;
                 int end = Layout(font, value[..text.SelectionEnd]).WidthPixels;
-                renderer.DrawSolidRectangle((int)MathF.Round(origin.X + offset) + start, lineY,
+                renderer.DrawSolidRectangle(DevicePixel(origin.X + offset) + start, lineY,
                     Math.Max(1, end - start), Math.Max(1, (int)MathF.Round(field.FontHeight)),
                     new SpriteColor(48, 111, 207, 160));
             }
 
             if (line.Length != 0)
             {
-                font.Draw(renderer, layout, style, (int)MathF.Round(origin.X + offset), lineY);
+                font.Draw(renderer, layout, style, DevicePixel(origin.X + offset), lineY);
             }
 
-            lineY += Math.Max(1, (int)MathF.Round(field.FontHeight + field.Leading)) + TextGutter;
-        }
-
-        // The focused field's caret blinks every 15 frames (0.5 s at 30 fps), close to the Windows default of 530 ms; the
-        // Flash 7 player's own rate is not verified.
-        if (focused && _drawing!.FrameCount / CaretBlinkFrames % 2 == 0)
-        {
-            float lineWidth = Layout(font, value).WidthPixels;
-            float offset = field.Alignment switch
-            {
-                FlashTextAlignment.Center => (width - lineWidth) / 2f,
-                FlashTextAlignment.Right => width - lineWidth,
-                _ => 0f,
-            };
-            int caretX = (int)MathF.Round(origin.X + offset) + Layout(font, value[..text.Caret]).WidthPixels;
-            renderer.DrawSolidRectangle(caretX, (int)MathF.Round(origin.Y), 1,
-                Math.Max(1, (int)MathF.Round(field.FontHeight)), tint);
+            lineY += lineAdvance;
         }
     }
+
+    /// <summary>The field's bounds in device pixels, clamped to the stage; null when the field is rotated or skewed.</summary>
+    private DeviceRectangle? FieldBounds(FlashEditTextCharacter field, Matrix3x2 world)
+    {
+        if (world.M12 != 0f || world.M21 != 0f)
+        {
+            return null;
+        }
+
+        Vector2 a = Vector2.Transform(new Vector2(field.Bounds.Left, field.Bounds.Top), world);
+        Vector2 b = Vector2.Transform(new Vector2(field.Bounds.Right, field.Bounds.Bottom), world);
+        FlashMovie stageMovie = _drawing!.Root.Movie;
+        return new DeviceRectangle(
+            Math.Clamp(DevicePixel(MathF.Min(a.X, b.X)), 0, stageMovie.Width),
+            Math.Clamp(DevicePixel(MathF.Min(a.Y, b.Y)), 0, stageMovie.Height),
+            Math.Clamp(DevicePixel(MathF.Max(a.X, b.X)), 0, stageMovie.Width),
+            Math.Clamp(DevicePixel(MathF.Max(a.Y, b.Y)), 0, stageMovie.Height));
+    }
+
+    /// <summary>Flash rounds a device-text position half up: sprite 304's userNameTxt at x 790.5 draws from 791.</summary>
+    private static int DevicePixel(float value) => (int)MathF.Floor(value + 0.5f);
 
     private IEnumerable<string> Lines(OpenGLTextContext font, string value, float width, bool multiline)
     {
@@ -347,7 +363,8 @@ internal sealed class FlashStagePresentation : IDisposable
         string token = name == "宋体" ? "$simsun.ttc" : name;
         if (!_fonts.TryGetValue((token, size), out OpenGLTextContext? font))
         {
-            font = new OpenGLTextContext(_graphicsDevice, token, Math.Max(1, size), effectiveCodePage: 0, antialiasEnabled: true);
+            font = new OpenGLTextContext(_graphicsDevice, token, Math.Max(1, size), effectiveCodePage: 0, antialiasEnabled: true, bold: false,
+                GlyphHinting.Gdi);
             _fonts.Add((token, size), font);
         }
 
@@ -376,4 +393,14 @@ internal sealed class FlashStagePresentation : IDisposable
 
     private static byte Channel(byte value, float multiplier, float offset) =>
         (byte)Math.Clamp((int)MathF.Round((value / 255f * multiplier + offset) * 255f), 0, 255);
+
+
+    private readonly record struct DeviceRectangle(int Left, int Top, int Right, int Bottom)
+    {
+        public int Width => Right - Left;
+
+        public int Height => Bottom - Top;
+
+        public bool IsEmpty => Width <= 0 || Height <= 0;
+    }
 }

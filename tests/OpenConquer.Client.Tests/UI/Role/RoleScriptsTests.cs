@@ -215,7 +215,7 @@ public sealed class RoleScriptsTests
         private Flow()
         {
             FlashScriptTable scripts = new();
-            Scripts = new RoleScripts(SelectCharacterIni.Parse(Encoding.ASCII.GetBytes(Ini)), RoleMovies.LoadCharacterInAndOut(), this, this);
+            Scripts = new RoleScripts(SelectCharacterIni.Parse(Encoding.ASCII.GetBytes(Ini)), RoleMovies.LoadCharacterInAndOut(), RoleMovies.LoadLogo(), this, this);
             Scripts.Register(scripts);
             new CharacterInAndOutScripts(Scripts).Register(scripts);
             _stage = new FlashStage(RoleMovies.LoadRole(), scripts, new FlashRasterCache());
@@ -305,12 +305,14 @@ public sealed class RoleScriptsTests
             switch (owner)
             {
                 case FlashShapeInstance shape:
-                    (int raster, float x, float y) = FlashTransforms.RasterOf(shape.Character, shape.Ratio);
+                    FlashRasterPiece piece = FlashTransforms.PiecesOf(shape.Character, shape.Ratio)[0];
+                    (int raster, float x, float y) = (piece.Raster, piece.OriginX, piece.OriginY);
                     FlashRaster info = shape.Movie.Rasters[raster];
                     return Vector2.Transform(new Vector2(x + info.Width / 2f, y + info.Height / 2f), FlashTransforms.World(shape));
                 case FlashButtonInstance button:
                     FlashButtonRecord hit = button.Definition.Records.First(record => (record.States & FlashButtonStates.Hit) != 0);
-                    (int hitRaster, float hx, float hy) = FlashTransforms.RasterOf(button.Movie.Character(hit.CharacterId), null);
+                    FlashRasterPiece hitPiece = FlashTransforms.PiecesOf(button.Movie.Character(hit.CharacterId), null)[0];
+                    (int hitRaster, float hx, float hy) = (hitPiece.Raster, hitPiece.OriginX, hitPiece.OriginY);
                     FlashRaster hitInfo = button.Movie.Rasters[hitRaster];
                     return Vector2.Transform(new Vector2(hx + hitInfo.Width / 2f, hy + hitInfo.Height / 2f),
                         FlashTransforms.ToMatrix(hit.Matrix) * FlashTransforms.World(button));

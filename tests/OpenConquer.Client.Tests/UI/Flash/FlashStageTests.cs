@@ -9,7 +9,7 @@ public sealed class FlashStageTests
 {
     // Character 1: an opaque 10x10 square at the origin.
     private const string Shapes = """
-        "1":{"kind":"shape","raster":0,"x":0,"y":0}
+        "1":{"kind":"shape","pieces":[{"raster":0,"x":0,"y":0,"snap":"center"}]}
         """;
 
     [Fact]
@@ -389,6 +389,76 @@ public sealed class FlashStageTests
 
         Assert.Null(stage.FocusedText);
         Assert.Equal(1, caretLookups);
+    }
+
+    [Fact]
+    public void BoundTextField_KeepsItsTextWhenTheTimelineReplacesTheField()
+    {
+        string field = """
+            "kind":"edittext","bounds":[0,0,100,20],"font":"Arial","fontHeight":12,"color":[0,0,0,255],
+            "align":0,"leftMargin":0,"rightMargin":0,"indent":0,"leading":0,"maxLength":0,"variable":"info",
+            "text":"","readOnly":true,"password":false,"multiline":false,"wordWrap":false,"html":false,"noSelect":true,
+            "border":false,"autoSize":false
+            """;
+        FlashMovie movie = Movie("\"1\":{" + field + "},\"2\":{" + field + "}", """
+            "root":{"frames":[[{"d":1,"c":1,"p":1,"n":"infoTxt"}],[{"d":1,"c":2,"p":2,"n":"infoTxt"}]],"labels":{}}
+            """);
+        FlashScriptTable scripts = new();
+        scripts.Frame("test", "root", 1, root => root.ChildText("infoTxt").Text = "class text");
+        scripts.Frame("test", "root", 2, root => root.Stop());
+        FlashStage stage = Start(movie, scripts);
+
+        stage.Tick();
+
+        Assert.Equal(2, stage.Root.CurrentFrame);
+        Assert.Equal("class text", stage.Root.ChildText("infoTxt").Text);
+        Assert.Equal("class text", stage.Root.Get<string>("INFO"));
+    }
+
+    [Fact]
+    public void DisabledTarget_GetsNoRollOutWhenThePointerLeaves()
+    {
+        FlashMovie movie = Movie(Shapes + """
+            ,"2":{"kind":"sprite"}
+            """, """
+            "root":{"frames":[[{"d":1,"c":2,"p":1,"n":"button"}]],"labels":{}},
+            "2":{"frames":[[{"d":1,"c":1,"p":1}]],"labels":{}}
+            """);
+        FlashStage stage = Start(movie, new FlashScriptTable());
+        FlashClip button = stage.Root.ChildClip("button");
+        List<string> log = [];
+        button.OnRollOver = _ => log.Add("over");
+        button.OnRollOut = _ => log.Add("out");
+
+        stage.PointerMoved(new Vector2(5, 5));
+        button.Enabled = false;
+        stage.PointerMoved(new Vector2(50, 50));
+
+        Assert.Equal(["over"], log);
+    }
+
+    [Theory]
+    [InlineData(FlashPixelSnap.PixelCorner, 0.3f, 1f)]
+    [InlineData(FlashPixelSnap.PixelCorner, 662.8f, 663f)]
+    [InlineData(FlashPixelSnap.PixelCenter, 0.3f, 0f)]
+    [InlineData(FlashPixelSnap.PixelCenter, 41.5f, 41f)]
+    public void DevicePlacement_SnapsAnUnscaledPieceByItsRule(FlashPixelSnap snap, float x, float expected)
+    {
+        Matrix3x2 placed = FlashTransforms.DevicePlacement(new FlashRasterPiece(0, 0f, 0f, snap), Matrix3x2.CreateTranslation(x, 0f));
+
+        Assert.Equal(Matrix3x2.CreateTranslation(expected, 0f), placed);
+    }
+
+    [Fact]
+    public void DevicePlacement_TreatsANearUnitScaleAsUnscaledButLeavesARealScale()
+    {
+        FlashRasterPiece piece = new(0, 0f, 0.5f, FlashPixelSnap.PixelCorner);
+
+        Matrix3x2 nearUnit = FlashTransforms.DevicePlacement(piece, Matrix3x2.CreateScale(1f, 1.000412f) * Matrix3x2.CreateTranslation(677.3f, 400.1f));
+        Matrix3x2 scaled = FlashTransforms.DevicePlacement(piece, Matrix3x2.CreateScale(0.63f));
+
+        Assert.Equal(Matrix3x2.CreateTranslation(678f, 401f), nearUnit);
+        Assert.Equal(0.63f, scaled.M11, 5);
     }
 
     private static FlashStage EditableStage(bool password, bool noSelect)

@@ -154,7 +154,6 @@ internal sealed unsafe class OpenGLSpriteRenderer : IDisposable
 
         try
         {
-            _gl.Disable(EnableCap.ScissorTest);
             _gl.Disable(EnableCap.DepthTest);
             _gl.DepthMask(false);
             _gl.Disable(EnableCap.CullFace);

@@ -21,7 +21,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
 
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (font, nominalPixelHeight, antialiasEnabled) =>
+            (font, nominalPixelHeight, antialiasEnabled, _) =>
             {
                 Assert.Same(requestedFont, font);
                 Assert.Equal(16, nominalPixelHeight);
@@ -50,7 +50,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         resolver.Add("Arial", regularFont);
         resolver.AddBold("Arial", boldFont);
         FakeGlyphRasterizer expected = new();
-        FreeTypeGlyphRasterizerFactory factory = new(resolver, (font, _, _) =>
+        FreeTypeGlyphRasterizerFactory factory = new(resolver, (font, _, _, _) =>
         {
             Assert.Same(boldFont, font);
             return expected;
@@ -69,7 +69,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         FakeFontResolver resolver = new();
         resolver.Add("Arial", regularFont);
         FakeGlyphRasterizer expected = new();
-        FreeTypeGlyphRasterizerFactory factory = new(resolver, (font, _, _) =>
+        FreeTypeGlyphRasterizerFactory factory = new(resolver, (font, _, _, _) =>
         {
             Assert.Same(regularFont, font);
             return expected;
@@ -89,7 +89,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         FakeGlyphRasterizer expected = new();
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (font, _, _) =>
+            (font, _, _, _) =>
             {
                 Assert.Same(defaultGuiFont, font);
                 return expected;
@@ -113,7 +113,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         ResolvedFont defaultGuiFont = new("/fonts/default.ttf", faceIndex: 1);
         FakeFontResolver resolver = new(defaultGuiFont);
         FakeGlyphRasterizer expected = new();
-        FreeTypeGlyphRasterizerFactory factory = new(resolver, (_, _, _) => expected);
+        FreeTypeGlyphRasterizerFactory factory = new(resolver, (_, _, _, _) => expected);
 
         IGlyphRasterizer rasterizer = factory.Create(
             string.Empty,
@@ -133,7 +133,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         FakeFontResolver resolver = new();
         resolver.Add(" ", requestedFont);
         FakeGlyphRasterizer expected = new();
-        FreeTypeGlyphRasterizerFactory factory = new(resolver, (_, _, _) => expected);
+        FreeTypeGlyphRasterizerFactory factory = new(resolver, (_, _, _, _) => expected);
 
         IGlyphRasterizer rasterizer = factory.Create(
             " ",
@@ -166,7 +166,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
 
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (font, _, _) =>
+            (font, _, _, _) =>
             {
                 creationAttempts.Add(font);
 
@@ -204,7 +204,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         FakeFontResolver resolver = new();
         resolver.Add("Courier New", courierNew);
         FakeGlyphRasterizer expected = new();
-        FreeTypeGlyphRasterizerFactory factory = new(resolver, (_, _, _) => expected);
+        FreeTypeGlyphRasterizerFactory factory = new(resolver, (_, _, _, _) => expected);
 
         IGlyphRasterizer rasterizer = factory.Create(
             "Missing",
@@ -256,7 +256,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
 
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (_, _, _) =>
+            (_, _, _, _) =>
             {
                 creationAttempts++;
                 throw expected;
@@ -278,7 +278,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         ResolvedFont requestedFont = new("/fonts/requested.ttf", faceIndex: 0);
         FakeFontResolver resolver = new();
         resolver.Add("Requested", requestedFont);
-        FreeTypeGlyphRasterizerFactory factory = new(resolver, (_, _, _) => null!);
+        FreeTypeGlyphRasterizerFactory factory = new(resolver, (_, _, _, _) => null!);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
             factory.Create("Requested", nominalPixelHeight: 16, antialiasEnabled: true)
@@ -307,7 +307,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
 
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (font, _, _) =>
+            (font, _, _, _) =>
             {
                 if (ReferenceEquals(font, courierNew))
                 {
@@ -330,7 +330,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         FakeFontResolver resolver = new();
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (_, _, _) => throw new InvalidOperationException("Creator must not run.")
+            (_, _, _, _) => throw new InvalidOperationException("Creator must not run.")
         );
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
@@ -360,7 +360,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
 
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (_, _, _) =>
+            (_, _, _, _) =>
             {
                 creationAttempts++;
 
@@ -393,7 +393,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
 
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (_, nominalPixelHeight, antialiasEnabled) =>
+            (_, nominalPixelHeight, antialiasEnabled, _) =>
             {
                 Assert.Equal(-1, nominalPixelHeight);
                 Assert.False(antialiasEnabled);
@@ -416,7 +416,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
         FakeFontResolver resolver = new();
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (_, _, _) => throw new InvalidOperationException("Creator must not run.")
+            (_, _, _, _) => throw new InvalidOperationException("Creator must not run.")
         );
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -470,7 +470,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
     public void InternalConstructor_NullFontResolver_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new FreeTypeGlyphRasterizerFactory(null!, (_, _, _) => new FakeGlyphRasterizer())
+            new FreeTypeGlyphRasterizerFactory(null!, (_, _, _, _) => new FakeGlyphRasterizer())
         );
     }
 
@@ -495,7 +495,7 @@ public sealed class FreeTypeGlyphRasterizerFactoryTests
 
         FreeTypeGlyphRasterizerFactory factory = new(
             resolver,
-            (font, _, _) =>
+            (font, _, _, _) =>
             {
                 creationAttempts++;
 

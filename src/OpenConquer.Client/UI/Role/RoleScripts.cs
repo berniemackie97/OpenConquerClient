@@ -32,20 +32,23 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
 
     private readonly SelectCharacterIni _ini;
     private readonly FlashMovie _characterInAndOut;
+    private readonly FlashMovie _logo;
     private readonly IRoleCommands _commands;
     private readonly IRoleSounds _sounds;
 
     private FlashClip? _root;
 
-    public RoleScripts(SelectCharacterIni ini, FlashMovie characterInAndOut, IRoleCommands commands, IRoleSounds sounds)
+    public RoleScripts(SelectCharacterIni ini, FlashMovie characterInAndOut, FlashMovie logo, IRoleCommands commands, IRoleSounds sounds)
     {
         ArgumentNullException.ThrowIfNull(ini);
         ArgumentNullException.ThrowIfNull(characterInAndOut);
+        ArgumentNullException.ThrowIfNull(logo);
         ArgumentNullException.ThrowIfNull(commands);
         ArgumentNullException.ThrowIfNull(sounds);
 
         _ini = ini;
         _characterInAndOut = characterInAndOut;
+        _logo = logo;
         _commands = commands;
         _sounds = sounds;
     }
@@ -151,7 +154,7 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
 
     void ICharacterSelectionHost.RollOverItem(int id)
     {
-        ShowInfo(Root.ChildClip("jobInfo"), id);
+        ShowInfo(Root.ClipOrNull("jobInfo"), id);
         _sounds.Play("snd_cs", "rollOver_char");
     }
 
@@ -159,11 +162,11 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
     {
         _sounds.Play("snd_cs", "click_char");
         SelectJob = id;
-        ShowInfo(Root.ChildClip("jobInfo"), id);
+        ShowInfo(Root.ClipOrNull("jobInfo"), id);
         SetNextButtonState();
     }
 
-    void ICharacterSelectionHost.RollOutItem(int id) => ShowInfo(Root.ChildClip("jobInfo"), SelectJob);
+    void ICharacterSelectionHost.RollOutItem(int id) => ShowInfo(Root.ClipOrNull("jobInfo"), SelectJob);
 
     private void RootFrame1(FlashClip root)
     {
@@ -213,6 +216,7 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         FlashClip root = Root;
         root.Play();
         FlashClip logo = root.ChildClip("logoMC");
+        logo.LoadMovie(_logo);
         if (Number(_ini.Get("logo", "xPos")) is { } x && Number(_ini.Get("logo", "yPos")) is { } y)
         {
             logo.X = x;
@@ -265,9 +269,9 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
             {
                 clip.GotoAndStop(2);
             }
-            else if (root.ChildClip("flash1").CurrentFrame == 1)
+            else if (root.ClipOrNull("flash1") is { CurrentFrame: 1 } flash)
             {
-                root.ChildClip("flash1").GotoAndPlay(2);
+                flash.GotoAndPlay(2);
             }
         };
         next.OnRollOut = next.OnDragOut = clip =>
@@ -278,7 +282,8 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
             }
             else
             {
-                root.ChildClip("flash1").GotoAndStop(1);
+                // Root frame 4 removes flash1 while nextBtn stays; Flash ignores the undefined reference.
+                root.ClipOrNull("flash1")?.GotoAndStop(1);
             }
         };
         next.OnPress = clip =>
@@ -408,9 +413,14 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         scripts.Frame(Movie, "116", 12, clip => clip.GotoAndPlay(2));
     }
 
-    /// <summary><c>jobInfo.showInfo(id)</c>.</summary>
-    private static void ShowInfo(FlashClip jobInfo, int id)
+    /// <summary><c>jobInfo.showInfo(id)</c>; jobInfo exists on root frame 3 only, and portrait events can arrive after it.</summary>
+    private static void ShowInfo(FlashClip? jobInfo, int id)
     {
+        if (jobInfo is null)
+        {
+            return;
+        }
+
         jobInfo.Set("infoID", id);
         if (jobInfo.CurrentFrame == 7)
         {

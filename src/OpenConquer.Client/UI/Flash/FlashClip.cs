@@ -11,7 +11,7 @@ namespace OpenConquer.Client.UI.Flash;
 internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
 {
     private readonly List<FlashDisplayObject> _children = [];
-    private readonly Dictionary<string, object?> _variables = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, object?> _variables = new(StringComparer.OrdinalIgnoreCase);
 
     internal FlashClip(FlashStage stage, FlashMovie movie, FlashSpriteCharacter sprite, FlashPlacement placement, FlashClip? parent)
         : base(movie, sprite, placement, parent)
@@ -120,10 +120,13 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
 
     private FlashClip? _hitArea;
 
-    /// <summary>AS2 dynamic properties of this clip (variables its scripts define).</summary>
+    /// <summary>AS2 dynamic properties of this clip (variables its scripts define), case-insensitive as in SWF 6.</summary>
     public T? Get<T>(string name) => _variables.TryGetValue(name, out object? value) && value is T typed ? typed : default;
 
     public void Set(string name, object? value) => _variables[name] = value;
+
+    /// <summary>True when this clip defines the variable, even with an undefined value.</summary>
+    public bool TryGet(string name, out object? value) => _variables.TryGetValue(name, out value);
 
     public FlashDisplayObject? Child(string name)
     {
@@ -137,6 +140,12 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
 
         return null;
     }
+
+    /// <summary>
+    /// AS2 <c>clip.name</c> where the reference may be undefined, as in a handler that outlives the frame holding the
+    /// child; calls on an undefined clip do nothing in Flash, so callers use <c>?.</c>.
+    /// </summary>
+    public FlashClip? ClipOrNull(string name) => Child(name) as FlashClip;
 
     public FlashClip ChildClip(string name) =>
         Child(name) as FlashClip ?? throw new InvalidOperationException($"Clip '{Name ?? TimelineKey}' has no child clip '{name}'.");

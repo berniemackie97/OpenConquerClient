@@ -31,6 +31,8 @@ internal sealed class FlashRasterCache : IFlashRasterSource
 
 internal static class FlashTransforms
 {
+    private const float UnscaledTolerance = 0.001f;
+
     public static Matrix3x2 ToMatrix(FlashMatrix matrix) => new(matrix.A, matrix.B, matrix.C, matrix.D, matrix.Tx, matrix.Ty);
 
     /// <summary>Character space of <paramref name="displayObject"/> to stage pixels.</summary>
@@ -47,11 +49,31 @@ internal static class FlashTransforms
         return world;
     }
 
-    /// <summary>The raster a shape instance shows now, and the character-space position of its pixel (0,0).</summary>
-    public static (int Raster, float OriginX, float OriginY) RasterOf(FlashCharacter character, int? ratio) => character switch
+    /// <summary>
+    /// The device transform of a raster piece. Flash draws an unscaled, unrotated bitmap on whole pixels; scales within
+    /// 1/1000 of one (sprite 304 places the name box at a y scale of 1.000412) count as unscaled, as retail draws
+    /// that box crisp. See <see cref="FlashPixelSnap"/> for the rounding.
+    /// </summary>
+    public static Matrix3x2 DevicePlacement(FlashRasterPiece piece, Matrix3x2 world)
     {
-        FlashRasterCharacter shape => (shape.Raster, shape.OriginX, shape.OriginY),
-        FlashMorphCharacter morph => (morph.RasterByRatio[ratio ?? 0], morph.OriginX, morph.OriginY),
+        Matrix3x2 transform = Matrix3x2.CreateTranslation(piece.OriginX, piece.OriginY) * world;
+        if (MathF.Abs(transform.M11 - 1f) < UnscaledTolerance && MathF.Abs(transform.M22 - 1f) < UnscaledTolerance &&
+            transform.M12 == 0f && transform.M21 == 0f)
+        {
+            float bias = piece.Snap == FlashPixelSnap.PixelCenter ? 0.5f : 0f;
+            transform = Matrix3x2.CreateTranslation(MathF.Ceiling(transform.M31 - bias), MathF.Ceiling(transform.M32 - bias));
+        }
+
+        return transform;
+    }
+
+    /// <summary>The raster pieces a shape instance shows now, in drawing order.</summary>
+    public static IReadOnlyList<FlashRasterPiece> PiecesOf(FlashCharacter character, int? ratio) => character switch
+    {
+        FlashRasterCharacter shape => shape.Pieces,
+        FlashMorphCharacter morph => [new FlashRasterPiece(morph.RasterByRatio[ratio ?? 0], morph.OriginX, morph.OriginY, FlashPixelSnap.PixelCenter)],
+        FlashVideoCharacter video => [new FlashRasterPiece(video.RasterAt(ratio ?? 0) ??
+            throw new InvalidOperationException($"Video {video.Id} has no frame at or before ratio {ratio ?? 0}."), 0f, 0f, FlashPixelSnap.PixelCorner)],
         _ => throw new ArgumentException($"Character {character.Id} is not drawn from a raster.", nameof(character)),
     };
 }
@@ -233,9 +255,22 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
             return false;
         }
 
-        (int raster, float originX, float originY) = FlashTransforms.RasterOf(character, ratio);
-        int x = (int)MathF.Floor(local.X - originX);
-        int y = (int)MathF.Floor(local.Y - originY);
+        foreach (FlashRasterPiece piece in FlashTransforms.PiecesOf(character, ratio))
+        {
+            if (PieceContains(movie, piece, local, hitGeometry))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool PieceContains(FlashMovie movie, FlashRasterPiece piece, Vector2 local, bool hitGeometry)
+    {
+        int raster = piece.Raster;
+        int x = (int)MathF.Floor(local.X - piece.OriginX);
+        int y = (int)MathF.Floor(local.Y - piece.OriginY);
         FlashRaster info = movie.Rasters[raster];
         if (x < 0 || y < 0 || x >= info.Width || y >= info.Height)
         {

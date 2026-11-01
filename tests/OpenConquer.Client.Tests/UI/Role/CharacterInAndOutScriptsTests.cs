@@ -80,9 +80,9 @@ public sealed class CharacterInAndOutScriptsTests
         // The middle of the son's hit area, in stage pixels.
         FlashClip hitArea = son.ChildClip("hitArea");
         FlashShapeInstance shape = Assert.IsType<FlashShapeInstance>(Assert.Single(hitArea.Children));
-        FlashRasterCharacter character = Assert.IsType<FlashRasterCharacter>(shape.Character);
-        FlashRaster raster = stage.Root.Movie.Rasters[character.Raster];
-        Vector2 local = new(character.OriginX + raster.Width / 2f, character.OriginY + raster.Height / 2f);
+        FlashRasterPiece piece = Assert.Single(Assert.IsType<FlashRasterCharacter>(shape.Character).Pieces);
+        FlashRaster raster = stage.Root.Movie.Rasters[piece.Raster];
+        Vector2 local = new(piece.OriginX + raster.Width / 2f, piece.OriginY + raster.Height / 2f);
         return Vector2.Transform(local, FlashTransforms.World(shape));
     }
 

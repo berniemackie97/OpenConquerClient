@@ -33,7 +33,8 @@ public sealed class OpenGLRenderer : IDisposable
     private bool _clipActive;
     private bool _disposed;
 
-    internal OpenGLRenderer(GL gl, LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy)
+    internal OpenGLRenderer(GL gl, LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy,
+        RenderColorFormat colorFormat = RenderColorFormat.Rgb565)
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentOutOfRangeException.ThrowIfNegative(framebufferWidth);
@@ -43,7 +44,7 @@ public sealed class OpenGLRenderer : IDisposable
         _logicalRenderSize = logicalRenderSize;
         _presentationPolicy = presentationPolicy;
 
-        OpenGLRenderTarget renderTarget = new(gl, logicalRenderSize.Width, logicalRenderSize.Height);
+        OpenGLRenderTarget renderTarget = new(gl, logicalRenderSize.Width, logicalRenderSize.Height, colorFormat);
         OpenGLSpriteRenderer? spriteRenderer = null;
         OpenGLTransformedSpriteRenderer? transformedSpriteRenderer = null;
         OpenGLSolidRectangleRenderer? solidRectangleRenderer = null;
@@ -219,7 +220,10 @@ public sealed class OpenGLRenderer : IDisposable
         _spriteRenderer.DrawRepeated(texture, _logicalRenderSize.Width, _logicalRenderSize.Height, sourceBounds, x, y, width, height);
     }
 
-    /// <summary>Clips subsequent logical-frame draws to an exact top-left pixel rectangle.</summary>
+    /// <summary>
+    /// Clips subsequent logical-frame draws to an exact top-left pixel rectangle. The renderer owns the scissor state:
+    /// draw pipelines leave it alone, so a clip applies to sprites, rectangles and text alike.
+    /// </summary>
     public ClipScope Clip(int x, int y, int width, int height)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

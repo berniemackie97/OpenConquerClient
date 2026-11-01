@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -13,17 +12,20 @@ using OpenConquer.Platform.Windowing.Desktop;
 
 namespace OpenConquer.Client.UI.Role;
 
-/// <summary>Owns the retail create-role stage and its authenticated GameServer connection.</summary>
+/// <summary>
+/// The retail create-role screen: hosts role.dat's stage, answers its host commands as the native
+/// <c>CRoleCreateFlashDlg</c> does, and drives the GameServer exchange behind it.
+/// </summary>
 internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
 {
-    private static readonly TimeSpan s_networkTimeout = TimeSpan.FromSeconds(10);
-    private readonly GameServerHandshakeSession _game;
+    private const double FrameSeconds = 1d / 30d;
+    private const double MaximumCatchUpSeconds = 0.25;
+
+    private readonly RoleCreationExchange _exchange;
+    private readonly RoleCreationText _text;
     private readonly Func<Rune, bool> _hasGlyphInk;
-    private readonly CancellationTokenSource _stopping = new();
     private readonly RoleScripts _scripts;
     private readonly FlashStage _stage;
-    private readonly ConcurrentQueue<string> _loadingMessages = new();
-    private Task<CreationResponse>? _pending;
     private string _name = string.Empty;
     private int _body = -1;
     private int _vocation = -1;
@@ -35,35 +37,47 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
     private bool _worldTransferred;
     private bool _disposed;
 
-    public bool ConnectionLost
+    public RoleCreationScreen(GameServerHandshakeSession game, string account, SelectCharacterIni ini, RoleCreationText text,
+        IFlashRasterSource rasters, Func<Rune, bool> hasGlyphInk, Action<LoginAudioCue> playSound)
     {
-        get; private set;
-    }
-
-    public RoleCreationScreen(GameServerHandshakeSession game, string account, SelectCharacterIni ini, IFlashRasterSource rasters,
-        Func<Rune, bool> hasGlyphInk, Action<LoginAudioCue> playSound)
-    {
-        _game = game ?? throw new ArgumentNullException(nameof(game));
-        _hasGlyphInk = hasGlyphInk ?? throw new ArgumentNullException(nameof(hasGlyphInk));
+        ArgumentNullException.ThrowIfNull(game);
         ArgumentNullException.ThrowIfNull(account);
         ArgumentNullException.ThrowIfNull(ini);
         ArgumentNullException.ThrowIfNull(rasters);
+        _text = text ?? throw new ArgumentNullException(nameof(text));
+        _hasGlyphInk = hasGlyphInk ?? throw new ArgumentNullException(nameof(hasGlyphInk));
 
         FlashScriptTable table = new();
-        _scripts = new RoleScripts(ini, RoleMovies.LoadCharacterInAndOut(), this, new RoleAudioFeedback(ini, playSound));
+        _scripts = new RoleScripts(ini, RoleMovies.LoadCharacterInAndOut(), RoleMovies.LoadLogo(), this, new RoleAudioFeedback(ini, playSound));
         _scripts.Register(table);
         new CharacterInAndOutScripts(_scripts).Register(table);
         _stage = new FlashStage(RoleMovies.LoadRole(), table, rasters);
+        _exchange = new RoleCreationExchange(game, text);
         _stage.Start();
         _scripts.Receive("USERACCOUNT|" + account);
         _scripts.Receive("PATH|");
     }
 
+    public event Action? ReturnRequested;
+
+    public event Action? ExitRequested;
+
     public FlashStage Stage => _stage;
+
+    /// <summary>True when the screen closed because the GameServer connection failed, not because the player went back.</summary>
+    public bool ConnectionLost
+    {
+        get; private set;
+    }
+
+    public GameWorldEntrySnapshot? WorldEntry
+    {
+        get; private set;
+    }
 
     internal bool TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? world)
     {
-        if (_disposed || _worldTransferred || _pending is not null || WorldEntry is not { } admitted)
+        if (_disposed || _worldTransferred || _exchange.IsBusy || WorldEntry is not { } admitted)
         {
             game = null;
             world = null;
@@ -71,28 +85,21 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
         }
 
         _worldTransferred = true;
-        game = _game;
+        game = _exchange.TransferGame();
         world = admitted;
         return true;
     }
-    public GameWorldEntrySnapshot? WorldEntry
-    {
-        get; private set;
-    }
-    public event Action? ReturnRequested;
-    public event Action? ExitRequested;
 
     public void Tick(TimeSpan elapsed)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        _frameRemainder = Math.Min(_frameRemainder + Math.Max(0, elapsed.TotalSeconds), 0.25);
-        while (_frameRemainder >= 1d / 30d)
+        _frameRemainder = Math.Min(_frameRemainder + Math.Max(0, elapsed.TotalSeconds), MaximumCatchUpSeconds);
+        while (_frameRemainder >= FrameSeconds)
         {
             _stage.Tick();
-            _stage.SetKey(13, false);
-            _stage.SetKey(27, false);
-            _frameRemainder -= 1d / 30d;
+            FlashStageKeyboard.ReleasePolledKeys(_stage);
+            _frameRemainder -= FrameSeconds;
         }
 
         if (_localError is { } localError)
@@ -101,7 +108,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
             _scripts.Receive("ERROR|" + localError);
         }
 
-        while (_loadingMessages.TryDequeue(out string? message))
+        while (_exchange.TryDequeueLoadingMessage(out string message))
         {
             if (!_stoppingRequested)
             {
@@ -109,39 +116,9 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
             }
         }
 
-        if (_pending is not { IsCompleted: true } completed)
+        if (_exchange.TryTakeOutcome(out RoleCreationOutcome outcome))
         {
-            return;
-        }
-
-        _pending = null;
-        Exception? failure = completed.Exception;
-        if (_stoppingRequested)
-        {
-            ConnectionLost = failure is not null;
-            ReturnRequested?.Invoke();
-            return;
-        }
-
-        if (completed.IsCanceled || failure is not null)
-        {
-            // The write/read path is terminal on an unexpected transport failure.
-            ConnectionLost = true;
-            _stoppingRequested = true;
-            _stopping.Cancel();
-            ReturnRequested?.Invoke();
-            return;
-        }
-
-        CreationResponse response = completed.Result;
-        if (response.Refusal is { } refusal)
-        {
-            _scripts.Receive("ERROR|" + refusal);
-        }
-        else if (response.World is { } entered)
-        {
-            WorldEntry = entered;
-            ResumeLoadingIfReady();
+            Apply(outcome);
         }
     }
 
@@ -179,61 +156,9 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
 
     public void KeyPressed(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard)
     {
-        if (_worldTransferred)
+        if (!_worldTransferred)
         {
-            return;
-        }
-
-        if (key.Key is DesktopKey.Enter or DesktopKey.Escape)
-        {
-            _stage.SetKey(key.Key == DesktopKey.Enter ? 13 : 27, true);
-            return;
-        }
-
-        bool shortcut = (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) != 0;
-        if (shortcut && !key.IsRepeat)
-        {
-            switch (key.Key)
-            {
-                case DesktopKey.A:
-                    _stage.SelectAll();
-                    return;
-                case DesktopKey.C:
-                    if (_stage.SelectedText() is { Length: > 0 } selection)
-                    {
-                        writeClipboard(selection);
-                    }
-                    return;
-                case DesktopKey.X:
-                    string selected = _stage.SelectedText();
-                    if (selected.Length != 0 && _stage.CutSelection())
-                    {
-                        writeClipboard(selected);
-                    }
-                    return;
-                case DesktopKey.V:
-                    if (readClipboard() is { } paste)
-                    {
-                        _stage.TextEntered(paste);
-                    }
-                    return;
-            }
-        }
-
-        FlashEditKey? edit = key.Key switch
-        {
-            DesktopKey.Backspace => FlashEditKey.Backspace,
-            DesktopKey.Delete => FlashEditKey.Delete,
-            DesktopKey.Left => FlashEditKey.Left,
-            DesktopKey.Right => FlashEditKey.Right,
-            DesktopKey.Home => FlashEditKey.Home,
-            DesktopKey.End => FlashEditKey.End,
-            _ => null,
-        };
-
-        if (edit is { } action && !shortcut && (key.Modifiers & DesktopKeyModifiers.Alt) == 0)
-        {
-            _stage.EditKey(action, (key.Modifiers & DesktopKeyModifiers.Shift) != 0);
+            FlashStageKeyboard.KeyPressed(_stage, key, readClipboard, writeClipboard);
         }
     }
 
@@ -254,21 +179,12 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
                 Submit();
                 break;
             case "CMD_DRIVERBACK":
-                if (_worldTransferred || WorldEntry is not null)
+                if (!_worldTransferred && WorldEntry is null && !_stoppingRequested)
                 {
-                    break;
+                    _stoppingRequested = true;
+                    _exchange.Cancel();
                 }
 
-                if (_pending is null)
-                {
-                    _stoppingRequested = true;
-                    _pending = SendCancelAsync();
-                }
-                else
-                {
-                    _stoppingRequested = true;
-                    _stopping.Cancel();
-                }
                 break;
             case "CMD_EXIT":
                 ExitRequested?.Invoke();
@@ -283,45 +199,15 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
         }
     }
 
-    private void ResumeLoadingIfReady()
+    public async ValueTask DisposeAsync()
     {
-        if (!_loadingResumed && _gameStartRequested && WorldEntry is not null)
-        {
-            _loadingResumed = true;
-            _scripts.Receive("PROGRESS|80");
-            _scripts.Receive("LOADING_TRACE|Starting... Please wait...");
-        }
-    }
-
-    private void Submit()
-    {
-        if (_pending is not null || _stoppingRequested || WorldEntry is not null)
+        if (_disposed)
         {
             return;
         }
 
-        RoleNameValidationResult nameResult = RoleNameValidation.Validate(_name, _hasGlyphInk, out byte[] encodedName);
-        if (nameResult != RoleNameValidationResult.Valid)
-        {
-            _localError = nameResult == RoleNameValidationResult.InvalidLength ?
-                "First Name should be 4-15 characters!" :
-                "Sorry, the name you specified contains invalid characters.";
-            return;
-        }
-
-        if (_body is < 0 or > 1 || _vocation is < 0 or > 11)
-        {
-            _localError = _body is < 0 or > 1 ? "Please select your body size." : "Please select your profession!";
-            return;
-        }
-
-        ushort profession = ProfessionFromVocation(_vocation);
-
-        bool female = (_vocation & 1) != 0;
-        ushort body = (ushort)(female ? (_body == 0 ? 2001 : 2002) : (_body == 0 ? 1003 : 1004));
-        _gameStartRequested = false;
-        _loadingResumed = false;
-        _pending = CreateAsync(encodedName, body, profession, _stopping.Token);
+        _disposed = true;
+        await _exchange.DisposeAsync().ConfigureAwait(false);
     }
 
     internal static ushort ProfessionFromVocation(int vocation) => vocation switch
@@ -335,88 +221,61 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
         _ => throw new ArgumentOutOfRangeException(nameof(vocation)),
     };
 
-    private async Task<CreationResponse> CreateAsync(byte[] name, ushort body, ushort profession, CancellationToken cancellationToken)
+    /// <summary>Native body look: even vocations are male (1003 big, 1004 small), odd ones female (2001, 2002).</summary>
+    internal static ushort BodyFromSelection(int vocation, int bodySize) => (vocation & 1) == 0
+        ? (ushort)(bodySize == 0 ? 1003 : 1004)
+        : (ushort)(bodySize == 0 ? 2001 : 2002);
+
+    private void Apply(RoleCreationOutcome outcome)
     {
-        await _game.SendCharacterCreationAsync(name, body, profession, s_networkTimeout, cancellationToken)
-            .ConfigureAwait(false);
-        _loadingMessages.Enqueue("PROGRESS|1");
-
-        GameCharacterCreationOutcome response = await _game.ReadCharacterCreationResultAsync(s_networkTimeout, cancellationToken)
-            .ConfigureAwait(false);
-        if (response.Kind == GameCharacterCreationKind.Refused)
+        if (_stoppingRequested || outcome.Kind is RoleCreationOutcomeKind.Cancelled or RoleCreationOutcomeKind.Failed)
         {
-            string message = Encoding.Latin1.GetString(response.RefusalBytes.Span);
-            return new CreationResponse(null, message.Length == 0 ? "Character creation was rejected." :
-                new string(message.Where(static c => !char.IsControl(c) && c != '|').Take(160).ToArray()));
+            // A cancel the player asked for is not a lost connection, even when it interrupted a request.
+            ConnectionLost = outcome.Failure is not (null or OperationCanceledException) || !_stoppingRequested;
+            _stoppingRequested = true;
+            ReturnRequested?.Invoke();
+            return;
         }
 
-        _loadingMessages.Enqueue("LOADING_TRACE|Your character has been successfully created!");
-        await _game.SendRepeatedLoginProofAsync(s_networkTimeout, cancellationToken)
-            .ConfigureAwait(false);
-
-        GameLoginControlOutcome next = await _game.ReadLoginControlAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
-        if (next.Kind != GameLoginControlKind.ExistingCharacter)
+        if (outcome.Kind == RoleCreationOutcomeKind.Refused)
         {
-            throw new InvalidDataException("Created character was not admitted to the existing-character login route.");
+            _scripts.Receive("ERROR|" + outcome.Refusal);
         }
-
-        _loadingMessages.Enqueue("LOADING_TRACE|Initializing...");
-        _ = await _game.ReadExistingCharacterPreludeAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
-        GameCharacterInfo1006 character = await _game.ReadCharacterInfoAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
-        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(_game, character,
-                () => _loadingMessages.Enqueue("LOADING_TRACE|Creating maps..."), cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-        return new CreationResponse(world, null);
+        else
+        {
+            WorldEntry = outcome.World;
+            ResumeLoadingIfReady();
+        }
     }
 
-    private async Task<CreationResponse> SendCancelAsync()
+    private void ResumeLoadingIfReady()
     {
-        try
+        if (!_loadingResumed && _gameStartRequested && WorldEntry is not null)
         {
-            await _game.SendCharacterCreationCancelAsync(s_networkTimeout, _stopping.Token).ConfigureAwait(false);
+            _loadingResumed = true;
+            _scripts.Receive("PROGRESS|80");
+            _scripts.Receive("LOADING_TRACE|" + _text.Starting);
         }
-        finally
-        {
-            _stopping.Cancel();
-        }
-
-        return new CreationResponse(null, null);
     }
 
-    public async ValueTask DisposeAsync()
+    /// <summary><c>CRoleCreateFlashDlg_SubmitCreatePlayerRequest</c> (<c>0x51C5C3</c>): the native name gate, then the 1001.</summary>
+    private void Submit()
     {
-        if (_disposed)
+        // role.dat sends CMD_BODYSIZE and CMD_VOCATION before every CMD_ENTERGAME, so out-of-range values never reach here.
+        if (_exchange.IsBusy || _stoppingRequested || WorldEntry is not null || _body is < 0 or > 1 || _vocation is < 0 or > 11)
         {
             return;
         }
 
-        _disposed = true;
-        await _stopping.CancelAsync().ConfigureAwait(false);
-        try
+        RoleNameValidationResult nameResult = RoleNameValidation.Validate(_name, _hasGlyphInk, out byte[] encodedName);
+        if (nameResult != RoleNameValidationResult.Valid)
         {
-            if (_pending is not null)
-            {
-                await _pending.ConfigureAwait(false);
-            }
+            _localError = nameResult == RoleNameValidationResult.InvalidLength ? _text.NameLength : _text.NameCharacters;
+            return;
         }
-        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
-        {
-        }
-        finally
-        {
-            try
-            {
-                if (!_worldTransferred)
-                {
-                    await _game.DisposeAsync().ConfigureAwait(false);
-                }
-            }
-            finally
-            {
-                _stopping.Dispose();
-            }
-        }
-    }
 
-    private sealed record CreationResponse(GameWorldEntrySnapshot? World, string? Refusal);
+        _gameStartRequested = false;
+        _loadingResumed = false;
+        _exchange.Create(encodedName, BodyFromSelection(_vocation, _body), ProfessionFromVocation(_vocation));
+    }
 }

@@ -98,8 +98,9 @@ public static partial class FlashMovieReader
 
         return kind switch
         {
-            "shape" or "text" => new FlashRasterCharacter(id, RasterIndex(element, "raster", rasterCount), Float(element, "x"), Float(element, "y"), kind == "text"),
+            "shape" or "text" => new FlashRasterCharacter(id, ReadPieces(id, element, rasterCount), kind == "text"),
             "morph" => new FlashMorphCharacter(id, Float(element, "x"), Float(element, "y"), ReadMorphRasters(element, rasterCount)),
+            "video" => ReadVideo(id, element, rasterCount),
             "sprite" => new FlashSpriteCharacter(id, ReadTimeline(Object(timelines, id.ToString(CultureInfo.InvariantCulture)))),
             "edittext" => ReadEditText(id, element),
             "button" => new FlashButtonCharacter(id, ReadButtonRecords(element)),
@@ -107,23 +108,58 @@ public static partial class FlashMovieReader
         };
     }
 
+    private static FlashRasterPiece[] ReadPieces(int id, JsonElement element, int rasterCount)
+    {
+        if (!element.TryGetProperty("pieces", out JsonElement pieces) || pieces.ValueKind != JsonValueKind.Array ||
+            pieces.GetArrayLength() is < 1 or > 16)
+        {
+            throw Invalid($"character {id} pieces");
+        }
+
+        return [.. pieces.EnumerateArray().Select(piece => new FlashRasterPiece(RasterIndex(piece, "raster", rasterCount),
+            Float(piece, "x"), Float(piece, "y"), String(piece, "snap") switch
+            {
+                "center" => FlashPixelSnap.PixelCenter,
+                "corner" => FlashPixelSnap.PixelCorner,
+                string snap => throw Invalid($"character {id} snap '{snap}'"),
+            }))];
+    }
+
+    private static FlashVideoCharacter ReadVideo(int id, JsonElement element, int rasterCount)
+    {
+        int width = Int(element, "width");
+        int height = Int(element, "height");
+        Dictionary<int, int> frames = ReadRatioRasters(Object(element, "frames"), rasterCount, "video frame");
+        if (width is < 1 or > 4096 || height is < 1 or > 4096 || !frames.ContainsKey(0))
+        {
+            throw Invalid($"video {id}");
+        }
+
+        return new FlashVideoCharacter(id, width, height, frames);
+    }
+
     private static Dictionary<int, int> ReadMorphRasters(JsonElement element, int rasterCount)
     {
-        Dictionary<int, int> rasters = [];
-        foreach (JsonProperty property in Object(element, "rasters").EnumerateObject())
-        {
-            int ratio = int.Parse(property.Name, NumberStyles.None, CultureInfo.InvariantCulture);
-            int raster = property.Value.GetInt32();
+        Dictionary<int, int> rasters = ReadRatioRasters(Object(element, "rasters"), rasterCount, "morph raster");
+        return rasters.Count != 0 ? rasters : throw Invalid("morph without rasters");
+    }
 
-            if (ratio > ushort.MaxValue || raster < 0 || raster >= rasterCount)
+    private static Dictionary<int, int> ReadRatioRasters(JsonElement map, int rasterCount, string what)
+    {
+        Dictionary<int, int> rasters = [];
+        foreach (JsonProperty property in map.EnumerateObject())
+        {
+            if (!int.TryParse(property.Name, NumberStyles.None, CultureInfo.InvariantCulture, out int ratio) ||
+                ratio > ushort.MaxValue || property.Value.ValueKind != JsonValueKind.Number ||
+                !property.Value.TryGetInt32(out int raster) || raster < 0 || raster >= rasterCount)
             {
-                throw Invalid("morph raster");
+                throw Invalid(what);
             }
 
             rasters.Add(ratio, raster);
         }
 
-        return rasters.Count != 0 ? rasters : throw Invalid("morph without rasters");
+        return rasters;
     }
 
     private static FlashEditTextCharacter ReadEditText(int id, JsonElement element)
@@ -235,7 +271,8 @@ public static partial class FlashMovieReader
             foreach (FlashPlacement placement in frame)
             {
                 FlashCharacter character = Resolve(characters, placement.CharacterId, $"timeline {owner}");
-                if (placement.Ratio is { } ratio && !(character is FlashMorphCharacter morph && morph.RasterByRatio.ContainsKey(ratio)))
+                if (placement.Ratio is { } ratio && character is not FlashVideoCharacter &&
+                    !(character is FlashMorphCharacter morph && morph.RasterByRatio.ContainsKey(ratio)))
                 {
                     throw Invalid($"timeline {owner}: ratio {ratio} of character {placement.CharacterId} has no raster");
                 }
