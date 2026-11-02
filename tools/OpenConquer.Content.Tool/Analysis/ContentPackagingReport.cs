@@ -32,12 +32,9 @@ internal sealed record ContentPackagingReport(
             yield return FormattableString.Invariant(
                 $"{candidate.Format}: archive {candidate.ArchiveBytes} bytes, build {candidate.BuildTime.TotalMilliseconds:F3} ms");
             yield return FormattableString.Invariant(
-                $"{candidate.Format} decoded startup: loose {candidate.LooseDecode.StartupTime.TotalMilliseconds:F3} ms, " +
-                $"archive {candidate.ArchiveDecode.StartupTime.TotalMilliseconds:F3} ms; {candidate.ArchiveDecode.StartupFiles} dependencies");
+                $"{candidate.Format} decoded startup: loose {candidate.LooseDecode.StartupTime.TotalMilliseconds:F3} ms, archive {candidate.ArchiveDecode.StartupTime.TotalMilliseconds:F3} ms; {candidate.ArchiveDecode.StartupFiles} dependencies");
             yield return FormattableString.Invariant(
-                $"{candidate.Format} decoded maps: loose {candidate.LooseDecode.WorldTime.TotalMilliseconds:F3} ms, " +
-                $"archive {candidate.ArchiveDecode.WorldTime.TotalMilliseconds:F3} ms; " +
-                $"{candidate.ArchiveDecode.Maps} maps, {candidate.ArchiveDecode.Frames} frames");
+                $"{candidate.Format} decoded maps: loose {candidate.LooseDecode.WorldTime.TotalMilliseconds:F3} ms, archive {candidate.ArchiveDecode.WorldTime.TotalMilliseconds:F3} ms; {candidate.ArchiveDecode.Maps} maps, {candidate.ArchiveDecode.Frames} frames");
             if (candidate.NewPayloadCompressedBytes is long bytes)
             {
                 yield return $"{candidate.Format}: compressed bytes for distinct new payloads {bytes}";

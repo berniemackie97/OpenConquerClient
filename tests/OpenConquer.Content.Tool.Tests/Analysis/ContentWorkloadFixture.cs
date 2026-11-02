@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using OpenConquer.Content.Ani;
-using OpenConquer.Content.Tool.World;
+using OpenConquer.Content.Tool.Tests.World;
 using OpenConquer.Tests.Fixtures;
 
 namespace OpenConquer.Content.Tool.Tests.Analysis;
