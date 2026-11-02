@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OpenConquer.Content.Tool.Analysis;
 using OpenConquer.Content.Tool.CommandLine;
 using OpenConquer.Content.Tool.Import;
 using OpenConquer.Content.Tool.Legacy.ServerDat;
@@ -88,6 +89,32 @@ internal static class Program
                     if (manifest.MissingMapArchives is { } missing)
                     {
                         Console.WriteLine($"Available-map content: {missing.Count} missing catalog archive(s).");
+                    }
+
+                    break;
+                }
+
+            case AnalyzeContentSetCommand analyze:
+                {
+                    ContentManifest manifest = ContentSetVerifier.Verify(analyze.ContentSetRootPath,
+                        analyze.MapDataId, analyze.AllMaps, analyze.AvailableMaps);
+                    foreach (string line in ContentLayoutReport.Create(manifest).ToReportLines())
+                    {
+                        Console.WriteLine(line);
+                    }
+
+                    break;
+                }
+
+            case ProfileContentReadsCommand profile:
+                {
+                    ContentManifest manifest = ContentSetVerifier.Verify(profile.ContentSetRootPath,
+                        profile.MapDataId, profile.AllMaps, profile.AvailableMaps);
+                    ClientContentRoot content = new(Path.Combine(profile.ContentSetRootPath, "payload"));
+                    foreach (ContentReadPass pass in ContentReadProfiler.Measure(content, manifest))
+                    {
+                        Console.WriteLine(FormattableString.Invariant(
+                            $"Pass {pass.Number}: {pass.FileCount} files, {pass.BytesRead} bytes, {pass.Elapsed.TotalMilliseconds:F3} ms"));
                     }
 
                     break;
