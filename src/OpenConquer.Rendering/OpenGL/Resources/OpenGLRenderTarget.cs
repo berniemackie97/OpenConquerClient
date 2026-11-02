@@ -171,12 +171,17 @@ internal sealed class OpenGLRenderTarget : IDisposable
             _gl.BindRenderbuffer(RenderbufferTarget.Renderbuffer, _depthRenderbuffer);
 
             _gl.RenderbufferStorage(RenderbufferTarget.Renderbuffer, InternalFormat.DepthComponent16, (uint)_width, (uint)_height);
+            GLEnum allocationError = _gl.GetError();
+            if (allocationError != GLEnum.NoError)
+            {
+                throw new InvalidOperationException($"OpenGL could not allocate a {_width}×{_height} depth renderbuffer ({allocationError}).");
+            }
 
             _gl.GetRenderbufferParameter(RenderbufferTarget.Renderbuffer, pname: RenderbufferParameterName.DepthSize, out int depthBits);
 
             if (depthBits != 16)
             {
-                throw new NotSupportedException($"The OpenGL implementation allocated a {depthBits}-bit depth renderbuffer; retail 5517 requires exactly 16-bit depth precision.");
+                throw new NotSupportedException($"The OpenGL implementation reports {depthBits}-bit depth precision; the render target requires 16 bits.");
             }
         }
         catch (Exception exception)

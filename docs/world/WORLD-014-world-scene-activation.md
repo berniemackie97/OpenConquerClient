@@ -12,17 +12,17 @@ Each puzzle bitmap advances its own frame clock using
 Terrain objects use their authored frame intervals.
 
 The login and character-creation stages retain their fixed 4:3 presentation. The
-world keeps the login stage height and calculates its logical width from the host
-framebuffer aspect ratio. The whole world frame fills the desktop framebuffer,
-without stretching foreground or background layers independently. Map projection,
-puzzle visibility and terrain positions use this same logical viewport.
+world follows the host aspect ratio until its authored ground and background
+puzzles or the current OpenGL device limit further expansion. For exceptionally
+wide windows, the logical height contracts with the width so scene geometry keeps
+its proportions and available puzzle tiles cover the frame. Camera projection,
+puzzle visibility and terrain coordinates use the same resulting viewport.
 
-Positioned background puzzles whose authored dimensions cover the viewport are
-kept within those bitmap bounds after applying their parallax placement. This
-prevents exposed background margins at the map edge when the window widens without
-inventing tiles. A framebuffer resize recreates only the world render target;
-the graphics-context-owned texture cache remains alive. Viewports exceeding a
-background's physical bitmap dimensions require separate asset-coverage handling.
+Framebuffers resize the existing presentation immediately. Only a change to
+logical world dimensions recreates its render target; the graphics-context-owned
+texture cache remains alive. The depth attachment still requires 16-bit precision.
+The render target is constrained by the device's reported renderbuffer and texture
+size limits before resource allocation.
 
 CPU map and scene content is loaded on a cancellable worker. Texture decoding and
 incremental uploads happen on the graphics thread before `OpenGLRenderer.BeginFrame`.
