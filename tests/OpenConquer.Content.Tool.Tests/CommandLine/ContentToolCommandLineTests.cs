@@ -176,6 +176,21 @@ public sealed class ContentToolCommandLineTests
     }
 
     [Fact]
+    public void TryParse_ReadsContentAnalysisWithMapSelection()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["analyze-content-set", "--available-maps", "--content-set", "content"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        AnalyzeContentSetCommand analyze = Assert.IsType<AnalyzeContentSetCommand>(command);
+        Assert.Equal(Path.Combine(s_workingDirectory, "content"), analyze.ContentSetRootPath);
+        Assert.True(analyze.AvailableMaps);
+        Assert.False(analyze.AllMaps);
+        Assert.Null(analyze.MapDataId);
+    }
+
+    [Fact]
     public void TryParse_ReadsAValidateStartupCommand()
     {
         Assert.True(
@@ -351,6 +366,8 @@ public sealed class ContentToolCommandLineTests
             ContentToolCommandLine.UsageLines,
             line => line.Contains("verify-content-set", StringComparison.Ordinal)
         );
+        Assert.Contains(ContentToolCommandLine.UsageLines,
+            line => line.Contains("analyze-content-set", StringComparison.Ordinal));
 
         Assert.Contains(
             ContentToolCommandLine.UsageLines,

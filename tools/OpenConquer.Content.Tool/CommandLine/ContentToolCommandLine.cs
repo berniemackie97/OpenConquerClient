@@ -8,6 +8,7 @@ internal static class ContentToolCommandLine
     private const string ImportVerb = "import-client-content";
     private const string ValidateStartupVerb = "validate-startup";
     private const string VerifyContentSetVerb = "verify-content-set";
+    private const string AnalyzeContentSetVerb = "analyze-content-set";
     private const string InspectServerDatVerb = "inspect-server-dat";
     private const string CompareMapSemanticsVerb = "compare-map-semantics";
     private const string ValidateMapPuzzlesVerb = "validate-map-puzzles";
@@ -33,6 +34,7 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <client-root> {DestinationOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
         $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
+        $"  OpenConquer.Content.Tool {AnalyzeContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
         $"  OpenConquer.Content.Tool {CompareMapSemanticsVerb} {SourceOption} <client-root> {CandidateOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
@@ -109,6 +111,19 @@ internal static class ContentToolCommandLine
                     }
 
                     command = new CompareMapSemanticsCommand(values[0], values[1], mapDataId.Value);
+                    return true;
+                }
+
+            case AnalyzeContentSetVerb:
+                {
+                    if (!TryParseContentSetOptions(remainingArgs, [ContentSetOption],
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId,
+                            out bool allMaps, out bool availableMaps, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    command = new AnalyzeContentSetCommand(values[0], mapDataId, allMaps, availableMaps);
                     return true;
                 }
 

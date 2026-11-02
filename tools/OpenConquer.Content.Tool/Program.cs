@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OpenConquer.Content.Tool.Analysis;
 using OpenConquer.Content.Tool.CommandLine;
 using OpenConquer.Content.Tool.Import;
 using OpenConquer.Content.Tool.Legacy.ServerDat;
@@ -88,6 +89,18 @@ internal static class Program
                     if (manifest.MissingMapArchives is { } missing)
                     {
                         Console.WriteLine($"Available-map content: {missing.Count} missing catalog archive(s).");
+                    }
+
+                    break;
+                }
+
+            case AnalyzeContentSetCommand analyze:
+                {
+                    ContentManifest manifest = ContentSetVerifier.Verify(analyze.ContentSetRootPath,
+                        analyze.MapDataId, analyze.AllMaps, analyze.AvailableMaps);
+                    foreach (string line in ContentLayoutReport.Create(manifest).ToReportLines())
+                    {
+                        Console.WriteLine(line);
                     }
 
                     break;
