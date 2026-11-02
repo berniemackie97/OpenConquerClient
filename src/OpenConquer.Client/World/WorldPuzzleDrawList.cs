@@ -54,8 +54,16 @@ internal static class WorldPuzzleDrawList
             + halfMapHeight - projection.ScreenHeight / 2;
 
         GameMapPuzzleBitmap bitmap = resources.GetRequired(puzzle.PuzzlePath);
-        long offsetX = halfMapWidth - (long)bitmap.Columns * TileSize / 2 - rootX;
-        long offsetY = halfMapHeight - (long)bitmap.Rows * TileSize / 2 - rootY;
+        long bitmapWidth = (long)bitmap.Columns * TileSize;
+        long bitmapHeight = (long)bitmap.Rows * TileSize;
+        long offsetX = halfMapWidth - bitmapWidth / 2 - rootX;
+        long offsetY = halfMapHeight - bitmapHeight / 2 - rootY;
+
+        if (bitmapWidth >= projection.ScreenWidth && bitmapHeight >= projection.ScreenHeight)
+        {
+            offsetX = Math.Clamp(offsetX, projection.ScreenWidth - bitmapWidth, 0);
+            offsetY = Math.Clamp(offsetY, projection.ScreenHeight - bitmapHeight, 0);
+        }
 
         List<WorldPuzzleTile> tiles = [];
         Append(tiles, resources, bitmap, puzzle.PuzzlePath,
