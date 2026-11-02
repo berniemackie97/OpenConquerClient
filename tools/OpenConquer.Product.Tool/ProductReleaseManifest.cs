@@ -11,11 +11,14 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
     public const int CurrentSchemaVersion = 1;
     public const string ExpectedProductId = "OpenConquer";
     public const string FileName = "openconquer.release.json";
-    public const int MaximumFileCount = 16 * 1024;
+    public const int MaximumFileCount = 32 * 1024;
+    public const int MaximumLength = 32 * 1024 * 1024;
 
-    private const int MaximumLength = 8 * 1024 * 1024;
+    private const int Version1MaximumFileCount = 16 * 1024;
+    private const int Version1MaximumManifestLength = 8 * 1024 * 1024;
+
     private const int MaximumVersionLength = 64;
-    private const int MaximumDirectoryCount = 16 * 1024;
+    private const int MaximumDirectoryCount = 32 * 1024;
 
     public static void Create(ReleaseManifestOptions options)
     {
@@ -36,7 +39,13 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
 
         string executable = ProductTargetRuntime.ClientExecutable(options.TargetRuntime);
 
-        List<ProductReleaseFile> files = ReadClientFiles(clientRoot);
+        List<ProductReleaseFile> files = ReadClientFiles(clientRoot, out int directoryCount);
+
+        if (options.MinimumLauncherVersion < 2 &&
+            (files.Count > Version1MaximumFileCount || directoryCount > Version1MaximumFileCount))
+        {
+            throw new InvalidDataException("The release requires launcher version 2 or newer.");
+        }
 
         if (!files.Any(file => string.Equals(file.Path, executable, StringComparison.Ordinal)))
         {
@@ -76,6 +85,12 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
                 writer.Flush();
 
                 stream.Flush(flushToDisk: true);
+
+                if (stream.Length > MaximumLength ||
+                    options.MinimumLauncherVersion < 2 && stream.Length > Version1MaximumManifestLength)
+                {
+                    throw new InvalidDataException("The release manifest exceeds the supported length for its launcher version.");
+                }
             }
 
             File.Move(temporaryPath, outputPath);
@@ -111,6 +126,12 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
             throw new InvalidDataException("The release manifest is invalid.");
         }
 
+        if (manifest.MinimumLauncherVersion < 2 &&
+            (manifest.Files.Count > Version1MaximumFileCount || bytes.Length > Version1MaximumManifestLength))
+        {
+            throw new InvalidDataException("The release requires launcher version 2 or newer.");
+        }
+
         return manifest;
     }
 
@@ -119,7 +140,7 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
         ArgumentException.ThrowIfNullOrWhiteSpace(clientRoot);
         ArgumentNullException.ThrowIfNull(manifest);
 
-        List<ProductReleaseFile> actual = ReadClientFiles(clientRoot);
+        List<ProductReleaseFile> actual = ReadClientFiles(clientRoot, out _);
 
         if (actual.Count != manifest.Files.Count)
         {
@@ -161,7 +182,7 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
         return bytes;
     }
 
-    private static List<ProductReleaseFile> ReadClientFiles(string clientRoot)
+    private static List<ProductReleaseFile> ReadClientFiles(string clientRoot, out int directoryCount)
     {
         List<ProductReleaseFile> files = [];
         ProductReleasePathTopology pathTopology = new(MaximumDirectoryCount);
@@ -182,7 +203,7 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
 
         pending.Push(root);
 
-        int directoryCount = 0;
+        directoryCount = 0;
 
         while (pending.TryPop(out DirectoryInfo? directory))
         {
@@ -292,6 +313,7 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
         string? targetRuntime = null;
         string? clientExecutable = null;
         List<ProductReleaseFile>? files = null;
+        int directoryCount = 0;
 
         HashSet<string> properties = new(StringComparer.Ordinal);
 
@@ -332,7 +354,7 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
                     clientExecutable = property.Value.GetString();
                     break;
 
-                case "files" when TryReadFiles(property.Value, out files):
+                case "files" when TryReadFiles(property.Value, out files, out directoryCount):
                     break;
 
                 default:
@@ -344,7 +366,8 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
             || releaseSequence is null or 0 || releaseVersion is null || !IsValidVersion(releaseVersion) || minimumLauncherVersion is null or <= 0
             || targetRuntime is null || !ProductTargetRuntime.IsSupported(targetRuntime) || clientExecutable is null || !ProductReleasePath.IsValid(clientExecutable)
             || !string.Equals(clientExecutable, ProductTargetRuntime.ClientExecutable(targetRuntime), StringComparison.Ordinal)
-            || files is not { Count: > 0 } || !files.Any(file => string.Equals(file.Path, clientExecutable, StringComparison.Ordinal)))
+            || files is not { Count: > 0 } || !files.Any(file => string.Equals(file.Path, clientExecutable, StringComparison.Ordinal))
+            || minimumLauncherVersion < 2 && (files.Count > Version1MaximumFileCount || directoryCount > Version1MaximumFileCount))
         {
             return false;
         }
@@ -354,9 +377,10 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
         return true;
     }
 
-    private static bool TryReadFiles(JsonElement element, out List<ProductReleaseFile>? files)
+    private static bool TryReadFiles(JsonElement element, out List<ProductReleaseFile>? files, out int directoryCount)
     {
         files = null;
+        directoryCount = 0;
 
         if (element.ValueKind != JsonValueKind.Array)
         {
@@ -382,6 +406,7 @@ internal sealed record ProductReleaseManifest(int SchemaVersion, string ProductI
         }
 
         files = parsed;
+        directoryCount = pathTopology.DirectoryCount;
 
         return true;
     }

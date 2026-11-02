@@ -30,7 +30,7 @@ internal static class ReleasePackageExtractor
     public const long MaximumExpandedLength = 64L * 1024 * 1024 * 1024;
 
     private const int CopyBufferSize = 128 * 1024;
-    private const int MaximumManifestLength = 8 * 1024 * 1024;
+    private const int MaximumManifestLength = ManagedReleaseManifest.MaximumLength;
     private const int MaximumSignatureLength = 4 * 1024;
     private const int UnixFileTypeMask = 0xf000;
     private const int UnixRegularFileType = 0x8000;

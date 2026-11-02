@@ -37,7 +37,7 @@ public sealed class LocalProductBuilderTests
         Assert.Equal(1UL, manifest.ReleaseSequence);
         Assert.Equal("local-1", manifest.ReleaseVersion);
         Assert.Equal(targetRuntime, manifest.TargetRuntime);
-        Assert.Equal(1, manifest.MinimumLauncherVersion);
+        Assert.Equal(2, manifest.MinimumLauncherVersion);
 
         ProductReleaseManifest.VerifyClient(
             Path.Combine(activeReleaseRoot, ManagedProductDescriptor.ClientRoot),
