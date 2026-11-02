@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 
 namespace OpenConquer.Content.Images;
 
-internal static class DdsImageReader
+public static class DdsImageReader
 {
     private const int MagicLength = 4;
     private const int DdsHeaderLength = 124;

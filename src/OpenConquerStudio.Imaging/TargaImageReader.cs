@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 
 namespace OpenConquer.Content.Images;
 
-internal static class TargaImageReader
+public static class TargaImageReader
 {
     private const int HeaderLength = 18;
     private const int MaximumDimension = 16_384;
