@@ -4,9 +4,13 @@ The decoded DMap contains four blocks in order: cell grid, exit-marker
 triplets, scenery records, and positioned overlay records. This change reads the **post-grid sections**
 at `GameMapCellGrid.BytesConsumed` without changing the renderer or networking.
 
-The supported scenery record types and encoded byte lengths are:
-`1` (0x10C external terrain-object group), `4` (0x1A0 map sprite),
-`10` (0x48), and `15` (0x114). The reader preserves each entire
+The scenery record payload lengths are `1` (0x10C), `4` (0x1A0),
+`10` (0x48), and `15` (0x114). When the DMap header's first value is
+`1005`, type-4 payloads occupy 0x1A4 bytes. The additional four bytes
+are retained in the encoded payload without assigning a meaning. This
+layout is present in the map-data 1999 archive; the other observed maps
+use the shorter type-4 records. The header selects a bounded serialized
+layout here; this does not assert executable loader dispatch. The reader preserves each entire
 scenery payload, rather than inventing meanings for fields not yet proven.
 Type 1 paths and anchor coordinates and type 4 resource paths, part names,
 and tile coordinates are read from the encoded fields.

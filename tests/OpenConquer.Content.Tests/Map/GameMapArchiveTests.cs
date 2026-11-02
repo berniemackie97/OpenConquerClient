@@ -18,7 +18,7 @@ public sealed class GameMapArchiveTests
         Assert.Equal(105348, grid.BytesConsumed);
         Assert.Equal("map/puzzle/newbie.pul", grid.PuzzlePath);
 
-        GameMapSceneSections scene = GameMapSceneSections.Parse(decoded, grid.BytesConsumed);
+        GameMapSceneSections scene = GameMapSceneSections.Parse(decoded, grid.BytesConsumed, grid.HeaderField0);
         Assert.Empty(scene.ExitMarkers);
         Assert.Equal(38, scene.Scenery.Count);
         Assert.Equal("map/puzzle/newbiebg.pul",
