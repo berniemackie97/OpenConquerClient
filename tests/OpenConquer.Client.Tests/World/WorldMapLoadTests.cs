@@ -11,7 +11,7 @@ public sealed class WorldMapLoadTests
         using ManualResetEventSlim started = new();
         using WorldMapFixture fixture = new();
         WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], 60, 108, 100, 1000);
-        using using using WorldMapLoad load = new(token =>
+        using WorldMapLoad load = new(token =>
         {
             started.Set();
             release.Wait(token);
