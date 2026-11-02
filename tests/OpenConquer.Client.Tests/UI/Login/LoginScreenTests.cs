@@ -177,7 +177,8 @@ public sealed class LoginScreenTests : IDisposable
         Type(screen, s_fields.AccountField, "Player");
         Type(screen, s_fields.PasswordField, "Secret");
 
-        screen.BeginLoading();
+        screen.LoginRequested += screen.BeginLoading;
+        Click(screen, 700, 720);
         LoginLoadingSequence sequence = new();
         sequence.Start();
 
