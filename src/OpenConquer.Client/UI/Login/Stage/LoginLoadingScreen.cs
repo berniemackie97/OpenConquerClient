@@ -20,11 +20,19 @@ internal sealed class LoginLoadingScreen
         _mapText = mapText;
     }
 
-    internal LoginLoadingTimeline Timeline { get; }
+    internal LoginLoadingTimeline Timeline
+    {
+        get;
+    }
+
     internal LoginLoadingSequence Sequence => _sequence;
     internal bool Visible => _sequence.Visible;
     internal bool CanEnterWorld => _sequence.CanEnterWorld;
-    internal string Trace { get; private set; } = string.Empty;
+
+    internal string Trace
+    {
+        get; private set;
+    } = string.Empty;
 
     internal static LoginLoadingScreen? LoadIfPresent(IClientContentSource source)
     {
