@@ -21,24 +21,36 @@ internal sealed class WorldMapTextureRenderer : IDisposable
         _device = device ?? throw new ArgumentNullException(nameof(device));
     }
 
-    public void Prepare(IReadOnlyList<WorldPuzzleTile> tiles)
+    public bool Prepare(IReadOnlyList<WorldPuzzleTile> tiles, ref int remaining)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(tiles);
+        bool complete = true;
         foreach (WorldPuzzleTile tile in tiles)
         {
-            EnsureTexture(tile.Animation, tile.FrameIndex);
+            if (!EnsureTexture(tile.Animation, tile.FrameIndex, ref remaining))
+            {
+                complete = false;
+            }
         }
+
+        return complete;
     }
 
-    public void Prepare(IReadOnlyList<WorldTerrainSprite> sprites)
+    public bool Prepare(IReadOnlyList<WorldTerrainSprite> sprites, ref int remaining)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(sprites);
+        bool complete = true;
         foreach (WorldTerrainSprite sprite in sprites)
         {
-            EnsureTexture(sprite.Animation, sprite.FrameIndex);
+            if (!EnsureTexture(sprite.Animation, sprite.FrameIndex, ref remaining))
+            {
+                complete = false;
+            }
         }
+
+        return complete;
     }
 
     public void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldPuzzleTile> tiles, SpriteColor worldColor)
@@ -72,12 +84,17 @@ internal sealed class WorldMapTextureRenderer : IDisposable
         }
     }
 
-    private void EnsureTexture(AniIndexSection animation, int frameIndex)
+    private bool EnsureTexture(AniIndexSection animation, int frameIndex, ref int remaining)
     {
         string path = animation.FramePaths[frameIndex];
         if (_textures.ContainsKey(path))
         {
-            return;
+            return true;
+        }
+
+        if (remaining == 0)
+        {
+            return false;
         }
 
         RgbaImage frame = AniFrameLoader.LoadWrappedFrame(_source, animation,
@@ -86,6 +103,8 @@ internal sealed class WorldMapTextureRenderer : IDisposable
         try
         {
             _textures.Add(path, texture);
+            remaining--;
+            return true;
         }
         catch
         {

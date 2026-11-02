@@ -46,12 +46,18 @@ internal sealed class WorldMapScene
     }
 
     public static WorldMapScene Load(IClientContentSource source, GameMapCatalog catalog,
-        uint mapDataId, ushort heroTileX, ushort heroTileY, uint startMilliseconds)
+        uint mapDataId, ushort heroTileX, ushort heroTileY, uint startMilliseconds,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         GameMapContent map = GameMapContent.Load(source, catalog, mapDataId);
+        cancellationToken.ThrowIfCancellationRequested();
         GameMapPuzzleResources puzzles = GameMapPuzzleResources.Load(source, map);
+        cancellationToken.ThrowIfCancellationRequested();
         GameMapTerrainSceneResources terrain = GameMapTerrainSceneResources.Load(source, map);
+        cancellationToken.ThrowIfCancellationRequested();
         uint puzzleInterval = PuzzleFrameIntervalConfiguration.Load(source);
+        cancellationToken.ThrowIfCancellationRequested();
         return new WorldMapScene(map, puzzles, terrain.Placements, heroTileX, heroTileY,
             puzzleInterval, startMilliseconds);
     }
@@ -97,20 +103,26 @@ internal sealed class WorldMapScene
         return layers;
     }
 
-    public void Prepare(WorldMapTextureRenderer textures, int screenWidth, int screenHeight, uint nowMilliseconds)
+    public bool Prepare(WorldMapTextureRenderer textures, int screenWidth, int screenHeight, uint nowMilliseconds,
+        int textureBudget = int.MaxValue)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(textureBudget);
         BuildFrame(screenWidth, screenHeight, nowMilliseconds);
+        int remaining = textureBudget;
+        bool complete = true;
         foreach (WorldMapLayer layer in _layers)
         {
-            if (layer.Puzzle is { } puzzle)
+            if (layer.Puzzle is { } puzzle && !textures.Prepare(puzzle, ref remaining))
             {
-                textures.Prepare(puzzle);
+                complete = false;
             }
-            if (layer.Terrain is { } terrain)
+            if (layer.Terrain is { } terrain && !textures.Prepare(terrain, ref remaining))
             {
-                textures.Prepare(terrain);
+                complete = false;
             }
         }
+
+        return complete;
     }
 
     public void Draw(WorldMapTextureRenderer textures, OpenGLRenderer renderer)
