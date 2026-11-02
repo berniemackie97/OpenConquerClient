@@ -75,8 +75,10 @@ internal sealed class LoginScreen : IDisposable
 
     internal bool AwaitingLoginCommand
     {
-        get; set;
+        get; private set;
     }
+
+    internal event Action? PendingLoginCancelled;
 
     /// <summary>The OpenConquer Sign Up dialog; retail opened a website instead.</summary>
     internal LoginRegistrationForm Registration
@@ -473,8 +475,9 @@ internal sealed class LoginScreen : IDisposable
                 return;
             }
 
+            bool hasStartedExchange = IsExchangePending && !AwaitingLoginCommand;
             FocusLost();
-            (IsExchangePending ? LoadingQuit : Quit).Show(string.Empty);
+            (hasStartedExchange ? LoadingQuit : Quit).Show(string.Empty);
             Play(LoginAudioCue.Error);
             return;
         }
@@ -544,11 +547,34 @@ internal sealed class LoginScreen : IDisposable
         PlayTypingSound(revision, Credentials.EditRevision);
     }
 
+    internal void BeginLoading()
+    {
+        AwaitingLoginCommand = true;
+        Credentials.StopEditingForLogin();
+        ResetOtherFocus();
+    }
+
+    internal void DispatchPendingLogin()
+    {
+        AwaitingLoginCommand = false;
+    }
+
     public void FocusLost()
+    {
+        bool cancelled = AwaitingLoginCommand;
+        AwaitingLoginCommand = false;
+        Credentials.FocusLost();
+        ResetOtherFocus();
+        if (cancelled)
+        {
+            PendingLoginCancelled?.Invoke();
+        }
+    }
+
+    private void ResetOtherFocus()
     {
         SelectionInput.FocusLost();
         SelectionAnimation.ClearPointer();
-        Credentials.FocusLost();
         Buttons.Reset();
         Account.FocusLost();
         Registration.FocusLost();

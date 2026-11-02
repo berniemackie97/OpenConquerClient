@@ -246,6 +246,7 @@ internal sealed class ClientApplication : IDisposable
         _loginErrors = LoginErrorMessages.Load(contentSource, LoginErrorEncoding.ForCurrentHost());
         _loading = LoginLoadingScreen.LoadIfPresent(contentSource);
         _login.LoginRequested += OnLoginRequested;
+        _login.PendingLoginCancelled += () => _loading?.Reset();
         _registrationFlow = new LoginRegistrationCoordinator();
         _login.RegistrationRequested += OnRegistrationRequested;
         _login.RegistrationSubmitRequested += OnRegistrationSubmitRequested;
@@ -347,7 +348,7 @@ internal sealed class ClientApplication : IDisposable
         _loginFlow?.Update(_catalog?.CurrentCatalog(now));
         if (login.AwaitingLoginCommand && _loading?.Sequence.ReadyForAuthentication == true)
         {
-            login.AwaitingLoginCommand = false;
+            login.DispatchPendingLogin();
             if (_loginFlow is { } pending)
             {
                 bool started = pending.TryStart(login, _catalog?.CurrentCatalog(now));
@@ -581,11 +582,6 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReturnToLogin()
     {
-        if (_login is { } login)
-        {
-            login.AwaitingLoginCommand = false;
-        }
-
         _loading?.Reset();
         _worldLoad?.Cancel();
         _worldTexturesReady = false;
@@ -607,8 +603,7 @@ internal sealed class ClientApplication : IDisposable
             if (_loading is { Visible: false } loading &&
                 login.Credentials.AccountLength != 0 && login.Credentials.PasswordLength != 0)
             {
-                login.AwaitingLoginCommand = true;
-                login.FocusLost();
+                login.BeginLoading();
                 loading.Start();
             }
             else if (!login.IsLoginPending)

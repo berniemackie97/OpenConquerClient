@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Credentials;
@@ -165,6 +167,82 @@ public sealed class LoginScreenTests : IDisposable
         screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Enter, DesktopKeyModifiers.Control, false),
             () => null, _ => { });
         Assert.Equal(2, attempts);
+    }
+
+    [Fact]
+    public void LoadingPreservesPasswordForFrameGatedSubmissionAndBlocksEditing()
+    {
+        using LoginScreen screen = Create(out _);
+        SkipOpening(screen);
+        Type(screen, s_fields.AccountField, "Player");
+        Type(screen, s_fields.PasswordField, "Secret");
+
+        screen.BeginLoading();
+
+        Assert.True(screen.AwaitingLoginCommand);
+        Assert.Equal(LoginCredentialFocus.None, screen.Credentials.Focus);
+        Assert.Equal(6, screen.Credentials.PasswordLength);
+
+        screen.TextEntered('X');
+        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Backspace, DesktopKeyModifiers.None, false),
+            () => null, _ => { });
+        Click(screen, s_fields.PasswordField.X + 2, s_fields.PasswordField.Y + 2);
+        Assert.Equal(6, screen.Credentials.PasswordLength);
+
+        screen.DispatchPendingLogin();
+        Assert.True(screen.Credentials.TryTakeLoginCredentials(out byte[] account, out char[] password));
+        try
+        {
+            Assert.Equal("Player"u8.ToArray(), account);
+            Assert.Equal("Secret".ToCharArray(), password);
+            Assert.Equal(0, screen.Credentials.PasswordLength);
+            Assert.False(screen.AwaitingLoginCommand);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(account);
+            CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(password.AsSpan()));
+        }
+    }
+
+    [Fact]
+    public void FocusLossAbortsPendingCommandAndErasesPassword()
+    {
+        using LoginScreen screen = Create(out _);
+        SkipOpening(screen);
+        Type(screen, s_fields.AccountField, "Player");
+        Type(screen, s_fields.PasswordField, "Secret");
+        int cancellations = 0;
+        screen.PendingLoginCancelled += () => cancellations++;
+
+        screen.BeginLoading();
+        screen.FocusLost();
+
+        Assert.Equal(1, cancellations);
+        Assert.False(screen.AwaitingLoginCommand);
+        Assert.Equal(0, screen.Credentials.PasswordLength);
+        Assert.Equal("Player", screen.Credentials.AccountDisplay);
+    }
+
+    [Fact]
+    public void EscapeBeforeDispatchAbortsCommandAndClearsPassword()
+    {
+        using LoginScreen screen = Create(out _);
+        SkipOpening(screen);
+        Type(screen, s_fields.AccountField, "Player");
+        Type(screen, s_fields.PasswordField, "Secret");
+        int cancellations = 0;
+        screen.PendingLoginCancelled += () => cancellations++;
+        screen.BeginLoading();
+
+        screen.KeyPressed(new DesktopKeyEvent(DesktopKey.Escape, DesktopKeyModifiers.None, false),
+            () => null, _ => { });
+
+        Assert.Equal(1, cancellations);
+        Assert.False(screen.AwaitingLoginCommand);
+        Assert.Equal(0, screen.Credentials.PasswordLength);
+        Assert.True(screen.Quit.IsOpen);
+        Assert.False(screen.LoadingQuit.IsOpen);
     }
 
     public void Dispose() => Directory.Delete(_folder, recursive: true);
