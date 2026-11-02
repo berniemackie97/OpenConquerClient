@@ -11,6 +11,13 @@ internal static class WorldMapPuzzleValidator
     {
         PackagedClientContentSource source = PackagedClientContentSource.Open(clientRootPath);
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), mapDataId);
+
+        return Validate(source, map);
+    }
+
+    internal static WorldMapPuzzleValidationResult Validate(
+        IClientContentSource source, GameMapContent map)
+    {
         GameMapPuzzleResources resources = GameMapPuzzleResources.Load(source, map);
 
         HashSet<string> puzzlePaths = new(StringComparer.OrdinalIgnoreCase);

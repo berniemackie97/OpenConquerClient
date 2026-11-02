@@ -21,9 +21,10 @@ internal static class ContentPackagingEvaluator
         string scratchRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(scratchRootPath));
         HostFileSystemGuard.RequireDirectory(scratchRoot, "benchmark scratch directory");
 
-        if (IsWithin(contentSetRoot, scratchRoot) ||
+        string physicalScratch = ResolvePhysicalDirectory(scratchRoot);
+        if (IsWithin(ResolvePhysicalDirectory(contentSetRoot), physicalScratch) ||
             (previousRootPath is not null && IsWithin(
-                Path.TrimEndingDirectorySeparator(Path.GetFullPath(previousRootPath)), scratchRoot)))
+                ResolvePhysicalDirectory(previousRootPath), physicalScratch)))
         {
             throw new InvalidOperationException("Benchmark scratch must be outside both content sets.");
         }
@@ -39,8 +40,10 @@ internal static class ContentPackagingEvaluator
         {
             ContentPackagingCandidate[] candidates =
             [
-                EvaluateCandidate(source, manifest, previous, stage, "Stored ZIP", CompressionLevel.NoCompression),
-                EvaluateCandidate(source, manifest, previous, stage, "Compressed ZIP", CompressionLevel.Optimal),
+                EvaluateCandidate(source, manifest, previous, stage, "Stored ZIP",
+                    CompressionLevel.NoCompression, mapDataId, allMaps, availableMaps),
+                EvaluateCandidate(source, manifest, previous, stage, "Compressed ZIP",
+                    CompressionLevel.Optimal, mapDataId, allMaps, availableMaps),
             ];
 
             return new ContentPackagingReport(manifest.FileCount, manifest.Length, forward,
@@ -54,7 +57,7 @@ internal static class ContentPackagingEvaluator
 
     private static ContentPackagingCandidate EvaluateCandidate(IClientContentSource source,
         ContentManifest manifest, ContentManifest? previous, string stage,
-        string name, CompressionLevel compression)
+        string name, CompressionLevel compression, uint? mapDataId, bool allMaps, bool availableMaps)
     {
         string first = Path.Combine(stage, compression == CompressionLevel.NoCompression ? "stored.zip" : "compressed.zip");
         string second = Path.Combine(stage, compression == CompressionLevel.NoCompression ? "stored-repeat.zip" : "compressed-repeat.zip");
@@ -74,11 +77,34 @@ internal static class ContentPackagingEvaluator
         }
 
         using ContentArchiveSource archive = new(first, manifest);
+        (ContentDecodeMetrics looseDecode, ContentDecodeMetrics archiveDecode) =
+            ContentDecodeWorkload.Compare(source, archive, manifest, mapDataId, allMaps || availableMaps);
         return new ContentPackagingCandidate(
             name, new FileInfo(first).Length, buildTime,
             ContentReadProfiler.Measure(archive, manifest),
             ContentReadProfiler.Measure(archive, manifest, reverseOrder: true),
+            looseDecode, archiveDecode,
             previous is null ? null : archive.CompressedBytesForNewPayloads(manifest, previous));
+    }
+
+    private static string ResolvePhysicalDirectory(string path)
+    {
+        DirectoryInfo directory = new(Path.GetFullPath(path));
+        Stack<string> segments = new();
+        while (directory.Parent is DirectoryInfo parent)
+        {
+            segments.Push(directory.Name);
+            directory = parent;
+        }
+
+        string current = directory.FullName;
+        while (segments.TryPop(out string? segment))
+        {
+            DirectoryInfo next = new(Path.Combine(current, segment));
+            current = next.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? next.FullName;
+        }
+
+        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(current));
     }
 
     private static bool IsWithin(string root, string path)

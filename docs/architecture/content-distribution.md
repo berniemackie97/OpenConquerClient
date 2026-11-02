@@ -147,8 +147,8 @@ the reported changes. The existing signed ZIP distribution path is unchanged.
 Run `evaluate-content-packaging --content-set <root> --scratch <directory>` with the
 appropriate map-coverage flag. Optionally pass `--previous <previous-set-root>` to
 verify both content sets and measure distinct payload reuse. The scratch directory must
-exist outside the tested content sets. Temporary archives are removed when the command
-completes. Source content is never modified.
+exist outside the tested content sets, including paths traversing linked ancestor
+directories. Temporary archives are removed when the command completes. Source content is never modified.
 
 The evaluation builds both stored and compressed ZIP candidates from the same verified
 content closure. Each archive is rebuilt with fixed entry order, timestamps, and file
