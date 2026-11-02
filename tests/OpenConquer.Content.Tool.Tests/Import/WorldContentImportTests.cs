@@ -42,6 +42,36 @@ public sealed class WorldContentImportTests
     }
 
     [Fact]
+    public void Import_MissingGroundPuzzle_PreservesMapAndRequiredOverlay()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        WriteMapSource(source);
+        File.Delete(source.ChildPath("map/puzzle/newbie.pul"));
+
+        string contentSet = destination.ChildPath("world");
+        ContentManifest manifest = ContentSetImporter.Import(source.RootPath, contentSet, 1010);
+
+        Assert.Contains(manifest.Entries, static entry => entry.PathKey == "map/map/newbie.7z");
+        Assert.DoesNotContain(manifest.Entries, static entry => entry.PathKey == "map/puzzle/newbie.pul");
+        Assert.Contains(manifest.Entries, static entry => entry.PathKey == "map/puzzle/newbiebg.pul");
+        Assert.Equal(manifest.FileCount, ContentSetVerifier.Verify(contentSet, 1010).FileCount);
+    }
+
+    [Fact]
+    public void Import_MissingPositionedPuzzle_StillFails()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree destination = new();
+        WriteMapSource(source);
+        File.Delete(source.ChildPath("map/puzzle/newbiebg.pul"));
+
+        string target = destination.ChildPath("world");
+        Assert.Throws<FileNotFoundException>(() => ContentSetImporter.Import(source.RootPath, target, 1010));
+        Assert.False(Directory.Exists(target));
+    }
+
+    [Fact]
     public void Import_AllMaps_IncludesEveryCatalogEntryWithoutDuplicatingSharedFiles()
     {
         using TemporarySourceTree source = new();

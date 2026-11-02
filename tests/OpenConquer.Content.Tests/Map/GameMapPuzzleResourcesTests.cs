@@ -18,7 +18,8 @@ public sealed class GameMapPuzzleResourcesTests
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), 1010);
         GameMapPuzzleResources resources = GameMapPuzzleResources.Load(source, map);
 
-        Assert.Equal((15, 9), (resources.Ground.Columns, resources.Ground.Rows));
+        GameMapPuzzleBitmap ground = Assert.IsType<GameMapPuzzleBitmap>(resources.Ground);
+        Assert.Equal((15, 9), (ground.Columns, ground.Rows));
         GameMapPuzzleOverlayEntry backdropEntry =
             Assert.IsType<GameMapPuzzleOverlayEntry>(Assert.Single(Assert.Single(map.Scene.PositionedOverlays).Entries));
         GameMapPuzzleBitmap backdrop = resources.GetRequired(backdropEntry.PuzzlePath);
@@ -41,16 +42,48 @@ public sealed class GameMapPuzzleResourcesTests
     }
 
     [Fact]
-    public void MissingPuzzleResource_FailsWithoutFallback()
+    public void MissingGroundPuzzle_UsesEmptyGroundAndRetainsPositionedPuzzle()
     {
         using TemporaryContentDirectory root = CreateNewbieContent();
+        root.WriteFile("map/puzzle/newbiebg.pul", ReadPuzzle("newbiebg.pul"));
+        root.WriteFile("ani/newbie.ani", ReadRetailAni());
+
+        ClientContentRoot source = new(root.RootPath);
+        GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), 1010);
+        GameMapPuzzleResources resources = GameMapPuzzleResources.Load(source, map);
+
+        Assert.Null(resources.Ground);
+        Assert.Equal((20, 20), (resources.GroundColumns, resources.GroundRows));
+        Assert.Throws<KeyNotFoundException>(() => resources.GetRequired(map.CellGrid.PuzzlePath));
+        Assert.Equal((6, 6), (resources.GetRequired("map/puzzle/newbiebg.pul").Columns,
+            resources.GetRequired("map/puzzle/newbiebg.pul").Rows));
+    }
+
+    [Fact]
+    public void MissingPositionedPuzzle_FailsWithoutFallback()
+    {
+        using TemporaryContentDirectory root = CreateNewbieContent();
+        root.WriteFile("map/puzzle/newbie.pul", ReadPuzzle("newbie.pul"));
+        root.WriteFile("ani/newbie.ani", ReadRetailAni());
+
         ClientContentRoot source = new(root.RootPath);
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), 1010);
 
         Assert.Throws<FileNotFoundException>(() => GameMapPuzzleResources.Load(source, map));
+    }
 
-        root.WriteFile("map/puzzle/newbie.pul", ReadPuzzle("newbie.pul"));
-        Assert.Throws<FileNotFoundException>(() => GameMapPuzzleResources.Load(source, map));
+    [Fact]
+    public void MalformedExistingGroundPuzzle_FailsRatherThanUsingEmptyGround()
+    {
+        using TemporaryContentDirectory root = CreateNewbieContent();
+        root.WriteFile("map/puzzle/newbie.pul", "malformed"u8.ToArray());
+        root.WriteFile("map/puzzle/newbiebg.pul", ReadPuzzle("newbiebg.pul"));
+        root.WriteFile("ani/newbie.ani", ReadRetailAni());
+
+        ClientContentRoot source = new(root.RootPath);
+        GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), 1010);
+
+        Assert.Throws<InvalidDataException>(() => GameMapPuzzleResources.Load(source, map));
     }
 
     [Fact]

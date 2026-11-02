@@ -10,7 +10,7 @@ internal sealed class WorldMapFixture : IDisposable
 {
     private readonly string _root;
 
-    public WorldMapFixture(bool twoFrameBackdrop = false)
+    public WorldMapFixture(bool twoFrameBackdrop = false, bool missingGround = false)
     {
         _root = Path.Combine(Path.GetTempPath(), "OpenConquer.WorldMapFixture",
             Guid.NewGuid().ToString("N"));
@@ -20,7 +20,10 @@ internal sealed class WorldMapFixture : IDisposable
             string fixture = Path.Combine(AppContext.BaseDirectory, "RetailMapFixture");
             Write("ini/GameMap.dat", File.ReadAllBytes(Path.Combine(fixture, "ini", "GameMap.dat")));
             Write("map/map/newbie.7z", File.ReadAllBytes(Path.Combine(fixture, "map", "newbie.7z")));
-            Write("map/puzzle/newbie.pul", File.ReadAllBytes(Path.Combine(fixture, "map", "puzzle", "newbie.pul")));
+            if (!missingGround)
+            {
+                Write("map/puzzle/newbie.pul", File.ReadAllBytes(Path.Combine(fixture, "map", "puzzle", "newbie.pul")));
+            }
             byte[] backdrop = File.ReadAllBytes(Path.Combine(fixture, "map", "puzzle", "newbiebg.pul"));
             if (twoFrameBackdrop)
             {

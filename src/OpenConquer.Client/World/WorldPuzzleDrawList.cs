@@ -25,8 +25,13 @@ internal static class WorldPuzzleDrawList
         ArgumentNullException.ThrowIfNull(resources);
         Validate(projection);
 
+        if (resources.Ground is not { } bitmap)
+        {
+            return [];
+        }
+
         List<WorldPuzzleTile> tiles = [];
-        Append(tiles, resources, resources.Ground, map.CellGrid.PuzzlePath, projection.GroundOffsetX, projection.GroundOffsetY,
+        Append(tiles, resources, bitmap, map.CellGrid.PuzzlePath, projection.GroundOffsetX, projection.GroundOffsetY,
             projection, frame);
         return tiles;
     }

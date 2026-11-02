@@ -7,19 +7,21 @@ namespace OpenConquer.Content.Map;
 public sealed class GameMapPuzzleResources
 {
     private const int MaximumPuzzleFileBytes = 128 * 1024;
+    private const int UnloadedGroundDimension = 20;
 
     private readonly Dictionary<string, PuzzleResource> _puzzles;
 
-    private GameMapPuzzleResources(GameMapPuzzleBitmap ground, Dictionary<string, PuzzleResource> puzzles)
+    private GameMapPuzzleResources(GameMapPuzzleBitmap? ground, Dictionary<string, PuzzleResource> puzzles)
     {
         Ground = ground;
         _puzzles = puzzles;
     }
 
-    public GameMapPuzzleBitmap Ground
-    {
-        get;
-    }
+    public GameMapPuzzleBitmap? Ground { get; }
+
+    public int GroundColumns => Ground?.Columns ?? UnloadedGroundDimension;
+
+    public int GroundRows => Ground?.Rows ?? UnloadedGroundDimension;
 
     public GameMapPuzzleBitmap GetRequired(string contentPath)
     {
@@ -53,20 +55,35 @@ public sealed class GameMapPuzzleResources
 
         Dictionary<string, GameMapPuzzleBitmap> bitmaps = new(StringComparer.OrdinalIgnoreCase);
 
-        GameMapPuzzleBitmap LoadPuzzle(string path)
+        GameMapPuzzleBitmap? LoadPuzzle(string path, bool allowMissing = false)
         {
-            if (!bitmaps.TryGetValue(path, out GameMapPuzzleBitmap? puzzle))
+            if (bitmaps.TryGetValue(path, out GameMapPuzzleBitmap? puzzle))
             {
-                byte[] payload = ContentReader.ReadRequiredBytes(contentSource, path,
-                    ContentLookupMode.LooseOnly, MaximumPuzzleFileBytes);
-                puzzle = GameMapPuzzleBitmap.Parse(payload);
-                bitmaps.Add(path, puzzle);
+                return puzzle;
             }
 
+            if (!contentSource.TryOpenRead(path, ContentLookupMode.LooseOnly, out Stream? stream))
+            {
+                if (allowMissing)
+                {
+                    return null;
+                }
+
+                stream = contentSource.OpenRequiredRead(path, ContentLookupMode.LooseOnly);
+            }
+
+            using (stream)
+            {
+                puzzle = GameMapPuzzleBitmap.Parse(ContentReader.ReadBytes(stream, path, MaximumPuzzleFileBytes));
+            }
+
+            bitmaps.Add(path, puzzle);
             return puzzle;
         }
 
-        GameMapPuzzleBitmap ground = LoadPuzzle(map.CellGrid.PuzzlePath);
+        string groundPath = map.CellGrid.PuzzlePath;
+        GameMapPuzzleBitmap? ground = LoadPuzzle(groundPath,
+            allowMissing: groundPath.EndsWith(".pul", StringComparison.OrdinalIgnoreCase));
         foreach (GameMapPositionedOverlayRecord record in map.Scene.PositionedOverlays)
         {
             foreach (GameMapPositionedOverlayEntry entry in record.Entries)

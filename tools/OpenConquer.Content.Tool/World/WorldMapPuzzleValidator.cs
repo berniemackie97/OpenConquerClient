@@ -41,7 +41,10 @@ internal static class WorldMapPuzzleValidator
             }
         }
 
-        ValidateBitmap(map.CellGrid.PuzzlePath);
+        if (resources.Ground is not null)
+        {
+            ValidateBitmap(map.CellGrid.PuzzlePath);
+        }
 
         foreach (GameMapPositionedOverlayRecord record in map.Scene.PositionedOverlays)
         {

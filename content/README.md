@@ -76,7 +76,8 @@ It never copies whole retail directories or WDF archives.
 
 Use `--all-maps` to copy every map named by `ini/GameMap.dat` and the files
 referenced by its supported puzzle, scene, scenery animation, and positioned
-overlay records. Unconfigured scenery records with no animation resource and no placement
+overlay records when those resources are required. A missing loose ground `.pul`
+file is an empty ground layer, not an import failure. Unconfigured scenery records with no animation resource and no placement
 data remain in their source map archives; their placeholder strings are not imported
 as file paths. The importer copies file bytes from the specified client
 installation, shares dependencies across maps, and does not generate substitute
@@ -122,8 +123,12 @@ Check redistribution rights before publishing the resulting third-party content.
 client source, along with their resolved dependencies. Missing archives listed in
 `ini/GameMap.dat` are recorded by map-data ID and original path under
 `missingMapArchives` in the version-3 manifest, with `mapCoverage: available`.
-The `ini/GameMap.dat` file is copied unchanged. An existing archive whose puzzle,
-scene, animation index or texture dependencies are missing still fails the import.
+The `ini/GameMap.dat` file is copied unchanged. A missing loose `.pul` ground
+bitmap does not reject an otherwise valid map: its ground layer has no drawable
+tiles, while its camera projection retains the ground component's 20 × 20 tile
+dimensions. The missing file is not substituted or entered in the payload.
+Present but malformed ground bitmaps and missing positioned puzzles, scene files,
+animation indexes, or textures still fail import.
 
 The default and `--all-maps` modes remain strict and use the existing version-2
 manifest layout. Verification of an available-map set requires `--available-maps`;

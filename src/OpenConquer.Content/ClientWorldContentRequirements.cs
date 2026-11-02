@@ -15,7 +15,10 @@ internal static class ClientWorldContentRequirements
         Add(map.ArchivePath, ContentLookupMode.LooseOnly);
 
         HashSet<string> puzzlePaths = new(StringComparer.OrdinalIgnoreCase);
-        AddPuzzle(map.CellGrid.PuzzlePath);
+        if (puzzles.Ground is not null)
+        {
+            AddPuzzle(map.CellGrid.PuzzlePath);
+        }
 
         AniSectionResolver animatedSections = new(source, ContentLookupMode.LooseOnly);
         foreach (GameMapPositionedOverlayRecord record in map.Scene.PositionedOverlays)
