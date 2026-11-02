@@ -111,6 +111,21 @@ execution conditions are recorded. This does not measure decompression, GPU uplo
 rendering, or bundle acquisition. Additional formats must use the same request sequence
 before a performance comparison is meaningful.
 
+## Map dependency ownership
+
+Use `analyze-map-dependencies --content-set <root> --all-maps` on a complete content set,
+or `--available-maps` when the manifest explicitly records omitted map archives. The
+command verifies the exact content closure and file digests before analyzing the catalog.
+It resolves each included map through the same content dependencies used by the client.
+
+The report partitions canonical file paths into startup-only, startup-and-map, owned by
+exactly one map, and referenced by multiple maps. It prints file and byte totals for
+those groups and per-map totals with their map-exclusive subset. Missing maps are reported
+as excluded, not treated as zero-resource maps. Shared ownership means a shared requested
+path; identical byte payloads at different paths remain separate until an explicit
+content-identity migration. These measurements describe the implemented dependency
+closure rather than observed access frequency or a selected bundle layout.
+
 ## Map semantic comparison
 
 Before replacing the map container or DMap decoder, compare two independently staged

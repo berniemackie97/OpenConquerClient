@@ -106,6 +106,17 @@ internal static class Program
                     break;
                 }
 
+            case AnalyzeMapDependenciesCommand dependencies:
+                {
+                    foreach (string line in MapDependencyAnalyzer.Analyze(dependencies.ContentSetRootPath,
+                        dependencies.AvailableMaps).ToReportLines())
+                    {
+                        Console.WriteLine(line);
+                    }
+
+                    break;
+                }
+
             case ProfileContentReadsCommand profile:
                 {
                     ContentManifest manifest = ContentSetVerifier.Verify(profile.ContentSetRootPath,

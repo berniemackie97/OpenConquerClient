@@ -136,6 +136,17 @@ public static class ClientContentClosure
         return Normalize(requirements);
     }
 
+    public static IReadOnlyList<ClientContentRequirement> ResolveMap(
+        IClientContentSource source, GameMapCatalog catalog, uint mapDataId)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(catalog);
+
+        List<ClientContentRequirement> requirements = [];
+        ClientWorldContentRequirements.Add(requirements, source, catalog, mapDataId);
+        return Normalize(requirements);
+    }
+
     private static void AddFrameRequirements(List<ClientContentRequirement> requirements, AniIndexSection section, int expectedFrameCount)
     {
         if (section.FrameCount != expectedFrameCount)
