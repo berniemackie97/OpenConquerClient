@@ -10,6 +10,7 @@ internal static class ContentToolCommandLine
     private const string VerifyContentSetVerb = "verify-content-set";
     private const string AnalyzeContentSetVerb = "analyze-content-set";
     private const string AnalyzeMapDependenciesVerb = "analyze-map-dependencies";
+    private const string EvaluateContentPackagingVerb = "evaluate-content-packaging";
     private const string ProfileContentReadsVerb = "profile-content-reads";
     private const string InspectServerDatVerb = "inspect-server-dat";
     private const string CompareMapSemanticsVerb = "compare-map-semantics";
@@ -28,6 +29,8 @@ internal static class ContentToolCommandLine
     private const string CandidateOption = "--candidate";
     private const string ContentRootOption = "--content-root";
     private const string ContentSetOption = "--content-set";
+    private const string ScratchOption = "--scratch";
+    private const string PreviousOption = "--previous";
 
     public static IReadOnlyList<string> UsageLines
     {
@@ -40,6 +43,7 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {AnalyzeContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {AnalyzeMapDependenciesVerb} {ContentSetOption} <content-set-root> [{AllMapsOption} | {AvailableMapsOption}]",
+        $"  OpenConquer.Content.Tool {EvaluateContentPackagingVerb} {ContentSetOption} <content-set-root> {ScratchOption} <scratch-root> [{PreviousOption} <previous-set-root>] [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {ProfileContentReadsVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
         $"  OpenConquer.Content.Tool {CompareMapSemanticsVerb} {SourceOption} <client-root> {CandidateOption} <client-root> {MapDataIdOption} <map-data-id>",
@@ -168,6 +172,41 @@ internal static class ContentToolCommandLine
                     command = verb == AnalyzeContentSetVerb
                         ? new AnalyzeContentSetCommand(values[0], mapDataId, allMaps, availableMaps)
                         : new ProfileContentReadsCommand(values[0], mapDataId, allMaps, availableMaps);
+                    return true;
+                }
+
+            case EvaluateContentPackagingVerb:
+                {
+                    List<string> options = [.. remainingArgs];
+                    string? previousRoot = null;
+                    int previousIndex = options.IndexOf(PreviousOption);
+                    if (previousIndex >= 0)
+                    {
+                        if (previousIndex + 1 >= options.Count || options[previousIndex + 1].StartsWith("--", StringComparison.Ordinal) ||
+                            options.IndexOf(PreviousOption, previousIndex + 1) >= 0)
+                        {
+                            errorMessage = "Specify --previous once with a content-set directory.";
+                            return false;
+                        }
+
+                        if (!TryResolvePath(options[previousIndex + 1], workingDirectoryPath, out previousRoot))
+                        {
+                            errorMessage = $"Option '{PreviousOption}' value '{options[previousIndex + 1]}' is not a valid path.";
+                            return false;
+                        }
+
+                        options.RemoveRange(previousIndex, 2);
+                    }
+
+                    if (!TryParseContentSetOptions(options, [ContentSetOption, ScratchOption],
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId,
+                            out bool allMaps, out bool availableMaps, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    command = new EvaluateContentPackagingCommand(values[0], values[1], previousRoot,
+                        mapDataId, allMaps, availableMaps);
                     return true;
                 }
 

@@ -142,6 +142,32 @@ not benchmark compression, bundle index overhead, patch algorithms, transfer cos
 metadata, or live update behavior. Differences in selected map coverage contribute to
 the reported changes. The existing signed ZIP distribution path is unchanged.
 
+## Content packaging evaluation
+
+Run `evaluate-content-packaging --content-set <root> --scratch <directory>` with the
+appropriate map-coverage flag. Optionally pass `--previous <previous-set-root>` to
+verify both content sets and measure distinct payload reuse. The scratch directory must
+exist outside the tested content sets. Temporary archives are removed when the command
+completes. Source content is never modified.
+
+The evaluation builds both stored and compressed ZIP candidates from the same verified
+content closure. Each archive is rebuilt with fixed entry order, timestamps, and file
+metadata, and the two builds must be byte-identical on the executing platform. Every
+candidate entry is opened and checked against the manifest length and SHA-256 digest
+before timing. Both loose and archived content use the same content-source interface
+for two forward and two reverse full-file read passes, reporting archive bytes, build
+latency, access latency, and—when a previous set was given—the compressed sizes of
+candidate payloads absent from the previous inventory.
+
+Verification warms filesystem caches. Neither the first read pass nor a reverse pass
+is a controlled cold-cache or representative gameplay workload. Compression output may
+vary between runtime or compression-library versions and platforms; reproducibility is
+checked on the same machine for each run. The measurements do not cover decoding,
+rendering, GPU memory, package signing, download transport, or installation recovery.
+Stored and compressed ZIP are measurement candidates, not adopted runtime formats.
+Content integrity remains defined by the manifest, and a production bundle requires
+its own authenticated index, bounded reader, and measured acceptance before adoption.
+
 ## Map semantic comparison
 
 Before replacing the map container or DMap decoder, compare two independently staged
