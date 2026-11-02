@@ -75,6 +75,7 @@ jobs:
           --
           verify-content-set
           --content-set content/retail-5517
+          --map-data-id 1010
 
       - name: Publish client
         run: >-
@@ -94,6 +95,7 @@ jobs:
           --
           verify-content-set
           --content-set "${{ runner.temp }}/openconquer-client/content/retail-5517"
+          --map-data-id 1010
 
       - name: Reject legacy Server.dat from client publish
         shell: bash
