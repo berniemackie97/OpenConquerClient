@@ -33,8 +33,8 @@ internal static class WorldCameraProjection
             throw new ArgumentOutOfRangeException(nameof(zoomPercent));
         }
 
-        long groundWidth = (long)resources.Ground.Columns * 256;
-        long groundHeight = (long)resources.Ground.Rows * 256;
+        long groundWidth = (long)resources.GroundColumns * 256;
+        long groundHeight = (long)resources.GroundRows * 256;
         long baseX = (long)map.CellGrid.Width * 32 - groundWidth / 2;
         long baseY = 16 + (long)map.CellGrid.Height * 32 / 2 - groundHeight / 2
             - ((map.CellGrid.Height + 1L) % 2) * 16;

@@ -51,6 +51,19 @@ public sealed class WorldCameraProjectionTests
     }
 
     [Fact]
+    public void MissingGroundPuzzle_UsesConstructorDimensionsForCameraBounds()
+    {
+        using WorldMapFixture fixture = new(missingGround: true);
+        Assert.Equal((20, 20), (fixture.Puzzles.GroundColumns, fixture.Puzzles.GroundRows));
+
+        WorldPuzzleProjection projection = WorldCameraProjection.FromHeroWorldPosition(
+            fixture.Map, fixture.Puzzles, 2688, 2704, 800, 600);
+
+        Assert.Equal((2288, 2404), (projection.CenterX, projection.CenterY));
+        Assert.Equal((-624, -2852), (projection.GroundOffsetX, projection.GroundOffsetY));
+    }
+
+    [Fact]
     public void InvalidProjectionParameters_FailWithoutFallbackValues()
     {
         using WorldMapFixture fixture = new();

@@ -30,6 +30,20 @@ public sealed class WorldMapSceneTests
     }
 
     [Fact]
+    public void MissingGroundPuzzle_LeavesGroundLayerEmptyAndKeepsOtherLayers()
+    {
+        using WorldMapFixture fixture = new(missingGround: true);
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], 60, 108, 100, 1000);
+
+        IReadOnlyList<WorldMapLayer> layers = scene.BuildFrame(800, 600, 1000);
+
+        Assert.Null(fixture.Puzzles.Ground);
+        Assert.Empty(layers[1].Puzzle!);
+        Assert.NotEmpty(layers[0].Puzzle!);
+        Assert.NotNull(layers[4].Terrain);
+    }
+
+    [Fact]
     public void PositionedPuzzle_AdvancesWithItsOwnFrameClock()
     {
         using WorldMapFixture fixture = new(twoFrameBackdrop: true);
