@@ -111,6 +111,32 @@ public sealed class WorldMapSemanticComparerTests
         Assert.Contains("overlay record 0 header", indexError.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CompareAnimatedOverlaysIncludesTimingAndRenderFields()
+    {
+        byte[] first = CreateAnimatedOverlay(100);
+        GameMapSceneSections source = GameMapSceneSections.Parse(first, 0, 1004);
+        WorldMapSemanticComparer.Compare(source, GameMapSceneSections.Parse(first, 0, 1004));
+
+        byte[] changed = CreateAnimatedOverlay(200);
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+            WorldMapSemanticComparer.Compare(source, GameMapSceneSections.Parse(changed, 0, 1004)));
+        Assert.Contains("overlay record 0 entry 0", error.Message, StringComparison.Ordinal);
+    }
+
+    private static byte[] CreateAnimatedOverlay(int interval)
+    {
+        byte[] bytes = new byte[36 + 0x19C];
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(8), 1);
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(16), 4);
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(28), 1);
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(32), 3);
+        "ani/mapscene.ani"u8.CopyTo(bytes.AsSpan(36));
+        "MapScene"u8.CopyTo(bytes.AsSpan(36 + 0x104));
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(36 + 0x194), interval);
+        return bytes;
+    }
+
     private static TemporarySourceTree CreateMapSource()
     {
         TemporarySourceTree source = new();

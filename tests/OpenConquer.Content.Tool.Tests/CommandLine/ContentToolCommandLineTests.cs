@@ -256,15 +256,22 @@ public sealed class ContentToolCommandLineTests
         Assert.Equal(Path.Combine(s_workingDirectory, "candidate"), compare.CandidateRootPath);
     }
 
-    [Theory]
-    [InlineData(new[] { "compare-map-semantics", "--source", "source", "--candidate", "candidate" })]
-    [InlineData(new[] { "compare-map-semantics", "--source", "source", "--candidate", "candidate", "--map-data-id", "0" })]
-    [InlineData(new[] { "compare-map-semantics", "--source", "source", "--candidate", "candidate", "--all-maps" })]
-    public void TryParse_RejectsMapComparisonWithoutSingleMapId(string[] args)
+    [Fact]
+    public void TryParse_RejectsMapComparisonWithoutSingleMapId()
     {
-        Assert.False(ContentToolCommandLine.TryParse(args, s_workingDirectory,
-            out ContentToolCommand? command, out _));
-        Assert.Null(command);
+        string[][] invalid =
+        [
+            ["compare-map-semantics", "--source", "source", "--candidate", "candidate"],
+            ["compare-map-semantics", "--source", "source", "--candidate", "candidate", "--map-data-id", "0"],
+            ["compare-map-semantics", "--source", "source", "--candidate", "candidate", "--all-maps"],
+        ];
+
+        foreach (string[] args in invalid)
+        {
+            Assert.False(ContentToolCommandLine.TryParse(args, s_workingDirectory,
+                out ContentToolCommand? command, out _));
+            Assert.Null(command);
+        }
     }
 
     [Fact]
