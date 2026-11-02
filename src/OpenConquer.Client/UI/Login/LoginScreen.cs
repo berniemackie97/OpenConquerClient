@@ -69,9 +69,14 @@ internal sealed class LoginScreen : IDisposable
         get;
     }
     private LoginErrorDialog? ActiveDialog => LoadingQuit.IsOpen ? LoadingQuit : Quit.IsOpen ? Quit : Error.IsOpen ? Error : null;
-    internal bool IsLoginPending => AttemptStatus is LoginAttemptStatus.ConnectingAccount or
+    internal bool IsLoginPending => AwaitingLoginCommand || AttemptStatus is LoginAttemptStatus.ConnectingAccount or
         LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter or
         LoginAttemptStatus.InitializingWorld or LoginAttemptStatus.CharacterReceived;
+
+    internal bool AwaitingLoginCommand
+    {
+        get; set;
+    }
 
     /// <summary>The OpenConquer Sign Up dialog; retail opened a website instead.</summary>
     internal LoginRegistrationForm Registration

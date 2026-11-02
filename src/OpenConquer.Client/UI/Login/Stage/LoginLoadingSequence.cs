@@ -19,6 +19,7 @@ internal sealed class LoginLoadingSequence
     }
     internal bool Visible => Frame > 1;
     internal bool CanEnterWorld => Frame == 99;
+    internal bool ReadyForAuthentication => Frame == 17;
 
     internal void Start()
     {
