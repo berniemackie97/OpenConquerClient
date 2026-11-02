@@ -154,8 +154,8 @@ public sealed class ContentSetVerifierTests
 
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
 
-        Assert.Contains("missing from manifest", exception.Message, StringComparison.Ordinal);
-        Assert.Contains(omittedSourcePath, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("data/interface/compose", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("not declared", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

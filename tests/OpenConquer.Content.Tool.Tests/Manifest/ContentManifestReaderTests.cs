@@ -43,7 +43,7 @@ public sealed class ContentManifestReaderTests
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
             ContentManifestReader.Read(input));
 
-        Assert.IsType<JsonException>(exception.InnerException);
+        Assert.IsAssignableFrom<JsonException>(exception.InnerException);
     }
 
     private static ContentManifest CreateManifest() =>

@@ -27,7 +27,8 @@ internal static class ContentManifestReader
         JsonDocument parsed;
         try
         {
-            parsed = JsonDocument.Parse(buffer.GetBuffer().AsMemory(0, (int)buffer.Length));
+            buffer.Position = 0;
+            parsed = JsonDocument.Parse(buffer);
         }
         catch (JsonException exception)
         {
