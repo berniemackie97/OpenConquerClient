@@ -3,8 +3,8 @@ namespace OpenConquer.Product.Tool;
 /// <summary>Composes and activates a complete managed product for local development.</summary>
 internal sealed class LocalProductBuilder
 {
-    private const int LocalDevelopmentMinimumLauncherVersion = 1;
-    private const int MaximumReleaseManifestLength = 8 * 1024 * 1024;
+    private const int LocalDevelopmentMinimumLauncherVersion = 2;
+    private const int MaximumReleaseManifestLength = ProductReleaseManifest.MaximumLength;
     private const string SolutionPath = "OpenConquer.Client.slnx";
     private const string ContentToolProjectPath = "tools/OpenConquer.Content.Tool/OpenConquer.Content.Tool.csproj";
     private const string ClientProjectPath = "src/OpenConquer.Client/OpenConquer.Client.csproj";
@@ -180,7 +180,7 @@ internal sealed class LocalProductBuilder
             string activeRelease = ManagedProductDescriptor.GetActiveReleaseRoot(validatedProduct, layout);
             string manifestPath = Path.Combine(activeRelease, ProductReleaseManifest.FileName);
             ProductReleaseManifest manifest = ProductReleaseManifest.Read(manifestPath);
-            byte[] manifestBytes = ProductReleaseManifest.ReadRegularFile(manifestPath, 8 * 1024 * 1024);
+            byte[] manifestBytes = ProductReleaseManifest.ReadRegularFile(manifestPath, ProductReleaseManifest.MaximumLength);
             if (layout.ActiveRelease is not null && !ProductReleaseIdentity.Matches(layout.ActiveRelease, manifest.ReleaseSequence, manifestBytes))
             {
                 throw new InvalidDataException($"The {description} release identity does not match its manifest.");

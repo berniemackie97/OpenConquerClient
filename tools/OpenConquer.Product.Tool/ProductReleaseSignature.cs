@@ -22,12 +22,12 @@ internal static class ProductReleaseSignature
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        byte[] manifest = ProductReleaseManifest.ReadRegularFile(options.ReleaseManifestPath, 8 * 1024 * 1024);
+        byte[] manifest = ProductReleaseManifest.ReadRegularFile(options.ReleaseManifestPath, ProductReleaseManifest.MaximumLength);
 
         _ = ProductReleaseManifest.Read(options.ReleaseManifestPath);
 
         CreateVerifiedEnvelope(manifest, options.ReleaseManifestPath, options.PublicKeyPath,
-            options.SignaturePath, options.OutputPath, 8 * 1024 * 1024);
+            options.SignaturePath, options.OutputPath, ProductReleaseManifest.MaximumLength);
     }
 
     public static void Create(CatalogSignatureOptions options)

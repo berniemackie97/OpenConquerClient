@@ -5,7 +5,7 @@ namespace OpenConquer.Launcher.Installation;
 /// <summary>Authenticates release metadata and verifies the complete managed client tree.</summary>
 internal sealed class ManagedReleaseVerifier
 {
-    private const int MaximumDirectoryCount = 16 * 1024;
+    private const int MaximumDirectoryCount = 32 * 1024;
 
     private readonly TrustedReleaseKeys _trustedKeys;
     private readonly string? _currentRuntime;

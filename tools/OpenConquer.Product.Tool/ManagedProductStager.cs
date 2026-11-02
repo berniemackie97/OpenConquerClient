@@ -16,7 +16,7 @@ internal static class ManagedProductStager
         RejectReleaseMetadataWithinPublishRoots(launcherPublishPath, clientPublishPath, releaseManifestPath, releaseSignaturePath);
 
         ProductReleaseManifest releaseManifest = ProductReleaseManifest.Read(releaseManifestPath);
-        byte[] releaseManifestBytes = ProductReleaseManifest.ReadRegularFile(releaseManifestPath, 8 * 1024 * 1024);
+        byte[] releaseManifestBytes = ProductReleaseManifest.ReadRegularFile(releaseManifestPath, ProductReleaseManifest.MaximumLength);
         byte[] releaseSignatureBytes = ProductReleaseManifest.ReadRegularFile(releaseSignaturePath, 4 * 1024);
         string releaseId = ProductReleaseIdentity.Create(releaseManifest.ReleaseSequence, releaseManifestBytes);
         ProductReleaseSignature.ValidateEnvelope(releaseSignaturePath);
@@ -71,7 +71,7 @@ internal static class ManagedProductStager
             CopyReleaseMetadata(releaseManifestPath, stagedReleaseManifestPath, "release manifest");
             CopyReleaseMetadata(releaseSignaturePath, stagedReleaseSignaturePath, "release signature");
 
-            byte[] stagedReleaseManifestBytes = ProductReleaseManifest.ReadRegularFile(stagedReleaseManifestPath, 8 * 1024 * 1024);
+            byte[] stagedReleaseManifestBytes = ProductReleaseManifest.ReadRegularFile(stagedReleaseManifestPath, ProductReleaseManifest.MaximumLength);
             byte[] stagedReleaseSignatureBytes = ProductReleaseManifest.ReadRegularFile(stagedReleaseSignaturePath, 4 * 1024);
             if (!releaseManifestBytes.AsSpan().SequenceEqual(stagedReleaseManifestBytes) || !releaseSignatureBytes.AsSpan().SequenceEqual(stagedReleaseSignatureBytes))
             {

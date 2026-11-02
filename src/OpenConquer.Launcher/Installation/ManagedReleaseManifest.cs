@@ -8,14 +8,17 @@ internal sealed record ManagedReleaseFile(string Path, long Length, byte[] Sha25
 internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductId, ulong ReleaseSequence, string ReleaseVersion, int MinimumLauncherVersion, string TargetRuntime, string ClientExecutable, IReadOnlyList<ManagedReleaseFile> Files)
 {
     public const int CurrentSchemaVersion = 1;
-    public const int CurrentLauncherVersion = 1;
+    public const int CurrentLauncherVersion = 2;
     public const string ExpectedProductId = "OpenConquer";
     public const string FileName = "openconquer.release.json";
-    public const int MaximumFileCount = 16 * 1024;
+    public const int MaximumFileCount = 32 * 1024;
+    public const int MaximumLength = 32 * 1024 * 1024;
 
-    private const int MaximumLength = 8 * 1024 * 1024;
+    private const int Version1MaximumFileCount = 16 * 1024;
+    private const int Version1MaximumManifestLength = 8 * 1024 * 1024;
+
     private const int MaximumVersionLength = 64;
-    private const int MaximumDirectoryCount = 16 * 1024;
+    private const int MaximumDirectoryCount = 32 * 1024;
 
     public static async Task<ReleaseManifestReadResult> ReadAsync(string path, CancellationToken cancellationToken)
     {
@@ -26,6 +29,12 @@ internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductI
             using JsonDocument document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 8 });
 
             if (!TryRead(document.RootElement, out ManagedReleaseManifest? manifest) || manifest is null)
+            {
+                return new ReleaseManifestReadResult.Rejected(ManagedInstallationIssue.ReleaseManifestInvalid);
+            }
+
+            if (manifest.MinimumLauncherVersion < 2 &&
+                (manifest.Files.Count > Version1MaximumFileCount || bytes.Length > Version1MaximumManifestLength))
             {
                 return new ReleaseManifestReadResult.Rejected(ManagedInstallationIssue.ReleaseManifestInvalid);
             }
@@ -96,6 +105,7 @@ internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductI
         string? targetRuntime = null;
         string? clientExecutable = null;
         List<ManagedReleaseFile>? files = null;
+        int directoryCount = 0;
 
         foreach (JsonProperty property in root.EnumerateObject())
         {
@@ -134,7 +144,7 @@ internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductI
                     clientExecutable = property.Value.GetString();
                     break;
 
-                case "files" when TryReadFiles(property.Value, out files):
+                case "files" when TryReadFiles(property.Value, out files, out directoryCount):
                     break;
 
                 default:
@@ -146,7 +156,8 @@ internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductI
             || releaseSequence is null or 0 || releaseVersion is null || !IsValidVersion(releaseVersion) || minimumLauncherVersion is null or <= 0
             || targetRuntime is null || !ReleaseTargetRuntime.IsSupported(targetRuntime) || clientExecutable is null || !ReleasePackagePath.IsValid(clientExecutable)
             || !string.Equals(clientExecutable, ReleaseTargetRuntime.ClientExecutable(targetRuntime), StringComparison.Ordinal)
-            || files is null || files.Count == 0 || !files.Any(file => string.Equals(file.Path, clientExecutable, StringComparison.Ordinal)))
+            || files is null || files.Count == 0 || !files.Any(file => string.Equals(file.Path, clientExecutable, StringComparison.Ordinal))
+            || minimumLauncherVersion < 2 && (files.Count > Version1MaximumFileCount || directoryCount > Version1MaximumFileCount))
         {
             return false;
         }
@@ -156,9 +167,10 @@ internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductI
         return true;
     }
 
-    private static bool TryReadFiles(JsonElement element, out List<ManagedReleaseFile>? files)
+    private static bool TryReadFiles(JsonElement element, out List<ManagedReleaseFile>? files, out int directoryCount)
     {
         files = null;
+        directoryCount = 0;
 
         if (element.ValueKind != JsonValueKind.Array)
         {
@@ -184,6 +196,7 @@ internal sealed record ManagedReleaseManifest(int SchemaVersion, string ProductI
         }
 
         files = parsed;
+        directoryCount = pathTopology.DirectoryCount;
 
         return true;
     }

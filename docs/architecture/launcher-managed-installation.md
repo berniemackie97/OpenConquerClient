@@ -188,8 +188,8 @@ client/<every manifest-declared file>
 
 The package is rejected if it has directory entries, link or reparse entries, path traversal,
 alternate separators, nonportable or ambiguous names, missing or extra entries, disagreeing
-metadata, a file length or hash mismatch, more than 16,384 client files or extracted directories, a
-size over 16 GiB, or an expanded payload over 64 GiB. Extraction writes new files under a private
+metadata, a file length or hash mismatch, a file or directory count above the limit for its
+declared minimum launcher version, a size over 16 GiB, or an expanded payload over 64 GiB. Extraction writes new files under a private
 per-attempt directory, checks the resulting tree shape again, and sanitizes Unix modes. It never
 selects the candidate. `ManagedReleaseTransaction` separately authenticates the manifest,
 signature, client tree, compatibility, sequence policy, and destination generation again before it
@@ -216,6 +216,19 @@ immutable package publishing, environment configuration, key custody and rotatio
 the catalog and its signature consistently with a matching cache policy, and an end-to-end check
 against the live origin. This code does not cover launcher self-update, UI policy, elevated
 installation, account login, or game protocol behavior.
+
+## Release capacity compatibility
+
+Release schema version 1 is unchanged. A launcher at version 2 accepts up to 32,768
+manifest-declared files, 32,768 directories, and 32 MiB of release metadata.
+A release exceeding the previous version-1 limits (16,384 files, 16,384 directories,
+or 8 MiB of metadata) must declare minimum launcher version 2 or greater. Existing
+compatible version-1 manifests remain valid. Distributing a new launcher to existing
+version-1 installations requires an external upgrade path; launcher self-update is
+not implemented.
+
+The wider asset distribution plan is in
+[content compilation and distribution](content-distribution.md).
 
 ## Local development composition
 
