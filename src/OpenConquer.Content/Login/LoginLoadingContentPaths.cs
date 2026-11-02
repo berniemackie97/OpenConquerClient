@@ -4,7 +4,10 @@ public static class LoginLoadingContentPaths
 {
     public const string Timeline = "ui/loading/timeline.json";
 
-    public static IReadOnlyList<string> Paths { get; } =
+    public static IReadOnlyList<string> Paths
+    {
+        get;
+    } =
     [
         "ui/loading/timeline.json",
         "ui/loading/artwork/images_374.tga",
