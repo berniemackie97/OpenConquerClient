@@ -16,6 +16,7 @@ internal static class ContentToolCommandLine
     private const string ValidateMapSceneryAniVerb = "validate-map-scenery-ani";
     private const string ValidateMapTerrainScenesVerb = "validate-map-terrain-scenes";
     private const string FileOption = "--file";
+    private const string LoadingMediaOption = "--loading-media";
     private const string MapDataIdOption = "--map-data-id";
     private const string AllMapsOption = "--all-maps";
     private const string AvailableMapsOption = "--available-maps";
@@ -32,7 +33,7 @@ internal static class ContentToolCommandLine
     } =
     [
         "Usage:",
-        $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <client-root> {DestinationOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
+        $"  OpenConquer.Content.Tool {ImportVerb} {SourceOption} <client-root> {DestinationOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}] [{LoadingMediaOption} <prepared-root>]",
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
         $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {AnalyzeContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
@@ -64,13 +65,34 @@ internal static class ContentToolCommandLine
         {
             case ImportVerb:
                 {
-                    if (!TryParseContentSetOptions(remainingArgs, [SourceOption, DestinationOption],
+                    List<string> options = [.. remainingArgs];
+                    string? loadingMediaRoot = null;
+                    int loadingIndex = options.IndexOf(LoadingMediaOption);
+                    if (loadingIndex >= 0)
+                    {
+                        if (loadingIndex + 1 >= options.Count || options[loadingIndex + 1].StartsWith("--", StringComparison.Ordinal) ||
+                            options.IndexOf(LoadingMediaOption, loadingIndex + 1) >= 0)
+                        {
+                            errorMessage = "Specify --loading-media once with a directory.";
+                            return false;
+                        }
+
+                        if (!TryResolvePath(options[loadingIndex + 1], workingDirectoryPath, out loadingMediaRoot))
+                        {
+                            errorMessage = $"Option '{LoadingMediaOption}' value '{options[loadingIndex + 1]}' is not a valid path.";
+                            return false;
+                        }
+
+                        options.RemoveRange(loadingIndex, 2);
+                    }
+
+                    if (!TryParseContentSetOptions(options, [SourceOption, DestinationOption],
                             workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId, out bool allMaps, out bool availableMaps, out errorMessage))
                     {
                         return false;
                     }
 
-                    command = new ImportContentSetCommand(values[0], values[1], mapDataId, allMaps, availableMaps);
+                    command = new ImportContentSetCommand(values[0], values[1], mapDataId, allMaps, availableMaps, loadingMediaRoot);
                     return true;
                 }
 

@@ -1,3 +1,4 @@
+using OpenConquer.Content.Login;
 using OpenConquer.Content.Map;
 using OpenConquer.Content.Tool.Manifest;
 
@@ -13,7 +14,7 @@ internal static class ContentSetImporter
     private const int SignatureHeaderLength = 12;
 
     public static ContentManifest Import(string sourceRootPath, string destinationRootPath, uint? mapDataId = null,
-        bool allMaps = false, bool availableMaps = false)
+        bool allMaps = false, bool availableMaps = false, string? loadingMediaRootPath = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceRootPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationRootPath);
@@ -24,6 +25,7 @@ internal static class ContentSetImporter
         }
 
         ImportSourceRoot sourceRoot = ImportSourceRoot.Open(sourceRootPath);
+        ClientContentRoot? loadingMedia = loadingMediaRootPath is null ? null : new ClientContentRoot(loadingMediaRootPath);
         string destinationRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destinationRootPath));
 
         if (Directory.Exists(destinationRoot) || File.Exists(destinationRoot))
@@ -41,7 +43,7 @@ internal static class ContentSetImporter
 
         try
         {
-            ContentManifest manifest = BuildContentSet(sourceRoot, stagingRoot, mapDataId, allMaps, availableMaps);
+            ContentManifest manifest = BuildContentSet(sourceRoot, stagingRoot, mapDataId, allMaps, availableMaps, loadingMedia);
 
             Directory.Move(stagingRoot, destinationRoot);
 
@@ -66,7 +68,7 @@ internal static class ContentSetImporter
     }
 
     private static ContentManifest BuildContentSet(ImportSourceRoot sourceRoot, string stagingRoot,
-        uint? mapDataId, bool allMaps, bool availableMaps)
+        uint? mapDataId, bool allMaps, bool availableMaps, ClientContentRoot? loadingMedia)
     {
         IReadOnlyList<MissingMapArchive>? missingMaps = availableMaps ? FindMissingMapArchives(sourceRoot) : null;
         HashSet<uint>? excluded = missingMaps is null ? null : [.. missingMaps.Select(static map => map.MapDataId)];
@@ -84,25 +86,36 @@ internal static class ContentSetImporter
         foreach (ClientContentRequirement requirement in closure)
         {
             using Stream source = sourceRoot.OpenRequiredRead(requirement, out string sourcePath);
+            Add(source, sourcePath);
+        }
 
+        if (loadingMedia is not null)
+        {
+            foreach (string path in LoginLoadingContentPaths.Paths)
+            {
+                using Stream source = loadingMedia.OpenRequiredRead(path, ContentLookupMode.LooseOnly);
+                Add(source, path);
+            }
+        }
+
+        void Add(Stream source, string sourcePath)
+        {
             ContentPath.Validate(sourcePath);
-
             string pathKey = ContentPath.ToKey(sourcePath);
 
-            if (entriesByPathKey.TryGetValue(pathKey, out ContentManifestEntry existing))
+            if (entriesByPathKey.ContainsKey(pathKey))
             {
-                throw new InvalidDataException($"Closure paths '{existing.SourcePath}' and '{sourcePath}' collide case-insensitively.");
+                throw new InvalidDataException($"Content path '{sourcePath}' occurs more than once in the import.");
             }
 
             if (!source.CanSeek)
             {
-                throw new InvalidOperationException($"Retail content '{sourcePath}' does not expose a seekable source stream.");
+                throw new InvalidOperationException($"Content '{sourcePath}' does not expose a seekable stream.");
             }
 
             long length = source.Length;
             string signature = ClassifySignature(source);
             string sha256 = ContentPayloadCopier.CopyAndHash(source, payloadRoot, pathKey, length);
-
             entriesByPathKey.Add(pathKey, new ContentManifestEntry(sourcePath, pathKey, length, sha256, signature));
         }
 
