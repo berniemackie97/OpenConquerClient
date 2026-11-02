@@ -18,6 +18,9 @@ animation clocks, draw order, visibility, or live scene activation.
 
 `GameMapSceneryAniBindings.Load` retains each file association, loads each
 distinct ANI index once, and rejects missing or empty referenced sections.
+A type-4 `AniTitle=` record with zero coordinates and remaining encoded fields
+is unconfigured and does not require an ANI resource. This applies to both
+supported scenery record lengths; nonzero fields retain normal dependency validation.
 It does not resolve type-1 external `.scene` resources or interpret tile
 coordinates as final screen positions.
 
