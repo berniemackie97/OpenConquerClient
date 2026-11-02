@@ -1,0 +1,7 @@
+[task001.tga]
+FrameAmount=1
+Frame0=data\map\mapobj\task\task1.dds
+
+[task002.tga]
+FrameAmount=1
+Frame0=data\map\mapobj\task\task2.dds
