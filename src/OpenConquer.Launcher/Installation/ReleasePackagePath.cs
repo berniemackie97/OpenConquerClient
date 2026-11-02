@@ -114,6 +114,8 @@ internal sealed class ReleasePackagePathTopology
         _maximumDirectoryCount = maximumDirectoryCount;
     }
 
+    public int DirectoryCount => _directoryCount;
+
     public bool TryAddFile(string path)
     {
         if (!ReleasePackagePath.IsValid(path))

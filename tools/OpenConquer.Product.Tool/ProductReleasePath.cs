@@ -102,6 +102,8 @@ internal sealed class ProductReleasePathTopology
         _maximumDirectoryCount = maximumDirectoryCount;
     }
 
+    public int DirectoryCount => _directoryCount;
+
     public bool TryAddFile(string path)
     {
         if (!ProductReleasePath.IsValid(path))

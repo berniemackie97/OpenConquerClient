@@ -19,13 +19,67 @@ public sealed class ProductReleaseManifestTests
     [Fact]
     public void ReadRejectsExcessiveDirectoryTopology()
     {
-        string[] paths = Enumerable.Range(0, 68)
+        string[] paths = Enumerable.Range(0, 137)
             .Select(index => $"d{index:D2}/{string.Join('/', Enumerable.Repeat("a", 240))}/f.dat")
             .ToArray();
 
         byte[] manifest = CreateManifestBytes(paths);
 
         Assert.Throws<InvalidDataException>(() => ProductReleaseManifest.Read(manifest));
+    }
+
+    [Fact]
+    public void ReadAcceptsExpandedReleaseAndRejectsLegacyLauncherRequirement()
+    {
+        string[] paths = Enumerable.Range(0, 16 * 1024)
+            .Select(index => $"data/f{index:D5}.bin")
+            .ToArray();
+
+        byte[] current = CreateManifestBytes(paths, minimumLauncherVersion: 2);
+        ProductReleaseManifest release = ProductReleaseManifest.Read(current);
+        Assert.Equal(paths.Length + 1, release.Files.Count);
+
+        byte[] incompatible = CreateManifestBytes(paths, minimumLauncherVersion: 1);
+        Assert.Throws<InvalidDataException>(() => ProductReleaseManifest.Read(incompatible));
+    }
+
+    [Fact]
+    public void ReadRejectsReleaseBeyondFileCapacity()
+    {
+        string[] paths = Enumerable.Range(0, ProductReleaseManifest.MaximumFileCount)
+            .Select(index => $"data/f{index:D5}.bin")
+            .ToArray();
+
+        Assert.Throws<InvalidDataException>(() =>
+            ProductReleaseManifest.Read(CreateManifestBytes(paths)));
+    }
+
+    [Fact]
+    public void ReadRequiresVersion2ForLargerManifest()
+    {
+        string prefix = $"{new string('a', 240)}/{new string('b', 240)}/";
+        string[] paths = Enumerable.Range(0, 15_000)
+            .Select(index => $"{prefix}f{index:D5}")
+            .ToArray();
+
+        byte[] current = CreateManifestBytes(paths, minimumLauncherVersion: 2);
+        Assert.InRange(current.Length, 8 * 1024 * 1024 + 1, ProductReleaseManifest.MaximumLength);
+        Assert.Equal(paths.Length + 1, ProductReleaseManifest.Read(current).Files.Count);
+
+        Assert.Throws<InvalidDataException>(() =>
+            ProductReleaseManifest.Read(CreateManifestBytes(paths, minimumLauncherVersion: 1)));
+    }
+
+    [Fact]
+    public void ReadRequiresVersion2ForExpandedDirectoryTopology()
+    {
+        string[] paths = Enumerable.Range(0, 68)
+            .Select(index => $"d{index:D2}/{string.Join('/', Enumerable.Repeat("a", 240))}/f.dat")
+            .ToArray();
+
+        Assert.Equal(paths.Length + 1, ProductReleaseManifest.Read(CreateManifestBytes(paths)).Files.Count);
+        Assert.Throws<InvalidDataException>(() =>
+            ProductReleaseManifest.Read(CreateManifestBytes(paths, minimumLauncherVersion: 1)));
     }
 
     [Fact]
@@ -126,7 +180,8 @@ public sealed class ProductReleaseManifestTests
 
     private static byte[] CreateManifestBytes(
         IReadOnlyCollection<string> additionalPaths,
-        string? clientExecutable = null)
+        string? clientExecutable = null,
+        int minimumLauncherVersion = 2)
     {
         string targetRuntime = ProductTargetRuntime.Current ?? "linux-x64";
         string expectedExecutable = ProductTargetRuntime.ClientExecutable(targetRuntime);
@@ -143,7 +198,7 @@ public sealed class ProductReleaseManifestTests
             productId = ProductReleaseManifest.ExpectedProductId,
             releaseSequence = 1,
             releaseVersion = "test-release",
-            minimumLauncherVersion = 1,
+            minimumLauncherVersion,
             targetRuntime,
             clientExecutable,
             files = paths.Select(path => new

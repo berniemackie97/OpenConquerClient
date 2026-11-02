@@ -10,7 +10,7 @@ internal static class ProductReleasePackage
     public const long MaximumPackageLength = 16L * 1024 * 1024 * 1024;
     public const long MaximumExpandedLength = 64L * 1024 * 1024 * 1024;
 
-    private const int MaximumManifestLength = 8 * 1024 * 1024;
+    private const int MaximumManifestLength = ProductReleaseManifest.MaximumLength;
     private const int MaximumSignatureLength = 4 * 1024;
     private const int UnixRegularFileType = 0x8000;
     private const int UnixDataMode = 0x01a4;

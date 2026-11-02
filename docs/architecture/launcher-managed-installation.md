@@ -217,6 +217,19 @@ the catalog and its signature consistently with a matching cache policy, and an 
 against the live origin. This code does not cover launcher self-update, UI policy, elevated
 installation, account login, or game protocol behavior.
 
+## Release capacity compatibility
+
+Release schema version 1 is unchanged. A launcher at version 2 accepts up to 32,768
+manifest-declared files, 32,768 directories, and 32 MiB of release metadata.
+A release exceeding the previous version-1 limits (16,384 files, 16,384 directories,
+or 8 MiB of metadata) must declare minimum launcher version 2 or greater. Existing
+compatible version-1 manifests remain valid. Distributing a new launcher to existing
+version-1 installations requires an external upgrade path; launcher self-update is
+not implemented.
+
+The wider asset distribution plan is in
+[content compilation and distribution](content-distribution.md).
+
 ## Local development composition
 
 `create-local-product` is the standard way to build and exercise the complete managed product
