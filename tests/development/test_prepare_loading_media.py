@@ -63,7 +63,7 @@ class MediaPreparationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "image.png"
             data = bytearray(png(1, 1, bytes((4, 22, 188, 63))))
-            data[-8] ^= 1
+            data[-1] ^= 1
             source.write_bytes(data)
             with self.assertRaises(ValueError):
                 media.png_rows(source)
