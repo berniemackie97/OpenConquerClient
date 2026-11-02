@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace OpenConquer.Product.Tool;
 
 /// <summary>Composes and activates a complete managed product for local development.</summary>
@@ -38,9 +40,10 @@ internal sealed class LocalProductBuilder
             using DevelopmentPublisherIdentity publisher = DevelopmentPublisherIdentity.LoadOrCreate(publisherIdentityPaths);
 
             RestoreLockedDependencies(repositoryRoot);
-            VerifySourceContent(repositoryRoot);
+            VerifyContentSet(repositoryRoot, Path.Combine(repositoryRoot, "content", "retail-5517"), options.MapDataId);
             PublishClient(repositoryRoot, paths);
-            VerifyPublishedClientContent(repositoryRoot, paths);
+            VerifyContentSet(repositoryRoot, Path.Combine(paths.ClientPublishPath, "content", "retail-5517"),
+                options.MapDataId, noBuild: true);
             LocalProductArtifactValidator.ValidateClientPublish(paths.ClientPublishPath);
 
             ulong historicalReleaseFloor = ReadHistoricalReleaseFloor(paths);
@@ -80,21 +83,29 @@ internal sealed class LocalProductBuilder
         _dotNetProcessRunner.Run(repositoryRoot, ["restore", SolutionPath, "--locked-mode"]);
     }
 
-    private void VerifySourceContent(string repositoryRoot)
+    private void VerifyContentSet(string repositoryRoot, string contentSetRoot, uint? mapDataId, bool noBuild = false)
     {
-        _dotNetProcessRunner.Run(repositoryRoot,
+        List<string> arguments =
         [
             "run",
             "--project",
             ContentToolProjectPath,
             "--configuration",
             "Release",
-            "--no-restore",
-            "--",
-            "verify-content-set",
-            "--content-set",
-            Path.Combine(repositoryRoot, "content", "retail-5517"),
-        ]);
+        ];
+
+        if (noBuild)
+        {
+            arguments.Add("--no-build");
+        }
+
+        arguments.AddRange(["--no-restore", "--", "verify-content-set", "--content-set", contentSetRoot]);
+        if (mapDataId is uint selectedMap)
+        {
+            arguments.AddRange(["--map-data-id", selectedMap.ToString(CultureInfo.InvariantCulture)]);
+        }
+
+        _dotNetProcessRunner.Run(repositoryRoot, arguments);
     }
 
     private void PublishClient(string repositoryRoot, LocalProductPaths paths)
@@ -109,24 +120,6 @@ internal sealed class LocalProductBuilder
             "--output",
             paths.ClientPublishPath,
             "-p:OpenConquerLocalProduct=true",
-        ]);
-    }
-
-    private void VerifyPublishedClientContent(string repositoryRoot, LocalProductPaths paths)
-    {
-        _dotNetProcessRunner.Run(repositoryRoot,
-        [
-            "run",
-            "--project",
-            ContentToolProjectPath,
-            "--configuration",
-            "Release",
-            "--no-build",
-            "--no-restore",
-            "--",
-            "verify-content-set",
-            "--content-set",
-            Path.Combine(paths.ClientPublishPath, "content", "retail-5517"),
         ]);
     }
 
