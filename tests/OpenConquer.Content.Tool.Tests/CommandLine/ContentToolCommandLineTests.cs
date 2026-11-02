@@ -243,6 +243,31 @@ public sealed class ContentToolCommandLineTests
     }
 
     [Fact]
+    public void TryParse_ReadsMapComparisonCommandInAnyOptionOrder()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["compare-map-semantics", "--map-data-id", "1010", "--candidate", "candidate", "--source", "source"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        CompareMapSemanticsCommand compare = Assert.IsType<CompareMapSemanticsCommand>(command);
+        Assert.Equal(1010u, compare.MapDataId);
+        Assert.Equal(Path.Combine(s_workingDirectory, "source"), compare.SourceRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "candidate"), compare.CandidateRootPath);
+    }
+
+    [Theory]
+    [InlineData(new[] { "compare-map-semantics", "--source", "source", "--candidate", "candidate" })]
+    [InlineData(new[] { "compare-map-semantics", "--source", "source", "--candidate", "candidate", "--map-data-id", "0" })]
+    [InlineData(new[] { "compare-map-semantics", "--source", "source", "--candidate", "candidate", "--all-maps" })]
+    public void TryParse_RejectsMapComparisonWithoutSingleMapId(string[] args)
+    {
+        Assert.False(ContentToolCommandLine.TryParse(args, s_workingDirectory,
+            out ContentToolCommand? command, out _));
+        Assert.Null(command);
+    }
+
+    [Fact]
     public void TryParse_ReadsValidateMapTerrainScenesCommand()
     {
         Assert.True(ContentToolCommandLine.TryParse(
@@ -298,6 +323,8 @@ public sealed class ContentToolCommandLineTests
     [Fact]
     public void UsageLines_DescribeEveryVerb()
     {
+        Assert.Contains(ContentToolCommandLine.UsageLines,
+            line => line.Contains("compare-map-semantics", StringComparison.Ordinal));
         Assert.Contains(ContentToolCommandLine.UsageLines,
             line => line.Contains("validate-map-scenery-ani", StringComparison.Ordinal));
         Assert.Contains(ContentToolCommandLine.UsageLines,
