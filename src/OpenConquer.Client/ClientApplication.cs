@@ -54,6 +54,7 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private OpenGLRenderer? _worldRenderer;
+    private LogicalRenderSize _worldRenderSize;
     private LoginScreenRenderer? _loginRenderer;
     private LoginLoadingScreen? _loading;
     private RoleCreationScreen? _role;
@@ -643,29 +644,34 @@ internal sealed class ClientApplication : IDisposable
 
     private OpenGLRenderer GetWorldRenderer()
     {
-        if (_worldRenderer is { } existing)
+        PixelSize framebuffer = (_window ?? throw new InvalidOperationException("The desktop window is unavailable.")).FramebufferSize;
+        if (framebuffer.Width == 0 || framebuffer.Height == 0)
+        {
+            return _worldRenderer ?? _renderer ?? throw new InvalidOperationException("The renderer is unavailable.");
+        }
+
+        OpenGLGraphicsDevice device = _graphicsDevice ?? throw new InvalidOperationException("The graphics device is unavailable.");
+        WorldMapScene scene = _worldScene ?? throw new InvalidOperationException("The world scene is unavailable.");
+        LogicalRenderSize size = WorldViewportSize.FromFramebuffer(_logicalRenderSize, framebuffer,
+            scene.BackdropExtent, device.MaximumRenderTargetDimension);
+        if (_worldRenderer is { } existing && _worldRenderSize == size)
         {
             return existing;
         }
 
-        PixelSize framebuffer = (_window ?? throw new InvalidOperationException("The desktop window is unavailable.")).FramebufferSize;
-        if (framebuffer.Width == 0 || framebuffer.Height == 0)
-        {
-            return _renderer ?? throw new InvalidOperationException("The renderer is unavailable.");
-        }
-
-        OpenGLGraphicsDevice device = _graphicsDevice ?? throw new InvalidOperationException("The graphics device is unavailable.");
-        LogicalRenderSize size = WorldViewportSize.FromFramebuffer(_logicalRenderSize, framebuffer);
-        _worldRenderer = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height,
+        OpenGLRenderer next = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height,
             PresentationPolicy.Stretch, RenderColorFormat.Rgba8);
-        return _worldRenderer;
+        OpenGLRenderer? previous = _worldRenderer;
+        _worldRenderer = next;
+        _worldRenderSize = size;
+        previous?.Dispose();
+        return next;
     }
 
     private void OnFramebufferResized(PixelSize size)
     {
         _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
-        _worldRenderer?.Dispose();
-        _worldRenderer = null;
+        _worldRenderer?.ResizeHostFramebuffer(size.Width, size.Height);
     }
 
     private void OnPointerMoved(PixelPoint point)
