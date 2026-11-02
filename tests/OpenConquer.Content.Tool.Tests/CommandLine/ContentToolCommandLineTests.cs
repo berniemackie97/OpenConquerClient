@@ -238,6 +238,60 @@ public sealed class ContentToolCommandLineTests
         }
     }
 
+    [Theory]
+    [InlineData("--all-maps", true, false)]
+    [InlineData("--available-maps", false, true)]
+    public void TryParse_ReadsPackagingEvaluation(string selection, bool allMaps, bool availableMaps)
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["evaluate-content-packaging", "--scratch", "work", selection, "--content-set", "content",
+                "--previous", "earlier"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        EvaluateContentPackagingCommand evaluation = Assert.IsType<EvaluateContentPackagingCommand>(command);
+        Assert.Equal(Path.Combine(s_workingDirectory, "content"), evaluation.ContentSetRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "work"), evaluation.ScratchRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "earlier"), evaluation.PreviousRootPath);
+        Assert.Equal(allMaps, evaluation.AllMaps);
+        Assert.Equal(availableMaps, evaluation.AvailableMaps);
+    }
+
+    [Fact]
+    public void TryParse_ReadsPackagingEvaluationForOneMap()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["evaluate-content-packaging", "--content-set", "content", "--scratch", "work",
+                "--map-data-id", "1010"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        EvaluateContentPackagingCommand evaluation = Assert.IsType<EvaluateContentPackagingCommand>(command);
+        Assert.Equal(1010u, evaluation.MapDataId);
+        Assert.Null(evaluation.PreviousRootPath);
+    }
+
+    [Fact]
+    public void TryParse_RejectsInvalidPackagingEvaluationOptions()
+    {
+        string[][] invalid =
+        [
+            ["evaluate-content-packaging", "--content-set", "content"],
+            ["evaluate-content-packaging", "--content-set", "content", "--scratch", "work", "--previous"],
+            ["evaluate-content-packaging", "--content-set", "content", "--scratch", "work",
+                "--previous", "first", "--previous", "second"],
+            ["evaluate-content-packaging", "--content-set", "content", "--scratch", "work",
+                "--all-maps", "--available-maps"],
+        ];
+
+        foreach (string[] args in invalid)
+        {
+            Assert.False(ContentToolCommandLine.TryParse(args, s_workingDirectory,
+                out ContentToolCommand? command, out _));
+            Assert.Null(command);
+        }
+    }
+
     [Fact]
     public void TryParse_ReadsAValidateStartupCommand()
     {
@@ -467,6 +521,8 @@ public sealed class ContentToolCommandLineTests
             line => line.Contains("analyze-content-set", StringComparison.Ordinal));
         Assert.Contains(ContentToolCommandLine.UsageLines,
             line => line.Contains("analyze-map-dependencies", StringComparison.Ordinal));
+        Assert.Contains(ContentToolCommandLine.UsageLines,
+            line => line.Contains("evaluate-content-packaging", StringComparison.Ordinal));
         Assert.Contains(ContentToolCommandLine.UsageLines,
             line => line.Contains("profile-content-reads", StringComparison.Ordinal));
 

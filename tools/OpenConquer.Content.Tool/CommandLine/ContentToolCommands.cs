@@ -8,6 +8,7 @@ internal sealed record VerifyContentSetCommand(string ContentSetRootPath, uint? 
 internal sealed record AnalyzeContentSetCommand(string ContentSetRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;
 internal sealed record ProfileContentReadsCommand(string ContentSetRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;
 internal sealed record AnalyzeMapDependenciesCommand(string ContentSetRootPath, bool AvailableMaps) : ContentToolCommand;
+internal sealed record EvaluateContentPackagingCommand(string ContentSetRootPath, string ScratchRootPath, string? PreviousRootPath = null, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;
 internal sealed record InspectServerDatCommand(string FilePath) : ContentToolCommand;
 internal sealed record CompareMapSemanticsCommand(string SourceRootPath, string CandidateRootPath, uint MapDataId) : ContentToolCommand;
 internal sealed record CompareContentSetsCommand(string PreviousRootPath, string CandidateRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;

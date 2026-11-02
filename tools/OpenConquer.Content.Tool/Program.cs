@@ -106,6 +106,19 @@ internal static class Program
                     break;
                 }
 
+            case EvaluateContentPackagingCommand evaluation:
+                {
+                    ContentPackagingReport report = ContentPackagingEvaluator.Evaluate(
+                        evaluation.ContentSetRootPath, evaluation.ScratchRootPath,
+                        evaluation.MapDataId, evaluation.AllMaps, evaluation.AvailableMaps, evaluation.PreviousRootPath);
+                    foreach (string line in report.ToReportLines())
+                    {
+                        Console.WriteLine(line);
+                    }
+
+                    break;
+                }
+
             case AnalyzeMapDependenciesCommand dependencies:
                 {
                     foreach (string line in MapDependencyAnalyzer.Analyze(dependencies.ContentSetRootPath,
