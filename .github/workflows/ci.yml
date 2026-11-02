@@ -47,6 +47,9 @@ jobs:
       - name: Test
         run: dotnet test OpenConquer.Client.slnx --configuration Release --no-build --no-restore
 
+      - name: Verify loading media preparation
+        run: python3 -m unittest discover -s tests/development -p "test_prepare_loading_media.py"
+
       - name: Verify launcher isolation across Unix users
         timeout-minutes: 3
         shell: bash

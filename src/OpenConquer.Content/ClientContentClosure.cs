@@ -65,6 +65,12 @@ public static class ClientContentClosure
             new(ControlAniPath, ContentLookupMode.LooseOnly),
         ];
 
+        if (LoginLoadingContentPaths.IsPresent(contentSource))
+        {
+            requirements.AddRange(LoginLoadingContentPaths.Paths.Select(static path =>
+                new ClientContentRequirement(path, ContentLookupMode.LooseOnly)));
+        }
+
         foreach (int variantIndex in s_startupLogoVariantIndexes)
         {
             requirements.Add(new ClientContentRequirement(startupLogo.GetLogoPath(variantIndex), ContentLookupMode.LooseOnly));

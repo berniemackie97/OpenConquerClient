@@ -2,7 +2,7 @@ namespace OpenConquer.Content.Tool.CommandLine;
 
 internal abstract record ContentToolCommand;
 
-internal sealed record ImportContentSetCommand(string SourceRootPath, string DestinationRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;
+internal sealed record ImportContentSetCommand(string SourceRootPath, string DestinationRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false, string? LoadingMediaRootPath = null) : ContentToolCommand;
 internal sealed record ValidateStartupCommand(string ContentRootPath) : ContentToolCommand;
 internal sealed record VerifyContentSetCommand(string ContentSetRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;
 internal sealed record AnalyzeContentSetCommand(string ContentSetRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;
