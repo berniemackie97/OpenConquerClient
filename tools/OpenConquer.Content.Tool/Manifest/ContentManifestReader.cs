@@ -11,7 +11,31 @@ internal static class ContentManifestReader
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        using JsonDocument document = JsonDocument.Parse(source);
+        using MemoryStream buffer = new();
+        byte[] chunk = new byte[64 * 1024];
+        int read;
+        while ((read = source.Read(chunk)) != 0)
+        {
+            if (buffer.Length > MaximumLength - read)
+            {
+                throw new InvalidDataException($"The content-set manifest exceeds {MaximumLength} bytes.");
+            }
+
+            buffer.Write(chunk.AsSpan(0, read));
+        }
+
+        JsonDocument parsed;
+        try
+        {
+            buffer.Position = 0;
+            parsed = JsonDocument.Parse(buffer);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("The content-set manifest is not valid JSON.", exception);
+        }
+
+        using JsonDocument document = parsed;
         JsonElement root = document.RootElement;
 
         if (root.ValueKind != JsonValueKind.Object)
