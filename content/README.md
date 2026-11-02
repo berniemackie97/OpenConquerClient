@@ -130,12 +130,14 @@ dimensions. The missing file is not substituted or entered in the payload.
 Present but malformed ground bitmaps and missing positioned puzzles, scene files,
 animation indexes, or textures still fail import.
 
-The default and `--all-maps` modes remain strict and use the existing version-2
-manifest layout. Verification of an available-map set requires `--available-maps`;
-it compares the manifest with the catalogue, validates the omitted IDs and paths,
-and checks every included dependency, payload file, and hash. This verifies the
-published set against its declared coverage; it cannot independently establish
-which archives existed in the original source after import.
+The default and `--all-maps` imports remain strict and use the version-2
+manifest layout. Verification without a map-selection option honors the
+manifest's declared coverage: version-2 sets use the default closure and
+version-3 sets use available-map coverage. An explicit `--all-maps`,
+`--map-data-id`, or `--available-maps` request must match the manifest.
+Verification checks omitted IDs and paths against the catalog and checks
+every included dependency, payload file, and hash. It cannot independently
+establish which archives existed in the original source after import.
 
 Create and verify a new set before replacing the current one:
 
@@ -150,9 +152,13 @@ dotnet run --project tools/OpenConquer.Content.Tool -c Release -- \
   verify-content-set --content-set "$STAGED" --available-maps
 ```
 
-After verification, use the backup-and-replacement procedure above with the
-existing `content/retail-5517` directory. Do not claim full catalogue coverage
-or publish the original asset files without appropriate rights.
+After verification, promote the staged set while retaining the previous set
+until the replacement is verified. The source set at `content/retail-5517` is
+copied into build and publish outputs by the client project; generated
+`artifacts/local-product/product` installations are not updated in place.
+Rebuild the local product with `create-local-product` to publish a new verified
+generation. Do not claim full catalog coverage or distribute source assets
+without appropriate rights.
 
 ## Verify
 

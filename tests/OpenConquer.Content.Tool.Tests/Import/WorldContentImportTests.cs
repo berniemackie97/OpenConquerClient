@@ -87,6 +87,7 @@ public sealed class WorldContentImportTests
         Assert.Equal(single.Entries, complete.Entries);
         Assert.Equal(complete.FileCount, ContentSetVerifier.Verify(allMapsPath, allMaps: true).FileCount);
         Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(allMapsPath));
+        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(allMapsPath, availableMaps: true));
     }
 
     [Fact]
@@ -131,8 +132,9 @@ public sealed class WorldContentImportTests
         Assert.Equal(File.ReadAllBytes(source.ChildPath("ini/GameMap.dat")),
             File.ReadAllBytes(Path.Combine(contentSet, "payload/ini/gamemap.dat")));
 
-        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet));
+        Assert.Equal(manifest.FileCount, ContentSetVerifier.Verify(contentSet).FileCount);
         Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet, allMaps: true));
+        Assert.Throws<InvalidDataException>(() => ContentSetVerifier.Verify(contentSet, mapDataId: 1010));
     }
 
     [Fact]

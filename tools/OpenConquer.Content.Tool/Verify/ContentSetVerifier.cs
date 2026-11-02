@@ -22,8 +22,9 @@ internal static class ContentSetVerifier
         HostFileSystemGuard.RequireDirectory(root, "content-set root");
 
         ContentManifest manifest = ReadManifest(Path.Combine(root, ManifestFileName));
-        if (availableMaps != (manifest.MissingMapArchives is not null) ||
-            (availableMaps && (allMaps || mapDataId is not null)))
+        bool declaredAvailableMaps = manifest.MissingMapArchives is not null;
+        if ((availableMaps && !declaredAvailableMaps) ||
+            ((allMaps || mapDataId is not null) && (declaredAvailableMaps || availableMaps)))
         {
             throw new InvalidDataException("The requested map coverage does not match the content-set manifest.");
         }
@@ -48,7 +49,7 @@ internal static class ContentSetVerifier
             throw new InvalidDataException($"The content set is missing {missingSourcePaths.Length} declared payload file(s): {string.Join(", ", missingSourcePaths)}.");
         }
 
-        VerifyImplementedClosure(payloadRoot, manifest, mapDataId, allMaps, availableMaps);
+        VerifyImplementedClosure(payloadRoot, manifest, mapDataId, allMaps, declaredAvailableMaps);
 
         return manifest;
     }
