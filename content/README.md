@@ -77,11 +77,11 @@ It never copies whole retail directories or WDF archives.
 Use `--all-maps` to copy every map named by `ini/GameMap.dat` and the files
 referenced by its supported puzzle, scene, scenery animation, and positioned
 overlay records when those resources are required. A missing loose ground `.pul`
-file is an empty ground layer, not an import failure. Unconfigured scenery records with no animation resource and no placement
-data remain in their source map archives; their placeholder strings are not imported
-as file paths. The importer copies file bytes from the specified client
-installation, shares dependencies across maps, and does not generate substitute
-artwork. An unavailable or unsupported map fails the import with its data ID;
+file represents an empty ground layer, not an import failure. Unconfigured
+scenery records remain in their source map archives; their placeholder strings
+are not imported as file paths. The importer copies bytes from the specified
+client installation, shares dependencies across maps, and does not generate
+substitute artwork. An unavailable or unsupported map fails the import with its data ID;
 the destination is not published.
 
 The same `manifest.json` / `payload/` layout is used. Import into a new
