@@ -77,6 +77,9 @@ internal sealed class ClientApplication : IDisposable
     private bool _runStarted;
     private bool _disposed;
 
+    private bool IsWorldVisible => _worldScene is not null && _worldTexturesReady &&
+        (_loading is not { Visible: true } || _loading.CanEnterWorld);
+
     public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
@@ -460,8 +463,7 @@ internal sealed class ClientApplication : IDisposable
             double.IsFinite(elapsedSeconds) && elapsedSeconds > 0
                 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
 
-        bool worldVisible = _worldScene is not null && _worldTexturesReady &&
-            (_loading is not { Visible: true } || _loading.CanEnterWorld);
+        bool worldVisible = IsWorldVisible;
         if (!worldVisible)
         {
             login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
@@ -648,7 +650,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerMoved(PixelPoint point)
     {
-        if (_worldScene is not null)
+        if (IsWorldVisible)
         {
             return;
         }
@@ -670,7 +672,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerPressed(PixelPoint point)
     {
-        if (_worldScene is not null)
+        if (IsWorldVisible)
         {
             return;
         }
@@ -696,7 +698,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerReleased(PixelPoint point)
     {
-        if (_worldScene is not null)
+        if (IsWorldVisible)
         {
             return;
         }
@@ -717,7 +719,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnKeyPressed(DesktopKeyEvent key)
     {
-        if (_worldScene is not null)
+        if (IsWorldVisible)
         {
             return;
         }
@@ -737,7 +739,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnTextEntered(char character)
     {
-        if (_worldScene is not null)
+        if (IsWorldVisible)
         {
             return;
         }
