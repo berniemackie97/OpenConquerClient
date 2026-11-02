@@ -77,7 +77,12 @@ internal static class ContentToolCommandLine
                             return false;
                         }
 
-                        loadingMediaRoot = Path.GetFullPath(options[loadingIndex + 1], workingDirectoryPath);
+                        if (!TryResolvePath(options[loadingIndex + 1], workingDirectoryPath, out loadingMediaRoot))
+                        {
+                            errorMessage = $"Option '{LoadingMediaOption}' value '{options[loadingIndex + 1]}' is not a valid path.";
+                            return false;
+                        }
+
                         options.RemoveRange(loadingIndex, 2);
                     }
 
