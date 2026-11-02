@@ -2,6 +2,7 @@ using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Map;
 using OpenConquer.Rendering.OpenGL;
+using OpenConquer.Rendering.Presentation;
 using OpenConquer.Rendering.Sprites;
 
 namespace OpenConquer.Client.World;
@@ -42,6 +43,34 @@ internal sealed class WorldMapScene
                     _overlayClocks.Add(puzzle, new WorldPuzzleAnimationClock(puzzleIntervalMilliseconds));
                 }
             }
+        }
+    }
+
+    internal LogicalRenderSize BackdropExtent
+    {
+        get
+        {
+            int width = checked(_puzzles.GroundColumns * 256);
+            int height = checked(_puzzles.GroundRows * 256);
+            foreach (GameMapPositionedOverlayRecord record in _map.Scene.PositionedOverlays)
+            {
+                if (record.InsertIndex != 0)
+                {
+                    continue;
+                }
+
+                foreach (GameMapPositionedOverlayEntry entry in record.Entries)
+                {
+                    if (entry is GameMapPuzzleOverlayEntry overlay)
+                    {
+                        GameMapPuzzleBitmap bitmap = _puzzles.GetRequired(overlay.PuzzlePath);
+                        width = Math.Min(width, checked(bitmap.Columns * 256));
+                        height = Math.Min(height, checked(bitmap.Rows * 256));
+                    }
+                }
+            }
+
+            return new LogicalRenderSize(width, height);
         }
     }
 

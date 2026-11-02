@@ -30,6 +30,14 @@ public sealed class OpenGLGraphicsDevice : IDisposable
             Vendor = GetRequiredString(gl, StringName.Vendor);
             Renderer = GetRequiredString(gl, StringName.Renderer);
 
+            gl.GetInteger(GetPName.MaxRenderbufferSize, out int maxRenderbuffer);
+            gl.GetInteger(GetPName.MaxTextureSize, out int maxTexture);
+            if (maxRenderbuffer <= 0 || maxTexture <= 0)
+            {
+                throw new NotSupportedException("OpenGL did not report valid render-target limits.");
+            }
+
+            MaximumRenderTargetDimension = Math.Min(maxRenderbuffer, maxTexture);
             _gl = gl;
         }
         catch
@@ -67,6 +75,11 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         get;
     }
 
+    public int MaximumRenderTargetDimension
+    {
+        get;
+    }
+
     public OpenGLRenderer CreateRenderer(LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy = PresentationPolicy.Fit,
         RenderColorFormat colorFormat = RenderColorFormat.Rgb565)
     {
@@ -75,6 +88,13 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         if (logicalRenderSize.Width <= 0 || logicalRenderSize.Height <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(logicalRenderSize), logicalRenderSize, "Logical render size must have positive width and height.");
+        }
+
+        if (logicalRenderSize.Width > MaximumRenderTargetDimension ||
+            logicalRenderSize.Height > MaximumRenderTargetDimension)
+        {
+            throw new ArgumentOutOfRangeException(nameof(logicalRenderSize), logicalRenderSize,
+                "Logical render target exceeds OpenGL framebuffer or texture limits.");
         }
 
         if (!Enum.IsDefined(presentationPolicy))
