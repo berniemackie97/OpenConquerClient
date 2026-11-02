@@ -14,7 +14,6 @@ using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Login;
-using OpenConquer.Content.Map;
 using OpenConquer.Content.Role;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
@@ -185,7 +184,7 @@ internal sealed class ClientApplication : IDisposable
                     _worldClosing = null;
                     try
                     {
-                        _worldLoad?.CancelAndWait();
+                        _worldLoad?.Dispose();
                     }
                     finally
                     {

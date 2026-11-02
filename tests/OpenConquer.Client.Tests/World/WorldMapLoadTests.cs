@@ -20,10 +20,10 @@ public sealed class WorldMapLoadTests
 
         try
         {
-            Assert.True(await Task.Run(() => started.Wait(TimeSpan.FromSeconds(5))));
+            Assert.True(await Task.Run(() => started.Wait(TimeSpan.FromSeconds(5)), TestContext.Current.CancellationToken));
             Assert.False(load.IsCompleted);
             release.Set();
-            await Task.Run(() => SpinWait.SpinUntil(() => load.IsCompleted, TimeSpan.FromSeconds(5)));
+            await Task.Run(() => SpinWait.SpinUntil(() => load.IsCompleted, TimeSpan.FromSeconds(5)), TestContext.Current.CancellationToken);
             Assert.True(load.IsCompleted);
             Assert.Same(scene, load.Complete());
         }
@@ -45,8 +45,8 @@ public sealed class WorldMapLoadTests
             throw new InvalidOperationException("Unreachable");
         });
 
-        Assert.True(await Task.Run(() => started.Wait(TimeSpan.FromSeconds(5))));
-        await Task.Run(load.CancelAndWait);
+        Assert.True(await Task.Run(() => started.Wait(TimeSpan.FromSeconds(5)), TestContext.Current.CancellationToken));
+        await Task.Run(load.Dispose, TestContext.Current.CancellationToken);
         Assert.True(load.IsCompleted);
     }
 
@@ -54,7 +54,7 @@ public sealed class WorldMapLoadTests
     public async Task PreparationFailuresAreReturnedToTheOwner()
     {
         WorldMapLoad load = new(_ => throw new InvalidDataException("Invalid scene"));
-        Assert.True(await Task.Run(() => SpinWait.SpinUntil(() => load.IsCompleted, TimeSpan.FromSeconds(5))));
+        Assert.True(await Task.Run(() => SpinWait.SpinUntil(() => load.IsCompleted, TimeSpan.FromSeconds(5)), TestContext.Current.CancellationToken));
         Assert.Throws<InvalidDataException>(load.Complete);
     }
 }

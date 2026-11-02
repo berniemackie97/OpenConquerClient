@@ -4,10 +4,11 @@ using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Client.World;
 
-internal sealed class WorldMapLoad
+internal sealed class WorldMapLoad : IDisposable
 {
     private readonly CancellationTokenSource _cancellation = new();
     private readonly Task<WorldMapScene> _task;
+    private bool _disposed;
 
     internal WorldMapLoad(IClientContentSource source, GameWorldEntrySnapshot world)
         : this(token =>
@@ -41,14 +42,26 @@ internal sealed class WorldMapLoad
         }
         finally
         {
+            _disposed = true;
             _cancellation.Dispose();
         }
     }
 
-    internal void Cancel() => _cancellation.Cancel();
-
-    internal void CancelAndWait()
+    internal void Cancel()
     {
+        if (!_disposed)
+        {
+            _cancellation.Cancel();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
         _cancellation.Cancel();
         try
         {
@@ -59,6 +72,7 @@ internal sealed class WorldMapLoad
         }
         finally
         {
+            _disposed = true;
             _cancellation.Dispose();
         }
     }
