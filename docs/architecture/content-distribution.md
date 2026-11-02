@@ -112,10 +112,10 @@ created directly by studio authoring.
 
 The converter deliberately rejects source features without an understood equivalent.
 For the supported map 1010, the current representation models its grid, environment
-placements, animated placements, and positioned puzzle layer. Source-only placeholder
-animation records are filtered according to the existing decoder's behavior. Map
-exits and other as-yet-unmodeled source records fail compilation rather than being
-silently discarded. The original source map loader remains in use by the game until
+placements, animated placements, and positioned puzzle layer. Records matching the existing empty-animation sentinel are excluded; other
+placements preserve their authored order, even when multiple placements share
+one animation resource. Map exits and other as-yet-unmodeled source records
+fail compilation rather than being silently discarded. The original source map loader remains in use by the game until
 the compiled format covers all consumer-critical map behaviors and has passed
 rendering and movement conformance across representative maps, including 1929 and
 1999. A standalone compiled asset is **not** a claim that the installed game has

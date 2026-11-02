@@ -24,7 +24,7 @@ public sealed class MapAssetCompilerTests
         Assert.Equal((132, 132), (decoded.Width, decoded.Height));
         Assert.Equal(132 * 132, decoded.Cells.Count);
         Assert.Equal(20, decoded.Objects.Count(x => x is MapTerrainObject));
-        Assert.Equal(16, decoded.Objects.Count(x => x is MapAnimatedObject));
+        Assert.Equal(18, decoded.Objects.Count(x => x is MapAnimatedObject));
         Assert.Equal("map/puzzle/newbie", decoded.GroundPuzzleAssetId);
         MapLayer layer = Assert.Single(decoded.Layers);
         Assert.Equal((18, 35), (layer.ParallaxXPercent, layer.ParallaxYPercent));
