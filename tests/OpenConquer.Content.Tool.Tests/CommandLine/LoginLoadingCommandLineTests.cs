@@ -18,6 +18,20 @@ public sealed class LoginLoadingCommandLineTests
     }
 
     [Fact]
+    public void RejectsInvalidLoadingMediaPathAsArgumentError()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "loading-command-line");
+        Assert.False(ContentToolCommandLine.TryParse(
+            ["import-client-content", "--source", "source", "--destination", "out",
+             "--loading-media", "invalid\0path"],
+            root, out ContentToolCommand? result, out string? error));
+
+        Assert.Null(result);
+        Assert.Contains("--loading-media", error, StringComparison.Ordinal);
+        Assert.Contains("not a valid path", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RejectsDuplicateLoadingMediaArguments()
     {
         string root = Path.Combine(Path.GetTempPath(), "loading-command-line");
