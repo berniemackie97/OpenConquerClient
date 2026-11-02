@@ -21,12 +21,20 @@ internal static class ContentPackagingEvaluator
         string scratchRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(scratchRootPath));
         HostFileSystemGuard.RequireDirectory(scratchRoot, "benchmark scratch directory");
 
-        string physicalScratch = ResolvePhysicalDirectory(scratchRoot);
-        if (IsWithin(ResolvePhysicalDirectory(contentSetRoot), physicalScratch) ||
+        if (IsWithin(contentSetRoot, scratchRoot) ||
             (previousRootPath is not null && IsWithin(
-                ResolvePhysicalDirectory(previousRootPath), physicalScratch)))
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(previousRootPath)), scratchRoot)))
         {
             throw new InvalidOperationException("Benchmark scratch must be outside both content sets.");
+        }
+
+        RequireUnlinkedDivergence(scratchRoot, contentSetRoot);
+        RequireUnlinkedDivergence(contentSetRoot, scratchRoot);
+        if (previousRootPath is not null)
+        {
+            string previousRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(previousRootPath));
+            RequireUnlinkedDivergence(scratchRoot, previousRoot);
+            RequireUnlinkedDivergence(previousRoot, scratchRoot);
         }
 
         ClientContentRoot source = new(Path.Combine(contentSetRoot, "payload"));
@@ -87,24 +95,21 @@ internal static class ContentPackagingEvaluator
             previous is null ? null : archive.CompressedBytesForNewPayloads(manifest, previous));
     }
 
-    private static string ResolvePhysicalDirectory(string path)
+    private static void RequireUnlinkedDivergence(string path, string otherPath)
     {
-        DirectoryInfo directory = new(Path.GetFullPath(path));
-        Stack<string> segments = new();
-        while (directory.Parent is DirectoryInfo parent)
+        for (DirectoryInfo? current = new(path); current is not null; current = current.Parent)
         {
-            segments.Push(directory.Name);
-            directory = parent;
-        }
+            if (IsWithin(current.FullName, otherPath))
+            {
+                break;
+            }
 
-        string current = directory.FullName;
-        while (segments.TryPop(out string? segment))
-        {
-            DirectoryInfo next = new(Path.Combine(current, segment));
-            current = next.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? next.FullName;
+            if (current.LinkTarget is not null || (current.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new InvalidOperationException(
+                    "Benchmark scratch must be outside both content sets without linked path ancestors.");
+            }
         }
-
-        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(current));
     }
 
     private static bool IsWithin(string root, string path)
