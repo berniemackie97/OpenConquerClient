@@ -188,8 +188,8 @@ client/<every manifest-declared file>
 
 The package is rejected if it has directory entries, link or reparse entries, path traversal,
 alternate separators, nonportable or ambiguous names, missing or extra entries, disagreeing
-metadata, a file length or hash mismatch, more than 16,384 client files or extracted directories, a
-size over 16 GiB, or an expanded payload over 64 GiB. Extraction writes new files under a private
+metadata, a file length or hash mismatch, a file or directory count above the limit for its
+declared minimum launcher version, a size over 16 GiB, or an expanded payload over 64 GiB. Extraction writes new files under a private
 per-attempt directory, checks the resulting tree shape again, and sanitizes Unix modes. It never
 selects the candidate. `ManagedReleaseTransaction` separately authenticates the manifest,
 signature, client tree, compatibility, sequence policy, and destination generation again before it

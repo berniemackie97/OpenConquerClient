@@ -50,7 +50,7 @@ Do not add a second runtime lookup path or a second package-signing system durin
 
 Release manifests retain schema version 1. Launcher compatibility is independently versioned.
 Launcher version 2 supports up to 32,768 files, 32,768 directories, and a 32 MiB manifest.
-These are separate bounds: reaching any one of them rejects the release.
+These are separate bounds: exceeding any one of them rejects the release.
 
 Version-1 launchers support at most 16,384 files, 16,384 directories, and an 8 MiB manifest.
 The Product Tool must reject a new release exceeding any of those bounds unless its minimum
