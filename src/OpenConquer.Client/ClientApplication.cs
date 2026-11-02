@@ -350,8 +350,12 @@ internal sealed class ClientApplication : IDisposable
             login.AwaitingLoginCommand = false;
             if (_loginFlow is { } pending)
             {
-                pending.TryStart(login, _catalog?.CurrentCatalog(now));
+                bool started = pending.TryStart(login, _catalog?.CurrentCatalog(now));
                 login.ApplyFeedback(pending.Feedback, _loginErrors!);
+                if (!started)
+                {
+                    _loading?.Reset();
+                }
             }
         }
         _registrationFlow?.Update(_catalog?.CurrentCatalog(now));
