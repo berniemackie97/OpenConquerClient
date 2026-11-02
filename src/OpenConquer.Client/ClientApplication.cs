@@ -636,15 +636,17 @@ internal sealed class ClientApplication : IDisposable
         }
 
         OpenGLGraphicsDevice device = _graphicsDevice ?? throw new InvalidOperationException("The graphics device is unavailable.");
-        _worldRenderer = device.CreateRenderer(WorldViewportSize.Logical,
-            framebuffer.Width, framebuffer.Height, PresentationPolicy.Fit, RenderColorFormat.Rgba8);
+        LogicalRenderSize size = WorldViewportSize.FromFramebuffer(_logicalRenderSize, framebuffer);
+        _worldRenderer = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height,
+            PresentationPolicy.Stretch, RenderColorFormat.Rgba8);
         return _worldRenderer;
     }
 
     private void OnFramebufferResized(PixelSize size)
     {
         _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
-        _worldRenderer?.ResizeHostFramebuffer(size.Width, size.Height);
+        _worldRenderer?.Dispose();
+        _worldRenderer = null;
     }
 
     private void OnPointerMoved(PixelPoint point)

@@ -72,6 +72,29 @@ public sealed class WorldPuzzleDrawListTests
     }
 
     [Fact]
+    public void WideViewAtMapEdgeKeepsTheFullBackdropInsideItsAvailableBounds()
+    {
+        using WorldMapFixture fixture = new();
+        (int heroX, int heroY) = WorldCameraProjection.ProjectTile(fixture.Map, 60, 108);
+        WorldPuzzleProjection projection = WorldCameraProjection.FromHeroWorldPosition(
+            fixture.Map, fixture.Puzzles, heroX, heroY, 1365, 768);
+
+        GameMapPositionedOverlayRecord record = Assert.Single(fixture.Map.Scene.PositionedOverlays);
+        GameMapPuzzleOverlayEntry overlay =
+            Assert.IsType<GameMapPuzzleOverlayEntry>(Assert.Single(record.Entries));
+        GameMapPuzzleBitmap bitmap = fixture.Puzzles.GetRequired(overlay.PuzzlePath);
+
+        IReadOnlyList<WorldPuzzleTile> tiles = WorldPuzzleDrawList.PositionedPuzzle(
+            fixture.Map, fixture.Puzzles, projection, record, overlay, frame: 0);
+
+        Assert.Equal((6, 6), (bitmap.Columns, bitmap.Rows));
+        Assert.Equal(0, tiles.Min(tile => tile.X));
+        Assert.True(tiles.Max(tile => tile.X + tile.Size) >= projection.ScreenWidth);
+        Assert.True(tiles.Min(tile => tile.Y) <= 0);
+        Assert.True(tiles.Max(tile => tile.Y + tile.Size) >= projection.ScreenHeight);
+    }
+
+    [Fact]
     public void PositionedPuzzle_UsesSuppliedNonzeroFrameForVisibleTiles()
     {
         using WorldMapFixture fixture = new(twoFrameBackdrop: true);
