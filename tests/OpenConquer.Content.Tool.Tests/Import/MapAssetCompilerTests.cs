@@ -1,5 +1,5 @@
 using OpenConquer.Content.Map;
-using OpenConquer.Content.Tool.Analysis;
+using OpenConquer.Content.Tool.Tests.Analysis;
 using OpenConquer.Content.Tool.Import;
 
 namespace OpenConquer.Content.Tool.Tests.Import;
