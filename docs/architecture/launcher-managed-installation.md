@@ -271,7 +271,9 @@ If the stored sequence state is missing, the next reserved sequence must be grea
 sequence found in the active or previous local product.
 
 Client publishing, verification of the source and published content, and rejection of `Server.dat`
-happen before a sequence is reserved. Failures at those steps do not use up a release identity.
+happen before a sequence is reserved. Content verification uses the coverage
+declared by the content-set manifest; available-map content is not treated as
+full-catalog coverage. Failures at those steps do not use up a release identity.
 
 After reserving a sequence, local composition:
 
