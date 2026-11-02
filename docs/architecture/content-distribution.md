@@ -92,6 +92,21 @@ This is a storage inventory baseline, not a latency or compression benchmark. A 
 benchmark must record actual cold/warm access, decoding cost, CPU/GPU memory, bundle/index
 size, and differential update behavior before selecting a distribution format.
 
+## Content read profiling
+
+Use `profile-content-reads --content-set <root>` with the same map-coverage flags as
+`verify-content-set`. The tool first verifies every payload and the implemented content
+closure, then performs two complete ordered open/read passes through the runtime content-source
+contract. Each pass records files, verified byte counts, and elapsed wall-clock time. Missing
+files and changed lengths fail instead of producing misleading measurements.
+
+The first measured pass is **not** a cold-cache benchmark: verification already reads the
+payload and operating-system caching is not controlled. Both timings describe access under
+that test environment and may be compared only when hardware, storage, source set, and
+execution conditions are recorded. This does not measure decompression, GPU uploads,
+rendering, or bundle acquisition. Additional formats must use the same request sequence
+before a performance comparison is meaningful.
+
 ## Map semantic comparison
 
 Before replacing the map container or DMap decoder, compare two independently staged

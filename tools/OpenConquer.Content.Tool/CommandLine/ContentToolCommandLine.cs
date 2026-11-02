@@ -9,6 +9,7 @@ internal static class ContentToolCommandLine
     private const string ValidateStartupVerb = "validate-startup";
     private const string VerifyContentSetVerb = "verify-content-set";
     private const string AnalyzeContentSetVerb = "analyze-content-set";
+    private const string ProfileContentReadsVerb = "profile-content-reads";
     private const string InspectServerDatVerb = "inspect-server-dat";
     private const string CompareMapSemanticsVerb = "compare-map-semantics";
     private const string ValidateMapPuzzlesVerb = "validate-map-puzzles";
@@ -35,6 +36,7 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
         $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {AnalyzeContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
+        $"  OpenConquer.Content.Tool {ProfileContentReadsVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
         $"  OpenConquer.Content.Tool {CompareMapSemanticsVerb} {SourceOption} <client-root> {CandidateOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
@@ -115,6 +117,7 @@ internal static class ContentToolCommandLine
                 }
 
             case AnalyzeContentSetVerb:
+            case ProfileContentReadsVerb:
                 {
                     if (!TryParseContentSetOptions(remainingArgs, [ContentSetOption],
                             workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId,
@@ -123,7 +126,9 @@ internal static class ContentToolCommandLine
                         return false;
                     }
 
-                    command = new AnalyzeContentSetCommand(values[0], mapDataId, allMaps, availableMaps);
+                    command = verb == AnalyzeContentSetVerb
+                        ? new AnalyzeContentSetCommand(values[0], mapDataId, allMaps, availableMaps)
+                        : new ProfileContentReadsCommand(values[0], mapDataId, allMaps, availableMaps);
                     return true;
                 }
 

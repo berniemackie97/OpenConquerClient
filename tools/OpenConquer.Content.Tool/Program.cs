@@ -106,6 +106,20 @@ internal static class Program
                     break;
                 }
 
+            case ProfileContentReadsCommand profile:
+                {
+                    ContentManifest manifest = ContentSetVerifier.Verify(profile.ContentSetRootPath,
+                        profile.MapDataId, profile.AllMaps, profile.AvailableMaps);
+                    ClientContentRoot content = new(Path.Combine(profile.ContentSetRootPath, "payload"));
+                    foreach (ContentReadPass pass in ContentReadProfiler.Measure(content, manifest))
+                    {
+                        Console.WriteLine(FormattableString.Invariant(
+                            $"Pass {pass.Number}: {pass.FileCount} files, {pass.BytesRead} bytes, {pass.Elapsed.TotalMilliseconds:F3} ms"));
+                    }
+
+                    break;
+                }
+
             case CompareMapSemanticsCommand compare:
                 {
                     WorldMapSemanticComparer.Compare(compare.SourceRootPath, compare.CandidateRootPath, compare.MapDataId);
