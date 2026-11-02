@@ -93,6 +93,13 @@ internal static class Program
                     break;
                 }
 
+            case CompareMapSemanticsCommand compare:
+                {
+                    WorldMapSemanticComparer.Compare(compare.SourceRootPath, compare.CandidateRootPath, compare.MapDataId);
+                    Console.WriteLine($"Compared MapDataId {compare.MapDataId}: map semantics match.");
+                    break;
+                }
+
             case ValidateMapPuzzlesCommand validateMap:
                 {
                     WorldMapPuzzleValidationResult result =

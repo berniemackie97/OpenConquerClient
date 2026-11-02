@@ -9,6 +9,7 @@ internal static class ContentToolCommandLine
     private const string ValidateStartupVerb = "validate-startup";
     private const string VerifyContentSetVerb = "verify-content-set";
     private const string InspectServerDatVerb = "inspect-server-dat";
+    private const string CompareMapSemanticsVerb = "compare-map-semantics";
     private const string ValidateMapPuzzlesVerb = "validate-map-puzzles";
     private const string ValidateMapSceneryAniVerb = "validate-map-scenery-ani";
     private const string ValidateMapTerrainScenesVerb = "validate-map-terrain-scenes";
@@ -20,6 +21,7 @@ internal static class ContentToolCommandLine
 
     private const string SourceOption = "--source";
     private const string DestinationOption = "--destination";
+    private const string CandidateOption = "--candidate";
     private const string ContentRootOption = "--content-root";
     private const string ContentSetOption = "--content-set";
 
@@ -33,6 +35,7 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
         $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
+        $"  OpenConquer.Content.Tool {CompareMapSemanticsVerb} {SourceOption} <client-root> {CandidateOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapSceneryAniVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapTerrainScenesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
@@ -104,6 +107,25 @@ internal static class ContentToolCommandLine
                     }
 
                     command = new VerifyContentSetCommand(values[0], mapDataId, allMaps, availableMaps);
+                    return true;
+                }
+
+            case CompareMapSemanticsVerb:
+                {
+                    if (!TryParseContentSetOptions(remainingArgs, [SourceOption, CandidateOption],
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId,
+                            out bool allMaps, out bool availableMaps, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    if (mapDataId is null || allMaps || availableMaps)
+                    {
+                        errorMessage = "A single --map-data-id is required for map comparison.";
+                        return false;
+                    }
+
+                    command = new CompareMapSemanticsCommand(values[0], values[1], mapDataId.Value);
                     return true;
                 }
 
