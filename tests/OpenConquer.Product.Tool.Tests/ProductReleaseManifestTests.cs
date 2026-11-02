@@ -91,6 +91,33 @@ public sealed class ProductReleaseManifestTests
     }
 
     [Fact]
+    public void CreateRequiresVersion2ForExpandedFileSet()
+    {
+        using TemporaryDirectory temporary = new();
+        string targetRuntime = ProductTargetRuntime.Current
+            ?? throw new InvalidOperationException("The current runtime is unsupported.");
+        string clientRoot = Path.Combine(temporary.RootPath, "client");
+        string contentRoot = Path.Combine(clientRoot, "data");
+        Directory.CreateDirectory(contentRoot);
+        File.WriteAllBytes(Path.Combine(clientRoot,
+            ProductTargetRuntime.ClientExecutable(targetRuntime)), [1]);
+
+        for (int index = 0; index < 16 * 1024; index++)
+        {
+            File.WriteAllBytes(Path.Combine(contentRoot, $"f{index:D5}.bin"), []);
+        }
+
+        string outputPath = Path.Combine(temporary.RootPath, ProductReleaseManifest.FileName);
+        Assert.Throws<InvalidDataException>(() => ProductReleaseManifest.Create(
+            new ReleaseManifestOptions(clientRoot, targetRuntime, "test-release", 1, 1, outputPath)));
+        Assert.False(File.Exists(outputPath));
+
+        ProductReleaseManifest.Create(
+            new ReleaseManifestOptions(clientRoot, targetRuntime, "test-release", 1, 2, outputPath));
+        Assert.Equal(16 * 1024 + 1, ProductReleaseManifest.Read(outputPath).Files.Count);
+    }
+
+    [Fact]
     public void CreateOrdersFilesOrdinallyAfterStreamingTraversal()
     {
         using TemporaryDirectory temporary = new();
