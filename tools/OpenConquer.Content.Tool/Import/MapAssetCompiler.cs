@@ -7,6 +7,7 @@ internal static class MapAssetCompiler
     public static MapAsset Compile(IClientContentSource source, uint mapDataId)
     {
         GameMapContent sourceMap = GameMapContent.Load(source, GameMapCatalog.Load(source), mapDataId);
+        MapImportIds ids = new();
         GameMapCellGrid grid = sourceMap.CellGrid;
         if (sourceMap.Scene.ExitMarkers.Count != 0)
         {
@@ -37,8 +38,8 @@ internal static class MapAssetCompiler
 
             objects.Add(record.TypeCode switch
             {
-                1 => new MapTerrainObject(ToAssetId(path), x, y),
-                4 when record.PartName is { } section => new MapAnimatedObject(ToAssetId(path), section, x, y),
+                1 => new MapTerrainObject(ids.Register(path), x, y),
+                4 when record.PartName is { } section => new MapAnimatedObject(ids.Register(path), section, x, y),
                 _ => throw new InvalidDataException(
                     $"Map scenery type {record.TypeCode} requires a defined compiled representation."),
             });
@@ -52,9 +53,9 @@ internal static class MapAssetCompiler
             {
                 children.Add(child switch
                 {
-                    GameMapPuzzleOverlayEntry puzzle => new MapPuzzleLayerEntry(ToAssetId(puzzle.PuzzlePath)),
+                    GameMapPuzzleOverlayEntry puzzle => new MapPuzzleLayerEntry(ids.Register(puzzle.PuzzlePath)),
                     GameMapAnimatedOverlayEntry animation => new MapAnimationLayerEntry(
-                        ToAssetId(animation.ResourcePath), animation.PartName,
+                        ids.Register(animation.ResourcePath), animation.PartName,
                         animation.TileX, animation.TileY, animation.RenderOffsetX, animation.RenderOffsetY,
                         animation.FrameIntervalMilliseconds, animation.AdditionalValue),
                     _ => throw new InvalidDataException("Map contains an unsupported layer entry."),
@@ -65,34 +66,43 @@ internal static class MapAssetCompiler
                 Array.AsReadOnly(children.ToArray())));
         }
 
-        return new MapAsset(mapDataId, ToAssetId(grid.PuzzlePath), grid.Width, grid.Height,
+        return new MapAsset(mapDataId, ids.Register(grid.PuzzlePath), grid.Width, grid.Height,
             Array.AsReadOnly(cells), Array.AsReadOnly(objects.ToArray()), Array.AsReadOnly(layers.ToArray()));
     }
 
-    private static string ToAssetId(string sourcePath)
+    private sealed class MapImportIds
     {
-        ContentPath.Validate(sourcePath);
-        string path = ContentPath.ToKey(sourcePath);
-        int separator = path.LastIndexOf('/');
-        int extension = path.LastIndexOf('.');
-        if (extension <= separator + 1)
-        {
-            throw new InvalidDataException($"Source asset '{sourcePath}' has no recognized extension.");
-        }
+        private readonly Dictionary<string, string> _sourceById = new(StringComparer.Ordinal);
 
-        return path[..extension].ToLowerInvariant();
+        public string Register(string sourcePath)
+        {
+            ContentPath.Validate(sourcePath);
+            string path = ContentPath.ToKey(sourcePath);
+            int separator = path.LastIndexOf('/');
+            int extension = path.LastIndexOf('.');
+            if (extension <= separator + 1)
+            {
+                throw new InvalidDataException($"Source asset '{sourcePath}' has no recognized extension.");
+            }
+
+            string id = path[..extension];
+            MapAssetId.Validate(id);
+            if (_sourceById.TryGetValue(id, out string? previous) &&
+                !string.Equals(previous, path, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException($"Distinct input assets '{previous}' and '{path}' have the same compiled ID.");
+            }
+
+            _sourceById[id] = path;
+            return id;
+        }
     }
 
     public static void Compile(string sourceRoot, uint mapDataId, string destinationPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         PackagedClientContentSource source = PackagedClientContentSource.Open(sourceRoot);
-        byte[] bytes = MapAssetCodec.Encode(Compile(source, mapDataId));
-        MapAsset decoded = MapAssetCodec.Decode(bytes);
-        if (decoded.MapDataId != mapDataId || !MapAssetCodec.Encode(decoded).AsSpan().SequenceEqual(bytes))
-        {
-            throw new InvalidDataException("Compiled map does not round-trip to canonical bytes.");
-        }
+        MapAsset map = Compile(source, mapDataId);
 
         string destination = Path.GetFullPath(destinationPath);
         if (File.Exists(destination) || Directory.Exists(destination))
@@ -106,9 +116,9 @@ internal static class MapAssetCompiler
         string staging = Path.Combine(directory, $".{Path.GetFileName(destination)}.{Guid.NewGuid():N}.tmp");
         try
         {
-            using (FileStream output = new(staging, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (FileStream output = new(staging, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
             {
-                output.Write(bytes);
+                MapAssetCodec.Write(map, output);
                 output.Flush(flushToDisk: true);
             }
 
