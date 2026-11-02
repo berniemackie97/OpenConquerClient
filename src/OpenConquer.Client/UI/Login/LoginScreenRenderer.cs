@@ -5,6 +5,7 @@ using OpenConquer.Client.UI.Login.Registration;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
+using OpenConquer.Content;
 using OpenConquer.Content.Login;
 using OpenConquer.Rendering.OpenGL;
 
@@ -31,13 +32,17 @@ internal sealed class LoginScreenRenderer : IDisposable
     private readonly LoginLogoPresentation _logo;
     private readonly LoginVersionPresentation _version;
     private readonly LoginOpeningPresentation _opening;
+    private readonly LoginLoadingPresentation? _loadingPresentation;
+    private readonly LoginLoadingScreen? _loading;
 
-    public LoginScreenRenderer(OpenGLGraphicsDevice graphicsDevice, LoginScreen screen)
+    public LoginScreenRenderer(OpenGLGraphicsDevice graphicsDevice, LoginScreen screen,
+        IClientContentSource? contentSource = null, LoginLoadingScreen? loading = null)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(screen);
 
         LoginStageLayout layout = screen.Layout;
+        _loading = loading;
         try
         {
             _stage = _ownership.Track(new LoginStagePresentation(graphicsDevice, layout));
@@ -54,6 +59,11 @@ internal sealed class LoginScreenRenderer : IDisposable
             _logo = _ownership.Track(new LoginLogoPresentation(graphicsDevice, layout));
             _version = _ownership.Track(new LoginVersionPresentation(graphicsDevice, layout, screen.VersionLabel));
             _opening = _ownership.Track(new LoginOpeningPresentation(graphicsDevice, layout));
+            if (loading is not null)
+            {
+                _loadingPresentation = _ownership.Track(new LoginLoadingPresentation(graphicsDevice, layout,
+                    contentSource ?? throw new ArgumentNullException(nameof(contentSource)), loading.Timeline));
+            }
         }
         catch
         {
@@ -119,7 +129,12 @@ internal sealed class LoginScreenRenderer : IDisposable
             _version.Draw(renderer);
         }
 
-        // Root depth294: quitWindow2, used while loading.
+        // Root depth 278 loading artwork is below the depth 294 quit dialog.
+        if (_loading is { Visible: true } loading)
+        {
+            _loadingPresentation!.Draw(renderer, loading.Sequence, loading.Trace);
+        }
+
         _errors.Draw(renderer, screen.LoadingQuit);
         _opening.Draw(renderer, screen.Clock.Frame);
     }

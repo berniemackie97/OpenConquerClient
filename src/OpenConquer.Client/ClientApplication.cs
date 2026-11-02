@@ -56,6 +56,7 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLRenderer? _renderer;
     private OpenGLRenderer? _worldRenderer;
     private LoginScreenRenderer? _loginRenderer;
+    private LoginLoadingScreen? _loading;
     private RoleCreationScreen? _role;
     private GameServerHandshakeSession? _worldGame;
     private GameWorldEntrySnapshot? _worldEntry;
@@ -232,6 +233,7 @@ internal sealed class ClientApplication : IDisposable
         _login.ExitRequested += () => _window?.RequestClose();
         _loginFlow = new LoginAttemptCoordinator(_contentRootPath);
         _loginErrors = LoginErrorMessages.Load(contentSource, LoginErrorEncoding.ForCurrentHost());
+        _loading = LoginLoadingScreen.LoadIfPresent(contentSource);
         _login.LoginRequested += OnLoginRequested;
         _registrationFlow = new LoginRegistrationCoordinator();
         _login.RegistrationRequested += OnRegistrationRequested;
@@ -262,7 +264,8 @@ internal sealed class ClientApplication : IDisposable
             // as 32-bit Flash windows, only the Direct3D world used RGB565).
             _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy,
                 RenderColorFormat.Rgba8));
-            _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
+            _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login,
+                _roleContent ?? throw new InvalidOperationException("Login content source is unavailable."), _loading));
             _rolePresentation = graphics.Track(new FlashStagePresentation(device,
                 _roleRasters ?? throw new InvalidOperationException("Role raster source is missing.")));
             _worldTextures = graphics.Track(new WorldMapTextureRenderer(
@@ -425,7 +428,12 @@ internal sealed class ClientApplication : IDisposable
                 login.ApplyRegistrationFeedback(registration.Feedback, messages);
             }
         }
-        if (_worldScene is null)
+        _loading?.Update(_loginFlow?.Status, _worldScene is not null,
+            double.IsFinite(elapsedSeconds) && elapsedSeconds > 0
+                ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
+
+        bool worldVisible = _worldScene is not null && (_loading is not { Visible: true } || _loading.CanEnterWorld);
+        if (!worldVisible)
         {
             login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
                 TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
@@ -437,8 +445,8 @@ internal sealed class ClientApplication : IDisposable
             throw new InvalidOperationException("World admission lost its authenticated connection.");
         }
 
-        OpenGLRenderer frameRenderer = _worldScene is null ? renderer : GetWorldRenderer();
-        if (_worldScene is { } scene)
+        OpenGLRenderer frameRenderer = worldVisible ? GetWorldRenderer() : renderer;
+        if (worldVisible && _worldScene is { } scene)
         {
             scene.Prepare(_worldTextures ?? throw new InvalidOperationException("World textures are unavailable."),
                 frameRenderer.Viewport.LogicalWidth, frameRenderer.Viewport.LogicalHeight,
@@ -450,7 +458,7 @@ internal sealed class ClientApplication : IDisposable
 
         try
         {
-            if (_worldScene is { } worldScene)
+            if (worldVisible && _worldScene is { } worldScene)
             {
                 worldScene.Draw(_worldTextures!, frameRenderer);
             }
@@ -503,6 +511,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReturnToLogin()
     {
+        _loading?.Reset();
         GameServerHandshakeSession? game = _worldGame;
         _worldGame = null;
         _worldEntry = null;
@@ -518,7 +527,11 @@ internal sealed class ClientApplication : IDisposable
         if (_worldGame is null && _worldScene is null && _worldClosing is null &&
             _roleClosing is null && _login is { } login && _loginFlow is { } flow)
         {
-            flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
+            if (flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow)))
+            {
+                _loading?.Start();
+            }
+
             login.ApplyFeedback(flow.Feedback, _loginErrors!);
         }
     }

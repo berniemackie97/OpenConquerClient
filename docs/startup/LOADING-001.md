@@ -42,4 +42,8 @@ dotnet run --project tools/OpenConquer.Content.Tool -c Release -- \
 
 Every prepared media file is included in the signed-content input manifest and exact closure. A missing file aborts the import before publication. The preparation output itself is not a product release; the Product Tool continues to package the verified imported content set using its existing release flow.
 
-The media pipeline does not yet render the loading screen. Authentication status, loading timeline playback, render-thread ownership, and world admission must be completed and tested before the PR is ready to merge.
+## Runtime playback
+
+When the verified loading media is present, the client reads the 100-frame timeline and loads its prepared TGA artwork on the login OpenGL context. The bar and head positions come from the timeline's frame placements. The parent timeline holds at frames 17 and 36 until authentication and world preparation respectively allow it to advance, and the world presentation starts only after frame 99. Nested head and title animations continue while the parent is held. Failed login attempts reset the overlay. Content sets without the optional media retain their previous startup behavior.
+
+This slice does not yet move CPU map decoding out of the window's rendering callback. The map reader's stream ownership and cancellation contract must be audited before asynchronous preparation is introduced. Verify the appearance and transition on a local authenticated map-1010 session before merging.
