@@ -17,6 +17,9 @@
     <None Include="../OpenConquer.Content.Tests/Fixtures/Map/newbie.ani.zlib"
           Link="RetailMapFixture/ani/newbie.ani.zlib"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../content/retail-5517/payload/ui/loading/timeline.json"
+          Link="LoadingFixture/timeline.json"
+          CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../content/retail-5517/payload/ini/selectcharacter.ini"
           Link="RetailFixture/ini/selectCharacter.ini"
           CopyToOutputDirectory="PreserveNewest" />

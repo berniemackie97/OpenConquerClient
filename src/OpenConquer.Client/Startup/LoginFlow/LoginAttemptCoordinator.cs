@@ -309,6 +309,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
                     return new(LoginAttemptStatus.CharacterCreation, game);
                 }
 
+                Publish(LoginAttemptStatus.InitializingWorld);
                 _ = await game.ReadExistingCharacterPreludeAsync(s_timeout, cancellationToken)
                     .ConfigureAwait(false);
                 GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(s_timeout, cancellationToken)

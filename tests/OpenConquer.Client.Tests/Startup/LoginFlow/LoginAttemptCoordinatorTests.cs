@@ -311,7 +311,8 @@ public sealed class LoginAttemptCoordinatorTests : IDisposable
     {
         using CancellationTokenSource budget = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         budget.CancelAfter(TimeSpan.FromSeconds(12));
-        while (attempts.Status is LoginAttemptStatus.ConnectingAccount or LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter)
+        while (attempts.Status is LoginAttemptStatus.ConnectingAccount or LoginAttemptStatus.ConnectingGame or
+            LoginAttemptStatus.ReadingCharacter or LoginAttemptStatus.InitializingWorld)
         {
             attempts.Update(catalog);
             await Task.Delay(10, budget.Token);
