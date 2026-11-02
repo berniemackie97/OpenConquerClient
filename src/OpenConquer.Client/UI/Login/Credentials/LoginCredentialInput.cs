@@ -245,6 +245,12 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
         return true;
     }
 
+    internal void StopEditingForLogin()
+    {
+        _dragging = false;
+        SetFocus(LoginCredentialFocus.None);
+    }
+
     public void FocusLost()
     {
         if (_disposed)
@@ -252,8 +258,7 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
             return;
         }
 
-        _dragging = false;
-        SetFocus(LoginCredentialFocus.None);
+        StopEditingForLogin();
         ClearPassword();
     }
 

@@ -69,9 +69,16 @@ internal sealed class LoginScreen : IDisposable
         get;
     }
     private LoginErrorDialog? ActiveDialog => LoadingQuit.IsOpen ? LoadingQuit : Quit.IsOpen ? Quit : Error.IsOpen ? Error : null;
-    internal bool IsLoginPending => AttemptStatus is LoginAttemptStatus.ConnectingAccount or
+    internal bool IsLoginPending => AwaitingLoginCommand || AttemptStatus is LoginAttemptStatus.ConnectingAccount or
         LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter or
         LoginAttemptStatus.InitializingWorld or LoginAttemptStatus.CharacterReceived;
+
+    internal bool AwaitingLoginCommand
+    {
+        get; private set;
+    }
+
+    internal event Action? PendingLoginCancelled;
 
     /// <summary>The OpenConquer Sign Up dialog; retail opened a website instead.</summary>
     internal LoginRegistrationForm Registration
@@ -468,8 +475,9 @@ internal sealed class LoginScreen : IDisposable
                 return;
             }
 
+            bool hasStartedExchange = IsExchangePending && !AwaitingLoginCommand;
             FocusLost();
-            (IsExchangePending ? LoadingQuit : Quit).Show(string.Empty);
+            (hasStartedExchange ? LoadingQuit : Quit).Show(string.Empty);
             Play(LoginAudioCue.Error);
             return;
         }
@@ -539,11 +547,34 @@ internal sealed class LoginScreen : IDisposable
         PlayTypingSound(revision, Credentials.EditRevision);
     }
 
+    internal void BeginLoading()
+    {
+        AwaitingLoginCommand = true;
+        Credentials.StopEditingForLogin();
+        ResetOtherFocus();
+    }
+
+    internal void DispatchPendingLogin()
+    {
+        AwaitingLoginCommand = false;
+    }
+
     public void FocusLost()
+    {
+        bool cancelled = AwaitingLoginCommand;
+        AwaitingLoginCommand = false;
+        Credentials.FocusLost();
+        ResetOtherFocus();
+        if (cancelled)
+        {
+            PendingLoginCancelled?.Invoke();
+        }
+    }
+
+    private void ResetOtherFocus()
     {
         SelectionInput.FocusLost();
         SelectionAnimation.ClearPointer();
-        Credentials.FocusLost();
         Buttons.Reset();
         Account.FocusLost();
         Registration.FocusLost();

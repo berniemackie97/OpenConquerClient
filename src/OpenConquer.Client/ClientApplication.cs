@@ -54,6 +54,7 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
     private OpenGLRenderer? _worldRenderer;
+    private LogicalRenderSize _worldRenderSize;
     private LoginScreenRenderer? _loginRenderer;
     private LoginLoadingScreen? _loading;
     private RoleCreationScreen? _role;
@@ -246,6 +247,7 @@ internal sealed class ClientApplication : IDisposable
         _loginErrors = LoginErrorMessages.Load(contentSource, LoginErrorEncoding.ForCurrentHost());
         _loading = LoginLoadingScreen.LoadIfPresent(contentSource);
         _login.LoginRequested += OnLoginRequested;
+        _login.PendingLoginCancelled += () => _loading?.Reset();
         _registrationFlow = new LoginRegistrationCoordinator();
         _login.RegistrationRequested += OnRegistrationRequested;
         _login.RegistrationSubmitRequested += OnRegistrationSubmitRequested;
@@ -345,6 +347,19 @@ internal sealed class ClientApplication : IDisposable
         DateTimeOffset now = DateTimeOffset.UtcNow;
         _catalog?.Update(login, now);
         _loginFlow?.Update(_catalog?.CurrentCatalog(now));
+        if (login.AwaitingLoginCommand && _loading?.Sequence.ReadyForAuthentication == true)
+        {
+            login.DispatchPendingLogin();
+            if (_loginFlow is { } pending)
+            {
+                bool started = pending.TryStart(login, _catalog?.CurrentCatalog(now));
+                login.ApplyFeedback(pending.Feedback, _loginErrors!);
+                if (!started)
+                {
+                    _loading?.Reset();
+                }
+            }
+        }
         _registrationFlow?.Update(_catalog?.CurrentCatalog(now));
         if (_worldGame is null && _worldLoad is null && _loginFlow is { } existing &&
             existing.TryTakeAdmittedWorld(out GameServerHandshakeSession? acceptedGame,
@@ -586,12 +601,17 @@ internal sealed class ClientApplication : IDisposable
         if (_worldGame is null && _worldLoad is null && _worldScene is null && _worldClosing is null &&
             _roleClosing is null && _login is { } login && _loginFlow is { } flow)
         {
-            if (flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow)))
+            if (_loading is { Visible: false } loading &&
+                login.Credentials.AccountLength != 0 && login.Credentials.PasswordLength != 0)
             {
-                _loading?.Start();
+                login.BeginLoading();
+                loading.Start();
             }
-
-            login.ApplyFeedback(flow.Feedback, _loginErrors!);
+            else if (!login.IsLoginPending)
+            {
+                flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
+                login.ApplyFeedback(flow.Feedback, _loginErrors!);
+            }
         }
     }
 
@@ -624,21 +644,28 @@ internal sealed class ClientApplication : IDisposable
 
     private OpenGLRenderer GetWorldRenderer()
     {
-        if (_worldRenderer is { } existing)
+        PixelSize framebuffer = (_window ?? throw new InvalidOperationException("The desktop window is unavailable.")).FramebufferSize;
+        if (framebuffer.Width == 0 || framebuffer.Height == 0)
+        {
+            return _worldRenderer ?? _renderer ?? throw new InvalidOperationException("The renderer is unavailable.");
+        }
+
+        OpenGLGraphicsDevice device = _graphicsDevice ?? throw new InvalidOperationException("The graphics device is unavailable.");
+        WorldMapScene scene = _worldScene ?? throw new InvalidOperationException("The world scene is unavailable.");
+        LogicalRenderSize size = WorldViewportSize.FromFramebuffer(_logicalRenderSize, framebuffer,
+            scene.BackdropExtent, device.MaximumRenderTargetDimension);
+        if (_worldRenderer is { } existing && _worldRenderSize == size)
         {
             return existing;
         }
 
-        PixelSize framebuffer = (_window ?? throw new InvalidOperationException("The desktop window is unavailable.")).FramebufferSize;
-        if (framebuffer.Width == 0 || framebuffer.Height == 0)
-        {
-            return _renderer ?? throw new InvalidOperationException("The renderer is unavailable.");
-        }
-
-        OpenGLGraphicsDevice device = _graphicsDevice ?? throw new InvalidOperationException("The graphics device is unavailable.");
-        _worldRenderer = device.CreateRenderer(WorldViewportSize.Logical,
-            framebuffer.Width, framebuffer.Height, PresentationPolicy.Fit, RenderColorFormat.Rgba8);
-        return _worldRenderer;
+        OpenGLRenderer next = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height,
+            PresentationPolicy.Stretch, RenderColorFormat.Rgba8);
+        OpenGLRenderer? previous = _worldRenderer;
+        _worldRenderer = next;
+        _worldRenderSize = size;
+        previous?.Dispose();
+        return next;
     }
 
     private void OnFramebufferResized(PixelSize size)

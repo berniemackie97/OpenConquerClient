@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <InternalsVisibleTo Include="OpenConquer.Content" />
+    <InternalsVisibleTo Include="OpenConquer.Content.Tests" />
+  </ItemGroup>
+</Project>

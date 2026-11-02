@@ -24,8 +24,6 @@ public sealed class LoginLoadingScreenTests
         Assert.Equal("Creating maps", screen.Trace);
 
         screen.Update(LoginAttemptStatus.CharacterReceived, true, TimeSpan.FromMilliseconds(34));
-        Assert.Equal("Starting", screen.Trace);
-        screen.Update(LoginAttemptStatus.CharacterReceived, true, TimeSpan.FromMilliseconds(34));
         Assert.Equal("Creating maps", screen.Trace);
     }
 
@@ -45,31 +43,7 @@ public sealed class LoginLoadingScreenTests
     }
 
     [Fact]
-    public void StartingTraceIsEmittedOnlyAtTheWorldReleaseGate()
-    {
-        LoginLoadingScreen screen = CreateScreen();
-        screen.Start();
-
-        screen.Update(LoginAttemptStatus.CharacterReceived, true, TimeSpan.FromMilliseconds(34));
-        Assert.Equal("Creating maps", screen.Trace);
-
-        for (int i = 0; i < 40; i++)
-        {
-            screen.Update(LoginAttemptStatus.CharacterReceived, true, TimeSpan.FromMilliseconds(34));
-            if (screen.Trace == "Starting")
-            {
-                Assert.True(screen.Sequence.Frame >= 36);
-                screen.Update(LoginAttemptStatus.CharacterReceived, true, TimeSpan.FromMilliseconds(34));
-                Assert.Equal("Creating maps", screen.Trace);
-                return;
-            }
-        }
-
-        Assert.Fail("The loading sequence never released its world-ready gate.");
-    }
-
-    [Fact]
-    public void FailedAttemptAndNewAttemptResetTheTransientStartingTrace()
+    public void FailureAndRetryRestoreTheCurrentStatus()
     {
         LoginLoadingScreen screen = CreateScreen();
         screen.Start();
@@ -92,6 +66,6 @@ public sealed class LoginLoadingScreenTests
         byte[] timeline = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory,
             "LoadingFixture", "timeline.json"));
         return new LoginLoadingScreen(LoginLoadingTimeline.Parse(timeline),
-            "Account", "Game", "Initializing", "Creating maps", "Starting");
+            "Account", "Game", "Initializing", "Creating maps");
     }
 }

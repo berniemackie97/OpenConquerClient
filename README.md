@@ -11,6 +11,14 @@ Windows, macOS, and Linux.
 <img width="1281" height="754" alt="ClientImage" src="https://github.com/user-attachments/assets/b474182d-e9a0-4d96-9d25-28669ec90a7b" />
 
 
+## OpenConquerStudio
+
+The unified development platform has a dedicated [Studio solution](OpenConquerStudio.slnx)
+and [authoring guide](docs/studio/README.md). Its first workflow creates projects, imports
+textures and supported existing client artwork, previews and edits them, saves/reopens projects,
+and compiles deterministic runtime content. Client consumption of authored replacements is a
+later coordinated integration.
+
 ## Current Capabilities
 
 | Product | Implemented | Remaining |
