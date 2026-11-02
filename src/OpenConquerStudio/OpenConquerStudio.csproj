@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../OpenConquerStudio.ConquerImport/OpenConquerStudio.ConquerImport.csproj" />
+    <InternalsVisibleTo Include="OpenConquerStudio.App.Tests" />
+    <ProjectReference Include="../OpenConquerStudio.Authoring/OpenConquerStudio.Authoring.csproj" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+  </ItemGroup>
+</Project>
