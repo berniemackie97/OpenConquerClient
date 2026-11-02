@@ -113,8 +113,7 @@ class MediaPreparationTests(unittest.TestCase):
     def test_png_filters_preserve_pixels_and_orientation(self):
         pixels = bytes((255, 0, 10, 255, 255, 0, 10, 255,
                         4, 22, 188, 63, 200, 178, 10, 0,
-                        3, 17, 245, 255, 254, 2, 0, 70,
-                        44, 170, 90, 100))
+                        3, 17, 245, 255, 254, 2, 0, 70))
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "image.png"
             for filter_type in range(5):
