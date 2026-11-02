@@ -17,7 +17,6 @@ using OpenConquer.Content.Login;
 using OpenConquer.Content.Map;
 using OpenConquer.Content.Role;
 using OpenConquer.Content.Startup;
-using OpenConquer.Content.Text;
 using OpenConquer.Content.Wdf;
 using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Login;
@@ -58,11 +57,7 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLRenderer? _worldRenderer;
     private LoginScreenRenderer? _loginRenderer;
     private LoginLoadingPresentation? _loadingPresentation;
-    private LoginLoadingSequence? _loading;
-    private LoginLoadingTimeline? _loadingTimeline;
-    private string _loadingAccountText = string.Empty;
-    private string _loadingGameText = string.Empty;
-    private string _loadingMapText = string.Empty;
+    private LoginLoadingScreen? _loading;
     private RoleCreationScreen? _role;
     private GameServerHandshakeSession? _worldGame;
     private GameWorldEntrySnapshot? _worldEntry;
@@ -239,17 +234,7 @@ internal sealed class ClientApplication : IDisposable
         _login.ExitRequested += () => _window?.RequestClose();
         _loginFlow = new LoginAttemptCoordinator(_contentRootPath);
         _loginErrors = LoginErrorMessages.Load(contentSource, LoginErrorEncoding.ForCurrentHost());
-        if (LoginLoadingContentPaths.IsPresent(contentSource))
-        {
-            _loadingTimeline = LoginLoadingTimeline.Load(contentSource);
-            _loading = new LoginLoadingSequence();
-            System.Text.Encoding encoding = LoginErrorEncoding.ForCurrentHost();
-            ClientStringResources messages = ClientStringResources.Load(contentSource);
-            ClientKeyedStringResources keyed = ClientKeyedStringResources.Load(contentSource);
-            _loadingAccountText = encoding.GetString(messages.GetEncoded(11237).Span);
-            _loadingGameText = encoding.GetString(keyed.GetEncoded("STR_LOGIN_GAME_SERVER").Span);
-            _loadingMapText = encoding.GetString(messages.GetEncoded(11239).Span);
-        }
+        _loading = LoginLoadingScreen.LoadIfPresent(contentSource);
         _login.LoginRequested += OnLoginRequested;
         _registrationFlow = new LoginRegistrationCoordinator();
         _login.RegistrationRequested += OnRegistrationRequested;
@@ -281,10 +266,10 @@ internal sealed class ClientApplication : IDisposable
             _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy,
                 RenderColorFormat.Rgba8));
             _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
-            if (_loadingTimeline is { } loadingTimeline)
+            if (_loading is { } loading)
             {
                 _loadingPresentation = graphics.Track(new LoginLoadingPresentation(device, login.Layout,
-                    _roleContent ?? throw new InvalidOperationException("Loading media source is unavailable."), loadingTimeline));
+                    _roleContent ?? throw new InvalidOperationException("Loading media source is unavailable."), loading.Timeline));
             }
             _rolePresentation = graphics.Track(new FlashStagePresentation(device,
                 _roleRasters ?? throw new InvalidOperationException("Role raster source is missing.")));
@@ -450,32 +435,11 @@ internal sealed class ClientApplication : IDisposable
                 login.ApplyRegistrationFeedback(registration.Feedback, messages);
             }
         }
-        if (_loading is { Visible: true } loading)
-        {
-            LoginAttemptStatus? status = _loginFlow?.Status;
-            if (status is LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter or
-                LoginAttemptStatus.CharacterReceived)
-            {
-                loading.AccountReady();
-            }
-            else if (status is LoginAttemptStatus.CharacterCreation or LoginAttemptStatus.AccountRefused or
-                LoginAttemptStatus.GameRefused or LoginAttemptStatus.Timeout or LoginAttemptStatus.Unavailable or
-                LoginAttemptStatus.Cancelled)
-            {
-                loading.Reset();
-            }
-
-            if (_worldScene is not null)
-            {
-                loading.WorldReady();
-            }
-
-            loading.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0
+        _loading?.Update(_loginFlow?.Status, _worldScene is not null,
+            double.IsFinite(elapsedSeconds) && elapsedSeconds > 0
                 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
-        }
 
-        bool worldVisible = _worldScene is not null &&
-            (_loading is not { Visible: true } sequence || sequence.CanEnterWorld);
+        bool worldVisible = _worldScene is not null && (_loading is not { Visible: true } || _loading.CanEnterWorld);
         if (!worldVisible)
         {
             login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
@@ -515,11 +479,8 @@ internal sealed class ClientApplication : IDisposable
                 loginRenderer.Draw(frameRenderer, login, _catalog?.Availability(login.Selection) ?? default);
                 if (_loading is { Visible: true } loadingScreen)
                 {
-                    string trace = _worldScene is not null ? _loadingMapText :
-                        _loginFlow?.Status is LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter
-                            ? _loadingGameText : _loadingAccountText;
                     (_loadingPresentation ?? throw new InvalidOperationException("Loading presentation is unavailable."))
-                        .Draw(frameRenderer, loadingScreen, trace);
+                        .Draw(frameRenderer, loadingScreen.Sequence, loadingScreen.Trace);
                 }
             }
         }
