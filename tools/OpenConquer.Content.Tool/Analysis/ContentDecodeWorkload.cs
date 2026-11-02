@@ -33,7 +33,7 @@ internal static class ContentDecodeWorkload
             .Select(missing => missing.MapDataId).ToHashSet() ?? [];
 
         IEnumerable<uint> selected = allMaps ? looseCatalog.MapDataIds.Order() :
-            mapDataId is uint id ? [id] : [];
+            mapDataId is uint selectedId ? [selectedId] : [];
         TimeSpan looseWorldTime = TimeSpan.Zero;
         TimeSpan candidateWorldTime = TimeSpan.Zero;
         int mapCount = 0;
