@@ -49,7 +49,7 @@ internal static class Program
         {
             case ImportContentSetCommand import:
                 {
-                    ContentManifest manifest = ContentSetImporter.Import(import.SourceRootPath, import.DestinationRootPath, import.MapDataId, import.AllMaps, import.AvailableMaps);
+                    ContentManifest manifest = ContentSetImporter.Import(import.SourceRootPath, import.DestinationRootPath, import.MapDataId, import.AllMaps, import.AvailableMaps, import.LoadingMediaRootPath);
 
                     Console.WriteLine($"Imported {manifest.FileCount} file(s) ({manifest.Length} bytes) for {ContentManifest.SourceSetName}.");
 
