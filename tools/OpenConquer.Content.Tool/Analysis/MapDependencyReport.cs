@@ -43,13 +43,23 @@ internal sealed class MapDependencyReport
             .ToDictionary(entry => entry.PathKey, entry => entry.index, StringComparer.Ordinal);
         bool[] startupUsage = new bool[manifest.FileCount];
         int[] mapUsage = new int[manifest.FileCount];
-        Dictionary<uint, int[]> mapIndices = new();
 
         foreach (ClientContentRequirement requirement in startup)
         {
             startupUsage[RequireIndex(requirement, indices)] = true;
         }
 
+        Dictionary<uint, int[]> mapIndices = IndexMaps(maps, indices, mapUsage);
+        MapDependencyGroup[] groups = GroupUsage(manifest, startupUsage, mapUsage);
+        MapDependencyMap[] summaries = SummarizeMaps(manifest, mapIndices, startupUsage, mapUsage);
+        return new MapDependencyReport(groups, summaries, excludedMapCount);
+    }
+
+    private static Dictionary<uint, int[]> IndexMaps(
+        IReadOnlyDictionary<uint, IReadOnlyList<ClientContentRequirement>> maps,
+        IReadOnlyDictionary<string, int> indices, int[] mapUsage)
+    {
+        Dictionary<uint, int[]> mapIndices = new();
         foreach ((uint id, IReadOnlyList<ClientContentRequirement> requirements) in maps)
         {
             HashSet<int> selected = [];
@@ -66,6 +76,12 @@ internal sealed class MapDependencyReport
             }
         }
 
+        return mapIndices;
+    }
+
+    private static MapDependencyGroup[] GroupUsage(ContentManifest manifest,
+        bool[] startupUsage, int[] mapUsage)
+    {
         MapDependencyGroup[] groups =
         [
             new("Startup only", 0, 0),
@@ -92,7 +108,12 @@ internal sealed class MapDependencyReport
             };
         }
 
-        MapDependencyMap[] summaries = mapIndices.OrderBy(entry => entry.Key)
+        return groups;
+    }
+
+    private static MapDependencyMap[] SummarizeMaps(ContentManifest manifest,
+        Dictionary<uint, int[]> mapIndices, bool[] startupUsage, int[] mapUsage) =>
+        mapIndices.OrderBy(entry => entry.Key)
             .Select(entry =>
             {
                 long bytes = 0;
@@ -114,9 +135,6 @@ internal sealed class MapDependencyReport
                     exclusiveCount, exclusiveBytes);
             })
             .ToArray();
-
-        return new MapDependencyReport(groups, summaries, excludedMapCount);
-    }
 
     public IEnumerable<string> ToReportLines()
     {
