@@ -146,7 +146,7 @@ public sealed class GameMapSceneryAniBindingsTests
         BinaryPrimitives.WriteInt32LittleEndian(record[0x18C..], extraValue);
 
         original.AsSpan(8).CopyTo(combined.AsSpan(8 + RecordLength));
-        return GameMapSceneSections.Parse(combined, 0);
+        return GameMapSceneSections.Parse(combined, 0, 1004);
     }
 
     private static byte[] ReadSourceSections() =>
@@ -159,6 +159,6 @@ public sealed class GameMapSceneryAniBindingsTests
         using ZLibStream decoded = new(source, CompressionMode.Decompress);
         using MemoryStream result = new();
         decoded.CopyTo(result);
-        return GameMapSceneSections.Parse(result.ToArray(), 0);
+        return GameMapSceneSections.Parse(result.ToArray(), 0, 1004);
     }
 }
