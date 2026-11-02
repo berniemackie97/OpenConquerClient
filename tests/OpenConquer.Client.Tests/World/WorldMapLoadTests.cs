@@ -11,10 +11,10 @@ public sealed class WorldMapLoadTests
         using ManualResetEventSlim started = new();
         using WorldMapFixture fixture = new();
         WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], 60, 108, 100, 1000);
-        WorldMapLoad load = new(_ =>
+        using using using WorldMapLoad load = new(token =>
         {
             started.Set();
-            release.Wait();
+            release.Wait(token);
             return scene;
         });
 
@@ -37,7 +37,7 @@ public sealed class WorldMapLoadTests
     public async Task CancellationInterruptsAWaitingWorkerAndIsObserved()
     {
         using ManualResetEventSlim started = new();
-        WorldMapLoad load = new(token =>
+        using WorldMapLoad load = new(token =>
         {
             started.Set();
             token.WaitHandle.WaitOne();
@@ -53,7 +53,7 @@ public sealed class WorldMapLoadTests
     [Fact]
     public async Task PreparationFailuresAreReturnedToTheOwner()
     {
-        WorldMapLoad load = new(_ => throw new InvalidDataException("Invalid scene"));
+        using WorldMapLoad load = new(_ => throw new InvalidDataException("Invalid scene"));
         Assert.True(await Task.Run(() => SpinWait.SpinUntil(() => load.IsCompleted, TimeSpan.FromSeconds(5)), TestContext.Current.CancellationToken));
         Assert.Throws<InvalidDataException>(load.Complete);
     }
