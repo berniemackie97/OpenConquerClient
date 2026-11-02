@@ -71,7 +71,8 @@ internal static class MapAssetCompiler
 
     private static string ToAssetId(string sourcePath)
     {
-        string path = ClientContentPath.NormalizeVirtualPath(sourcePath, nameof(sourcePath), 260);
+        ContentPath.Validate(sourcePath);
+        string path = ContentPath.ToKey(sourcePath);
         int separator = path.LastIndexOf('/');
         int extension = path.LastIndexOf('.');
         if (extension <= separator + 1)
