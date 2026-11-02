@@ -10,14 +10,20 @@ internal sealed class LoginLoadingScreen
     private readonly LoginLoadingSequence _sequence = new();
     private readonly string _accountText;
     private readonly string _gameText;
+    private readonly string _initializingText;
     private readonly string _mapText;
+    private readonly string _startingText;
+    private bool _startingTraced;
 
-    private LoginLoadingScreen(LoginLoadingTimeline timeline, string accountText, string gameText, string mapText)
+    internal LoginLoadingScreen(LoginLoadingTimeline timeline, string accountText, string gameText,
+        string initializingText, string mapText, string startingText)
     {
         Timeline = timeline;
         _accountText = accountText;
         _gameText = gameText;
+        _initializingText = initializingText;
         _mapText = mapText;
+        _startingText = startingText;
     }
 
     internal LoginLoadingTimeline Timeline
@@ -48,18 +54,22 @@ internal sealed class LoginLoadingScreen
         return new LoginLoadingScreen(LoginLoadingTimeline.Load(source),
             encoding.GetString(numeric.GetEncoded(11237).Span),
             encoding.GetString(keyed.GetEncoded("STR_LOGIN_GAME_SERVER").Span),
-            encoding.GetString(numeric.GetEncoded(11239).Span));
+            encoding.GetString(numeric.GetEncoded(11238).Span),
+            encoding.GetString(numeric.GetEncoded(11239).Span),
+            encoding.GetString(numeric.GetEncoded(11240).Span));
     }
 
     internal void Start()
     {
         _sequence.Start();
+        _startingTraced = false;
         Trace = string.Empty;
     }
 
     internal void Reset()
     {
         _sequence.Reset();
+        _startingTraced = false;
         Trace = string.Empty;
     }
 
@@ -90,8 +100,21 @@ internal sealed class LoginLoadingScreen
         }
 
         _sequence.Advance(elapsed);
-        Trace = worldReady || status == LoginAttemptStatus.CharacterReceived ? _mapText :
-            status is LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter ? _gameText :
-            _accountText;
+        Trace = status switch
+        {
+            LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter => _gameText,
+            LoginAttemptStatus.InitializingWorld => _initializingText,
+            LoginAttemptStatus.CharacterReceived => _mapText,
+            _ => _accountText,
+        };
+
+        if (worldReady)
+        {
+            Trace = !_startingTraced && _sequence.Frame >= 36 ? _startingText : _mapText;
+            if (_sequence.Frame >= 36)
+            {
+                _startingTraced = true;
+            }
+        }
     }
 }

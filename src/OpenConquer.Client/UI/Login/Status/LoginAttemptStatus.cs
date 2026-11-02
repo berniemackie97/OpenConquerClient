@@ -11,6 +11,7 @@ internal enum LoginAttemptStatus
     AccountRefused,
     ConnectingGame,
     ReadingCharacter,
+    InitializingWorld,
     GameRefused,
     CharacterCreation,
     CharacterReceived,
