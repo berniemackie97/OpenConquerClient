@@ -21,8 +21,9 @@ public sealed class ContentPackagingEvaluatorTests
 
         Assert.Equal(111, report.FileCount);
         Assert.Equal(2, report.Candidates.Length);
-        Assert.Equal(new[] { "Stored ZIP", "Compressed ZIP" },
-            report.Candidates.Select(candidate => candidate.Format));
+        Assert.Collection(report.Candidates,
+            candidate => Assert.Equal("Stored ZIP", candidate.Format),
+            candidate => Assert.Equal("Compressed ZIP", candidate.Format));
         Assert.All(report.Candidates, candidate =>
         {
             Assert.True(candidate.ArchiveBytes > 0);
