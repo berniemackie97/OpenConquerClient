@@ -94,16 +94,21 @@ public sealed class WorldPuzzleDrawListTests
     }
 
     [Fact]
-    public void LargerViewport_DoesNotExpandThe800By600TileEnumeration()
+    public void WiderViewport_EnumeratesAdditionalGroundTiles()
     {
         using WorldMapFixture fixture = new();
         IReadOnlyList<WorldPuzzleTile> baseTiles = WorldPuzzleDrawList.Ground(fixture.Map, fixture.Puzzles,
             new WorldPuzzleProjection(800, 600, GroundOffsetX, GroundOffsetY, 3500, 1400, 1, 1), 0);
-        IReadOnlyList<WorldPuzzleTile> larger = WorldPuzzleDrawList.Ground(fixture.Map, fixture.Puzzles,
-            new WorldPuzzleProjection(1024, 768, GroundOffsetX, GroundOffsetY, 3500, 1400, 1, 1), 0);
+        IReadOnlyList<WorldPuzzleTile> wider = WorldPuzzleDrawList.Ground(fixture.Map, fixture.Puzzles,
+            new WorldPuzzleProjection(1600, 600, GroundOffsetX, GroundOffsetY, 3500, 1400, 1, 1), 0);
 
-        Assert.Equal(baseTiles.Count, larger.Count);
-        Assert.Equal(baseTiles.Select(t => t.Animation.Name), larger.Select(t => t.Animation.Name));
+        Assert.True(wider.Count > baseTiles.Count);
+        Assert.Contains(wider, tile => tile.X >= 800 && tile.X < 1600);
+        Assert.All(wider, tile =>
+        {
+            Assert.True(tile.X < 1600 && tile.X + tile.Size > 0);
+            Assert.True(tile.Y < 600 && tile.Y + tile.Size > 0);
+        });
     }
 
     [Fact]

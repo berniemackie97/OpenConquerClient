@@ -11,6 +11,14 @@ Each puzzle bitmap advances its own frame clock using
 `ini/info.ini` `[PuzzleBmp] FrameIntervalMilliSec`, defaulting to 1000 milliseconds.
 Terrain objects use their authored frame intervals.
 
+The login and character-creation stages retain their fixed 4:3 presentation. Once the
+world scene is active, a separate render target keeps the same logical height but
+expands or contracts its width to match the desktop framebuffer aspect ratio.
+Its presentation fills the framebuffer; the logical width is rounded to a whole
+pixel. Ground puzzle enumeration and terrain clipping use this world viewport.
+The world render target is recreated on framebuffer resize and disposed before
+the OpenGL context is released.
+
 Image decoding and texture uploads happen before `OpenGLRenderer.BeginFrame`.
 The texture cache is tracked by the existing graphics-context owner; the decoded map and
 scene state are not OpenGL resources and survive context recreation. After admission, login
