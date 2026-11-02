@@ -370,4 +370,3 @@ public sealed class ProjectWorkflowTests
         Assert.Throws<InvalidDataException>(() => (valid with { Assets = oversized }).Validate());
     }
 }
-

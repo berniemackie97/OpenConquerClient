@@ -39,7 +39,9 @@ duplicate IDs, linked paths, content reproducibility, CLI subprocesses, and desk
 Native macOS smoke validation opened a project through the folder picker, previewed existing
 client artwork, applied and saved an edit, built and validated content, created a new texture,
 and saved it through the close dialog. A separate CLI process reopened the saved result and
-validated both desktop and subsequent CLI builds.
+validated both desktop and subsequent CLI builds. The final build also replaced an imported
+artwork image through the native file picker, preserving its GUID, edit settings, and original
+source association through save and a separate CLI reopen/build.
 
 The final client base advanced to `ee9cd034432fee67c4f92583e7f57e6598d4b82b` during implementation.
 Its login-only changes were inspected before rebasing; they do not alter Studio ownership.
@@ -52,3 +54,12 @@ display scaling, and future GPU viewport behavior require platform-specific manu
 The next integration must establish explicit game resource bindings and preserve UI semantics
 before the client consumes Studio-built replacements. Imported images are not a completed
 UI, map, animation, packaging, or release migration.
+
+## Recorded validation
+
+At the foundation boundary, macOS Apple Silicon passed locked restores, formatting,
+warning-as-error builds, 3,323 existing client tests, 60 Studio tests, and three CLI subprocess
+workflows. The unchanged decoder algorithms were compared against the original source, and
+existing external package versions/hashes were checked for equality. Studio CI additionally
+runs build, tests, independent content compilation/verification, and publish-boundary checks
+on Windows, macOS, and Linux. CI and manual desktop checks are separate evidence.
