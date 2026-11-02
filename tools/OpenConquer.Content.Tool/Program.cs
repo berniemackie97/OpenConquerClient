@@ -131,6 +131,20 @@ internal static class Program
                     break;
                 }
 
+            case CompareContentSetsCommand compareSets:
+                {
+                    ContentManifest previous = ContentSetVerifier.Verify(compareSets.PreviousRootPath,
+                        compareSets.MapDataId, compareSets.AllMaps, compareSets.AvailableMaps);
+                    ContentManifest candidate = ContentSetVerifier.Verify(compareSets.CandidateRootPath,
+                        compareSets.MapDataId, compareSets.AllMaps, compareSets.AvailableMaps);
+                    foreach (string line in ContentSetDeltaReport.Compare(previous, candidate).ToReportLines())
+                    {
+                        Console.WriteLine(line);
+                    }
+
+                    break;
+                }
+
             case CompareMapSemanticsCommand compare:
                 {
                     WorldMapSemanticComparer.Compare(compare.SourceRootPath, compare.CandidateRootPath, compare.MapDataId);
