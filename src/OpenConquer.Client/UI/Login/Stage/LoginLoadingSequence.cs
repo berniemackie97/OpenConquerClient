@@ -8,8 +8,15 @@ internal sealed class LoginLoadingSequence
     private bool _accountReady;
     private bool _worldReady;
 
-    internal int Frame { get; private set; } = 1;
-    internal long InnerFrames { get; private set; }
+    internal int Frame
+    {
+        get; private set;
+    } = 1;
+
+    internal long InnerFrames
+    {
+        get; private set;
+    }
     internal bool Visible => Frame > 1;
     internal bool CanEnterWorld => Frame == 99;
 
