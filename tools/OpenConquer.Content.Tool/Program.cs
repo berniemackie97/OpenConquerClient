@@ -165,6 +165,13 @@ internal static class Program
                     break;
                 }
 
+            case CompileMapAssetCommand compile:
+                {
+                    MapAssetCompiler.Compile(compile.SourceRootPath, compile.MapDataId, compile.DestinationPath);
+                    Console.WriteLine($"Compiled map data ID {compile.MapDataId} into '{compile.DestinationPath}'.");
+                    break;
+                }
+
             case ValidateMapPuzzlesCommand validateMap:
                 {
                     WorldMapPuzzleValidationResult result =

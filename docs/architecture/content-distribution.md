@@ -80,6 +80,57 @@ permission for unbounded memory use or for putting all source assets in one rele
 6. Move bulk assets out of the source repository only after the licensed publishing source, CI
    acquisition, reproducibility, and migration plan have been verified and approved.
 
+## Engine-owned assets and studio authoring
+
+The shipping client must eventually consume engine-owned, versioned resources rather
+than the source-installation formats used by the import pipeline. The conversion boundary
+is one-way: source readers validate and extract inputs, asset compilers emit canonical
+engine resources, and game systems consume the latter. Asset IDs and referenced
+dependencies are independent of the storage bundle. The future studio editor will
+author the same typed resource models and emit through the same compiler; an importer
+is not an alternate runtime loader.
+
+Map asset schema 1 establishes that boundary for the subset of map semantics currently
+supported by the engine. The `compile-map-asset --source <content-root> --destination
+<file.ocmap> --map-data-id <id>` command reads and validates an input map and writes
+an engine-owned, deterministic `.ocmap` resource. The runtime-side
+`MapAssetCodec.Load` opens it through `IClientContentSource` at
+`maps/<map-data-id>.ocmap`, rejects a mismatched identity, and has no source archive
+fallback. The codec is a strict binary contract: `OCMP` magic, little-endian schema
+version 1 and map-data ID, UTF-8 length-prefixed asset references, grid dimensions
+and cell values, typed terrain and animated objects, and ordered puzzle/animation
+layers. Decoders reject unsupported versions, invalid paths, excessive sizes and
+counts, invalid UTF-8, truncated records, and trailing bytes. No source map archive
+or opaque DMap section is embedded in the compiled asset.
+
+Imported references are normalized into extension-free, lowercase logical asset IDs.
+The source path spelling is not a storage location in the compiled schema. Future
+cooked assets and the studio editor must resolve these IDs through the same asset
+catalog; no lookup of the original filenames is permitted at that boundary.
+The source-derived ID mapping is an import convention, not a restriction on IDs
+created directly by studio authoring.
+
+The converter deliberately rejects source features without an understood equivalent.
+For the supported map 1010, the current representation models its grid, environment
+placements, animated placements, and positioned puzzle layer. Source-only placeholder
+animation records are filtered according to the existing decoder's behavior. Map
+exits and other as-yet-unmodeled source records fail compilation rather than being
+silently discarded. The original source map loader remains in use by the game until
+the compiled format covers all consumer-critical map behaviors and has passed
+rendering and movement conformance across representative maps, including 1929 and
+1999. A standalone compiled asset is **not** a claim that the installed game has
+already switched to compiled maps. No release manifest, content-set layout, or
+launcher trust behavior is changed by this milestone.
+
+Subsequent migrations must replace source animation indexes, puzzle and terrain
+scene records, INI configuration, Flash-derived media, textures, and package lookup
+with authored resource models. They must share dependency identities, compiler
+validation, schema migration rules, and serialization with the future studio editor;
+editing cannot depend on parsing source files. Asset encryption is not a replacement
+for integrity or authenticity. Release signatures and content hashes remain the trust
+boundary; any optional encryption needs its own key-lifecycle and threat-model
+design before adoption.
+
 ## Content layout assessment
 
 Content-set verification rejects undeclared directories as well as undeclared or missing

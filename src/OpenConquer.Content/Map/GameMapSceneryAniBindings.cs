@@ -34,7 +34,7 @@ public static class GameMapSceneryAniBindings
         return Array.AsReadOnly(bindings.ToArray());
     }
 
-    private static bool IsEmptyAnimationRecord(GameMapSceneryRecord record) =>
+    public static bool IsEmptyAnimationRecord(GameMapSceneryRecord record) =>
         record.ResourcePath == "AniTitle=" &&
         record.TileX == 0 &&
         record.TileY == 0 &&
