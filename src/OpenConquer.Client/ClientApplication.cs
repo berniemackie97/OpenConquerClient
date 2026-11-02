@@ -415,6 +415,7 @@ internal sealed class ClientApplication : IDisposable
             if (_worldGame is null && activeRole.TryTakeAdmittedWorld(
                     out GameServerHandshakeSession? createdGame, out GameWorldEntrySnapshot? createdWorld))
             {
+                _loading?.Start();
                 AcceptWorld(createdGame!, createdWorld!);
                 _role = null;
                 _roleClosing = activeRole.DisposeAsync().AsTask();
@@ -458,7 +459,8 @@ internal sealed class ClientApplication : IDisposable
             }
         }
 
-        _loading?.Update(_loginFlow?.Status, _worldScene is not null && _worldTexturesReady,
+        _loading?.Update(_worldGame is not null ? LoginAttemptStatus.CharacterReceived : _loginFlow?.Status,
+            _worldScene is not null && _worldTexturesReady,
             double.IsFinite(elapsedSeconds) && elapsedSeconds > 0
                 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
 
