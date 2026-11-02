@@ -56,7 +56,6 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLRenderer? _renderer;
     private OpenGLRenderer? _worldRenderer;
     private LoginScreenRenderer? _loginRenderer;
-    private LoginLoadingPresentation? _loadingPresentation;
     private LoginLoadingScreen? _loading;
     private RoleCreationScreen? _role;
     private GameServerHandshakeSession? _worldGame;
@@ -265,12 +264,8 @@ internal sealed class ClientApplication : IDisposable
             // as 32-bit Flash windows, only the Direct3D world used RGB565).
             _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy,
                 RenderColorFormat.Rgba8));
-            _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login));
-            if (_loading is { } loading)
-            {
-                _loadingPresentation = graphics.Track(new LoginLoadingPresentation(device, login.Layout,
-                    _roleContent ?? throw new InvalidOperationException("Loading media source is unavailable."), loading.Timeline));
-            }
+            _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login,
+                _roleContent ?? throw new InvalidOperationException("Login content source is unavailable."), _loading));
             _rolePresentation = graphics.Track(new FlashStagePresentation(device,
                 _roleRasters ?? throw new InvalidOperationException("Role raster source is missing.")));
             _worldTextures = graphics.Track(new WorldMapTextureRenderer(
@@ -290,7 +285,6 @@ internal sealed class ClientApplication : IDisposable
             _renderer = null;
             _graphicsDevice = null;
             _loginRenderer = null;
-            _loadingPresentation = null;
             _rolePresentation = null;
             _worldTextures = null;
             graphics.DisposeAfterInitializationFailure();
@@ -317,7 +311,6 @@ internal sealed class ClientApplication : IDisposable
         _graphics = null;
         _renderer = null;
         _loginRenderer = null;
-        _loadingPresentation = null;
         _rolePresentation = null;
         _worldTextures = null;
         try
@@ -477,11 +470,6 @@ internal sealed class ClientApplication : IDisposable
             else
             {
                 loginRenderer.Draw(frameRenderer, login, _catalog?.Availability(login.Selection) ?? default);
-                if (_loading is { Visible: true } loadingScreen)
-                {
-                    (_loadingPresentation ?? throw new InvalidOperationException("Loading presentation is unavailable."))
-                        .Draw(frameRenderer, loadingScreen.Sequence, loadingScreen.Trace);
-                }
             }
         }
         catch (Exception exception)
