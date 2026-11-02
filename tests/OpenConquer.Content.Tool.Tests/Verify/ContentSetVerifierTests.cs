@@ -77,6 +77,22 @@ public sealed class ContentSetVerifierTests
         Assert.Contains("ini/extra.ini", exception.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("unused")]
+    [InlineData("data/unused")]
+    public void Verify_RejectsUndeclaredEmptyPayloadDirectories(string relativePath)
+    {
+        using TemporarySourceTree fixture = new();
+        string contentSet = ImportContentSet(fixture);
+        Directory.CreateDirectory(Path.Combine(contentSet, "payload",
+            relativePath.Replace('/', Path.DirectorySeparatorChar)));
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ContentSetVerifier.Verify(contentSet));
+        Assert.Contains(relativePath, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("not declared", exception.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Verify_RejectsManifestAndPayloadThatBothContainAssetOutsideImplementedClosure()
     {

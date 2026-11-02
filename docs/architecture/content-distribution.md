@@ -82,6 +82,10 @@ permission for unbounded memory use or for putting all source assets in one rele
 
 ## Content layout assessment
 
+Content-set verification rejects undeclared directories as well as undeclared or missing
+files. Manifest reads enforce their own 8 MiB bound, including when the input stream
+does not expose a length.
+
 Run `analyze-content-set --content-set <root>` with the same map-coverage flags used
 for `verify-content-set`. The tool verifies the payload and declared implemented closure
 before reporting file sizes, ordered size percentiles, duplicate digests, per-format totals,

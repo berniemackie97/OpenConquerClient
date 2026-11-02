@@ -36,7 +36,18 @@ internal static class ContentSetVerifier
         Dictionary<string, ContentManifestEntry> expectedByPathKey = manifest.Entries.ToDictionary(entry => entry.PathKey, StringComparer.Ordinal);
         HashSet<string> observedPathKeys = new(StringComparer.Ordinal);
 
-        VerifyPayloadDirectory(payloadRoot, payloadRoot, expectedByPathKey, observedPathKeys);
+        HashSet<string> expectedDirectories = new(StringComparer.Ordinal);
+        foreach (string path in expectedByPathKey.Keys)
+        {
+            int separator = path.LastIndexOf('/');
+            while (separator > 0)
+            {
+                expectedDirectories.Add(path[..separator]);
+                separator = path.LastIndexOf('/', separator - 1);
+            }
+        }
+
+        VerifyPayloadDirectory(payloadRoot, expectedByPathKey, expectedDirectories, observedPathKeys);
 
         string[] missingSourcePaths = expectedByPathKey
             .Where(entry => !observedPathKeys.Contains(entry.Key))
@@ -68,18 +79,37 @@ internal static class ContentSetVerifier
         return ContentManifestReader.Read(stream);
     }
 
-    private static void VerifyPayloadDirectory(string payloadRoot, string directoryPath, IReadOnlyDictionary<string, ContentManifestEntry> expectedByPathKey, HashSet<string> observedPathKeys)
+    private static void VerifyPayloadDirectory(string payloadRoot,
+        IReadOnlyDictionary<string, ContentManifestEntry> expectedByPathKey,
+        HashSet<string> expectedDirectories, HashSet<string> observedPathKeys)
     {
-        HostFileSystemGuard.RequireDirectory(directoryPath, "content-set payload directory");
+        Stack<string> pending = new();
+        pending.Push(payloadRoot);
 
-        foreach (string childDirectoryPath in Directory.EnumerateDirectories(directoryPath).Order(StringComparer.Ordinal))
+        while (pending.TryPop(out string? directoryPath))
         {
-            VerifyPayloadDirectory(payloadRoot, childDirectoryPath, expectedByPathKey, observedPathKeys);
-        }
+            HostFileSystemGuard.RequireDirectory(directoryPath, "content-set payload directory");
 
-        foreach (string filePath in Directory.EnumerateFiles(directoryPath).Order(StringComparer.Ordinal))
-        {
-            VerifyPayloadFile(payloadRoot, filePath, expectedByPathKey, observedPathKeys);
+            if (!string.Equals(directoryPath, payloadRoot, StringComparison.Ordinal))
+            {
+                string relativePath = Path.GetRelativePath(payloadRoot, directoryPath).Replace('\\', '/');
+                ContentPath.Validate(relativePath);
+                if (!string.Equals(relativePath, ContentPath.ToKey(relativePath), StringComparison.Ordinal) ||
+                    !expectedDirectories.Contains(relativePath))
+                {
+                    throw new InvalidDataException($"Content-set payload directory '{relativePath}' is not declared in the manifest.");
+                }
+            }
+
+            foreach (string filePath in Directory.EnumerateFiles(directoryPath).Order(StringComparer.Ordinal))
+            {
+                VerifyPayloadFile(payloadRoot, filePath, expectedByPathKey, observedPathKeys);
+            }
+
+            foreach (string childDirectoryPath in Directory.EnumerateDirectories(directoryPath).OrderDescending(StringComparer.Ordinal))
+            {
+                pending.Push(childDirectoryPath);
+            }
         }
     }
 
