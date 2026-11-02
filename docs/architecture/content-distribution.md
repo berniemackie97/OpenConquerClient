@@ -80,6 +80,25 @@ permission for unbounded memory use or for putting all source assets in one rele
 6. Move bulk assets out of the source repository only after the licensed publishing source, CI
    acquisition, reproducibility, and migration plan have been verified and approved.
 
+## Map semantic comparison
+
+Before replacing the map container or DMap decoder, compare two independently staged
+content roots using the existing map parsers:
+
+```text
+OpenConquer.Content.Tool compare-map-semantics --source <source-root> --candidate <candidate-root> --map-data-id 1010
+```
+
+The comparison covers catalog selection, map header and dimensions, every passability,
+surface, and elevation cell, exit markers, scenery record order and complete encoded payloads,
+positioned overlay headers, and ordered child entries. It fails on the first difference or
+invalid map. Raw archive compression is not compared: the requirement is decoded semantic
+equivalence. This check does not establish equality of referenced image, ANI, puzzle, or
+scene-file resources; those still require their existing validators and rendering evidence.
+
+Maps 1929 and 1999 remain explicit evidence gates; the comparison must not turn an absent
+puzzle or an unresolved archive discrepancy into a fabricated successful load.
+
 Every stage must remain runnable and verifiable on Windows, macOS, and Linux. Build success alone
 does not establish rendering or gameplay equivalence. Format migration requires captured behavior
 and deterministic semantic comparisons; platform-specific GPU differences require documented,
