@@ -15,7 +15,7 @@ cd "$HOME/Downloads/OpenConquerClient-loading"
 Prepare the media using the extraction already verified locally:
 
 ```bash
-SOURCE="/Volumes/EnderChest/Development/Repos/GameDev/Conquer/client-5517/00_clean/clean/5517"
+SOURCE="/path/to/client-5517"
 EXTRACTED="$HOME/Downloads/OpenConquer-Loading-394"
 PREPARED="$HOME/Downloads/OpenConquer-Loading-Prepared"
 
