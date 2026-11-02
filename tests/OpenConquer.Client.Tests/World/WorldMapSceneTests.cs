@@ -5,6 +5,15 @@ namespace OpenConquer.Client.Tests.World;
 public sealed class WorldMapSceneTests
 {
     [Fact]
+    public void LoadRejectsCancellationBeforeOpeningMapContent()
+    {
+        using CancellationTokenSource cancellation = new();
+        cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            WorldMapScene.Load(null!, null!, 1010, 60, 108, 0, cancellation.Token));
+    }
+
+    [Fact]
     public void NewbieVillage_FirstFrameOrdersBackdropGroundAndTerrain()
     {
         using WorldMapFixture fixture = new();

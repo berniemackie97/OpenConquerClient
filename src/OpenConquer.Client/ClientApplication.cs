@@ -60,8 +60,9 @@ internal sealed class ClientApplication : IDisposable
     private RoleCreationScreen? _role;
     private GameServerHandshakeSession? _worldGame;
     private GameWorldEntrySnapshot? _worldEntry;
-    private GameMapCatalog? _terrainCatalog;
+    private WorldMapLoad? _worldLoad;
     private WorldMapScene? _worldScene;
+    private bool _worldTexturesReady;
     private WorldMapTextureRenderer? _worldTextures;
     private IClientContentSource? _roleContent;
     private SelectCharacterIni? _roleIni;
@@ -181,14 +182,22 @@ internal sealed class ClientApplication : IDisposable
                     _worldClosing = null;
                     try
                     {
-                        _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                        _worldLoad?.CancelAndWait();
                     }
                     finally
                     {
-                        _worldGame = null;
-                        _worldEntry = null;
-                        _worldScene = null;
-                        _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                        _worldLoad = null;
+                        try
+                        {
+                            _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                        }
+                        finally
+                        {
+                            _worldGame = null;
+                            _worldEntry = null;
+                            _worldScene = null;
+                            _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                        }
                     }
                 }
             }
@@ -335,12 +344,14 @@ internal sealed class ClientApplication : IDisposable
         _catalog?.Update(login, now);
         _loginFlow?.Update(_catalog?.CurrentCatalog(now));
         _registrationFlow?.Update(_catalog?.CurrentCatalog(now));
-        if (_worldGame is null && _loginFlow is { } existing &&
+        if (_worldGame is null && _worldLoad is null && _loginFlow is { } existing &&
             existing.TryTakeAdmittedWorld(out GameServerHandshakeSession? acceptedGame,
                 out GameWorldEntrySnapshot? acceptedWorld))
         {
             AcceptWorld(acceptedGame!, acceptedWorld!);
         }
+
+        CompleteWorldLoad();
         if (_roleClosing is { IsCompleted: true } closed)
         {
             _roleClosing = null;
@@ -428,11 +439,29 @@ internal sealed class ClientApplication : IDisposable
                 login.ApplyRegistrationFeedback(registration.Feedback, messages);
             }
         }
-        _loading?.Update(_loginFlow?.Status, _worldScene is not null,
+        if (_worldScene is { } loadingScene && !_worldTexturesReady)
+        {
+            try
+            {
+                OpenGLRenderer worldRenderer = GetWorldRenderer();
+                _worldTexturesReady = loadingScene.Prepare(
+                    _worldTextures ?? throw new InvalidOperationException("World textures are unavailable."),
+                    worldRenderer.Viewport.LogicalWidth, worldRenderer.Viewport.LogicalHeight,
+                    unchecked((uint)Environment.TickCount), textureBudget: 1);
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine($"OpenConquer: world artwork is unavailable ({exception.Message}).");
+                ReturnToLogin();
+            }
+        }
+
+        _loading?.Update(_loginFlow?.Status, _worldScene is not null && _worldTexturesReady,
             double.IsFinite(elapsedSeconds) && elapsedSeconds > 0
                 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
 
-        bool worldVisible = _worldScene is not null && (_loading is not { Visible: true } || _loading.CanEnterWorld);
+        bool worldVisible = _worldScene is not null && _worldTexturesReady &&
+            (_loading is not { Visible: true } || _loading.CanEnterWorld);
         if (!worldVisible)
         {
             login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
@@ -491,27 +520,54 @@ internal sealed class ClientApplication : IDisposable
 
     private void AcceptWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot world)
     {
-        // Own the authenticated connection before any content operation can fail.
         _worldGame = game;
         _worldEntry = world;
+        _worldTexturesReady = false;
+        IClientContentSource source = _roleContent ??
+            throw new InvalidOperationException("World content source was not initialized.");
+        _worldLoad = new WorldMapLoad(source, world);
+    }
+
+    private void CompleteWorldLoad()
+    {
+        if (_worldLoad is not { IsCompleted: true } completed)
+        {
+            return;
+        }
+
+        _worldLoad = null;
         try
         {
-            IClientContentSource source = _roleContent ??
-                throw new InvalidOperationException("World content source was not initialized.");
-            _terrainCatalog ??= GameMapCatalog.Load(source);
-            _worldScene = WorldMapScene.Load(source, _terrainCatalog,
-                world.MapDataId, world.X, world.Y, unchecked((uint)Environment.TickCount));
+            WorldMapScene scene = completed.Complete();
+            if (_worldGame is not null)
+            {
+                _worldScene = scene;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            if (_worldGame is not null)
+            {
+                ReturnToLogin();
+            }
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            Console.Error.WriteLine($"OpenConquer: unable to load map {world.MapDataId} ({exception.Message}).");
+            Console.Error.WriteLine($"OpenConquer: unable to load map {_worldEntry?.MapDataId} ({exception.Message}).");
             ReturnToLogin();
+        }
+        catch
+        {
+            ReturnToLogin();
+            throw;
         }
     }
 
     private void ReturnToLogin()
     {
         _loading?.Reset();
+        _worldLoad?.Cancel();
+        _worldTexturesReady = false;
         GameServerHandshakeSession? game = _worldGame;
         _worldGame = null;
         _worldEntry = null;
@@ -524,7 +580,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnLoginRequested()
     {
-        if (_worldGame is null && _worldScene is null && _worldClosing is null &&
+        if (_worldGame is null && _worldLoad is null && _worldScene is null && _worldClosing is null &&
             _roleClosing is null && _login is { } login && _loginFlow is { } flow)
         {
             if (flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow)))
