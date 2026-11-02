@@ -116,6 +116,29 @@ public sealed class LocalProductBuilderTests
     }
 
     [Fact]
+    public void BuildVerifiesSelectedMapCoverageBeforeAndAfterPublishing()
+    {
+        using TemporaryDirectory temporary = new();
+        TestRepository repository = TestRepository.Create(temporary);
+        DevelopmentPublisherIdentityPaths publisherPaths = CreatePublisherPaths(temporary);
+        FakeDotNetProcessRunner processRunner = new();
+        LocalProductBuilder builder = new(processRunner);
+
+        builder.Build(new LocalProductOptions(repository.InvocationPath, 1010), publisherPaths);
+
+        foreach (int invocationIndex in new[] { 1, 3 })
+        {
+            string[] arguments = processRunner.Invocations[invocationIndex].Arguments;
+            int optionIndex = Array.IndexOf(arguments, "--map-data-id");
+            Assert.True(optionIndex >= 0);
+            Assert.Equal("1010", arguments[optionIndex + 1]);
+        }
+
+        Assert.Contains("--no-build", processRunner.Invocations[3].Arguments);
+        Assert.DoesNotContain("--no-build", processRunner.Invocations[1].Arguments);
+    }
+
+    [Fact]
     public void BuildRepeatedlyAdvancesSequenceAndPreservesPreviousProduct()
     {
         using TemporaryDirectory temporary = new();

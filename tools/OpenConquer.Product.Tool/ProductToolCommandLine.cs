@@ -13,7 +13,7 @@ internal static class ProductToolCommandLine
         + "  create-release-catalog --release-package <path> [--release-package <path> ...] --package-base-uri <https URI ending in /> --public-key <path> [--public-key <path> ...] --expires-utc <yyyy-MM-ddTHH:mm:ssZ> --output <path>\n"
         + "  create-release-catalog-signature --release-catalog <path> --public-key <path> --signature <path> --output <path>\n"
         + "  create-release-trust --public-key <path> [--public-key <path> ...] --output <path>\n"
-        + "  create-local-product\n"
+        + "  create-local-product [--map-data-id <map-data-id>]\n"
         + "  stage-managed-product --launcher-publish <path> --client-publish <path> --release-manifest <path> --release-signature <path> --output <path>";
 
     public static bool TryParse(IReadOnlyList<string> args, string workingDirectoryPath, [NotNullWhen(true)] out ProductToolOptions? options, [NotNullWhen(false)] out string? errorMessage)
@@ -41,13 +41,20 @@ internal static class ProductToolCommandLine
 
         if (command == "create-local-product")
         {
+            uint? mapDataId = null;
             if (args.Count != 1)
             {
-                errorMessage = "Command 'create-local-product' does not accept options.";
-                return false;
+                if (args.Count != 3 || args[1] != "--map-data-id" ||
+                    !uint.TryParse(args[2], NumberStyles.None, CultureInfo.InvariantCulture, out uint parsed) || parsed == 0)
+                {
+                    errorMessage = "Command 'create-local-product' accepts only an optional positive --map-data-id.";
+                    return false;
+                }
+
+                mapDataId = parsed;
             }
 
-            options = new LocalProductOptions(Path.GetFullPath(workingDirectoryPath));
+            options = new LocalProductOptions(Path.GetFullPath(workingDirectoryPath), mapDataId);
             errorMessage = null;
             return true;
         }

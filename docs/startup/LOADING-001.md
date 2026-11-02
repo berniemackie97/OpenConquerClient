@@ -4,13 +4,7 @@ The loading-screen display uses authored artwork and a 100-frame timeline. Rende
 
 The preparation tool converts the previously source-verified extracted images into RLE32 TGA, which the client content decoder already supports. It verifies the original client file and the hashes of every extracted source file before writing. It never modifies the client source tree, and does not publish any research-only VM captures.
 
-From the client repository root, create a separate worktree if the current checkout has other changes:
-
-```bash
-git fetch origin bernie/login-loading-presentation
-git worktree add --detach "$HOME/Downloads/OpenConquerClient-loading" origin/bernie/login-loading-presentation
-cd "$HOME/Downloads/OpenConquerClient-loading"
-```
+Run the preparation tool from the client repository root on the current development branch. Keep the original client source outside the repository.
 
 Prepare the media using the extraction already verified locally:
 
@@ -40,7 +34,18 @@ dotnet run --project tools/OpenConquer.Content.Tool -c Release -- \
   verify-content-set --content-set "$SET" --map-data-id 1010
 ```
 
-Every prepared media file is included in the signed-content input manifest and exact closure. A missing file aborts the import before publication. The preparation output itself is not a product release; the Product Tool continues to package the verified imported content set using its existing release flow.
+Every prepared media file is included in the signed-content input manifest and exact closure. A missing file aborts the import before publication. The preparation output itself is not a product release. For the managed client, import with the Content Tool into a new staging directory under `content/`, verify with `--map-data-id 1010`, then promote the complete verified set (manifest and payload together) to `content/retail-5517` on the working branch. Preserve the old set separately until verification succeeds; do not change individual payload files or manifest hashes by hand.
+
+With that selected content set in the canonical repository location, the Product Tool creates and activates a verified local product:
+
+```bash
+dotnet run --project tools/OpenConquer.Product.Tool -c Release -- \
+  create-local-product --map-data-id 1010
+
+./artifacts/local-product/product/OpenConquer.Launcher
+```
+
+The local Product Tool verifies the selected map closure before and after publishing.
 
 ## Runtime playback
 

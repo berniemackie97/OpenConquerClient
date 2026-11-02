@@ -180,6 +180,33 @@ public sealed class ProductToolCommandLineTests
         LocalProductOptions localOptions = Assert.IsType<LocalProductOptions>(options);
 
         Assert.Equal(Path.GetFullPath(workingDirectory), localOptions.WorkingDirectoryPath);
+        Assert.Null(localOptions.MapDataId);
+    }
+
+    [Fact]
+    public void TryParseLocalProductAcceptsMapDataId()
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            ["create-local-product", "--map-data-id", "1010"],
+            Path.GetTempPath(), out ProductToolOptions? options, out string? error);
+
+        Assert.True(parsed, error);
+        Assert.Equal(1010u, Assert.IsType<LocalProductOptions>(options).MapDataId);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("4294967296")]
+    [InlineData("1010x")]
+    public void TryParseLocalProductRejectsInvalidMapDataId(string value)
+    {
+        bool parsed = ProductToolCommandLine.TryParse(
+            ["create-local-product", "--map-data-id", value],
+            Path.GetTempPath(), out ProductToolOptions? options, out _);
+
+        Assert.False(parsed);
+        Assert.Null(options);
     }
 
     [Fact]
@@ -194,7 +221,7 @@ public sealed class ProductToolCommandLineTests
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.Equal("Command 'create-local-product' does not accept options.", errorMessage);
+        Assert.Equal("Command 'create-local-product' accepts only an optional positive --map-data-id.", errorMessage);
     }
 
     [Fact]
