@@ -122,6 +122,52 @@ public sealed class GameMapSceneryAniBindingsTests
             GameMapSceneryAniBindings.Load(new ClientContentRoot(root.RootPath), scene));
     }
 
+    [Fact]
+    public void ExtendedUnconfiguredScenery_DoesNotResolveAni()
+    {
+        using TemporaryContentDirectory root = new();
+        GameMapSceneSections scene = CreateExtendedScenery(0, 0, 0, 0);
+
+        GameMapSceneryRecord record = Assert.Single(scene.Scenery);
+        Assert.Equal(0x1A4, record.EncodedPayload.Length);
+        Assert.Equal("AniTitle=", record.ResourcePath);
+
+        Assert.Empty(GameMapSceneryAniBindings.Load(new ClientContentRoot(root.RootPath), scene));
+    }
+
+    [Theory]
+    [InlineData(1, 0, 0, 0)]
+    [InlineData(0, 1, 0, 0)]
+    [InlineData(0, 0, 1, 0)]
+    [InlineData(0, 0, 0, 1)]
+    public void ExtendedSceneryWithConfiguredFields_StillRequiresAni(
+        int x, int y, int additionalValue, int trailingValue)
+    {
+        using TemporaryContentDirectory root = new();
+        GameMapSceneSections scene = CreateExtendedScenery(x, y, additionalValue, trailingValue);
+
+        Assert.Throws<FileNotFoundException>(() =>
+            GameMapSceneryAniBindings.Load(new ClientContentRoot(root.RootPath), scene));
+    }
+
+    private static GameMapSceneSections CreateExtendedScenery(
+        int x, int y, int additionalValue, int trailingValue)
+    {
+        byte[] encoded = new byte[12 + 0x1A4 + sizeof(int)];
+        BinaryPrimitives.WriteInt32LittleEndian(encoded.AsSpan(4), 1);
+        BinaryPrimitives.WriteInt32LittleEndian(encoded.AsSpan(8), 4);
+
+        Span<byte> record = encoded.AsSpan(12, 0x1A4);
+        "AniTitle="u8.CopyTo(record);
+        "c-city18.tga"u8.CopyTo(record[0x104..]);
+        BinaryPrimitives.WriteInt32LittleEndian(record[0x184..], x);
+        BinaryPrimitives.WriteInt32LittleEndian(record[0x188..], y);
+        BinaryPrimitives.WriteInt32LittleEndian(record[0x18C..], additionalValue);
+        BinaryPrimitives.WriteInt32LittleEndian(record[0x1A0..], trailingValue);
+
+        return GameMapSceneSections.Parse(encoded, 0, 1005);
+    }
+
     private static GameMapSceneSections SceneWithAdditionalScenery(
         string path, string section, int x, int y, int extraValue)
     {
@@ -146,7 +192,7 @@ public sealed class GameMapSceneryAniBindingsTests
         BinaryPrimitives.WriteInt32LittleEndian(record[0x18C..], extraValue);
 
         original.AsSpan(8).CopyTo(combined.AsSpan(8 + RecordLength));
-        return GameMapSceneSections.Parse(combined, 0);
+        return GameMapSceneSections.Parse(combined, 0, 1004);
     }
 
     private static byte[] ReadSourceSections() =>
@@ -159,6 +205,6 @@ public sealed class GameMapSceneryAniBindingsTests
         using ZLibStream decoded = new(source, CompressionMode.Decompress);
         using MemoryStream result = new();
         decoded.CopyTo(result);
-        return GameMapSceneSections.Parse(result.ToArray(), 0);
+        return GameMapSceneSections.Parse(result.ToArray(), 0, 1004);
     }
 }

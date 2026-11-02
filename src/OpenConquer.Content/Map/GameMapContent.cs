@@ -51,7 +51,7 @@ public sealed class GameMapContent
             ContentLookupMode.LooseOnly, GameMapArchive.MaximumArchiveBytes);
         byte[] decoded = GameMapArchive.Decode(archive, terrain.Path);
         GameMapCellGrid grid = GameMapCellGrid.Parse(decoded);
-        GameMapSceneSections scene = GameMapSceneSections.Parse(decoded, grid.BytesConsumed);
+        GameMapSceneSections scene = GameMapSceneSections.Parse(decoded, grid.BytesConsumed, grid.HeaderField0);
 
         return new GameMapContent(terrain, grid, scene);
     }
