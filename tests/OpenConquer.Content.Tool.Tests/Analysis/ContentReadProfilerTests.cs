@@ -31,6 +31,26 @@ public sealed class ContentReadProfilerTests
     }
 
     [Fact]
+    public void MeasureSupportsReverseRequestOrder()
+    {
+        using TemporarySourceTree source = new();
+        source.WriteBytes("data/a.bin", [1, 2]);
+        source.WriteBytes("data/b.bin", [3, 4, 5]);
+        ContentManifest manifest = CreateManifest(
+        [
+            new ContentManifestEntry("data/a.bin", "data/a.bin", 2, new string('a', 64), "unknown"),
+            new ContentManifestEntry("data/b.bin", "data/b.bin", 3, new string('b', 64), "unknown"),
+        ]);
+
+        ContentReadPass[] forward = ContentReadProfiler.Measure(new ClientContentRoot(source.RootPath), manifest);
+        ContentReadPass[] reverse = ContentReadProfiler.Measure(new ClientContentRoot(source.RootPath), manifest,
+            reverseOrder: true);
+
+        Assert.Equal(forward.Select(pass => pass.BytesRead), reverse.Select(pass => pass.BytesRead));
+        Assert.All(reverse, pass => Assert.Equal(2, pass.FileCount));
+    }
+
+    [Fact]
     public void MeasureRejectsChangedPayloadLength()
     {
         using TemporarySourceTree source = new();
