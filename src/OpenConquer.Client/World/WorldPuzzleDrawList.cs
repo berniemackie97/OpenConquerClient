@@ -15,8 +15,6 @@ internal readonly record struct WorldPuzzleProjection(
 internal static class WorldPuzzleDrawList
 {
     private const int TileSize = 256;
-    private const int NativeRangeWidth = 800;
-    private const int NativeRangeHeight = 600;
 
     public static IReadOnlyList<WorldPuzzleTile> Ground(GameMapContent map, GameMapPuzzleResources resources,
         WorldPuzzleProjection projection, uint frame)
@@ -92,10 +90,10 @@ internal static class WorldPuzzleDrawList
             startRow--;
         }
 
-        int colsAtScale = NativeRangeWidth / size;
-        int rowsAtScale = NativeRangeHeight / size;
-        int colCorrection = NativeRangeWidth / TileSize - colsAtScale;
-        int rowCorrection = NativeRangeHeight / TileSize - rowsAtScale;
+        int colsAtScale = projection.ScreenWidth / size;
+        int rowsAtScale = projection.ScreenHeight / size;
+        int colCorrection = projection.ScreenWidth / TileSize - colsAtScale;
+        int rowCorrection = projection.ScreenHeight / TileSize - rowsAtScale;
         int firstCol = 0;
         int firstRow = 0;
         int lastCol = colsAtScale + 3;
