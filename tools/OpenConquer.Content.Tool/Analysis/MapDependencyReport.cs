@@ -15,9 +15,18 @@ internal sealed class MapDependencyReport
         ExcludedMapCount = excludedMapCount;
     }
 
-    public IReadOnlyList<MapDependencyGroup> Groups { get; }
-    public IReadOnlyList<MapDependencyMap> Maps { get; }
-    public int ExcludedMapCount { get; }
+    public IReadOnlyList<MapDependencyGroup> Groups
+    {
+        get;
+    }
+    public IReadOnlyList<MapDependencyMap> Maps
+    {
+        get;
+    }
+    public int ExcludedMapCount
+    {
+        get;
+    }
 
     public static MapDependencyReport Create(ContentManifest manifest,
         IReadOnlyList<ClientContentRequirement> startup,
