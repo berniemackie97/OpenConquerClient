@@ -205,6 +205,39 @@ public sealed class ContentToolCommandLineTests
         Assert.False(profile.AvailableMaps);
     }
 
+    [Theory]
+    [InlineData("--all-maps", false)]
+    [InlineData("--available-maps", true)]
+    public void TryParse_ReadsMapDependencyAnalysis(string selection, bool availableMaps)
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["analyze-map-dependencies", "--content-set", "content", selection],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        AnalyzeMapDependenciesCommand analyze = Assert.IsType<AnalyzeMapDependenciesCommand>(command);
+        Assert.Equal(Path.Combine(s_workingDirectory, "content"), analyze.ContentSetRootPath);
+        Assert.Equal(availableMaps, analyze.AvailableMaps);
+    }
+
+    [Fact]
+    public void TryParse_RejectsMapDependencyAnalysisWithoutCatalogCoverage()
+    {
+        string[][] invalid =
+        [
+            ["analyze-map-dependencies", "--content-set", "content"],
+            ["analyze-map-dependencies", "--content-set", "content", "--map-data-id", "1010"],
+            ["analyze-map-dependencies", "--content-set", "content", "--all-maps", "--available-maps"],
+        ];
+
+        foreach (string[] args in invalid)
+        {
+            Assert.False(ContentToolCommandLine.TryParse(args, s_workingDirectory,
+                out ContentToolCommand? command, out _));
+            Assert.Null(command);
+        }
+    }
+
     [Fact]
     public void TryParse_ReadsAValidateStartupCommand()
     {
@@ -383,6 +416,8 @@ public sealed class ContentToolCommandLineTests
         );
         Assert.Contains(ContentToolCommandLine.UsageLines,
             line => line.Contains("analyze-content-set", StringComparison.Ordinal));
+        Assert.Contains(ContentToolCommandLine.UsageLines,
+            line => line.Contains("analyze-map-dependencies", StringComparison.Ordinal));
         Assert.Contains(ContentToolCommandLine.UsageLines,
             line => line.Contains("profile-content-reads", StringComparison.Ordinal));
 
