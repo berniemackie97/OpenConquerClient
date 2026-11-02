@@ -63,7 +63,7 @@ internal sealed record ContentLayoutReport(
     private static long Percentile(long[] orderedLengths, int percentile) =>
         orderedLengths[(int)(((long)orderedLengths.Length * percentile + 99) / 100 - 1)];
 
-    private static IReadOnlyList<ContentLayoutGroup> Group(
+    private static ContentLayoutGroup[] Group(
         IReadOnlyList<ContentManifestEntry> entries, Func<ContentManifestEntry, string> key) =>
         entries.GroupBy(key, StringComparer.Ordinal)
             .Select(group => new ContentLayoutGroup(group.Key, group.Count(), group.Sum(entry => entry.Length)))
