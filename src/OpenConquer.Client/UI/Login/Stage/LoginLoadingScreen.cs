@@ -89,7 +89,7 @@ internal sealed class LoginLoadingScreen
         }
 
         if (status is LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter or
-            LoginAttemptStatus.CharacterReceived)
+            LoginAttemptStatus.InitializingWorld or LoginAttemptStatus.CharacterReceived)
         {
             _sequence.AccountReady();
         }
