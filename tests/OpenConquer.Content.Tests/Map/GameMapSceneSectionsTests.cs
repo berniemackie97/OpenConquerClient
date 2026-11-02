@@ -40,31 +40,30 @@ public sealed class GameMapSceneSectionsTests
     public void MalformedCountsAndUnknownSceneryTypes_FailClosed()
     {
         byte[] original = LoadScene();
-        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(original.AsSpan(0, 3), 0), 1004);
+        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(original.AsSpan(0, 3), 0, 1004));
 
         byte[] excessiveCount = (byte[])original.Clone();
         BinaryPrimitives.WriteInt32LittleEndian(excessiveCount.AsSpan(4), int.MaxValue);
-        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(excessiveCount, 0), 1004);
+        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(excessiveCount, 0, 1004));
 
         byte[] unknownType = (byte[])original.Clone();
         BinaryPrimitives.WriteInt32LittleEndian(unknownType.AsSpan(8), 0x1234);
-        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(unknownType, 0), 1004);
+        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(unknownType, 0, 1004));
     }
 
     [Fact]
     public void TruncatedTrailingAndUnsafeOverlayResource_FailClosed()
     {
         byte[] original = LoadScene();
-        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(original.AsSpan(0, original.Length - 1), 0), 1004);
-        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse([.. original, 0], 0), 1004);
+        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(original.AsSpan(0, original.Length - 1), 0, 1004));
+        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse([.. original, 0], 0, 1004));
 
         byte[] unsafePath = (byte[])original.Clone();
         int overlayPathOffset = 13036;
         unsafePath.AsSpan(overlayPathOffset, 0x104).Clear();
         "../outside.pul"u8.CopyTo(unsafePath.AsSpan(overlayPathOffset));
-        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(unsafePath, 0), 1004);
+        Assert.Throws<InvalidDataException>(() => GameMapSceneSections.Parse(unsafePath, 0, 1004));
     }
-
 
     [Theory]
     [InlineData(1004u, false)]
