@@ -43,8 +43,10 @@ validated both desktop and subsequent CLI builds. The final build also replaced 
 artwork image through the native file picker, preserving its GUID, edit settings, and original
 source association through save and a separate CLI reopen/build.
 
-The final client base advanced to `ee9cd034432fee67c4f92583e7f57e6598d4b82b` during implementation.
-Its login-only changes were inspected before rebasing; they do not alter Studio ownership.
+The client base first advanced to `ee9cd034432fee67c4f92583e7f57e6598d4b82b` during implementation.
+The PR later received upstream `f9afe146` through merge `1d06bc81`, adding authored-background
+and GPU render-target capacity checks. Those changes were retained and inspected; they do
+not move game camera policy into Studio or change shared decoder ownership.
 
 The extraction must pass the full existing client solution; Studio tests alone are insufficient.
 Headless UI tests are distinct from native desktop smoke checks. Windows link creation is
@@ -63,3 +65,9 @@ workflows. The unchanged decoder algorithms were compared against the original s
 existing external package versions/hashes were checked for equality. Studio CI additionally
 runs build, tests, independent content compilation/verification, and publish-boundary checks
 on Windows, macOS, and Linux. CI and manual desktop checks are separate evidence.
+
+After integrating upstream render-target/background constraints, the complete local client
+suite passed 3,330 tests; the 60 Studio tests and three CLI workflows also passed again.
+The expanded asset platform plan uses existing map/puzzle code and maintained native evidence.
+A focused live motion-sampling audit added raw byte-checked captures and importer constraints
+to the separate native workspace's `20_notes`; those research files are not runtime assets.

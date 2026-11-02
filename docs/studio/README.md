@@ -98,5 +98,8 @@ entities, UI layouts, audio, package signing, and publishing are deferred. There
 or placeholder implementations for them. The next useful slice is a sprite scene with stable
 texture references, dependency validation, and a verified adapter for the shared game renderer.
 
+The [asset platform target and delivery plan](asset-platform-plan.md) defines saved resource
+models, map/puzzle/animation/character scope, shared rendering, editor polish, and production gates.
+
 See [architecture](architecture.md), [formats and safety](formats.md), and
 [repository audit](audit.md) for ownership and integration details.
