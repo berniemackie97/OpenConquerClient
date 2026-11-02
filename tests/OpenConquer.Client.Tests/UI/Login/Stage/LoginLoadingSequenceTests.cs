@@ -12,12 +12,14 @@ public sealed class LoginLoadingSequenceTests
 
         Advance(sequence, 30);
         Assert.Equal(17, sequence.Frame);
+        Assert.True(sequence.ReadyForAuthentication);
         Assert.True(sequence.Visible);
         Assert.False(sequence.CanEnterWorld);
 
         sequence.AccountReady();
         Advance(sequence, 30);
         Assert.Equal(36, sequence.Frame);
+        Assert.False(sequence.ReadyForAuthentication);
         Assert.False(sequence.CanEnterWorld);
 
         long nested = sequence.InnerFrames;

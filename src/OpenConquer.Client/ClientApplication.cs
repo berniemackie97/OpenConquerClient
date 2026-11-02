@@ -345,6 +345,15 @@ internal sealed class ClientApplication : IDisposable
         DateTimeOffset now = DateTimeOffset.UtcNow;
         _catalog?.Update(login, now);
         _loginFlow?.Update(_catalog?.CurrentCatalog(now));
+        if (login.AwaitingLoginCommand && _loading?.Sequence.ReadyForAuthentication == true)
+        {
+            login.AwaitingLoginCommand = false;
+            if (_loginFlow is { } pending)
+            {
+                pending.TryStart(login, _catalog?.CurrentCatalog(now));
+                login.ApplyFeedback(pending.Feedback, _loginErrors!);
+            }
+        }
         _registrationFlow?.Update(_catalog?.CurrentCatalog(now));
         if (_worldGame is null && _worldLoad is null && _loginFlow is { } existing &&
             existing.TryTakeAdmittedWorld(out GameServerHandshakeSession? acceptedGame,
@@ -568,6 +577,11 @@ internal sealed class ClientApplication : IDisposable
 
     private void ReturnToLogin()
     {
+        if (_login is { } login)
+        {
+            login.AwaitingLoginCommand = false;
+        }
+
         _loading?.Reset();
         _worldLoad?.Cancel();
         _worldTexturesReady = false;
@@ -586,12 +600,18 @@ internal sealed class ClientApplication : IDisposable
         if (_worldGame is null && _worldLoad is null && _worldScene is null && _worldClosing is null &&
             _roleClosing is null && _login is { } login && _loginFlow is { } flow)
         {
-            if (flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow)))
+            if (_loading is { Visible: false } loading &&
+                login.Credentials.AccountLength != 0 && login.Credentials.PasswordLength != 0)
             {
-                _loading?.Start();
+                login.AwaitingLoginCommand = true;
+                login.FocusLost();
+                loading.Start();
             }
-
-            login.ApplyFeedback(flow.Feedback, _loginErrors!);
+            else if (!login.IsLoginPending)
+            {
+                flow.TryStart(login, _catalog?.CurrentCatalog(DateTimeOffset.UtcNow));
+                login.ApplyFeedback(flow.Feedback, _loginErrors!);
+            }
         }
     }
 

@@ -12,18 +12,15 @@ internal sealed class LoginLoadingScreen
     private readonly string _gameText;
     private readonly string _initializingText;
     private readonly string _mapText;
-    private readonly string _startingText;
-    private bool _startingTraced;
 
     internal LoginLoadingScreen(LoginLoadingTimeline timeline, string accountText, string gameText,
-        string initializingText, string mapText, string startingText)
+        string initializingText, string mapText)
     {
         Timeline = timeline;
         _accountText = accountText;
         _gameText = gameText;
         _initializingText = initializingText;
         _mapText = mapText;
-        _startingText = startingText;
     }
 
     internal LoginLoadingTimeline Timeline
@@ -55,21 +52,18 @@ internal sealed class LoginLoadingScreen
             encoding.GetString(numeric.GetEncoded(11237).Span),
             encoding.GetString(keyed.GetEncoded("STR_LOGIN_GAME_SERVER").Span),
             encoding.GetString(numeric.GetEncoded(11238).Span),
-            encoding.GetString(numeric.GetEncoded(11239).Span),
-            encoding.GetString(numeric.GetEncoded(11240).Span));
+            encoding.GetString(numeric.GetEncoded(11239).Span));
     }
 
     internal void Start()
     {
         _sequence.Start();
-        _startingTraced = false;
         Trace = string.Empty;
     }
 
     internal void Reset()
     {
         _sequence.Reset();
-        _startingTraced = false;
         Trace = string.Empty;
     }
 
@@ -110,11 +104,7 @@ internal sealed class LoginLoadingScreen
 
         if (worldReady)
         {
-            Trace = !_startingTraced && _sequence.Frame >= 36 ? _startingText : _mapText;
-            if (_sequence.Frame >= 36)
-            {
-                _startingTraced = true;
-            }
+            Trace = _mapText;
         }
     }
 }
