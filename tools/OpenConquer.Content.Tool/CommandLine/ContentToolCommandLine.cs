@@ -9,6 +9,7 @@ internal static class ContentToolCommandLine
     private const string ValidateStartupVerb = "validate-startup";
     private const string VerifyContentSetVerb = "verify-content-set";
     private const string AnalyzeContentSetVerb = "analyze-content-set";
+    private const string AnalyzeMapDependenciesVerb = "analyze-map-dependencies";
     private const string ProfileContentReadsVerb = "profile-content-reads";
     private const string InspectServerDatVerb = "inspect-server-dat";
     private const string CompareMapSemanticsVerb = "compare-map-semantics";
@@ -37,6 +38,7 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {ValidateStartupVerb} {ContentRootOption} <content-root>",
         $"  OpenConquer.Content.Tool {VerifyContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {AnalyzeContentSetVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
+        $"  OpenConquer.Content.Tool {AnalyzeMapDependenciesVerb} {ContentSetOption} <content-set-root> [{AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {ProfileContentReadsVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
         $"  OpenConquer.Content.Tool {CompareMapSemanticsVerb} {SourceOption} <client-root> {CandidateOption} <client-root> {MapDataIdOption} <map-data-id>",
@@ -151,6 +153,25 @@ internal static class ContentToolCommandLine
                     command = verb == AnalyzeContentSetVerb
                         ? new AnalyzeContentSetCommand(values[0], mapDataId, allMaps, availableMaps)
                         : new ProfileContentReadsCommand(values[0], mapDataId, allMaps, availableMaps);
+                    return true;
+                }
+
+            case AnalyzeMapDependenciesVerb:
+                {
+                    if (!TryParseContentSetOptions(remainingArgs, [ContentSetOption],
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId,
+                            out bool allMaps, out bool availableMaps, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    if (mapDataId is not null || (!allMaps && !availableMaps))
+                    {
+                        errorMessage = "Select --all-maps or --available-maps for map dependency analysis.";
+                        return false;
+                    }
+
+                    command = new AnalyzeMapDependenciesCommand(values[0], availableMaps);
                     return true;
                 }
 
