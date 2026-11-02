@@ -36,6 +36,52 @@ public sealed class ContentPackagingEvaluatorTests
     }
 
     [Fact]
+    public void EvaluateMeasuresStartupAndMapDecodingForBothArchiveLayouts()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree workspace = new();
+        source.WriteStartupSnapshot();
+        ContentWorkloadFixture.WriteNewbieMap(source);
+
+        string contentSet = workspace.ChildPath("world");
+        ContentSetImporter.Import(source.RootPath, contentSet, mapDataId: 1010);
+        string scratch = workspace.ChildPath("scratch");
+        Directory.CreateDirectory(scratch);
+
+        ContentPackagingReport report = ContentPackagingEvaluator.Evaluate(
+            contentSet, scratch, mapDataId: 1010);
+
+        Assert.All(report.Candidates, candidate =>
+        {
+            Assert.Equal(1, candidate.LooseDecode.Maps);
+            Assert.Equal(1, candidate.ArchiveDecode.Maps);
+            Assert.Equal(candidate.LooseDecode.Frames, candidate.ArchiveDecode.Frames);
+            Assert.True(candidate.ArchiveDecode.Frames > 0);
+            Assert.Equal(candidate.LooseDecode.StartupFiles, candidate.ArchiveDecode.StartupFiles);
+            Assert.True(candidate.ArchiveDecode.StartupTime >= TimeSpan.Zero);
+            Assert.True(candidate.ArchiveDecode.WorldTime >= TimeSpan.Zero);
+        });
+        Assert.Empty(Directory.EnumerateFileSystemEntries(scratch));
+    }
+
+    [Fact]
+    public void EvaluateRejectsScratchThroughLinkedAncestor()
+    {
+        using TemporarySourceTree source = new();
+        using TemporarySourceTree workspace = new();
+        source.WriteStartupSnapshot();
+        string contentSet = workspace.ChildPath("content-set");
+        ContentSetImporter.Import(source.RootPath, contentSet);
+        string alias = workspace.ChildPath("alias");
+        Directory.CreateSymbolicLink(alias, contentSet);
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            ContentPackagingEvaluator.Evaluate(contentSet, Path.Combine(alias, "payload")));
+
+        Assert.Contains("outside", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EvaluateRejectsScratchWithinContentSet()
     {
         using TemporarySourceTree source = new();
