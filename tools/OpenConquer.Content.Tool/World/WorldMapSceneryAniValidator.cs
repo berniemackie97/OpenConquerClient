@@ -12,6 +12,13 @@ internal static class WorldMapSceneryAniValidator
     {
         PackagedClientContentSource source = PackagedClientContentSource.Open(clientRootPath);
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), mapDataId);
+
+        return Validate(source, map);
+    }
+
+    internal static WorldMapSceneryAniValidationResult Validate(
+        IClientContentSource source, GameMapContent map)
+    {
         IReadOnlyList<GameMapSceneryAniBinding> bindings = GameMapSceneryAniBindings.Load(source, map.Scene);
 
         HashSet<AniIndexSection> animations = [];
