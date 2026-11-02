@@ -30,6 +30,21 @@ public sealed class LoginLoadingScreenTests
     }
 
     [Fact]
+    public void FastAuthenticationCanReleaseTheFirstStopFromInitialization()
+    {
+        LoginLoadingScreen screen = CreateScreen();
+        screen.Start();
+
+        for (int i = 0; i < 40; i++)
+        {
+            screen.Update(LoginAttemptStatus.InitializingWorld, false, TimeSpan.FromMilliseconds(34));
+        }
+
+        Assert.Equal(36, screen.Sequence.Frame);
+        Assert.Equal("Initializing", screen.Trace);
+    }
+
+    [Fact]
     public void StartingTraceIsEmittedOnlyAtTheWorldReleaseGate()
     {
         LoginLoadingScreen screen = CreateScreen();
