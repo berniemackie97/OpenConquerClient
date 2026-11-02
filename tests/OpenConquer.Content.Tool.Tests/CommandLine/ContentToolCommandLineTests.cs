@@ -191,6 +191,21 @@ public sealed class ContentToolCommandLineTests
     }
 
     [Fact]
+    public void TryParse_ReadsContentReadProfileWithMapSelection()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["profile-content-reads", "--content-set", "content", "--map-data-id", "1010"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        ProfileContentReadsCommand profile = Assert.IsType<ProfileContentReadsCommand>(command);
+        Assert.Equal(Path.Combine(s_workingDirectory, "content"), profile.ContentSetRootPath);
+        Assert.Equal(1010u, profile.MapDataId);
+        Assert.False(profile.AllMaps);
+        Assert.False(profile.AvailableMaps);
+    }
+
+    [Fact]
     public void TryParse_ReadsAValidateStartupCommand()
     {
         Assert.True(
@@ -368,6 +383,8 @@ public sealed class ContentToolCommandLineTests
         );
         Assert.Contains(ContentToolCommandLine.UsageLines,
             line => line.Contains("analyze-content-set", StringComparison.Ordinal));
+        Assert.Contains(ContentToolCommandLine.UsageLines,
+            line => line.Contains("profile-content-reads", StringComparison.Ordinal));
 
         Assert.Contains(
             ContentToolCommandLine.UsageLines,
