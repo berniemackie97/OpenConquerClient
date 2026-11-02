@@ -80,6 +80,33 @@ permission for unbounded memory use or for putting all source assets in one rele
 6. Move bulk assets out of the source repository only after the licensed publishing source, CI
    acquisition, reproducibility, and migration plan have been verified and approved.
 
+## Content layout assessment
+
+Run `analyze-content-set --content-set <root>` with the same map-coverage flags used
+for `verify-content-set`. The tool verifies the payload and declared implemented closure
+before reporting file sizes, ordered size percentiles, duplicate digests, per-format totals,
+and path-family totals. Each duplicate is counted only after comparing the complete SHA-256
+and file length. Reports are deterministic for a given verified inventory.
+
+This is a storage inventory baseline, not a latency or compression benchmark. A later
+benchmark must record actual cold/warm access, decoding cost, CPU/GPU memory, bundle/index
+size, and differential update behavior before selecting a distribution format.
+
+## Content read profiling
+
+Use `profile-content-reads --content-set <root>` with the same map-coverage flags as
+`verify-content-set`. The tool first verifies every payload and the implemented content
+closure, then performs two complete ordered open/read passes through the runtime content-source
+contract. Each pass records files, verified byte counts, and elapsed wall-clock time. Missing
+files and changed lengths fail instead of producing misleading measurements.
+
+The first measured pass is **not** a cold-cache benchmark: verification already reads the
+payload and operating-system caching is not controlled. Both timings describe access under
+that test environment and may be compared only when hardware, storage, source set, and
+execution conditions are recorded. This does not measure decompression, GPU uploads,
+rendering, or bundle acquisition. Additional formats must use the same request sequence
+before a performance comparison is meaningful.
+
 ## Map semantic comparison
 
 Before replacing the map container or DMap decoder, compare two independently staged

@@ -5,6 +5,8 @@ internal abstract record ContentToolCommand;
 internal sealed record ImportContentSetCommand(string SourceRootPath, string DestinationRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false, string? LoadingMediaRootPath = null) : ContentToolCommand;
 internal sealed record ValidateStartupCommand(string ContentRootPath) : ContentToolCommand;
 internal sealed record VerifyContentSetCommand(string ContentSetRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;
+internal sealed record AnalyzeContentSetCommand(string ContentSetRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;
+internal sealed record ProfileContentReadsCommand(string ContentSetRootPath, uint? MapDataId = null, bool AllMaps = false, bool AvailableMaps = false) : ContentToolCommand;
 internal sealed record InspectServerDatCommand(string FilePath) : ContentToolCommand;
 internal sealed record CompareMapSemanticsCommand(string SourceRootPath, string CandidateRootPath, uint MapDataId) : ContentToolCommand;
 internal sealed record ValidateMapPuzzlesCommand(string SourceRootPath, uint MapDataId) : ContentToolCommand;
