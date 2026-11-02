@@ -126,6 +126,22 @@ path; identical byte payloads at different paths remain separate until an explic
 content-identity migration. These measurements describe the implemented dependency
 closure rather than observed access frequency or a selected bundle layout.
 
+## Content-set update assessment
+
+Use `compare-content-sets --source <previous-set-root> --candidate <candidate-set-root>`
+with the same map-coverage option used for both content sets, when applicable. Both
+sets must pass complete payload integrity and implemented-closure verification before
+comparison. The report accounts for unchanged, added, replaced, and removed canonical
+paths; replaced bytes are measured in the candidate and removed bytes in the previous
+set. It separately counts distinct candidate payloads whose SHA-256 and length are
+already present in the previous set, including resources moved to a different path.
+
+New distinct payload bytes are a file-level content-addressed acquisition estimate,
+not the number of bytes a release package currently downloads. This comparison does
+not benchmark compression, bundle index overhead, patch algorithms, transfer cost,
+metadata, or live update behavior. Differences in selected map coverage contribute to
+the reported changes. The existing signed ZIP distribution path is unchanged.
+
 ## Map semantic comparison
 
 Before replacing the map container or DMap decoder, compare two independently staged

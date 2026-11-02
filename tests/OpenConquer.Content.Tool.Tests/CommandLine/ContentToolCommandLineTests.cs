@@ -305,6 +305,53 @@ public sealed class ContentToolCommandLineTests
         Assert.Equal(Path.Combine(s_workingDirectory, "client"), validate.SourceRootPath);
     }
 
+    [Theory]
+    [InlineData("--all-maps", true, false)]
+    [InlineData("--available-maps", false, true)]
+    public void TryParse_ReadsContentSetComparisonWithMapCoverage(string option, bool allMaps, bool availableMaps)
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["compare-content-sets", "--candidate", "candidate", option, "--source", "previous"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        CompareContentSetsCommand compare = Assert.IsType<CompareContentSetsCommand>(command);
+        Assert.Equal(Path.Combine(s_workingDirectory, "previous"), compare.PreviousRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "candidate"), compare.CandidateRootPath);
+        Assert.Null(compare.MapDataId);
+        Assert.Equal(allMaps, compare.AllMaps);
+        Assert.Equal(availableMaps, compare.AvailableMaps);
+    }
+
+    [Fact]
+    public void TryParse_ReadsContentSetComparisonWithSingleMap()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["compare-content-sets", "--source", "previous", "--map-data-id", "1010", "--candidate", "candidate"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        Assert.Equal(1010u, Assert.IsType<CompareContentSetsCommand>(command).MapDataId);
+    }
+
+    [Fact]
+    public void TryParse_RejectsAmbiguousContentSetComparisonOptions()
+    {
+        string[][] invalid =
+        [
+            ["compare-content-sets", "--source", "previous"],
+            ["compare-content-sets", "--source", "previous", "--candidate", "candidate", "--all-maps", "--available-maps"],
+            ["compare-content-sets", "--source", "previous", "--candidate", "candidate", "--map-data-id", "0"],
+        ];
+
+        foreach (string[] args in invalid)
+        {
+            Assert.False(ContentToolCommandLine.TryParse(args, s_workingDirectory,
+                out ContentToolCommand? command, out _));
+            Assert.Null(command);
+        }
+    }
+
     [Fact]
     public void TryParse_ReadsMapComparisonCommandInAnyOptionOrder()
     {
@@ -395,6 +442,8 @@ public sealed class ContentToolCommandLineTests
     {
         Assert.Contains(ContentToolCommandLine.UsageLines,
             line => line.Contains("compare-map-semantics", StringComparison.Ordinal));
+        Assert.Contains(ContentToolCommandLine.UsageLines,
+            line => line.Contains("compare-content-sets", StringComparison.Ordinal));
         Assert.Contains(ContentToolCommandLine.UsageLines,
             line => line.Contains("validate-map-scenery-ani", StringComparison.Ordinal));
         Assert.Contains(ContentToolCommandLine.UsageLines,

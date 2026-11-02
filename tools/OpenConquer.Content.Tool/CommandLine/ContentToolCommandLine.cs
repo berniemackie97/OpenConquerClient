@@ -13,6 +13,7 @@ internal static class ContentToolCommandLine
     private const string ProfileContentReadsVerb = "profile-content-reads";
     private const string InspectServerDatVerb = "inspect-server-dat";
     private const string CompareMapSemanticsVerb = "compare-map-semantics";
+    private const string CompareContentSetsVerb = "compare-content-sets";
     private const string ValidateMapPuzzlesVerb = "validate-map-puzzles";
     private const string ValidateMapSceneryAniVerb = "validate-map-scenery-ani";
     private const string ValidateMapTerrainScenesVerb = "validate-map-terrain-scenes";
@@ -42,6 +43,7 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {ProfileContentReadsVerb} {ContentSetOption} <content-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {InspectServerDatVerb} {FileOption} <server-dat>",
         $"  OpenConquer.Content.Tool {CompareMapSemanticsVerb} {SourceOption} <client-root> {CandidateOption} <client-root> {MapDataIdOption} <map-data-id>",
+        $"  OpenConquer.Content.Tool {CompareContentSetsVerb} {SourceOption} <previous-set-root> {CandidateOption} <candidate-set-root> [{MapDataIdOption} <map-data-id> | {AllMapsOption} | {AvailableMapsOption}]",
         $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapSceneryAniVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapTerrainScenesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
@@ -118,6 +120,19 @@ internal static class ContentToolCommandLine
                     }
 
                     command = new VerifyContentSetCommand(values[0], mapDataId, allMaps, availableMaps);
+                    return true;
+                }
+
+            case CompareContentSetsVerb:
+                {
+                    if (!TryParseContentSetOptions(remainingArgs, [SourceOption, CandidateOption],
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId,
+                            out bool allMaps, out bool availableMaps, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    command = new CompareContentSetsCommand(values[0], values[1], mapDataId, allMaps, availableMaps);
                     return true;
                 }
 
