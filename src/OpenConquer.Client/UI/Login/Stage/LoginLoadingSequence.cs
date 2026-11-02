@@ -48,15 +48,15 @@ internal sealed class LoginLoadingSequence
         _remainder -= s_frameDuration * steps;
         for (int i = 0; i < steps; i++)
         {
+            if (Frame >= 18)
+            {
+                InnerFrames++;
+            }
+
             if ((Frame == 17 && !_accountReady) || (Frame == 36 && !_worldReady))
             {
                 _remainder = TimeSpan.Zero;
                 break;
-            }
-
-            if (Frame >= 18)
-            {
-                InnerFrames++;
             }
 
             Frame++;
