@@ -1,5 +1,3 @@
-using OpenConquer.Content.Tool.Manifest;
-
 namespace OpenConquer.Content.Tool.Analysis;
 
 internal sealed record ContentPackagingCandidate(
