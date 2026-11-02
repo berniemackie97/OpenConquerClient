@@ -18,7 +18,7 @@ public sealed record GameMapAnimatedOverlayEntry(string ResourcePath, string Par
 public sealed record GameMapPositionedOverlayRecord(int InsertIndex, int HeaderInt0, int HeaderInt1,
     IReadOnlyList<GameMapPositionedOverlayEntry> Entries);
 
-/// <summary>Post-grid DMap records, in native file and component insertion order.</summary>
+/// <summary>Post-grid DMap records in encoded file and component insertion order.</summary>
 public sealed class GameMapSceneSections
 {
     private const int MaximumDecodedMapBytes = 32 * 1024 * 1024;
@@ -46,7 +46,7 @@ public sealed class GameMapSceneSections
         get;
     }
 
-    public static GameMapSceneSections Parse(ReadOnlySpan<byte> decodedMap, int gridEndOffset)
+    public static GameMapSceneSections Parse(ReadOnlySpan<byte> decodedMap, int gridEndOffset, uint headerField0)
     {
         if (decodedMap.Length > MaximumDecodedMapBytes || gridEndOffset < 0 || gridEndOffset > decodedMap.Length)
         {
@@ -63,6 +63,7 @@ public sealed class GameMapSceneSections
         }
 
         int sceneryCount = reader.ReadCount(4 + 0x48);
+        int spritePayloadLength = headerField0 == 1005 ? 0x1A4 : 0x1A0;
         GameMapSceneryRecord[] scenery = new GameMapSceneryRecord[sceneryCount];
         for (int i = 0; i < scenery.Length; i++)
         {
@@ -70,7 +71,7 @@ public sealed class GameMapSceneSections
             int length = typeCode switch
             {
                 1 => 0x10C,
-                4 => 0x1A0,
+                4 => spritePayloadLength,
                 10 => 0x48,
                 15 => 0x114,
                 _ => throw new InvalidDataException($"DMap scenery type {typeCode} has no verified payload layout."),
