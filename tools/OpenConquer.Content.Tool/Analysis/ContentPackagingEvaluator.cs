@@ -28,6 +28,15 @@ internal static class ContentPackagingEvaluator
             throw new InvalidOperationException("Benchmark scratch must be outside both content sets.");
         }
 
+        RequireUnlinkedDivergence(scratchRoot, contentSetRoot);
+        RequireUnlinkedDivergence(contentSetRoot, scratchRoot);
+        if (previousRootPath is not null)
+        {
+            string previousRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(previousRootPath));
+            RequireUnlinkedDivergence(scratchRoot, previousRoot);
+            RequireUnlinkedDivergence(previousRoot, scratchRoot);
+        }
+
         ClientContentRoot source = new(Path.Combine(contentSetRoot, "payload"));
         ContentReadPass[] forward = ContentReadProfiler.Measure(source, manifest);
         ContentReadPass[] reverse = ContentReadProfiler.Measure(source, manifest, reverseOrder: true);
@@ -39,8 +48,10 @@ internal static class ContentPackagingEvaluator
         {
             ContentPackagingCandidate[] candidates =
             [
-                EvaluateCandidate(source, manifest, previous, stage, "Stored ZIP", CompressionLevel.NoCompression),
-                EvaluateCandidate(source, manifest, previous, stage, "Compressed ZIP", CompressionLevel.Optimal),
+                EvaluateCandidate(source, manifest, previous, stage, "Stored ZIP",
+                    CompressionLevel.NoCompression, mapDataId, allMaps, availableMaps),
+                EvaluateCandidate(source, manifest, previous, stage, "Compressed ZIP",
+                    CompressionLevel.Optimal, mapDataId, allMaps, availableMaps),
             ];
 
             return new ContentPackagingReport(manifest.FileCount, manifest.Length, forward,
@@ -54,7 +65,7 @@ internal static class ContentPackagingEvaluator
 
     private static ContentPackagingCandidate EvaluateCandidate(IClientContentSource source,
         ContentManifest manifest, ContentManifest? previous, string stage,
-        string name, CompressionLevel compression)
+        string name, CompressionLevel compression, uint? mapDataId, bool allMaps, bool availableMaps)
     {
         string first = Path.Combine(stage, compression == CompressionLevel.NoCompression ? "stored.zip" : "compressed.zip");
         string second = Path.Combine(stage, compression == CompressionLevel.NoCompression ? "stored-repeat.zip" : "compressed-repeat.zip");
@@ -74,11 +85,31 @@ internal static class ContentPackagingEvaluator
         }
 
         using ContentArchiveSource archive = new(first, manifest);
+        (ContentDecodeMetrics looseDecode, ContentDecodeMetrics archiveDecode) =
+            ContentDecodeWorkload.Compare(source, archive, manifest, mapDataId, allMaps || availableMaps);
         return new ContentPackagingCandidate(
             name, new FileInfo(first).Length, buildTime,
             ContentReadProfiler.Measure(archive, manifest),
             ContentReadProfiler.Measure(archive, manifest, reverseOrder: true),
+            looseDecode, archiveDecode,
             previous is null ? null : archive.CompressedBytesForNewPayloads(manifest, previous));
+    }
+
+    private static void RequireUnlinkedDivergence(string path, string otherPath)
+    {
+        for (DirectoryInfo? current = new(path); current is not null; current = current.Parent)
+        {
+            if (IsWithin(current.FullName, otherPath))
+            {
+                break;
+            }
+
+            if (current.LinkTarget is not null || (current.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new InvalidOperationException(
+                    "Benchmark scratch must be outside both content sets without linked path ancestors.");
+            }
+        }
     }
 
     private static bool IsWithin(string root, string path)

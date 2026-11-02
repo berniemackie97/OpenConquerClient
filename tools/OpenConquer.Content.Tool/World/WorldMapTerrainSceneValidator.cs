@@ -12,6 +12,13 @@ internal static class WorldMapTerrainSceneValidator
     {
         PackagedClientContentSource source = PackagedClientContentSource.Open(clientRootPath);
         GameMapContent map = GameMapContent.Load(source, GameMapCatalog.Load(source), mapDataId);
+
+        return Validate(source, map);
+    }
+
+    internal static WorldMapTerrainSceneValidationResult Validate(
+        IClientContentSource source, GameMapContent map)
+    {
         GameMapTerrainSceneResources resources = GameMapTerrainSceneResources.Load(source, map);
 
         HashSet<GameMapTerrainObjectBinding> objects = new(ReferenceEqualityComparer.Instance);
