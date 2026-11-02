@@ -178,6 +178,8 @@ public sealed class LoginScreenTests : IDisposable
         Type(screen, s_fields.PasswordField, "Secret");
 
         screen.BeginLoading();
+        LoginLoadingSequence sequence = new();
+        sequence.Start();
 
         Assert.True(screen.AwaitingLoginCommand);
         Assert.Equal(LoginCredentialFocus.None, screen.Credentials.Focus);
@@ -189,6 +191,12 @@ public sealed class LoginScreenTests : IDisposable
         Click(screen, s_fields.PasswordField.X + 2, s_fields.PasswordField.Y + 2);
         Assert.Equal(6, screen.Credentials.PasswordLength);
 
+        for (int frame = 0; frame < 30; frame++)
+        {
+            sequence.Advance(TimeSpan.FromMilliseconds(34));
+        }
+
+        Assert.True(sequence.ReadyForAuthentication);
         screen.DispatchPendingLogin();
         Assert.True(screen.Credentials.TryTakeLoginCredentials(out byte[] account, out char[] password));
         try
