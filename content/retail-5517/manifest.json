@@ -3,8 +3,8 @@
   "sourceSet": "retail-5517",
   "clientVersion": "5517",
   "versionMarkerSha256": "5078bca8d0b0f7f9d30f3c1883e2b42f6d616761d312331a6ca7dd5776d590a8",
-  "fileCount": 3787,
-  "length": 21331584,
+  "fileCount": 3936,
+  "length": 26663115,
   "entries": [
     {
       "sourcePath": "Data/Pic/BlueLight/01.dds",
@@ -308,10 +308,24 @@
       "signature": "unknown"
     },
     {
+      "sourcePath": "ani/MapScene.ani",
+      "pathKey": "ani/mapscene.ani",
+      "length": 129051,
+      "sha256": "70addd15af3b979dd1e3540b5495090ef825b5572bf40579ca28f833098b2fa8",
+      "signature": "unknown"
+    },
+    {
       "sourcePath": "ani/effect.ani",
       "pathKey": "ani/effect.ani",
       "length": 11112,
       "sha256": "db435ccc97f1963ecbbdbc2456477e2eab1b5f3ad6781ac756fc403e8d6f3eac",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ani/newbie.ani",
+      "pathKey": "ani/newbie.ani",
+      "length": 6860,
+      "sha256": "458d1714f455576df74c866bdd5027b1fc79d227bf6134353374bba2876c79c3",
       "signature": "unknown"
     },
     {
@@ -26418,6 +26432,818 @@
       "signature": "dds"
     },
     {
+      "sourcePath": "data/map/mapobj/newbie/newbie01.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie01.dds",
+      "length": 65664,
+      "sha256": "bb4a9356115ba43b3dec38cee926042de66a01ccc56a36e1638be74b130593a9",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie04.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie04.dds",
+      "length": 16512,
+      "sha256": "5ee382ad55cf8393d1e329d68c2546ab44142b66416251a128d7816594580270",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie05.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie05.dds",
+      "length": 4224,
+      "sha256": "ac75130424e0f014cb025b26ddfc8cdbc1713bef219aff428cc1b03dfef56b82",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie06.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie06.dds",
+      "length": 1152,
+      "sha256": "3a7dd55105fd5fef374aeeaedb2df9666a7e1fe441b9020b4df6b6910b7abf7a",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie07.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie07.dds",
+      "length": 16512,
+      "sha256": "5ab026ccba651fb32ef7f9c481c6fd11ecaa7eb8ed1fdc2fc5b0cac64dbbbad8",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie08.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie08.dds",
+      "length": 16512,
+      "sha256": "91072dfa1619a9e0b0a76283f22da4799bc1ccff887308a5ff77d2515851224f",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie09.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie09.dds",
+      "length": 4224,
+      "sha256": "6cc2a68a690a2e22b4c9fac204138a04f4bd1dc46252825bceb934b173e9eb59",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie10.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie10.dds",
+      "length": 4224,
+      "sha256": "cfe5eb7f0cca55fb911f502a6a5725819347bc6b832cee4daca87ae11ce716af",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie11.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie11.dds",
+      "length": 4224,
+      "sha256": "4247d8094fe6b41dddf5a816bf789565a4453dc6ecdf8bcf8bd7bd6f6936cf4d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie12.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie12.dds",
+      "length": 1152,
+      "sha256": "56cafe3a2219cb670b623ca418c21fbf3dc59b1e6d93c0657bd9d4ebe5926ae9",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie13.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie13.dds",
+      "length": 16512,
+      "sha256": "73bb0dc3212fea468121f650da948abbc9a671bb2f2109d261c91adf8c9430e4",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie14.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie14.dds",
+      "length": 65664,
+      "sha256": "6ba705d52193be91892bb85da4e04f356ff88a5c0cddb0c885073439fb630640",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie15.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie15.dds",
+      "length": 16512,
+      "sha256": "4981229ca77347d94c02139709a34db22084c971de8b751a963069192a659715",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie16.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie16.dds",
+      "length": 16512,
+      "sha256": "b704d16f3fca5b5e777864c6f06663947621402a1780cc9ae024c975f45b6572",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie17.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie17.dds",
+      "length": 16512,
+      "sha256": "b424d4fd27092a280a6547bc70f3a01f8823d427fb42822e7394c98f356fcbc1",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/newbie/newbie18.dds",
+      "pathKey": "data/map/mapobj/newbie/newbie18.dds",
+      "length": 16512,
+      "sha256": "63c439baf6ca518032bc5b008436f557ea41d12ddf3e11c80dc100db22e86404",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/sky/stand01.dds",
+      "pathKey": "data/map/mapobj/sky/stand01.dds",
+      "length": 65664,
+      "sha256": "9520c83a87c05120057c9d49603d67a35bb17a4241fb198215db96d3933d6688",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/sky/stand02.dds",
+      "pathKey": "data/map/mapobj/sky/stand02.dds",
+      "length": 16512,
+      "sha256": "8d4350dc73e8d640cd420211a847c0939337c309fc9abf9f21ea538101313584",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/sky/stand03.dds",
+      "pathKey": "data/map/mapobj/sky/stand03.dds",
+      "length": 65664,
+      "sha256": "7d60acf32c1fb289371f1727e9d799af15c27af35e617b0560a98699a9f1adff",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/sky/stand05.dds",
+      "pathKey": "data/map/mapobj/sky/stand05.dds",
+      "length": 65664,
+      "sha256": "fd11ff297c1ca9c13d067aca13128b446cb6153803c7b6212269a18970049f4e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/sky/stand06.dds",
+      "pathKey": "data/map/mapobj/sky/stand06.dds",
+      "length": 16512,
+      "sha256": "3faea9993f9c57a52b4ccea9dfaba1fb00db54a752f6fec8b94e291d01ccf91e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/mapobj/sky/stand08.dds",
+      "pathKey": "data/map/mapobj/sky/stand08.dds",
+      "length": 65664,
+      "sha256": "ba24c0ae1da59803c81d3ae90d58661cc0142e22d3fe88e6d7253d35571ca013",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg000.dds",
+      "pathKey": "data/map/puzzle/newbie/bg000.dds",
+      "length": 32896,
+      "sha256": "9ebea83836f486550a18ae346b5e7481baa632f8b875554d224bb575e54b8eff",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg001.dds",
+      "pathKey": "data/map/puzzle/newbie/bg001.dds",
+      "length": 32896,
+      "sha256": "8c54778773412309957090878df475569a7f6defc445a76acfc3ed4368737e0f",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg002.dds",
+      "pathKey": "data/map/puzzle/newbie/bg002.dds",
+      "length": 32896,
+      "sha256": "277c7845ac2a94ca380a77d08965e0037ab8a4922fef907e0d79a01eccf1d49b",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg003.dds",
+      "pathKey": "data/map/puzzle/newbie/bg003.dds",
+      "length": 32896,
+      "sha256": "a19ba1ae74163faac147212ce9a8f558e1f774abed5610e4fd97d4cfc2274a52",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg004.dds",
+      "pathKey": "data/map/puzzle/newbie/bg004.dds",
+      "length": 32896,
+      "sha256": "052d88f4c03f73c9968fa46cc21c92342aa44612bbaeee46c5e15aed49bfd044",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg005.dds",
+      "pathKey": "data/map/puzzle/newbie/bg005.dds",
+      "length": 32896,
+      "sha256": "f5a5cd4e715431a2e538ca4283ab588bbfc3fa128ecd33f91a4011c0ce2a536e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg006.dds",
+      "pathKey": "data/map/puzzle/newbie/bg006.dds",
+      "length": 32896,
+      "sha256": "ba27e3d990fbf03a25dc46ebb6127abc1f08d501fb92e248c003e43fa02eff8d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg007.dds",
+      "pathKey": "data/map/puzzle/newbie/bg007.dds",
+      "length": 32896,
+      "sha256": "62f28f2f67a2408f3789ab5173d46260e7cc78af0e0c2225f289d125a591cc41",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg008.dds",
+      "pathKey": "data/map/puzzle/newbie/bg008.dds",
+      "length": 32896,
+      "sha256": "f775af155fa0cddf077e81286109a0db04883ea1c10c6379224d6e3de0ec0a5b",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg009.dds",
+      "pathKey": "data/map/puzzle/newbie/bg009.dds",
+      "length": 32896,
+      "sha256": "d34cdc62b27f6e9c5735c75930cd0a18db7f455c21b12c425035961980141f67",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg010.dds",
+      "pathKey": "data/map/puzzle/newbie/bg010.dds",
+      "length": 32896,
+      "sha256": "5463f1ff884922ae421a83984a8688aa13f4d331d8d134286519b57f0c13fe47",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg011.dds",
+      "pathKey": "data/map/puzzle/newbie/bg011.dds",
+      "length": 32896,
+      "sha256": "d7b13f11078e66c504e5558539e387c461950c731f73b262bbec63006e12b9c5",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg012.dds",
+      "pathKey": "data/map/puzzle/newbie/bg012.dds",
+      "length": 32896,
+      "sha256": "32eda1a1a117f6986b08d80e372c12b22c0f73b26e9624c5bb852db2b7718bb8",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg013.dds",
+      "pathKey": "data/map/puzzle/newbie/bg013.dds",
+      "length": 32896,
+      "sha256": "8f16877fe2de94ad97189a481c43b242271ba88b6a0c3849f91425811ef3866b",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg014.dds",
+      "pathKey": "data/map/puzzle/newbie/bg014.dds",
+      "length": 32896,
+      "sha256": "6ae934c39f0f32582cb014c4ae0c5ce349cae3b19852a08f72d39b4604adfa75",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg015.dds",
+      "pathKey": "data/map/puzzle/newbie/bg015.dds",
+      "length": 32896,
+      "sha256": "6deac6f9348cdce56b729d1f33fb3b11406fece6635a1959923bb4c42e023162",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg016.dds",
+      "pathKey": "data/map/puzzle/newbie/bg016.dds",
+      "length": 32896,
+      "sha256": "d4a06aeb7d82da250a9eb686c63ccdd60ae127574954652386b63d33d2722993",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg017.dds",
+      "pathKey": "data/map/puzzle/newbie/bg017.dds",
+      "length": 32896,
+      "sha256": "62de21739934a0ec2154cb317dad613609244f9ca75d6b6e0639c347c26e3c5c",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg018.dds",
+      "pathKey": "data/map/puzzle/newbie/bg018.dds",
+      "length": 32896,
+      "sha256": "f0f0095fb80e202dded02a649d4b73310cd214b6b1bbe6d4960bf2fe9d34171e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg019.dds",
+      "pathKey": "data/map/puzzle/newbie/bg019.dds",
+      "length": 32896,
+      "sha256": "922c77050f1c06615392254758602e12abb400e5abb24f06f6f2cc40b68d4486",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg020.dds",
+      "pathKey": "data/map/puzzle/newbie/bg020.dds",
+      "length": 32896,
+      "sha256": "2255cbd37db19a1d8f17c8cc6dcc911b12aa7c966cb8169c4abca9c7ec7c7b39",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg021.dds",
+      "pathKey": "data/map/puzzle/newbie/bg021.dds",
+      "length": 32896,
+      "sha256": "fc5d256ce79423fc626e97b0443d0d006463332ed18f113ca7d8ce3269c85c62",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg022.dds",
+      "pathKey": "data/map/puzzle/newbie/bg022.dds",
+      "length": 32896,
+      "sha256": "0d70f0a80d6186cd0e67b5ae3ec3f334a42cf2fd3db93f834c1aefdd045b7892",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg023.dds",
+      "pathKey": "data/map/puzzle/newbie/bg023.dds",
+      "length": 32896,
+      "sha256": "ac0c8c6a9d88b50a76636b4871d67528bb1d493bc8b718097f583dea7a7b0d0d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg024.dds",
+      "pathKey": "data/map/puzzle/newbie/bg024.dds",
+      "length": 32896,
+      "sha256": "4339a9f33a9dcafbfdecd55c55f9062df55ddc2ad3708ef32b19e1b06c242ef3",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg025.dds",
+      "pathKey": "data/map/puzzle/newbie/bg025.dds",
+      "length": 32896,
+      "sha256": "fd277ee4371e3a7506ff986a025ba71f0889fdc5403a3c595a873cad07aac9d5",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg026.dds",
+      "pathKey": "data/map/puzzle/newbie/bg026.dds",
+      "length": 32896,
+      "sha256": "cd083dc92a25ed4eb6f978895241a6b4d0cb8930c3887f2406f63304a0971453",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg027.dds",
+      "pathKey": "data/map/puzzle/newbie/bg027.dds",
+      "length": 32896,
+      "sha256": "474825b9427f2924e115c265a6222423c62739e17af4c2f4efc695cdac2a3162",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg028.dds",
+      "pathKey": "data/map/puzzle/newbie/bg028.dds",
+      "length": 32896,
+      "sha256": "14b66490a511714838ac25f3ad0c8a7dfeb14c7873ed30f2b81fdbeec1aaba49",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg029.dds",
+      "pathKey": "data/map/puzzle/newbie/bg029.dds",
+      "length": 32896,
+      "sha256": "fb1778df1be598adb773be3791401e53bad65697ac1358f76b23648f7e8eaf74",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg030.dds",
+      "pathKey": "data/map/puzzle/newbie/bg030.dds",
+      "length": 32896,
+      "sha256": "87106724171aad8d70c8af0a6246282da8aad27817db3d429ae8bf553fdd43fc",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg031.dds",
+      "pathKey": "data/map/puzzle/newbie/bg031.dds",
+      "length": 32896,
+      "sha256": "6ce5b792f543a9774b4a3c18a00afb6de7726aa1cc3dacdb68e3c6a1e57e8316",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg032.dds",
+      "pathKey": "data/map/puzzle/newbie/bg032.dds",
+      "length": 32896,
+      "sha256": "370004c8f41a1cd9dde793b9b365c578b1d65842ec48dad3bef3b2794e839973",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg033.dds",
+      "pathKey": "data/map/puzzle/newbie/bg033.dds",
+      "length": 32896,
+      "sha256": "0e4f48e5aef1ecb4e6ba2e0765cb3648700e2c63c7ee9b1cf369b1fcff3cce1f",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg034.dds",
+      "pathKey": "data/map/puzzle/newbie/bg034.dds",
+      "length": 32896,
+      "sha256": "579de0af829f58484f99d225dc769bc429145ff6a0777c1859d7dc098e78135e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/bg035.dds",
+      "pathKey": "data/map/puzzle/newbie/bg035.dds",
+      "length": 32896,
+      "sha256": "73cdcf1cdb5d79f57f06f7abbaeed7b3c0143a0e6cd13b17eff19e1dcc2c1480",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie004.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie004.dds",
+      "length": 65664,
+      "sha256": "0190e7defc3f2452ca13f362ca2ce3ba4da757b568353b6fab2f42507a5a5f63",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie005.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie005.dds",
+      "length": 32896,
+      "sha256": "f414793043f137e30a458bfba645724ac711f87a9224b08a097eb2edcfdfb451",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie007.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie007.dds",
+      "length": 65664,
+      "sha256": "b4b994969327f8e2f205140e7d1e00535cf3992e9a327b97ab58bab460adf0d3",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie008.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie008.dds",
+      "length": 65664,
+      "sha256": "0839113ee6b4663f3133e9d0c33b5c9e7546e2048f8b2777bd48af4774e6b29e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie009.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie009.dds",
+      "length": 65664,
+      "sha256": "f397d3ddcd07c269f472b8bc0bb2c8546e0da0d1ac3327d7b13c583719c5247e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie010.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie010.dds",
+      "length": 65664,
+      "sha256": "bbbf93611a978e38cbda461a839d0dcc6138518f3fff1aebcee48c04782e4a5c",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie011.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie011.dds",
+      "length": 32896,
+      "sha256": "dc48d944a2e7cb26c55ae2091ed6f23df34997e93a82ec3a4ea0c61b610dca88",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie012.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie012.dds",
+      "length": 65664,
+      "sha256": "7c5b62bda047bc19e9eb8974fc62f9b77f516158a1d58413cff394319a29754e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie013.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie013.dds",
+      "length": 65664,
+      "sha256": "92dd98487b1950b429465780c3e8c425de6557387d1c8557d54a30dfc63c321b",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie014.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie014.dds",
+      "length": 32896,
+      "sha256": "a3fc40a61e7c11235e8b205edc79efe35f03ff4a1c0e892aff353874f169aa78",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie015.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie015.dds",
+      "length": 32896,
+      "sha256": "3cdffed3b339398569661973218f217b6575415ec49a20b216f8450c25e7320c",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie016.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie016.dds",
+      "length": 32896,
+      "sha256": "bb7934d6efd63d6391b1244c0a2b5708e6a09c378b6c8b8a30493d2af49479f7",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie017.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie017.dds",
+      "length": 32896,
+      "sha256": "2396bcc5bb45173400eb224bf4e4f74420b8c4e485f4610e1acee7a994bd12a0",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie018.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie018.dds",
+      "length": 65664,
+      "sha256": "ef260eb2eaab6603be94d8ca07dfc1cbb485664b3e2309e0778715daf896b1fc",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie019.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie019.dds",
+      "length": 32896,
+      "sha256": "6269685bffea204c2a6e41e056305dd65542c737995c9d11f818b38119838e6d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie020.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie020.dds",
+      "length": 32896,
+      "sha256": "1d9938834f6e85ed0d2838d3b3a16a85d0978ffdddbff8f4be94544276efe90c",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie021.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie021.dds",
+      "length": 32896,
+      "sha256": "135aeadf88dfa195b75c31c6a78434f543720a1413b9169e4a1e33ef150f2421",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie022.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie022.dds",
+      "length": 32896,
+      "sha256": "608f18955f640d65849148f556f855547e46b47bd20569c8df2cd43984044a5d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie023.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie023.dds",
+      "length": 32896,
+      "sha256": "e74829b9412c9f6136323b3a34125df21fcd41b6f238b04a6667bbb4be1a810d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie024.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie024.dds",
+      "length": 65664,
+      "sha256": "e46fd0ecd3c0575b7609e5cd30261563f2bbed79e1eecad0453476f12ab21f9e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie025.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie025.dds",
+      "length": 32896,
+      "sha256": "e1eb9901d10f38bc02c972f46b4ac7634a253caa6464591f839f335cbeca0ffe",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie026.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie026.dds",
+      "length": 32896,
+      "sha256": "dccf2ee5346373c59fb09cd6e23f849665b2f09a8517c6643872347d3bac846b",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie027.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie027.dds",
+      "length": 32896,
+      "sha256": "d89c5f5dd1bfe40910122c38ad0b8e5817cacccd9a7e742abad878ba4ed8185a",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie028.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie028.dds",
+      "length": 32896,
+      "sha256": "ca42ba7e25b5419d33e4e2e513bfa633d50a30cc90ce13c4dfbfda975b96d5bf",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie029.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie029.dds",
+      "length": 32896,
+      "sha256": "8c7a236f2a7c48c772242b29072d7b0a2832b7403ffe561b3809cfeef5a21b93",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie030.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie030.dds",
+      "length": 65664,
+      "sha256": "ad1286093f3af5d84c284040fd795d340dd8137450abff4772d733fc8f230948",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie031.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie031.dds",
+      "length": 32896,
+      "sha256": "607c641de5c264a5a7466d20297308bb282e3502b7d51e2637885980a3ab457c",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie032.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie032.dds",
+      "length": 32896,
+      "sha256": "37e93ef309707b5f96a29641323408ef73e0ce7f19c991086d39419c6111fb79",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie033.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie033.dds",
+      "length": 32896,
+      "sha256": "55400a5a3b9650ff06a4b021c3269f8d1c1000cb4b6a1082670183cd9021321d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie034.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie034.dds",
+      "length": 32896,
+      "sha256": "26a1be918a63ee9a298a2d081caa22bc4ef5dc59367d8472143f34aa8c57bcf5",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie035.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie035.dds",
+      "length": 32896,
+      "sha256": "36bbb0dbd03de38d1fcdc76d2f375584692b806ab73790aa2f185fc000ea7054",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie036.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie036.dds",
+      "length": 65664,
+      "sha256": "7118629e61921f4d4e36abe6ea9c2c6c63861dfaa30983807ed5c3a772a47f3c",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie037.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie037.dds",
+      "length": 32896,
+      "sha256": "ac258bffd2d823b79ea6519137da25cd00ad824e1824a2b07d29f2b8388eb49d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie038.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie038.dds",
+      "length": 32896,
+      "sha256": "06a5c6d18947e16551c6b92560fde24a7c66d05032d74d5d697873c065036a8a",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie039.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie039.dds",
+      "length": 32896,
+      "sha256": "79efd05f629f8d589127c46e60093d1a4b1e611e3d8d14968b648808dd3b4e7a",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie040.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie040.dds",
+      "length": 32896,
+      "sha256": "004b459dbf7a6109b7bd6367184c75618a8cb2970a115a7abd7f21e2a6fac592",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie041.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie041.dds",
+      "length": 32896,
+      "sha256": "36812dcbca24c29b0dd88ddb000e1b9b13acdf09c842cfa74ad4f61e3f06e1df",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie042.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie042.dds",
+      "length": 65664,
+      "sha256": "bad48da19d1ba2dbf13434d2f9dc578ddc05bf588e349f779c23cbb0c01307bd",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie043.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie043.dds",
+      "length": 32896,
+      "sha256": "55b8a4b72acec80a333d044fd61ce41da723ac50c461dcf9a802204bd053af05",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie044.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie044.dds",
+      "length": 32896,
+      "sha256": "10ab219c0f22a37573b095365bdc5f1e16d78d7cef1676542088fc6ac0b96bd6",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie045.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie045.dds",
+      "length": 32896,
+      "sha256": "e37d3b5973eac3fe8c6b8f9b52a3e8345c7940e790c2e4d9e4da5ba0c3c8be72",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie046.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie046.dds",
+      "length": 32896,
+      "sha256": "c80d03b7642d1b0d0d11076f5d51f1c4d724beded631cd13e68d2f1de77a4cbb",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie047.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie047.dds",
+      "length": 32896,
+      "sha256": "d37fa2b8f19c2d451e870e062cb8a9c3c9f9856221ded469dc5d4b2b3ca040de",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie048.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie048.dds",
+      "length": 65664,
+      "sha256": "29ab2b51976489b3da100d5501692e0343d93bba43dfd1f667f20162286e2b28",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie049.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie049.dds",
+      "length": 65664,
+      "sha256": "868826e4681b200052d78e02968ee07e42cb7adeb24cca9c12ed0b4be8475bb0",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie050.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie050.dds",
+      "length": 65664,
+      "sha256": "3534b11d0a518425d4d46dae867d261aa97e1211a17346286af1addb676ce761",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie051.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie051.dds",
+      "length": 32896,
+      "sha256": "605fe55007629fc17725d55997461b808bb038c1e35c3747b57a3d0443996c8e",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie052.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie052.dds",
+      "length": 32896,
+      "sha256": "685b3d575f525f2fdf7c6c49b9acb349d62f4680db2e2de2e89dc28021a9cd84",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/newbie/newbie053.dds",
+      "pathKey": "data/map/puzzle/newbie/newbie053.dds",
+      "length": 32896,
+      "sha256": "911968a56d60759f78d9c2c1cc2820c93d0ef1540db3a53d9c2ae10273e6f290",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/sky/stand/bird01.dds",
+      "pathKey": "data/map/puzzle/sky/stand/bird01.dds",
+      "length": 65664,
+      "sha256": "1aa30ea57939dea202dd3f3779134dbf2f02f13a18c331f855fbcf3b2e783c92",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/sky/stand/bird02.dds",
+      "pathKey": "data/map/puzzle/sky/stand/bird02.dds",
+      "length": 65664,
+      "sha256": "8a399bec9885c23d0a03e43b56e4fe70d0906ebb8bffa87377b6144b7c6d6a79",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/sky/stand/bird03.dds",
+      "pathKey": "data/map/puzzle/sky/stand/bird03.dds",
+      "length": 65664,
+      "sha256": "f1756589aab30ab890188471b0ed3c167faa234413db7d98144d6081cf80ed3b",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/sky/stand/bird04.dds",
+      "pathKey": "data/map/puzzle/sky/stand/bird04.dds",
+      "length": 65664,
+      "sha256": "7b1cba01caa182e018fb60b58a6fa2a8ebed9e794da26ad362f6a86f9d882fa5",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/sky/stand/bird05.dds",
+      "pathKey": "data/map/puzzle/sky/stand/bird05.dds",
+      "length": 65664,
+      "sha256": "821192fc2a549c8690a95ac2dc8516bcb121a719c42481c12e7a425db35c8377",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/sky/stand/bird06.dds",
+      "pathKey": "data/map/puzzle/sky/stand/bird06.dds",
+      "length": 65664,
+      "sha256": "6d95ab33ba1c14bb47147a4a21ac52eb958c9b1974917345bf404545a0c17925",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/sky/stand/bird07.dds",
+      "pathKey": "data/map/puzzle/sky/stand/bird07.dds",
+      "length": 65664,
+      "sha256": "0c54822ec3a0ac9611312bfc9777c699f1024e9f0d91b913e9c24dfa97165632",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/sky/stand/bird08.dds",
+      "pathKey": "data/map/puzzle/sky/stand/bird08.dds",
+      "length": 65664,
+      "sha256": "439c89d64dc33b541db61b872110f300cb3311054c5458d474f642bd1733a92d",
+      "signature": "dds"
+    },
+    {
+      "sourcePath": "data/map/puzzle/sky/stand/bird09.dds",
+      "pathKey": "data/map/puzzle/sky/stand/bird09.dds",
+      "length": 65664,
+      "sha256": "33fb0aa6dc4a31d93508d2ef614d171ded7f2571932fcc6fa6a79c445b6e1b43",
+      "signature": "dds"
+    },
+    {
       "sourcePath": "ini/Cn_Res.ini",
       "pathKey": "ini/cn_res.ini",
       "length": 138697,
@@ -26506,6 +27332,223 @@
       "pathKey": "ini/selectcharacter.ini",
       "length": 3612,
       "sha256": "45192235789d6c5ff43d963ce65b531b61d4b9f9423b669fa5e0496536cda92d",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "map/Scene/stand01.scene",
+      "pathKey": "map/scene/stand01.scene",
+      "length": 552,
+      "sha256": "5e208ea7cd4b9fef2c168c5fe816b272160caf8763d2a4c80e4593413f8586b6",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "map/Scene/stand02.scene",
+      "pathKey": "map/scene/stand02.scene",
+      "length": 408,
+      "sha256": "b80b9f8ed1a23beb28d7f6169da9682315889e80e96f7a615f0e3b4e32579893",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "map/Scene/stand03.scene",
+      "pathKey": "map/scene/stand03.scene",
+      "length": 552,
+      "sha256": "9987b9a133b54e465c83571facdaf66174a0a4295c1468f7cea8997f1b955ae5",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "map/Scene/stand05.scene",
+      "pathKey": "map/scene/stand05.scene",
+      "length": 552,
+      "sha256": "f5853fa69b88bdc91ab442fb8fd310969ac8888c8f7daa111a28e97e3dd17747",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "map/Scene/stand06.scene",
+      "pathKey": "map/scene/stand06.scene",
+      "length": 408,
+      "sha256": "16d2a3eeacce8c45fe6b4a250b84162bd9ca3a7cdb7acc13144058358960969a",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "map/Scene/stand08.scene",
+      "pathKey": "map/scene/stand08.scene",
+      "length": 468,
+      "sha256": "b26571c9b3bfc9c8a8018dbfd673ea121d4cd5d0089692ad0b5808b2320433a2",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "map/map/newbie.7z",
+      "pathKey": "map/map/newbie.7z",
+      "length": 1275,
+      "sha256": "650793aae73babd90400b424c39a21db6a6d9337bcd7811ece0a22ba0e64ba7a",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "map/puzzle/newbie.pul",
+      "pathKey": "map/puzzle/newbie.pul",
+      "length": 542,
+      "sha256": "e69862b5af3c96c6602c4e0f217d16553b599792858a7ee13a9f924a31a69022",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "map/puzzle/newbiebg.pul",
+      "pathKey": "map/puzzle/newbiebg.pul",
+      "length": 344,
+      "sha256": "1e5d8ca6a5e2e701158ec0bcb5c5bcd0392db4fd7a308e1c44a1723e40fc2f05",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/images_374.tga",
+      "pathKey": "ui/loading/artwork/images_374.tga",
+      "length": 17921,
+      "sha256": "bead343e63d996e0fd9866dad618486bf10c38d44a1d08fc164b83d1b5b445b7",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/images_376.tga",
+      "pathKey": "ui/loading/artwork/images_376.tga",
+      "length": 20552,
+      "sha256": "6ff1fdeca8b16dd5ec0173a8e8cd61ba45adacd94b177b581a3144a0bbcc19b0",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/images_381.tga",
+      "pathKey": "ui/loading/artwork/images_381.tga",
+      "length": 157388,
+      "sha256": "096b08eaec751923150ad2135f44bdccd9dd3e4634b06437773519e3aa1ec43e",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/images_382.tga",
+      "pathKey": "ui/loading/artwork/images_382.tga",
+      "length": 105930,
+      "sha256": "533996c74234c2106ca91c8e4f0f6c8ad6499a2e8941d415323ac4cff61a26de",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/shapes_261.tga",
+      "pathKey": "ui/loading/artwork/shapes_261.tga",
+      "length": 30738,
+      "sha256": "ffbb39c94a1911c3704fda0a8d028ffec77f24d0e602ccaaf9e0e2e68b536d68",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/shapes_375.tga",
+      "pathKey": "ui/loading/artwork/shapes_375.tga",
+      "length": 36356,
+      "sha256": "225635f625c0613e2940bc8a2895f530b95d0371c075774503fcd2137e7f795c",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/shapes_377.tga",
+      "pathKey": "ui/loading/artwork/shapes_377.tga",
+      "length": 20552,
+      "sha256": "6ff1fdeca8b16dd5ec0173a8e8cd61ba45adacd94b177b581a3144a0bbcc19b0",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/shapes_379.tga",
+      "pathKey": "ui/loading/artwork/shapes_379.tga",
+      "length": 11843,
+      "sha256": "820522eea173fafa34ccdf9887eebeaeca86ed41bdbfaf1759f6866e600124a6",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/shapes_383.tga",
+      "pathKey": "ui/loading/artwork/shapes_383.tga",
+      "length": 263780,
+      "sha256": "98ca6908e26affd14064845e1258c19e7ae8fd5b1b08132892214d63533b2938",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/shapes_389.tga",
+      "pathKey": "ui/loading/artwork/shapes_389.tga",
+      "length": 2455,
+      "sha256": "44314d106ffcf6acd8d863f81a24e80bd8f6449e95f31b298db3c2405ddaa724",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/shapes_390.tga",
+      "pathKey": "ui/loading/artwork/shapes_390.tga",
+      "length": 2521,
+      "sha256": "ea2bd56f0202319efb8361038e0e753fff8efe96ab1d96502d68d3622f1a8964",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/shapes_391.tga",
+      "pathKey": "ui/loading/artwork/shapes_391.tga",
+      "length": 2581,
+      "sha256": "7981302c81bd240fc914665455858d082cf62b1f35130153b3eb8130b96f68e0",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/shapes_392.tga",
+      "pathKey": "ui/loading/artwork/shapes_392.tga",
+      "length": 2641,
+      "sha256": "68b0fd420c2b2f8793179d700c70643db0dab07d6175fc61d7e027a2ada8eee0",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/sprite380.tga",
+      "pathKey": "ui/loading/artwork/sprite380.tga",
+      "length": 11843,
+      "sha256": "820522eea173fafa34ccdf9887eebeaeca86ed41bdbfaf1759f6866e600124a6",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/sprite387_f1.tga",
+      "pathKey": "ui/loading/artwork/sprite387_f1.tga",
+      "length": 4994,
+      "sha256": "6388336fc38849e74ffad52e6572faae4b7f1730d2596b736812bd1790d5f175",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/sprite387_f2.tga",
+      "pathKey": "ui/loading/artwork/sprite387_f2.tga",
+      "length": 4966,
+      "sha256": "251df74dc5570f9966f222cd56422df5642e2b52b825ba9d25d50416f7395d03",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/sprite387_f3.tga",
+      "pathKey": "ui/loading/artwork/sprite387_f3.tga",
+      "length": 4946,
+      "sha256": "23bb7ef1dd67f44d0bb0b9c4a4cee2700153d77685d89527db4b7be896ebd6a0",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/sprite387_f4.tga",
+      "pathKey": "ui/loading/artwork/sprite387_f4.tga",
+      "length": 4814,
+      "sha256": "390e7b26f9cc03d5a0cf1e9124d4c0f03d231354d7693a72b2dd1194f5500a61",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/sprite387_f5.tga",
+      "pathKey": "ui/loading/artwork/sprite387_f5.tga",
+      "length": 4946,
+      "sha256": "23bb7ef1dd67f44d0bb0b9c4a4cee2700153d77685d89527db4b7be896ebd6a0",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/sprite387_f6.tga",
+      "pathKey": "ui/loading/artwork/sprite387_f6.tga",
+      "length": 4966,
+      "sha256": "251df74dc5570f9966f222cd56422df5642e2b52b825ba9d25d50416f7395d03",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/artwork/sprite387_f7.tga",
+      "pathKey": "ui/loading/artwork/sprite387_f7.tga",
+      "length": 4994,
+      "sha256": "6388336fc38849e74ffad52e6572faae4b7f1730d2596b736812bd1790d5f175",
+      "signature": "unknown"
+    },
+    {
+      "sourcePath": "ui/loading/timeline.json",
+      "pathKey": "ui/loading/timeline.json",
+      "length": 11832,
+      "sha256": "5d579879e42421c9ddeeca55b60e8b0fb12d935ac84ce512dd7aa1211893c261",
       "signature": "unknown"
     },
     {
