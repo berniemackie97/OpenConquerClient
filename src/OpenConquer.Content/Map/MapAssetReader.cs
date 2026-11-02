@@ -6,7 +6,10 @@ public sealed class MapAssetReader : IDisposable
     private readonly bool _leaveOpen;
     private readonly MapSectionEntry[] _sections;
 
-    public uint MapDataId { get; }
+    public uint MapDataId
+    {
+        get;
+    }
 
     public MapAssetReader(Stream source, bool leaveOpen = false)
     {
