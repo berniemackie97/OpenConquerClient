@@ -45,6 +45,23 @@ jobs:
         run: dotnet test OpenConquerStudio.slnx --configuration Release --no-build --no-restore
       - name: Verify command-line workflow and reproducible content
         run: python3 -m unittest discover -s tests/development -p test_studio_cli.py
+      - name: Install Linux rendering prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xvfb dbus-x11 libgl1-mesa-dri libglx-mesa0
+      - name: Validate embedded viewport on Linux
+        if: runner.os == 'Linux'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: 'true'
+        run: dbus-run-session -- xvfb-run -a dotnet run --project tools/OpenConquerStudio.RenderCheck -c Release --no-build --no-restore
+      - name: Record macOS GPU validation boundary
+        if: runner.os == 'macOS'
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          macOS build, authoring, runtime, headless desktop, CLI, and publish checks run here.
+          Native GPU validation requires a graphics-capable Mac; this hosted runner exposes no GPU interop.
+          Run `dotnet run --project tools/OpenConquerStudio.RenderCheck -c Release` on that hardware.
+          Linux CI separately requires actual client-asset OpenGL framebuffer checks through Mesa.
+          EOF
       - name: Publish Studio
         run: dotnet publish src/OpenConquerStudio --configuration Release --no-restore --output studio-publish
       - name: Verify Studio publish boundaries

@@ -1,6 +1,6 @@
 using OpenConquer.Content.Map;
 
-namespace OpenConquer.Client.World;
+namespace OpenConquerStudio.ConquerRendering;
 
 internal sealed class WorldSceneryIndex
 {

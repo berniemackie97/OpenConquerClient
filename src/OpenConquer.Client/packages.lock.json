@@ -92,6 +92,13 @@
           "Silk.NET.OpenGL": "[2.23.0, )"
         }
       },
+      "openconquerstudio.conquerrendering": {
+        "type": "Project",
+        "dependencies": {
+          "OpenConquer.Content": "[1.0.0, )",
+          "OpenConquer.Rendering": "[1.0.0, )"
+        }
+      },
       "openconquerstudio.imaging": {
         "type": "Project"
       },

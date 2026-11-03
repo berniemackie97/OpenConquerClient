@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media.Imaging;
 using OpenConquerStudio.Authoring;
+using OpenConquerStudio.ConquerImport;
 using OpenConquerStudio.Tests;
 
 namespace OpenConquerStudio.App.Tests;
@@ -145,4 +146,114 @@ public sealed class StudioWindowTests
     }, TestContext.Current.CancellationToken);
 
     private static T Find<T>(Control root, string name) where T : Control => root.GetLogicalDescendants().OfType<T>().Single(c => c.Name == name);
+
+    [Fact]
+    public Task ConnectedClientBrowser_ImportsActualAniAndReopensSavedAssets() => s_session.Value.Dispatch(async () =>
+    {
+        using ProjectDirectory directory = new();
+        using (StudioProject project = StudioProject.Create(directory.Project, "Client workspace"))
+        {
+            ClientProjectConnection.Attach(project, ProjectDirectory.RepositoryRoot,
+                Path.Combine(ProjectDirectory.RepositoryRoot, "content", "retail-5517", "payload"), TestContext.Current.CancellationToken);
+        }
+
+        StudioWindow window = new();
+        window.Show();
+        try
+        {
+            await window.ExecuteAsync(token => window.LoadProject(directory.Project, token));
+            Find<TabControl>(window, "ProjectContentTabs").SelectedIndex = 1;
+            Find<TextBox>(window, "ClientContentFilter").Text = "ani/control.ani";
+            ListBox sources = Find<ListBox>(window, "ClientContentBrowser");
+            Assert.Single(sources.Items);
+            sources.SelectedIndex = 0;
+            await window.PendingOperation;
+            Find<ComboBox>(window, "ClientAnimationSection").SelectedItem = "Action_Act0Btn";
+            await window.PendingOperation;
+            Assert.NotNull(Find<StudioViewport>(window, "EngineViewport").CurrentSprite);
+            Find<Button>(window, "ImportClientAsset").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await window.PendingOperation;
+            Assert.Equal(5, window.Project.Document.Resources.Count());
+            Assert.Equal(2, Assert.Single(window.Project.Document.Animations).Frames.Length);
+            Button save = window.GetLogicalDescendants().OfType<Button>().Single(b => Equals(b.Content, "Save"));
+            save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await window.PendingOperation;
+        }
+        finally
+        {
+            window.Close();
+        }
+
+        using StudioProject reopened = StudioProject.Open(directory.Project);
+        Assert.Equal(2, reopened.Document.Assets.Length);
+        Assert.Equal(2, Assert.Single(reopened.Document.Animations).Frames.Length);
+        Assert.All(reopened.Document.Assets, asset => Assert.StartsWith("conquer/source/", asset.SourceKey));
+    }, TestContext.Current.CancellationToken);
+
+    [Fact]
+    public Task AuthorAtlasAndAnimation_EditScrubUndoSaveAndReopen() => s_session.Value.Dispatch(async () =>
+    {
+        using ProjectDirectory directory = new();
+        Guid textureId;
+        using (StudioProject project = StudioProject.Create(directory.Project, "Animated game"))
+        {
+            textureId = project.ImportTexture(directory.WriteTga(), "Two colors");
+            project.Save();
+        }
+
+        StudioWindow window = new();
+        window.Show();
+        async Task Click(string content)
+        {
+            window.GetLogicalDescendants().OfType<Button>().Single(b => Equals(b.Content, content))
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await window.PendingOperation;
+        }
+
+        try
+        {
+            await window.ExecuteAsync(token => window.LoadProject(directory.Project, token));
+            ListBox browser = Find<ListBox>(window, "AssetBrowser");
+            browser.SelectedIndex = 0;
+            await window.PendingOperation;
+            await Click("New atlas");
+            Find<NumericUpDown>(window, "SpriteWidth").Value = 1;
+            Find<NumericUpDown>(window, "PivotX").Value = 0;
+            Find<TextBox>(window, "SpriteName").Text = "Red";
+            await Click("Apply sprite edits");
+            await Click("Add sprite");
+            await window.PendingOperation;
+            Find<TextBox>(window, "SpriteName").Text = "Green";
+            Find<NumericUpDown>(window, "SpriteX").Value = 1;
+            await Click("Apply sprite edits");
+            await Click("New animation");
+            Assert.Equal(3, browser.Items.Count);
+            ListBox frames = Find<ListBox>(window, "AnimationFrames");
+            Assert.Equal(2, frames.Items.Count);
+            frames.SelectedIndex = 1;
+            Find<NumericUpDown>(window, "FrameDuration").Value = 250;
+            await Click("Update frame");
+            Assert.Equal(1, Find<StudioViewport>(window, "EngineViewport").FrameIndex);
+            Find<Slider>(window, "AnimationPosition").Value = 100;
+            StudioViewport viewport = Find<StudioViewport>(window, "EngineViewport");
+            Assert.Equal(1, viewport.FrameIndex);
+            Assert.Equal("Green", viewport.CurrentSprite!.Region.Name);
+            await Click("Up frame");
+            Assert.Equal("Green", viewport.CurrentSprite!.Region.Name);
+            await Click("Undo");
+            Find<Slider>(window, "AnimationPosition").Value = 100;
+            Assert.Equal("Green", viewport.CurrentSprite!.Region.Name);
+            await Click("Save");
+        }
+        finally
+        {
+            window.Close();
+        }
+
+        using StudioProject reopened = StudioProject.Open(directory.Project);
+        Assert.Equal(textureId, Assert.Single(reopened.Document.Atlases).TextureId);
+        AnimationAsset animation = Assert.Single(reopened.Document.Animations);
+        Assert.Collection(animation.Frames, frame => Assert.Equal(100, frame.DurationTicks), frame => Assert.Equal(250, frame.DurationTicks));
+        Assert.Equal("Green", reopened.Document.Atlases[0].Sprites[1].Name);
+    }, TestContext.Current.CancellationToken);
 }

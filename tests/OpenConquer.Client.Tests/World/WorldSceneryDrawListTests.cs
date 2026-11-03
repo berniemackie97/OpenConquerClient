@@ -1,7 +1,7 @@
 using System.Text;
-using OpenConquer.Client.World;
 using OpenConquer.Content.Ani;
 using OpenConquer.Content.Map;
+using OpenConquerStudio.ConquerRendering;
 
 namespace OpenConquer.Client.Tests.World;
 

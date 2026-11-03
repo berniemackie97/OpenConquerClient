@@ -12,7 +12,9 @@ public sealed class StudioApp : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new StudioWindow(desktop.Args is [string root] ? root : null);
+            string? root = StudioStartupProject.Resolve(desktop.Args is [string path] ? path : null,
+                Environment.CurrentDirectory, AppContext.BaseDirectory);
+            desktop.MainWindow = new StudioWindow(root);
         }
 
         base.OnFrameworkInitializationCompleted();

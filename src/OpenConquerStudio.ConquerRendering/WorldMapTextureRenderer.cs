@@ -6,22 +6,30 @@ using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;
 using OpenConquer.Rendering.Sprites;
 
-namespace OpenConquer.Client.World;
+namespace OpenConquerStudio.ConquerRendering;
 
-internal sealed class WorldMapTextureRenderer : IDisposable
+public sealed class WorldMapTextureRenderer : IDisposable
 {
     private readonly IClientContentSource _source;
     private readonly OpenGLGraphicsDevice _device;
     private readonly Dictionary<string, OpenGLTexture2D> _textures = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
+    private readonly int _maximumTextures;
+    private readonly long _maximumPixelBytes;
+    private long _pixelBytes;
 
-    public WorldMapTextureRenderer(IClientContentSource source, OpenGLGraphicsDevice device)
+    public WorldMapTextureRenderer(IClientContentSource source, OpenGLGraphicsDevice device,
+        int maximumTextures = int.MaxValue, long maximumPixelBytes = long.MaxValue)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumTextures);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumPixelBytes);
+        _maximumTextures = maximumTextures;
+        _maximumPixelBytes = maximumPixelBytes;
         _source = source ?? throw new ArgumentNullException(nameof(source));
         _device = device ?? throw new ArgumentNullException(nameof(device));
     }
 
-    public bool Prepare(IReadOnlyList<WorldPuzzleTile> tiles, ref int remaining)
+    internal bool Prepare(IReadOnlyList<WorldPuzzleTile> tiles, ref int remaining)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(tiles);
@@ -37,7 +45,7 @@ internal sealed class WorldMapTextureRenderer : IDisposable
         return complete;
     }
 
-    public bool Prepare(IReadOnlyList<WorldScenerySprite> sprites, ref int remaining)
+    internal bool Prepare(IReadOnlyList<WorldScenerySprite> sprites, ref int remaining)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(sprites);
@@ -53,7 +61,7 @@ internal sealed class WorldMapTextureRenderer : IDisposable
         return complete;
     }
 
-    public void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldPuzzleTile> tiles, SpriteColor worldColor)
+    internal void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldPuzzleTile> tiles, SpriteColor worldColor)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
@@ -65,7 +73,7 @@ internal sealed class WorldMapTextureRenderer : IDisposable
         }
     }
 
-    public void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldScenerySprite> sprites,
+    internal void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldScenerySprite> sprites,
         WorldPuzzleProjection projection, SpriteColor worldColor)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -99,10 +107,15 @@ internal sealed class WorldMapTextureRenderer : IDisposable
 
         RgbaImage frame = AniFrameLoader.LoadWrappedFrame(_source, animation,
             (uint)frameIndex, ContentLookupMode.LooseThenPackage);
+        if (_textures.Count >= _maximumTextures || frame.Pixels.Length > _maximumPixelBytes - _pixelBytes)
+        {
+            throw new InvalidDataException("The map preview exceeds its resident texture count or pixel-byte budget.");
+        }
         OpenGLTexture2D texture = _device.CreateTexture2D(frame.Width, frame.Height, frame.Pixels.Span);
         try
         {
             _textures.Add(path, texture);
+            _pixelBytes += frame.Pixels.Length;
             remaining--;
             return true;
         }

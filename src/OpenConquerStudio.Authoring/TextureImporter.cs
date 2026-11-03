@@ -4,7 +4,7 @@ using OpenConquerStudio.Runtime;
 
 namespace OpenConquerStudio.Authoring;
 
-internal static class TextureImporter
+public static class TextureImporter
 {
     public static (TextureData Texture, string Format, string Digest) Read(string path, CancellationToken cancellationToken)
     {
@@ -16,6 +16,18 @@ internal static class TextureImporter
         };
         cancellationToken.ThrowIfCancellationRequested();
         byte[] bytes = ProjectFiles.Read(path, 16 * 1024 * 1024);
+        return Decode(bytes, format, cancellationToken);
+    }
+
+    public static (TextureData Texture, string Format, string Digest) Decode(byte[] bytes, string format, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+        if (bytes.Length > 16 * 1024 * 1024 || format is not ("tga" or "dds"))
+        {
+            throw new InvalidDataException("Unsupported image format or encoded image exceeds 16 MiB.");
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
         ReadOnlySpan<byte> header = bytes;
         // Apply the Studio allocation budget before calling the authoritative decoders.
         if (format == "tga" && header.Length >= 18)

@@ -1,11 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../OpenConquerStudio.ConquerRendering/OpenConquerStudio.ConquerRendering.csproj" />
+    <ProjectReference Include="../OpenConquer.Rendering/OpenConquer.Rendering.csproj" />
     <ProjectReference Include="../OpenConquerStudio.ConquerImport/OpenConquerStudio.ConquerImport.csproj" />
     <InternalsVisibleTo Include="OpenConquerStudio.App.Tests" />
+    <InternalsVisibleTo Include="OpenConquerStudio.RenderCheck" />
     <ProjectReference Include="../OpenConquerStudio.Authoring/OpenConquerStudio.Authoring.csproj" />
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
