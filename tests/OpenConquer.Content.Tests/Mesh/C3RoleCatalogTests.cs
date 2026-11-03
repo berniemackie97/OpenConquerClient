@@ -56,6 +56,7 @@ public sealed class C3RoleCatalogTests
         Assert.Equal("ini/armor.dbc", roles.Sources["body"].MeshDatabase);
         Assert.Equal("ini/3dmotion.dbc", roles.Sources["body"].MotionDatabase);
         Assert.Contains("v_armet", roles.VirtualMeshNames);
+        Assert.Contains("V_ARMET", roles.VirtualMeshNames);
 
         byte[] meshes = new byte[8 + 8 + 16];
         BinaryPrimitives.WriteUInt32LittleEndian(meshes, 0x4853454D);

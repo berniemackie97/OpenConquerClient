@@ -19,7 +19,7 @@ internal sealed class C3RolePartTables
     internal HashSet<string> VirtualMeshNames
     {
         get;
-    } = new(StringComparer.Ordinal);
+    } = new(StringComparer.OrdinalIgnoreCase);
 
     internal static C3RolePartTables Read(ReadOnlySpan<byte> bytes)
     {

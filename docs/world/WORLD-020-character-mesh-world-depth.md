@@ -26,8 +26,10 @@ two ranges. Rendering the character occurs between those ranges, without
 duplicating the terrain or ANI texture loaders.
 
 The 3D path uses the body model's PHY and MOTI sections, reuses the existing
-CPU vertex calculation and indexed OpenGL mesh resources, and submits all
-submesh geometry before the projected geometric shadow pass. The shadow is
+CPU vertex calculation and indexed OpenGL mesh resources, and submits drawable
+submesh geometry before the projected geometric shadow pass. PHY entries named
+by the role-part virtual attachment table are not drawn; their geometry
+marks attachment points rather than visible character surfaces. The shadow is
 solid black with alpha 0.3, a strict less-than depth comparison and the
 documented planar shadow matrix. It does not write depth or change the
 destination alpha channel. The normal pass retains less-or-equal

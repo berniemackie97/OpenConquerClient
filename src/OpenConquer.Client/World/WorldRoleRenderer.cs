@@ -71,7 +71,15 @@ internal sealed class WorldRoleRenderer : IDisposable
             {
                 C3PhyMesh phy = C3PhyMeshReader.Read(geometry[i]);
                 C3Motion motion = C3MotionReader.Read(motions[i]);
-                meshes.Add(new WorldRoleMesh(device, phy, motion));
+                if (!catalog.IsAttachmentMesh(phy.Name))
+                {
+                    meshes.Add(new WorldRoleMesh(device, phy, motion));
+                }
+            }
+
+            if (meshes.Count == 0)
+            {
+                throw new InvalidDataException("The character's body model contains no drawable geometry.");
             }
 
             return new WorldRoleRenderer(texture, meshes);
