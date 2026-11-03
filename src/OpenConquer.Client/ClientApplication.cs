@@ -1023,7 +1023,7 @@ internal sealed class ClientApplication : IDisposable
     {
         foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
         {
-            if (registration.Outcome != WdfPackageRegistrationOutcome.Registered)
+            if (registration.Outcome is WdfPackageRegistrationOutcome.DuplicatePrefix or WdfPackageRegistrationOutcome.ArchiveUnavailable)
             {
                 Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') resolved as {registration.Outcome}.");
             }

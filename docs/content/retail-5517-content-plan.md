@@ -54,8 +54,10 @@ Current consumer groups:
 5517 root does not have them, so they are not copied into the curated runtime set. When the files
 are missing, their managed loaders fall back to the same defaults as the retail client.
 
-The curated set contains the closure resolved by `ClientContentClosure` and nothing else. WDF
-archives and `ini/package.ini` are used only during import and are not shipped.
+The curated set contains the closure resolved by `ClientContentClosure` and nothing else.
+Most archived resources are extracted into loose payload files. When the character-mesh
+database is present, `c3.wdf` and `ini/package.ini` remain runtime requirements:
+meshes and their textures use package-only lookup against the registered C3 archive.
 
 ## HUD Dependency Chain
 
@@ -333,9 +335,10 @@ write deterministic manifest
 publish only after complete success
 ```
 
-Before it resolves package-backed files, the importer reads `ini/package.ini` from the authorized
-retail source to register the WDF archives. That file is import configuration only. It is not a
-runtime dependency and is not copied into the curated content set.
+Before resolving package-backed files, the importer reads `ini/package.ini` from
+the authorized source and registers the available archives. The curated content
+set retains this configuration when the character-mesh archive is required by
+the runtime's package-only resource readers.
 
 The importer does not bulk-copy retail directories or archives.
 
@@ -372,8 +375,11 @@ no host-path links or reparse traversal
 Where the retail client tolerates a declared package that is missing or unusable, registration does
 not fail either.
 
-The curated runtime set stores the resolved assets as loose files, so it needs neither
-`ini/package.ini` nor the source WDF archives.
+The curated runtime set stores most resolved assets as loose files. Character
+meshes and their textures remain package-only resources in `c3.wdf`, registered
+through `ini/package.ini`. Declarations for absent source archives do not
+prevent access to this required C3 archive; an unsatisfied package-only lookup
+still fails when requested.
 
 ## ANI and Images
 

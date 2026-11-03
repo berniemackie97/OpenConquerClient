@@ -1,9 +1,42 @@
 using OpenConquer.Content.Tests.Wdf;
+using OpenConquer.Content.Wdf;
 
 namespace OpenConquer.Content.Tests;
 
 public sealed class PackagedClientContentSourceTests
 {
+    [Fact]
+    public void Open_RetainsAvailableCharacterArchiveWhenOtherDeclaredArchivesAreMissing()
+    {
+        using TemporaryContentDirectory directory = new();
+        directory.WriteFile("ini/package.ini", "data.wdf\nc3.wdf\ndata3.wdf\n");
+        directory.WriteFile("c3.wdf",
+            WdfTestArchiveBuilder.CreateSingleEntry("c3/test.bin", [1, 2, 3]));
+
+        PackagedClientContentSource source = PackagedClientContentSource.Open(directory.RootPath);
+
+        Assert.Collection(source.PackageRegistrations,
+            first =>
+            {
+                Assert.Equal("data.wdf", first.DeclaredName);
+                Assert.Equal(WdfPackageRegistrationOutcome.FileNotFound, first.Outcome);
+            },
+            second =>
+            {
+                Assert.Equal("c3.wdf", second.DeclaredName);
+                Assert.Equal(WdfPackageRegistrationOutcome.Registered, second.Outcome);
+            },
+            third =>
+            {
+                Assert.Equal("data3.wdf", third.DeclaredName);
+                Assert.Equal(WdfPackageRegistrationOutcome.FileNotFound, third.Outcome);
+            });
+
+        Assert.Equal([1, 2, 3], ReadAll(source, "c3/test.bin", ContentLookupMode.PackageOnly));
+        Assert.Throws<FileNotFoundException>(() =>
+            source.OpenRequiredRead("data/missing.bin", ContentLookupMode.PackageOnly));
+    }
+
     [Fact]
     public void TryOpenRead_LooseThenPackage_FallsBackToPackageWhenLooseFileIsMissing()
     {
