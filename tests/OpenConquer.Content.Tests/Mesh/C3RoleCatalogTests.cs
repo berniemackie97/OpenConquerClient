@@ -71,6 +71,22 @@ public sealed class C3RoleCatalogTests
     }
 
     [Fact]
+    public void BodyIdleMotionUsesRecordedResourceKey()
+    {
+        const string resource = "c3/0002/000/100.c3";
+        byte[] data = new byte[20 + resource.Length + 1];
+        BinaryPrimitives.WriteUInt32LittleEndian(data, 0x42445352);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(4), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(8), 2_000_100);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(16), 20);
+        Encoding.ASCII.GetBytes(resource).AsSpan().CopyTo(data.AsSpan(20));
+
+        Assert.True(C3ResourcePathTable.TryFindDualKey(data, 2_000_100, out string path));
+        Assert.Equal(resource, path);
+        Assert.False(C3ResourcePathTable.TryFindDualKey(data, 20_000_100, out _));
+    }
+
+    [Fact]
     public void ReadsRoleConfigurationAndPartDescriptor()
     {
         byte[] config = new byte[12 + 0x220 + 0x24];

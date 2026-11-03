@@ -22,7 +22,7 @@ internal sealed class WorldRoleRenderer : IDisposable
     }
 
     internal static ulong InitialBodyMotionKey(uint packedAppearance) =>
-        (packedAppearance % 1000UL) * 10_000_000UL + 100UL;
+        (packedAppearance % 1000UL) * 1_000_000UL + 100UL;
 
     internal static WorldRoleRenderer? Load(IClientContentSource source,
         OpenGLGraphicsDevice device, uint packedAppearance)

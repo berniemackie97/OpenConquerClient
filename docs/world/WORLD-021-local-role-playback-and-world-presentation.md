@@ -2,13 +2,19 @@
 
 The default first-world-frame role action is idle (100); alternate idle
 actions remain dependent on the command-state selection. The body source is the
-authenticated appearance composite modulo 1000. Its initial body-motion
-resource key is `bodySource * 10000000 + 100`. The motion database uses
+authenticated appearance composite modulo 1000. The first-world-frame idle
+resource key is `bodySource * 1000000 + 100`. The original C3 resource index
+contains `2000100 -> c3/0002/000/100.c3` for body source 2, as well as matching
+keys for body sources 1, 3, and 4. The motion database uses
 two 32-bit key halves and a resource path; the loader resolves that record
 from the body's configured motion table and binds the MOTI entries by ordinal
 submesh position. Geometry and motion files remain separate resource
 requests. Missing action records retain the default static pose rather
-than starting an unrelated animation.
+than starting an unrelated animation. The higher-level role-action key builder
+uses a different composite formula. This initial clip selection is grounded
+in the recorded asset index; reconciling that builder with the resource-query
+and fallback sequence remains necessary before action transitions can be
+claimed equivalent.
 
 The initial idle clock advances at 66 milliseconds per frame. It starts
 with the first visible role draw, wraps by the motion's frame count and uses
