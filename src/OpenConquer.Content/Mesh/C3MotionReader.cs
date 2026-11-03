@@ -160,11 +160,18 @@ public static class C3MotionReader
     private static float Float(ReadOnlySpan<byte> bytes, int offset) =>
         BinaryPrimitives.ReadSingleLittleEndian(bytes[offset..]);
 
-    private ref struct PayloadReader(ReadOnlySpan<byte> data)
+    private ref struct PayloadReader
     {
+        private readonly ReadOnlySpan<byte> _data;
         private int _offset;
 
-        internal int Remaining => data.Length - _offset;
+        internal PayloadReader(ReadOnlySpan<byte> data)
+        {
+            _data = data;
+            _offset = 0;
+        }
+
+        internal int Remaining => _data.Length - _offset;
 
         internal ReadOnlySpan<byte> Read(int length)
         {
@@ -173,7 +180,7 @@ public static class C3MotionReader
                 throw new InvalidDataException("MOTI payload ends inside a required field.");
             }
 
-            ReadOnlySpan<byte> slice = data.Slice(_offset, length);
+            ReadOnlySpan<byte> slice = _data.Slice(_offset, length);
             _offset += length;
             return slice;
         }
@@ -187,7 +194,7 @@ public static class C3MotionReader
         internal void Seek(int delta)
         {
             long next = (long)_offset + delta;
-            if (next < 0 || next > data.Length)
+            if (next < 0 || next > _data.Length)
             {
                 throw new InvalidDataException("MOTI extra-section seek exceeds its payload boundary.");
             }
