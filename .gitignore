@@ -510,3 +510,6 @@ $RECYCLE.BIN/
 
 # Local Studio client connection and authoring workspace
 /.studio/
+**/.studio.lock
+**/.user/
+**/Builds/

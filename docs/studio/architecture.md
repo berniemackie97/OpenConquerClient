@@ -15,7 +15,10 @@ flowchart TD
     Authoring --> Runtime[Studio Runtime]
     Authoring --> Imaging[Studio Imaging]
     Content --> Imaging
-    Desktop --> Rendering[Existing Rendering]
+    Desktop --> Compatibility[ConquerRendering]
+    Compatibility --> Content
+    Compatibility --> Rendering[Existing Rendering]
+    Desktop --> Rendering
     Game[OpenConquerClient] --> Rendering
     Game --> Content
 ```
@@ -25,7 +28,8 @@ flowchart TD
 | Runtime | Validated pixels, atlas regions, sprite clips and sampling, bounded resource codecs, complete build loading and graph validation. No editor/import/game dependencies. |
 | Imaging | Authoritative existing TGA/DDS decoders and decoded-image type, shared with the client. |
 | Authoring | Project identity, immutable edit transactions, history, typed dependencies, source import, revision storage, migration, deterministic compilation. |
-| ConquerImport | Supported client-artwork catalog through existing hash-checked loaders. |
+| ConquerImport | Client-repository connections, bounded source inventory, existing artwork catalog, and image/ANI import through authoritative loaders. |
+| ConquerRendering | Shared client map projection, puzzle and scenery clocks, footprint ordering, texture preparation, and drawing. |
 | Desktop | Project orchestration, dialogs, selection, inspectors, playback controls, bitmap and GPU-host lifecycle. |
 | Tool | Command-line access to authoring and compilation. |
 | RenderCheck | Platform validation executable using generated assets, compiled runtime loading, and actual embedded framebuffer readback. |
@@ -94,8 +98,9 @@ manual validation. Automated GPU coverage is listed separately in the validation
 
 Shared image algorithms remain unchanged. Their original namespace and `RgbaImage` type
 forwarder preserve client compatibility. The shared renderer extension requires the complete
-client regression suite in addition to Studio checks. Client gameplay, networking, world
-ordering, and server contracts are outside this change.
+client regression suite in addition to Studio checks. Client gameplay, networking, and server contracts stay outside Studio. World rendering now has
+shared ownership through ConquerRendering; main's animated-scenery and footprint ordering fixes
+from PRs #204/#205 were retained during extraction.
 
 Integrity hashes do not establish publisher authenticity. Existing launcher trust, signed release
 metadata, and Product Tool packaging remain the release path. Client resource bindings,

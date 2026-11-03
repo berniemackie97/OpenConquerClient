@@ -19,20 +19,22 @@ internal sealed class ClientWorkspace
     {
         _owner = owner;
         _preview = preview;
-        _clientContent = new ClientContentPanel(PreviewAsset, ImportAsset, (x, y) =>
+        _clientContent = new ClientContentPanel(PreviewAsset, ImportAsset, MoveCamera);
+    }
+
+    private void MoveCamera(int x, int y)
+    {
+        _ = _owner.ExecuteAsync(_ =>
         {
-            _ = _owner.ExecuteAsync(_ =>
+            _sourceMap?.SetCameraTile(x, y);
+            if (_sourceMap is not null)
             {
-                _sourceMap?.SetCameraTile(x, y);
-                if (_sourceMap is not null)
-                {
-                    GameMapCell cell = _sourceMap.Map.CellGrid.GetCell(x, y);
-                    _clientContent.Describe(ClientProjectConnection.DescribeMap(_sourceMap.Map) +
-                        $"\nTile {x}, {y}: surface {cell.SurfaceId}, passability flag {cell.PassabilityFlag}, elevation {cell.Elevation}");
-                }
-                _preview.RefreshMap();
-                return Task.CompletedTask;
-            });
+                GameMapCell cell = _sourceMap.Map.CellGrid.GetCell(x, y);
+                _clientContent.Describe(ClientProjectConnection.DescribeMap(_sourceMap.Map) +
+                    $"\nTile {x}, {y}: surface {cell.SurfaceId}, passability flag {cell.PassabilityFlag}, elevation {cell.Elevation}");
+            }
+            _preview.RefreshMap();
+            return Task.CompletedTask;
         });
     }
 

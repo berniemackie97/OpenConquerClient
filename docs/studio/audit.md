@@ -85,7 +85,7 @@ with authored timing chosen explicitly. Missing source frames fail before any re
 WDF-backed ANI frames use the existing packaged content source; anonymous WDF hash entries do
 not become invented named assets in the browser.
 
-Six existing world-rendering files moved into the internal ConquerRendering component. Client
+Nine existing world-rendering files moved into the internal ConquerRendering component. Client
 and Studio now own that implementation jointly. Projection, puzzle clocks, terrain clocks,
 footprint ordering, and draw-list behavior were retained. Studio adds a bounded camera-tile
 control and supplies preview texture budgets; client loading/session/network logic stays in Client.
@@ -107,3 +107,20 @@ or added, and no new native format interpretation was introduced in this slice.
 The client source set contained 3,936 files; its browser inventory also contains map-catalog
 records, including records whose archives are missing. Missing data is labelled or reported;
 this inventory does not claim every original-client asset has been converted.
+
+Main advanced to `80b8721a` during this slice. Its PR #204 animated-scenery activation and
+PR #205 footprint-child ordering were integrated before the stopping point. The current
+shared component contains those implementations, rather than retaining the earlier terrain-only
+draw list. Positioned animated overlay children remain a separate unsupported path.
+
+The automatic client workspace is deliberately local and ignored by Git. A version-controlled
+game-asset project can be created separately and attached to the same client sources. Automatic
+client resource replacement, final project-layout policy, map editing, characters, and release
+integration remain follow-up work. This checkpoint is not a production-complete AAA toolchain.
+
+At this stopping point, macOS Apple Silicon passed 82 Studio tests, all 3,340 current client
+tests, five CLI subprocess workflows (including forced save-process termination), and actual
+client-asset GPU validation after integrating main. The GPU gate imported/compiled/loaded real
+Control.ani frames and rendered map 1010 with the shared current world implementation.
+Windows GPU/native UX, Linux native UX, final project-layout policy, and production release
+integration remain explicit gates; CI status is tracked on the draft PR.

@@ -27,6 +27,10 @@ tile controls to navigate. Select an ANI section or image, then **Import editabl
 Use **Client content folder** to attach an original installation instead. Source files remain
 unchanged. Imported copies save and compile through the regular authoring workflow.
 
+The automatically created `.studio/authoring` workspace is local and ignored by Git.
+For a version-controlled game-asset project, use **New project** in your chosen content
+directory, then **Client content folder** to attach the client sources.
+
 1. **New project**: choose an existing empty directory. **Open project**: choose a directory containing `project.ocstudio`.
 2. **Import texture**: select a supported TGA/DDS. **Client artwork** imports an editable copy from the included catalog.
    **New texture** creates a solid image without original game files.
