@@ -9,11 +9,12 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
 {
     private readonly GL _gl;
     private readonly OpenGLDrawStateCleanup _cleanup;
-    private OpenGLProgram? _program;
+    private OpenGLProgram? _texturedProgram;
+    private OpenGLProgram? _shadowProgram;
     private uint _sampler;
     private readonly int _textureUniform;
-    private readonly int _matrixUniform;
-    private readonly int _shadowModeUniform;
+    private readonly int _texturedMatrixUniform;
+    private readonly int _shadowMatrixUniform;
     private readonly int _shadowAlphaUniform;
     private bool _disposed;
 
@@ -24,11 +25,13 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
 
         try
         {
-            _program = new OpenGLProgram(gl, VertexShader, FragmentShader);
-            _textureUniform = _program.GetRequiredUniformLocation("uTexture");
-            _matrixUniform = _program.GetRequiredUniformLocation("uClipMatrix");
-            _shadowModeUniform = _program.GetRequiredUniformLocation("uShadowMode");
-            _shadowAlphaUniform = _program.GetRequiredUniformLocation("uShadowAlpha");
+            _texturedProgram = new OpenGLProgram(gl, VertexShader, TexturedFragmentShader);
+            _textureUniform = _texturedProgram.GetRequiredUniformLocation("uTexture");
+            _texturedMatrixUniform = _texturedProgram.GetRequiredUniformLocation("uClipMatrix");
+
+            _shadowProgram = new OpenGLProgram(gl, VertexShader, ShadowFragmentShader);
+            _shadowMatrixUniform = _shadowProgram.GetRequiredUniformLocation("uClipMatrix");
+            _shadowAlphaUniform = _shadowProgram.GetRequiredUniformLocation("uShadowAlpha");
 
             _sampler = gl.GenSampler();
             gl.SamplerParameter(_sampler, SamplerParameterI.MinFilter, (int)GLEnum.Linear);
@@ -73,7 +76,9 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
             throw new ArgumentOutOfRangeException(nameof(cullMode));
         }
 
-        OpenGLProgram program = _program ?? throw new ObjectDisposedException(nameof(OpenGLMeshRenderer));
+        OpenGLProgram program = shadowAlpha.HasValue
+            ? _shadowProgram ?? throw new ObjectDisposedException(nameof(OpenGLMeshRenderer))
+            : _texturedProgram ?? throw new ObjectDisposedException(nameof(OpenGLMeshRenderer));
         Matrix4x4 glClip = clipMatrix * new Matrix4x4(
             1, 0, 0, 0,
             0, 1, 0, 0,
@@ -113,15 +118,18 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
             _gl.ColorMask(true, true, true, true);
 
             program.Use();
-            _gl.UniformMatrix4(_matrixUniform, 1, false, (float*)&glClip);
-            _gl.Uniform1(_textureUniform, 0);
-            _gl.Uniform1(_shadowModeUniform, shadowAlpha.HasValue ? 1 : 0);
-            _gl.Uniform1(_shadowAlphaUniform, shadowAlpha ?? 0f);
+            _gl.UniformMatrix4(shadowAlpha.HasValue ? _shadowMatrixUniform : _texturedMatrixUniform,
+                1, false, (float*)&glClip);
 
-            if (texture is not null)
+            if (shadowAlpha is float shadow)
             {
+                _gl.Uniform1(_shadowAlphaUniform, shadow);
+            }
+            else
+            {
+                _gl.Uniform1(_textureUniform, 0);
                 _gl.ActiveTexture(TextureUnit.Texture0);
-                texture.Bind();
+                texture!.Bind();
                 _gl.BindSampler(0, _sampler);
             }
             mesh.Bind();
@@ -162,8 +170,10 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
                 _sampler = 0;
             }
 
-            _program?.Dispose();
-            _program = null;
+            _shadowProgram?.Dispose();
+            _shadowProgram = null;
+            _texturedProgram?.Dispose();
+            _texturedProgram = null;
         }
         finally
         {
@@ -190,28 +200,31 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
         }
         """;
 
-    private const string FragmentShader = """
+    private const string TexturedFragmentShader = """
         #version 330 core
         in vec4 vertexColor;
         in vec2 textureCoordinate;
         uniform sampler2D uTexture;
-        uniform int uShadowMode;
-        uniform float uShadowAlpha;
         out vec4 outputColor;
 
         void main()
         {
-            if (uShadowMode != 0)
-            {
-                outputColor = vec4(0.0, 0.0, 0.0, uShadowAlpha);
-                return;
-            }
-
             outputColor = texture(uTexture, textureCoordinate) * vertexColor;
             if (outputColor.a < (8.0 / 255.0))
             {
                 discard;
             }
+        }
+        """;
+
+    private const string ShadowFragmentShader = """
+        #version 330 core
+        uniform float uShadowAlpha;
+        out vec4 outputColor;
+
+        void main()
+        {
+            outputColor = vec4(0.0, 0.0, 0.0, uShadowAlpha);
         }
         """;
 }
