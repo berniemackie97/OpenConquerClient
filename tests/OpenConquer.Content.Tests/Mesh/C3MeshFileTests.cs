@@ -79,6 +79,7 @@ public sealed class C3MeshFileTests
     {
         using MemoryStream output = new();
         output.Write(new byte[16]);
+        Span<byte> length = stackalloc byte[4];
         foreach ((string kind, byte[] payload) in sections)
         {
             byte[] name = Encoding.ASCII.GetBytes(kind);
@@ -88,7 +89,6 @@ public sealed class C3MeshFileTests
             }
 
             output.Write(name);
-            Span<byte> length = stackalloc byte[4];
             BinaryPrimitives.WriteUInt32LittleEndian(length, (uint)payload.Length);
             output.Write(length);
             output.Write(payload);
