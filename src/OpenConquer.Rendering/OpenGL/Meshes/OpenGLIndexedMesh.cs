@@ -101,8 +101,6 @@ public sealed unsafe class OpenGLIndexedMesh : IDisposable
         _gl.BindVertexArray(_vertexArray);
     }
 
-    internal uint DrawIndexCount => _indexCount;
-
     public void Dispose()
     {
         if (_disposed)

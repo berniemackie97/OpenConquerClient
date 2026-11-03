@@ -89,7 +89,7 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
             texture.Bind();
             _gl.BindSampler(0, _sampler);
             mesh.Bind();
-            _gl.DrawElements(PrimitiveType.Triangles, mesh.DrawIndexCount,
+            _gl.DrawElements(PrimitiveType.Triangles, (uint)mesh.IndexCount,
                 DrawElementsType.UnsignedShort, null);
         }
         catch (Exception exception)
