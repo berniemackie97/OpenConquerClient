@@ -24,13 +24,15 @@ internal sealed class WorldRoleMesh : IDisposable
     }
 
     internal void Draw(OpenGLRenderer renderer, OpenConquer.Rendering.OpenGL.Resources.OpenGLTexture2D texture,
-        Matrix4x4 main, Matrix4x4 shadow, int frame)
+        Matrix4x4 main, int frame)
     {
         C3PhySkinner.Calculate(_source, _motion, frame, null, 0, 0, _bones, _vertices);
         _gpuMesh.Upload(MemoryMarshal.AsBytes(_vertices.AsSpan()));
         renderer.DrawIndexedMesh(_gpuMesh, texture, main, MeshCullMode.Clockwise);
-        renderer.DrawIndexedMeshShadow(_gpuMesh, shadow, MeshCullMode.Clockwise);
     }
+
+    internal void DrawShadow(OpenGLRenderer renderer, Matrix4x4 shadow) =>
+        renderer.DrawIndexedMeshShadow(_gpuMesh, shadow, MeshCullMode.Clockwise);
 
     public void Dispose() => _gpuMesh.Dispose();
 }

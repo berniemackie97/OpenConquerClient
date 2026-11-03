@@ -84,7 +84,7 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
         try
         {
             _gl.Enable(EnableCap.DepthTest);
-            _gl.DepthMask(true);
+            _gl.DepthMask(!shadowAlpha.HasValue);
             _gl.DepthFunc(shadowAlpha.HasValue ? DepthFunction.Less : DepthFunction.Lequal);
 
             if (cullMode == MeshCullMode.None)
@@ -101,7 +101,15 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
 
             _gl.Enable(EnableCap.Blend);
             _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
-            _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+            if (shadowAlpha.HasValue)
+            {
+                _gl.BlendFuncSeparate(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha,
+                    BlendingFactor.Zero, BlendingFactor.One);
+            }
+            else
+            {
+                _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+            }
             _gl.ColorMask(true, true, true, true);
 
             program.Use();

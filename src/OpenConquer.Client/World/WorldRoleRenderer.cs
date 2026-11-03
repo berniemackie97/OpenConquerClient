@@ -92,7 +92,12 @@ internal sealed class WorldRoleRenderer : IDisposable
     {
         foreach (WorldRoleMesh mesh in _meshes)
         {
-            mesh.Draw(renderer, _texture, main, shadow, frame: 0);
+            mesh.Draw(renderer, _texture, main, frame: 0);
+        }
+
+        foreach (WorldRoleMesh mesh in _meshes)
+        {
+            mesh.DrawShadow(renderer, shadow);
         }
     }
 
