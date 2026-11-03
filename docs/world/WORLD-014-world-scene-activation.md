@@ -5,8 +5,9 @@ After admission, the client loads the matching map, its puzzle resources, and it
 scene resources from the configured content root. The role-creation screen transfers its
 connection to the application and closes without disposing the transferred game session.
 
-The world scene projects the hero tile through the existing camera and draws the map's
-positioned puzzle records, ground puzzle, and terrain objects in component insertion order.
+The world scene projects the hero tile through the existing camera and draws positioned
+puzzle records, the ground puzzle, and active scenery in component order. Terrain objects
+and map-scene animated sprites share the depth-insertion pass.
 Each puzzle bitmap advances its own frame clock using
 `ini/info.ini` `[PuzzleBmp] FrameIntervalMilliSec`, defaulting to 1000 milliseconds.
 Terrain objects use their authored frame intervals.
@@ -68,14 +69,28 @@ The server must be running for an authenticated-world smoke test. CI validates t
 with small generated frame resources and the verified map data fixtures; it does not replace
 a live OpenGL smoke test.
 
-Type-4 animated scenery, positioned animated overlays, the local hero, HUD, ongoing
-world packets, movement, and remaining scenery kinds are not drawn yet. Unsupported
-positioned animation entries are skipped without suppressing supported puzzle layers. Those require a shared world-entity depth
-ordering pass. The current frame is an authenticated map presentation, not a playable world.
+The map's configured animated scenery resolves through the shared ANI loader. The scene
+indexes static sprite anchors into 256-pixel buckets, selects visible buckets, checks
+both sprite-offset and anchor visibility, and orders those sprites with terrain objects.
+Frame dimensions refine the initial visibility margin after texture preparation.
+The shared depth pass keeps terrain objects as footprint parents. A sprite activated
+after a terrain object is adopted when its tile lies inside that terrain footprint;
+adopted sprites render immediately after their parent in their own axis-aware order.
+Previously activated sprites stay in the top-level order.
+
+Positioned animated-overlay entries are parsed but not drawn. The verified map
+catalog has no such animated children; Newbie Village's positioned overlay is
+a puzzle background already drawn in component order. The local hero, HUD,
+ongoing world packets, movement, and remaining scenery kinds are not drawn yet.
+These must join the existing scene pass rather than introduce separate drawing
+systems. The current frame remains an authenticated map presentation, not a
+playable world.
 
 ## Verification
 
 The world tests verify first-frame layer insertion order, the hero-centered projection,
-and independent puzzle frame advancement. Content tests verify interval parsing and the
+independent puzzle frame advancement, animation binding, spatial bucket selection,
+sprite projection, shared scenery depth insertion, terrain-footprint adoption, and child ordering.
+Content tests verify interval parsing and the
 default. Validate the source assets with the map puzzle and terrain-scene content tools
 before a local end-to-end smoke test.
