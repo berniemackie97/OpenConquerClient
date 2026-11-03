@@ -24,7 +24,7 @@ public sealed class WorldInboundStateTests
         Assert.True(state.Apply(Correction(HeroId, 62, 102)));
         Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
         Assert.False(state.Apply(Correction(HeroId, 62, 102)));
-        Assert.Throws<InvalidDataException>(() => state.Apply(Correction(OtherHeroId: HeroId + 1, x: 63, y: 103)));
+        Assert.Throws<InvalidDataException>(() => state.Apply(Correction(entityId: HeroId + 1, x: 63, y: 103)));
         Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
     }
 
@@ -62,10 +62,10 @@ public sealed class WorldInboundStateTests
             new GameCharacterInfo1006 { EntityId = HeroId },
             1002, 1010, 0, 1, 61, 101, []));
 
-    private static byte[] Correction(uint OtherHeroId, ushort x, ushort y)
+    private static byte[] Correction(uint entityId, ushort x, ushort y)
     {
         byte[] frame = new byte[GameWorldAction10010.PacketLength];
-        GameWorldAction10010.Write(frame, 108, OtherHeroId);
+        GameWorldAction10010.Write(frame, 108, entityId);
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(24), x);
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(26), y);
         return frame;

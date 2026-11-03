@@ -775,9 +775,9 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         {
             using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken, _lifetimeCancellation.Token);
-            if (timeout is TimeSpan duration)
+            if (timeout is TimeSpan readTimeout)
             {
-                deadline.CancelAfter(duration);
+                deadline.CancelAfter(readTimeout);
             }
 
             NetworkStream stream = _client.GetStream();

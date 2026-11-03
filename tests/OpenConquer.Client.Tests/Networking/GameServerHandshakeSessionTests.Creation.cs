@@ -90,6 +90,15 @@ public sealed partial class GameServerHandshakeSessionTests
         Assert.Equal(1u, world.WeatherKind);
         Assert.Empty(world.HydrationPackets);
 
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+
+        using CancellationTokenSource stopWorldRead = new();
+        Task pending = game.ReadWorldFrameAsync(stopWorldRead.Token);
+        Assert.False(pending.IsCompleted);
+        await stopWorldRead.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+
         await game.DisposeAsync();
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }

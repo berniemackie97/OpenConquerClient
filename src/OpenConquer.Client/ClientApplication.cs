@@ -605,7 +605,7 @@ internal sealed class ClientApplication : IDisposable
                 _worldScene = scene;
                 if (_worldInboundState is { } inbound)
                 {
-                    scene.SetCameraTile(inbound.X, inbound.Y);
+                    ApplyWorldCamera(scene, inbound);
                 }
 
                 IClientContentSource source = _roleContent ??
@@ -689,8 +689,18 @@ internal sealed class ClientApplication : IDisposable
             throw new InvalidOperationException("World inbound state is not active.");
         if (state.Apply(packet) && _worldScene is { } scene)
         {
-            scene.SetCameraTile(state.X, state.Y);
+            ApplyWorldCamera(scene, state);
         }
+    }
+
+    private static void ApplyWorldCamera(WorldMapScene scene, WorldInboundState state)
+    {
+        if (state.X >= scene.Map.CellGrid.Width || state.Y >= scene.Map.CellGrid.Height)
+        {
+            throw new InvalidDataException("GameServer corrected the hero to a tile outside the loaded map.");
+        }
+
+        scene.SetCameraTile(state.X, state.Y);
     }
 
     private void OnLoginRequested()

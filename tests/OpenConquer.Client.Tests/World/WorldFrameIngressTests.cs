@@ -12,11 +12,12 @@ public sealed class WorldFrameIngressTests
         TaskCompletionSource<GameSecuredInboundFrame?> pending = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         int reads = 0;
-        Task<GameSecuredInboundFrame?> Receive(CancellationToken _) => ++reads switch
+        Task<GameSecuredInboundFrame?> Receive(CancellationToken token) => ++reads switch
         {
             1 => Task.FromResult<GameSecuredInboundFrame?>(Frame(1016)),
             2 => pending.Task,
-            _ => Task.FromResult<GameSecuredInboundFrame?>(Frame(10014))
+            3 => Task.FromResult<GameSecuredInboundFrame?>(Frame(10014)),
+            _ => WaitForCancellation(token)
         };
 
         await using WorldFrameIngress ingress = new(Receive);
@@ -76,6 +77,12 @@ public sealed class WorldFrameIngressTests
         await using WorldFrameIngress ingress = new(
             _ => Task.FromResult<GameSecuredInboundFrame?>(null));
         Assert.Throws<EndOfStreamException>(() => ingress.Drain(_ => { }));
+    }
+
+    private static async Task<GameSecuredInboundFrame?> WaitForCancellation(CancellationToken token)
+    {
+        await Task.Delay(Timeout.InfiniteTimeSpan, token);
+        return null;
     }
 
     private static GameSecuredInboundFrame Frame(ushort type)
