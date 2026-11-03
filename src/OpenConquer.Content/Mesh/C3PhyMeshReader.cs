@@ -87,7 +87,10 @@ public static class C3PhyMeshReader
                 throw new InvalidDataException("PHY vertex transform produces invalid coordinates.");
             }
 
-            vertices[i] = vertex with { Position = new Vector3(transformed.X, transformed.Y, transformed.Z) };
+            vertices[i] = vertex with
+            {
+                Position = new Vector3(transformed.X, transformed.Y, transformed.Z)
+            };
         }
 
         uint stepFrameCount = reader.ReadUInt32();

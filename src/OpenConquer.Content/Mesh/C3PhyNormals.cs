@@ -81,7 +81,10 @@ internal static class C3PhyNormals
 
         for (int i = 0; i < vertices.Length; i++)
         {
-            vertices[i] = vertices[i] with { Normal = normals[i] };
+            vertices[i] = vertices[i] with
+            {
+                Normal = normals[i]
+            };
         }
     }
 
