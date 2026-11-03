@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using OpenConquer.Content.Map;
 
 namespace OpenConquer.Client.World;
@@ -52,14 +51,15 @@ internal static class WorldSceneryDrawList
         List<WorldScenerySprite> sprites)
     {
         GameMapSceneryRecord record = binding.Scenery;
-        ReadOnlySpan<byte> data = record.EncodedPayload.Span;
+        GameMapSceneryAnimation animation = record.Animation ??
+            throw new InvalidDataException("Animated scenery is missing its decoded fields.");
         int tileX = record.TileX!.Value;
         int tileY = record.TileY!.Value;
-        int width = BinaryPrimitives.ReadInt32LittleEndian(data[0x18C..]);
-        int height = BinaryPrimitives.ReadInt32LittleEndian(data[0x190..]);
-        int offsetX = BinaryPrimitives.ReadInt32LittleEndian(data[0x194..]);
-        int offsetY = BinaryPrimitives.ReadInt32LittleEndian(data[0x198..]);
-        int interval = BinaryPrimitives.ReadInt32LittleEndian(data[0x19C..]);
+        int width = animation.FootprintWidth;
+        int height = animation.FootprintHeight;
+        int offsetX = animation.RenderOffsetX;
+        int offsetY = animation.RenderOffsetY;
+        int interval = animation.FrameIntervalMilliseconds;
         if (interval <= 0)
         {
             throw new InvalidDataException("Map scenery animation interval must be positive.");
