@@ -26,10 +26,10 @@
   </ItemGroup>
 
     <!--
-     The tracked retail-5517 content set is the curated client runtime closure.
-     Stage it as a unit so build and publish outputs remain identical to that tracked payload.
+     The local retail-5517 content set is the curated client runtime closure.
+     Stage it as a unit so build and publish outputs remain identical to that local payload.
    -->
-  <ItemGroup>
+  <ItemGroup Condition="Exists('../../content/retail-5517/manifest.json')">
     <Content Include="../../content/retail-5517/manifest.json"
              Link="content/retail-5517/manifest.json"
              Visible="false"

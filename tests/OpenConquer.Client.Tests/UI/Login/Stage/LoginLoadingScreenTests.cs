@@ -63,7 +63,7 @@ public sealed class LoginLoadingScreenTests
 
     private static LoginLoadingScreen CreateScreen()
     {
-        byte[] timeline = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory,
+        byte[] timeline = OpenConquer.Tests.RetailContentFixture.ReadAllBytes(Path.Combine(AppContext.BaseDirectory,
             "LoadingFixture", "timeline.json"));
         return new LoginLoadingScreen(LoginLoadingTimeline.Parse(timeline),
             "Account", "Game", "Initializing", "Creating maps");
