@@ -16,9 +16,23 @@ internal sealed class WorldInboundState
         Weather = (world.WeatherKind, 0, 0, 0);
     }
 
-    internal ushort X { get; private set; }
-    internal ushort Y { get; private set; }
-    internal (uint Kind, uint Intensity, uint DirectionDegrees, uint Parameter) Weather { get; private set; }
+    internal ushort X
+    {
+        get;
+        private set;
+    }
+
+    internal ushort Y
+    {
+        get;
+        private set;
+    }
+
+    internal (uint Kind, uint Intensity, uint DirectionDegrees, uint Parameter) Weather
+    {
+        get;
+        private set;
+    }
 
     internal bool Apply(ReadOnlyMemory<byte> packet)
     {
