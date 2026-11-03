@@ -28,6 +28,6 @@ application. The level-specific experience maximum is supplied by the
 progression table in WORLD-028. The remaining gaps must be closed before
 declaring the complete HUD or equipment-derived stats production-ready.
 
-The UID mapping for equipment snapshot subtype 46 was corrected to slots
-1, 2, 3, 5, 4, 6, 7, 8, 9, 16, 15, 17, 18; the previous hand/accessory
-order would have applied bonuses to incorrect equipment positions.
+The thirteen equipment snapshot UIDs follow packet offsets 32 through 80
+in ascending order and activate slots 1 through 9, then 15 through 18.
+The right-hand and right-accessory entries precede their left counterparts.

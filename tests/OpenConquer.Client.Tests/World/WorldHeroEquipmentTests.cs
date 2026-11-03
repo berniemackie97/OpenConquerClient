@@ -41,13 +41,36 @@ public sealed class WorldHeroEquipmentTests
         BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(72), 104);
 
         WorldHeroEquipment state = WorldHeroEquipment.FromHydration(
-            [Item(101, 410003, placement: 5), Item(102, 420003, placement: 4),
-                Item(103, 215003, placement: 16), Item(104, 216003, placement: 15), snapshot]);
+            [Item(101, 410003, placement: 4), Item(102, 420003, placement: 5),
+                Item(103, 215003, placement: 15), Item(104, 216003, placement: 16), snapshot]);
 
-        Assert.Equal(101u, state.GetActiveItem(5)?.Id);
-        Assert.Equal(102u, state.GetActiveItem(4)?.Id);
-        Assert.Equal(103u, state.GetActiveItem(16)?.Id);
-        Assert.Equal(104u, state.GetActiveItem(15)?.Id);
+        Assert.Equal(101u, state.GetActiveItem(4)?.Id);
+        Assert.Equal(102u, state.GetActiveItem(5)?.Id);
+        Assert.Equal(103u, state.GetActiveItem(15)?.Id);
+        Assert.Equal(104u, state.GetActiveItem(16)?.Id);
+    }
+
+    [Fact]
+    public void EquipmentSnapshotMapsAllThirteenWireOffsetsToTheirSlotNumbers()
+    {
+        byte[] snapshot = Equipment();
+        byte[] slots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 18];
+        List<byte[]> hydration = [];
+
+        for (int index = 0; index < slots.Length; index++)
+        {
+            uint id = (uint)(1000 + index);
+            hydration.Add(Item(id, (uint)(410000 + index * 10), placement: slots[index]));
+            BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(32 + index * 4), id);
+        }
+
+        hydration.Add(snapshot);
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(hydration);
+
+        for (int index = 0; index < slots.Length; index++)
+        {
+            Assert.Equal((uint)(1000 + index), equipment.GetActiveItem(slots[index])?.Id);
+        }
     }
 
     [Fact]
