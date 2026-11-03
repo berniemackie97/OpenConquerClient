@@ -86,23 +86,35 @@ internal static class WorldHeroItemStats
     {
         uint normalized = type % 1_000_000;
         uint family = normalized / 1000;
-        if (family == 123) return 1;
-        if (family == 203) return 21;
-        if (family == 300 && type % 10 == 0) return 14;
-        if (family == 601) return 4;
-        if (family is 201 or 202) return 12;
-        if (family == 200) return 20;
-        if (family == 350) return 16;
-        if (family == 360) return 15;
-        if (family == 370) return 17;
-        if (family == 380) return 18;
+        if (family == 300 && type % 10 == 0)
+        {
+            return 14;
+        }
+
+        int familyCategory = family switch
+        {
+            123 => 1,
+            203 => 21,
+            601 => 4,
+            201 or 202 => 12,
+            200 => 20,
+            350 => 16,
+            360 => 15,
+            370 => 17,
+            380 => 18,
+            _ => -1,
+        };
+        if (familyCategory != -1)
+        {
+            return familyCategory;
+        }
 
         uint bucket = type % 10_000_000 / 100_000;
         if (bucket <= 7)
         {
             if (bucket == 1)
             {
-                return normalized / 10_000 switch
+                return (int)(normalized / 10_000) switch
                 {
                     11 or 14 or 17 => 1,
                     12 => 2,
@@ -114,12 +126,21 @@ internal static class WorldHeroItemStats
                 };
             }
 
-            return bucket switch { 4 => 4, 5 => 5, 6 => 4, 7 => 9, _ => -1 };
+            return bucket switch
+            {
+                4 or 6 => 4,
+                5 => 5,
+                7 => 9,
+                _ => -1,
+            };
         }
 
-        if (bucket == 9) return 6;
-        if (bucket == 10) return 0;
-        if (bucket is >= 20 and <= 29) return 10;
-        return -1;
+        return bucket switch
+        {
+            9 => 6,
+            10 => 0,
+            >= 20 and <= 29 => 10,
+            _ => -1,
+        };
     }
 }

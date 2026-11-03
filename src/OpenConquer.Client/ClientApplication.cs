@@ -215,8 +215,8 @@ internal sealed class ClientApplication : IDisposable
                             {
                                 _worldIngress = null;
                                 _worldInboundState = null;
-                            _itemStats = null;
-                            _worldGaugeFollowers = null;
+                                _itemStats = null;
+                                _worldGaugeFollowers = null;
                                 _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                             }
                         }

@@ -2,8 +2,17 @@ namespace OpenConquer.Client.World;
 
 internal sealed class WorldHeroGaugeFollowers
 {
-    internal int Life { get; private set; }
-    internal int Mana { get; private set; }
+    internal int Life
+    {
+        get;
+        private set;
+    }
+
+    internal int Mana
+    {
+        get;
+        private set;
+    }
 
     internal void Advance(WorldHeroAttributes hero, WorldHeroMaxStats maxima)
     {

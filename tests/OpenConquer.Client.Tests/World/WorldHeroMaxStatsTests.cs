@@ -46,7 +46,10 @@ public sealed class WorldHeroMaxStatsTests
     [Fact]
     public void AppliesOverlayAndPackedLifeTierButNotToMana()
     {
-        WorldHeroAttributes hero = Hero(profession: 10) with { OverlayLifeBonus = 25 };
+        WorldHeroAttributes hero = Hero(profession: 10) with
+        {
+            OverlayLifeBonus = 25,
+        };
         Assert.Equal(new WorldHeroMaxStats(225 + 25 + 1200, 40),
             WorldHeroMaxStats.Resolve(hero, 0, 0, 0x400000UL,
                 hasTransformLook: false, lifeTierDigit: 9));
