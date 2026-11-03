@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 
 namespace OpenConquer.Content.Mesh;
 
-public readonly record struct C3MeshSection(uint Identifier, int Offset, int Length);
+public readonly record struct C3MeshSection(uint Identifier, int Offset, ReadOnlyMemory<byte> Payload);
 
 public sealed class C3MeshFile
 {
@@ -14,11 +14,8 @@ public sealed class C3MeshFile
     private const int MaximumSectionCount = 65_536;
     private const uint PhyPrefix = 0x00594850;
 
-    private readonly ReadOnlyMemory<byte> _content;
-
-    private C3MeshFile(ReadOnlyMemory<byte> content, C3MeshSection[] sections, int phyCount)
+    private C3MeshFile(C3MeshSection[] sections, int phyCount)
     {
-        _content = content;
         Sections = Array.AsReadOnly(sections);
         PhyCount = phyCount;
     }
@@ -26,9 +23,6 @@ public sealed class C3MeshFile
     public IReadOnlyList<C3MeshSection> Sections { get; }
 
     public int PhyCount { get; }
-
-    public ReadOnlyMemory<byte> GetPayload(C3MeshSection section) =>
-        _content.Slice(section.Offset, section.Length);
 
     public static C3MeshFile Load(IClientContentSource source, string path)
     {
@@ -72,11 +66,11 @@ public sealed class C3MeshFile
                 }
             }
 
-            sections.Add(new C3MeshSection(identifier, dataOffset, (int)length));
+            sections.Add(new C3MeshSection(identifier, dataOffset, data.Slice(dataOffset, (int)length)));
             offset = dataOffset + (int)length;
         }
 
-        return new C3MeshFile(data, [.. sections], phyCount);
+        return new C3MeshFile([.. sections], phyCount);
     }
 
     private static bool IsPhyVariant(byte variant) =>

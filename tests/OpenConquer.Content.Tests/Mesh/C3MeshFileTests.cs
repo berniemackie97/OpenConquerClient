@@ -18,9 +18,9 @@ public sealed class C3MeshFileTests
 
         Assert.Equal(1, file.PhyCount);
         Assert.Equal(3, file.Sections.Count);
-        Assert.Equal([1, 2, 3], file.GetPayload(file.Sections[0]).ToArray());
-        Assert.Equal([4, 5], file.GetPayload(file.Sections[1]).ToArray());
-        Assert.Equal([6], file.GetPayload(file.Sections[2]).ToArray());
+        Assert.Equal([1, 2, 3], file.Sections[0].Payload.ToArray());
+        Assert.Equal([4, 5], file.Sections[1].Payload.ToArray());
+        Assert.Equal([6], file.Sections[2].Payload.ToArray());
         Assert.Equal(24, file.Sections[0].Offset);
         Assert.Equal(35, file.Sections[1].Offset);
         Assert.Equal(45, file.Sections[2].Offset);
