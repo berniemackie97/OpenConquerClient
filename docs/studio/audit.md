@@ -71,3 +71,39 @@ suite passed 3,330 tests; the 60 Studio tests and three CLI workflows also passe
 The expanded asset platform plan uses existing map/puzzle code and maintained native evidence.
 A focused live motion-sampling audit added raw byte-checked captures and importer constraints
 to the separate native workspace's `20_notes`; those research files are not runtime assets.
+
+## Client-connected authoring and rendering
+
+The next slice starts from main `c1ac806b49b31496b1cb51a6a904cfa7f39b8d26`, after the
+foundation PR was merged. PR #196 remains independent; no candidate map format is adopted.
+
+Studio can open the actual client repository, retain its authoring workspace under `.studio/authoring`,
+and browse the existing curated content payload. Local `.user/client.json` records relative
+repository/content connections. An original installation can be attached explicitly. Browsing
+is read-only; importing creates canonical editable resources. Source ANI ordering is retained,
+with authored timing chosen explicitly. Missing source frames fail before any resources are added.
+WDF-backed ANI frames use the existing packaged content source; anonymous WDF hash entries do
+not become invented named assets in the browser.
+
+Six existing world-rendering files moved into the internal ConquerRendering component. Client
+and Studio now own that implementation jointly. Projection, puzzle clocks, terrain clocks,
+footprint ordering, and draw-list behavior were retained. Studio adds a bounded camera-tile
+control and supplies preview texture budgets; client loading/session/network logic stays in Client.
+The renderer's framebuffer overload and queried texture capacity are additive shared mechanisms.
+
+The map browser uses the real map archive, cell grid, puzzle resources, scene files, and images.
+Map source metadata is inspectable but not converted into an editable map schema. Positioned
+animated overlays omitted by the existing client renderer are reported. Scrolling puzzle
+semantics that it rejects remain explicit failures. Characters, map editing, and automatic
+client consumption of authored replacements are not claimed.
+
+Local Apple M4 validation rendered actual `Control.ani` action-button frames after import,
+compilation, and independent runtime loading. Actual map 1010 rendered puzzles and terrain;
+camera movement changed framebuffer pixels, and resize/context recreation passed. Generated
+fixtures remain unit-test inputs, not evidence of client-asset compatibility. The platform GPU
+validation executable now uses checked-in client assets. No proprietary fixtures were copied
+or added, and no new native format interpretation was introduced in this slice.
+
+The client source set contained 3,936 files; its browser inventory also contains map-catalog
+records, including records whose archives are missing. Missing data is labelled or reported;
+this inventory does not claim every original-client asset has been converted.

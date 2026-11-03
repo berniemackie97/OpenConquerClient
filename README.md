@@ -14,10 +14,11 @@ Windows, macOS, and Linux.
 ## OpenConquerStudio
 
 The unified development platform has a dedicated [Studio solution](OpenConquerStudio.slnx)
-and [authoring guide](docs/studio/README.md). Its first workflow creates projects, imports
-textures and supported existing client artwork, previews and edits them, saves/reopens projects,
-and compiles deterministic runtime content. Client consumption of authored replacements is a
-later coordinated integration.
+and [short usage guide](docs/studio/README.md). It creates projects, imports textures and
+supported client artwork, authors sprite atlases and animations, previews them through the
+shared engine renderer, and compiles deterministic runtime content. The guide also covers
+opening an existing project and connecting compiled assets to a game. Client resource
+replacement remains a coordinated integration.
 
 ## Current Capabilities
 

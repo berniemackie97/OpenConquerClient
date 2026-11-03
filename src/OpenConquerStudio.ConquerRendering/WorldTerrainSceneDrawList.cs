@@ -1,7 +1,7 @@
 using OpenConquer.Content.Ani;
 using OpenConquer.Content.Map;
 
-namespace OpenConquer.Client.World;
+namespace OpenConquerStudio.ConquerRendering;
 
 internal readonly record struct WorldTerrainSprite(
     AniIndexSection Animation, int FrameIndex, int X, int Y,

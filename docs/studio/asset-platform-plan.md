@@ -1,7 +1,7 @@
 # Asset platform target and delivery plan
 
 This is the required product direction for OpenConquerStudio. The executable foundation
-currently implements texture projects. The asset families, editors, and production gates
+currently implements texture, atlas, and sprite-animation projects. The asset families, editors, and production gates
 below define subsequent implementation work; their presence in this plan does not make
 them supported by the current application.
 
@@ -43,9 +43,9 @@ There is no fresh claim of complete character or mesh parity from that focused c
 
 Authoring data and compiled runtime data have different responsibilities.
 
-The next project schema will use readable, versioned asset documents, immutable large
-payloads, and a project asset index. The current version-1 texture schema remains unchanged
-until a tested migration exists. The following layout is the target, not the current layout:
+The version-2 project schema uses readable, versioned asset documents, immutable pixel
+payloads, and a project asset index. The implemented layout is documented in [formats](formats.md).
+The broader target layout below extends that model; version-1 texture projects migrate by explicit copy. The following layout is the target, not the current layout:
 
 ```text
 project.ocstudio                      project identity, roots, profiles, schema version
@@ -70,25 +70,21 @@ large numeric arrays and pixel buffers live in lossless payloads. Each payload d
 its encoding, count, dimensions/layout, units, and digest. Hashes locate content revisions;
 they do not replace stable asset identities or authenticate a publisher.
 
-For example, a future sprite-animation document could express this semantic contract:
+The current sprite-animation revision is concrete:
 
 ```json
 {
-  "schemaVersion": 2,
-  "assetId": "e2356225-f267-43b9-878d-ab42036c6ab4",
-  "type": "SpriteAnimation",
-  "name": "Lantern idle",
-  "data": {
+  "schemaVersion": 1,
+  "asset": {
+    "id": "e2356225-f267-43b9-878d-ab42036c6ab4",
+    "name": "Lantern idle",
     "ticksPerSecond": 1000,
-    "clockPolicy": "ElapsedTime",
-    "loopMode": "Repeat",
+    "repeat": true,
     "frames": [
       {
-        "frameId": "37929468-44cd-4bac-857d-302a25a35a5e",
-        "sprite": {
-          "assetId": "90d57283-f8cf-4799-8ee8-82710e304914",
-          "subresourceId": "5d7be9d5-a3fe-4a81-8f05-c0b2c597b8a5"
-        },
+        "id": "37929468-44cd-4bac-857d-302a25a35a5e",
+        "atlasId": "90d57283-f8cf-4799-8ee8-82710e304914",
+        "spriteId": "5d7be9d5-a3fe-4a81-8f05-c0b2c597b8a5",
         "durationTicks": 100
       }
     ]
@@ -96,14 +92,15 @@ For example, a future sprite-animation document could express this semantic cont
 }
 ```
 
-This illustrates identity, timing, and references. It is not a schema accepted by the
-version-1 reader. Schema implementation needs a validator, migration, serializer, editor,
-compiler, runtime reader, and conformance tests together.
+The project index supplies resource kind and revision digest. Referenced atlas/sprite IDs must
+resolve in that project. Future scene, character, and other schemas need a validator, migration,
+serializer, editor, compiler, runtime reader, and conformance tests together.
 
 Save transactions must cover related asset edits, their index, and new payload references.
-A recovery journal records expected old/new revisions before publication; opening a project
-must finish or roll back an interrupted transaction before editing resumes. Crash injection
-must cover every publication boundary. Multi-resource undo/redo uses the same domain edit
+The implemented immutable revision store uses one atomic root-index replacement, so related
+resource changes share one commit point without overwriting previous revisions. Any later
+mutable multi-file storage must add an explicit recovery protocol. Crash testing must verify
+that opening observes either the previous complete graph or the next complete graph. Multi-resource undo/redo uses the same domain edit
 transactions. Automatic recovery snapshots are separate from an explicit user save.
 
 Project files, owned sources, import metadata, and authored payloads must have a documented
@@ -239,7 +236,7 @@ and UI responsiveness. Optimization claims require measurements and conformance 
 
 | Milestone | Concrete deliverable | Completion evidence |
 | --- | --- | --- |
-| Foundation | Current texture project, import/edit/replace/preview/save/reopen/compile workflow | Existing persistence, corruption, lifecycle, CLI, headless UI, native macOS smoke, and CI checks. |
+| Foundation | Texture project, import/edit/replace/preview/save/reopen/compile workflow | Existing persistence, corruption, lifecycle, CLI, headless UI, native macOS smoke, and CI checks. |
 | Resource graph and animation | Version-2 migration, stable typed/subresource references, import/reimport review, sprite/atlas/animation authoring, edit transactions and shared-renderer host adapter | Identity-preserving migration/reimport, undo/redo/recovery tests, animation scrubbing/timing conformance, real embedded viewport on each platform. |
 | Puzzle and map authoring | Supported puzzle/ANI import, authored tile palettes, map cells/collision/elevation, terrain and animated layers, entrances/exits, parallax/scrolling, viewport editing | Create a map without source assets; import supported reference maps; edit/save/reopen/compile; compare traversal, layers, clocks, scrolling, and rendered output. |
 | Characters in maps | Verified geometry/motion import, material and attachment resolution, matrix sampling/skinning, multipart assembly, action preview, unified world ordering | First prove an approved static fixture; then animated multipart characters in a map, independent instance clocks, equipment changes, correct occlusion, deterministic pose and render comparisons. |

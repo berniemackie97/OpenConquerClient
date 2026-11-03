@@ -5,12 +5,12 @@ using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
 using OpenConquer.Rendering.Sprites;
 
-namespace OpenConquer.Client.World;
+namespace OpenConquerStudio.ConquerRendering;
 
 internal readonly record struct WorldMapLayer(
     IReadOnlyList<WorldPuzzleTile>? Puzzle = null, IReadOnlyList<WorldTerrainSprite>? Terrain = null);
 
-internal sealed class WorldMapScene
+public sealed class WorldMapScene
 {
     private readonly GameMapContent _map;
     private readonly GameMapPuzzleResources _puzzles;
@@ -18,8 +18,9 @@ internal sealed class WorldMapScene
     private readonly WorldPuzzleAnimationClock _groundClock;
     private readonly Dictionary<GameMapPuzzleOverlayEntry, WorldPuzzleAnimationClock> _overlayClocks =
         new(ReferenceEqualityComparer.Instance);
-    private readonly int _heroX;
-    private readonly int _heroY;
+    private int _heroX;
+    private int _heroY;
+    private int _zoomPercent = 100;
     private readonly uint _startMilliseconds;
     private readonly LogicalRenderSize _backdropExtent;
     private IReadOnlyList<WorldMapLayer> _layers = [];
@@ -57,7 +58,28 @@ internal sealed class WorldMapScene
         _backdropExtent = new LogicalRenderSize(backdropWidth, backdropHeight);
     }
 
-    internal LogicalRenderSize BackdropExtent => _backdropExtent;
+    public LogicalRenderSize BackdropExtent => _backdropExtent;
+    public GameMapContent Map => _map;
+
+    public void SetCameraTile(int tileX, int tileY)
+    {
+        if ((uint)tileX >= (uint)_map.CellGrid.Width || (uint)tileY >= (uint)_map.CellGrid.Height)
+        {
+            throw new ArgumentOutOfRangeException(nameof(tileX), "The camera tile must lie within the map grid.");
+        }
+
+        (_heroX, _heroY) = WorldCameraProjection.ProjectTile(_map, tileX, tileY);
+    }
+
+    public void SetZoomPercent(int zoomPercent)
+    {
+        if (zoomPercent is < 10 or > 800)
+        {
+            throw new ArgumentOutOfRangeException(nameof(zoomPercent), "Map zoom must be between 10 and 800 percent.");
+        }
+
+        _zoomPercent = zoomPercent;
+    }
 
     public static WorldMapScene Load(IClientContentSource source, GameMapCatalog catalog,
         uint mapDataId, ushort heroTileX, ushort heroTileY, uint startMilliseconds,
@@ -65,6 +87,14 @@ internal sealed class WorldMapScene
     {
         cancellationToken.ThrowIfCancellationRequested();
         GameMapContent map = GameMapContent.Load(source, catalog, mapDataId);
+        return Load(source, map, heroTileX, heroTileY, startMilliseconds, cancellationToken);
+    }
+
+    public static WorldMapScene Load(IClientContentSource source, GameMapContent map,
+        ushort cameraTileX, ushort cameraTileY, uint startMilliseconds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(map);
         cancellationToken.ThrowIfCancellationRequested();
         GameMapPuzzleResources puzzles = GameMapPuzzleResources.Load(source, map);
         cancellationToken.ThrowIfCancellationRequested();
@@ -72,14 +102,14 @@ internal sealed class WorldMapScene
         cancellationToken.ThrowIfCancellationRequested();
         uint puzzleInterval = PuzzleFrameIntervalConfiguration.Load(source);
         cancellationToken.ThrowIfCancellationRequested();
-        return new WorldMapScene(map, puzzles, terrain.Placements, heroTileX, heroTileY,
+        return new WorldMapScene(map, puzzles, terrain.Placements, cameraTileX, cameraTileY,
             puzzleInterval, startMilliseconds);
     }
 
     internal IReadOnlyList<WorldMapLayer> BuildFrame(int screenWidth, int screenHeight, uint nowMilliseconds)
     {
         _projection = WorldCameraProjection.FromHeroWorldPosition(_map, _puzzles,
-            _heroX, _heroY, screenWidth, screenHeight);
+            _heroX, _heroY, screenWidth, screenHeight, zoomPercent: _zoomPercent);
 
         IReadOnlyList<WorldPuzzleTile> ground = WorldPuzzleDrawList.Ground(
             _map, _puzzles, _projection, _groundClock.FrameForRender(nowMilliseconds));

@@ -4,6 +4,19 @@ using OpenConquerStudio.Authoring;
 
 internal sealed class ProjectDirectory : IDisposable
 {
+    public static string RepositoryRoot
+    {
+        get
+        {
+            string? directory = AppContext.BaseDirectory;
+            while (directory is not null && !File.Exists(Path.Combine(directory, "OpenConquer.Client.slnx")))
+            {
+                directory = Path.GetDirectoryName(directory);
+            }
+            return directory ?? throw new DirectoryNotFoundException("The client source checkout is required for integration tests.");
+        }
+    }
+
     public ProjectDirectory()
     {
         string temporary = OperatingSystem.IsMacOS() ? "/private/tmp" : Path.GetTempPath();

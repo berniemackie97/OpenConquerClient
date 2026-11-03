@@ -1,5 +1,7 @@
 <Solution>
+  <Project Path="src/OpenConquerStudio.ConquerRendering/OpenConquerStudio.ConquerRendering.csproj" />
   <Folder Name="/shared/">
+    <Project Path="src/OpenConquer.Rendering/OpenConquer.Rendering.csproj" />
     <Project Path="src/OpenConquer.Content/OpenConquer.Content.csproj" />
     <Project Path="src/OpenConquerStudio.Imaging/OpenConquerStudio.Imaging.csproj" />
   </Folder>
@@ -10,6 +12,7 @@
     <Project Path="src/OpenConquerStudio/OpenConquerStudio.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/OpenConquerStudio.RenderCheck/OpenConquerStudio.RenderCheck.csproj" />
     <Project Path="tools/OpenConquerStudio.Tool/OpenConquerStudio.Tool.csproj" />
   </Folder>
   <Folder Name="/tests/">

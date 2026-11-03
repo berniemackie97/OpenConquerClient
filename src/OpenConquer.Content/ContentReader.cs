@@ -1,6 +1,6 @@
 namespace OpenConquer.Content;
 
-internal static class ContentReader
+public static class ContentReader
 {
     public static byte[] ReadRequiredBytes(IClientContentSource contentSource, string contentPath, ContentLookupMode mode, int maximumLength)
     {

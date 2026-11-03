@@ -1,4 +1,4 @@
-namespace OpenConquer.Client.World;
+namespace OpenConquerStudio.ConquerRendering;
 
 /// <summary>Per-puzzle bitmap 5517 frame counter; advances once after a render when its interval elapsed.</summary>
 internal sealed class WorldPuzzleAnimationClock

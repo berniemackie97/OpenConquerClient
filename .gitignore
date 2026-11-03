@@ -507,3 +507,6 @@ $RECYCLE.BIN/
 /content/.gfx-ui-008-*/
 /content/retail-5517.next/
 /content/retail-5517.previous/
+
+# Local Studio client connection and authoring workspace
+/.studio/

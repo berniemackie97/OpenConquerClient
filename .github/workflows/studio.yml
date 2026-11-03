@@ -45,6 +45,17 @@ jobs:
         run: dotnet test OpenConquerStudio.slnx --configuration Release --no-build --no-restore
       - name: Verify command-line workflow and reproducible content
         run: python3 -m unittest discover -s tests/development -p test_studio_cli.py
+      - name: Install Linux rendering prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xvfb libgl1-mesa-dri libglx-mesa0
+      - name: Validate embedded viewport on Linux
+        if: runner.os == 'Linux'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: 'true'
+        run: xvfb-run -a dotnet run --project tools/OpenConquerStudio.RenderCheck -c Release --no-build --no-restore
+      - name: Validate embedded viewport on macOS
+        if: runner.os == 'macOS'
+        run: dotnet run --project tools/OpenConquerStudio.RenderCheck -c Release --no-build --no-restore
       - name: Publish Studio
         run: dotnet publish src/OpenConquerStudio --configuration Release --no-restore --output studio-publish
       - name: Verify Studio publish boundaries

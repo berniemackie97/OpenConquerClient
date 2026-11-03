@@ -1,6 +1,6 @@
 using System.Globalization;
-using OpenConquer.Client.World;
 using OpenConquer.Content.Map;
+using OpenConquerStudio.ConquerRendering;
 
 namespace OpenConquer.Client.Tests.World;
 

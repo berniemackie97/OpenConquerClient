@@ -1,105 +1,100 @@
 # OpenConquerStudio
 
-OpenConquerStudio is one game-development platform: runtime content, authoring, importers,
-the desktop workspace, and automation tools belong to the same product. OpenConquerClient
-is its first game integration. The foundation currently authors textures; it is not a
-complete scene editor or a replacement for the client's content pipeline yet.
+One platform for runtime content, authoring, previews, and builds.
+Supports client-content browsing, shared map previews, puzzle inspection, textures, sprite
+atlases, and sprite animation. Map editing and characters remain in the [asset plan](asset-platform-plan.md).
 
-## Build and run
+## Run
 
-Use the .NET SDK pinned in the repository's `global.json`.
+Install the .NET SDK pinned in `global.json`. From this repository:
 
 ```sh
 dotnet restore OpenConquerStudio.slnx --locked-mode
-dotnet format OpenConquerStudio.slnx --verify-no-changes --no-restore
-dotnet build OpenConquerStudio.slnx --configuration Release --no-restore
-dotnet test OpenConquerStudio.slnx --configuration Release --no-build --no-restore
-python3 -m unittest discover -s tests/development -p test_studio_cli.py
-dotnet run --project src/OpenConquerStudio --configuration Release --no-build
+dotnet build OpenConquerStudio.slnx -c Release --no-restore
+dotnet run --project src/OpenConquerStudio -c Release --no-build
 ```
 
-An optional project-directory argument opens a project at startup:
+Windows, macOS, and Linux are supported. The engine viewport requires desktop OpenGL
+3.3 Core and GPU texture sharing. The **Pixels** tab inspects image data independently.
+
+## Make or open a project
+
+To work with **OpenConquerClient**, choose **Open client project** and select its repository
+directory. Studio opens a persistent workspace under `.studio/authoring` and connects to
+`content/retail-5517/payload`. The **Client content** tab browses actual maps, ANI catalogs,
+images, and puzzle files. Select a map for the shared client-renderer preview; use the camera
+tile controls to navigate. Select an ANI section or image, then **Import editable copy**.
+Use **Client content folder** to attach an original installation instead. Source files remain
+unchanged. Imported copies save and compile through the regular authoring workflow.
+
+1. **New project**: choose an existing empty directory. **Open project**: choose a directory containing `project.ocstudio`.
+2. **Import texture**: select a supported TGA/DDS. **Client artwork** imports an editable copy from the included catalog.
+   **New texture** creates a solid image without original game files.
+3. Select a texture. Edit its name, flip, or rotation; click **Apply asset edits**.
+   **Replace source image** preserves its identity and edit settings. Referencing atlases must still fit the result.
+4. **Save** persists applied edits. **Undo** and **Redo** restore editing transactions within the current session.
+5. **Save and build** creates and validates a new content directory beneath the folder you select.
+
+Original import files stay unchanged. Apply/Rename buttons commit fields to the project;
+unapplied typing is not saved. Closing or switching projects prompts for unsaved applied edits.
+Only one Studio window or command-line operation can edit a project at a time.
+
+To open a project at startup:
 
 ```sh
-dotnet run --project src/OpenConquerStudio --configuration Release --no-build -- /path/to/project
+dotnet run --project src/OpenConquerStudio -c Release --no-build -- /path/to/project
 ```
 
-The Studio workflow builds and tests on Linux, Windows, and macOS. Headless desktop tests
-exercise real controls and bitmap pixels; they do not certify native file pickers,
-accessibility, display scaling, or a game-rendering viewport on every desktop.
-
-## Desktop workflow
-
-1. Select **New project** and choose an existing empty directory. Rename the project using
-   the project-name field and **Rename project**.
-2. Use **Import texture** for a supported TGA/DDS file, **Client artwork** for a supported
-   existing client image, or **New texture** to create an image without source assets.
-3. Select the asset. Its pixels, dimensions, identity, and source type appear in the workspace.
-4. Change its name, horizontal flip, or clockwise rotation, then select **Apply asset edits**.
-   Changes affect both the preview and subsequent compilation. **Replace source image** imports a new TGA/DDS into the selected asset while preserving its GUID, name, original source association, and edit settings. New textures accept dimensions
-   and an RGB fill color; this slice is not a painting application.
-5. **Save**, close, and reopen the project. Imported files and embedded source artwork remain
-   unchanged. Closing or switching projects offers Save, Discard, and Cancel for applied edits.
-6. **Save and build** creates a new content directory beneath the selected parent, validates
-   every compiled image, and reports the directory. Existing build directories are never replaced.
-
-Fields are committed by their Apply/Rename buttons; text still being typed is not a project edit.
-Imports, decoding, preview transforms, saves, and builds run off the UI thread. Only one operation
-runs per window. **Cancel operation** cancels at operation boundaries; an individual image decoder
-or atomic file publication finishes its current bounded operation first. Closing waits for active
-work before releasing resources.
-
-TGA import uses the existing 32-bit RLE decoder: no color map or image ID, zero origin,
-bottom-left orientation, and descriptor `0x08`. DDS supports the existing DXT1/DXT3 subset;
-mipmaps, volume textures, and other compression formats are rejected. Unsupported inputs
-produce diagnostics instead of partial assets.
-
-The client-artwork catalog initially covers eight account rows, dialog images, and button
-states. These are individual image imports. Dialog placement, timelines, masks, and state
-machines remain client behavior and are not converted into editable UI scenes here.
-
-## Automation
-
-The command-line host has the same authoring and compilation implementation as the desktop.
-Each invocation releases its project lease before exiting. Run it against a project that is
-closed in Studio.
+Version 1 projects require an explicit migration copy. Close the source project first:
 
 ```sh
-mkdir my-game
-dotnet run --project tools/OpenConquerStudio.Tool -c Release --no-build -- create my-game "My game"
-dotnet run --project tools/OpenConquerStudio.Tool -c Release --no-build -- import my-game image.tga "Sprite"
-dotnet run --project tools/OpenConquerStudio.Tool -c Release --no-build -- list-artwork
-dotnet run --project tools/OpenConquerStudio.Tool -c Release --no-build -- import-artwork my-game conquer/login/account/row
-dotnet run --project tools/OpenConquerStudio.Tool -c Release --no-build -- new-texture my-game "Blue" 64 64 0 0 255
-dotnet run --project tools/OpenConquerStudio.Tool -c Release --no-build -- edit my-game ASSET-GUID "Renamed" true 1
+mkdir migrated-game
+dotnet run --project tools/OpenConquerStudio.Tool -c Release --no-build -- migrate old-game migrated-game
+```
+
+## Author sprites and animation
+
+1. Select a texture, then **New atlas**. The initial sprite covers the whole texture.
+2. Select the atlas. Edit sprite rectangles and pixel pivots; **Apply sprite edits**.
+   **Add sprite** adds another region. Remove unused regions with **Remove sprite**.
+3. Select the atlas, then **New animation**. Its sprites become ordered frames.
+4. Select the animation. Choose each frame's sprite and duration; **Update frame**.
+   Add, remove, or reorder frames with the frame controls.
+5. Set ticks per second and repeat mode; **Apply clip settings**. At 1000 ticks/second,
+   100 ticks means 100 milliseconds. This is authored timing, independent of rendering rate.
+6. Use **Play/Pause**, **Stop**, and the position slider in the engine viewport. Zoom adjusts the preview around the sprite pivot.
+7. Save, reopen, and build. The dependency inspector shows resources used and resources affected by changes.
+   Deleting a referenced resource is blocked; fix its dependents first.
+
+## Use with OpenConquerClient or another game
+
+Keep each game's Studio project in its own content directory. Builds contain `.octex`,
+`.ocatlas`, `.ocanim`, and `content.json`. Do not load the editable project from a shipping game.
+
+A .NET game references `src/OpenConquerStudio.Runtime/OpenConquerStudio.Runtime.csproj`.
+Use `ContentPackage.Load(buildDirectory)` to validate and load the complete resource graph.
+`package.Sprites.Sample(animationId, elapsedTicks)` returns the texture and sprite rectangle
+at the clip's authored tick position. Upload texture pixels once using the existing
+`OpenGLGraphicsDevice`, then draw through `OpenGLRenderer` with the returned rectangle and pivot.
+Runtime loading has no Studio GUI or Conquer importer dependency.
+
+OpenConquerClient already shares image decoding and rendering with Studio. It **does not yet
+redirect its game resources to compiled Studio assets**. Importing artwork does not change
+client layouts, states, maps, or installed files. Client adoption needs explicit resource bindings
+and the existing authenticated content-release pipeline. Another game can consume the runtime
+resources directly without any Conquer assets.
+
+## Automation and checks
+
+```sh
 dotnet run --project tools/OpenConquerStudio.Tool -c Release --no-build -- build my-game compiled-content
 dotnet run --project tools/OpenConquerStudio.Tool -c Release --no-build -- verify compiled-content
+dotnet test OpenConquerStudio.slnx -c Release --no-build --no-restore
+python3 -m unittest discover -s tests/development -p test_studio_cli.py
 ```
 
-Import/create commands print the new asset GUID. `edit` takes horizontal flip and clockwise
-quarter turns, from 0 to 3. Exit codes are 0 for success, 1 for a rejected operation, 2 for
-usage errors, and 130 for cancellation. `build` requires a saved project and a nonexistent
-destination whose parent exists. Builds inside a project must be beneath `Builds/`.
+Run the tool without arguments for all commands. Close the project in Studio before editing
+it from the tool. Build destinations must be new; in-project builds belong under `Builds/`.
+Hashes check integrity, not publisher authenticity. Signing and publishing remain future work.
 
-## Boundaries and next work
-
-Runtime texture loading requires neither Studio UI nor Conquer content. This Studio build also
-includes the existing content assembly as the source for its explicit client-artwork catalog;
-creating a new game does not require importing those sources. No extra artwork copies or source
-archives have been added to the repository.
-
-The game does not yet load `.octex` assets. A later coordinated slice must introduce explicit
-game resource references, preserve required UI layout/state semantics, and bind the resulting
-assets into the existing authenticated release and installation contracts. A source key records
-where an image came from; it does not automatically redirect a client resource.
-
-Map/scene editing, animation authoring, sprite-sheet slicing, materials, shaders, terrain,
-entities, UI layouts, audio, package signing, and publishing are deferred. There are no controls
-or placeholder implementations for them. The next useful slice is a sprite scene with stable
-texture references, dependency validation, and a verified adapter for the shared game renderer.
-
-The [asset platform target and delivery plan](asset-platform-plan.md) defines saved resource
-models, map/puzzle/animation/character scope, shared rendering, editor polish, and production gates.
-
-See [architecture](architecture.md), [formats and safety](formats.md), and
-[repository audit](audit.md) for ownership and integration details.
+Details: [formats and safety](formats.md), [architecture](architecture.md), [audit](audit.md).

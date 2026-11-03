@@ -3,20 +3,24 @@ using OpenConquerStudio.Runtime;
 
 namespace OpenConquerStudio.Authoring;
 
-/// <summary>A single-owner editing session. Save publishes immutable pixels before replacing the project manifest.</summary>
-public sealed class StudioProject : IDisposable
+/// <summary>A single-owner editing session. Save publishes immutable revisions before replacing the project index.</summary>
+public sealed partial class StudioProject : IDisposable
 {
     private readonly FileStream _lease;
-    private readonly Dictionary<Guid, TextureData> _textures;
+    private readonly Dictionary<string, TextureData> _pixels;
+    private readonly List<ProjectDocument> _undo = [];
+    private readonly List<ProjectDocument> _redo = [];
+    private ProjectDocument? _savedDocument;
     private string? _savedDigest;
     private bool _disposed;
 
-    private StudioProject(string root, FileStream lease, ProjectDocument document, Dictionary<Guid, TextureData> textures, string? savedDigest)
+    private StudioProject(string root, FileStream lease, ProjectDocument document, Dictionary<string, TextureData> pixels, string? savedDigest)
     {
         Root = root;
         _lease = lease;
         Document = document;
-        _textures = textures;
+        _pixels = pixels;
+        _savedDocument = savedDigest is null ? null : document;
         _savedDigest = savedDigest;
         IsModified = savedDigest is null;
     }
@@ -36,7 +40,7 @@ public sealed class StudioProject : IDisposable
 
     public static StudioProject Create(string root, string name)
     {
-        ProjectDocument document = new(ProjectDocument.CurrentVersion, Guid.NewGuid(), name, []);
+        ProjectDocument document = new(ProjectDocument.CurrentVersion, Guid.NewGuid(), name, [], [], []);
         document.Validate();
         root = ProjectFiles.RequireSafePath(root);
         if (!Directory.Exists(root) || Directory.EnumerateFileSystemEntries(root).Any())
@@ -64,23 +68,8 @@ public sealed class StudioProject : IDisposable
         FileStream lease = AcquireLease(root);
         try
         {
-            byte[] bytes = ProjectFiles.Read(Path.Combine(root, ProjectFiles.ManifestName), ProjectFiles.MaximumManifestBytes);
-            ProjectDocument document = ProjectFiles.Deserialize<ProjectDocument>(bytes);
-            document.Validate();
-            Dictionary<Guid, TextureData> textures = [];
-            foreach (TextureAsset asset in document.Assets)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                byte[] pixels = ProjectFiles.Read(PixelPath(root, asset.PixelDigest), TextureData.MaximumPixelBytes);
-                if (ProjectFiles.Hash(pixels) != asset.PixelDigest)
-                {
-                    throw new InvalidDataException($"Pixel data for '{asset.Name}' failed its SHA-256 check.");
-                }
-
-                textures.Add(asset.Id, new TextureData(asset.Width, asset.Height, pixels));
-            }
-
-            return new StudioProject(root, lease, document, textures, ProjectFiles.Hash(bytes));
+            (ProjectDocument document, Dictionary<string, TextureData> pixels, string digest) = ProjectStorage.Read(root, cancellationToken);
+            return new StudioProject(root, lease, document, pixels, digest);
         }
         catch
         {
@@ -132,9 +121,8 @@ public sealed class StudioProject : IDisposable
             Assets = [.. Document.Assets, asset]
         };
         updated.Validate();
-        _textures.Add(asset.Id, texture);
-        Document = updated;
-        IsModified = true;
+        _pixels.TryAdd(asset.PixelDigest, texture);
+        Apply(updated);
         return asset.Id;
     }
 
@@ -155,8 +143,7 @@ public sealed class StudioProject : IDisposable
         document.Validate();
         if (original != updated)
         {
-            Document = document;
-            IsModified = true;
+            Apply(document);
         }
     }
 
@@ -178,16 +165,18 @@ public sealed class StudioProject : IDisposable
             Assets = Document.Assets.Select(a => a.Id == id ? updated : a).ToImmutableArray()
         };
         document.Validate();
-        _textures[id] = texture;
-        Document = document;
-        IsModified = true;
+        _pixels.TryAdd(updated.PixelDigest, texture);
+        Apply(document);
     }
 
     public TextureData Preview(Guid id, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
         TextureAsset asset = FindAsset(id);
-        return _textures[id].Transform(asset.FlipHorizontal, asset.ClockwiseQuarterTurns, cancellationToken);
+        TextureData pixels = _pixels[asset.PixelDigest];
+        TextureData texture = pixels.Width == asset.Width && pixels.Height == asset.Height
+            ? pixels : new TextureData(asset.Width, asset.Height, pixels.Pixels.Span);
+        return texture.Transform(asset.FlipHorizontal, asset.ClockwiseQuarterTurns, cancellationToken);
     }
 
     public void Rename(string name)
@@ -198,52 +187,116 @@ public sealed class StudioProject : IDisposable
             Name = name
         };
         updated.Validate();
-        IsModified |= name != Document.Name;
-        Document = updated;
+        if (name != Document.Name)
+        {
+            Apply(updated);
+        }
     }
 
     public void Save(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        Document.Validate();
-        string manifest = Path.Combine(Root, ProjectFiles.ManifestName);
-        if (_savedDigest is not null && ProjectFiles.Hash(ProjectFiles.Read(manifest, ProjectFiles.MaximumManifestBytes)) != _savedDigest)
-        {
-            throw new IOException("The project manifest changed outside this session. Reopen it before saving.");
-        }
-
-        string inputs = ProjectFiles.RequireSafePath(Path.Combine(Root, "Inputs"));
-        Directory.CreateDirectory(inputs);
-        foreach (TextureAsset asset in Document.Assets)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            string path = PixelPath(Root, asset.PixelDigest);
-            if (File.Exists(path))
-            {
-                if (ProjectFiles.Hash(ProjectFiles.Read(path, TextureData.MaximumPixelBytes)) != asset.PixelDigest)
-                {
-                    throw new InvalidDataException($"Existing pixels for '{asset.Name}' are corrupted; save was stopped.");
-                }
-            }
-            else
-            {
-                ProjectFiles.WriteAtomic(path, _textures[asset.Id].Pixels.Span, overwrite: false);
-            }
-        }
-
-        byte[] bytes = ProjectFiles.Serialize(Document with
-        {
-            Assets = Document.Assets.OrderBy(a => a.Id).ToImmutableArray()
-        });
-        cancellationToken.ThrowIfCancellationRequested();
-        ProjectFiles.WriteAtomic(manifest, bytes, overwrite: _savedDigest is not null);
-        _savedDigest = ProjectFiles.Hash(bytes);
+        _savedDigest = ProjectStorage.Save(Root, Document, _pixels, _savedDigest, cancellationToken);
+        _savedDocument = Document;
         IsModified = false;
     }
 
-    internal TextureAsset FindAsset(Guid id) => Document.Assets.FirstOrDefault(a => a.Id == id) ?? throw new InvalidDataException($"Asset '{id}' does not exist.");
+    public bool CanUndo => !_disposed && _undo.Count != 0;
+    public bool CanRedo => !_disposed && _redo.Count != 0;
 
-    private static string PixelPath(string root, string digest) => Path.Combine(root, "Inputs", digest + ".rgba");
+    public void Undo() => MoveHistory(_undo, _redo);
+    public void Redo() => MoveHistory(_redo, _undo);
+
+    private void MoveHistory(List<ProjectDocument> from, List<ProjectDocument> to)
+    {
+        ThrowIfDisposed();
+        if (from.Count == 0)
+        {
+            return;
+        }
+
+        to.Add(Document);
+        Document = from[^1];
+        from.RemoveAt(from.Count - 1);
+        IsModified = Document != _savedDocument;
+    }
+
+    private void Apply(ProjectDocument document)
+    {
+        document.Validate();
+        _undo.Add(Document);
+        _redo.Clear();
+        Document = document;
+        IsModified = Document != _savedDocument;
+        TrimHistory();
+    }
+
+    private void TrimHistory()
+    {
+        while (_undo.Count > 50)
+        {
+            _undo.RemoveAt(0);
+        }
+
+        // Pixels are immutable and shared by snapshots. Limit retained undo pixels to 128 MiB.
+        HashSet<string> retained;
+        while (true)
+        {
+            retained = Document.Assets.Concat(_undo.SelectMany(d => d.Assets)).Select(a => a.PixelDigest).ToHashSet(StringComparer.Ordinal);
+            if (_undo.Count == 0 || retained.Sum(d => (long)_pixels[d].Pixels.Length) <= 128 * 1024 * 1024)
+            {
+                break;
+            }
+
+            _undo.RemoveAt(0);
+        }
+
+        foreach (string digest in _pixels.Keys.Where(d => !retained.Contains(d)).ToArray())
+        {
+            _pixels.Remove(digest);
+        }
+    }
+
+    public static StudioProject Migrate(string source, string destination, CancellationToken token = default)
+    {
+        source = ProjectFiles.RequireSafePath(source);
+        using FileStream sourceLease = AcquireLease(source);
+        byte[] original = ProjectFiles.Read(Path.Combine(source, ProjectStorage.ManifestName), ProjectFiles.MaximumManifestBytes);
+        LegacyProject legacy = ProjectFiles.Deserialize<LegacyProject>(original);
+        if (legacy.SchemaVersion != 1)
+        {
+            throw new InvalidDataException("Only version 1 projects can be migrated. Version 2 projects open directly.");
+        }
+
+        ProjectDocument document = new(ProjectDocument.CurrentVersion, legacy.Id, legacy.Name, legacy.Assets, [], []);
+        document.Validate();
+        Dictionary<string, TextureData> pixels = ProjectStorage.ReadPixels(source, document, token);
+        destination = ProjectFiles.RequireSafePath(destination);
+        if (!Directory.Exists(destination) || Directory.EnumerateFileSystemEntries(destination).Any())
+        {
+            throw new IOException("Choose an existing empty directory for the migrated project.");
+        }
+
+        token.ThrowIfCancellationRequested();
+        if (!ProjectFiles.Read(Path.Combine(source, ProjectStorage.ManifestName), ProjectFiles.MaximumManifestBytes).AsSpan().SequenceEqual(original))
+        {
+            throw new IOException("The source project changed during migration.");
+        }
+
+        StudioProject target = new(destination, AcquireLease(destination), document, pixels, null);
+        try
+        {
+            target.Save(token);
+            return target;
+        }
+        catch
+        {
+            target.Dispose();
+            throw;
+        }
+    }
+
+    internal TextureAsset FindAsset(Guid id) => Document.Assets.FirstOrDefault(a => a.Id == id) ?? throw new InvalidDataException($"Asset '{id}' does not exist.");
 
     internal void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -252,7 +305,9 @@ public sealed class StudioProject : IDisposable
         if (!_disposed)
         {
             _lease.Dispose();
-            _textures.Clear();
+            _pixels.Clear();
+            _undo.Clear();
+            _redo.Clear();
             _disposed = true;
         }
     }

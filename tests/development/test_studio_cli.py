@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+import time
 import unittest
 
 
@@ -73,7 +74,9 @@ class StudioCliTests(unittest.TestCase):
             self.assertEqual(asset, replaced["textures"][0]["id"])
             self.assertEqual((1, 2), (replaced["textures"][0]["width"], replaced["textures"][0]["height"]))
             authored = json.loads((project / "project.ocstudio").read_text())
-            self.assertEqual(key, authored["assets"][0]["sourceKey"])
+            revision = authored["resources"][0]
+            document = json.loads((project / "Assets" / asset.replace("-", "") / (revision["sha256"] + ".ocasset.json")).read_text())
+            self.assertEqual(key, document["asset"]["sourceKey"])
             manifest = json.loads((root / "build/content.json").read_text())
             self.assertEqual((25, 166), (manifest["textures"][0]["width"], manifest["textures"][0]["height"]))
 
@@ -90,6 +93,76 @@ class StudioCliTests(unittest.TestCase):
             self.assertEqual(before, (project / "project.ocstudio").read_bytes())
             self.run_tool("edit", project, "invalid-id", "Bad", "true", "0", expected=1)
             self.run_tool("unknown", expected=2)
+
+    def test_sprite_authoring_references_and_compilation_across_processes(self):
+        with tempfile.TemporaryDirectory(prefix="studio-cli-") as temporary:
+            root = Path(temporary).resolve()
+            project = root / "project"
+            project.mkdir()
+            self.run_tool("create", project, "Animated game")
+            texture = self.run_tool("new-texture", project, "Sheet", 2, 1, 40, 80, 120).stdout.strip()
+            atlas = self.run_tool("new-atlas", project, texture, "Sprites").stdout.strip()
+            listing = self.run_tool("list", project).stdout.splitlines()
+            first_sprite = next(line.split()[0] for line in listing if line.split()[1] == "sprite")
+            self.run_tool("sprite", project, atlas, first_sprite, "Left", 0, 0, 1, 1, 0, 0)
+            second_sprite = self.run_tool("sprite", project, atlas, "new", "Right", 1, 0, 1, 1, 0, 0).stdout.strip()
+            animation = self.run_tool("new-animation", project, atlas, "Clip", 1000, 100).stdout.strip()
+            self.run_tool("clip", project, animation, "Once", 1000, "false")
+            frames = [line.split()[0] for line in self.run_tool("list", project).stdout.splitlines() if line.split()[1] == "frame"]
+            self.run_tool("frame", project, animation, frames[1], atlas, second_sprite, 250, 0)
+            self.run_tool("delete", project, texture, expected=1)
+            self.run_tool("build", project, root / "first")
+            self.run_tool("build", project, root / "second")
+            self.assertEqual(
+                {p.name: p.read_bytes() for p in (root / "first").iterdir()},
+                {p.name: p.read_bytes() for p in (root / "second").iterdir()},
+            )
+            self.run_tool("verify", root / "first")
+            manifest = json.loads((root / "first/content.json").read_text())
+            self.assertEqual(2, manifest["schemaVersion"])
+            self.assertEqual({"atlas", "animation"}, {r["kind"] for r in manifest["resources"]})
+            clip = root / "first" / (animation.replace("-", "") + ".ocanim")
+            clip.write_bytes(clip.read_bytes()[:-1])
+            self.run_tool("verify", root / "first", expected=1)
+
+    def test_process_termination_during_save_preserves_a_complete_committed_project(self):
+        with tempfile.TemporaryDirectory(prefix="studio-crash-") as temporary:
+            root = Path(temporary).resolve()
+            project = root / "project"
+            project.mkdir()
+            self.run_tool("create", project, "Recovery")
+            self.run_tool("new-texture", project, "Committed", 1, 1, 1, 2, 3)
+            previous = (project / "project.ocstudio").read_bytes()
+            before = set((project / "Inputs").iterdir())
+            process = subprocess.Popen(
+                ["dotnet", str(TOOL), "new-texture", str(project), "Interrupted", "4096", "1024", "40", "80", "120"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            terminated = False
+            try:
+                deadline = time.monotonic() + 15
+                while process.poll() is None and time.monotonic() < deadline:
+                    if set((project / "Inputs").iterdir()) - before:
+                        terminated = True
+                        process.kill()
+                        break
+                    time.sleep(0.001)
+                stdout, stderr = process.communicate(timeout=15)
+                if not terminated:
+                    self.assertEqual(0, process.returncode,
+                                     stdout.decode(errors="replace") + stderr.decode(errors="replace"))
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.communicate()
+            # Scheduling can place termination on either side of the single index commit.
+            # Both outcomes must load, compile, and validate without repair or missing dependencies.
+            index = json.loads((project / "project.ocstudio").read_bytes())
+            self.assertIn(len(index["resources"]), (1, 2))
+            if len(index["resources"]) == 1:
+                self.assertEqual(previous, (project / "project.ocstudio").read_bytes())
+            self.run_tool("build", project, root / "after-crash")
+            self.run_tool("verify", root / "after-crash")
 
 
 if __name__ == "__main__":

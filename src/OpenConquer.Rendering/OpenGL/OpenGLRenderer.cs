@@ -348,6 +348,12 @@ public sealed class OpenGLRenderer : IDisposable
 
     public void EndFrame()
     {
+        EndFrame(0);
+    }
+
+    /// <summary>Presents to a caller-owned, single-sample framebuffer in the current context.</summary>
+    public void EndFrame(uint destinationFramebuffer)
+    {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (!_frameActive)
@@ -361,7 +367,7 @@ public sealed class OpenGLRenderer : IDisposable
         {
             _maskStack.Reset(_renderTarget);
             EndClip();
-            BlitToHostFramebuffer();
+            BlitToHostFramebuffer(destinationFramebuffer);
         }
         finally
         {
@@ -469,7 +475,7 @@ public sealed class OpenGLRenderer : IDisposable
         }
     }
 
-    private void BlitToHostFramebuffer()
+    private void BlitToHostFramebuffer(uint destinationFramebuffer)
     {
         ExceptionDispatchInfo? firstFailure = null;
 
@@ -479,9 +485,9 @@ public sealed class OpenGLRenderer : IDisposable
             {
                 _gl.Disable(EnableCap.ScissorTest);
                 _gl.Disable(EnableCap.FramebufferSrgb);
-                _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, framebuffer: 0);
+                _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, destinationFramebuffer);
 
-                ValidateHostFramebuffer();
+                ValidateHostFramebuffer(destinationFramebuffer);
                 ClearLetterboxBars();
                 _renderTarget.BindForRead();
 
@@ -497,7 +503,7 @@ public sealed class OpenGLRenderer : IDisposable
 
         try
         {
-            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, framebuffer: 0);
+            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, destinationFramebuffer);
         }
         catch (Exception exception)
         {
@@ -539,11 +545,17 @@ public sealed class OpenGLRenderer : IDisposable
         };
     }
 
-    private void ValidateHostFramebuffer()
+    private void ValidateHostFramebuffer(uint destinationFramebuffer)
     {
-        if (_hostFramebufferValidated)
+        // Embedded hosts may replace attachments while retaining the same framebuffer name.
+        if (destinationFramebuffer == 0 && _hostFramebufferValidated)
         {
             return;
+        }
+
+        if (_gl.CheckFramebufferStatus(FramebufferTarget.DrawFramebuffer) != GLEnum.FramebufferComplete)
+        {
+            throw new InvalidOperationException("The presentation framebuffer is incomplete.");
         }
 
         _gl.GetInteger(pname: GetPName.SampleBuffers, out int sampleBufferCount);
@@ -553,6 +565,6 @@ public sealed class OpenGLRenderer : IDisposable
             throw new NotSupportedException($"The current presentation path requires a single-sampled desktop framebuffer, but OpenGL reports {sampleBufferCount} sample buffer(s).");
         }
 
-        _hostFramebufferValidated = true;
+        _hostFramebufferValidated = destinationFramebuffer == 0;
     }
 }
