@@ -19,7 +19,7 @@ public sealed class ContentPackagingEvaluatorTests
         ContentPackagingReport report = ContentPackagingEvaluator.Evaluate(
             contentSet, scratch, previousRootPath: contentSet);
 
-        Assert.Equal(111, report.FileCount);
+        Assert.Equal(113, report.FileCount);
         Assert.Equal(2, report.Candidates.Length);
         Assert.Collection(report.Candidates,
             candidate => Assert.Equal("Stored ZIP", candidate.Format),
@@ -31,7 +31,7 @@ public sealed class ContentPackagingEvaluatorTests
             Assert.All(candidate.ForwardPasses.Concat(candidate.ReversePasses),
                 pass => Assert.Equal(report.PayloadBytes, pass.BytesRead));
         });
-        Assert.Equal(111, report.Delta!.UnchangedPaths.FileCount);
+        Assert.Equal(113, report.Delta!.UnchangedPaths.FileCount);
         Assert.Empty(Directory.EnumerateFileSystemEntries(scratch));
     }
 

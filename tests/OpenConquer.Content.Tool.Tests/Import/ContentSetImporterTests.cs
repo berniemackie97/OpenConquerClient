@@ -20,7 +20,7 @@ public sealed class ContentSetImporterTests
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destination);
         string[] expectedPaths = ExpectedImportedPaths();
 
-        Assert.Equal(111, expectedPaths.Length);
+        Assert.Equal(113, expectedPaths.Length);
         Assert.Equal(expectedPaths, manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data.wdf", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "Server.dat", StringComparison.OrdinalIgnoreCase));
@@ -164,7 +164,7 @@ public sealed class ContentSetImporterTests
         ContentManifestEntry selectedSkill = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MainImgMagic.dds");
         ContentManifestEntry statusHint = manifest.Entries.Single(static entry => entry.SourcePath == "data/main/MsgDlg.dds");
 
-        Assert.Equal(111, manifest.FileCount);
+        Assert.Equal(113, manifest.FileCount);
 
         Assert.Equal("bmp", logo.Signature);
         Assert.Equal(TestBitmap.CreateTwoByTwo().Length, logo.Length);
@@ -299,13 +299,15 @@ public sealed class ContentSetImporterTests
     }
 
     [Fact]
-    public void Import_FailsWhenAnyNewRequiredLooseMagicDependencyIsMissing()
+    public void Import_FailsWhenAnyRequiredStatOrMagicDependencyIsMissing()
     {
         foreach (string relativePath in new[]
         {
             "ini/MagicType.dat",
             "ini/MagicEffect.ini",
             "ini/SubProfessionInfo.ini",
+            "ini/ItemAdd.ini",
+            "ini/itemtype.dat",
         })
         {
             using TemporarySourceTree source = new();
@@ -453,6 +455,8 @@ public sealed class ContentSetImporterTests
             "data/main/mainDialog1.dds",
             "ini/Font.ini",
             "ini/GameMap.dat",
+            "ini/ItemAdd.ini",
+            "ini/itemtype.dat",
             "ini/GameSetUp.ini",
             "ini/selectCharacter.ini",
             "ini/info.ini",
