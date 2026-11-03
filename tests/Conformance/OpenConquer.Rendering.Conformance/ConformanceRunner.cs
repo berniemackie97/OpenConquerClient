@@ -25,6 +25,7 @@ internal static class ConformanceRunner
             SpriteColorConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
             SpriteBlendConformance.Run(graphicsDevice, framebufferSize);
             SolidRectangleConformance.Run(graphicsDevice, framebufferSize);
+            IndexedMeshConformance.Run(graphicsDevice, framebufferSize);
             LoginErrorConformance.Run(graphicsDevice, framebufferSize, syndicateBaseline.ColorFormat);
             FireworkDxt3Conformance.Run(graphicsDevice, fireworkImage, framebufferSize);
             SpriteGeometryConformance.Run(graphicsDevice, syndicateImage, framebufferSize, syndicateBaseline);
@@ -45,6 +46,6 @@ internal static class ConformanceRunner
             MainHudContextHintConformance.Run(graphicsDevice, contentSource, framebufferSize, syndicateBaseline.ColorFormat);
         });
 
-        Console.WriteLine("OpenGL render-target, presentation, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, solid rectangle, sprite rotation, sprite transform and masks, native text, text-context façade, main HUD chrome, main HUD vitals, main HUD skill/experience, main HUD quickbar, main HUD action-strip, main HUD check-control, main HUD selected-skill, category-8 status-hint, category-9 Magic/XP Magic status-hint, and dance/equipment context-hint conformance passed.");
+        Console.WriteLine("OpenGL render-target, presentation, indexed mesh, ANI asset, DXT3 DDS, sprite geometry, repeated sprite sampling, sprite color, sprite blending, solid rectangle, sprite rotation, sprite transform and masks, native text, text-context façade, main HUD chrome, main HUD vitals, main HUD skill/experience, main HUD quickbar, main HUD action-strip, main HUD check-control, main HUD selected-skill, category-8 status-hint, category-9 Magic/XP Magic status-hint, and dance/equipment context-hint conformance passed.");
     }
 }

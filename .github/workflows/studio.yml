@@ -47,12 +47,23 @@ jobs:
         run: python3 -m unittest discover -s tests/development -p test_studio_cli.py
       - name: Install Linux rendering prerequisites
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xvfb dbus-x11 libgl1-mesa-dri libglx-mesa0
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xvfb dbus-x11 libgl1-mesa-dri libglx-mesa0 libglfw3
       - name: Validate embedded viewport on Linux
         if: runner.os == 'Linux'
         env:
           LIBGL_ALWAYS_SOFTWARE: 'true'
         run: dbus-run-session -- xvfb-run -a dotnet run --project tools/OpenConquerStudio.RenderCheck -c Release --no-build --no-restore
+      - name: Validate indexed mesh framebuffer on Linux
+        if: runner.os == 'Linux'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: 'true'
+        run: |
+          dotnet restore tests/Conformance/OpenConquer.Rendering.Conformance --locked-mode
+          dbus-run-session -- xvfb-run -a dotnet run \
+            --project tests/Conformance/OpenConquer.Rendering.Conformance \
+            --configuration Release \
+            --no-restore \
+            -- --indexed-mesh
       - name: Record macOS GPU validation boundary
         if: runner.os == 'macOS'
         run: |

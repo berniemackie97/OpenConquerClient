@@ -1,3 +1,4 @@
+using OpenConquer.Rendering.OpenGL.Meshes;
 using OpenConquer.Rendering.OpenGL.Resources;
 using OpenConquer.Rendering.OpenGL.Startup;
 using OpenConquer.Rendering.OpenGL.Text;
@@ -109,6 +110,12 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         }
 
         return new OpenGLRenderer(_gl, logicalRenderSize, framebufferWidth, framebufferHeight, presentationPolicy, colorFormat);
+    }
+
+    public OpenGLIndexedMesh CreateIndexedMesh(int vertexCount, ReadOnlySpan<ushort> indices)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return new OpenGLIndexedMesh(_gl, vertexCount, indices);
     }
 
     public OpenGLTexture2D CreateTexture2D(int width, int height, ReadOnlySpan<byte> rgbaPixels)

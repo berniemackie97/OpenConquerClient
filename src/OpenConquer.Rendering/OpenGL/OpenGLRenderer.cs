@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.ExceptionServices;
+using OpenConquer.Rendering.OpenGL.Meshes;
 using OpenConquer.Rendering.OpenGL.Primitives;
 using OpenConquer.Rendering.OpenGL.Resources;
 using OpenConquer.Rendering.OpenGL.Sprites;
@@ -18,6 +19,7 @@ public sealed class OpenGLRenderer : IDisposable
     private readonly LogicalRenderSize _logicalRenderSize;
     private readonly OpenGLRenderTarget _renderTarget;
     private readonly OpenGLSpriteRenderer _spriteRenderer;
+    private readonly OpenGLMeshRenderer _meshRenderer;
     private readonly OpenGLTransformedSpriteRenderer _transformedSpriteRenderer;
     private readonly OpenGLMaskStack _maskStack;
     private readonly OpenGLSolidRectangleRenderer _solidRectangleRenderer;
@@ -46,6 +48,7 @@ public sealed class OpenGLRenderer : IDisposable
 
         OpenGLRenderTarget renderTarget = new(gl, logicalRenderSize.Width, logicalRenderSize.Height, colorFormat);
         OpenGLSpriteRenderer? spriteRenderer = null;
+        OpenGLMeshRenderer? meshRenderer = null;
         OpenGLTransformedSpriteRenderer? transformedSpriteRenderer = null;
         OpenGLSolidRectangleRenderer? solidRectangleRenderer = null;
         OpenGLLineRectangleRenderer? lineRectangleRenderer = null;
@@ -54,6 +57,7 @@ public sealed class OpenGLRenderer : IDisposable
         try
         {
             spriteRenderer = new OpenGLSpriteRenderer(gl);
+            meshRenderer = new OpenGLMeshRenderer(gl);
             transformedSpriteRenderer = new OpenGLTransformedSpriteRenderer(gl);
             solidRectangleRenderer = new OpenGLSolidRectangleRenderer(gl);
             lineRectangleRenderer = new OpenGLLineRectangleRenderer(gl);
@@ -61,6 +65,7 @@ public sealed class OpenGLRenderer : IDisposable
 
             _renderTarget = renderTarget;
             _spriteRenderer = spriteRenderer;
+            _meshRenderer = meshRenderer;
             _transformedSpriteRenderer = transformedSpriteRenderer;
             _maskStack = new OpenGLMaskStack(gl, logicalRenderSize.Width, logicalRenderSize.Height);
             _solidRectangleRenderer = solidRectangleRenderer;
@@ -69,6 +74,15 @@ public sealed class OpenGLRenderer : IDisposable
         }
         catch
         {
+            try
+            {
+                meshRenderer?.Dispose();
+            }
+            catch
+            {
+                // Preserve the earlier initialization failure.
+            }
+
             try
             {
                 textRenderer?.Dispose();
@@ -155,6 +169,22 @@ public sealed class OpenGLRenderer : IDisposable
 
         _renderTarget.BeginFrame();
         _frameActive = true;
+    }
+
+    public void DrawIndexedMesh(OpenGLIndexedMesh mesh, OpenGLTexture2D texture,
+        Matrix4x4 clipMatrix, MeshCullMode cullMode)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(mesh);
+        ArgumentNullException.ThrowIfNull(texture);
+        EnsureFrameActiveForDrawing();
+        if (_maskStack.Depth != 0)
+        {
+            throw new InvalidOperationException("Indexed meshes cannot be drawn inside a UI mask.");
+        }
+
+        _renderTarget.BindForDrawing();
+        _meshRenderer.Draw(mesh, texture, clipMatrix, cullMode);
     }
 
     public void DrawSprite(OpenGLTexture2D texture, int x, int y)
@@ -395,6 +425,15 @@ public sealed class OpenGLRenderer : IDisposable
         }
 
         ExceptionDispatchInfo? firstFailure = null;
+
+        try
+        {
+            _meshRenderer.Dispose();
+        }
+        catch (Exception exception)
+        {
+            firstFailure = ExceptionDispatchInfo.Capture(exception);
+        }
 
         try
         {
