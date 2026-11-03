@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using OpenConquer.Client.World;
+using OpenConquer.Content.Ani;
 using OpenConquer.Content.Map;
 
 namespace OpenConquer.Client.Tests.World;
@@ -85,11 +86,12 @@ public sealed class WorldAnimatedSceneryTests
         order.Insert(later);
         Assert.Equal([earlier, later], order.ToDrawList());
     }
+
     [Fact]
     public void TerrainFootprintCapturesLaterSpriteWithoutReorderingPeers()
     {
         using WorldMapFixture fixture = new();
-        var animation = fixture.Scenery[0].Animation;
+        AniIndexSection animation = fixture.Scenery[0].Animation;
         WorldScenerySprite terrain = new(animation, 0, 0, 0, 256, 256, 70, 70, 4, 4);
         WorldScenerySprite peer = new(animation, 0, 0, 0, 256, 256, 71, 71, 1, 1);
         WorldScenerySprite child = new(animation, 0, 0, 0, 256, 256, 67, 70, 1, 1);
@@ -103,10 +105,10 @@ public sealed class WorldAnimatedSceneryTests
     }
 
     [Fact]
-    public void AdoptedChildrenUseAxisOrderingAndRetainEqualDepthTies()
+    public void AdoptedChildrenUseTileAxisOrdering()
     {
         using WorldMapFixture fixture = new();
-        var animation = fixture.Scenery[0].Animation;
+        AniIndexSection animation = fixture.Scenery[0].Animation;
         WorldScenerySprite terrain = new(animation, 0, 0, 0, 256, 256, 70, 70, 4, 4);
         WorldScenerySprite right = new(animation, 0, 0, 0, 256, 256, 70, 70, 1, 1);
         WorldScenerySprite left = new(animation, 0, 0, 0, 256, 256, 68, 70, 1, 1);
@@ -125,7 +127,7 @@ public sealed class WorldAnimatedSceneryTests
     public void TerrainFootprintExcludesItsLowerTileBoundary()
     {
         using WorldMapFixture fixture = new();
-        var animation = fixture.Scenery[0].Animation;
+        AniIndexSection animation = fixture.Scenery[0].Animation;
         WorldScenerySprite terrain = new(animation, 0, 0, 0, 256, 256, 70, 70, 4, 4);
         WorldScenerySprite outside = new(animation, 0, 0, 0, 256, 256, 66, 70, 1, 1);
         WorldScenerySprite inside = new(animation, 0, 0, 0, 256, 256, 67, 70, 1, 1);
@@ -142,7 +144,7 @@ public sealed class WorldAnimatedSceneryTests
     public void TerrainDoesNotRetroactivelyAdoptAnAlreadyActiveSprite()
     {
         using WorldMapFixture fixture = new();
-        var animation = fixture.Scenery[0].Animation;
+        AniIndexSection animation = fixture.Scenery[0].Animation;
         WorldScenerySprite child = new(animation, 0, 0, 0, 256, 256, 67, 70, 1, 1);
         WorldScenerySprite terrain = new(animation, 0, 0, 0, 256, 256, 70, 70, 4, 4);
         WorldSceneryDepthOrder order = new();
@@ -153,4 +155,20 @@ public sealed class WorldAnimatedSceneryTests
         Assert.Equal([child, terrain], order.ToDrawList());
     }
 
+    [Fact]
+    public void AdoptedChildrenPreserveEqualDepthActivationOrder()
+    {
+        using WorldMapFixture fixture = new();
+        AniIndexSection animation = fixture.Scenery[0].Animation;
+        WorldScenerySprite terrain = new(animation, 0, 0, 0, 256, 256, 70, 70, 4, 4);
+        WorldScenerySprite first = new(animation, 0, 0, 0, 256, 256, 69, 69, 1, 1);
+        WorldScenerySprite second = new(animation, 0, 1, 1, 256, 256, 69, 69, 1, 1);
+        WorldSceneryDepthOrder order = new();
+
+        order.Insert(terrain, terrain: true);
+        order.Insert(first);
+        order.Insert(second);
+
+        Assert.Equal([terrain, first, second], order.ToDrawList());
+    }
 }
