@@ -30,12 +30,7 @@ internal static class C3PhyNormals
             int c = indices[i + 2];
             Vector3 position = vertices[a].Position;
             Vector3 face = Vector3.Cross(vertices[c].Position - position, vertices[b].Position - position);
-            if (face.LengthSquared() == 0)
-            {
-                continue;
-            }
-
-            face = Vector3.Normalize(face);
+            face = Normalize(face);
             normals[a] += face;
             normals[b] += face;
             normals[c] += face;
@@ -111,8 +106,21 @@ internal static class C3PhyNormals
         }
     }
 
-    private static Vector3 Normalize(Vector3 normal) =>
-        normal.LengthSquared() > 0 ? Vector3.Normalize(normal) : Vector3.Zero;
+    private static Vector3 Normalize(Vector3 normal)
+    {
+        float lengthSquared = normal.LengthSquared();
+        if (MathF.Abs(lengthSquared - 1f) <= 1.1920929e-7f)
+        {
+            return normal;
+        }
+
+        if (!float.IsFinite(lengthSquared) || lengthSquared <= 1.17549435e-38f)
+        {
+            return Vector3.Zero;
+        }
+
+        return normal * (1f / MathF.Sqrt(lengthSquared));
+    }
 
     private static (long X, long Y, long Z) Cell(Vector3 position) =>
         ((long)Math.Floor(position.X / SharedPositionTolerance),

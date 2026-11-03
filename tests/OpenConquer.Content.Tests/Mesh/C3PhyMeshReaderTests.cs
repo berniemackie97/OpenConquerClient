@@ -79,6 +79,22 @@ public sealed class C3PhyMeshReaderTests
     }
 
     [Fact]
+    public void PreservesUnitNormalsAndZerosDegenerateFaces()
+    {
+        C3PhyVertex[] vertices =
+        [
+            Vertex(0, 0, 0), Vertex(0, 0, 1), Vertex(-0.8f, 0.6f, 0)
+        ];
+
+        C3PhyNormals.Generate(vertices, [0, 1, 2]);
+        Assert.Equal(new Vector3(0.6f, 0.8f, 0), vertices[0].Normal);
+
+        C3PhyVertex[] degenerate = [Vertex(0, 0, 0), Vertex(0, 0, 0), Vertex(0, 0, 0)];
+        C3PhyNormals.Generate(degenerate, [0, 1, 2]);
+        Assert.All(degenerate, vertex => Assert.Equal(Vector3.Zero, vertex.Normal));
+    }
+
+    [Fact]
     public void RejectsTruncatedPayloadAndInvalidIndices()
     {
         byte[] payload = Payload("PHY ");
