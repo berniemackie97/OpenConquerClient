@@ -9,6 +9,7 @@ public sealed class GameMapCatalogTests
     public void Retail5517IndexResolvesTerrainDataKeysWithoutWorldIdInference()
     {
         string retailRoot = Path.Combine(AppContext.BaseDirectory, "RetailFixture");
+        OpenConquer.Tests.RetailContentFixture.RequireFile(Path.Combine(retailRoot, "ini", "GameMap.dat"));
         GameMapCatalog catalog = GameMapCatalog.Load(new ClientContentRoot(retailRoot));
 
         Assert.Equal(261, catalog.Count);

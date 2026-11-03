@@ -502,6 +502,7 @@ $RECYCLE.BIN/
 /content/retail-5517/payload/**/.DS_Store
 /content/retail-5517/payload/**/Thumbs.db
 /content/retail-5517/payload/**/desktop.ini
+/content/
 
 # Temporary content import and rollback directories
 /content/.gfx-ui-008-*/
@@ -513,3 +514,6 @@ $RECYCLE.BIN/
 **/.studio.lock
 **/.user/
 **/Builds/
+
+# Local game assets stay outside Git until distribution is configured.
+/content/

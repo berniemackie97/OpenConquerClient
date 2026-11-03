@@ -12,6 +12,7 @@ public sealed class RoleAudioFeedbackTests
     public void OriginalRetailIniRoutesEveryDeclaredSoundToItsOwnPcmAsset()
     {
         string root = Path.Combine(AppContext.BaseDirectory, "RetailFixture");
+        OpenConquer.Tests.RetailContentFixture.RequireFile(Path.Combine(root, "ini", "selectCharacter.ini"));
         SelectCharacterIni ini = SelectCharacterIni.Load(new ClientContentRoot(root));
         List<LoginAudioCue> played = [];
         RoleAudioFeedback sounds = new(ini, played.Add);

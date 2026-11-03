@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <Compile Include="../Fixtures/RetailContentFixture.cs" Link="Fixtures/RetailContentFixture.cs" />
     <ProjectReference Include="../../src/OpenConquer.Client/OpenConquer.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../../content/retail-5517/payload/ini/gamemap.dat"
+    <None Include="../../content/retail-5517/payload/ini/gamemap.dat" Condition="Exists('../../content/retail-5517/payload/ini/gamemap.dat')"
           Link="RetailMapFixture/ini/GameMap.dat"
           CopyToOutputDirectory="PreserveNewest" />
     <None Include="../OpenConquer.Content.Tests/Fixtures/Map/newbie.7z"
@@ -20,10 +21,10 @@
     <None Include="../OpenConquer.Content.Tests/Fixtures/Map/mapscene-newbie-sections.ani"
           Link="RetailMapFixture/ani/mapscene-newbie-sections.ani"
           CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../content/retail-5517/payload/ui/loading/timeline.json"
+    <None Include="../../content/retail-5517/payload/ui/loading/timeline.json" Condition="Exists('../../content/retail-5517/payload/ui/loading/timeline.json')"
           Link="LoadingFixture/timeline.json"
           CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../content/retail-5517/payload/ini/selectcharacter.ini"
+    <None Include="../../content/retail-5517/payload/ini/selectcharacter.ini" Condition="Exists('../../content/retail-5517/payload/ini/selectcharacter.ini')"
           Link="RetailFixture/ini/selectCharacter.ini"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

@@ -2,7 +2,8 @@ namespace OpenConquer.Content.Mesh;
 
 public readonly record struct C3ResolvedPart(
     string Name, string MeshPath, string TexturePath, string MotionDatabase,
-    byte State, byte SourceBlend, byte DestinationBlend, byte Material);
+    byte State, byte SourceBlend, byte DestinationBlend, byte Material,
+    uint ObjectId = 0, uint PrimaryTextureId = 0, uint SecondaryTextureId = 0, string? SecondaryTexturePath = null);
 
 public sealed class C3RoleCatalog
 {
@@ -73,7 +74,9 @@ public sealed class C3RoleCatalog
             }
 
             result[i] = new C3ResolvedPart(partName, meshPath, texturePath, source.MotionDatabase,
-                entry.State, entry.SourceBlend, entry.DestinationBlend, entry.Material);
+                entry.State, entry.SourceBlend, entry.DestinationBlend, entry.Material,
+                entry.ObjectId, entry.PrimaryTextureId, entry.SecondaryTextureId,
+                _texturePaths.GetValueOrDefault(entry.SecondaryTextureId));
         }
 
         parts = result;
@@ -91,6 +94,8 @@ public sealed class C3RoleCatalog
         path = string.Empty;
         return false;
     }
+
+    public IReadOnlyList<string> VirtualMeshNames => [.. _configuration.VirtualMeshNames.Order(StringComparer.Ordinal)];
 
     public bool IsAttachmentMesh(string name) => _configuration.VirtualMeshNames.Contains(name);
 

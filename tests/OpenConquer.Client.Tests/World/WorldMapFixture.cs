@@ -18,7 +18,7 @@ internal sealed class WorldMapFixture : IDisposable
         try
         {
             string fixture = Path.Combine(AppContext.BaseDirectory, "RetailMapFixture");
-            Write("ini/GameMap.dat", File.ReadAllBytes(Path.Combine(fixture, "ini", "GameMap.dat")));
+            Write("ini/GameMap.dat", OpenConquer.Tests.RetailContentFixture.ReadAllBytes(Path.Combine(fixture, "ini", "GameMap.dat")));
             Write("map/map/newbie.7z", File.ReadAllBytes(Path.Combine(fixture, "map", "newbie.7z")));
             if (!missingGround)
             {

@@ -123,7 +123,7 @@ public sealed class GameMapPuzzleResourcesTests
     {
         TemporaryContentDirectory root = new();
         root.WriteFile("ini/GameMap.dat",
-            File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "ini", "GameMap.dat")));
+            OpenConquer.Tests.RetailContentFixture.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "ini", "GameMap.dat")));
         root.WriteFile("map/map/newbie.7z",
             File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "newbie.7z")));
         return root;

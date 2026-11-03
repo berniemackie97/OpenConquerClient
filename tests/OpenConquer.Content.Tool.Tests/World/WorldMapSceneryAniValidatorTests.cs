@@ -32,7 +32,7 @@ public sealed class WorldMapSceneryAniValidatorTests
     {
         TemporarySourceTree source = new();
         string fixture = Path.Combine(AppContext.BaseDirectory, "RetailFixture");
-        source.WriteBytes("ini/GameMap.dat", File.ReadAllBytes(Path.Combine(fixture, "ini", "GameMap.dat")));
+        source.WriteBytes("ini/GameMap.dat", OpenConquer.Tests.RetailContentFixture.ReadAllBytes(Path.Combine(fixture, "ini", "GameMap.dat")));
         source.WriteBytes("map/map/newbie.7z", File.ReadAllBytes(Path.Combine(fixture, "map", "newbie.7z")));
         source.WriteBytes("ani/MapScene.ani", File.ReadAllBytes(Path.Combine(fixture, "ani", "mapscene-newbie-sections.ani")));
 

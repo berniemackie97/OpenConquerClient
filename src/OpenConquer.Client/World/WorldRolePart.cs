@@ -4,6 +4,7 @@ using OpenConquer.Content.Images;
 using OpenConquer.Content.Mesh;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;
+using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.World;
 

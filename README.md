@@ -21,6 +21,14 @@ Studio keeps a recorded source snapshot of those two projects;
 its desktop application, authoring model, resource codecs and tools have separate ownership.
 See [Studio integration](docs/studio-integration.md) for the extraction boundary.
 
+## Local game content
+
+`content/` is ignored and is not supplied by a source checkout. Existing local files are preserved.
+Restore your verified content set under `content/retail-5517/` to run the client with game assets.
+An asset-free checkout still builds and runs the unit tests. CI reports the asset-dependent map,
+release-package and managed-installation gates as unrun until private asset provisioning is configured.
+See [local content](docs/content/local-content.md). Removing tracked files does not erase prior Git history.
+
 ## Current Capabilities
 
 | Product | Implemented | Remaining |

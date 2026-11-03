@@ -72,7 +72,7 @@ public sealed class GameMapContentTests
 
     private static void CopyRetailIndex(TemporaryContentDirectory root)
     {
-        byte[] index = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "ini", "GameMap.dat"));
+        byte[] index = OpenConquer.Tests.RetailContentFixture.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "ini", "GameMap.dat"));
         root.WriteFile("ini/GameMap.dat", index);
     }
 

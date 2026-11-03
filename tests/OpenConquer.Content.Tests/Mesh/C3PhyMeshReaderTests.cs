@@ -134,7 +134,7 @@ public sealed class C3PhyMeshReaderTests
     private static C3MeshSection Section(string tag, ReadOnlyMemory<byte> payload) =>
         new(BinaryPrimitives.ReadUInt32LittleEndian(System.Text.Encoding.ASCII.GetBytes(tag)), 24, payload);
 
-    private static byte[] Payload(string tag, ushort lastIndex = 2, bool fixtureTransform = false, float weight1 = 0f)
+    internal static byte[] Payload(string tag, ushort lastIndex = 2, bool fixtureTransform = false, float weight1 = 0f)
     {
         using MemoryStream output = new();
         WriteUInt32(output, 7);

@@ -45,9 +45,10 @@ public sealed class SelectCharacterIniTests
     }
 
     [Fact]
-    public void Load_ValidatesOriginalRetail5517IniFromTrackedPayload()
+    public void Load_ValidatesOriginalRetail5517IniFromLocalPayload()
     {
         string retailRoot = Path.Combine(AppContext.BaseDirectory, "RetailFixture");
+        OpenConquer.Tests.RetailContentFixture.RequireFile(Path.Combine(retailRoot, "ini", "selectCharacter.ini"));
         SelectCharacterIni ini = SelectCharacterIni.Load(new ClientContentRoot(retailRoot));
 
         Assert.Equal("776", ini.Get("logo", "xPos"));

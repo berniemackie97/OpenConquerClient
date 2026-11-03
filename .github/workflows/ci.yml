@@ -76,7 +76,19 @@ jobs:
             "$probe_stage/OpenConquer.Launcher.InstanceProbe.dll" \
             --verify-cross-uid
 
+      - name: Detect local retail content
+        id: retail
+        shell: bash
+        run: |
+          if [[ -f content/retail-5517/manifest.json ]]; then
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+            echo 'Retail content is intentionally outside Git. Asset-dependent map, packaging and installation checks did not run.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Verify content set
+        if: steps.retail.outputs.available == 'true'
         run: >-
           dotnet run
           --project tools/OpenConquer.Content.Tool
@@ -89,6 +101,7 @@ jobs:
           --map-data-id 1010
 
       - name: Compile map asset deterministically
+        if: steps.retail.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -117,6 +130,7 @@ jobs:
           --output "${{ runner.temp }}/openconquer-client"
 
       - name: Verify published client content
+        if: steps.retail.outputs.available == 'true'
         run: >-
           dotnet run
           --project tools/OpenConquer.Content.Tool
@@ -184,6 +198,7 @@ jobs:
           test -s "$trust_file"
 
       - name: Create CI release manifest
+        if: steps.retail.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -207,6 +222,7 @@ jobs:
           test -s "$release_root/openconquer.release.json"
 
       - name: Sign and package CI release catalog
+        if: steps.retail.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -372,6 +388,7 @@ jobs:
           fi
 
       - name: Verify managed product composition
+        if: steps.retail.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -448,13 +465,17 @@ jobs:
 
           test -n "$native_package_root"
           test -d "$native_package_root"
-          test -f "$manifest"
-          test -f "$package"
+          if [[ "${{ steps.retail.outputs.available }}" == 'true' ]]; then
+            test -f "$manifest"
+            test -f "$package"
+          fi
 
-          active_release="$(jq -er '.activeRelease' "$managed/openconquer.installation.json")"
-          generation="$managed/releases/$active_release"
-
-          test -d "$generation/client"
+          generation=''
+          if [[ "${{ steps.retail.outputs.available }}" == 'true' ]]; then
+            active_release="$(jq -er '.activeRelease' "$managed/openconquer.installation.json")"
+            generation="$managed/releases/$active_release"
+            test -d "$generation/client"
+          fi
 
           for relative_path in \
             FTL.TXT \
@@ -467,6 +488,10 @@ jobs:
             installed="$generation/client/third-party/freetype/$relative_path"
 
             cmp "$native_package_root/$relative_path" "$published"
+
+            if [[ "${{ steps.retail.outputs.available }}" != 'true' ]]; then
+              continue
+            fi
 
             jq -e \
               --arg path "third-party/freetype/$relative_path" \
@@ -481,7 +506,7 @@ jobs:
             cmp "$published" "$installed"
           done
 
-          echo "Verified FreeType licensing and provenance through publish, signed release, and managed installation."
+          echo "Verified FreeType publish notices; signed-release and installation coverage requires local retail content."
 
   cross-platform:
     name: ${{ matrix.name }}
