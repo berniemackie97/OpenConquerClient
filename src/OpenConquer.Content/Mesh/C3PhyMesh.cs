@@ -4,7 +4,7 @@ namespace OpenConquer.Content.Mesh;
 
 public readonly record struct C3PhyVertex(
     Vector3 Position, Vector3 Normal, Vector2 TextureCoordinate,
-    Vector4 BoneData, float BoneData4);
+    float Reserved, uint BoneIndex2, uint BoneIndex1, float BoneWeight2, float BoneWeight1);
 
 public sealed class C3PhyMesh
 {
@@ -24,6 +24,20 @@ public sealed class C3PhyMesh
         DrawKeys = drawKeys;
         TextureKeys = textureKeys;
         TrailingData = trailingData;
+
+        HashSet<uint> usedBones = [];
+        foreach (C3PhyVertex vertex in vertices)
+        {
+            usedBones.Add(vertex.BoneIndex2);
+            if (vertex.BoneWeight1 > 0f)
+            {
+                usedBones.Add(vertex.BoneIndex1);
+            }
+        }
+
+        uint[] usedBoneIndices = [.. usedBones];
+        Array.Sort(usedBoneIndices);
+        UsedBoneIndices = Array.AsReadOnly(usedBoneIndices);
     }
 
     public string Name
@@ -77,6 +91,11 @@ public sealed class C3PhyMesh
     }
 
     public ReadOnlyMemory<byte> TextureKeys
+    {
+        get;
+    }
+
+    public IReadOnlyList<uint> UsedBoneIndices
     {
         get;
     }

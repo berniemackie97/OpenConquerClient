@@ -21,7 +21,11 @@ public sealed class C3PhyMeshReaderTests
         Assert.Equal(new ushort[] { 0, 1, 2 }, mesh.Indices);
         Assert.Equal(new Vector3(10, 20, -5), mesh.Vertices[0].Position);
         Assert.Equal(new Vector2(0.25f, 0.5f), mesh.Vertices[0].TextureCoordinate);
-        Assert.Equal(1f, mesh.Vertices[0].BoneData.W);
+        Assert.Equal(7u, mesh.Vertices[0].BoneIndex2);
+        Assert.Equal(3u, mesh.Vertices[0].BoneIndex1);
+        Assert.Equal(1f, mesh.Vertices[0].BoneWeight2);
+        Assert.Equal(0f, mesh.Vertices[0].BoneWeight1);
+        Assert.Equal(new uint[] { 7 }, mesh.UsedBoneIndices);
         Assert.Equal(normalZ, mesh.Vertices[0].Normal.Z);
         Assert.Equal(new Vector3(-2), mesh.BoundsMin);
         Assert.Equal(new Vector3(2), mesh.BoundsMax);
@@ -30,6 +34,15 @@ public sealed class C3PhyMeshReaderTests
         Assert.True(mesh.DrawKeys.IsEmpty);
         Assert.True(mesh.TextureKeys.IsEmpty);
         Assert.Equal("STEP"u8.ToArray().Concat(new byte[8]).ToArray(), mesh.TrailingData.ToArray());
+    }
+
+    [Fact]
+    public void IncludesTheSecondBoneOnlyWhenItsWeightIsPositive()
+    {
+        C3PhyMesh mesh = C3PhyMeshReader.Read(Section("PHY4", Payload("PHY4", weight1: 0.5f)));
+
+        Assert.Equal(0.5f, mesh.Vertices[0].BoneWeight1);
+        Assert.Equal(new uint[] { 3, 7 }, mesh.UsedBoneIndices);
     }
 
     [Fact]
@@ -116,12 +129,12 @@ public sealed class C3PhyMeshReaderTests
     }
 
     private static C3PhyVertex Vertex(float x, float y, float z) =>
-        new(new Vector3(x, y, z), Vector3.Zero, Vector2.Zero, Vector4.Zero, 0);
+        new(new Vector3(x, y, z), Vector3.Zero, Vector2.Zero, 0, 0, 0, 0, 0);
 
     private static C3MeshSection Section(string tag, ReadOnlyMemory<byte> payload) =>
         new(BinaryPrimitives.ReadUInt32LittleEndian(System.Text.Encoding.ASCII.GetBytes(tag)), 24, payload);
 
-    private static byte[] Payload(string tag, ushort lastIndex = 2, bool fixtureTransform = false)
+    private static byte[] Payload(string tag, ushort lastIndex = 2, bool fixtureTransform = false, float weight1 = 0f)
     {
         using MemoryStream output = new();
         WriteUInt32(output, 7);
@@ -145,10 +158,11 @@ public sealed class C3PhyMeshReaderTests
 
             WriteFloat(output, fixtureTransform && i == 0 ? 0.0004995167f : 0.25f);
             WriteFloat(output, fixtureTransform && i == 0 ? 0.9995000362f : 0.5f);
-            for (int j = 0; j < 5; j++)
-            {
-                WriteFloat(output, j == 3 ? 1 : 0);
-            }
+            WriteFloat(output, 0);
+            WriteUInt32(output, 7);
+            WriteUInt32(output, 3);
+            WriteFloat(output, 1f);
+            WriteFloat(output, weight1);
 
             if (tag is "PHY2" or "PHY3")
             {
