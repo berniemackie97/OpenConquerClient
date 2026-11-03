@@ -81,6 +81,7 @@ internal sealed class ClientApplication : IDisposable
     private bool _returnFromRole;
     private Task? _roleClosing;
     private Task? _worldClosing;
+    private bool _worldConnectionLost;
     private PixelPoint _lastPointer;
     private bool _runStarted;
     private bool _disposed;
@@ -401,7 +402,15 @@ internal sealed class ClientApplication : IDisposable
         {
             _worldClosing = null;
             completedWorldClose.GetAwaiter().GetResult();
-            _loginFlow?.FailWorldContent();
+            if (_worldConnectionLost)
+            {
+                _loginFlow?.FailWorldConnection();
+                _worldConnectionLost = false;
+            }
+            else
+            {
+                _loginFlow?.FailWorldContent();
+            }
         }
 
         if (_role is null && _roleClosing is null &&
@@ -477,6 +486,7 @@ internal sealed class ClientApplication : IDisposable
                 System.Net.Sockets.SocketException or UnauthorizedAccessException)
             {
                 Console.Error.WriteLine($"OpenConquer: world connection closed ({exception.Message}).");
+                _worldConnectionLost = true;
                 ReturnToLogin();
             }
         }
