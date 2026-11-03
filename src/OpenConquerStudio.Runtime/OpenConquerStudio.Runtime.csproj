@@ -1,6 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <InternalsVisibleTo Include="OpenConquerStudio.Authoring" />
-    <InternalsVisibleTo Include="OpenConquerStudio.ConquerImport" />
-  </ItemGroup>
-</Project>
