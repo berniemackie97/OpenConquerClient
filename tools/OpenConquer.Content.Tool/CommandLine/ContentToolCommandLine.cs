@@ -18,6 +18,7 @@ internal static class ContentToolCommandLine
     private const string ValidateMapPuzzlesVerb = "validate-map-puzzles";
     private const string ValidateMapSceneryAniVerb = "validate-map-scenery-ani";
     private const string ValidateMapTerrainScenesVerb = "validate-map-terrain-scenes";
+    private const string CompileMapAssetVerb = "compile-map-asset";
     private const string FileOption = "--file";
     private const string LoadingMediaOption = "--loading-media";
     private const string MapDataIdOption = "--map-data-id";
@@ -51,6 +52,7 @@ internal static class ContentToolCommandLine
         $"  OpenConquer.Content.Tool {ValidateMapPuzzlesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapSceneryAniVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
         $"  OpenConquer.Content.Tool {ValidateMapTerrainScenesVerb} {SourceOption} <client-root> {MapDataIdOption} <map-data-id>",
+        $"  OpenConquer.Content.Tool {CompileMapAssetVerb} {SourceOption} <content-root> {DestinationOption} <asset-file> {MapDataIdOption} <map-data-id>",
     ];
 
     public static bool TryParse(IReadOnlyList<string> args, string workingDirectoryPath, [NotNullWhen(true)] out ContentToolCommand? command, [NotNullWhen(false)] out string? errorMessage)
@@ -226,6 +228,25 @@ internal static class ContentToolCommandLine
                     }
 
                     command = new AnalyzeMapDependenciesCommand(values[0], availableMaps);
+                    return true;
+                }
+
+            case CompileMapAssetVerb:
+                {
+                    if (!TryParseContentSetOptions(remainingArgs, [SourceOption, DestinationOption],
+                            workingDirectoryPath, out IReadOnlyList<string>? values, out uint? mapDataId,
+                            out bool allMaps, out bool availableMaps, out errorMessage))
+                    {
+                        return false;
+                    }
+
+                    if (mapDataId is null || allMaps || availableMaps)
+                    {
+                        errorMessage = "A single --map-data-id is required for map compilation.";
+                        return false;
+                    }
+
+                    command = new CompileMapAssetCommand(values[0], values[1], mapDataId.Value);
                     return true;
                 }
 

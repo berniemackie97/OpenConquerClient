@@ -80,6 +80,62 @@ permission for unbounded memory use or for putting all source assets in one rele
 6. Move bulk assets out of the source repository only after the licensed publishing source, CI
    acquisition, reproducibility, and migration plan have been verified and approved.
 
+## Engine-owned assets and studio authoring
+
+Imported resource formats are an input to the content compiler, not a dependency of
+the eventual shipped runtime. The studio editor will author the same typed resources
+as the compiler, and all assets will share versioned schemas, dependency IDs, and
+validation before publication. Source import must not be an alternate loader.
+
+The map asset format is currently an **uncommitted schema candidate** at version 1.
+`compile-map-asset --source <content-root> --destination <file.ocmap>
+--map-data-id <id>` converts the supported source map into typed map data. It
+fails when source records have no modeled equivalent. A compiled map can be
+loaded through the content source at `maps/<map-data-id>.ocmap`; no source archive
+fallback is provided by this API.
+
+The binary representation uses an `OCMP` header and four ordered, indexed
+sections: resource references, cell grid, scene objects, and ordered layers.
+Each section declares its type, absolute offset, length, and SHA-256 digest;
+the directory must exactly cover the file without gaps, overlaps, or trailing
+bytes. Resource references are deduplicated and sorted, then stored as canonical
+lowercase logical IDs; scene records store integer table indices rather than
+source filenames. A strict map reader can validate and decode individual sections
+or read a rectangular cell window without instantiating all scene objects.
+Every section access currently verifies its entire digest before parsing or
+reading a window. This provides bounded-memory integrity checking, **not**
+constant-time small-window access. No arbitrary chunk size or compression method
+has been selected.
+
+The encoder writes and hashes sections directly to a seekable output stream,
+so compilation does not buffer the entire binary output; it commits through a
+flushed staging file without overwriting an existing destination. The full
+in-memory encode API is provided for authored assets and test fixtures.
+Decoding rejects unsafe or noncanonical IDs, ambiguous section directories,
+invalid reference indices, corrupted digests, mismatched identities, unsupported
+versions, unknown tags, excessive counts, invalid UTF-8, truncated sections,
+and trailing bytes. The signed release manifest remains the authenticity
+boundary: hashes inside a map are not signatures.
+
+Map 1010 conversion currently preserves its cell grid, terrain placements,
+animated placements and modeled puzzle layers. It preserves all distinct
+placements even when they reference the same animation. Unsupported exits and
+scenery types cause errors rather than silently losing data. The existing
+runtime map loader remains in place because this candidate does not yet model
+every source behavior, and the dependent scene, puzzle, animation, texture,
+and configuration assets are not yet compiled. Runtime cutover is prohibited
+until those consumers can load the compiled resource graph directly and map
+rendering, movement, layering, and animation conformance have been demonstrated.
+
+Before treating this schema as the final map format, obtain controlled
+measurements of compiled bytes, cold and warm loading, peak CPU/GPU memory,
+grid-window access, scene traversal, installed bundle overhead, and update
+reuse on representative maps. The section layout is intentionally not frozen
+until those results justify it. Map IDs 1929 and 1999 remain separate coverage
+gates. Do not add compression, encryption, or spatial chunking without measured
+benefit and a clear operational design. Encryption cannot replace signed
+metadata or authenticated content identities.
+
 ## Content layout assessment
 
 Content-set verification rejects undeclared directories as well as undeclared or missing
