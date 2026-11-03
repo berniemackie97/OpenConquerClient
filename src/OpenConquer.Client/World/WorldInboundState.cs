@@ -14,10 +14,13 @@ internal sealed class WorldInboundState
     {
         _heroId = world.Character.EntityId;
         HeroAttributes = WorldHeroAttributes.FromCharacter(world.Character);
+        Equipment = WorldHeroEquipment.FromHydration(world.HydrationPackets);
         X = world.X;
         Y = world.Y;
         Weather = (world.WeatherKind, 0, 0, 0);
     }
+
+    internal WorldHeroEquipment Equipment { get; }
 
     internal WorldHeroAttributes HeroAttributes
     {

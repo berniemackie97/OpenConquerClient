@@ -12,7 +12,8 @@ public sealed class WorldRoleSourcesTests
     public void ResolvesInitialBodyAndLinkedHairFromCharacterInfo(
         uint appearance, int hair, uint expectedBody, uint expectedArmet)
     {
-        WorldRoleSources sources = WorldRoleSources.Resolve(appearance, checked((ushort)hair), []);
+        WorldRoleSources sources = WorldRoleSources.Resolve(appearance, checked((ushort)hair),
+            WorldHeroEquipment.FromHydration([]));
         Assert.Equal(expectedBody, sources.BodyModelId);
         Assert.Equal(expectedArmet, sources.ArmetModelId);
     }
@@ -22,43 +23,37 @@ public sealed class WorldRoleSourcesTests
     {
         byte[] helmet = ItemSnapshot(100, 1111000, placement: 1);
         byte[] armor = ItemSnapshot(200, 130003, placement: 3);
-        WorldRoleSources withoutActivation = WorldRoleSources.Resolve(1002, 335, [helmet, armor]);
+        WorldRoleSources withoutActivation = WorldRoleSources.Resolve(1002, 335,
+            WorldHeroEquipment.FromHydration([helmet, armor]));
         Assert.Equal(2_000_000u, withoutActivation.BodyModelId);
         Assert.Equal(2_119_335u, withoutActivation.ArmetModelId);
 
         WorldRoleSources active = WorldRoleSources.Resolve(1002, 335,
-            [helmet, armor, ActiveEquipment(headwear: 100, armor: 200)]);
+            WorldHeroEquipment.FromHydration([helmet, armor, ActiveEquipment(headwear: 100, armor: 200)]));
         Assert.Equal(2_130_000u, active.BodyModelId);
         Assert.Equal(2_111_000u, active.ArmetModelId);
     }
 
     [Fact]
-    public void RejectsEquipmentThatDoesNotResolveToItsDeclaredActiveSlot()
+    public void MissingEquipmentUidClearsTheSlotWithoutPreventingWorldEntry()
     {
-        Assert.Throws<InvalidDataException>(() => WorldRoleSources.Resolve(1002, 335,
-            [ItemSnapshot(100, 130003, placement: 3), ActiveEquipment(headwear: 100)]));
-        Assert.Throws<InvalidDataException>(() => WorldRoleSources.Resolve(1002, 335,
-            [ActiveEquipment(armor: 999)]));
-    }
+        WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335,
+            WorldHeroEquipment.FromHydration([ActiveEquipment(headwear: 999, armor: 200)]));
 
-    [Fact]
-    public void DoesNotTreatInventoryItemsOrAlternateEquipmentAsActiveVisuals()
-    {
-        byte[] inventory = ItemSnapshot(100, 130003, placement: 0);
-        byte[] alternate = ActiveEquipment(armor: 100);
-        BinaryPrimitives.WriteUInt32LittleEndian(alternate.AsSpan(8), 1);
-
-        WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335, [inventory, alternate]);
         Assert.Equal(2_000_000u, sources.BodyModelId);
         Assert.Equal(2_119_335u, sources.ArmetModelId);
     }
 
     [Fact]
-    public void OtherEquipmentPacketSubtypesDoNotReplaceTheActiveSnapshot()
+    public void InventoryItemsAndUnactivatedEquipmentDoNotChangeAppearance()
     {
-        byte[] other = ActiveEquipment(armor: 999);
-        BinaryPrimitives.WriteUInt16LittleEndian(other.AsSpan(12), 12);
-        WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335, [other]);
+        byte[] inventory = ItemSnapshot(100, 130003, placement: 0);
+        byte[] unrelated = ActiveEquipment(armor: 100);
+        BinaryPrimitives.WriteUInt16LittleEndian(unrelated.AsSpan(12), 12);
+
+        WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335,
+            WorldHeroEquipment.FromHydration([inventory, unrelated]));
+
         Assert.Equal(2_000_000u, sources.BodyModelId);
         Assert.Equal(2_119_335u, sources.ArmetModelId);
     }
