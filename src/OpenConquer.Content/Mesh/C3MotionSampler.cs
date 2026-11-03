@@ -52,7 +52,8 @@ public static class C3MotionSampler
         int previousFrame = unchecked((int)motion.GetKeyframeIndex(previous));
         int nextFrame = unchecked((int)motion.GetKeyframeIndex(next));
         float weight = (float)((long)framePosition - previousFrame) / ((long)nextFrame - previousFrame);
-        matrix = Interpolate(motion.GetBoneMatrix(previous, bone), motion.GetBoneMatrix(next, bone), weight);
+        matrix = C3MatrixBlend.Combine(motion.GetBoneMatrix(previous, bone), 1f - weight,
+            motion.GetBoneMatrix(next, bone), weight);
         return true;
     }
 
@@ -75,29 +76,8 @@ public static class C3MotionSampler
             return false;
         }
 
-        matrix = Interpolate(primaryMatrix, secondaryMatrix, secondaryAlpha);
+        matrix = C3MatrixBlend.Combine(primaryMatrix, 1f - secondaryAlpha,
+            secondaryMatrix, secondaryAlpha);
         return true;
-    }
-
-    private static Matrix4x4 Interpolate(Matrix4x4 left, Matrix4x4 right, float weight)
-    {
-        float complement = 1f - weight;
-        return new Matrix4x4(
-            complement * left.M11 + weight * right.M11,
-            complement * left.M12 + weight * right.M12,
-            complement * left.M13 + weight * right.M13,
-            complement * left.M14 + weight * right.M14,
-            complement * left.M21 + weight * right.M21,
-            complement * left.M22 + weight * right.M22,
-            complement * left.M23 + weight * right.M23,
-            complement * left.M24 + weight * right.M24,
-            complement * left.M31 + weight * right.M31,
-            complement * left.M32 + weight * right.M32,
-            complement * left.M33 + weight * right.M33,
-            complement * left.M34 + weight * right.M34,
-            complement * left.M41 + weight * right.M41,
-            complement * left.M42 + weight * right.M42,
-            complement * left.M43 + weight * right.M43,
-            complement * left.M44 + weight * right.M44);
     }
 }

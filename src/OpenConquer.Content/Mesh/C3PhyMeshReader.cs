@@ -71,11 +71,14 @@ public static class C3PhyMeshReader
             ReadOnlySpan<byte> input = records.Span.Slice(i * stride, stride);
             Vector3 position = ReadVector3(input);
             Vector2 uv = new(ReadFloat(input, uvOffset), ReadFloat(input, uvOffset + 4));
-            Vector4 bones = new(ReadFloat(input, boneOffset), ReadFloat(input, boneOffset + 4),
-                ReadFloat(input, boneOffset + 8), ReadFloat(input, boneOffset + 12));
-            float bone4 = ReadFloat(input, boneOffset + 16);
+            float reserved = ReadFloat(input, boneOffset);
+            uint boneIndex2 = BinaryPrimitives.ReadUInt32LittleEndian(input[(boneOffset + 4)..]);
+            uint boneIndex1 = BinaryPrimitives.ReadUInt32LittleEndian(input[(boneOffset + 8)..]);
+            float boneWeight2 = ReadFloat(input, boneOffset + 12);
+            float boneWeight1 = ReadFloat(input, boneOffset + 16);
             Vector3 normal = generatedNormals ? Vector3.Zero : ReadVector3(input[(boneOffset + 20)..]);
-            vertices[i] = new C3PhyVertex(position, normal, uv, bones, bone4);
+            vertices[i] = new C3PhyVertex(position, normal, uv, reserved,
+                boneIndex2, boneIndex1, boneWeight2, boneWeight1);
         }
 
         return vertices;

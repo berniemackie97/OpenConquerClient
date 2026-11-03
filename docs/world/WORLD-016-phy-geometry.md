@@ -13,9 +13,11 @@ one vertex buffer and the two face counts form one triangle index buffer.
 transform to vertex positions. For generated-normal layouts it computes
 unit face normals, accumulates equally weighted face contributions, and
 smooths normals of vertices sharing positions within a 0.01 tolerance.
-The original vertex bone fields, serialized normals, key streams, object
-transform, and unconsumed trailing bytes remain available to later animation
-and draw consumers. Mesh index and section boundaries are checked before
+The decoded vertex keeps its reserved float, unsigned bone indices at internal
+vertex offsets +0x18/+0x1C, float weights at +0x20/+0x24, and its normal.
+The mesh captures the used-bone indices once during loading, including the
+second index only when its weight is positive. Key streams, object transform,
+and trailing bytes remain available to subsequent consumers. Mesh index and section boundaries are checked before
 allocating geometry.
 
 The independent SimpleObj 19 fixture establishes the first-vertex post-load
@@ -23,7 +25,6 @@ position (-79.603531, -39.801765, -4.999774) from an on-disk position of
 (-6, -3, 0.0000170716) and uniform scale 13.26725578 with Z translation -5.
 Tests also exercise every vertex layout and normal smoothing with generated data.
 
-This step does not sample MOTI bone matrices, apply frame or alpha keys,
-decode textures, or submit OpenGL triangles. The transformed static geometry
-is a data boundary for the upcoming motion and rendering passes; this alone
-does not make the hero visible.
+The mesh reader decodes and retains geometry independently of motion sampling,
+texture binding, and indexed OpenGL submission. Animated vertex deformation
+is described in WORLD-018; the local hero draw path is not implemented.
