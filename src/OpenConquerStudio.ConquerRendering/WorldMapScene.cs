@@ -1,4 +1,5 @@
 using OpenConquer.Content;
+using OpenConquer.Content.Ani;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Map;
 using OpenConquer.Rendering.OpenGL;
@@ -8,13 +9,16 @@ using OpenConquer.Rendering.Sprites;
 namespace OpenConquerStudio.ConquerRendering;
 
 internal readonly record struct WorldMapLayer(
-    IReadOnlyList<WorldPuzzleTile>? Puzzle = null, IReadOnlyList<WorldTerrainSprite>? Terrain = null);
+    IReadOnlyList<WorldPuzzleTile>? Puzzle = null, IReadOnlyList<WorldScenerySprite>? Scenery = null);
 
 public sealed class WorldMapScene
 {
     private readonly GameMapContent _map;
     private readonly GameMapPuzzleResources _puzzles;
     private readonly IReadOnlyList<GameMapTerrainScenePlacement> _terrain;
+    private readonly WorldSceneryIndex _sceneryIndex;
+    private readonly Dictionary<GameMapSceneryRecord, (int Width, int Height)> _sceneryFrameExtents =
+        new(ReferenceEqualityComparer.Instance);
     private readonly WorldPuzzleAnimationClock _groundClock;
     private readonly Dictionary<GameMapPuzzleOverlayEntry, WorldPuzzleAnimationClock> _overlayClocks =
         new(ReferenceEqualityComparer.Instance);
@@ -27,12 +31,14 @@ public sealed class WorldMapScene
     private WorldPuzzleProjection _projection;
 
     internal WorldMapScene(GameMapContent map, GameMapPuzzleResources puzzles,
-        IReadOnlyList<GameMapTerrainScenePlacement> terrain, int heroTileX, int heroTileY,
-        uint puzzleIntervalMilliseconds, uint startMilliseconds)
+        IReadOnlyList<GameMapTerrainScenePlacement> terrain,
+        IReadOnlyList<GameMapSceneryAniBinding> animatedScenery,
+        int heroTileX, int heroTileY, uint puzzleIntervalMilliseconds, uint startMilliseconds)
     {
         _map = map;
         _puzzles = puzzles;
         _terrain = terrain;
+        _sceneryIndex = new WorldSceneryIndex(map, animatedScenery);
         (_heroX, _heroY) = WorldCameraProjection.ProjectTile(map, heroTileX, heroTileY);
         _groundClock = new WorldPuzzleAnimationClock(puzzleIntervalMilliseconds);
         _startMilliseconds = startMilliseconds;
@@ -67,7 +73,6 @@ public sealed class WorldMapScene
         {
             throw new ArgumentOutOfRangeException(nameof(tileX), "The camera tile must lie within the map grid.");
         }
-
         (_heroX, _heroY) = WorldCameraProjection.ProjectTile(_map, tileX, tileY);
     }
 
@@ -77,7 +82,6 @@ public sealed class WorldMapScene
         {
             throw new ArgumentOutOfRangeException(nameof(zoomPercent), "Map zoom must be between 10 and 800 percent.");
         }
-
         _zoomPercent = zoomPercent;
     }
 
@@ -98,11 +102,14 @@ public sealed class WorldMapScene
         cancellationToken.ThrowIfCancellationRequested();
         GameMapPuzzleResources puzzles = GameMapPuzzleResources.Load(source, map);
         cancellationToken.ThrowIfCancellationRequested();
-        GameMapTerrainSceneResources terrain = GameMapTerrainSceneResources.Load(source, map);
+        AniSectionResolver animations = new(source, ContentLookupMode.LooseOnly);
+        GameMapTerrainSceneResources terrain = GameMapTerrainSceneResources.Load(source, map, animations);
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyList<GameMapSceneryAniBinding> scenery = GameMapSceneryAniBindings.Load(source, map.Scene, animations);
         cancellationToken.ThrowIfCancellationRequested();
         uint puzzleInterval = PuzzleFrameIntervalConfiguration.Load(source);
         cancellationToken.ThrowIfCancellationRequested();
-        return new WorldMapScene(map, puzzles, terrain.Placements, cameraTileX, cameraTileY,
+        return new WorldMapScene(map, puzzles, terrain.Placements, scenery, cameraTileX, cameraTileY,
             puzzleInterval, startMilliseconds);
     }
 
@@ -113,15 +120,16 @@ public sealed class WorldMapScene
 
         IReadOnlyList<WorldPuzzleTile> ground = WorldPuzzleDrawList.Ground(
             _map, _puzzles, _projection, _groundClock.FrameForRender(nowMilliseconds));
-        IReadOnlyList<WorldTerrainSprite> terrain = WorldTerrainSceneDrawList.Build(
-            _map, _terrain, _projection, nowMilliseconds, _startMilliseconds);
+        IReadOnlyList<WorldScenerySprite> scenery = WorldSceneryDrawList.Build(
+            _map, _terrain, _sceneryIndex, _sceneryFrameExtents,
+            _projection, nowMilliseconds, _startMilliseconds);
 
         List<WorldMapLayer> layers =
         [
             new(Puzzle: ground),
             default,
             default,
-            new(Terrain: terrain),
+            new(Scenery: scenery),
             default,
         ];
 
@@ -160,9 +168,22 @@ public sealed class WorldMapScene
             {
                 complete = false;
             }
-            if (layer.Terrain is { } terrain && !textures.Prepare(terrain, ref remaining))
+            if (layer.Scenery is { } scenery)
             {
-                complete = false;
+                if (!textures.Prepare(scenery, ref remaining))
+                {
+                    complete = false;
+                }
+
+                foreach (WorldScenerySprite sprite in scenery)
+                {
+                    if (sprite.Source is { } record && !_sceneryFrameExtents.ContainsKey(record) &&
+                        textures.TryGetFrameExtent(sprite.Animation.FramePaths[sprite.FrameIndex],
+                            out int width, out int height))
+                    {
+                        _sceneryFrameExtents.Add(record, (width, height));
+                    }
+                }
             }
         }
 
@@ -177,9 +198,9 @@ public sealed class WorldMapScene
             {
                 textures.Draw(renderer, puzzle, SpriteColor.White);
             }
-            if (layer.Terrain is { } terrain)
+            if (layer.Scenery is { } scenery)
             {
-                textures.Draw(renderer, terrain, _projection, SpriteColor.White);
+                textures.Draw(renderer, scenery, _projection, SpriteColor.White);
             }
         }
     }

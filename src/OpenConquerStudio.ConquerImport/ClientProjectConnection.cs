@@ -59,7 +59,7 @@ public sealed class ClientProjectConnection
             StudioProject project = StudioProject.Open(workspace, token);
             try
             {
-                return (project, OpenAttached(workspace) ?? Attach(project, repository, Path.Combine(repository, "content", "retail-5517", "payload")));
+                return (project, OpenAttached(workspace) ?? Attach(project, repository, Path.Combine(repository, "content", "retail-5517", "payload"), token));
             }
             catch
             {

@@ -50,7 +50,7 @@ public sealed class WorldViewportSizeTests
     public void SceneBackdropSuppliesTheMapCoverageLimit()
     {
         using WorldMapFixture fixture = new();
-        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], 60, 108, 100, 1000);
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
         Assert.Equal(new LogicalRenderSize(1536, 1536), scene.BackdropExtent);
     }
 

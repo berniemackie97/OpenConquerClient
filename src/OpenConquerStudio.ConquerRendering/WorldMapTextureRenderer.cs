@@ -23,10 +23,10 @@ public sealed class WorldMapTextureRenderer : IDisposable
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumTextures);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumPixelBytes);
-        _source = source ?? throw new ArgumentNullException(nameof(source));
-        _device = device ?? throw new ArgumentNullException(nameof(device));
         _maximumTextures = maximumTextures;
         _maximumPixelBytes = maximumPixelBytes;
+        _source = source ?? throw new ArgumentNullException(nameof(source));
+        _device = device ?? throw new ArgumentNullException(nameof(device));
     }
 
     internal bool Prepare(IReadOnlyList<WorldPuzzleTile> tiles, ref int remaining)
@@ -45,12 +45,12 @@ public sealed class WorldMapTextureRenderer : IDisposable
         return complete;
     }
 
-    internal bool Prepare(IReadOnlyList<WorldTerrainSprite> sprites, ref int remaining)
+    internal bool Prepare(IReadOnlyList<WorldScenerySprite> sprites, ref int remaining)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(sprites);
         bool complete = true;
-        foreach (WorldTerrainSprite sprite in sprites)
+        foreach (WorldScenerySprite sprite in sprites)
         {
             if (!EnsureTexture(sprite.Animation, sprite.FrameIndex, ref remaining))
             {
@@ -73,13 +73,13 @@ public sealed class WorldMapTextureRenderer : IDisposable
         }
     }
 
-    internal void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldTerrainSprite> sprites,
+    internal void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldScenerySprite> sprites,
         WorldPuzzleProjection projection, SpriteColor worldColor)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(sprites);
-        foreach (WorldTerrainSprite sprite in sprites)
+        foreach (WorldScenerySprite sprite in sprites)
         {
             string path = sprite.Animation.FramePaths[sprite.FrameIndex];
             OpenGLTexture2D texture = GetPrepared(path);
@@ -124,6 +124,20 @@ public sealed class WorldMapTextureRenderer : IDisposable
             texture.Dispose();
             throw;
         }
+    }
+
+    internal bool TryGetFrameExtent(string path, out int width, out int height)
+    {
+        if (_textures.TryGetValue(path, out OpenGLTexture2D? texture))
+        {
+            width = texture.Width;
+            height = texture.Height;
+            return true;
+        }
+
+        width = 0;
+        height = 0;
+        return false;
     }
 
     private OpenGLTexture2D GetPrepared(string path) =>

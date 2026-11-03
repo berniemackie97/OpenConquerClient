@@ -5,7 +5,7 @@ using OpenConquerStudio.ConquerRendering;
 
 namespace OpenConquer.Client.Tests.World;
 
-public sealed class WorldTerrainSceneDrawListTests
+public sealed class WorldSceneryDrawListTests
 {
     [Fact]
     public void SceneObject_UsesProjectedAnchorOffsetAndElapsedAnimationFrame()
@@ -14,12 +14,12 @@ public sealed class WorldTerrainSceneDrawListTests
         AniIndexSection animation = Animation(3);
         GameMapTerrainScenePlacement placement = Placement(animation, 58, 110, -60, -48, 125, anchorOffsetX: 2, anchorOffsetY: -2);
 
-        IReadOnlyList<WorldTerrainSprite> sprites = WorldTerrainSceneDrawList.Build(
+        IReadOnlyList<WorldScenerySprite> sprites = Build(
             fixture.Map, [placement],
             new WorldPuzzleProjection(800, 600, 0, 0, 2500, 2600, 256, 256),
             nowMilliseconds: 1400, sceneStartMilliseconds: 1000);
 
-        WorldTerrainSprite sprite = Assert.Single(sprites);
+        WorldScenerySprite sprite = Assert.Single(sprites);
         Assert.Same(animation, sprite.Animation);
         Assert.Equal(0, sprite.FrameIndex);
         Assert.Equal((128, 56), (sprite.X, sprite.Y));
@@ -33,7 +33,7 @@ public sealed class WorldTerrainSceneDrawListTests
         GameMapTerrainScenePlacement placement = Placement(Animation(3), 60, 108, -60, -48, 125);
         WorldPuzzleProjection projection = new(800, 600, 0, 0, 2500, 2600, 384, 256);
 
-        WorldTerrainSprite sprite = Assert.Single(WorldTerrainSceneDrawList.Build(
+        WorldScenerySprite sprite = Assert.Single(Build(
             fixture.Map, [placement], projection, nowMilliseconds: 1600, sceneStartMilliseconds: 1000));
 
         Assert.Equal((-8, -66), (sprite.X, sprite.Y));
@@ -54,7 +54,7 @@ public sealed class WorldTerrainSceneDrawListTests
             Placement(animation, 69, 69, 0, 0, 100),
         ];
 
-        IReadOnlyList<WorldTerrainSprite> sprites = WorldTerrainSceneDrawList.Build(
+        IReadOnlyList<WorldScenerySprite> sprites = Build(
             fixture.Map, placements, projection, nowMilliseconds: 1000, sceneStartMilliseconds: 1000);
 
         Assert.Equal([(69, 69), (70, 70), (71, 70)],
@@ -73,7 +73,7 @@ public sealed class WorldTerrainSceneDrawListTests
             Placement(animation, 71, 69, 0, 0, 100, width: 2),
         ];
 
-        IReadOnlyList<WorldTerrainSprite> sprites = WorldTerrainSceneDrawList.Build(
+        IReadOnlyList<WorldScenerySprite> sprites = Build(
             fixture.Map, placements, projection, 1000, 1000);
 
         Assert.Equal([(71, 69), (70, 70)],
@@ -81,30 +81,34 @@ public sealed class WorldTerrainSceneDrawListTests
     }
 
     [Fact]
-    public void SceneObject_OutsideAnchorRegion_RemainsDrawableAfterRenderOffset()
+    public void DistantTerrainObject_DoesNotTickSolelyBecauseItsSpriteOffsetIsVisible()
     {
         using WorldMapFixture fixture = new();
         WorldPuzzleProjection projection = new(800, 600, 0, 0, 2500, 2600, 256, 256);
         (int worldX, int worldY) = WorldCameraProjection.ProjectTile(fixture.Map, 10, 10);
 
-        WorldTerrainSprite sprite = Assert.Single(WorldTerrainSceneDrawList.Build(
+        Assert.Empty(Build(
             fixture.Map, [Placement(Animation(1), 10, 10,
                 projection.CenterX - worldX + 100, projection.CenterY - worldY + 100, 100)],
             projection, 1000, 1000));
-
-        Assert.Equal((100, 100), (sprite.X, sprite.Y));
-        Assert.True(sprite.IntersectsViewport(50, 50, projection.ScreenWidth, projection.ScreenHeight));
     }
 
     [Fact]
     public void SpriteBounds_UseFrameExtentForViewportCulling()
     {
-        WorldTerrainSprite sprite = new(Animation(1), 0, -300, 100, 256, 256, 10, 10, 1, 1);
+        WorldScenerySprite sprite = new(Animation(1), 0, -300, 100, 256, 256, 10, 10, 1, 1);
         Assert.True(sprite.IntersectsViewport(400, 100, 800, 600));
         Assert.False(sprite.IntersectsViewport(300, 100, 800, 600));
-        WorldTerrainSprite outsideViewport = new(Animation(1), 0, 850, 100, 256, 256, 10, 10, 1, 1);
+        WorldScenerySprite outsideViewport = new(Animation(1), 0, 850, 100, 256, 256, 10, 10, 1, 1);
         Assert.False(outsideViewport.IntersectsViewport(400, 100, 800, 600));
     }
+
+    private static IReadOnlyList<WorldScenerySprite> Build(GameMapContent map,
+        IReadOnlyList<GameMapTerrainScenePlacement> placements,
+        WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds) =>
+        WorldSceneryDrawList.Build(map, placements, new WorldSceneryIndex(map, []),
+            new Dictionary<GameMapSceneryRecord, (int Width, int Height)>(),
+            projection, nowMilliseconds, sceneStartMilliseconds);
 
     private static GameMapTerrainScenePlacement Placement(AniIndexSection animation, int x, int y,
         int offsetX, int offsetY, int frameInterval, int width = 1,

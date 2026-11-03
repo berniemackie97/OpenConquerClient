@@ -7,12 +7,13 @@ public sealed record GameMapSceneryAniBinding(GameMapSceneryRecord Scenery, AniI
 /// <summary>Resolves authored type-4 scenery ANI sections, without assigning any rendering semantics.</summary>
 public static class GameMapSceneryAniBindings
 {
-    public static IReadOnlyList<GameMapSceneryAniBinding> Load(IClientContentSource source, GameMapSceneSections scene)
+    public static IReadOnlyList<GameMapSceneryAniBinding> Load(IClientContentSource source, GameMapSceneSections scene,
+        AniSectionResolver? animations = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(scene);
 
-        AniSectionResolver animations = new(source, ContentLookupMode.LooseOnly);
+        animations ??= new AniSectionResolver(source, ContentLookupMode.LooseOnly);
         List<GameMapSceneryAniBinding> bindings = [];
 
         foreach (GameMapSceneryRecord record in scene.Scenery)
