@@ -74,13 +74,25 @@ public sealed class WorldMapTextureRenderer : IDisposable
     }
 
     internal void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldScenerySprite> sprites,
-        WorldPuzzleProjection projection, SpriteColor worldColor)
+        WorldPuzzleProjection projection, SpriteColor worldColor) =>
+        Draw(renderer, sprites, projection, worldColor, 0, sprites.Count);
+
+    internal void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldScenerySprite> sprites,
+        WorldPuzzleProjection projection, SpriteColor worldColor, int start, int count)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(sprites);
-        foreach (WorldScenerySprite sprite in sprites)
+        ArgumentOutOfRangeException.ThrowIfNegative(start);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        if (start > sprites.Count || count > sprites.Count - start)
         {
+            throw new ArgumentOutOfRangeException(nameof(count));
+        }
+
+        for (int i = start; i < start + count; i++)
+        {
+            WorldScenerySprite sprite = sprites[i];
             string path = sprite.Animation.FramePaths[sprite.FrameIndex];
             OpenGLTexture2D texture = GetPrepared(path);
             int width = checked((int)((long)texture.Width * sprite.ScaleNumerator / sprite.ScaleDenominator));

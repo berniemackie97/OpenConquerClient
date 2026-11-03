@@ -49,9 +49,32 @@ internal static class IndexedMeshConformance
         renderer.DrawSprite(texture, 0, 0);
         byte[] third = renderer.ReadFrameTopLeftRgba();
         VerifyPixel(third, size, 0, 0, 255, 255, 255);
+
+        SetVertexState(vertices, depth: 0.04f, color: 0xFFFFFFFF);
+        reversed.Upload(MemoryMarshal.AsBytes(vertices.AsSpan()));
+        renderer.DrawIndexedMeshShadow(reversed, Matrix4x4.Identity, MeshCullMode.None, 0.3f);
+        byte[] shadow = renderer.ReadFrameTopLeftRgba();
+        int center = (4 * size + 4) * 4;
+        if (shadow[center] != 0 || shadow[center + 1] is < 176 or > 182 ||
+            shadow[center + 2] != 0 || shadow[center + 3] != 255)
+        {
+            throw new InvalidDataException(
+                $"Indexed mesh shadow center ({shadow[center]},{shadow[center + 1]}," +
+                $"{shadow[center + 2]},{shadow[center + 3]}) did not blend over the main geometry.");
+        }
+
+        SetVertexState(vertices, depth: 0.045f, color: 0xFF0000FF);
+        Draw(reversed, vertices, renderer, texture, MeshCullMode.None);
+        byte[] afterShadow = renderer.ReadFrameTopLeftRgba();
+        VerifyPixel(afterShadow, size, 4, 4, 0, 0, 255);
+
+        renderer.DrawSprite(texture, 0, 0);
+        byte[] spriteAfterShadow = renderer.ReadFrameTopLeftRgba();
+        VerifyPixel(spriteAfterShadow, size, 0, 0, 255, 255, 255);
+
         renderer.EndFrame();
 
-        Console.WriteLine("Indexed mesh: 16-bit triangles, ARGB color, D3D depth conversion, culling, alpha test, and sprite state passed.");
+        Console.WriteLine("Indexed mesh: 16-bit triangles, ARGB color, D3D depth conversion, culling, alpha test, geometric shadow blend, and sprite state passed.");
     }
 
     private static void Draw(OpenGLIndexedMesh mesh, C3PhyOutputVertex[] vertices,

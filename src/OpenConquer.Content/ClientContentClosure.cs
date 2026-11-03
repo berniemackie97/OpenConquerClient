@@ -65,6 +65,23 @@ public static class ClientContentClosure
             new(ControlAniPath, ContentLookupMode.LooseOnly),
         ];
 
+        if (contentSource.TryOpenRead("ini/c3.wdb", ContentLookupMode.LooseOnly, out Stream? database))
+        {
+            database.Dispose();
+            requirements.Add(new ClientContentRequirement("ini/c3.wdb", ContentLookupMode.LooseOnly));
+            requirements.Add(new ClientContentRequirement("ini/package.ini", ContentLookupMode.LooseOnly));
+            requirements.Add(new ClientContentRequirement("c3.wdf", ContentLookupMode.LooseOnly));
+
+            foreach (string path in new[] { "ini/3DObj.dbc", "ini/3DTexture.dbc" })
+            {
+                if (contentSource.TryOpenRead(path, ContentLookupMode.LooseOnly, out Stream? index))
+                {
+                    index.Dispose();
+                    requirements.Add(new ClientContentRequirement(path, ContentLookupMode.LooseOnly));
+                }
+            }
+        }
+
         if (LoginLoadingContentPaths.IsPresent(contentSource))
         {
             requirements.AddRange(LoginLoadingContentPaths.Paths.Select(static path =>

@@ -38,6 +38,7 @@ internal sealed class ClientApplication : IDisposable
     private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
 
     private readonly string _contentRootPath;
+    private readonly Action<OpenGLRenderer> _drawWorldRole;
     private readonly PresentationPolicy _presentationPolicy;
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
@@ -63,6 +64,7 @@ internal sealed class ClientApplication : IDisposable
     private GameWorldEntrySnapshot? _worldEntry;
     private WorldMapLoad? _worldLoad;
     private WorldMapScene? _worldScene;
+    private WorldRoleRenderer? _worldRole;
     private bool _worldTexturesReady;
     private WorldMapTextureRenderer? _worldTextures;
     private IClientContentSource? _roleContent;
@@ -84,6 +86,7 @@ internal sealed class ClientApplication : IDisposable
     public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
+        _drawWorldRole = DrawWorldRole;
 
         if (!Enum.IsDefined(windowMode))
         {
@@ -329,6 +332,8 @@ internal sealed class ClientApplication : IDisposable
         _worldTextures = null;
         try
         {
+            _worldRole?.Dispose();
+            _worldRole = null;
             _worldRenderer?.Dispose();
         }
         finally
@@ -508,7 +513,8 @@ internal sealed class ClientApplication : IDisposable
         {
             if (worldVisible && _worldScene is { } worldScene)
             {
-                worldScene.Draw(_worldTextures!, frameRenderer);
+                worldScene.Draw(_worldTextures!, frameRenderer,
+                    _worldRole is null ? null : _drawWorldRole);
             }
             else if (_role is { } role)
             {
@@ -561,6 +567,19 @@ internal sealed class ClientApplication : IDisposable
             if (_worldGame is not null)
             {
                 _worldScene = scene;
+                IClientContentSource source = _roleContent ??
+                    throw new InvalidOperationException("World content source is unavailable.");
+                OpenGLGraphicsDevice graphicsDevice = _graphicsDevice ??
+                    throw new InvalidOperationException("World graphics device is unavailable.");
+                GameWorldEntrySnapshot entry = _worldEntry ??
+                    throw new InvalidOperationException("World entry is unavailable.");
+
+                _worldRole = WorldRoleRenderer.Load(source, graphicsDevice,
+                    entry.Character.PackedAppearance);
+                if (_worldRole is null)
+                {
+                    Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");
+                }
             }
         }
         catch (OperationCanceledException)
@@ -591,6 +610,8 @@ internal sealed class ClientApplication : IDisposable
         _worldGame = null;
         _worldEntry = null;
         _worldScene = null;
+        _worldRole?.Dispose();
+        _worldRole = null;
         if (game is not null)
         {
             _worldClosing = game.DisposeAsync().AsTask();
@@ -641,6 +662,16 @@ internal sealed class ClientApplication : IDisposable
             registration.Close();
             login.ApplyRegistrationFeedback(registration.Feedback, _loginErrors!);
         }
+    }
+
+    private void DrawWorldRole(OpenGLRenderer renderer)
+    {
+        WorldRoleRenderer role = _worldRole ??
+            throw new InvalidOperationException("World character renderer is unavailable.");
+        WorldMapScene scene = _worldScene ??
+            throw new InvalidOperationException("World scene is unavailable.");
+        (System.Numerics.Matrix4x4 main, System.Numerics.Matrix4x4 shadow) = scene.HeroMatrices;
+        role.Draw(renderer, main, shadow);
     }
 
     private OpenGLRenderer GetWorldRenderer()
