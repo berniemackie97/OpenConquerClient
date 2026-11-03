@@ -63,7 +63,7 @@ jobs:
             --project tests/Conformance/OpenConquer.Rendering.Conformance \
             --configuration Release \
             --no-restore \
-            -- --content-root content/retail-5517/payload
+            -- --indexed-mesh
       - name: Record macOS GPU validation boundary
         if: runner.os == 'macOS'
         run: |
