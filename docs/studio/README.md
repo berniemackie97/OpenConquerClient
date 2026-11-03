@@ -19,6 +19,10 @@ Windows, macOS, and Linux are supported. The engine viewport requires desktop Op
 
 ## Make or open a project
 
+Launching Studio from Rider or from within a client checkout opens that client project automatically.
+A containing `project.ocstudio` takes priority. An explicit project-directory argument overrides discovery;
+standalone installations outside a project retain the new/open workflow.
+
 To work with **OpenConquerClient**, choose **Open client project** and select its repository
 directory. Studio opens a persistent workspace under `.studio/authoring` and connects to
 `content/retail-5517/payload`. The **Client content** tab browses actual maps, ANI catalogs,
@@ -102,3 +106,9 @@ it from the tool. Build destinations must be new; in-project builds belong under
 Hashes check integrity, not publisher authenticity. Signing and publishing remain future work.
 
 Details: [formats and safety](formats.md), [architecture](architecture.md), [audit](audit.md).
+
+The Studio CI matrix builds, tests, and publishes on Windows, macOS, and Linux. Linux also
+checks actual client images and maps through Mesa OpenGL framebuffer readback. Hosted macOS
+provides no GPU interop; run `dotnet run --project tools/OpenConquerStudio.RenderCheck -c Release`
+on a graphics-capable Mac for that separate hardware gate. A skipped hardware gate is not a
+claim of GPU validation on the hosted runner.

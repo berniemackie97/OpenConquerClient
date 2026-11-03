@@ -22,19 +22,29 @@ internal static class Program
 
 internal static class DesktopGraphics
 {
-    internal static AppBuilder Configure(AppBuilder builder) => builder.UsePlatformDetect()
-        .With(new Win32PlatformOptions
-        {
-            RenderingMode = [Win32RenderingMode.Wgl, Win32RenderingMode.Software],
-            WglProfiles = [new GlVersion(GlProfileType.OpenGL, 4, 1), new GlVersion(GlProfileType.OpenGL, 3, 3)],
-        })
-        .With(new X11PlatformOptions
+    internal static AppBuilder Configure(AppBuilder builder, bool allowSoftwareGpu = false)
+    {
+        X11PlatformOptions linux = new()
         {
             RenderingMode = [X11RenderingMode.Glx, X11RenderingMode.Software],
             GlProfiles = [new GlVersion(GlProfileType.OpenGL, 4, 1), new GlVersion(GlProfileType.OpenGL, 3, 3)],
-        })
-        .With(new AvaloniaNativePlatformOptions
+        };
+        if (allowSoftwareGpu)
         {
-            RenderingMode = [AvaloniaNativeRenderingMode.OpenGl, AvaloniaNativeRenderingMode.Software],
-        });
+            // Mesa provides real OpenGL readback in virtualized rendering-validation hosts.
+            linux.GlxRendererBlacklist = [];
+        }
+
+        return builder.UsePlatformDetect()
+            .With(new Win32PlatformOptions
+            {
+                RenderingMode = [Win32RenderingMode.Wgl, Win32RenderingMode.Software],
+                WglProfiles = [new GlVersion(GlProfileType.OpenGL, 4, 1), new GlVersion(GlProfileType.OpenGL, 3, 3)],
+            })
+            .With(linux)
+            .With(new AvaloniaNativePlatformOptions
+            {
+                RenderingMode = [AvaloniaNativeRenderingMode.OpenGl, AvaloniaNativeRenderingMode.Software],
+            });
+    }
 }

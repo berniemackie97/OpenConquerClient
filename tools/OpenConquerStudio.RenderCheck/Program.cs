@@ -50,7 +50,7 @@ internal static class Program
             }
 
             RenderCheckApp.Package = ContentPackage.Load(Path.Combine(root, "Builds", "verified"));
-            return DesktopGraphics.Configure(AppBuilder.Configure<RenderCheckApp>()).LogToTrace().StartWithClassicDesktopLifetime([]);
+            return DesktopGraphics.Configure(AppBuilder.Configure<RenderCheckApp>(), allowSoftwareGpu: true).LogToTrace().StartWithClassicDesktopLifetime([]);
         }
         finally
         {

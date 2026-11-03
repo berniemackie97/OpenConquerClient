@@ -124,3 +124,9 @@ client-asset GPU validation after integrating main. The GPU gate imported/compil
 Control.ani frames and rendered map 1010 with the shared current world implementation.
 Windows GPU/native UX, Linux native UX, final project-layout policy, and production release
 integration remain explicit gates; CI status is tracked on the draft PR.
+
+CI host correction: Linux rendering validation explicitly permits Mesa's software OpenGL
+driver in the validation executable only. Studio retains Avalonia's normal driver policy.
+The hosted macOS VM does not expose the required GPU interop, so its required job covers
+build/tests/publish and records the hardware gate explicitly. Actual Mac GPU validation
+remains the same failing-on-error executable, run on graphics-capable hardware.
