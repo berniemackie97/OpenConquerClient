@@ -1,3 +1,4 @@
+using OpenConquer.Content.Encoding;
 using System.Globalization;
 using System.Text;
 using OpenConquer.Content.Magic;
@@ -7,11 +8,11 @@ namespace OpenConquer.Content.Tests.Magic;
 public sealed class MagicTypeFileTests
 {
     [Fact]
-    public void Decode_UsesNativeRetailCipher()
+    public void Decode_UsesSeededDelimitedTableCipher()
     {
         byte[] encoded = Convert.FromHexString("9C0B8F7AD9B0421123538EF7500105A2356A1A667B0C1876");
 
-        MagicTypeFile.DecodeInPlace(encoded);
+        DelimitedTableCipher.DecodeInPlace(encoded);
 
         Assert.Equal("1000@@1000@@1@@Thunder@@", Encoding.ASCII.GetString(encoded));
     }

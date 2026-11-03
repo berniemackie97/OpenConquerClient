@@ -1,3 +1,4 @@
+using OpenConquer.Content.Encoding;
 using System.Globalization;
 using System.Text;
 
@@ -44,21 +45,7 @@ public sealed class ItemStatCatalog
     private static Dictionary<uint, ItemBaseStats> ReadItemTypes(ReadOnlySpan<byte> encoded)
     {
         byte[] decoded = encoded.ToArray();
-        Span<byte> keys = stackalloc byte[128];
-        uint seed = 0x2537;
-        for (int index = 0; index < keys.Length; index++)
-        {
-            seed = unchecked(seed * 214013u + 2531011u);
-            keys[index] = (byte)((seed >> 16) & 0x7fffu);
-        }
-
-        for (int index = 0; index < decoded.Length; index++)
-        {
-            byte value = (byte)(decoded[index] ^ keys[index % keys.Length]);
-            int shift = index & 7;
-            decoded[index] = shift == 0 ? value
-                : (byte)((value >> shift) | (value << (8 - shift)));
-        }
+        DelimitedTableCipher.DecodeInPlace(decoded);
 
         Dictionary<uint, ItemBaseStats> result = [];
         using StringReader reader = new(Encoding.Latin1.GetString(decoded));
