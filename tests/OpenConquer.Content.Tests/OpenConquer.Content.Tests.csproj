@@ -1,14 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <Compile Include="../Fixtures/RetailContentFixture.cs" Link="Fixtures/RetailContentFixture.cs" />
     <ProjectReference Include="../../src/OpenConquer.Content/OpenConquer.Content.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../../content/retail-5517/payload/ini/selectcharacter.ini"
+    <None Include="../../content/retail-5517/payload/ini/selectcharacter.ini" Condition="Exists('../../content/retail-5517/payload/ini/selectcharacter.ini')"
           Link="RetailFixture/ini/selectCharacter.ini"
           CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../content/retail-5517/payload/ini/gamemap.dat"
+    <None Include="../../content/retail-5517/payload/ini/gamemap.dat" Condition="Exists('../../content/retail-5517/payload/ini/gamemap.dat')"
           Link="RetailFixture/ini/GameMap.dat"
           CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/Map/*.pul"

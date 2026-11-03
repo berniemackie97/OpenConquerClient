@@ -49,7 +49,7 @@ public sealed class WorldMapPuzzleValidatorTests
         TemporarySourceTree source = new();
         string fixtureRoot = Path.Combine(AppContext.BaseDirectory, "RetailFixture");
 
-        source.WriteBytes("ini/GameMap.dat", File.ReadAllBytes(Path.Combine(fixtureRoot, "ini", "GameMap.dat")));
+        source.WriteBytes("ini/GameMap.dat", OpenConquer.Tests.RetailContentFixture.ReadAllBytes(Path.Combine(fixtureRoot, "ini", "GameMap.dat")));
         source.WriteBytes("map/map/newbie.7z", File.ReadAllBytes(Path.Combine(fixtureRoot, "map", "newbie.7z")));
         source.WriteBytes("map/puzzle/newbie.pul", File.ReadAllBytes(Path.Combine(fixtureRoot, "map", "puzzle", "newbie.pul")));
         source.WriteBytes("map/puzzle/newbiebg.pul", File.ReadAllBytes(Path.Combine(fixtureRoot, "map", "puzzle", "newbiebg.pul")));

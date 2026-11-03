@@ -79,7 +79,7 @@ public sealed class GameMapTerrainSceneResourcesTests
     {
         TemporaryContentDirectory root = new();
         string fixture = Path.Combine(AppContext.BaseDirectory, "RetailFixture");
-        root.WriteFile("ini/GameMap.dat", File.ReadAllBytes(Path.Combine(fixture, "ini", "GameMap.dat")));
+        root.WriteFile("ini/GameMap.dat", OpenConquer.Tests.RetailContentFixture.ReadAllBytes(Path.Combine(fixture, "ini", "GameMap.dat")));
         root.WriteFile("map/map/newbie.7z", File.ReadAllBytes(Path.Combine(fixture, "map", "newbie.7z")));
 
         StringBuilder index = new();
