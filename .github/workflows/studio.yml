@@ -47,7 +47,7 @@ jobs:
         run: python3 -m unittest discover -s tests/development -p test_studio_cli.py
       - name: Install Linux rendering prerequisites
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xvfb dbus-x11 libgl1-mesa-dri libglx-mesa0
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xvfb dbus-x11 libgl1-mesa-dri libglx-mesa0 libglfw3
       - name: Validate embedded viewport on Linux
         if: runner.os == 'Linux'
         env:
