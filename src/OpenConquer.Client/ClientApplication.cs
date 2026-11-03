@@ -595,10 +595,11 @@ internal sealed class ClientApplication : IDisposable
         {
             _worldInboundState = new WorldInboundState(world);
         }
-        catch
+        catch (InvalidDataException exception)
         {
+            Console.Error.WriteLine($"OpenConquer: world equipment hydration is invalid ({exception.Message}).");
             ReturnToLogin();
-            throw;
+            return;
         }
         _worldIngress = new WorldFrameIngress(game);
         _worldTexturesReady = false;

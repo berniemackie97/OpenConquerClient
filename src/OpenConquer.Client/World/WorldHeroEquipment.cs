@@ -55,7 +55,7 @@ internal sealed class WorldHeroEquipment
                 WorldHeroItem item = new(id, typeId,
                     BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(12)), packet[33], packet[36]);
                 equipment._tracked[position] = item;
-                if (position is >= 10 and <= 18)
+                if (position is (>= 10 and <= 12) or (>= 15 and <= 18))
                 {
                     equipment._active[position] = item;
                 }
