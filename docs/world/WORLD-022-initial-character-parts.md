@@ -22,6 +22,5 @@ additional body and headwear variant layers, garment overrides, weapons,
 mounts, head attachment records, texture/material overrides, subsequent
 equipment updates, and action-driven motion transitions remain outstanding.
 The runtime continues to require the authorized C3 archive and role-part
-indexes in its content set. A declared package that is absent from the
-installed payload is still reported at startup; package selection must be
-consistent with the content import and release manifests.
+indexes in its content set. Source package declarations can report omitted
+archives even when the selected resource closure is installed.
