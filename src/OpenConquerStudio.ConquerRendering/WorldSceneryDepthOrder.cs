@@ -75,7 +75,7 @@ internal sealed class WorldSceneryDepthOrder
     internal IReadOnlyList<WorldScenerySprite> ToDrawList(out int roleIndex)
     {
         List<WorldScenerySprite> sprites = new(_active.Count);
-        roleIndex = -1;
+        int resolvedRoleIndex = -1;
         foreach (Entry entry in _active)
         {
             Append(entry);
@@ -88,13 +88,14 @@ internal sealed class WorldSceneryDepthOrder
             }
         }
 
+        roleIndex = resolvedRoleIndex;
         return sprites;
 
         void Append(Entry entry)
         {
             if (entry.IsRole)
             {
-                roleIndex = sprites.Count;
+                resolvedRoleIndex = sprites.Count;
             }
             else
             {
