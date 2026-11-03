@@ -5,8 +5,9 @@ equipment snapshots. A subtype-1 item row with a tracked placement establishes
 the item identity and mutable durability, addition level and enchantment inputs.
 For ordinary equipment slots, a row does not by itself activate the item.
 
-1009 subtype 46 resolves thirteen slot UIDs against the tracked item positions,
-in packet order. A zero or unresolved UID clears the active slot. Placements
+1009 subtype 46 resolves thirteen slot UIDs against tracked item identities.
+Offsets 32 through 64 activate slots 1 through 9, and offsets 68 through 80
+activate slots 15 through 18. A zero or unresolved UID clears the active slot. Placements
 10 through 12 and 15 through 18 activate their items directly on the subtype-1
 path; the snapshot can subsequently replace slots 15 through 18. Inventory items, inspected-item
 rows and unrelated 1009 subtypes do not activate local equipment.

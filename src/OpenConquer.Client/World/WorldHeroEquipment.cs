@@ -7,7 +7,7 @@ internal readonly record struct WorldHeroItem(uint Id, uint TypeId, ushort Durab
 
 internal sealed class WorldHeroEquipment
 {
-    private static ReadOnlySpan<byte> SnapshotSlots => [1, 2, 3, 5, 4, 6, 7, 8, 9, 16, 15, 17, 18];
+    private static ReadOnlySpan<byte> SnapshotSlots => [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 18];
 
     private readonly WorldHeroItem?[] _tracked = new WorldHeroItem?[30];
     private readonly WorldHeroItem?[] _active = new WorldHeroItem?[19];
