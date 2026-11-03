@@ -31,9 +31,10 @@ public sealed class GameMapTerrainSceneResources
         get;
     }
 
-    public static GameMapTerrainSceneResources Load(IClientContentSource source, GameMapContent map)
+    public static GameMapTerrainSceneResources Load(IClientContentSource source, GameMapContent map,
+        AniSectionResolver? animations = null)
     {
-        AniSectionResolver animations = new(source, ContentLookupMode.LooseOnly);
+        animations ??= new AniSectionResolver(source, ContentLookupMode.LooseOnly);
         Dictionary<string, IReadOnlyList<GameMapTerrainObjectBinding>> sceneFiles = new(StringComparer.OrdinalIgnoreCase);
         List<GameMapTerrainScenePlacement> placements = [];
 
