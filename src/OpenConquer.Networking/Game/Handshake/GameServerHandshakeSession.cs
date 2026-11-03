@@ -6,6 +6,7 @@ using OpenConquer.Networking.Authentication;
 using OpenConquer.Networking.Game.Cryptography;
 using OpenConquer.Networking.Game.Framing;
 using OpenConquer.Networking.Game.Login;
+using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Networking.Game.Handshake;
 
@@ -34,6 +35,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     private TaskCompletionSource? _operationsDrained;
     private Task? _disposeTask;
     private int _activeOperations;
+    private bool _worldWriteActive;
     private int _phase; // 0: handshake complete, 1: sending, 2: bootstrap ready, 3: bootstrap read, 4: terminal, 5: world ready, 6: world read
     private int _loginControlState; // 0: unclaimed, 1: reading, 2: resolved, 3: raw-read bypassed
     private int _existingCharacterPreludeState; // 0: unclaimed, 1: reading, 2: resolved, 3: bypassed
@@ -277,6 +279,61 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
     internal Task<GameSecuredInboundFrame?> ReadWorldFrameAsync(CancellationToken cancellationToken = default) =>
         ReadFrameCoreAsync(null, SecuredRead.World, cancellationToken);
+
+    internal async Task SendWorldWalkAsync(uint entityId, byte directionIndex,
+        uint movementTick, uint mapState, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentOutOfRangeException.ThrowIfZero(entityId);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(directionIndex, (byte)7);
+
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase is not (5 or 6) || _worldWriteActive)
+            {
+                throw new InvalidOperationException("World walk writes require an admitted session and an idle outbound lane.");
+            }
+
+            _worldWriteActive = true;
+            _activeOperations++;
+        }
+
+        bool completed = false;
+        byte[] packet = new byte[GameWalk10005.PacketLength];
+        try
+        {
+            GameWalk10005.WriteOrdinary(packet, entityId, directionIndex, movementTick, mapState);
+            await WriteSecuredPacketAsync(packet, TimeSpan.FromSeconds(10),
+                "GameServer world walk write timed out.", cancellationToken).ConfigureAwait(false);
+            completed = true;
+        }
+        catch
+        {
+            TerminateLoginControlSession();
+            throw;
+        }
+        finally
+        {
+            TaskCompletionSource? drained = null;
+            lock (_lifetimeGate)
+            {
+                _worldWriteActive = false;
+                if (!completed)
+                {
+                    _phase = 4;
+                }
+
+                _activeOperations--;
+                if (_activeOperations == 0)
+                {
+                    drained = _operationsDrained;
+                }
+            }
+
+            drained?.TrySetResult();
+        }
+    }
 
     /// <summary>
     /// Resolves the first post-proof login-channel 1004 once. Accepted routes
@@ -983,7 +1040,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         TaskCompletionSource? drained = null;
         lock (_lifetimeGate)
         {
-            _phase = completed && !_disposed ? 5 : 4;
+            _phase = completed && !_disposed && _phase != 4 ? 5 : 4;
             _activeOperations--;
             if (_activeOperations == 0)
             {
