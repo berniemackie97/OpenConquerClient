@@ -1,4 +1,5 @@
 using OpenConquer.Content;
+using OpenConquer.Content.Ani;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Map;
 using OpenConquer.Rendering.OpenGL;
@@ -73,9 +74,10 @@ internal sealed class WorldMapScene
         cancellationToken.ThrowIfCancellationRequested();
         GameMapPuzzleResources puzzles = GameMapPuzzleResources.Load(source, map);
         cancellationToken.ThrowIfCancellationRequested();
-        GameMapTerrainSceneResources terrain = GameMapTerrainSceneResources.Load(source, map);
+        AniSectionResolver animations = new(source, ContentLookupMode.LooseOnly);
+        GameMapTerrainSceneResources terrain = GameMapTerrainSceneResources.Load(source, map, animations);
         cancellationToken.ThrowIfCancellationRequested();
-        IReadOnlyList<GameMapSceneryAniBinding> scenery = GameMapSceneryAniBindings.Load(source, map.Scene);
+        IReadOnlyList<GameMapSceneryAniBinding> scenery = GameMapSceneryAniBindings.Load(source, map.Scene, animations);
         cancellationToken.ThrowIfCancellationRequested();
         uint puzzleInterval = PuzzleFrameIntervalConfiguration.Load(source);
         cancellationToken.ThrowIfCancellationRequested();
