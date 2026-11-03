@@ -54,8 +54,10 @@ Current consumer groups:
 5517 root does not have them, so they are not copied into the curated runtime set. When the files
 are missing, their managed loaders fall back to the same defaults as the retail client.
 
-The curated set contains the closure resolved by `ClientContentClosure` and nothing else. WDF
-archives and `ini/package.ini` are used only during import and are not shipped.
+The curated set contains the closure resolved by `ClientContentClosure` and nothing else.
+Package declarations from `ini/package.ini` and the source archives used for asset lookup
+are import inputs, not runtime dependencies. The character-mesh database is a separate
+runtime exception: `ini/c3.wdb` and `c3.wdf` remain required when that database is present.
 
 ## HUD Dependency Chain
 
@@ -372,8 +374,11 @@ no host-path links or reparse traversal
 Where the retail client tolerates a declared package that is missing or unusable, registration does
 not fail either.
 
-The curated runtime set stores the resolved assets as loose files, so it needs neither
-`ini/package.ini` nor the source WDF archives.
+The curated runtime set stores resolved content resources as loose files, so package
+declarations and the archives used only for asset lookup are excluded. Character-mesh
+database files remain packaged in `c3.wdf`, which is loaded by the mesh database reader
+rather than general package registration. Runtime launch therefore does not re-open
+the absent `data.wdf` and `data3.wdf` archive declarations.
 
 ## ANI and Images
 

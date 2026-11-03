@@ -23,6 +23,9 @@ public sealed class ContentSetImporterTests
         Assert.Equal(114, expectedPaths.Length);
         Assert.Equal(expectedPaths, manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data.wdf", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(manifest.Entries, static entry =>
+            string.Equals(entry.SourcePath, PackagedClientContentSource.PackageConfigurationPath,
+                StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "Server.dat", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/main/UnusedControl.dds");
         Assert.DoesNotContain(manifest.Entries, static entry => entry.SourcePath == "data/main/MagicOther.dds");

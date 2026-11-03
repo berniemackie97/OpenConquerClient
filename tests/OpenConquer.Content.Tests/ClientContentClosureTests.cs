@@ -92,6 +92,7 @@ public sealed class ClientContentClosureTests
         using TemporaryContentDirectory directory = new();
         WriteVerifiedIndexes(directory);
         directory.WriteFile("ini/c3.wdb", "C3 database");
+        directory.WriteFile("ini/package.ini", "data.wdf\nc3.wdf\ndata3.wdf\n");
         directory.WriteFile("ini/3DObj.dbc", "Loose object index");
         directory.WriteFile("ini/3DTexture.dbc", "Loose texture index");
 
@@ -100,12 +101,15 @@ public sealed class ClientContentClosureTests
 
         foreach (string path in new[]
         {
-            "ini/c3.wdb", "ini/package.ini", "c3.wdf",
-            "ini/3DObj.dbc", "ini/3DTexture.dbc"
+            "ini/c3.wdb", "c3.wdf", "ini/3DObj.dbc", "ini/3DTexture.dbc"
         })
         {
             Assert.Contains(new ClientContentRequirement(path, ContentLookupMode.LooseOnly), closure);
         }
+
+        Assert.DoesNotContain(closure, static requirement =>
+            string.Equals(requirement.ContentPath, PackagedClientContentSource.PackageConfigurationPath,
+                StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
