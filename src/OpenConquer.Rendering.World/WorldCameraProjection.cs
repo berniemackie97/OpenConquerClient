@@ -1,6 +1,6 @@
 using OpenConquer.Content.Map;
 
-namespace OpenConquerStudio.ConquerRendering;
+namespace OpenConquer.Rendering.World;
 
 /// <summary>5517 map projection from the hero's interpolated world position.</summary>
 internal static class WorldCameraProjection

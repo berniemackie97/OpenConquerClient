@@ -1,5 +1,5 @@
 using OpenConquer.Client.World;
-using OpenConquerStudio.ConquerRendering;
+using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.Tests.World;
 

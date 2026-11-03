@@ -15,9 +15,12 @@
       "openconquer.content": {
         "type": "Project",
         "dependencies": {
-          "OpenConquerStudio.Imaging": "[1.0.0, )",
+          "OpenConquer.Imaging": "[1.0.0, )",
           "SharpCompress": "[0.50.7, )"
         }
+      },
+      "openconquer.imaging": {
+        "type": "Project"
       },
       "openconquer.rendering": {
         "type": "Project",
@@ -25,9 +28,6 @@
           "OpenConquer.FreeType.Native": "[1.0.0, )",
           "Silk.NET.OpenGL": "[2.23.0, )"
         }
-      },
-      "openconquerstudio.imaging": {
-        "type": "Project"
       },
       "OpenConquer.FreeType.Native": {
         "type": "CentralTransitive",

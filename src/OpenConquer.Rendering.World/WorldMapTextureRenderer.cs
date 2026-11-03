@@ -6,7 +6,7 @@ using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;
 using OpenConquer.Rendering.Sprites;
 
-namespace OpenConquerStudio.ConquerRendering;
+namespace OpenConquer.Rendering.World;
 
 public sealed class WorldMapTextureRenderer : IDisposable
 {

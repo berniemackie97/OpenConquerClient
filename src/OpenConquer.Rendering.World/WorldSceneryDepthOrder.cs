@@ -1,4 +1,4 @@
-namespace OpenConquerStudio.ConquerRendering;
+namespace OpenConquer.Rendering.World;
 
 internal sealed class WorldSceneryDepthOrder
 {

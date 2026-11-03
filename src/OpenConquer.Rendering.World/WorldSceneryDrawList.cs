@@ -1,6 +1,6 @@
 using OpenConquer.Content.Map;
 
-namespace OpenConquerStudio.ConquerRendering;
+namespace OpenConquer.Rendering.World;
 
 internal static class WorldSceneryDrawList
 {

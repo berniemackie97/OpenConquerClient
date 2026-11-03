@@ -6,7 +6,7 @@ using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
 using OpenConquer.Rendering.Sprites;
 
-namespace OpenConquerStudio.ConquerRendering;
+namespace OpenConquer.Rendering.World;
 
 internal readonly record struct WorldMapLayer(
     IReadOnlyList<WorldPuzzleTile>? Puzzle = null, IReadOnlyList<WorldScenerySprite>? Scenery = null);

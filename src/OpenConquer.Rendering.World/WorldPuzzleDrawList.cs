@@ -1,7 +1,7 @@
 using OpenConquer.Content.Ani;
 using OpenConquer.Content.Map;
 
-namespace OpenConquerStudio.ConquerRendering;
+namespace OpenConquer.Rendering.World;
 
 internal readonly record struct WorldPuzzleTile(AniIndexSection Animation, int FrameIndex, int X, int Y, int Size);
 

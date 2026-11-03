@@ -62,11 +62,11 @@
       "openconquer.content": {
         "type": "Project",
         "dependencies": {
-          "OpenConquerStudio.Imaging": "[1.0.0, )",
+          "OpenConquer.Imaging": "[1.0.0, )",
           "SharpCompress": "[0.50.7, )"
         }
       },
-      "openconquer.gameplay": {
+      "openconquer.imaging": {
         "type": "Project"
       },
       "openconquer.networking": {
@@ -92,15 +92,12 @@
           "Silk.NET.OpenGL": "[2.23.0, )"
         }
       },
-      "openconquerstudio.conquerrendering": {
+      "openconquer.rendering.world": {
         "type": "Project",
         "dependencies": {
           "OpenConquer.Content": "[1.0.0, )",
           "OpenConquer.Rendering": "[1.0.0, )"
         }
-      },
-      "openconquerstudio.imaging": {
-        "type": "Project"
       },
       "BouncyCastle.Cryptography": {
         "type": "CentralTransitive",
