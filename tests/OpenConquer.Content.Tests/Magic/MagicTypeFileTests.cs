@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
-using OpenConquer.Content.Tables;
 using OpenConquer.Content.Magic;
+using OpenConquer.Content.Tables;
 
 namespace OpenConquer.Content.Tests.Magic;
 
