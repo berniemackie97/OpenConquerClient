@@ -20,9 +20,15 @@ public sealed class C3MeshFile
         PhyCount = phyCount;
     }
 
-    public IReadOnlyList<C3MeshSection> Sections { get; }
+    public IReadOnlyList<C3MeshSection> Sections
+    {
+        get;
+    }
 
-    public int PhyCount { get; }
+    public int PhyCount
+    {
+        get;
+    }
 
     public static C3MeshFile Load(IClientContentSource source, string path)
     {
