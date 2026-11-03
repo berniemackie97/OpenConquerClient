@@ -7,8 +7,8 @@ For ordinary equipment slots, a row does not by itself activate the item.
 
 1009 subtype 46 resolves thirteen slot UIDs against the tracked item positions,
 in packet order. A zero or unresolved UID clears the active slot. Placements
-10 through 18 activate their items directly on the subtype-1 path; the snapshot
-can subsequently replace slots 15 through 18. Inventory items, inspected-item
+10 through 12 and 15 through 18 activate their items directly on the subtype-1
+path; the snapshot can subsequently replace slots 15 through 18. Inventory items, inspected-item
 rows and unrelated 1009 subtypes do not activate local equipment.
 
 The initial character-part resolver reads this same equipment state instead of

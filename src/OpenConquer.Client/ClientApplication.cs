@@ -4,6 +4,7 @@ using OpenConquer.Client.Startup.LoginFlow;
 using OpenConquer.Client.UI;
 using OpenConquer.Client.UI.Flash;
 using OpenConquer.Client.UI.Hud.Rendering;
+using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
@@ -14,6 +15,7 @@ using OpenConquer.Client.World;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
+using OpenConquer.Content.Items;
 using OpenConquer.Content.Login;
 using OpenConquer.Content.Role;
 using OpenConquer.Content.Startup;
@@ -65,6 +67,8 @@ internal sealed class ClientApplication : IDisposable
     private GameServerHandshakeSession? _worldGame;
     private WorldFrameIngress? _worldIngress;
     private WorldInboundState? _worldInboundState;
+    private ItemStatCatalog? _itemStats;
+    private WorldHeroGaugeFollowers? _worldGaugeFollowers;
     private GameWorldEntrySnapshot? _worldEntry;
     private WorldMapLoad? _worldLoad;
     private WorldMapScene? _worldScene;
@@ -211,6 +215,8 @@ internal sealed class ClientApplication : IDisposable
                             {
                                 _worldIngress = null;
                                 _worldInboundState = null;
+                            _itemStats = null;
+                            _worldGaugeFollowers = null;
                                 _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                             }
                         }
@@ -558,6 +564,23 @@ internal sealed class ClientApplication : IDisposable
             {
                 worldScene.Draw(_worldTextures!, frameRenderer,
                     _worldRole is null ? null : _drawWorldRole);
+                if (_worldHud is { } hud && _worldInboundState is { } state &&
+                    _itemStats is { } catalog && _worldGaugeFollowers is { } followers &&
+                    _worldEntry is { Character.TransformLookSourceId: 0 } entry)
+                {
+                    (int itemLife, int itemMana) = WorldHeroItemStats.Resolve(state.Equipment, catalog);
+                    WorldHeroMaxStats maxima = WorldHeroMaxStats.Resolve(state.HeroAttributes,
+                        itemLife, itemMana, entry.MapFlags, hasTransformLook: false, lifeTierDigit: 0);
+                    followers.Advance(state.HeroAttributes, maxima);
+                    bool extended = (state.HeroAttributes.StatusLow & (1UL << 33)) != 0;
+                    int maxStamina = extended ? 150 : 100;
+                    int stamina = Math.Min(unchecked((int)state.HeroAttributes.CurrentStamina), maxStamina);
+                    hud.SetWorldValues(new MainHudVitalsSnapshot(
+                        unchecked((int)state.HeroAttributes.CurrentLife), followers.Life, maxima.Life,
+                        unchecked((int)state.HeroAttributes.CurrentMana), followers.Mana, maxima.Mana,
+                        stamina, maxStamina, extended),
+                        checked((int)state.HeroAttributes.SkillGaugePercent), state.HeroAttributes.Experience);
+                }
                 _worldHud?.Draw(frameRenderer, _window!);
             }
             else if (_role is { } role)
@@ -594,6 +617,7 @@ internal sealed class ClientApplication : IDisposable
         try
         {
             _worldInboundState = new WorldInboundState(world);
+            _worldGaugeFollowers = new WorldHeroGaugeFollowers();
         }
         catch (InvalidDataException exception)
         {
@@ -622,6 +646,8 @@ internal sealed class ClientApplication : IDisposable
             if (_worldGame is not null)
             {
                 _worldScene = scene;
+                _itemStats = ItemStatCatalog.Load(_roleContent ??
+                    throw new InvalidOperationException("World content source is unavailable."));
                 if (_worldInboundState is { } inbound)
                 {
                     ApplyWorldCamera(scene, inbound);
@@ -675,6 +701,8 @@ internal sealed class ClientApplication : IDisposable
         _worldGame = null;
         _worldIngress = null;
         _worldInboundState = null;
+        _itemStats = null;
+        _worldGaugeFollowers = null;
         _worldEntry = null;
         _worldScene = null;
         _worldRole?.Dispose();
