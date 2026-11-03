@@ -171,6 +171,21 @@ public sealed class OpenGLRenderer : IDisposable
         _frameActive = true;
     }
 
+    public void DrawIndexedMeshShadow(OpenGLIndexedMesh mesh, Matrix4x4 clipMatrix,
+        MeshCullMode cullMode, float alpha = 0.3f)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(mesh);
+        EnsureFrameActiveForDrawing();
+        if (_maskStack.Depth != 0)
+        {
+            throw new InvalidOperationException("Indexed meshes cannot be drawn inside a UI mask.");
+        }
+
+        _renderTarget.BindForDrawing();
+        _meshRenderer.DrawShadow(mesh, clipMatrix, cullMode, alpha);
+    }
+
     public void DrawIndexedMesh(OpenGLIndexedMesh mesh, OpenGLTexture2D texture,
         Matrix4x4 clipMatrix, MeshCullMode cullMode)
     {

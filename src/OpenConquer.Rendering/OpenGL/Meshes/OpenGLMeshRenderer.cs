@@ -13,6 +13,8 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
     private uint _sampler;
     private readonly int _textureUniform;
     private readonly int _matrixUniform;
+    private readonly int _shadowModeUniform;
+    private readonly int _shadowAlphaUniform;
     private bool _disposed;
 
     internal OpenGLMeshRenderer(GL gl)
@@ -25,6 +27,8 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
             _program = new OpenGLProgram(gl, VertexShader, FragmentShader);
             _textureUniform = _program.GetRequiredUniformLocation("uTexture");
             _matrixUniform = _program.GetRequiredUniformLocation("uClipMatrix");
+            _shadowModeUniform = _program.GetRequiredUniformLocation("uShadowMode");
+            _shadowAlphaUniform = _program.GetRequiredUniformLocation("uShadowAlpha");
 
             _sampler = gl.GenSampler();
             gl.SamplerParameter(_sampler, SamplerParameterI.MinFilter, (int)GLEnum.Linear);
@@ -40,11 +44,30 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
     }
 
     internal void Draw(OpenGLIndexedMesh mesh, OpenGLTexture2D texture,
-        Matrix4x4 clipMatrix, MeshCullMode cullMode)
+        Matrix4x4 clipMatrix, MeshCullMode cullMode) =>
+        DrawCore(mesh, texture, clipMatrix, cullMode, shadowAlpha: null);
+
+    internal void DrawShadow(OpenGLIndexedMesh mesh, Matrix4x4 clipMatrix,
+        MeshCullMode cullMode, float alpha) =>
+        DrawCore(mesh, null, clipMatrix, cullMode, alpha);
+
+    private void DrawCore(OpenGLIndexedMesh mesh, OpenGLTexture2D? texture,
+        Matrix4x4 clipMatrix, MeshCullMode cullMode, float? shadowAlpha)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         mesh.ValidateOwner(_gl);
-        texture.ValidateOwner(_gl, nameof(texture));
+        if (shadowAlpha is float alpha)
+        {
+            if (!float.IsFinite(alpha) || alpha is < 0f or > 1f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(shadowAlpha));
+            }
+        }
+        else
+        {
+            (texture ?? throw new ArgumentNullException(nameof(texture)))
+                .ValidateOwner(_gl, nameof(texture));
+        }
         if (!Enum.IsDefined(cullMode))
         {
             throw new ArgumentOutOfRangeException(nameof(cullMode));
@@ -62,7 +85,7 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
         {
             _gl.Enable(EnableCap.DepthTest);
             _gl.DepthMask(true);
-            _gl.DepthFunc(DepthFunction.Lequal);
+            _gl.DepthFunc(shadowAlpha.HasValue ? DepthFunction.Less : DepthFunction.Lequal);
 
             if (cullMode == MeshCullMode.None)
             {
@@ -84,10 +107,15 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
             program.Use();
             _gl.UniformMatrix4(_matrixUniform, 1, false, (float*)&glClip);
             _gl.Uniform1(_textureUniform, 0);
+            _gl.Uniform1(_shadowModeUniform, shadowAlpha.HasValue ? 1 : 0);
+            _gl.Uniform1(_shadowAlphaUniform, shadowAlpha ?? 0f);
 
-            _gl.ActiveTexture(TextureUnit.Texture0);
-            texture.Bind();
-            _gl.BindSampler(0, _sampler);
+            if (texture is not null)
+            {
+                _gl.ActiveTexture(TextureUnit.Texture0);
+                texture.Bind();
+                _gl.BindSampler(0, _sampler);
+            }
             mesh.Bind();
             _gl.DrawElements(PrimitiveType.Triangles, (uint)mesh.IndexCount,
                 DrawElementsType.UnsignedShort, null);
@@ -101,13 +129,14 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
         {
             _gl.Disable(EnableCap.DepthTest);
             _gl.Disable(EnableCap.CullFace);
+            _gl.DepthFunc(DepthFunction.Lequal);
         }
         catch (Exception exception)
         {
             failure ??= ExceptionDispatchInfo.Capture(exception);
         }
 
-        _cleanup.RestoreAfterDraw(failure, usesTexture: true);
+        _cleanup.RestoreAfterDraw(failure, usesTexture: texture is not null);
     }
 
     public void Dispose()
@@ -158,10 +187,18 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
         in vec4 vertexColor;
         in vec2 textureCoordinate;
         uniform sampler2D uTexture;
+        uniform int uShadowMode;
+        uniform float uShadowAlpha;
         out vec4 outputColor;
 
         void main()
         {
+            if (uShadowMode != 0)
+            {
+                outputColor = vec4(0.0, 0.0, 0.0, uShadowAlpha);
+                return;
+            }
+
             outputColor = texture(uTexture, textureCoordinate) * vertexColor;
             if (outputColor.a < (8.0 / 255.0))
             {

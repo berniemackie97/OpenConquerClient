@@ -1,3 +1,4 @@
+using System.Numerics;
 using OpenConquer.Content;
 using OpenConquer.Content.Ani;
 using OpenConquer.Content.Configuration;
@@ -24,6 +25,9 @@ public sealed class WorldMapScene
         new(ReferenceEqualityComparer.Instance);
     private int _heroX;
     private int _heroY;
+    private int _heroTileX;
+    private int _heroTileY;
+    private int _roleDrawIndex;
     private int _zoomPercent = 100;
     private readonly uint _startMilliseconds;
     private readonly LogicalRenderSize _backdropExtent;
@@ -40,6 +44,7 @@ public sealed class WorldMapScene
         _terrain = terrain;
         _sceneryIndex = new WorldSceneryIndex(map, animatedScenery);
         (_heroX, _heroY) = WorldCameraProjection.ProjectTile(map, heroTileX, heroTileY);
+        (_heroTileX, _heroTileY) = (heroTileX, heroTileY);
         _groundClock = new WorldPuzzleAnimationClock(puzzleIntervalMilliseconds);
         _startMilliseconds = startMilliseconds;
         int backdropWidth = checked(puzzles.GroundColumns * 256);
@@ -67,6 +72,10 @@ public sealed class WorldMapScene
     public LogicalRenderSize BackdropExtent => _backdropExtent;
     public GameMapContent Map => _map;
 
+    public (Matrix4x4 Main, Matrix4x4 Shadow) HeroMatrices =>
+        WorldRoleCameraMatrices.Create(_map, _puzzles, _projection,
+            _heroX, _heroY, rotationDegrees: -45f, scale: 0.75f);
+
     public void SetCameraTile(int tileX, int tileY)
     {
         if ((uint)tileX >= (uint)_map.CellGrid.Width || (uint)tileY >= (uint)_map.CellGrid.Height)
@@ -74,6 +83,7 @@ public sealed class WorldMapScene
             throw new ArgumentOutOfRangeException(nameof(tileX), "The camera tile must lie within the map grid.");
         }
         (_heroX, _heroY) = WorldCameraProjection.ProjectTile(_map, tileX, tileY);
+        (_heroTileX, _heroTileY) = (tileX, tileY);
     }
 
     public void SetZoomPercent(int zoomPercent)
@@ -120,9 +130,10 @@ public sealed class WorldMapScene
 
         IReadOnlyList<WorldPuzzleTile> ground = WorldPuzzleDrawList.Ground(
             _map, _puzzles, _projection, _groundClock.FrameForRender(nowMilliseconds));
-        IReadOnlyList<WorldScenerySprite> scenery = WorldSceneryDrawList.Build(
+        IReadOnlyList<WorldScenerySprite> scenery = WorldSceneryDrawList.BuildWithRole(
             _map, _terrain, _sceneryIndex, _sceneryFrameExtents,
-            _projection, nowMilliseconds, _startMilliseconds);
+            _projection, nowMilliseconds, _startMilliseconds,
+            _heroTileX, _heroTileY, out _roleDrawIndex);
 
         List<WorldMapLayer> layers =
         [
@@ -190,7 +201,8 @@ public sealed class WorldMapScene
         return complete;
     }
 
-    public void Draw(WorldMapTextureRenderer textures, OpenGLRenderer renderer)
+    public void Draw(WorldMapTextureRenderer textures, OpenGLRenderer renderer,
+        Action<OpenGLRenderer>? drawRole = null)
     {
         foreach (WorldMapLayer layer in _layers)
         {
@@ -198,9 +210,13 @@ public sealed class WorldMapScene
             {
                 textures.Draw(renderer, puzzle, SpriteColor.White);
             }
+
             if (layer.Scenery is { } scenery)
             {
-                textures.Draw(renderer, scenery, _projection, SpriteColor.White);
+                textures.Draw(renderer, scenery, _projection, SpriteColor.White, 0, _roleDrawIndex);
+                drawRole?.Invoke(renderer);
+                textures.Draw(renderer, scenery, _projection, SpriteColor.White,
+                    _roleDrawIndex, scenery.Count - _roleDrawIndex);
             }
         }
     }

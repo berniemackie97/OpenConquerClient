@@ -4,48 +4,53 @@ internal sealed class WorldSceneryDepthOrder
 {
     private readonly List<Entry> _active = [];
 
-    internal void Insert(WorldScenerySprite sprite, bool terrain = false)
+    internal void Insert(WorldScenerySprite sprite, bool terrain = false) =>
+        Insert(new Entry(sprite, terrain));
+
+    internal void InsertRole(int tileX, int tileY) =>
+        Insert(new Entry(tileX, tileY));
+
+    private void Insert(Entry incoming)
     {
-        if (!terrain)
+        if (!incoming.Terrain)
         {
             for (int i = 0; i < _active.Count; i++)
             {
                 Entry parent = _active[i];
-                if (!parent.Terrain || !Contains(parent.Sprite, sprite))
+                if (!parent.Terrain || !Contains(parent, incoming))
                 {
                     continue;
                 }
 
-                InsertChild(parent.Children ??= [], sprite);
+                InsertChild(parent.Children ??= [], incoming);
                 _active[i] = parent;
                 return;
             }
         }
 
-        Entry incoming = new(sprite, terrain);
         int cursor = -1;
         for (int i = 0; i < _active.Count; i++)
         {
-            WorldScenerySprite existing = _active[i].Sprite;
-            if (Overlaps(sprite.TileX, sprite.FootprintWidth, existing.TileX, existing.FootprintWidth))
+            Entry existing = _active[i];
+            if (Overlaps(incoming.TileX, incoming.Width, existing.TileX, existing.Width))
             {
-                if (sprite.TileY < existing.TileY)
+                if (incoming.TileY < existing.TileY)
                 {
                     InsertBefore(incoming, i, cursor);
                     return;
                 }
 
-                cursor = ScanForward(sprite, i);
+                cursor = ScanForward(incoming, i);
             }
-            else if (Overlaps(sprite.TileY, sprite.FootprintHeight, existing.TileY, existing.FootprintHeight))
+            else if (Overlaps(incoming.TileY, incoming.Height, existing.TileY, existing.Height))
             {
-                if (sprite.TileX < existing.TileX)
+                if (incoming.TileX < existing.TileX)
                 {
                     InsertBefore(incoming, i, cursor);
                     return;
                 }
 
-                cursor = ScanForward(sprite, i);
+                cursor = ScanForward(incoming, i);
             }
         }
 
@@ -55,9 +60,9 @@ internal sealed class WorldSceneryDepthOrder
             return;
         }
 
-        long sum = Sum(sprite);
+        long sum = Sum(incoming);
         int position = 0;
-        while (position < _active.Count && sum >= Sum(_active[position].Sprite))
+        while (position < _active.Count && sum >= Sum(_active[position]))
         {
             position++;
         }
@@ -65,29 +70,47 @@ internal sealed class WorldSceneryDepthOrder
         _active.Insert(position, incoming);
     }
 
-    internal IReadOnlyList<WorldScenerySprite> ToDrawList()
+    internal IReadOnlyList<WorldScenerySprite> ToDrawList() => ToDrawList(out _);
+
+    internal IReadOnlyList<WorldScenerySprite> ToDrawList(out int roleIndex)
     {
         List<WorldScenerySprite> sprites = new(_active.Count);
+        roleIndex = -1;
         foreach (Entry entry in _active)
         {
-            sprites.Add(entry.Sprite);
+            Append(entry);
             if (entry.Children is { } children)
             {
-                sprites.AddRange(children);
+                foreach (Entry child in children)
+                {
+                    Append(child);
+                }
             }
         }
 
         return sprites;
+
+        void Append(Entry entry)
+        {
+            if (entry.IsRole)
+            {
+                roleIndex = sprites.Count;
+            }
+            else
+            {
+                sprites.Add(entry.Sprite!.Value);
+            }
+        }
     }
 
-    private int ScanForward(WorldScenerySprite incoming, int pivot)
+    private int ScanForward(Entry incoming, int pivot)
     {
         int cursor = pivot;
-        long pivotSum = Sum(_active[pivot].Sprite);
+        long pivotSum = Sum(_active[pivot]);
         long sum = Sum(incoming);
         for (int i = pivot + 1; i < _active.Count; i++)
         {
-            long candidate = Sum(_active[i].Sprite);
+            long candidate = Sum(_active[i]);
             if (candidate != pivotSum && sum <= candidate)
             {
                 break;
@@ -102,11 +125,11 @@ internal sealed class WorldSceneryDepthOrder
     private void InsertBefore(Entry incoming, int pivot, int cursor)
     {
         int position = pivot;
-        long pivotSum = Sum(_active[pivot].Sprite);
-        long sum = Sum(incoming.Sprite);
+        long pivotSum = Sum(_active[pivot]);
+        long sum = Sum(incoming);
         for (int i = pivot - 1; i >= 0; i--)
         {
-            if (i <= cursor || (Sum(_active[i].Sprite) != pivotSum && sum >= Sum(_active[i].Sprite)))
+            if (i <= cursor || (Sum(_active[i]) != pivotSum && sum >= Sum(_active[i])))
             {
                 break;
             }
@@ -117,14 +140,14 @@ internal sealed class WorldSceneryDepthOrder
         _active.Insert(position, incoming);
     }
 
-    private static void InsertChild(List<WorldScenerySprite> children, WorldScenerySprite incoming)
+    private static void InsertChild(List<Entry> children, Entry incoming)
     {
         for (int i = 0; i < children.Count; i++)
         {
-            WorldScenerySprite existing = children[i];
-            bool before = Overlaps(incoming.TileX, incoming.FootprintWidth, existing.TileX, existing.FootprintWidth)
+            Entry existing = children[i];
+            bool before = Overlaps(incoming.TileX, incoming.Width, existing.TileX, existing.Width)
                 ? incoming.TileY < existing.TileY
-                : Overlaps(incoming.TileY, incoming.FootprintHeight, existing.TileY, existing.FootprintHeight)
+                : Overlaps(incoming.TileY, incoming.Height, existing.TileY, existing.Height)
                     ? incoming.TileX < existing.TileX
                     : Sum(incoming) < Sum(existing);
             if (before)
@@ -137,25 +160,44 @@ internal sealed class WorldSceneryDepthOrder
         children.Add(incoming);
     }
 
-    private static bool Contains(WorldScenerySprite parent, WorldScenerySprite sprite) =>
-        (long)parent.TileX - parent.FootprintWidth < sprite.TileX && sprite.TileX <= parent.TileX &&
-        (long)parent.TileY - parent.FootprintHeight < sprite.TileY && sprite.TileY <= parent.TileY;
+    private static bool Contains(Entry parent, Entry entry) =>
+        (long)parent.TileX - parent.Width < entry.TileX && entry.TileX <= parent.TileX &&
+        (long)parent.TileY - parent.Height < entry.TileY && entry.TileY <= parent.TileY;
 
     private static bool Overlaps(int a, int aWidth, int b, int bWidth) =>
         (long)a - aWidth < b && (long)b - bWidth < a;
 
-    private static long Sum(WorldScenerySprite sprite) => (long)sprite.TileX + sprite.TileY;
+    private static long Sum(Entry entry) => (long)entry.TileX + entry.TileY;
 
     private struct Entry
     {
         internal Entry(WorldScenerySprite sprite, bool terrain)
         {
             Sprite = sprite;
+            TileX = sprite.TileX;
+            TileY = sprite.TileY;
+            Width = sprite.FootprintWidth;
+            Height = sprite.FootprintHeight;
             Terrain = terrain;
+            IsRole = false;
         }
 
-        internal readonly WorldScenerySprite Sprite;
+        internal Entry(int tileX, int tileY)
+        {
+            TileX = tileX;
+            TileY = tileY;
+            Width = 1;
+            Height = 1;
+            IsRole = true;
+        }
+
+        internal readonly WorldScenerySprite? Sprite;
+        internal readonly int TileX;
+        internal readonly int TileY;
+        internal readonly int Width;
+        internal readonly int Height;
         internal readonly bool Terrain;
-        internal List<WorldScenerySprite>? Children;
+        internal readonly bool IsRole;
+        internal List<Entry>? Children;
     }
 }
