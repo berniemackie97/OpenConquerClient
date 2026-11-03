@@ -20,7 +20,7 @@ internal sealed class WorldHeroEquipment
         WorldHeroEquipment equipment = new();
         foreach (byte[] packet in packets)
         {
-            if (packet.Length < 4 || BinaryPrimitives.ReadUInt16LittleEndian(packet) != packet.Length)
+            if (packet.Length < 4)
             {
                 throw new InvalidDataException("World-entry equipment hydration contains an invalid packet header.");
             }

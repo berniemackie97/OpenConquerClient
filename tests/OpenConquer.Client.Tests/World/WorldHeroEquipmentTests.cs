@@ -114,6 +114,7 @@ public sealed class WorldHeroEquipmentTests
     public void MalformedItemAndEquipmentEnvelopesAreRejected()
     {
         byte[] item = Item(100, 1111000, placement: 1);
+        Array.Resize(ref item, 67);
         BinaryPrimitives.WriteUInt16LittleEndian(item, 67);
         Assert.Throws<InvalidDataException>(() => WorldHeroEquipment.FromHydration([item]));
 
