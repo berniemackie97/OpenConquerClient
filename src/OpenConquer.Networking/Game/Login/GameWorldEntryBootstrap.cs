@@ -108,6 +108,7 @@ internal static class GameWorldEntryBootstrap
             await session.SendWorldActionAsync(GameWorldAction10010.GetStatistics, character.EntityId, 0,
                 s_timeout, operation).ConfigureAwait(false);
             operation.ThrowIfCancellationRequested();
+            session.ActivateWorld();
             return new GameWorldEntrySnapshot(character, mapId, mapDataId, flags, weatherKind, x, y, hydration);
 
             async Task ExchangeAsync(ushort expectedAction, uint entityId, ushort[] acceptedPayloads)
