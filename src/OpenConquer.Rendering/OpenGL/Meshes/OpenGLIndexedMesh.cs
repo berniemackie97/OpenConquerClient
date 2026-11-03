@@ -21,10 +21,7 @@ public sealed unsafe class OpenGLIndexedMesh : IDisposable
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(vertexCount);
-        if (vertexCount > ushort.MaxValue + 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(vertexCount));
-        }
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(vertexCount, ushort.MaxValue + 1);
 
         if (indices.IsEmpty || indices.Length % 3 != 0)
         {
