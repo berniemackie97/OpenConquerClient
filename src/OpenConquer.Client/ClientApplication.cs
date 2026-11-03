@@ -580,8 +580,10 @@ internal sealed class ClientApplication : IDisposable
                 GameWorldEntrySnapshot entry = _worldEntry ??
                     throw new InvalidOperationException("World entry is unavailable.");
 
+                WorldRoleSources sources = WorldRoleSources.Resolve(
+                    entry.Character.PackedAppearance, entry.Character.HairComposite, entry.HydrationPackets);
                 _worldRole = WorldRoleRenderer.Load(source, graphicsDevice,
-                    entry.Character.PackedAppearance);
+                    entry.Character.PackedAppearance, sources);
                 if (_worldRole is null)
                 {
                     Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");

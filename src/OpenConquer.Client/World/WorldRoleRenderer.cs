@@ -1,32 +1,29 @@
 using System.Numerics;
 using OpenConquer.Content;
-using OpenConquer.Content.Images;
 using OpenConquer.Content.Mesh;
 using OpenConquer.Rendering.OpenGL;
-using OpenConquer.Rendering.OpenGL.Resources;
-using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.World;
 
 internal sealed class WorldRoleRenderer : IDisposable
 {
-    private readonly OpenGLTexture2D _texture;
-    private readonly List<WorldRoleMesh> _meshes;
+    private readonly WorldRolePart _body;
+    private readonly WorldRolePart? _armet;
+    private readonly C3Motion? _armetAttachment;
     private readonly WorldRoleFrameClock _clock = new();
-    private readonly uint _frameCount;
 
-    private WorldRoleRenderer(OpenGLTexture2D texture, List<WorldRoleMesh> meshes, uint frameCount)
+    private WorldRoleRenderer(WorldRolePart body, WorldRolePart? armet, C3Motion? armetAttachment)
     {
-        _texture = texture;
-        _meshes = meshes;
-        _frameCount = frameCount;
+        _body = body;
+        _armet = armet;
+        _armetAttachment = armetAttachment;
     }
 
     internal static ulong InitialBodyMotionKey(uint packedAppearance) =>
         (packedAppearance % 1000UL) * 1_000_000UL + 100UL;
 
     internal static WorldRoleRenderer? Load(IClientContentSource source,
-        OpenGLGraphicsDevice device, uint packedAppearance)
+        OpenGLGraphicsDevice device, uint packedAppearance, WorldRoleSources sources)
     {
         if (!source.TryOpenRead("ini/c3.wdb", ContentLookupMode.LooseOnly, out Stream? probe))
         {
@@ -35,119 +32,75 @@ internal sealed class WorldRoleRenderer : IDisposable
 
         probe.Dispose();
         C3RoleCatalog catalog = C3RoleCatalog.Load(source);
-        uint bodyAppearance = packedAppearance % 1000;
-        uint modelId = checked(bodyAppearance * 1_000_000);
-        if (!catalog.TryResolve("body", modelId, out IReadOnlyList<C3ResolvedPart> parts))
-        {
-            throw new InvalidDataException("The character's body model is absent from the 3D resource catalog.");
-        }
+        C3ResolvedPart bodySource = ResolveSinglePart(catalog, "body", sources.BodyModelId);
+        string? motionPath = catalog.TryResolveMotionPath("body", InitialBodyMotionKey(packedAppearance),
+            out string resolvedMotion) ? resolvedMotion : null;
 
-        if (parts.Count != 1)
-        {
-            throw new InvalidDataException("The initial character body requires one resolved mesh resource.");
-        }
-
-        C3ResolvedPart part = parts[0];
-        C3MeshFile file = C3MeshFile.Load(source, part.MeshPath);
-        List<C3MeshSection> geometry = [];
-        List<C3MeshSection> motions = [];
-        foreach (C3MeshSection section in file.Sections)
-        {
-            if ((section.Identifier & 0x00FFFFFF) == 0x00594850)
-            {
-                geometry.Add(section);
-            }
-            else if (section.Identifier == 0x49544F4D)
-            {
-                motions.Add(section);
-            }
-        }
-
-        if (geometry.Count == 0 || motions.Count != geometry.Count)
-        {
-            throw new InvalidDataException("The character's model contains mismatched geometry and motion sections.");
-        }
-
-        List<C3Motion> actionMotions = [];
-        if (catalog.TryResolveMotionPath("body", InitialBodyMotionKey(packedAppearance), out string motionPath))
-        {
-            foreach (C3MeshSection section in C3MeshFile.Load(source, motionPath).Sections)
-            {
-                if (section.Identifier == 0x49544F4D)
-                {
-                    if (actionMotions.Count == 16)
-                    {
-                        throw new InvalidDataException("The body motion exceeds its track limit.");
-                    }
-
-                    actionMotions.Add(C3MotionReader.Read(section));
-                }
-            }
-
-            if (actionMotions.Count < geometry.Count)
-            {
-                throw new InvalidDataException("The initial body motion has fewer tracks than the body geometry.");
-            }
-        }
-
-        RgbaImage image = DdsImageLoader.Load(source, part.TexturePath, ContentLookupMode.PackageOnly);
-        OpenGLTexture2D? texture = null;
-        List<WorldRoleMesh> meshes = [];
+        WorldRolePart? body = null;
+        WorldRolePart? armet = null;
         try
         {
-            texture = device.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
-            for (int i = 0; i < geometry.Count; i++)
+            body = WorldRolePart.Load(source, device, catalog, bodySource, motionPath);
+            C3Motion? attachment = null;
+            if (sources.ArmetModelId != 0)
             {
-                C3PhyMesh phy = C3PhyMeshReader.Read(geometry[i]);
-                C3Motion motion = actionMotions.Count != 0
-                    ? actionMotions[i] : C3MotionReader.Read(motions[i]);
-                if (!catalog.IsAttachmentMesh(phy.Name))
+                if (catalog.TryResolve("armet", sources.ArmetModelId, out IReadOnlyList<C3ResolvedPart> parts))
                 {
-                    meshes.Add(new WorldRoleMesh(device, phy, motion));
+                    if (parts.Count != 1 || !body.TryGetAttachment("v_armet", out C3Motion linkedMotion))
+                    {
+                        throw new InvalidDataException("The character headwear has an unsupported attachment layout.");
+                    }
+
+                    attachment = linkedMotion;
+                    armet = WorldRolePart.Load(source, device, catalog, parts[0]);
+                }
+                else
+                {
+                    Console.Error.WriteLine($"OpenConquer: character headwear model {sources.ArmetModelId} is not present in the C3 catalog.");
                 }
             }
 
-            if (meshes.Count == 0)
-            {
-                throw new InvalidDataException("The character's body model contains no drawable geometry.");
-            }
-
-            uint frameCount = actionMotions.Count != 0 ? actionMotions[0].FrameCount : 0;
-            return new WorldRoleRenderer(texture, meshes, frameCount);
+            return new WorldRoleRenderer(body, armet, attachment);
         }
         catch
         {
-            foreach (WorldRoleMesh mesh in meshes)
-            {
-                mesh.Dispose();
-            }
-
-            texture?.Dispose();
+            armet?.Dispose();
+            body?.Dispose();
             throw;
         }
     }
 
-    internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, uint nowMilliseconds)
+    private static C3ResolvedPart ResolveSinglePart(C3RoleCatalog catalog, string name, uint modelId)
     {
-        int frame = _clock.GetFrame(nowMilliseconds, _frameCount);
-        foreach (WorldRoleMesh mesh in _meshes)
+        if (!catalog.TryResolve(name, modelId, out IReadOnlyList<C3ResolvedPart> parts) || parts.Count != 1)
         {
-            mesh.Draw(renderer, _texture, main, frame);
+            throw new InvalidDataException($"The character {name} model {modelId} is unavailable in the 3D resource catalog.");
         }
 
-        foreach (WorldRoleMesh mesh in _meshes)
+        return parts[0];
+    }
+
+    internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, uint nowMilliseconds)
+    {
+        int frame = _clock.GetFrame(nowMilliseconds, _body.FrameCount);
+        _body.Draw(renderer, main, frame);
+        _body.DrawShadow(renderer, shadow);
+
+        if (_armet is { } armet)
         {
-            mesh.DrawShadow(renderer, shadow);
+            if (!C3MotionSampler.TrySampleBone(_armetAttachment, 0, frame, out Matrix4x4 linked))
+            {
+                throw new InvalidDataException("The headwear attachment motion cannot be sampled.");
+            }
+
+            armet.Draw(renderer, linked * main, frame);
+            armet.DrawShadow(renderer, linked * shadow);
         }
     }
 
     public void Dispose()
     {
-        foreach (WorldRoleMesh mesh in _meshes)
-        {
-            mesh.Dispose();
-        }
-
-        _texture.Dispose();
+        _armet?.Dispose();
+        _body.Dispose();
     }
 }
