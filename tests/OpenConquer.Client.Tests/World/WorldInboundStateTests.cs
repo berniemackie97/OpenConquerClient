@@ -80,6 +80,68 @@ public sealed class WorldInboundStateTests
     }
 
     [Fact]
+    public void CharacterInfoSeedsWorldHeroAttributesBeforeAnyWorldPacket()
+    {
+        WorldHeroAttributes stats = CreateState().HeroAttributes;
+        Assert.Equal((5u, 6u, 7u, 8u),
+            (stats.Strength, stats.Agility, stats.Vitality, stats.Spirit));
+        Assert.Equal((70u, 20u, 0u),
+            (stats.CurrentLife, stats.CurrentMana, stats.CurrentStamina));
+        Assert.Equal((42u, 10u, 12345ul),
+            (stats.Level, stats.Profession, stats.Experience));
+        Assert.Equal((0u, 0u, 0u),
+            (stats.MaximumLifeOverride, stats.MaximumManaOverride, stats.SkillGaugePercent));
+    }
+
+    [Fact]
+    public void AttributeEntriesApplyInWireOrderWithoutChangingTheWorldPosition()
+    {
+        WorldInboundState state = CreateState();
+        byte[] packet = Attributes(HeroId,
+            (0, 100, 0), (2, 40, 0), (8, 90, 0), (5, 1UL << 40, 0),
+            (25, 3, 2), (27, 145, 0), (1, 250, 0), (3, 180, 0));
+
+        Assert.False(state.Apply(packet));
+
+        WorldHeroAttributes stats = state.HeroAttributes;
+        Assert.Equal((100u, 40u, 90u), (stats.CurrentLife, stats.CurrentMana, stats.CurrentStamina));
+        Assert.Equal(1UL << 40, stats.Experience);
+        Assert.Equal((3ul, 2ul), (stats.StatusLow, stats.StatusHigh));
+        Assert.Equal((250u, 180u), (stats.MaximumLifeOverride, stats.MaximumManaOverride));
+        Assert.Equal(100u, stats.SkillGaugePercent);
+        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+
+        Assert.False(state.Apply(Attributes(HeroId, (0, 95, 0), (0, 91, 0))));
+        Assert.Equal(91u, state.HeroAttributes.CurrentLife);
+    }
+
+    [Fact]
+    public void AttributePacketsRejectMalformedCountsWithoutPartialChanges()
+    {
+        WorldInboundState state = CreateState();
+        byte[] packet = Attributes(HeroId, (0, 60, 0), (2, 30, 0));
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(8), 3);
+
+        Assert.Throws<InvalidDataException>(() => state.Apply(packet));
+        Assert.Equal((70u, 20u),
+            (state.HeroAttributes.CurrentLife, state.HeroAttributes.CurrentMana));
+
+        packet = Attributes(HeroId, (0, 60, 0));
+        BinaryPrimitives.WriteUInt16LittleEndian(packet, (ushort)(packet.Length - 1));
+        Assert.Throws<InvalidDataException>(() => state.Apply(packet));
+        Assert.Equal(70u, state.HeroAttributes.CurrentLife);
+    }
+
+    [Fact]
+    public void RemoteAttributeUpdatesCannotMutateTheAuthenticatedHero()
+    {
+        WorldInboundState state = CreateState();
+        Assert.False(state.Apply(Attributes(HeroId + 1, (0, 1, 0), (2, 1, 0))));
+        Assert.Equal((70u, 20u),
+            (state.HeroAttributes.CurrentLife, state.HeroAttributes.CurrentMana));
+    }
+
+    [Fact]
     public void MalformedPacketHeaderIsRejectedBeforeDispatch()
     {
         WorldInboundState state = CreateState();
@@ -90,8 +152,38 @@ public sealed class WorldInboundStateTests
 
     private static WorldInboundState CreateState() =>
         new(new GameWorldEntrySnapshot(
-            new GameCharacterInfo1006 { EntityId = HeroId },
+            new GameCharacterInfo1006
+            {
+                EntityId = HeroId,
+                Strength = 5,
+                Agility = 6,
+                Vitality = 7,
+                Spirit = 8,
+                CurrentLife = 70,
+                CurrentMana = 20,
+                Level = 42,
+                CurrentProfession = 10,
+                Experience = 12345,
+            },
             1002, 1010, 0, 1, 61, 101, []));
+
+    private static byte[] Attributes(uint entityId, params (uint Id, ulong Low, ulong High)[] entries)
+    {
+        byte[] frame = new byte[12 + entries.Length * 20];
+        BinaryPrimitives.WriteUInt16LittleEndian(frame, checked((ushort)frame.Length));
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(2), 10017);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(4), entityId);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(8), (uint)entries.Length);
+        for (int i = 0; i < entries.Length; i++)
+        {
+            Span<byte> entry = frame.AsSpan(12 + i * 20, 20);
+            BinaryPrimitives.WriteUInt32LittleEndian(entry, entries[i].Id);
+            BinaryPrimitives.WriteUInt64LittleEndian(entry[4..], entries[i].Low);
+            BinaryPrimitives.WriteUInt64LittleEndian(entry[12..], entries[i].High);
+        }
+
+        return frame;
+    }
 
     private static byte[] Correction(uint entityId, ushort x, ushort y)
     {
