@@ -17,6 +17,7 @@ using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Items;
 using OpenConquer.Content.Login;
+using OpenConquer.Content.Progression;
 using OpenConquer.Content.Role;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
@@ -68,6 +69,7 @@ internal sealed class ClientApplication : IDisposable
     private WorldFrameIngress? _worldIngress;
     private WorldInboundState? _worldInboundState;
     private ItemStatCatalog? _itemStats;
+    private LevelExperienceTable? _levelExperience;
     private WorldHeroGaugeFollowers? _worldGaugeFollowers;
     private GameWorldEntrySnapshot? _worldEntry;
     private WorldMapLoad? _worldLoad;
@@ -216,6 +218,7 @@ internal sealed class ClientApplication : IDisposable
                                 _worldIngress = null;
                                 _worldInboundState = null;
                                 _itemStats = null;
+                                _levelExperience = null;
                                 _worldGaugeFollowers = null;
                                 _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                             }
@@ -565,7 +568,8 @@ internal sealed class ClientApplication : IDisposable
                 worldScene.Draw(_worldTextures!, frameRenderer,
                     _worldRole is null ? null : _drawWorldRole);
                 if (_worldHud is { } hud && _worldInboundState is { } state &&
-                    _itemStats is { } catalog && _worldGaugeFollowers is { } followers &&
+                    _itemStats is { } catalog && _levelExperience is { } experienceTable &&
+                    _worldGaugeFollowers is { } followers &&
                     _worldEntry is { Character.TransformLookSourceId: 0 } entry)
                 {
                     (int itemLife, int itemMana) = WorldHeroItemStats.Resolve(state.Equipment, catalog);
@@ -579,7 +583,9 @@ internal sealed class ClientApplication : IDisposable
                         unchecked((int)state.HeroAttributes.CurrentLife), followers.Life, maxima.Life,
                         unchecked((int)state.HeroAttributes.CurrentMana), followers.Mana, maxima.Mana,
                         stamina, maxStamina, extended),
-                        checked((int)state.HeroAttributes.SkillGaugePercent), state.HeroAttributes.Experience);
+                        checked((int)state.HeroAttributes.SkillGaugePercent),
+                        state.HeroAttributes.Experience,
+                        experienceTable.GetNextLevelExperience(state.HeroAttributes.Level));
                 }
                 _worldHud?.Draw(frameRenderer, _window!);
             }
@@ -646,8 +652,10 @@ internal sealed class ClientApplication : IDisposable
             if (_worldGame is not null)
             {
                 _worldScene = scene;
-                _itemStats = ItemStatCatalog.Load(_roleContent ??
-                    throw new InvalidOperationException("World content source is unavailable."));
+                IClientContentSource content = _roleContent ??
+                    throw new InvalidOperationException("World content source is unavailable.");
+                _itemStats = ItemStatCatalog.Load(content);
+                _levelExperience = LevelExperienceTable.Load(content);
                 if (_worldInboundState is { } inbound)
                 {
                     ApplyWorldCamera(scene, inbound);
@@ -702,6 +710,7 @@ internal sealed class ClientApplication : IDisposable
         _worldIngress = null;
         _worldInboundState = null;
         _itemStats = null;
+        _levelExperience = null;
         _worldGaugeFollowers = null;
         _worldEntry = null;
         _worldScene = null;

@@ -307,6 +307,7 @@ public sealed class ContentSetImporterTests
             "ini/MagicEffect.ini",
             "ini/SubProfessionInfo.ini",
             "ini/ItemAdd.ini",
+            "ini/LevExp.dat",
             "ini/itemtype.dat",
         })
         {

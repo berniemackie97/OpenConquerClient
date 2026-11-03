@@ -16,7 +16,7 @@ public sealed class ContentSetVerifierTests
         string contentSet = ImportContentSet(fixture);
         ContentManifest manifest = ContentSetVerifier.Verify(contentSet);
 
-        Assert.Equal(113, manifest.FileCount);
+        Assert.Equal(114, manifest.FileCount);
 
         foreach (string path in new[]
         {
@@ -27,6 +27,7 @@ public sealed class ContentSetVerifierTests
             "ini/Font.ini",
             "ini/GameMap.dat",
             "ini/ItemAdd.ini",
+            "ini/LevExp.dat",
             "ini/itemtype.dat",
             "data/main/ProgressBk.dds",
             "data/interface/compose/CoverPic.dds",

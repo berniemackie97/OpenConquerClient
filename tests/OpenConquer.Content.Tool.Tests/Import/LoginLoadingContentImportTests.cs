@@ -26,7 +26,7 @@ public sealed class LoginLoadingContentImportTests
         Assert.Equal(imported.FileCount, verified.FileCount);
         Assert.All(LoginLoadingContentPaths.Paths, path =>
             Assert.Contains(imported.Entries, entry => entry.SourcePath == path));
-        Assert.Equal(113 + LoginLoadingContentPaths.Paths.Count, imported.FileCount);
+        Assert.Equal(114 + LoginLoadingContentPaths.Paths.Count, imported.FileCount);
     }
 
     [Fact]

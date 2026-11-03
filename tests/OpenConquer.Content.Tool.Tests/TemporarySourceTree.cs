@@ -75,6 +75,7 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteText("ini/selectCharacter.ini", "[logo]\r\nxPos=776\r\n");
         WriteBytes("ini/GameMap.dat", [0, 0, 0, 0]);
         WriteBytes("ini/itemtype.dat", CreateSyntheticItemType());
+        WriteBytes("ini/LevExp.dat", CreateSyntheticLevelExperience());
         WriteText("ini/ItemAdd.ini", "120020 9 239 0 0 23 0 0 0 0\r\n");
         WriteText("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=2\n");
         WriteText("ini/info.ini", $"[DlgLogo]\nBgFormat={backgroundFormat}\n");
@@ -278,6 +279,9 @@ internal sealed class TemporarySourceTree : IDisposable
 
     private static byte[] CreateSyntheticDds(string marker) => Encoding.ASCII.GetBytes($"DDS {marker}");
 
+    private static byte[] CreateSyntheticLevelExperience() =>
+        EncodeDelimitedTable(Encoding.ASCII.GetBytes("0 1 120 2 3\r\n0 2 180 2 3\r\n"), 0x4D2);
+
     private static byte[] CreateSyntheticItemType()
     {
         string[] fields = new string[60];
@@ -286,7 +290,7 @@ internal sealed class TemporarySourceTree : IDisposable
         fields[4] = "15";
         fields[19] = "50";
         fields[20] = "-10";
-        return EncodeDelimitedTable(Encoding.ASCII.GetBytes(string.Join("@@", fields) + "\r\n"));
+        return EncodeDelimitedTable(Encoding.ASCII.GetBytes(string.Join("@@", fields) + "\r\n"), 0x2537);
     }
 
     private static byte[] CreateSyntheticMagicType()
@@ -296,13 +300,13 @@ internal sealed class TemporarySourceTree : IDisposable
         fields[1] = "1000";
         fields[3] = "Thunder";
         fields[18] = "2000";
-        return EncodeDelimitedTable(Encoding.ASCII.GetBytes(string.Join("@@", fields) + "@@"));
+        return EncodeDelimitedTable(Encoding.ASCII.GetBytes(string.Join("@@", fields) + "@@"), 0x2537);
     }
 
-    private static byte[] EncodeDelimitedTable(byte[] encoded)
+    private static byte[] EncodeDelimitedTable(byte[] encoded, uint seed)
     {
         Span<byte> key = stackalloc byte[128];
-        uint state = 0x2537;
+        uint state = seed;
 
         for (int index = 0; index < key.Length; index++)
         {

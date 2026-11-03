@@ -45,7 +45,7 @@ public sealed class ItemStatCatalog
     private static Dictionary<uint, ItemBaseStats> ReadItemTypes(ReadOnlySpan<byte> encoded)
     {
         byte[] decoded = encoded.ToArray();
-        DelimitedTableCipher.DecodeInPlace(decoded);
+        DelimitedTableCipher.DecodeInPlace(decoded, 0x2537);
 
         Dictionary<uint, ItemBaseStats> result = [];
         using StringReader reader = new(Encoding.Latin1.GetString(decoded));
