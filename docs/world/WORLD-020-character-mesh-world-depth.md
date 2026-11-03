@@ -9,8 +9,11 @@ Repeated resource IDs replace previous values in the recorded order.
 
 The 3D content source preserves the two original lookup modes: databases come
 from the loose resource directory; C3 and DDS resources use packaged lookup.
-The content importer includes the database, package declaration and C3 package
-when the authorized source supplies those files. Older curated sets without
+The content importer includes the database, package declaration, C3 package
+and any source-supplied loose object/texture indexes. The embedded archive
+indexes can omit model and texture IDs present in the source's loose files,
+so importing them is necessary to preserve content resolution.
+Older curated sets without
 these resources retain their existing map-only display; missing 3D character
 resources are reported rather than substituted with an unrelated model.
 

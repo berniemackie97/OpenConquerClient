@@ -87,6 +87,43 @@ public sealed class ClientContentClosureTests
     }
 
     [Fact]
+    public void Resolve_PreservesLooseC3IndexesWhenTheSourceHasThem()
+    {
+        using TemporaryContentDirectory directory = new();
+        WriteVerifiedIndexes(directory);
+        directory.WriteFile("ini/c3.wdb", "C3 database");
+        directory.WriteFile("ini/3DObj.dbc", "Loose object index");
+        directory.WriteFile("ini/3DTexture.dbc", "Loose texture index");
+
+        IReadOnlyList<ClientContentRequirement> closure =
+            ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
+
+        foreach (string path in new[]
+        {
+            "ini/c3.wdb", "ini/package.ini", "c3.wdf",
+            "ini/3DObj.dbc", "ini/3DTexture.dbc"
+        })
+        {
+            Assert.Contains(new ClientContentRequirement(path, ContentLookupMode.LooseOnly), closure);
+        }
+    }
+
+    [Fact]
+    public void Resolve_UsesOnlyTheC3ArchiveWhenLooseIndexesAreAbsent()
+    {
+        using TemporaryContentDirectory directory = new();
+        WriteVerifiedIndexes(directory);
+        directory.WriteFile("ini/c3.wdb", "C3 database");
+
+        IReadOnlyList<ClientContentRequirement> closure =
+            ClientContentClosure.Resolve(new ClientContentRoot(directory.RootPath));
+
+        Assert.Contains(new ClientContentRequirement("ini/c3.wdb", ContentLookupMode.LooseOnly), closure);
+        Assert.DoesNotContain(new ClientContentRequirement("ini/3DObj.dbc", ContentLookupMode.LooseOnly), closure);
+        Assert.DoesNotContain(new ClientContentRequirement("ini/3DTexture.dbc", ContentLookupMode.LooseOnly), closure);
+    }
+
+    [Fact]
     public void Resolve_AddsConfiguredRetailKeyedLocalization()
     {
         using TemporaryContentDirectory directory = new();
