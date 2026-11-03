@@ -1,7 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <ProjectReference Include="../OpenConquer.Content/OpenConquer.Content.csproj" />
-    <ProjectReference Include="../OpenConquer.Rendering/OpenConquer.Rendering.csproj" />
-    <InternalsVisibleTo Include="OpenConquer.Client.Tests" />
-  </ItemGroup>
-</Project>

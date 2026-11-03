@@ -124,7 +124,6 @@
       "openconquer.content": {
         "type": "Project",
         "dependencies": {
-          "OpenConquer.Imaging": "[1.0.0, )",
           "SharpCompress": "[0.50.7, )"
         }
       },
@@ -133,9 +132,6 @@
         "dependencies": {
           "OpenConquer.Content": "[1.0.0, )"
         }
-      },
-      "openconquer.imaging": {
-        "type": "Project"
       },
       "SharpCompress": {
         "type": "CentralTransitive",

@@ -15,8 +15,9 @@ Windows, macOS, and Linux.
 
 OpenConquerStudio has its own content-authoring repository and solution.
 This client solution contains the game, launcher and required runtime/tooling libraries.
-Shared image decoders live in `OpenConquer.Imaging`; world rendering lives in
-`OpenConquer.Rendering.World`. Studio consumes a pinned source revision of the shared components;
+Image decoders live in `OpenConquer.Content/Images`; world drawing lives in
+`OpenConquer.Rendering/World`. These are folders in the existing Content and Rendering projects.
+Studio keeps a recorded source snapshot of those two projects;
 its desktop application, authoring model, resource codecs and tools have separate ownership.
 See [Studio integration](docs/studio-integration.md) for the extraction boundary.
 
