@@ -2,9 +2,9 @@ using System.Buffers.Binary;
 using System.Net.Sockets;
 using System.Text;
 using OpenConquer.Networking.Authentication;
+using OpenConquer.Networking.Game.Framing;
 using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Login;
-using OpenConquer.Networking.Game.Framing;
 using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.Tests.Networking;
