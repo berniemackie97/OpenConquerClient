@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Buffers.Binary;
 using System.Text;
 using OpenConquer.Content.Mesh;
@@ -121,7 +122,7 @@ public sealed class C3MeshFileTests
             return new MemoryStream(new byte[16]);
         }
 
-        public bool TryOpenRead(string contentPath, ContentLookupMode mode, out Stream? stream)
+        public bool TryOpenRead(string contentPath, ContentLookupMode mode, [NotNullWhen(true)] out Stream? stream)
         {
             stream = null;
             return false;
