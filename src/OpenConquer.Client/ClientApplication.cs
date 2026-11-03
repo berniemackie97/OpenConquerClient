@@ -634,10 +634,10 @@ internal sealed class ClientApplication : IDisposable
                 GameWorldEntrySnapshot entry = _worldEntry ??
                     throw new InvalidOperationException("World entry is unavailable.");
 
-                WorldInboundState inbound = _worldInboundState ??
+                WorldInboundState equipmentState = _worldInboundState ??
                     throw new InvalidOperationException("World equipment state is unavailable.");
                 WorldRoleSources sources = WorldRoleSources.Resolve(
-                    entry.Character.PackedAppearance, entry.Character.HairComposite, inbound.Equipment);
+                    entry.Character.PackedAppearance, entry.Character.HairComposite, equipmentState.Equipment);
                 _worldRole = WorldRoleRenderer.Load(source, graphicsDevice,
                     entry.Character.PackedAppearance, sources);
                 if (_worldRole is null)

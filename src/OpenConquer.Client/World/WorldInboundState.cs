@@ -20,7 +20,10 @@ internal sealed class WorldInboundState
         Weather = (world.WeatherKind, 0, 0, 0);
     }
 
-    internal WorldHeroEquipment Equipment { get; }
+    internal WorldHeroEquipment Equipment
+    {
+        get;
+    }
 
     internal WorldHeroAttributes HeroAttributes
     {
