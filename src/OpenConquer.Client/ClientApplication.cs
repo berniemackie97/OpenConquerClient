@@ -703,25 +703,24 @@ internal sealed class ClientApplication : IDisposable
 
         OpenGLRenderer next = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height,
             PresentationPolicy.Stretch, RenderColorFormat.Rgba8);
-        WorldHudRuntime nextHud;
-        try
+        if (_worldHud is null)
         {
-            IClientContentSource source = _roleContent ??
-                throw new InvalidOperationException("World content source is unavailable.");
-            nextHud = new WorldHudRuntime(source, device, size, magicHintSource: null);
-        }
-        catch
-        {
-            next.Dispose();
-            throw;
+            try
+            {
+                IClientContentSource source = _roleContent ??
+                    throw new InvalidOperationException("World content source is unavailable.");
+                _worldHud = new WorldHudRuntime(source, device, _logicalRenderSize, magicHintSource: null);
+            }
+            catch
+            {
+                next.Dispose();
+                throw;
+            }
         }
 
-        WorldHudRuntime? previousHud = _worldHud;
         OpenGLRenderer? previous = _worldRenderer;
         _worldRenderer = next;
-        _worldHud = nextHud;
         _worldRenderSize = size;
-        previousHud?.Dispose();
         previous?.Dispose();
         return next;
     }
