@@ -591,7 +591,16 @@ internal sealed class ClientApplication : IDisposable
     {
         _worldGame = game;
         _worldEntry = world;
-        _worldInboundState = new WorldInboundState(world);
+        try
+        {
+            _worldInboundState = new WorldInboundState(world);
+        }
+        catch (InvalidDataException exception)
+        {
+            Console.Error.WriteLine($"OpenConquer: world equipment hydration is invalid ({exception.Message}).");
+            ReturnToLogin();
+            return;
+        }
         _worldIngress = new WorldFrameIngress(game);
         _worldTexturesReady = false;
         IClientContentSource source = _roleContent ??
@@ -625,8 +634,10 @@ internal sealed class ClientApplication : IDisposable
                 GameWorldEntrySnapshot entry = _worldEntry ??
                     throw new InvalidOperationException("World entry is unavailable.");
 
+                WorldInboundState equipmentState = _worldInboundState ??
+                    throw new InvalidOperationException("World equipment state is unavailable.");
                 WorldRoleSources sources = WorldRoleSources.Resolve(
-                    entry.Character.PackedAppearance, entry.Character.HairComposite, entry.HydrationPackets);
+                    entry.Character.PackedAppearance, entry.Character.HairComposite, equipmentState.Equipment);
                 _worldRole = WorldRoleRenderer.Load(source, graphicsDevice,
                     entry.Character.PackedAppearance, sources);
                 if (_worldRole is null)
