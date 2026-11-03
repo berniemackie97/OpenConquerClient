@@ -7,8 +7,8 @@ using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
 using OpenConquer.Client.UI.Login.Stage;
-using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Client.UI.Hud.Rendering;
+using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Client.UI.Role;
 using OpenConquer.Client.World;
 using OpenConquer.Content;
@@ -738,8 +738,8 @@ internal sealed class ClientApplication : IDisposable
         {
             if (_worldHud is { } hud && _worldRenderer is { } worldRenderer)
             {
-                bool mapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
-                hud.HandlePointerMoved(mapped, x, y);
+                bool hudMapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int hudX, out int hudY);
+                hud.HandlePointerMoved(hudMapped, hudX, hudY);
             }
             return;
         }
@@ -765,8 +765,8 @@ internal sealed class ClientApplication : IDisposable
         {
             if (_worldHud is { } hud && _worldRenderer is { } worldRenderer)
             {
-                bool mapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
-                hud.HandlePrimaryPointerPressed(mapped, x, y);
+                bool hudMapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int hudX, out int hudY);
+                hud.HandlePrimaryPointerPressed(hudMapped, hudX, hudY);
             }
             return;
         }
@@ -796,8 +796,8 @@ internal sealed class ClientApplication : IDisposable
         {
             if (_worldHud is { } hud && _worldRenderer is { } worldRenderer)
             {
-                bool mapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
-                hud.HandlePrimaryPointerReleased(mapped, x, y);
+                bool hudMapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int hudX, out int hudY);
+                hud.HandlePrimaryPointerReleased(hudMapped, hudX, hudY);
             }
             return;
         }
