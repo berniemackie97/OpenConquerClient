@@ -15,6 +15,8 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
     private readonly uint[] _effects = new uint[MaximumEffectVoices];
     private readonly uint _music;
     private int _nextVoice;
+    private bool _focused = true;
+    private bool _worldActive;
     private bool _disposed;
 
     private LoginAudioPlayer()
@@ -119,17 +121,34 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
     public void SetFocused(bool focused)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (focused)
+        _focused = focused;
+        UpdateMusic();
+    }
+
+    public void SetWorldActive(bool active)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_worldActive == active)
+        {
+            return;
+        }
+
+        _worldActive = active;
+        UpdateMusic();
+    }
+
+    private void UpdateMusic()
+    {
+        if (_focused && !_worldActive)
         {
             _al.SourcePlay(_music);
+            return;
         }
-        else
+
+        _al.SourcePause(_music);
+        foreach (uint source in _effects)
         {
-            _al.SourcePause(_music);
-            foreach (uint source in _effects)
-            {
-                _al.SourceStop(source);
-            }
+            _al.SourceStop(source);
         }
     }
 

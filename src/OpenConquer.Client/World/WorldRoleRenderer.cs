@@ -11,12 +11,18 @@ internal sealed class WorldRoleRenderer : IDisposable
 {
     private readonly OpenGLTexture2D _texture;
     private readonly List<WorldRoleMesh> _meshes;
+    private readonly WorldRoleFrameClock _clock = new();
+    private readonly uint _frameCount;
 
-    private WorldRoleRenderer(OpenGLTexture2D texture, List<WorldRoleMesh> meshes)
+    private WorldRoleRenderer(OpenGLTexture2D texture, List<WorldRoleMesh> meshes, uint frameCount)
     {
         _texture = texture;
         _meshes = meshes;
+        _frameCount = frameCount;
     }
+
+    internal static ulong InitialBodyMotionKey(uint packedAppearance) =>
+        (packedAppearance % 1000UL) * 1_000_000UL + 100UL;
 
     internal static WorldRoleRenderer? Load(IClientContentSource source,
         OpenGLGraphicsDevice device, uint packedAppearance)
@@ -61,6 +67,28 @@ internal sealed class WorldRoleRenderer : IDisposable
             throw new InvalidDataException("The character's model contains mismatched geometry and motion sections.");
         }
 
+        List<C3Motion> actionMotions = [];
+        if (catalog.TryResolveMotionPath("body", InitialBodyMotionKey(packedAppearance), out string motionPath))
+        {
+            foreach (C3MeshSection section in C3MeshFile.Load(source, motionPath).Sections)
+            {
+                if (section.Identifier == 0x49544F4D)
+                {
+                    if (actionMotions.Count == 16)
+                    {
+                        throw new InvalidDataException("The body motion exceeds its track limit.");
+                    }
+
+                    actionMotions.Add(C3MotionReader.Read(section));
+                }
+            }
+
+            if (actionMotions.Count < geometry.Count)
+            {
+                throw new InvalidDataException("The initial body motion has fewer tracks than the body geometry.");
+            }
+        }
+
         RgbaImage image = DdsImageLoader.Load(source, part.TexturePath, ContentLookupMode.PackageOnly);
         OpenGLTexture2D? texture = null;
         List<WorldRoleMesh> meshes = [];
@@ -70,7 +98,8 @@ internal sealed class WorldRoleRenderer : IDisposable
             for (int i = 0; i < geometry.Count; i++)
             {
                 C3PhyMesh phy = C3PhyMeshReader.Read(geometry[i]);
-                C3Motion motion = C3MotionReader.Read(motions[i]);
+                C3Motion motion = actionMotions.Count != 0
+                    ? actionMotions[i] : C3MotionReader.Read(motions[i]);
                 if (!catalog.IsAttachmentMesh(phy.Name))
                 {
                     meshes.Add(new WorldRoleMesh(device, phy, motion));
@@ -82,7 +111,8 @@ internal sealed class WorldRoleRenderer : IDisposable
                 throw new InvalidDataException("The character's body model contains no drawable geometry.");
             }
 
-            return new WorldRoleRenderer(texture, meshes);
+            uint frameCount = actionMotions.Count != 0 ? actionMotions[0].FrameCount : 0;
+            return new WorldRoleRenderer(texture, meshes, frameCount);
         }
         catch
         {
@@ -96,11 +126,12 @@ internal sealed class WorldRoleRenderer : IDisposable
         }
     }
 
-    internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow)
+    internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, uint nowMilliseconds)
     {
+        int frame = _clock.GetFrame(nowMilliseconds, _frameCount);
         foreach (WorldRoleMesh mesh in _meshes)
         {
-            mesh.Draw(renderer, _texture, main, frame: 0);
+            mesh.Draw(renderer, _texture, main, frame);
         }
 
         foreach (WorldRoleMesh mesh in _meshes)
