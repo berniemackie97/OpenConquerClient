@@ -62,9 +62,11 @@ internal sealed class WorldMapFixture : IDisposable
                 Write("ani/newbie.ani", ani);
             }
 
+            Write("ani/MapScene.ani", File.ReadAllBytes(Path.Combine(fixture, "ani", "mapscene-newbie-sections.ani")));
             ClientContentRoot source = new(_root);
             Map = GameMapContent.Load(source, GameMapCatalog.Load(source), 1010);
             Puzzles = GameMapPuzzleResources.Load(source, Map);
+            Scenery = GameMapSceneryAniBindings.Load(source, Map.Scene);
         }
         catch
         {
@@ -79,6 +81,11 @@ internal sealed class WorldMapFixture : IDisposable
     }
 
     public GameMapPuzzleResources Puzzles
+    {
+        get;
+    }
+
+    public IReadOnlyList<GameMapSceneryAniBinding> Scenery
     {
         get;
     }
