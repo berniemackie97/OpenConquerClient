@@ -80,6 +80,18 @@ public sealed class C3RoleCatalog
         return true;
     }
 
+    public bool TryResolveMotionPath(string partName, ulong key, out string path)
+    {
+        if (_configuration.Sources.TryGetValue(partName, out C3RolePartSource source) &&
+            _archive.TryRead(source.MotionDatabase, out ReadOnlyMemory<byte> payload))
+        {
+            return C3ResourcePathTable.TryFindDualKey(payload, key, out path);
+        }
+
+        path = string.Empty;
+        return false;
+    }
+
     public bool IsAttachmentMesh(string name) => _configuration.VirtualMeshNames.Contains(name);
 
     private static ReadOnlyMemory<byte> ReadCoreDatabase(IClientContentSource source,
