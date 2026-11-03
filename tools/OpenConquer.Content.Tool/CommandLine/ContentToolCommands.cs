@@ -15,3 +15,4 @@ internal sealed record CompareContentSetsCommand(string PreviousRootPath, string
 internal sealed record ValidateMapPuzzlesCommand(string SourceRootPath, uint MapDataId) : ContentToolCommand;
 internal sealed record ValidateMapSceneryAniCommand(string SourceRootPath, uint MapDataId) : ContentToolCommand;
 internal sealed record ValidateMapTerrainScenesCommand(string SourceRootPath, uint MapDataId) : ContentToolCommand;
+internal sealed record CompileMapAssetCommand(string SourceRootPath, string DestinationPath, uint MapDataId) : ContentToolCommand;

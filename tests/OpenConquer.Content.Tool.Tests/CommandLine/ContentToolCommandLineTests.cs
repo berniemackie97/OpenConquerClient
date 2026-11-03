@@ -10,6 +10,38 @@ public sealed class ContentToolCommandLineTests
     );
 
     [Fact]
+    public void TryParse_ReadsMapAssetCompilation()
+    {
+        Assert.True(ContentToolCommandLine.TryParse(
+            ["compile-map-asset", "--destination", "1010.ocmap", "--map-data-id", "1010", "--source", "assets"],
+            s_workingDirectory, out ContentToolCommand? command, out string? errorMessage));
+
+        Assert.Null(errorMessage);
+        CompileMapAssetCommand compile = Assert.IsType<CompileMapAssetCommand>(command);
+        Assert.Equal(1010u, compile.MapDataId);
+        Assert.Equal(Path.Combine(s_workingDirectory, "assets"), compile.SourceRootPath);
+        Assert.Equal(Path.Combine(s_workingDirectory, "1010.ocmap"), compile.DestinationPath);
+    }
+
+    [Fact]
+    public void TryParse_RejectsAmbiguousMapAssetCompilation()
+    {
+        string[][] invalid =
+        [
+            ["compile-map-asset", "--source", "assets", "--destination", "map.ocmap"],
+            ["compile-map-asset", "--source", "assets", "--destination", "map.ocmap", "--all-maps"],
+            ["compile-map-asset", "--source", "assets", "--destination", "map.ocmap", "--map-data-id", "0"],
+        ];
+
+        foreach (string[] args in invalid)
+        {
+            Assert.False(ContentToolCommandLine.TryParse(args, s_workingDirectory,
+                out ContentToolCommand? command, out _));
+            Assert.Null(command);
+        }
+    }
+
+    [Fact]
     public void TryParse_ReadsAnImportCommandInEitherOptionOrder()
     {
         Assert.True(

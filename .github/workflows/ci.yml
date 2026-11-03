@@ -77,6 +77,26 @@ jobs:
           --content-set content/retail-5517
           --map-data-id 1010
 
+      - name: Compile map asset deterministically
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for candidate in a b; do
+            dotnet run \
+              --project tools/OpenConquer.Content.Tool \
+              --configuration Release \
+              --no-build \
+              --no-restore \
+              -- \
+              compile-map-asset \
+              --source content/retail-5517/payload \
+              --map-data-id 1010 \
+              --destination "${{ runner.temp }}/1010-$candidate.ocmap"
+          done
+
+          cmp "${{ runner.temp }}/1010-a.ocmap" "${{ runner.temp }}/1010-b.ocmap"
+
       - name: Publish client
         run: >-
           dotnet publish
