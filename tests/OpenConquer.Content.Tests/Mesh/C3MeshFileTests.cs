@@ -7,6 +7,17 @@ namespace OpenConquer.Content.Tests.Mesh;
 public sealed class C3MeshFileTests
 {
     [Fact]
+    public void LoadReadsMeshFromPackageOnly()
+    {
+        MeshSource source = new();
+
+        C3MeshFile mesh = C3MeshFile.Load(source, "c3/npc/mesh.c3");
+
+        Assert.Empty(mesh.Sections);
+        Assert.Equal(ContentLookupMode.PackageOnly, source.LookupMode);
+    }
+
+    [Fact]
     public void Parse_PreservesOrderedSectionsAndPayloads()
     {
         byte[] source = FileWithSections(
@@ -95,5 +106,25 @@ public sealed class C3MeshFileTests
         }
 
         return output.ToArray();
+    }
+    private sealed class MeshSource : IClientContentSource
+    {
+        internal ContentLookupMode? LookupMode
+        {
+            get;
+            private set;
+        }
+
+        public Stream OpenRequiredRead(string contentPath, ContentLookupMode mode)
+        {
+            LookupMode = mode;
+            return new MemoryStream(new byte[16]);
+        }
+
+        public bool TryOpenRead(string contentPath, ContentLookupMode mode, out Stream? stream)
+        {
+            stream = null;
+            return false;
+        }
     }
 }

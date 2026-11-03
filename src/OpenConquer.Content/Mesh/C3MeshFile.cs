@@ -33,7 +33,7 @@ public sealed class C3MeshFile
     public static C3MeshFile Load(IClientContentSource source, string path)
     {
         byte[] bytes = ContentReader.ReadRequiredBytes(
-            source, path, ContentLookupMode.LooseThenPackage, MaximumFileBytes);
+            source, path, ContentLookupMode.PackageOnly, MaximumFileBytes);
         return Parse(bytes);
     }
 
