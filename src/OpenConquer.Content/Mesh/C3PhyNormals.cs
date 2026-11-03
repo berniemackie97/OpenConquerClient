@@ -9,7 +9,20 @@ internal static class C3PhyNormals
     internal static void Generate(C3PhyVertex[] vertices, ushort[] indices)
     {
         Vector3[] normals = new Vector3[vertices.Length];
+        Accumulate(normals, vertices, indices);
+        Smooth(normals, vertices);
 
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            vertices[i] = vertices[i] with
+            {
+                Normal = normals[i]
+            };
+        }
+    }
+
+    private static void Accumulate(Vector3[] normals, C3PhyVertex[] vertices, ushort[] indices)
+    {
         for (int i = 0; i < indices.Length; i += 3)
         {
             int a = indices[i];
@@ -32,30 +45,20 @@ internal static class C3PhyNormals
         {
             normals[i] = Normalize(normals[i]);
         }
+    }
 
+    private static void Smooth(Vector3[] normals, C3PhyVertex[] vertices)
+    {
         Dictionary<(long X, long Y, long Z), List<int>> cells = [];
         List<int> matches = [];
         for (int i = 0; i < vertices.Length; i++)
         {
             Vector3 current = vertices[i].Position;
-            (long x, long y, long z) = Cell(current);
+            (long X, long Y, long Z) cell = Cell(current);
             matches.Clear();
-
-            for (long dz = -1; dz <= 1; dz++)
-            {
-                for (long dy = -1; dy <= 1; dy++)
-                {
-                    for (long dx = -1; dx <= 1; dx++)
-                    {
-                        if (cells.TryGetValue((x + dx, y + dy, z + dz), out List<int>? previous))
-                        {
-                            matches.AddRange(previous);
-                        }
-                    }
-                }
-            }
-
+            CollectEarlier(cells, cell, matches);
             matches.Sort();
+
             foreach (int previous in matches)
             {
                 Vector3 other = vertices[previous].Position;
@@ -70,21 +73,32 @@ internal static class C3PhyNormals
                 normals[previous] = normals[i];
             }
 
-            if (!cells.TryGetValue((x, y, z), out List<int>? entries))
+            if (!cells.TryGetValue(cell, out List<int>? entries))
             {
                 entries = [];
-                cells.Add((x, y, z), entries);
+                cells.Add(cell, entries);
             }
 
             entries.Add(i);
         }
+    }
 
-        for (int i = 0; i < vertices.Length; i++)
+    private static void CollectEarlier(
+        Dictionary<(long X, long Y, long Z), List<int>> cells,
+        (long X, long Y, long Z) cell, List<int> matches)
+    {
+        for (long dz = -1; dz <= 1; dz++)
         {
-            vertices[i] = vertices[i] with
+            for (long dy = -1; dy <= 1; dy++)
             {
-                Normal = normals[i]
-            };
+                for (long dx = -1; dx <= 1; dx++)
+                {
+                    if (cells.TryGetValue((cell.X + dx, cell.Y + dy, cell.Z + dz), out List<int>? previous))
+                    {
+                        matches.AddRange(previous);
+                    }
+                }
+            }
         }
     }
 

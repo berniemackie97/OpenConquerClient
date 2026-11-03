@@ -27,16 +27,43 @@ public static class C3PhyMeshReader
         int nameLength = reader.ReadCount();
         string name = Encoding.Latin1.GetString(reader.Read(nameLength).Span).TrimEnd('\0');
         uint flags = reader.ReadUInt32();
-        int vertexCount = SumCounts(reader.ReadCount(), reader.ReadCount());
-        ReadOnlyMemory<byte> vertexBytes = reader.ReadItems(vertexCount, stride);
-        C3PhyVertex[] vertices = new C3PhyVertex[vertexCount];
+        C3PhyVertex[] vertices = ReadVertices(ref reader, variant, stride);
+        ushort[] indices = ReadIndices(ref reader, vertices.Length);
+
+        reader.Read(reader.ReadCount());
+        Vector3 boundsMin = ReadVector3(reader.Read(12).Span);
+        Vector3 boundsMax = ReadVector3(reader.Read(12).Span);
+        Matrix4x4 matrix = ReadMatrix(reader.Read(64).Span);
+        TransformVertices(vertices, matrix);
+
+        uint stepFrameCount = reader.ReadUInt32();
+        ReadOnlyMemory<byte> alphaKeys = reader.ReadItems(reader.ReadCount(), 16);
+        ReadOnlyMemory<byte> drawKeys = reader.ReadItems(reader.ReadCount(), 16);
+        ReadOnlyMemory<byte> textureKeys = reader.ReadItems(reader.ReadCount(), 16);
+        ReadOnlyMemory<byte> trailing = reader.Read(reader.Remaining);
+
+        if (variant is 0x20 or 0x34)
+        {
+            C3PhyNormals.Generate(vertices, indices);
+        }
+
+        return new C3PhyMesh(name, flags, vertices, indices, matrix,
+            Vector3.Min(boundsMin, boundsMax), Vector3.Max(boundsMin, boundsMax),
+            stepFrameCount, alphaKeys, drawKeys, textureKeys, trailing);
+    }
+
+    private static C3PhyVertex[] ReadVertices(ref PayloadReader reader, byte variant, int stride)
+    {
+        int count = SumCounts(reader.ReadCount(), reader.ReadCount());
+        ReadOnlyMemory<byte> records = reader.ReadItems(count, stride);
+        C3PhyVertex[] vertices = new C3PhyVertex[count];
+        int uvOffset = variant is 0x20 or 0x32 ? 48 : 12;
+        int boneOffset = uvOffset + 8;
         bool generatedNormals = variant is 0x20 or 0x34;
-        bool split = variant is 0x20 or 0x32;
+
         for (int i = 0; i < vertices.Length; i++)
         {
-            ReadOnlySpan<byte> input = vertexBytes.Span.Slice(i * stride, stride);
-            int uvOffset = split ? 48 : 12;
-            int boneOffset = uvOffset + 8;
+            ReadOnlySpan<byte> input = records.Span.Slice(i * stride, stride);
             Vector3 position = ReadVector3(input);
             Vector2 uv = new(ReadFloat(input, uvOffset), ReadFloat(input, uvOffset + 4));
             Vector4 bones = new(ReadFloat(input, boneOffset), ReadFloat(input, boneOffset + 4),
@@ -46,32 +73,31 @@ public static class C3PhyMeshReader
             vertices[i] = new C3PhyVertex(position, normal, uv, bones, bone4);
         }
 
+        return vertices;
+    }
+
+    private static ushort[] ReadIndices(ref PayloadReader reader, int vertexCount)
+    {
         int faceCount = SumCounts(reader.ReadCount(), reader.ReadCount());
-        ReadOnlySpan<byte> indexBytes = reader.ReadItems(faceCount, 6).Span;
+        ReadOnlySpan<byte> bytes = reader.ReadItems(faceCount, 6).Span;
         ushort[] indices = new ushort[faceCount * 3];
+
         for (int i = 0; i < indices.Length; i++)
         {
-            ushort index = BinaryPrimitives.ReadUInt16LittleEndian(indexBytes[(i * 2)..]);
+            ushort index = BinaryPrimitives.ReadUInt16LittleEndian(bytes[(i * 2)..]);
             if (index >= vertexCount)
             {
                 throw new InvalidDataException("PHY triangle index exceeds its vertex count.");
             }
+
             indices[i] = index;
         }
 
-        reader.Read(reader.ReadCount());
-        Vector3 boundsMin = ReadVector3(reader.Read(12).Span);
-        Vector3 boundsMax = ReadVector3(reader.Read(12).Span);
-        Vector3 minimum = Vector3.Min(boundsMin, boundsMax);
-        Vector3 maximum = Vector3.Max(boundsMin, boundsMax);
+        return indices;
+    }
 
-        ReadOnlySpan<byte> matrixBytes = reader.Read(64).Span;
-        Matrix4x4 matrix = new(
-            ReadFloat(matrixBytes, 0), ReadFloat(matrixBytes, 4), ReadFloat(matrixBytes, 8), ReadFloat(matrixBytes, 12),
-            ReadFloat(matrixBytes, 16), ReadFloat(matrixBytes, 20), ReadFloat(matrixBytes, 24), ReadFloat(matrixBytes, 28),
-            ReadFloat(matrixBytes, 32), ReadFloat(matrixBytes, 36), ReadFloat(matrixBytes, 40), ReadFloat(matrixBytes, 44),
-            ReadFloat(matrixBytes, 48), ReadFloat(matrixBytes, 52), ReadFloat(matrixBytes, 56), ReadFloat(matrixBytes, 60));
-
+    private static void TransformVertices(C3PhyVertex[] vertices, Matrix4x4 matrix)
+    {
         for (int i = 0; i < vertices.Length; i++)
         {
             C3PhyVertex vertex = vertices[i];
@@ -92,21 +118,13 @@ public static class C3PhyMeshReader
                 Position = new Vector3(transformed.X, transformed.Y, transformed.Z)
             };
         }
-
-        uint stepFrameCount = reader.ReadUInt32();
-        ReadOnlyMemory<byte> alphaKeys = reader.ReadItems(reader.ReadCount(), 16);
-        ReadOnlyMemory<byte> drawKeys = reader.ReadItems(reader.ReadCount(), 16);
-        ReadOnlyMemory<byte> textureKeys = reader.ReadItems(reader.ReadCount(), 16);
-        ReadOnlyMemory<byte> trailing = reader.Read(reader.Remaining);
-
-        if (generatedNormals)
-        {
-            C3PhyNormals.Generate(vertices, indices);
-        }
-
-        return new C3PhyMesh(name, flags, vertices, indices, matrix, minimum, maximum, stepFrameCount,
-            alphaKeys, drawKeys, textureKeys, trailing);
     }
+
+    private static Matrix4x4 ReadMatrix(ReadOnlySpan<byte> bytes) => new(
+        ReadFloat(bytes, 0), ReadFloat(bytes, 4), ReadFloat(bytes, 8), ReadFloat(bytes, 12),
+        ReadFloat(bytes, 16), ReadFloat(bytes, 20), ReadFloat(bytes, 24), ReadFloat(bytes, 28),
+        ReadFloat(bytes, 32), ReadFloat(bytes, 36), ReadFloat(bytes, 40), ReadFloat(bytes, 44),
+        ReadFloat(bytes, 48), ReadFloat(bytes, 52), ReadFloat(bytes, 56), ReadFloat(bytes, 60));
 
     private static int SumCounts(int first, int second) =>
         (long)first + second <= int.MaxValue
@@ -146,6 +164,7 @@ public static class C3PhyMeshReader
             {
                 throw new InvalidDataException("PHY element count exceeds supported bounds.");
             }
+
             return (int)count;
         }
 
@@ -155,6 +174,7 @@ public static class C3PhyMeshReader
             {
                 throw new InvalidDataException("PHY element array exceeds its section boundary.");
             }
+
             return Read(count * stride);
         }
     }
