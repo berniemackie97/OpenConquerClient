@@ -34,7 +34,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     private TaskCompletionSource? _operationsDrained;
     private Task? _disposeTask;
     private int _activeOperations;
-    private int _phase; // 0: handshake complete, 1: proof sending, 2: ready, 3: reading, 4: terminal
+    private int _phase; // 0: handshake complete, 1: sending, 2: bootstrap ready, 3: bootstrap read, 4: terminal, 5: world ready, 6: world read
     private int _loginControlState; // 0: unclaimed, 1: reading, 2: resolved, 3: raw-read bypassed
     private int _existingCharacterPreludeState; // 0: unclaimed, 1: reading, 2: resolved, 3: bypassed
     private int _characterInfoState; // 0: unclaimed, 1: reading, 2: resolved, 3: bypassed
@@ -260,6 +260,23 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     internal Task<GameSecuredInboundFrame?> ReadFrameAsync(
         TimeSpan timeout, CancellationToken cancellationToken = default) =>
         ReadFrameCoreAsync(timeout, SecuredRead.Raw, cancellationToken);
+
+    internal void ActivateWorld()
+    {
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2 || !_existingCharacterRoute || _characterInfoState != 2)
+            {
+                throw new InvalidOperationException("The secured world reader requires completed character admission.");
+            }
+
+            _phase = 5;
+        }
+    }
+
+    internal Task<GameSecuredInboundFrame?> ReadWorldFrameAsync(CancellationToken cancellationToken = default) =>
+        ReadFrameCoreAsync(null, SecuredRead.World, cancellationToken);
 
     /// <summary>
     /// Resolves the first post-proof login-channel 1004 once. Accepted routes
@@ -743,9 +760,12 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     }
 
     private async Task<GameSecuredInboundFrame?> ReadFrameCoreAsync(
-        TimeSpan timeout, SecuredRead read, CancellationToken cancellationToken)
+        TimeSpan? timeout, SecuredRead read, CancellationToken cancellationToken)
     {
-        ValidateTimeout(timeout);
+        if (timeout is TimeSpan duration)
+        {
+            ValidateTimeout(duration);
+        }
         cancellationToken.ThrowIfCancellationRequested();
         EnterReadOperation(read);
 
@@ -755,7 +775,11 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         {
             using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken, _lifetimeCancellation.Token);
-            deadline.CancelAfter(timeout);
+            if (timeout is TimeSpan readTimeout)
+            {
+                deadline.CancelAfter(readTimeout);
+            }
+
             NetworkStream stream = _client.GetStream();
             bool frameStarted = false;
 
@@ -836,7 +860,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
                 _client.Dispose();
             }
 
-            ExitOperation(completed);
+            ExitReadOperation(read, completed);
         }
     }
 
@@ -851,6 +875,22 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
     private void EnterReadOperation(SecuredRead read)
     {
+        if (read == SecuredRead.World)
+        {
+            lock (_lifetimeGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (_phase != 5)
+                {
+                    throw new InvalidOperationException("Only one secured world read may be active after admission.");
+                }
+
+                _phase = 6;
+                _activeOperations++;
+                return;
+            }
+        }
+
         bool preludeRead = read == SecuredRead.Prelude;
         bool characterInfoRead = read == SecuredRead.CharacterInfo;
         lock (_lifetimeGate)
@@ -932,6 +972,28 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
     }
 
+    private void ExitReadOperation(SecuredRead read, bool completed)
+    {
+        if (read != SecuredRead.World)
+        {
+            ExitOperation(completed);
+            return;
+        }
+
+        TaskCompletionSource? drained = null;
+        lock (_lifetimeGate)
+        {
+            _phase = completed && !_disposed ? 5 : 4;
+            _activeOperations--;
+            if (_activeOperations == 0)
+            {
+                drained = _operationsDrained;
+            }
+        }
+
+        drained?.TrySetResult();
+    }
+
     private void EnterOperation(int expectedPhase, int activePhase)
     {
         lock (_lifetimeGate)
@@ -1007,6 +1069,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         Prelude,
         CharacterInfo,
         CreationResult,
+        World,
     }
 
     private enum CreationState

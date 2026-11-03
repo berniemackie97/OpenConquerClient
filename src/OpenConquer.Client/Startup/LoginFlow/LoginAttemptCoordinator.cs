@@ -208,6 +208,13 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         Publish(LoginAttemptStatus.Unavailable, LoginFailure.WorldContent());
     }
 
+    internal void FailWorldConnection()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _acceptedAccountName = string.Empty;
+        Publish(LoginAttemptStatus.Unavailable, LoginFailure.Resource(10249));
+    }
+
     internal void FailAcceptedGame()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

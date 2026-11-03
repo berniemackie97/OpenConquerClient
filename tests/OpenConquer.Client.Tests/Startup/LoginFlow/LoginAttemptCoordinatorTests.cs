@@ -50,6 +50,18 @@ public sealed class LoginAttemptCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task WorldDisconnectReportsConnectionLossInsteadOfMissingContent()
+    {
+        await using LoginAttemptCoordinator attempts = new(_folder);
+
+        attempts.FailWorldConnection();
+
+        Assert.Equal(LoginAttemptStatus.Unavailable, attempts.Status);
+        Assert.Equal(LoginFailureKind.Resource, attempts.Feedback.Failure!.Kind);
+        Assert.Equal(10249u, attempts.Feedback.Failure.Code);
+    }
+
+    [Fact]
     public async Task DisposedAttemptCoordinatorRejectsNewSubmissions()
     {
         using LoginScreen login = new(LoginStageLayout.Create(new LogicalRenderSize(1024, 768)),

@@ -40,6 +40,7 @@ internal sealed class ClientApplication : IDisposable
 
     private readonly string _contentRootPath;
     private readonly Action<OpenGLRenderer> _drawWorldRole;
+    private readonly Action<ReadOnlyMemory<byte>> _applyWorldFrame;
     private readonly PresentationPolicy _presentationPolicy;
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
@@ -62,6 +63,8 @@ internal sealed class ClientApplication : IDisposable
     private LoginLoadingScreen? _loading;
     private RoleCreationScreen? _role;
     private GameServerHandshakeSession? _worldGame;
+    private WorldFrameIngress? _worldIngress;
+    private WorldInboundState? _worldInboundState;
     private GameWorldEntrySnapshot? _worldEntry;
     private WorldMapLoad? _worldLoad;
     private WorldMapScene? _worldScene;
@@ -78,6 +81,7 @@ internal sealed class ClientApplication : IDisposable
     private bool _returnFromRole;
     private Task? _roleClosing;
     private Task? _worldClosing;
+    private bool _worldConnectionLost;
     private PixelPoint _lastPointer;
     private bool _runStarted;
     private bool _disposed;
@@ -89,6 +93,7 @@ internal sealed class ClientApplication : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
         _drawWorldRole = DrawWorldRole;
+        _applyWorldFrame = ApplyWorldFrame;
 
         if (!Enum.IsDefined(windowMode))
         {
@@ -198,7 +203,16 @@ internal sealed class ClientApplication : IDisposable
                         _worldLoad = null;
                         try
                         {
-                            _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                            try
+                            {
+                                _worldIngress?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                            }
+                            finally
+                            {
+                                _worldIngress = null;
+                                _worldInboundState = null;
+                                _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                            }
                         }
                         finally
                         {
@@ -378,7 +392,6 @@ internal sealed class ClientApplication : IDisposable
             AcceptWorld(acceptedGame!, acceptedWorld!);
         }
 
-        CompleteWorldLoad();
         if (_roleClosing is { IsCompleted: true } closed)
         {
             _roleClosing = null;
@@ -389,7 +402,15 @@ internal sealed class ClientApplication : IDisposable
         {
             _worldClosing = null;
             completedWorldClose.GetAwaiter().GetResult();
-            _loginFlow?.FailWorldContent();
+            if (_worldConnectionLost)
+            {
+                _loginFlow?.FailWorldConnection();
+                _worldConnectionLost = false;
+            }
+            else
+            {
+                _loginFlow?.FailWorldContent();
+            }
         }
 
         if (_role is null && _roleClosing is null &&
@@ -454,6 +475,23 @@ internal sealed class ClientApplication : IDisposable
                 _roleClosing = activeRole.DisposeAsync().AsTask();
             }
         }
+
+        if (_worldIngress is { } ingress)
+        {
+            try
+            {
+                ingress.Drain(_applyWorldFrame);
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or
+                System.Net.Sockets.SocketException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine($"OpenConquer: world connection closed ({exception.Message}).");
+                _worldConnectionLost = true;
+                ReturnToLogin();
+            }
+        }
+
+        CompleteWorldLoad();
 
         if (_loginErrors is { } messages)
         {
@@ -553,6 +591,8 @@ internal sealed class ClientApplication : IDisposable
     {
         _worldGame = game;
         _worldEntry = world;
+        _worldInboundState = new WorldInboundState(world);
+        _worldIngress = new WorldFrameIngress(game);
         _worldTexturesReady = false;
         IClientContentSource source = _roleContent ??
             throw new InvalidOperationException("World content source was not initialized.");
@@ -573,6 +613,11 @@ internal sealed class ClientApplication : IDisposable
             if (_worldGame is not null)
             {
                 _worldScene = scene;
+                if (_worldInboundState is { } inbound)
+                {
+                    ApplyWorldCamera(scene, inbound);
+                }
+
                 IClientContentSource source = _roleContent ??
                     throw new InvalidOperationException("World content source is unavailable.");
                 OpenGLGraphicsDevice graphicsDevice = _graphicsDevice ??
@@ -615,7 +660,10 @@ internal sealed class ClientApplication : IDisposable
         _worldLoad?.Cancel();
         _worldTexturesReady = false;
         GameServerHandshakeSession? game = _worldGame;
+        WorldFrameIngress? ingress = _worldIngress;
         _worldGame = null;
+        _worldIngress = null;
+        _worldInboundState = null;
         _worldEntry = null;
         _worldScene = null;
         _worldRole?.Dispose();
@@ -626,8 +674,43 @@ internal sealed class ClientApplication : IDisposable
         _worldRenderer = null;
         if (game is not null)
         {
-            _worldClosing = game.DisposeAsync().AsTask();
+            _worldClosing = CloseWorldAsync(game, ingress);
         }
+    }
+
+    private static async Task CloseWorldAsync(GameServerHandshakeSession game, WorldFrameIngress? ingress)
+    {
+        try
+        {
+            if (ingress is not null)
+            {
+                await ingress.DisposeAsync().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            await game.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    private void ApplyWorldFrame(ReadOnlyMemory<byte> packet)
+    {
+        WorldInboundState state = _worldInboundState ??
+            throw new InvalidOperationException("World inbound state is not active.");
+        if (state.Apply(packet) && _worldScene is { } scene)
+        {
+            ApplyWorldCamera(scene, state);
+        }
+    }
+
+    private static void ApplyWorldCamera(WorldMapScene scene, WorldInboundState state)
+    {
+        if (state.X >= scene.Map.CellGrid.Width || state.Y >= scene.Map.CellGrid.Height)
+        {
+            throw new InvalidDataException("GameServer corrected the hero to a tile outside the loaded map.");
+        }
+
+        scene.SetCameraTile(state.X, state.Y);
     }
 
     private void OnLoginRequested()
