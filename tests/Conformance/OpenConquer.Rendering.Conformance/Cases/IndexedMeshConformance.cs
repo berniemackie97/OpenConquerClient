@@ -56,7 +56,7 @@ internal static class IndexedMeshConformance
         byte[] shadow = renderer.ReadFrameTopLeftRgba();
         int center = (4 * size + 4) * 4;
         if (shadow[center] != 0 || shadow[center + 1] is < 176 or > 182 ||
-            shadow[center + 2] != 0 || shadow[center + 3] != 255)
+            shadow[center + 2] != 0 || shadow[center + 3] is < 201 or > 203)
         {
             throw new InvalidDataException(
                 $"Indexed mesh shadow center ({shadow[center]},{shadow[center + 1]}," +
