@@ -2,11 +2,10 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace OpenConquerStudio.Authoring;
+namespace OpenConquerStudio.Runtime;
 
-internal static class ProjectFiles
+internal static class AssetFileIO
 {
-    internal const string ManifestName = "project.ocstudio";
     internal const int MaximumManifestBytes = 1024 * 1024;
     private static readonly JsonSerializerOptions s_json = new()
     {
@@ -84,6 +83,21 @@ internal static class ProjectFiles
         finally
         {
             File.Delete(temporary);
+        }
+    }
+    internal static void ValidateName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 128 || name != name.Trim() || name.Any(char.IsControl))
+        {
+            throw new InvalidDataException("Names must contain 1–128 characters, without surrounding whitespace or control characters.");
+        }
+    }
+
+    internal static void ValidateDigest(string digest)
+    {
+        if (digest is null || digest.Length != 64 || digest.Any(c => c is not (>= '0' and <= '9' or >= 'a' and <= 'f')))
+        {
+            throw new InvalidDataException("Expected a lowercase SHA-256 digest.");
         }
     }
 }

@@ -52,6 +52,7 @@
           "OpenConquer.Networking": "[1.0.0, )",
           "OpenConquer.Platform": "[1.0.0, )",
           "OpenConquer.Rendering": "[1.0.0, )",
+          "OpenConquerStudio.ConquerRendering": "[1.0.0, )",
           "Silk.NET.OpenAL": "[2.23.0, )",
           "Silk.NET.OpenAL.Soft.Native": "[1.23.1, )"
         }
@@ -87,6 +88,13 @@
         "dependencies": {
           "OpenConquer.FreeType.Native": "[1.0.0, )",
           "Silk.NET.OpenGL": "[2.23.0, )"
+        }
+      },
+      "openconquerstudio.conquerrendering": {
+        "type": "Project",
+        "dependencies": {
+          "OpenConquer.Content": "[1.0.0, )",
+          "OpenConquer.Rendering": "[1.0.0, )"
         }
       },
       "openconquerstudio.imaging": {

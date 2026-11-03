@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="src/OpenConquerStudio.ConquerRendering/OpenConquerStudio.ConquerRendering.csproj" />
   <Folder Name="/src/">
     <Project Path="src/OpenConquer.Client/OpenConquer.Client.csproj" />
     <Project Path="src/OpenConquer.Content/OpenConquer.Content.csproj" />

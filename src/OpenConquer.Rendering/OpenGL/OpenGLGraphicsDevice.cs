@@ -38,6 +38,7 @@ public sealed class OpenGLGraphicsDevice : IDisposable
             }
 
             MaximumRenderTargetDimension = Math.Min(maxRenderbuffer, maxTexture);
+            MaximumTextureDimension = maxTexture;
             _gl = gl;
         }
         catch
@@ -80,6 +81,11 @@ public sealed class OpenGLGraphicsDevice : IDisposable
         get;
     }
 
+    public int MaximumTextureDimension
+    {
+        get;
+    }
+
     public OpenGLRenderer CreateRenderer(LogicalRenderSize logicalRenderSize, int framebufferWidth, int framebufferHeight, PresentationPolicy presentationPolicy = PresentationPolicy.Fit,
         RenderColorFormat colorFormat = RenderColorFormat.Rgb565)
     {
@@ -108,6 +114,10 @@ public sealed class OpenGLGraphicsDevice : IDisposable
     public OpenGLTexture2D CreateTexture2D(int width, int height, ReadOnlySpan<byte> rgbaPixels)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        if (width > MaximumTextureDimension || height > MaximumTextureDimension)
+        {
+            throw new ArgumentOutOfRangeException(nameof(width), "Texture dimensions exceed this graphics device's capacity.");
+        }
 
         return new OpenGLTexture2D(_gl, width, height, rgbaPixels);
     }

@@ -186,9 +186,9 @@ public sealed class ProjectWorkflowTests
         string json = File.ReadAllText(directory.Manifest);
         json = corruption switch
         {
-            "version" => json.Replace("\"schemaVersion\": 1", "\"schemaVersion\": 99", StringComparison.Ordinal),
-            "duplicate" => json.Replace("\"schemaVersion\": 1", "\"schemaVersion\": 1, \"schemaVersion\": 1", StringComparison.Ordinal),
-            "unknown" => json.Replace("\"schemaVersion\": 1", "\"schemaVersion\": 1, \"surprise\": 0", StringComparison.Ordinal),
+            "version" => json.Replace("\"schemaVersion\": 2", "\"schemaVersion\": 99", StringComparison.Ordinal),
+            "duplicate" => json.Replace("\"schemaVersion\": 2", "\"schemaVersion\": 2, \"schemaVersion\": 2", StringComparison.Ordinal),
+            "unknown" => json.Replace("\"schemaVersion\": 2", "\"schemaVersion\": 2, \"surprise\": 0", StringComparison.Ordinal),
             "null" => "null",
             _ => "{",
         };
@@ -360,7 +360,7 @@ public sealed class ProjectWorkflowTests
     public void AssetValidation_RejectsDuplicateIdentitiesAndUnsafeDigestPaths()
     {
         TextureAsset asset = new(Guid.NewGuid(), "Image", 1, 1, new string('a', 64), "created", new string('b', 64), false, 0);
-        ProjectDocument valid = new(1, Guid.NewGuid(), "Game", [asset]);
+        ProjectDocument valid = new(ProjectDocument.CurrentVersion, Guid.NewGuid(), "Game", [asset], [], []);
         valid.Validate();
         Assert.Throws<InvalidDataException>(() => (valid with { Assets = [asset, asset] }).Validate());
         Assert.Throws<InvalidDataException>(() => (valid with { Assets = [asset with { PixelDigest = "../../outside" }] }).Validate());
