@@ -29,13 +29,13 @@ public sealed class WorldAnimatedSceneryTests
             fixture.Map, [], index,
             new Dictionary<GameMapSceneryRecord, (int Width, int Height)>(),
             projection, 1000, 1000);
-        WorldScenerySprite sprite = Assert.Single(sprites.Where(s => ReferenceEquals(s.Source, record)));
+        WorldScenerySprite sprite = Assert.Single(sprites, s => ReferenceEquals(s.Source, record));
 
         ReadOnlySpan<byte> encoded = record.EncodedPayload.Span;
         int offsetX = BinaryPrimitives.ReadInt32LittleEndian(encoded[0x194..]);
         int offsetY = BinaryPrimitives.ReadInt32LittleEndian(encoded[0x198..]);
         Assert.Equal((400 - offsetX, 300 - offsetY), (sprite.X, sprite.Y));
-        Assert.Equal((record.TileX, record.TileY), (sprite.TileX, sprite.TileY));
+        Assert.Equal((record.TileX!.Value, record.TileY!.Value), (sprite.TileX, sprite.TileY));
         Assert.Equal(BinaryPrimitives.ReadInt32LittleEndian(encoded[0x18C..]), sprite.FootprintWidth);
         Assert.Equal(BinaryPrimitives.ReadInt32LittleEndian(encoded[0x190..]), sprite.FootprintHeight);
         Assert.Equal(0, sprite.FrameIndex);
