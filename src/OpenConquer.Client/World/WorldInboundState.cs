@@ -167,9 +167,13 @@ internal sealed class WorldInboundState
             {
                 HeroAttributes = updated;
             }
-            else if (_unhandledAttributes.Add(attributeId))
+            else
             {
-                Console.Error.WriteLine($"OpenConquer: world hero attribute {attributeId} is not implemented.");
+                uint diagnosticKey = attributeId is <= 54 or 128 ? attributeId : uint.MaxValue;
+                if (_unhandledAttributes.Add(diagnosticKey))
+                {
+                    Console.Error.WriteLine($"OpenConquer: world hero attribute {attributeId} is not implemented.");
+                }
             }
         }
     }

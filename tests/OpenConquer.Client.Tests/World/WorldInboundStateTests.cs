@@ -116,6 +116,30 @@ public sealed class WorldInboundStateTests
     }
 
     [Fact]
+    public void CharacterProgressionAndOverlayAttributesRemainDirectPacketState()
+    {
+        WorldInboundState state = CreateState();
+
+        Assert.False(state.Apply(Attributes(HeroId,
+            (7, 132, 0), (10, 23, 0), (12, 98, 0), (22, 2, 0), (43, 150, 0))));
+
+        WorldHeroAttributes stats = state.HeroAttributes;
+        Assert.Equal((132u, 23u, 98u, 2u, 150u),
+            (stats.Profession, stats.UnspentAttributePoints, stats.Level, stats.RebirthCount,
+                stats.OverlayLifeBonus));
+    }
+
+    [Fact]
+    public void UnsupportedHeroAttributeDoesNotOverwritePreviouslyVerifiedState()
+    {
+        WorldInboundState state = CreateState();
+
+        Assert.False(state.Apply(Attributes(HeroId, (128, ulong.MaxValue, ulong.MaxValue))));
+        Assert.Equal((70u, 20u), (state.HeroAttributes.CurrentLife, state.HeroAttributes.CurrentMana));
+        Assert.Equal((0ul, 0ul), (state.HeroAttributes.StatusLow, state.HeroAttributes.StatusHigh));
+    }
+
+    [Fact]
     public void AttributePacketsRejectMalformedCountsWithoutPartialChanges()
     {
         WorldInboundState state = CreateState();
