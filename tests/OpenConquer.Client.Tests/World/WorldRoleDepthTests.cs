@@ -1,6 +1,6 @@
 using System.Text;
 using OpenConquer.Content.Ani;
-using OpenConquerStudio.ConquerRendering;
+using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.Tests.World;
 

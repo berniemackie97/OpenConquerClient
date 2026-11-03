@@ -13,12 +13,13 @@ Windows, macOS, and Linux.
 
 ## OpenConquerStudio
 
-The unified development platform has a dedicated [Studio solution](OpenConquerStudio.slnx)
-and [short usage guide](docs/studio/README.md). It creates projects, imports textures and
-supported client artwork, authors sprite atlases and animations, previews them through the
-shared engine renderer, and compiles deterministic runtime content. The guide also covers
-opening an existing project and connecting compiled assets to a game. Client resource
-replacement remains a coordinated integration.
+OpenConquerStudio has its own content-authoring repository and solution.
+This client solution contains the game, launcher and required runtime/tooling libraries.
+Image decoders live in `OpenConquer.Content/Images`; world drawing lives in
+`OpenConquer.Rendering/World`. These are folders in the existing Content and Rendering projects.
+Studio keeps a recorded source snapshot of those two projects;
+its desktop application, authoring model, resource codecs and tools have separate ownership.
+See [Studio integration](docs/studio-integration.md) for the extraction boundary.
 
 ## Current Capabilities
 

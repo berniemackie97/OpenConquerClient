@@ -131,9 +131,16 @@
           "xunit.v3.runner.common": "[4.0.0]"
         }
       },
+      "openconquer.content": {
+        "type": "Project",
+        "dependencies": {
+          "SharpCompress": "[0.50.7, )"
+        }
+      },
       "openconquer.rendering": {
         "type": "Project",
         "dependencies": {
+          "OpenConquer.Content": "[1.0.0, )",
           "OpenConquer.FreeType.Native": "[1.0.0, )",
           "Silk.NET.OpenGL": "[2.23.0, )"
         }
@@ -143,6 +150,12 @@
         "requested": "[1.0.0, )",
         "resolved": "1.0.0",
         "contentHash": "f+/g37FZxN6IqRbULgTK2rVUU2rfOAZQi3+d/FoOTxNtfdSzZwP37AaE9MhtRtwV2UBDgsTTQz+SVxsPf6dTzg=="
+      },
+      "SharpCompress": {
+        "type": "CentralTransitive",
+        "requested": "[0.50.7, )",
+        "resolved": "0.50.7",
+        "contentHash": "amxjOlPKUFb33ohAVahPCCBHLtToYOOb6JGyM40q8DnT6KYoBLW1TtW6uLEXbv40S7ej6ikf6VmAXGBaFL6Klg=="
       },
       "Silk.NET.Core": {
         "type": "CentralTransitive",

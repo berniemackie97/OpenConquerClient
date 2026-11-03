@@ -1,7 +1,7 @@
 using OpenConquer.Client.World;
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Rendering.Presentation;
-using OpenConquerStudio.ConquerRendering;
+using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.Tests.World;
 

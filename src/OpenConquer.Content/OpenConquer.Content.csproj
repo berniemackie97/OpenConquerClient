@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <PackageReference Include="SharpCompress" />
-    <ProjectReference Include="../OpenConquerStudio.Imaging/OpenConquerStudio.Imaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,7 @@
 using OpenConquer.Content;
 using OpenConquer.Content.Map;
 using OpenConquer.Networking.Game.Login;
-using OpenConquerStudio.ConquerRendering;
+using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.World;
 
