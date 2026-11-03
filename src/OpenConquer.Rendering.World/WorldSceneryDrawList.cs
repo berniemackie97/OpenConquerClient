@@ -8,7 +8,25 @@ internal static class WorldSceneryDrawList
         IReadOnlyList<GameMapTerrainScenePlacement> terrain,
         WorldSceneryIndex scenery,
         IReadOnlyDictionary<GameMapSceneryRecord, (int Width, int Height)> frameExtents,
-        WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds)
+        WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds) =>
+        BuildCore(map, terrain, scenery, frameExtents, projection, nowMilliseconds,
+            sceneStartMilliseconds, null, out _);
+
+    internal static IReadOnlyList<WorldScenerySprite> BuildWithRole(GameMapContent map,
+        IReadOnlyList<GameMapTerrainScenePlacement> terrain,
+        WorldSceneryIndex scenery,
+        IReadOnlyDictionary<GameMapSceneryRecord, (int Width, int Height)> frameExtents,
+        WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds,
+        int tileX, int tileY, out int roleIndex) =>
+        BuildCore(map, terrain, scenery, frameExtents, projection, nowMilliseconds,
+            sceneStartMilliseconds, (tileX, tileY), out roleIndex);
+
+    private static IReadOnlyList<WorldScenerySprite> BuildCore(GameMapContent map,
+        IReadOnlyList<GameMapTerrainScenePlacement> terrain,
+        WorldSceneryIndex scenery,
+        IReadOnlyDictionary<GameMapSceneryRecord, (int Width, int Height)> frameExtents,
+        WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds,
+        (int X, int Y)? roleTile, out int roleIndex)
     {
         WorldSceneryDepthOrder order = new();
         foreach (GameMapSceneryAniBinding binding in scenery.Collect(projection))
@@ -42,7 +60,12 @@ internal static class WorldSceneryDrawList
             }
         }
 
-        return order.ToDrawList();
+        if (roleTile is { } tile)
+        {
+            order.InsertRole(tile.X, tile.Y);
+        }
+
+        return order.ToDrawList(out roleIndex);
     }
 
     private static void AppendAnimated(GameMapContent map, GameMapSceneryAniBinding binding,
