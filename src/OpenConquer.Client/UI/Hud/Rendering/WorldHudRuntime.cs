@@ -116,6 +116,13 @@ internal sealed class WorldHudRuntime : IDisposable
         _input.HandlePrimaryPointerReleased(_chromeAssets.HasDialogPanels, mapped, x, y);
     }
 
+    public void SetWorldValues(MainHudVitalsSnapshot vitals, int skillGauge, ulong experience)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _vitalsState.SetSnapshot(vitals);
+        _skillState.SetSnapshot(new MainHudSkillExperienceSnapshot(skillGauge, experience, 0));
+    }
+
     public void Draw(OpenGLRenderer renderer, DesktopWindow window)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

@@ -54,7 +54,10 @@ internal sealed class MainHudSkillExperienceRenderer : IDisposable
         }
 
         DrawSkill(renderer, snapshot.Skill, state.SkillSubVariant);
-        DrawExperience(renderer, snapshot);
+        if (snapshot.ExperienceMaximum > 0)
+        {
+            DrawExperience(renderer, snapshot);
+        }
     }
 
     public void Dispose()

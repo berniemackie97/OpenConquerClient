@@ -1,5 +1,6 @@
 using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
+using OpenConquer.Content.Tables;
 
 namespace OpenConquer.Content.Magic;
 
@@ -9,8 +10,6 @@ public sealed class MagicTypeFile
 
     private const int MaximumFileLength = 1024 * 1024;
     private const int SourceFieldCount = 48;
-    private const int CipherKeyLength = 128;
-    private const uint CipherSeed = 0x2537;
 
     private readonly Dictionary<uint, MagicTypeRecord> _records;
 
@@ -37,7 +36,7 @@ public sealed class MagicTypeFile
         }
 
         byte[] decoded = encodedFile.ToArray();
-        DecodeInPlace(decoded);
+        DelimitedTableCipher.DecodeInPlace(decoded);
 
         Dictionary<uint, MagicTypeRecord> records = [];
         int position = 0;
@@ -79,25 +78,6 @@ public sealed class MagicTypeFile
     {
         uint key = unchecked(type * 10 + level);
         return _records.TryGetValue(key, out record);
-    }
-
-    internal static void DecodeInPlace(Span<byte> bytes)
-    {
-        Span<byte> key = stackalloc byte[CipherKeyLength];
-        uint state = CipherSeed;
-
-        for (int index = 0; index < key.Length; index++)
-        {
-            state = unchecked(state * 214013 + 2531011);
-            key[index] = (byte)(state >> 16);
-        }
-
-        for (int index = 0; index < bytes.Length; index++)
-        {
-            byte value = (byte)(bytes[index] ^ key[index % CipherKeyLength]);
-            int rotation = index & 7;
-            bytes[index] = unchecked((byte)((value >> rotation) | (value << (8 - rotation))));
-        }
     }
 
     private static MagicTypeRecord ParseRecord(ReadOnlySpan<byte> line, int lineNumber)
