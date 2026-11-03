@@ -76,6 +76,7 @@ internal sealed class ClientApplication : IDisposable
     private WorldMapScene? _worldScene;
     private WorldRoleRenderer? _worldRole;
     private WorldRoleSources? _worldRoleSources;
+    private uint _appliedEquipmentRevision;
     private WorldHudRuntime? _worldHud;
     private bool _worldTexturesReady;
     private WorldMapTextureRenderer? _worldTextures;
@@ -363,6 +364,7 @@ internal sealed class ClientApplication : IDisposable
             _worldRole?.Dispose();
             _worldRole = null;
             _worldRoleSources = null;
+            _appliedEquipmentRevision = 0;
             _worldRenderer?.Dispose();
         }
         finally
@@ -503,6 +505,21 @@ internal sealed class ClientApplication : IDisposable
         }
 
         CompleteWorldLoad();
+
+        if (_worldScene is not null && _worldInboundState is { } equipmentState &&
+            equipmentState.EquipmentRevision != _appliedEquipmentRevision)
+        {
+            try
+            {
+                UpdateWorldRoleAppearance(equipmentState);
+                _appliedEquipmentRevision = equipmentState.EquipmentRevision;
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine($"OpenConquer: world character artwork is unavailable ({exception.Message}).");
+                ReturnToLogin();
+            }
+        }
 
         if (_loginErrors is { } messages)
         {
@@ -678,6 +695,7 @@ internal sealed class ClientApplication : IDisposable
                 _worldRole = WorldRoleRenderer.Load(source, graphicsDevice,
                     entry.Character.PackedAppearance, sources);
                 _worldRoleSources = sources;
+                _appliedEquipmentRevision = equipmentState.EquipmentRevision;
                 if (_worldRole is null)
                 {
                     Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");
@@ -721,6 +739,7 @@ internal sealed class ClientApplication : IDisposable
         _worldRole?.Dispose();
         _worldRole = null;
         _worldRoleSources = null;
+        _appliedEquipmentRevision = 0;
         _worldHud?.Dispose();
         _worldHud = null;
         _worldRenderer?.Dispose();
@@ -750,15 +769,9 @@ internal sealed class ClientApplication : IDisposable
     {
         WorldInboundState state = _worldInboundState ??
             throw new InvalidOperationException("World inbound state is not active.");
-        uint priorRevision = state.EquipmentRevision;
         if (state.Apply(packet) && _worldScene is { } scene)
         {
             ApplyWorldCamera(scene, state);
-        }
-
-        if (state.EquipmentRevision != priorRevision && _worldScene is not null)
-        {
-            UpdateWorldRoleAppearance(state);
         }
     }
 
