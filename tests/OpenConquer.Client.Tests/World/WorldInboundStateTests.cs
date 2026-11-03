@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using OpenConquer.Client.World;
 using OpenConquer.Networking.Game.Login;
+using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.Tests.World;
 
@@ -26,6 +27,36 @@ public sealed class WorldInboundStateTests
         Assert.False(state.Apply(Correction(HeroId, 62, 102)));
         Assert.Throws<InvalidDataException>(() => state.Apply(Correction(entityId: HeroId + 1, x: 63, y: 103)));
         Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
+    }
+
+    [Theory]
+    [InlineData(0, 61, 102)]
+    [InlineData(1, 60, 102)]
+    [InlineData(2, 60, 101)]
+    [InlineData(3, 60, 100)]
+    [InlineData(4, 61, 100)]
+    [InlineData(5, 62, 100)]
+    [InlineData(6, 62, 101)]
+    [InlineData(7, 62, 102)]
+    public void LocalWalkEchoAdvancesTheAuthoritativeTile(byte direction, ushort x, ushort y)
+    {
+        WorldInboundState state = CreateState();
+        byte[] packet = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(packet, HeroId, direction, movementTick: 100, mapState: 0);
+
+        Assert.True(state.Apply(packet));
+        Assert.Equal((x, y), (state.X, state.Y));
+    }
+
+    [Fact]
+    public void RemoteWalkDoesNotMoveTheLocalCamera()
+    {
+        WorldInboundState state = CreateState();
+        byte[] packet = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(packet, HeroId + 1, 6, movementTick: 100, mapState: 0);
+
+        Assert.False(state.Apply(packet));
+        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
     }
 
     [Fact]

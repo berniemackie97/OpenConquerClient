@@ -2,8 +2,10 @@ using System.Buffers.Binary;
 using System.Net.Sockets;
 using System.Text;
 using OpenConquer.Networking.Authentication;
+using OpenConquer.Networking.Game.Framing;
 using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Login;
+using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.Tests.Networking;
 
@@ -92,6 +94,16 @@ public sealed partial class GameServerHandshakeSessionTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
+
+        Task<GameSecuredInboundFrame?> echoed = game.ReadWorldFrameAsync(token);
+        await game.SendWorldWalkAsync(character.EntityId, 6, 0x01020304, 0x05060708, token);
+        using (GameSecuredInboundFrame walk = await echoed.WaitAsync(TimeSpan.FromSeconds(5), token) ??
+            throw new EndOfStreamException("GameServer closed before the walk acknowledgement."))
+        {
+            Assert.True(GameWalk10005.TryRead(walk.Packet.Span, out GameWalk10005 confirmed));
+            Assert.Equal((character.EntityId, (byte)6, 0x01020304u, 0x05060708u),
+                (confirmed.EntityId, confirmed.DirectionIndex, confirmed.MovementTick, confirmed.MapState));
+        }
 
         using CancellationTokenSource stopWorldRead = new();
         Task pending = game.ReadWorldFrameAsync(stopWorldRead.Token);
@@ -341,6 +353,11 @@ public sealed partial class GameServerHandshakeSessionTests
                 if (script == CreationScript.AcceptAndEnterWorld)
                 {
                     await WorldEntryPeerAsync(peer, token);
+                    byte[] walk = await peer.ReadPacketAsync(GameWalk10005.PacketLength, token);
+                    Assert.True(GameWalk10005.TryRead(walk, out GameWalk10005 request));
+                    Assert.Equal((0x11223344u, (byte)6, 0x01020304u, 0x05060708u),
+                        (request.EntityId, request.DirectionIndex, request.MovementTick, request.MapState));
+                    await peer.WritePacketsAsync(token, walk);
                 }
                 else if (script == CreationScript.StallWorldEntry)
                 {

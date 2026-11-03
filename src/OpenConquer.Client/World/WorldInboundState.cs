@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using OpenConquer.Networking.Game.Login;
+using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.World;
 
@@ -43,6 +44,31 @@ internal sealed class WorldInboundState
         }
 
         ushort type = BinaryPrimitives.ReadUInt16LittleEndian(data[2..]);
+        if (type == GameWalk10005.PacketType)
+        {
+            if (!GameWalk10005.TryRead(data, out GameWalk10005 walk))
+            {
+                throw new InvalidDataException("World walk packet is malformed.");
+            }
+
+            if (walk.EntityId != _heroId || walk.Selector == GameWalk10005.MountedSelector)
+            {
+                ReportUnhandled(type, 0);
+                return false;
+            }
+
+            (int dx, int dy) = walk.GetOrdinaryDelta();
+            int x = X + dx;
+            int y = Y + dy;
+            if ((uint)x > ushort.MaxValue || (uint)y > ushort.MaxValue)
+            {
+                throw new InvalidDataException("World walk acknowledgement has an invalid destination.");
+            }
+
+            (X, Y) = ((ushort)x, (ushort)y);
+            return true;
+        }
+
         if (type == GameWorldAction10010.PacketType)
         {
             if (!GameWorldAction10010.TryRead(data, out ushort action, out uint entityId,
