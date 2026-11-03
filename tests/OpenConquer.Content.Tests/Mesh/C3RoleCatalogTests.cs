@@ -59,12 +59,15 @@ public sealed class C3RoleCatalogTests
         "alt"u8.CopyTo(data.AsSpan(48));
         "new"u8.CopyTo(data.AsSpan(52));
 
-        Dictionary<ulong, string> paths = C3ResourcePathTable.ReadDualKey(data);
-        Assert.Equal("new", paths[(1UL << 32) | 100]);
-        Assert.Equal("alt", paths[(2UL << 32) | 100]);
+        Assert.True(C3ResourcePathTable.TryFindDualKey(data, (1UL << 32) | 100, out string first));
+        Assert.Equal("new", first);
+        Assert.True(C3ResourcePathTable.TryFindDualKey(data, (2UL << 32) | 100, out string second));
+        Assert.Equal("alt", second);
+        Assert.False(C3ResourcePathTable.TryFindDualKey(data, 42, out string missing));
+        Assert.Empty(missing);
 
         BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(40), 43);
-        Assert.Throws<InvalidDataException>(() => C3ResourcePathTable.ReadDualKey(data));
+        Assert.Throws<InvalidDataException>(() => C3ResourcePathTable.TryFindDualKey(data, (1UL << 32) | 100, out _));
     }
 
     [Fact]

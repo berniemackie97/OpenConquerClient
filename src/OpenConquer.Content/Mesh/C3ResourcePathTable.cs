@@ -32,7 +32,7 @@ internal static class C3ResourcePathTable
         return paths;
     }
 
-    internal static Dictionary<ulong, string> ReadDualKey(ReadOnlyMemory<byte> payload)
+    internal static bool TryFindDualKey(ReadOnlyMemory<byte> payload, ulong key, out string path)
     {
         ReadOnlySpan<byte> bytes = payload.Span;
         if (bytes.Length < 8 || BinaryPrimitives.ReadUInt32LittleEndian(bytes) != 0x42445352)
@@ -47,17 +47,26 @@ internal static class C3ResourcePathTable
             throw new InvalidDataException("C3 motion index exceeds its payload.");
         }
 
-        Dictionary<ulong, string> paths = new((int)count);
+        uint? foundOffset = null;
         for (int i = 0; i < count; i++)
         {
             int entry = 8 + i * 12;
             uint low = BinaryPrimitives.ReadUInt32LittleEndian(bytes[entry..]);
             uint high = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(entry + 4)..]);
-            uint offset = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(entry + 8)..]);
-            paths[((ulong)high << 32) | low] = ReadPath(bytes, offset, dataStart);
+            if (((ulong)high << 32 | low) == key)
+            {
+                foundOffset = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(entry + 8)..]);
+            }
         }
 
-        return paths;
+        if (foundOffset is { } offset)
+        {
+            path = ReadPath(bytes, offset, dataStart);
+            return true;
+        }
+
+        path = string.Empty;
+        return false;
     }
 
     private static string ReadPath(ReadOnlySpan<byte> bytes, uint offset, long dataStart)
