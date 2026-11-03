@@ -11,8 +11,8 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
     private readonly OpenGLDrawStateCleanup _cleanup;
     private OpenGLProgram? _program;
     private uint _sampler;
-    private int _textureUniform;
-    private int _matrixUniform;
+    private readonly int _textureUniform;
+    private readonly int _matrixUniform;
     private bool _disposed;
 
     internal OpenGLMeshRenderer(GL gl)
