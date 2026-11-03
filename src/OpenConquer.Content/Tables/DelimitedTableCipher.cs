@@ -2,10 +2,10 @@ namespace OpenConquer.Content.Tables;
 
 internal static class DelimitedTableCipher
 {
-    internal static void DecodeInPlace(Span<byte> bytes)
+    internal static void DecodeInPlace(Span<byte> bytes, uint seed)
     {
         Span<byte> key = stackalloc byte[128];
-        uint state = 0x2537;
+        uint state = seed;
 
         for (int index = 0; index < key.Length; index++)
         {

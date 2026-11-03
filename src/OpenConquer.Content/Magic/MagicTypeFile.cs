@@ -36,7 +36,7 @@ public sealed class MagicTypeFile
         }
 
         byte[] decoded = encodedFile.ToArray();
-        DelimitedTableCipher.DecodeInPlace(decoded);
+        DelimitedTableCipher.DecodeInPlace(decoded, 0x2537);
 
         Dictionary<uint, MagicTypeRecord> records = [];
         int position = 0;

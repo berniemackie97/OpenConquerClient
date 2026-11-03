@@ -3,6 +3,7 @@ using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Items;
 using OpenConquer.Content.Login;
 using OpenConquer.Content.Map;
+using OpenConquer.Content.Progression;
 using OpenConquer.Content.Role;
 
 namespace OpenConquer.Content;
@@ -65,6 +66,7 @@ public static class ClientContentClosure
             new(GameMapCatalog.RelativePath, ContentLookupMode.LooseOnly),
             new(ItemStatCatalog.ItemTypePath, ContentLookupMode.LooseOnly),
             new(ItemStatCatalog.ItemAddPath, ContentLookupMode.LooseOnly),
+            new(LevelExperienceTable.RelativePath, ContentLookupMode.LooseOnly),
             new(ControlAniPath, ContentLookupMode.LooseOnly),
         ];
 

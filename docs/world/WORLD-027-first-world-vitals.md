@@ -23,10 +23,10 @@ needed before opening that branch. The lifetime of status and equipment state
 remains tied to the authenticated world session.
 
 Still missing: refinement and soul-item mutations, nonzero packed life tier
-from world state, full transformation-state updates, live equipment packet
-application and the level-specific experience maximum. No inferred experience
-range is rendered. These gaps must be closed before declaring the complete
-HUD or equipment-derived stats production-ready.
+from world state, full transformation-state updates, and live equipment packet
+application. The level-specific experience maximum is supplied by the
+progression table in WORLD-028. The remaining gaps must be closed before
+declaring the complete HUD or equipment-derived stats production-ready.
 
 The UID mapping for equipment snapshot subtype 46 was corrected to slots
 1, 2, 3, 5, 4, 6, 7, 8, 9, 16, 15, 17, 18; the previous hand/accessory

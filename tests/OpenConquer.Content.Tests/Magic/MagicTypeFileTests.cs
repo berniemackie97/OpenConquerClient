@@ -12,7 +12,7 @@ public sealed class MagicTypeFileTests
     {
         byte[] encoded = Convert.FromHexString("9C0B8F7AD9B0421123538EF7500105A2356A1A667B0C1876");
 
-        DelimitedTableCipher.DecodeInPlace(encoded);
+        DelimitedTableCipher.DecodeInPlace(encoded, 0x2537);
 
         Assert.Equal("1000@@1000@@1@@Thunder@@", Encoding.ASCII.GetString(encoded));
     }
