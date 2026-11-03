@@ -41,6 +41,33 @@ public sealed class C3RoleCatalogTests
     }
 
     [Fact]
+    public void DualKeyIndexUsesBothKeyHalvesAndRetainsLatestDuplicate()
+    {
+        byte[] data = new byte[44 + 12];
+        BinaryPrimitives.WriteUInt32LittleEndian(data, 0x42445352);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(4), 3);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(8), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(12), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(16), 44);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(20), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(24), 2);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(28), 48);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(32), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(36), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(40), 52);
+        "old"u8.CopyTo(data.AsSpan(44));
+        "alt"u8.CopyTo(data.AsSpan(48));
+        "new"u8.CopyTo(data.AsSpan(52));
+
+        Dictionary<ulong, string> paths = C3ResourcePathTable.ReadDualKey(data);
+        Assert.Equal("new", paths[(1UL << 32) | 100]);
+        Assert.Equal("alt", paths[(2UL << 32) | 100]);
+
+        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(40), 43);
+        Assert.Throws<InvalidDataException>(() => C3ResourcePathTable.ReadDualKey(data));
+    }
+
+    [Fact]
     public void ReadsRoleConfigurationAndPartDescriptor()
     {
         byte[] config = new byte[12 + 0x220 + 0x24];

@@ -26,22 +26,54 @@ internal static class C3ResourcePathTable
             int entry = 8 + i * 8;
             uint key = BinaryPrimitives.ReadUInt32LittleEndian(bytes[entry..]);
             uint offset = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(entry + 4)..]);
-            if (offset < dataStart || offset >= bytes.Length)
-            {
-                throw new InvalidDataException("C3 resource path offset is outside its payload.");
-            }
-
-            ReadOnlySpan<byte> tail = bytes[(int)offset..];
-            int length = tail.IndexOf((byte)0);
-            if (length <= 0 || length > 255)
-            {
-                throw new InvalidDataException("C3 resource path has no bounded terminator.");
-            }
-
-            string path = Encoding.ASCII.GetString(tail[..length]);
-            paths[key] = path;
+            paths[key] = ReadPath(bytes, offset, dataStart);
         }
 
         return paths;
+    }
+
+    internal static Dictionary<ulong, string> ReadDualKey(ReadOnlyMemory<byte> payload)
+    {
+        ReadOnlySpan<byte> bytes = payload.Span;
+        if (bytes.Length < 8 || BinaryPrimitives.ReadUInt32LittleEndian(bytes) != 0x42445352)
+        {
+            throw new InvalidDataException("Invalid C3 motion path index.");
+        }
+
+        uint count = BinaryPrimitives.ReadUInt32LittleEndian(bytes[4..]);
+        long dataStart = 8L + count * 12L;
+        if (count > 1_000_000 || dataStart > bytes.Length)
+        {
+            throw new InvalidDataException("C3 motion index exceeds its payload.");
+        }
+
+        Dictionary<ulong, string> paths = new((int)count);
+        for (int i = 0; i < count; i++)
+        {
+            int entry = 8 + i * 12;
+            uint low = BinaryPrimitives.ReadUInt32LittleEndian(bytes[entry..]);
+            uint high = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(entry + 4)..]);
+            uint offset = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(entry + 8)..]);
+            paths[((ulong)high << 32) | low] = ReadPath(bytes, offset, dataStart);
+        }
+
+        return paths;
+    }
+
+    private static string ReadPath(ReadOnlySpan<byte> bytes, uint offset, long dataStart)
+    {
+        if (offset < dataStart || offset >= bytes.Length)
+        {
+            throw new InvalidDataException("C3 resource path offset is outside its payload.");
+        }
+
+        ReadOnlySpan<byte> tail = bytes[(int)offset..];
+        int length = tail.IndexOf((byte)0);
+        if (length <= 0 || length > 255)
+        {
+            throw new InvalidDataException("C3 resource path has no bounded terminator.");
+        }
+
+        return Encoding.ASCII.GetString(tail[..length]);
     }
 }

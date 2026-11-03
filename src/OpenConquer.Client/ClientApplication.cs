@@ -8,6 +8,7 @@ using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Client.UI.Login.Status;
+using OpenConquer.Client.UI.Hud.Rendering;
 using OpenConquer.Client.UI.Role;
 using OpenConquer.Client.World;
 using OpenConquer.Content;
@@ -65,6 +66,7 @@ internal sealed class ClientApplication : IDisposable
     private WorldMapLoad? _worldLoad;
     private WorldMapScene? _worldScene;
     private WorldRoleRenderer? _worldRole;
+    private WorldHudRuntime? _worldHud;
     private bool _worldTexturesReady;
     private WorldMapTextureRenderer? _worldTextures;
     private IClientContentSource? _roleContent;
@@ -332,6 +334,8 @@ internal sealed class ClientApplication : IDisposable
         _worldTextures = null;
         try
         {
+            _worldHud?.Dispose();
+            _worldHud = null;
             _worldRole?.Dispose();
             _worldRole = null;
             _worldRenderer?.Dispose();
@@ -486,6 +490,7 @@ internal sealed class ClientApplication : IDisposable
                 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
 
         bool worldVisible = IsWorldVisible;
+        _audio?.SetWorldActive(worldVisible);
         if (!worldVisible)
         {
             login.Advance(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
@@ -515,6 +520,7 @@ internal sealed class ClientApplication : IDisposable
             {
                 worldScene.Draw(_worldTextures!, frameRenderer,
                     _worldRole is null ? null : _drawWorldRole);
+                _worldHud?.Draw(frameRenderer, _window!);
             }
             else if (_role is { } role)
             {
@@ -612,6 +618,10 @@ internal sealed class ClientApplication : IDisposable
         _worldScene = null;
         _worldRole?.Dispose();
         _worldRole = null;
+        _worldHud?.Dispose();
+        _worldHud = null;
+        _worldRenderer?.Dispose();
+        _worldRenderer = null;
         if (game is not null)
         {
             _worldClosing = game.DisposeAsync().AsTask();
@@ -671,7 +681,7 @@ internal sealed class ClientApplication : IDisposable
         WorldMapScene scene = _worldScene ??
             throw new InvalidOperationException("World scene is unavailable.");
         (System.Numerics.Matrix4x4 main, System.Numerics.Matrix4x4 shadow) = scene.HeroMatrices;
-        role.Draw(renderer, main, shadow);
+        role.Draw(renderer, main, shadow, unchecked((uint)Environment.TickCount64));
     }
 
     private OpenGLRenderer GetWorldRenderer()
@@ -693,9 +703,25 @@ internal sealed class ClientApplication : IDisposable
 
         OpenGLRenderer next = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height,
             PresentationPolicy.Stretch, RenderColorFormat.Rgba8);
+        WorldHudRuntime nextHud;
+        try
+        {
+            IClientContentSource source = _roleContent ??
+                throw new InvalidOperationException("World content source is unavailable.");
+            nextHud = new WorldHudRuntime(source, device, size, magicHintSource: null);
+        }
+        catch
+        {
+            next.Dispose();
+            throw;
+        }
+
+        WorldHudRuntime? previousHud = _worldHud;
         OpenGLRenderer? previous = _worldRenderer;
         _worldRenderer = next;
+        _worldHud = nextHud;
         _worldRenderSize = size;
+        previousHud?.Dispose();
         previous?.Dispose();
         return next;
     }
@@ -710,6 +736,11 @@ internal sealed class ClientApplication : IDisposable
     {
         if (IsWorldVisible)
         {
+            if (_worldHud is { } hud && _worldRenderer is { } worldRenderer)
+            {
+                bool mapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+                hud.HandlePointerMoved(mapped, x, y);
+            }
             return;
         }
 
@@ -732,6 +763,11 @@ internal sealed class ClientApplication : IDisposable
     {
         if (IsWorldVisible)
         {
+            if (_worldHud is { } hud && _worldRenderer is { } worldRenderer)
+            {
+                bool mapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+                hud.HandlePrimaryPointerPressed(mapped, x, y);
+            }
             return;
         }
 
@@ -758,6 +794,11 @@ internal sealed class ClientApplication : IDisposable
     {
         if (IsWorldVisible)
         {
+            if (_worldHud is { } hud && _worldRenderer is { } worldRenderer)
+            {
+                bool mapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+                hud.HandlePrimaryPointerReleased(mapped, x, y);
+            }
             return;
         }
 

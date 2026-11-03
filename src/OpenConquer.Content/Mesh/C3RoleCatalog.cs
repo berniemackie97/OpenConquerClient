@@ -13,6 +13,8 @@ public sealed class C3RoleCatalog
     private readonly Dictionary<uint, string> _texturePaths;
     private readonly Dictionary<string, Dictionary<uint, C3PartDescriptor[]>> _meshes =
         new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Dictionary<ulong, string>> _motions =
+        new(StringComparer.Ordinal);
 
     private C3RoleCatalog(C3DatabaseArchive archive, C3RolePartTables configuration,
         Dictionary<uint, string> meshPaths, Dictionary<uint, string> texturePaths)
@@ -78,6 +80,33 @@ public sealed class C3RoleCatalog
 
         parts = result;
         return true;
+    }
+
+    public bool TryResolveMotionPath(string partName, ulong key, out string path)
+    {
+        if (_configuration.Sources.TryGetValue(partName, out C3RolePartSource source))
+        {
+            if (!_motions.TryGetValue(source.MotionDatabase, out Dictionary<ulong, string>? paths))
+            {
+                if (!_archive.TryRead(source.MotionDatabase, out ReadOnlyMemory<byte> payload))
+                {
+                    path = string.Empty;
+                    return false;
+                }
+
+                paths = C3ResourcePathTable.ReadDualKey(payload);
+                _motions.Add(source.MotionDatabase, paths);
+            }
+
+            if (paths.TryGetValue(key, out string? resolved))
+            {
+                path = resolved;
+                return true;
+            }
+        }
+
+        path = string.Empty;
+        return false;
     }
 
     public bool IsAttachmentMesh(string name) => _configuration.VirtualMeshNames.Contains(name);
