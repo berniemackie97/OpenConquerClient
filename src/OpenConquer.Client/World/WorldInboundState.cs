@@ -8,13 +8,21 @@ internal sealed class WorldInboundState
 {
     private readonly uint _heroId;
     private readonly HashSet<uint> _unhandled = [];
+    private readonly HashSet<uint> _unhandledAttributes = [];
 
     internal WorldInboundState(GameWorldEntrySnapshot world)
     {
         _heroId = world.Character.EntityId;
+        HeroAttributes = WorldHeroAttributes.FromCharacter(world.Character);
         X = world.X;
         Y = world.Y;
         Weather = (world.WeatherKind, 0, 0, 0);
+    }
+
+    internal WorldHeroAttributes HeroAttributes
+    {
+        get;
+        private set;
     }
 
     internal ushort X
@@ -97,6 +105,12 @@ internal sealed class WorldInboundState
             return false;
         }
 
+        if (type == 10017)
+        {
+            ApplyHeroAttributes(data);
+            return false;
+        }
+
         if (type == 1016)
         {
             if (data.Length != 20)
@@ -119,6 +133,49 @@ internal sealed class WorldInboundState
 
         ReportUnhandled(type, 0);
         return false;
+    }
+
+    private void ApplyHeroAttributes(ReadOnlySpan<byte> data)
+    {
+        const int headerLength = 12;
+        const int entryLength = 20;
+        if (data.Length < headerLength || (data.Length - headerLength) % entryLength != 0)
+        {
+            throw new InvalidDataException("World attribute packet has an invalid record layout.");
+        }
+
+        uint entityId = BinaryPrimitives.ReadUInt32LittleEndian(data[4..]);
+        uint count = BinaryPrimitives.ReadUInt32LittleEndian(data[8..]);
+        if (count != (uint)((data.Length - headerLength) / entryLength))
+        {
+            throw new InvalidDataException("World attribute record count does not match the packet length.");
+        }
+
+        if (entityId != _heroId)
+        {
+            ReportUnhandled(10017, 0);
+            return;
+        }
+
+        for (int offset = headerLength; offset < data.Length; offset += entryLength)
+        {
+            ReadOnlySpan<byte> entry = data.Slice(offset, entryLength);
+            uint attributeId = BinaryPrimitives.ReadUInt32LittleEndian(entry);
+            ulong low = BinaryPrimitives.ReadUInt64LittleEndian(entry[4..]);
+            ulong high = BinaryPrimitives.ReadUInt64LittleEndian(entry[12..]);
+            if (HeroAttributes.TryApply(attributeId, low, high, out WorldHeroAttributes updated))
+            {
+                HeroAttributes = updated;
+            }
+            else
+            {
+                uint diagnosticKey = attributeId is <= 54 or 128 ? attributeId : uint.MaxValue;
+                if (_unhandledAttributes.Add(diagnosticKey))
+                {
+                    Console.Error.WriteLine($"OpenConquer: world hero attribute {attributeId} is not implemented.");
+                }
+            }
+        }
     }
 
     private void ReportUnhandled(ushort type, ushort action)
