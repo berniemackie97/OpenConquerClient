@@ -51,13 +51,16 @@ internal static class C3PhyNormals
     {
         Dictionary<(long X, long Y, long Z), List<int>> cells = [];
         List<int> matches = [];
+        List<int> group = [];
         for (int i = 0; i < vertices.Length; i++)
         {
             Vector3 current = vertices[i].Position;
             (long X, long Y, long Z) cell = Cell(current);
             matches.Clear();
+            group.Clear();
             CollectEarlier(cells, cell, matches);
             matches.Sort();
+            Vector3 combined = normals[i];
 
             foreach (int previous in matches)
             {
@@ -69,8 +72,14 @@ internal static class C3PhyNormals
                     continue;
                 }
 
-                normals[i] = Normalize(normals[i] + normals[previous]);
-                normals[previous] = normals[i];
+                combined = Normalize(combined + normals[previous]);
+                group.Add(previous);
+            }
+
+            normals[i] = combined;
+            foreach (int previous in group)
+            {
+                normals[previous] = combined;
             }
 
             if (!cells.TryGetValue(cell, out List<int>? entries))

@@ -62,6 +62,23 @@ public sealed class C3PhyMeshReaderTests
     }
 
     [Fact]
+    public void SmoothingUpdatesEveryMatchedVertex()
+    {
+        C3PhyVertex[] vertices =
+        [
+            Vertex(0, 0, 0), Vertex(1, 0, 0), Vertex(0, 1, 0),
+            Vertex(0, 0, 0), Vertex(0, 1, 0), Vertex(0, 0, 1),
+            Vertex(0, 0, 0), Vertex(0, 0, 1), Vertex(1, 0, 0)
+        ];
+
+        C3PhyNormals.Generate(vertices, [0, 1, 2, 3, 4, 5, 6, 7, 8]);
+
+        Assert.Equal(vertices[0].Normal, vertices[3].Normal);
+        Assert.Equal(vertices[3].Normal, vertices[6].Normal);
+        Assert.NotEqual(Vector3.Zero, vertices[0].Normal);
+    }
+
+    [Fact]
     public void RejectsTruncatedPayloadAndInvalidIndices()
     {
         byte[] payload = Payload("PHY ");

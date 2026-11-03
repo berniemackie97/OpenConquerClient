@@ -25,7 +25,12 @@ public static class C3PhyMeshReader
 
         PayloadReader reader = new(section.Payload);
         int nameLength = reader.ReadCount();
-        string name = Encoding.Latin1.GetString(reader.Read(nameLength).Span).TrimEnd('\0');
+        string name = Encoding.Latin1.GetString(reader.Read(nameLength).Span);
+        int terminator = name.IndexOf('\0');
+        if (terminator >= 0)
+        {
+            name = name[..terminator];
+        }
         uint flags = reader.ReadUInt32();
         C3PhyVertex[] vertices = ReadVertices(ref reader, variant, stride);
         ushort[] indices = ReadIndices(ref reader, vertices.Length);
