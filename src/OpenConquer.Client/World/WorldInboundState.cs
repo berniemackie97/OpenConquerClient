@@ -46,7 +46,10 @@ internal sealed class WorldInboundState
         _needsEquipmentLifeClamp = false;
         if (maximumLife >= 0 && HeroAttributes.CurrentLife > (uint)maximumLife)
         {
-            HeroAttributes = HeroAttributes with { CurrentLife = (uint)maximumLife };
+            HeroAttributes = HeroAttributes with
+            {
+                CurrentLife = (uint)maximumLife,
+            };
         }
     }
 

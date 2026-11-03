@@ -577,6 +577,7 @@ internal sealed class ClientApplication : IDisposable
                     (int itemLife, int itemMana) = WorldHeroItemStats.Resolve(state.Equipment, catalog);
                     WorldHeroMaxStats maxima = WorldHeroMaxStats.Resolve(state.HeroAttributes,
                         itemLife, itemMana, entry.MapFlags, hasTransformLook: false, lifeTierDigit: 0);
+                    state.ApplyEquipmentLifeClamp(maxima.Life);
                     followers.Advance(state.HeroAttributes, maxima);
                     bool extended = (state.HeroAttributes.StatusLow & (1UL << 33)) != 0;
                     int maxStamina = extended ? 150 : 100;
@@ -677,7 +678,6 @@ internal sealed class ClientApplication : IDisposable
                 _worldRole = WorldRoleRenderer.Load(source, graphicsDevice,
                     entry.Character.PackedAppearance, sources);
                 _worldRoleSources = sources;
-                SynchronizeWorldEquipment(equipmentState);
                 if (_worldRole is null)
                 {
                     Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");
@@ -758,23 +758,15 @@ internal sealed class ClientApplication : IDisposable
 
         if (state.EquipmentRevision != priorRevision && _worldScene is not null)
         {
-            SynchronizeWorldEquipment(state);
+            UpdateWorldRoleAppearance(state);
         }
     }
 
-    private void SynchronizeWorldEquipment(WorldInboundState state)
+    private void UpdateWorldRoleAppearance(WorldInboundState state)
     {
         if (_worldEntry is not { } entry || _worldScene is null)
         {
             return;
-        }
-
-        if (_itemStats is { } catalog && entry.Character.TransformLookSourceId == 0)
-        {
-            (int life, int mana) = WorldHeroItemStats.Resolve(state.Equipment, catalog);
-            WorldHeroMaxStats maxima = WorldHeroMaxStats.Resolve(state.HeroAttributes, life, mana,
-                entry.MapFlags, hasTransformLook: false, lifeTierDigit: 0);
-            state.ApplyEquipmentLifeClamp(maxima.Life);
         }
 
         WorldRoleSources sources = WorldRoleSources.Resolve(
