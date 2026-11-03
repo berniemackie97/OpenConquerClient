@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using OpenConquer.Content.Encoding;
+using OpenConquer.Content.Tables;
 
 namespace OpenConquer.Content.Items;
 

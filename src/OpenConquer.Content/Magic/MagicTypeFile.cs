@@ -1,6 +1,6 @@
 using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
-using OpenConquer.Content.Encoding;
+using OpenConquer.Content.Tables;
 
 namespace OpenConquer.Content.Magic;
 

@@ -1,4 +1,4 @@
-namespace OpenConquer.Content.Encoding;
+namespace OpenConquer.Content.Tables;
 
 internal static class DelimitedTableCipher
 {
