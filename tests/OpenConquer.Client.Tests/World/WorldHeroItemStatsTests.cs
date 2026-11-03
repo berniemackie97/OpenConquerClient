@@ -27,6 +27,32 @@ public sealed class WorldHeroItemStatsTests
     }
 
     [Fact]
+    public void LiveDurabilityAndAdditionUpdatesChangeEffectiveContributions()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 120020, 40), Equipment(100)]);
+        ItemStatCatalog catalog = Catalog();
+
+        Assert.Equal((296, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] broken = Item(100, 120020, 0);
+        broken[16] = 3;
+        Assert.True(equipment.Apply(broken));
+        Assert.Equal((0, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] repaired = Item(100, 120020, 40);
+        repaired[16] = 3;
+        Assert.True(equipment.Apply(repaired));
+        Assert.Equal((296, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] remove = Equipment();
+        BinaryPrimitives.WriteUInt16LittleEndian(remove.AsSpan(12), 3);
+        BinaryPrimitives.WriteUInt32LittleEndian(remove.AsSpan(4), 100);
+        Assert.True(equipment.Apply(remove));
+        Assert.Equal((0, 0), WorldHeroItemStats.Resolve(equipment, catalog));
+    }
+
+    [Fact]
     public void NormalizesWeaponItemAdditionLookupByFamily()
     {
         Assert.Equal(444000u, WorldHeroItemStats.NormalizeAdditionType(410003));

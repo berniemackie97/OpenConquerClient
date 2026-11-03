@@ -16,7 +16,19 @@ The initial character-part resolver reads this same equipment state instead of
 parsing the hydration frames independently. Unresolved active equipment therefore
 does not prevent the world from using its base body and linked-hair appearance.
 
-This stage owns the initial equipment snapshot only. Live 1008/1009 equipment
-mutations, base item-type and ItemAdd stat lookup, refinement effects, and the
-effective HP/MP projection remain separate dependencies. The HUD must not use
-current HP/MP as inferred maximum values.
+The same bounded equipment store now receives live world packets. Item message
+1008 subtype 1 creates a tracked row, subtype 3 updates an existing tracked
+item's fields or placement, and system message 1009 subtype 3 removes an item
+by UID. System message 1009 subtype 46 replaces the active UID projection.
+All mutations are processed in received order on the world render thread.
+
+Durability, addition and enchantment updates become visible to the effective
+stat projection in the next frame. A changed equipped headwear or armor source
+replaces the local character render resources after the new resources load,
+so an unsuccessful load cannot discard the previous renderer. Subtype-46
+snapshots also clamp current life against the recalculated effective maximum.
+These operations remain scoped to authenticated local equipment.
+
+Other system-message item routing, soul-item/refinement state, item-status
+mutations and complete inventory state are not implemented. They require
+their own bounded state and wire-transaction integration.

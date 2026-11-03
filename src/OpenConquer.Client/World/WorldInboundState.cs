@@ -9,12 +9,17 @@ internal sealed class WorldInboundState
     private readonly uint _heroId;
     private readonly HashSet<uint> _unhandled = [];
     private readonly HashSet<uint> _unhandledAttributes = [];
+    private bool _needsEquipmentLifeClamp;
 
     internal WorldInboundState(GameWorldEntrySnapshot world)
     {
         _heroId = world.Character.EntityId;
         HeroAttributes = WorldHeroAttributes.FromCharacter(world.Character);
         Equipment = WorldHeroEquipment.FromHydration(world.HydrationPackets);
+        _needsEquipmentLifeClamp = world.HydrationPackets.Any(static packet =>
+            packet.Length == 88 &&
+            BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(2)) == 1009 &&
+            BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(12)) == 46);
         X = world.X;
         Y = world.Y;
         Weather = (world.WeatherKind, 0, 0, 0);
@@ -23,6 +28,26 @@ internal sealed class WorldInboundState
     internal WorldHeroEquipment Equipment
     {
         get;
+    }
+
+    internal uint EquipmentRevision
+    {
+        get;
+        private set;
+    }
+
+    internal void ApplyEquipmentLifeClamp(int maximumLife)
+    {
+        if (!_needsEquipmentLifeClamp)
+        {
+            return;
+        }
+
+        _needsEquipmentLifeClamp = false;
+        if (maximumLife >= 0 && HeroAttributes.CurrentLife > (uint)maximumLife)
+        {
+            HeroAttributes = HeroAttributes with { CurrentLife = (uint)maximumLife };
+        }
     }
 
     internal WorldHeroAttributes HeroAttributes
@@ -108,6 +133,20 @@ internal sealed class WorldInboundState
             }
 
             ReportUnhandled(type, action);
+            return false;
+        }
+
+        if (type is 1008 or 1009)
+        {
+            if (Equipment.Apply(data))
+            {
+                EquipmentRevision++;
+                if (type == 1009 && BinaryPrimitives.ReadUInt16LittleEndian(data[12..]) == 46)
+                {
+                    _needsEquipmentLifeClamp = true;
+                }
+            }
+
             return false;
         }
 

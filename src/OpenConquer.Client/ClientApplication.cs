@@ -75,6 +75,7 @@ internal sealed class ClientApplication : IDisposable
     private WorldMapLoad? _worldLoad;
     private WorldMapScene? _worldScene;
     private WorldRoleRenderer? _worldRole;
+    private WorldRoleSources? _worldRoleSources;
     private WorldHudRuntime? _worldHud;
     private bool _worldTexturesReady;
     private WorldMapTextureRenderer? _worldTextures;
@@ -361,6 +362,7 @@ internal sealed class ClientApplication : IDisposable
             _worldHud = null;
             _worldRole?.Dispose();
             _worldRole = null;
+            _worldRoleSources = null;
             _worldRenderer?.Dispose();
         }
         finally
@@ -674,6 +676,8 @@ internal sealed class ClientApplication : IDisposable
                     entry.Character.PackedAppearance, entry.Character.HairComposite, equipmentState.Equipment);
                 _worldRole = WorldRoleRenderer.Load(source, graphicsDevice,
                     entry.Character.PackedAppearance, sources);
+                _worldRoleSources = sources;
+                SynchronizeWorldEquipment(equipmentState);
                 if (_worldRole is null)
                 {
                     Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");
@@ -716,6 +720,7 @@ internal sealed class ClientApplication : IDisposable
         _worldScene = null;
         _worldRole?.Dispose();
         _worldRole = null;
+        _worldRoleSources = null;
         _worldHud?.Dispose();
         _worldHud = null;
         _worldRenderer?.Dispose();
@@ -745,10 +750,51 @@ internal sealed class ClientApplication : IDisposable
     {
         WorldInboundState state = _worldInboundState ??
             throw new InvalidOperationException("World inbound state is not active.");
+        uint priorRevision = state.EquipmentRevision;
         if (state.Apply(packet) && _worldScene is { } scene)
         {
             ApplyWorldCamera(scene, state);
         }
+
+        if (state.EquipmentRevision != priorRevision && _worldScene is not null)
+        {
+            SynchronizeWorldEquipment(state);
+        }
+    }
+
+    private void SynchronizeWorldEquipment(WorldInboundState state)
+    {
+        if (_worldEntry is not { } entry || _worldScene is null)
+        {
+            return;
+        }
+
+        if (_itemStats is { } catalog && entry.Character.TransformLookSourceId == 0)
+        {
+            (int life, int mana) = WorldHeroItemStats.Resolve(state.Equipment, catalog);
+            WorldHeroMaxStats maxima = WorldHeroMaxStats.Resolve(state.HeroAttributes, life, mana,
+                entry.MapFlags, hasTransformLook: false, lifeTierDigit: 0);
+            state.ApplyEquipmentLifeClamp(maxima.Life);
+        }
+
+        WorldRoleSources sources = WorldRoleSources.Resolve(
+            entry.Character.PackedAppearance, entry.Character.HairComposite, state.Equipment);
+        if (sources == _worldRoleSources)
+        {
+            return;
+        }
+
+        IClientContentSource content = _roleContent ??
+            throw new InvalidOperationException("World content source is unavailable.");
+        OpenGLGraphicsDevice graphicsDevice = _graphicsDevice ??
+            throw new InvalidOperationException("World graphics device is unavailable.");
+
+        WorldRoleRenderer? next = WorldRoleRenderer.Load(
+            content, graphicsDevice, entry.Character.PackedAppearance, sources);
+        WorldRoleRenderer? previous = _worldRole;
+        _worldRole = next;
+        _worldRoleSources = sources;
+        previous?.Dispose();
     }
 
     private static void ApplyWorldCamera(WorldMapScene scene, WorldInboundState state)

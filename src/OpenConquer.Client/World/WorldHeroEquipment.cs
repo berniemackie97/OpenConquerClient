@@ -20,74 +20,111 @@ internal sealed class WorldHeroEquipment
         WorldHeroEquipment equipment = new();
         foreach (byte[] packet in packets)
         {
-            if (packet.Length < 4)
-            {
-                throw new InvalidDataException("World-entry equipment hydration contains an invalid packet header.");
-            }
-
-            switch (BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(2)))
-            {
-                case 1008:
-                    equipment.ApplyItemSnapshot(packet);
-                    break;
-                case 1009:
-                    equipment.ApplyActiveSnapshot(packet);
-                    break;
-            }
+            equipment.Apply(packet);
         }
 
         return equipment;
     }
 
-    private void ApplyItemSnapshot(ReadOnlySpan<byte> packet)
+    internal bool Apply(ReadOnlySpan<byte> packet)
+    {
+        if (packet.Length < 4 || BinaryPrimitives.ReadUInt16LittleEndian(packet) != packet.Length)
+        {
+            throw new InvalidDataException("Equipment packet has an invalid header.");
+        }
+
+        return BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) switch
+        {
+            1008 => ApplyItem(packet),
+            1009 => ApplyTick(packet),
+            _ => false,
+        };
+    }
+
+    private bool ApplyItem(ReadOnlySpan<byte> packet)
     {
         if (packet.Length != 68)
         {
-            throw new InvalidDataException("World-entry item snapshot has an invalid length.");
+            throw new InvalidDataException("Item snapshot has an invalid length.");
         }
 
-        if (packet[16] != 1)
+        byte kind = packet[16];
+        if (kind is not 1 and not 3)
         {
-            return;
+            return false;
         }
 
         uint id = BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]);
         uint typeId = BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]);
         if (id == 0 || typeId == 0)
         {
-            throw new InvalidDataException("World-entry item snapshot has an invalid identity.");
+            throw new InvalidDataException("Item snapshot has an invalid identity.");
+        }
+
+        int previous = FindTrackedPosition(id);
+        if (kind == 3 && previous == 0)
+        {
+            return false;
         }
 
         byte position = packet[18];
+        if (kind == 3 && position == 0)
+        {
+            return RemoveItem(id);
+        }
+
         if (position is 0 or 19 or 20 or >= 30)
         {
-            return;
+            return false;
         }
 
         WorldHeroItem item = new(id, typeId,
             BinaryPrimitives.ReadUInt16LittleEndian(packet[12..]), packet[33], packet[36]);
+
+        if (previous != 0 && previous != position)
+        {
+            _tracked[previous] = null;
+            ClearActive(id);
+        }
+
         _tracked[position] = item;
+        for (int slot = 1; slot < _active.Length; slot++)
+        {
+            if (_active[slot] is { } active && active.Id == id)
+            {
+                _active[slot] = item;
+            }
+        }
+
         if (position is (>= 10 and <= 12) or (>= 15 and <= 18))
         {
             _active[position] = item;
         }
+
+        return true;
     }
 
-    private void ApplyActiveSnapshot(ReadOnlySpan<byte> packet)
+    private bool ApplyTick(ReadOnlySpan<byte> packet)
     {
         if (packet.Length < 14)
         {
-            throw new InvalidDataException("World-entry equipment packet is truncated.");
+            throw new InvalidDataException("Equipment packet is truncated.");
         }
 
-        if (BinaryPrimitives.ReadUInt16LittleEndian(packet[12..]) != 46)
+        ushort subtype = BinaryPrimitives.ReadUInt16LittleEndian(packet[12..]);
+        if (subtype is not 3 and not 46)
         {
-            return;
+            return false;
         }
 
         if (packet.Length != 88)
         {
-            throw new InvalidDataException("World-entry active-equipment snapshot has an invalid length.");
+            throw new InvalidDataException("Equipment mutation has an invalid length.");
+        }
+
+        if (subtype == 3)
+        {
+            return RemoveItem(BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]));
         }
 
         ReadOnlySpan<byte> slots = SnapshotSlots;
@@ -96,18 +133,50 @@ internal sealed class WorldHeroEquipment
             uint id = BinaryPrimitives.ReadUInt32LittleEndian(packet[(32 + i * 4)..]);
             _active[slots[i]] = id == 0 ? null : FindTracked(id);
         }
+
+        return true;
     }
 
-    private WorldHeroItem? FindTracked(uint id)
+    private bool RemoveItem(uint id)
+    {
+        int position = FindTrackedPosition(id);
+        if (position == 0)
+        {
+            return false;
+        }
+
+        _tracked[position] = null;
+        ClearActive(id);
+        return true;
+    }
+
+    private void ClearActive(uint id)
+    {
+        for (int slot = 1; slot < _active.Length; slot++)
+        {
+            if (_active[slot] is { } item && item.Id == id)
+            {
+                _active[slot] = null;
+            }
+        }
+    }
+
+    private int FindTrackedPosition(uint id)
     {
         for (int position = 1; position < _tracked.Length; position++)
         {
             if (_tracked[position] is { } item && item.Id == id)
             {
-                return item;
+                return position;
             }
         }
 
-        return null;
+        return 0;
+    }
+
+    private WorldHeroItem? FindTracked(uint id)
+    {
+        int position = FindTrackedPosition(id);
+        return position == 0 ? null : _tracked[position];
     }
 }
