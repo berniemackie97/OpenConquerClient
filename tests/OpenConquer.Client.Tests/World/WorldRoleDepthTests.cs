@@ -25,7 +25,7 @@ public sealed class WorldRoleDepthTests
     {
         WorldSceneryDepthOrder order = new();
         order.Insert(Sprite(80, 80), terrain: true);
-        order.InsertRole(79, 80);
+        order.InsertRole(80, 80);
 
         IReadOnlyList<WorldScenerySprite> drawn = order.ToDrawList(out int heroIndex);
 

@@ -58,7 +58,9 @@ internal static class IndexedMeshConformance
         if (shadow[center] != 0 || shadow[center + 1] is < 176 or > 182 ||
             shadow[center + 2] != 0 || shadow[center + 3] != 255)
         {
-            throw new InvalidDataException("Indexed mesh shadow did not blend over the main geometry.");
+            throw new InvalidDataException(
+                $"Indexed mesh shadow center ({shadow[center]},{shadow[center + 1]}," +
+                $"{shadow[center + 2]},{shadow[center + 3]}) did not blend over the main geometry.");
         }
 
         renderer.EndFrame();
