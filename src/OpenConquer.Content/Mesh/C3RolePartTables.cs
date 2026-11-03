@@ -11,11 +11,15 @@ internal readonly record struct C3PartDescriptor(
 
 internal sealed class C3RolePartTables
 {
-    internal Dictionary<string, C3RolePartSource> Sources { get; } =
-        new(StringComparer.Ordinal);
+    internal Dictionary<string, C3RolePartSource> Sources
+    {
+        get;
+    } = new(StringComparer.Ordinal);
 
-    internal HashSet<string> VirtualMeshNames { get; } =
-        new(StringComparer.Ordinal);
+    internal HashSet<string> VirtualMeshNames
+    {
+        get;
+    } = new(StringComparer.Ordinal);
 
     internal static C3RolePartTables Read(ReadOnlySpan<byte> bytes)
     {

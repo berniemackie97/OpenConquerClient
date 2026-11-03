@@ -43,10 +43,10 @@ internal sealed class C3DatabaseArchive
 
         uint[] crypt = CreateCryptTable();
         Dictionary<string, ReadOnlyMemory<byte>> entries = new(StringComparer.OrdinalIgnoreCase);
+        Span<byte> decoded = stackalloc byte[DescriptorLength];
         for (int i = 0; i < count; i++)
         {
             ReadOnlySpan<byte> bytes = data.AsSpan((int)tableOffset + i * DescriptorLength, DescriptorLength);
-            Span<byte> decoded = stackalloc byte[DescriptorLength];
             DecryptDescriptor(bytes, decoded, crypt);
             uint hash = BinaryPrimitives.ReadUInt32LittleEndian(decoded);
             uint offset = BinaryPrimitives.ReadUInt32LittleEndian(decoded[4..]);
