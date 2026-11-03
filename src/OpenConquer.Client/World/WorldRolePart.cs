@@ -22,7 +22,10 @@ internal sealed class WorldRolePart : IDisposable
         FrameCount = frameCount;
     }
 
-    internal uint FrameCount { get; }
+    internal uint FrameCount
+    {
+        get;
+    }
 
     internal static WorldRolePart Load(IClientContentSource source, OpenGLGraphicsDevice device,
         C3RoleCatalog catalog, C3ResolvedPart part, string? actionMotionPath = null)
