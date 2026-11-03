@@ -5,8 +5,11 @@ namespace OpenConquer.Content.Map;
 
 public sealed record GameMapExitMarker(int Field0, int Field1, int Field2);
 
+public sealed record GameMapSceneryAnimation(int FootprintWidth, int FootprintHeight,
+    int RenderOffsetX, int RenderOffsetY, int FrameIntervalMilliseconds);
+
 public sealed record GameMapSceneryRecord(int TypeCode, string? ResourcePath, string? PartName,
-    int? TileX, int? TileY, ReadOnlyMemory<byte> EncodedPayload);
+    int? TileX, int? TileY, ReadOnlyMemory<byte> EncodedPayload, GameMapSceneryAnimation? Animation = null);
 
 public abstract record GameMapPositionedOverlayEntry;
 
@@ -92,7 +95,16 @@ public sealed class GameMapSceneSections
                 4 => BinaryPrimitives.ReadInt32LittleEndian(payload[0x188..]),
                 _ => null,
             };
-            scenery[i] = new GameMapSceneryRecord(typeCode, resourcePath, partName, x, y, payload.ToArray());
+            GameMapSceneryAnimation? animation = typeCode == 4
+                ? new GameMapSceneryAnimation(
+                    BinaryPrimitives.ReadInt32LittleEndian(payload[0x18C..]),
+                    BinaryPrimitives.ReadInt32LittleEndian(payload[0x190..]),
+                    BinaryPrimitives.ReadInt32LittleEndian(payload[0x194..]),
+                    BinaryPrimitives.ReadInt32LittleEndian(payload[0x198..]),
+                    BinaryPrimitives.ReadInt32LittleEndian(payload[0x19C..]))
+                : null;
+            scenery[i] = new GameMapSceneryRecord(typeCode, resourcePath, partName,
+                x, y, payload.ToArray(), animation);
         }
 
         int overlayCount = reader.ReadCount(8);

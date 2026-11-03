@@ -17,7 +17,7 @@ public sealed class WorldMapSceneTests
     public void NewbieVillage_FirstFrameOrdersBackdropGroundAndTerrain()
     {
         using WorldMapFixture fixture = new();
-        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], 60, 108, 100, 1000);
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
 
         IReadOnlyList<WorldMapLayer> layers = scene.BuildFrame(800, 600, 1000);
 
@@ -26,7 +26,7 @@ public sealed class WorldMapSceneTests
         Assert.NotEmpty(layers[1].Puzzle!);
         Assert.Null(layers[2].Puzzle);
         Assert.Null(layers[3].Puzzle);
-        Assert.NotNull(layers[4].Terrain);
+        Assert.NotNull(layers[4].Scenery);
         Assert.Null(layers[5].Puzzle);
 
         (int x, int y) = WorldCameraProjection.ProjectTile(fixture.Map, 60, 108);
@@ -42,21 +42,21 @@ public sealed class WorldMapSceneTests
     public void MissingGroundPuzzle_LeavesGroundLayerEmptyAndKeepsOtherLayers()
     {
         using WorldMapFixture fixture = new(missingGround: true);
-        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], 60, 108, 100, 1000);
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
 
         IReadOnlyList<WorldMapLayer> layers = scene.BuildFrame(800, 600, 1000);
 
         Assert.Null(fixture.Puzzles.Ground);
         Assert.Empty(layers[1].Puzzle!);
         Assert.NotEmpty(layers[0].Puzzle!);
-        Assert.NotNull(layers[4].Terrain);
+        Assert.NotNull(layers[4].Scenery);
     }
 
     [Fact]
     public void PositionedPuzzle_AdvancesWithItsOwnFrameClock()
     {
         using WorldMapFixture fixture = new(twoFrameBackdrop: true);
-        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], 60, 108, 100, 1000);
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
 
         IReadOnlyList<WorldPuzzleTile> first = scene.BuildFrame(800, 600, 1000)[0].Puzzle!;
         IReadOnlyList<WorldPuzzleTile> second = scene.BuildFrame(800, 600, 1100)[0].Puzzle!;
