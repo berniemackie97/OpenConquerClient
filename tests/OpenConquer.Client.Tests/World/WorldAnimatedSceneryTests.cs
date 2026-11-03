@@ -65,12 +65,12 @@ public sealed class WorldAnimatedSceneryTests
         WorldScenerySprite behind = new(binding.Animation, 0, 0, 0, 256, 256, x - 1, y - 1, 1, 1);
         WorldScenerySprite animated = new(binding.Animation, 0, 0, 0, 256, 256, x, y, 2, 2, binding.Scenery);
         WorldScenerySprite inFront = new(binding.Animation, 0, 0, 0, 256, 256, x + 1, y + 1, 1, 1);
-        List<WorldScenerySprite> active = [];
-        WorldSceneryDepthOrder.Insert(active, animated);
-        WorldSceneryDepthOrder.Insert(active, inFront);
-        WorldSceneryDepthOrder.Insert(active, behind);
+        WorldSceneryDepthOrder order = new();
+        order.Insert(animated);
+        order.Insert(inFront);
+        order.Insert(behind);
 
-        Assert.Equal([behind, animated, inFront], active);
+        Assert.Equal([behind, animated, inFront], order.ToDrawList());
     }
 
     [Fact]
@@ -80,9 +80,77 @@ public sealed class WorldAnimatedSceneryTests
         GameMapSceneryAniBinding binding = fixture.Scenery[0];
         WorldScenerySprite earlier = new(binding.Animation, 0, 0, 0, 256, 256, 70, 70, 2, 2);
         WorldScenerySprite later = new(binding.Animation, 0, 1, 1, 256, 256, 70, 70, 2, 2);
-        List<WorldScenerySprite> active = [];
-        WorldSceneryDepthOrder.Insert(active, earlier);
-        WorldSceneryDepthOrder.Insert(active, later);
-        Assert.Equal([earlier, later], active);
+        WorldSceneryDepthOrder order = new();
+        order.Insert(earlier);
+        order.Insert(later);
+        Assert.Equal([earlier, later], order.ToDrawList());
     }
+    [Fact]
+    public void TerrainFootprintCapturesLaterSpriteWithoutReorderingPeers()
+    {
+        using WorldMapFixture fixture = new();
+        var animation = fixture.Scenery[0].Animation;
+        WorldScenerySprite terrain = new(animation, 0, 0, 0, 256, 256, 70, 70, 4, 4);
+        WorldScenerySprite peer = new(animation, 0, 0, 0, 256, 256, 71, 71, 1, 1);
+        WorldScenerySprite child = new(animation, 0, 0, 0, 256, 256, 67, 70, 1, 1);
+        WorldSceneryDepthOrder order = new();
+
+        order.Insert(terrain, terrain: true);
+        order.Insert(peer);
+        order.Insert(child);
+
+        Assert.Equal([terrain, child, peer], order.ToDrawList());
+    }
+
+    [Fact]
+    public void AdoptedChildrenUseAxisOrderingAndRetainEqualDepthTies()
+    {
+        using WorldMapFixture fixture = new();
+        var animation = fixture.Scenery[0].Animation;
+        WorldScenerySprite terrain = new(animation, 0, 0, 0, 256, 256, 70, 70, 4, 4);
+        WorldScenerySprite right = new(animation, 0, 0, 0, 256, 256, 70, 70, 1, 1);
+        WorldScenerySprite left = new(animation, 0, 0, 0, 256, 256, 68, 70, 1, 1);
+        WorldScenerySprite middle = new(animation, 0, 0, 0, 256, 256, 69, 70, 1, 1);
+        WorldSceneryDepthOrder order = new();
+
+        order.Insert(terrain, terrain: true);
+        order.Insert(right);
+        order.Insert(middle);
+        order.Insert(left);
+
+        Assert.Equal([terrain, left, middle, right], order.ToDrawList());
+    }
+
+    [Fact]
+    public void TerrainFootprintExcludesItsLowerTileBoundary()
+    {
+        using WorldMapFixture fixture = new();
+        var animation = fixture.Scenery[0].Animation;
+        WorldScenerySprite terrain = new(animation, 0, 0, 0, 256, 256, 70, 70, 4, 4);
+        WorldScenerySprite outside = new(animation, 0, 0, 0, 256, 256, 66, 70, 1, 1);
+        WorldScenerySprite inside = new(animation, 0, 0, 0, 256, 256, 67, 70, 1, 1);
+        WorldSceneryDepthOrder order = new();
+
+        order.Insert(terrain, terrain: true);
+        order.Insert(outside);
+        order.Insert(inside);
+
+        Assert.Equal([outside, terrain, inside], order.ToDrawList());
+    }
+
+    [Fact]
+    public void TerrainDoesNotRetroactivelyAdoptAnAlreadyActiveSprite()
+    {
+        using WorldMapFixture fixture = new();
+        var animation = fixture.Scenery[0].Animation;
+        WorldScenerySprite child = new(animation, 0, 0, 0, 256, 256, 67, 70, 1, 1);
+        WorldScenerySprite terrain = new(animation, 0, 0, 0, 256, 256, 70, 70, 4, 4);
+        WorldSceneryDepthOrder order = new();
+
+        order.Insert(child);
+        order.Insert(terrain, terrain: true);
+
+        Assert.Equal([child, terrain], order.ToDrawList());
+    }
+
 }

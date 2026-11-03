@@ -73,15 +73,24 @@ The map's configured animated scenery resolves through the shared ANI loader. Th
 indexes static sprite anchors into 256-pixel buckets, selects visible buckets, checks
 both sprite-offset and anchor visibility, and orders those sprites with terrain objects.
 Frame dimensions refine the initial visibility margin after texture preparation.
-Positioned animated overlays, the local hero, HUD, ongoing world packets, movement,
-and remaining scenery kinds are not drawn yet. Those must join the same scene ordering
-rather than introduce separate drawing passes. The current frame remains an
-authenticated map presentation, not a playable world.
+The shared depth pass keeps terrain objects as footprint parents. A sprite activated
+after a terrain object is adopted when its tile lies inside that terrain footprint;
+adopted sprites render immediately after their parent in their own axis-aware order.
+Previously activated sprites stay in the top-level order.
+
+Positioned animated-overlay entries are parsed but not drawn. The verified map
+catalog has no such animated children; Newbie Village's positioned overlay is
+a puzzle background already drawn in component order. The local hero, HUD,
+ongoing world packets, movement, and remaining scenery kinds are not drawn yet.
+These must join the existing scene pass rather than introduce separate drawing
+systems. The current frame remains an authenticated map presentation, not a
+playable world.
 
 ## Verification
 
 The world tests verify first-frame layer insertion order, the hero-centered projection,
 independent puzzle frame advancement, animation binding, spatial bucket selection,
-sprite projection, and shared scenery depth insertion. Content tests verify interval parsing and the
+sprite projection, shared scenery depth insertion, terrain-footprint adoption, and child ordering.
+Content tests verify interval parsing and the
 default. Validate the source assets with the map puzzle and terrain-scene content tools
 before a local end-to-end smoke test.

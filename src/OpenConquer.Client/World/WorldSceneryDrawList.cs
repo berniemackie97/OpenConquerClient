@@ -10,10 +10,10 @@ internal static class WorldSceneryDrawList
         IReadOnlyDictionary<GameMapSceneryRecord, (int Width, int Height)> frameExtents,
         WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds)
     {
-        List<WorldScenerySprite> sprites = [];
+        WorldSceneryDepthOrder order = new();
         foreach (GameMapSceneryAniBinding binding in scenery.Collect(projection))
         {
-            AppendAnimated(map, binding, frameExtents, projection, nowMilliseconds, sceneStartMilliseconds, sprites);
+            AppendAnimated(map, binding, frameExtents, projection, nowMilliseconds, sceneStartMilliseconds, order);
         }
 
         foreach (GameMapTerrainScenePlacement placement in terrain)
@@ -36,19 +36,19 @@ internal static class WorldSceneryDrawList
                 uint interval = (uint)Math.Max(1, item.FrameIntervalMilliseconds);
                 int frameIndex = (int)((unchecked(nowMilliseconds - sceneStartMilliseconds) / interval) %
                     (uint)binding.Animation.FrameCount);
-                WorldSceneryDepthOrder.Insert(sprites, new WorldScenerySprite(binding.Animation, frameIndex,
+                order.Insert(new WorldScenerySprite(binding.Animation, frameIndex,
                     x, y, projection.ScaleNumerator, projection.ScaleDenominator,
-                    tileX, tileY, item.GridWidth, item.GridHeight));
+                    tileX, tileY, item.GridWidth, item.GridHeight), terrain: true);
             }
         }
 
-        return sprites;
+        return order.ToDrawList();
     }
 
     private static void AppendAnimated(GameMapContent map, GameMapSceneryAniBinding binding,
         IReadOnlyDictionary<GameMapSceneryRecord, (int Width, int Height)> frameExtents,
         WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds,
-        List<WorldScenerySprite> sprites)
+        WorldSceneryDepthOrder order)
     {
         GameMapSceneryRecord record = binding.Scenery;
         GameMapSceneryAnimation animation = record.Animation ??
@@ -84,7 +84,7 @@ internal static class WorldSceneryDrawList
         (int x, int y) = ProjectSprite(projection, worldX, worldY, -offsetX, -offsetY);
         int frameIndex = (int)((unchecked(nowMilliseconds - sceneStartMilliseconds) / (uint)interval) %
             (uint)binding.Animation.FrameCount);
-        WorldSceneryDepthOrder.Insert(sprites, new WorldScenerySprite(binding.Animation, frameIndex,
+        order.Insert(new WorldScenerySprite(binding.Animation, frameIndex,
             x, y, projection.ScaleNumerator, projection.ScaleDenominator,
             tileX, tileY, width, height, record));
     }
