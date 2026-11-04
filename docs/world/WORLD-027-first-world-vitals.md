@@ -23,10 +23,10 @@ needed before opening that branch. The lifetime of status and equipment state
 remains tied to the authenticated world session.
 
 Still missing: refinement and soul-item mutations, nonzero packed life tier
-from world state, full transformation-state updates, and unhandled item
-routing/status subtypes. Live item create/update/removal and active-equipment
-snapshot inputs update equipped statistics and appearance, including the
-post-snapshot current-life cap. The level-specific experience maximum is
+from world state, full transformation-state updates, equipment-set switches
+and additional item status subtypes. Local item create/update, equipment
+equip/unequip/removal, durability and active-equipment snapshots update the
+equipped statistics and appearance, including the post-snapshot current-life cap. The level-specific experience maximum is
 supplied by the progression table in WORLD-028. The remaining gaps must
 be closed before declaring complete gameplay vitals production-ready.
 

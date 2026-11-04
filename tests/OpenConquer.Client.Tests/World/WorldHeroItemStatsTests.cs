@@ -53,6 +53,39 @@ public sealed class WorldHeroItemStatsTests
     }
 
     [Fact]
+    public void EquippingAndBreakingAnInventoryItemRecomputesLifeAndMana()
+    {
+        byte[] inventory = Item(100, 120020, 40);
+        inventory[18] = 0;
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration([inventory]);
+        ItemStatCatalog catalog = Catalog();
+
+        Assert.Equal((0, 0), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] equip = Equipment();
+        BinaryPrimitives.WriteUInt16LittleEndian(equip.AsSpan(12), 5);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(4), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal((296, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] durability = Equipment();
+        BinaryPrimitives.WriteUInt16LittleEndian(durability.AsSpan(12), 17);
+        BinaryPrimitives.WriteUInt32LittleEndian(durability.AsSpan(8), 1);
+
+        Assert.True(equipment.Apply(durability));
+        Assert.Equal((0, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] unequip = Equipment();
+        BinaryPrimitives.WriteUInt16LittleEndian(unequip.AsSpan(12), 6);
+        BinaryPrimitives.WriteUInt32LittleEndian(unequip.AsSpan(8), 1);
+
+        Assert.True(equipment.Apply(unequip));
+        Assert.Equal((0, 0), WorldHeroItemStats.Resolve(equipment, catalog));
+    }
+
+    [Fact]
     public void NormalizesWeaponItemAdditionLookupByFamily()
     {
         Assert.Equal(444000u, WorldHeroItemStats.NormalizeAdditionType(410003));

@@ -202,6 +202,95 @@ public sealed class WorldHeroEquipmentTests
     }
 
     [Fact]
+    public void LiveEquipMovesInventoryItemIntoTheRequestedSlotAndDisplacesThePreviousItem()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Item(200, 1111010, placement: 0),
+                Equipment(headwear: 100)]);
+
+        byte[] equip = Tick(5, itemId: 200);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(20), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(84), 100);
+
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal(200u, equipment.GetActiveItem(1)?.Id);
+
+        byte[] unequip = Tick(6);
+        BinaryPrimitives.WriteUInt32LittleEndian(unequip.AsSpan(8), 1);
+        Assert.True(equipment.Apply(unequip));
+        Assert.Null(equipment.GetActiveItem(1));
+
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(4), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(20), 0);
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
+    }
+
+    [Fact]
+    public void LiveInventoryItemUpdateIsRetainedUntilEquipped()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 0)]);
+
+        byte[] update = Item(100, 1111000, placement: 0);
+        update[16] = 3;
+        BinaryPrimitives.WriteUInt16LittleEndian(update.AsSpan(12), 3);
+        Assert.True(equipment.Apply(update));
+
+        byte[] equip = Tick(5, itemId: 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal((ushort)3, equipment.GetActiveItem(1)?.Durability);
+    }
+
+    [Fact]
+    public void DurabilityUpdateChangesActiveItemWithoutReplacingItsIdentity()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
+        byte[] durability = Tick(17, itemId: 0);
+        BinaryPrimitives.WriteUInt32LittleEndian(durability.AsSpan(8), 1);
+
+        Assert.True(equipment.Apply(durability));
+        Assert.Equal(new WorldHeroItem(100, 1111000, 0, 2, 7), equipment.GetActiveItem(1));
+
+        Assert.False(equipment.Apply(durability));
+        Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
+    }
+
+    [Fact]
+    public void UnequippingTwoHandedWeaponAlsoClearsThePairedHand()
+    {
+        byte[] snapshot = Equipment();
+        BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(44), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(48), 200);
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 500003, placement: 4), Item(200, 410003, placement: 5), snapshot]);
+
+        byte[] unequip = Tick(6);
+        BinaryPrimitives.WriteUInt32LittleEndian(unequip.AsSpan(8), 4);
+
+        Assert.True(equipment.Apply(unequip));
+        Assert.Null(equipment.GetActiveItem(4));
+        Assert.Null(equipment.GetActiveItem(5));
+    }
+
+    [Fact]
+    public void MalformedDisplacementCountCannotApplyPartialEquipmentChanges()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Item(200, 1111010, placement: 0),
+                Equipment(headwear: 100)]);
+        byte[] equip = Tick(5, itemId: 200);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(20), 2);
+
+        Assert.Throws<InvalidDataException>(() => equipment.Apply(equip));
+        Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
+    }
+
+    [Fact]
     public void MalformedLiveMutationsLeaveExistingEquipmentUnchanged()
     {
         WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(

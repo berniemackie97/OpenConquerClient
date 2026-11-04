@@ -220,6 +220,40 @@ public sealed class WorldInboundStateTests
     }
 
     [Fact]
+    public void WorldIngressAppliesInventoryEquipmentAndDurabilityInPacketOrder()
+    {
+        WorldInboundState state = CreateState();
+        byte[] item = new byte[68];
+        BinaryPrimitives.WriteUInt16LittleEndian(item, 68);
+        BinaryPrimitives.WriteUInt16LittleEndian(item.AsSpan(2), 1008);
+        BinaryPrimitives.WriteUInt32LittleEndian(item.AsSpan(4), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(item.AsSpan(8), 120020);
+        BinaryPrimitives.WriteUInt16LittleEndian(item.AsSpan(12), 40);
+        item[16] = 1;
+
+        Assert.False(state.Apply(item));
+        Assert.Equal(1u, state.EquipmentRevision);
+        Assert.Null(state.Equipment.GetActiveItem(1));
+
+        byte[] equip = new byte[88];
+        BinaryPrimitives.WriteUInt16LittleEndian(equip, 88);
+        BinaryPrimitives.WriteUInt16LittleEndian(equip.AsSpan(2), 1009);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(4), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        BinaryPrimitives.WriteUInt16LittleEndian(equip.AsSpan(12), 5);
+
+        Assert.False(state.Apply(equip));
+        Assert.Equal(2u, state.EquipmentRevision);
+        Assert.Equal(100u, state.Equipment.GetActiveItem(1)?.Id);
+
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(4), 0);
+        BinaryPrimitives.WriteUInt16LittleEndian(equip.AsSpan(12), 17);
+        Assert.False(state.Apply(equip));
+        Assert.Equal(3u, state.EquipmentRevision);
+        Assert.Equal((ushort)0, state.Equipment.GetActiveItem(1)?.Durability);
+    }
+
+    [Fact]
     public void MalformedPacketHeaderIsRejectedBeforeDispatch()
     {
         WorldInboundState state = CreateState();
