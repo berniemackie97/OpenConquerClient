@@ -10,13 +10,23 @@ internal sealed class WorldRoleRenderer : IDisposable
     private readonly WorldRolePart _body;
     private readonly WorldRolePart? _armet;
     private readonly C3Motion? _armetAttachment;
+    private readonly WorldRolePart[] _rightWeapon;
+    private readonly WorldRolePart[] _leftWeapon;
+    private readonly C3Motion? _rightWeaponAttachment;
+    private readonly C3Motion? _leftWeaponAttachment;
     private readonly WorldRoleFrameClock _clock = new();
 
-    private WorldRoleRenderer(WorldRolePart body, WorldRolePart? armet, C3Motion? armetAttachment)
+    private WorldRoleRenderer(WorldRolePart body, WorldRolePart? armet, C3Motion? armetAttachment,
+        WorldRolePart[] rightWeapon, C3Motion? rightWeaponAttachment,
+        WorldRolePart[] leftWeapon, C3Motion? leftWeaponAttachment)
     {
         _body = body;
         _armet = armet;
         _armetAttachment = armetAttachment;
+        _rightWeapon = rightWeapon;
+        _leftWeapon = leftWeapon;
+        _rightWeaponAttachment = rightWeaponAttachment;
+        _leftWeaponAttachment = leftWeaponAttachment;
     }
 
     internal static ulong InitialBodyMotionKey(uint packedAppearance) =>
@@ -38,6 +48,8 @@ internal sealed class WorldRoleRenderer : IDisposable
 
         WorldRolePart? body = null;
         WorldRolePart? armet = null;
+        WorldRolePart[] rightWeapon = [];
+        WorldRolePart[] leftWeapon = [];
         try
         {
             body = WorldRolePart.Load(source, device, catalog, bodySource, motionPath);
@@ -60,12 +72,62 @@ internal sealed class WorldRoleRenderer : IDisposable
                 }
             }
 
-            return new WorldRoleRenderer(body, armet, attachment);
+            (WorldRolePart[] loadedRight, C3Motion? rightAttachment) = LoadWeapon(
+                source, device, catalog, body, "r_weapon", "v_r_weapon", sources.RightWeaponModelId);
+            rightWeapon = loadedRight;
+            (WorldRolePart[] loadedLeft, C3Motion? leftAttachment) = LoadWeapon(
+                source, device, catalog, body, "l_weapon", "v_l_weapon", sources.LeftWeaponModelId);
+            leftWeapon = loadedLeft;
+            return new WorldRoleRenderer(body, armet, attachment,
+                rightWeapon, rightAttachment, leftWeapon, leftAttachment);
         }
         catch
         {
+            DisposeParts(leftWeapon);
+            DisposeParts(rightWeapon);
             armet?.Dispose();
             body?.Dispose();
+            throw;
+        }
+    }
+
+    private static (WorldRolePart[] Parts, C3Motion? Attachment) LoadWeapon(
+        IClientContentSource source, OpenGLGraphicsDevice device, C3RoleCatalog catalog,
+        WorldRolePart body, string name, string track, uint modelId)
+    {
+        if (modelId == 0)
+        {
+            return ([], null);
+        }
+
+        if (!catalog.TryResolve(name, modelId, out IReadOnlyList<C3ResolvedPart> sources))
+        {
+            Console.Error.WriteLine($"OpenConquer: character {name} model {modelId} is not present in the C3 catalog.");
+            return ([], null);
+        }
+
+        if (sources.Count == 0 || !body.TryGetAttachment(track, out C3Motion attachment))
+        {
+            throw new InvalidDataException($"The character {name} has an unsupported attachment layout.");
+        }
+
+        List<WorldRolePart> parts = new(sources.Count);
+        try
+        {
+            foreach (C3ResolvedPart part in sources)
+            {
+                parts.Add(WorldRolePart.Load(source, device, catalog, part));
+            }
+
+            return ([.. parts], attachment);
+        }
+        catch
+        {
+            foreach (WorldRolePart part in parts)
+            {
+                part.Dispose();
+            }
+
             throw;
         }
     }
@@ -96,10 +158,43 @@ internal sealed class WorldRoleRenderer : IDisposable
             armet.Draw(renderer, linked * main, frame);
             armet.DrawShadow(renderer, linked * shadow);
         }
+
+        DrawWeapon(renderer, main, shadow, frame, _rightWeapon, _rightWeaponAttachment);
+        DrawWeapon(renderer, main, shadow, frame, _leftWeapon, _leftWeaponAttachment);
+    }
+
+    private static void DrawWeapon(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow,
+        int frame, WorldRolePart[] parts, C3Motion? attachment)
+    {
+        if (parts.Length == 0)
+        {
+            return;
+        }
+
+        if (!C3MotionSampler.TrySampleBone(attachment, 0, frame, out Matrix4x4 linked))
+        {
+            throw new InvalidDataException("The character weapon attachment motion cannot be sampled.");
+        }
+
+        foreach (WorldRolePart part in parts)
+        {
+            part.Draw(renderer, linked * main, frame);
+            part.DrawShadow(renderer, linked * shadow);
+        }
+    }
+
+    private static void DisposeParts(WorldRolePart[] parts)
+    {
+        foreach (WorldRolePart part in parts)
+        {
+            part.Dispose();
+        }
     }
 
     public void Dispose()
     {
+        DisposeParts(_leftWeapon);
+        DisposeParts(_rightWeapon);
         _armet?.Dispose();
         _body.Dispose();
     }
