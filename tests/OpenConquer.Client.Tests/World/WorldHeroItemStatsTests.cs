@@ -144,7 +144,7 @@ public sealed class WorldHeroItemStatsTests
         return frame;
     }
 
-    private static byte[] Equipment(uint headwear)
+    private static byte[] Equipment(uint headwear = 0)
     {
         byte[] frame = new byte[88];
         BinaryPrimitives.WriteUInt16LittleEndian(frame, 88);
