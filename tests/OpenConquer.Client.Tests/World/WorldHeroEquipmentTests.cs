@@ -277,6 +277,24 @@ public sealed class WorldHeroEquipmentTests
     }
 
     [Fact]
+    public void InventoryCreateRejectsMoreThanFortyDistinctItemsWithoutCorruptingExistingItems()
+    {
+        List<byte[]> packets = [];
+        for (uint id = 1; id <= 40; id++)
+        {
+            packets.Add(Item(id, 120020, placement: 0));
+        }
+
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(packets);
+        Assert.Throws<InvalidDataException>(() => equipment.Apply(Item(41, 120020, placement: 0)));
+
+        byte[] equip = Tick(5, itemId: 40);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal(40u, equipment.GetActiveItem(1)?.Id);
+    }
+
+    [Fact]
     public void MalformedDisplacementCountCannotApplyPartialEquipmentChanges()
     {
         WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(

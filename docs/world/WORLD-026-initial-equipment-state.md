@@ -34,7 +34,8 @@ so an unsuccessful load cannot discard the previous renderer. Subtype-46
 snapshots also clamp current life against the recalculated effective maximum.
 These operations remain scoped to authenticated local equipment.
 
-The inventory UID table serves equipment transactions only: it is not a
-full bag, stack, slot-layout or item-interaction implementation. Equipment
+The inventory UID table enforces the forty-entry pack limit for new item
+identities and serves equipment transactions only: it is not a full bag,
+stack, slot-layout or item-interaction implementation. Equipment
 set-switch notifications, refinement and soul-item updates, other item
 status mutations, and outbound equipment requests are still outstanding.

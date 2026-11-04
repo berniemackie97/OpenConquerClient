@@ -7,6 +7,7 @@ internal readonly record struct WorldHeroItem(uint Id, uint TypeId, ushort Durab
 
 internal sealed class WorldHeroEquipment
 {
+    private const int InventoryCapacity = 40;
     private static ReadOnlySpan<byte> SnapshotSlots => [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 18];
 
     private readonly Dictionary<uint, WorldHeroItem> _inventory = [];
@@ -72,6 +73,11 @@ internal sealed class WorldHeroEquipment
         if (position is 19 or 20 or >= 30)
         {
             return false;
+        }
+
+        if (position == 0 && !_inventory.ContainsKey(id) && _inventory.Count >= InventoryCapacity)
+        {
+            throw new InvalidDataException("World inventory exceeds its slot capacity.");
         }
 
         WorldHeroItem item = new(id, typeId,
