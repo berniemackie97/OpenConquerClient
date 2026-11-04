@@ -241,7 +241,10 @@ internal sealed class WorldHeroEquipment
             return false;
         }
 
-        WorldHeroItem updated = item with { Durability = unchecked((ushort)durability) };
+        WorldHeroItem updated = item with
+        {
+            Durability = unchecked((ushort)durability),
+        };
         _tracked[position] = updated;
         for (int slot = 1; slot < _active.Length; slot++)
         {
