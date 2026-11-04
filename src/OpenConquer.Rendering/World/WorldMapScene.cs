@@ -27,6 +27,7 @@ public sealed class WorldMapScene
     private int _heroY;
     private int _heroTileX;
     private int _heroTileY;
+    private byte _heroDirection;
     private int _roleDrawIndex;
     private int _zoomPercent = 100;
     private readonly uint _startMilliseconds;
@@ -74,7 +75,7 @@ public sealed class WorldMapScene
 
     public (Matrix4x4 Main, Matrix4x4 Shadow) HeroMatrices =>
         WorldRoleCameraMatrices.Create(_map, _puzzles, _projection,
-            _heroX, _heroY, rotationDegrees: -45f, scale: 0.75f);
+            _heroX, _heroY, rotationDegrees: (-1 - _heroDirection) * 45f, scale: 0.75f);
 
     public void SetCameraTile(int tileX, int tileY)
     {
@@ -84,6 +85,16 @@ public sealed class WorldMapScene
         }
         (_heroX, _heroY) = WorldCameraProjection.ProjectTile(_map, tileX, tileY);
         (_heroTileX, _heroTileY) = (tileX, tileY);
+    }
+
+    public void SetHeroDirection(byte directionIndex)
+    {
+        if (directionIndex > 7)
+        {
+            throw new ArgumentOutOfRangeException(nameof(directionIndex));
+        }
+
+        _heroDirection = directionIndex;
     }
 
     public void SetZoomPercent(int zoomPercent)

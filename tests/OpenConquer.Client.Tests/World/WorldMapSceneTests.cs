@@ -1,3 +1,4 @@
+using System.Numerics;
 using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.Tests.World;
@@ -36,6 +37,44 @@ public sealed class WorldMapSceneTests
             fixture.Map, fixture.Puzzles, projection, 0);
 
         Assert.Equal(expected, layers[1].Puzzle);
+    }
+
+    [Theory]
+    [InlineData((byte)0)]
+    [InlineData((byte)1)]
+    [InlineData((byte)2)]
+    [InlineData((byte)3)]
+    [InlineData((byte)4)]
+    [InlineData((byte)5)]
+    [InlineData((byte)6)]
+    [InlineData((byte)7)]
+    public void HeroTransformUsesTheCommittedEightWayFacing(byte direction)
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
+        scene.BuildFrame(800, 600, 1000);
+        scene.SetHeroDirection(direction);
+
+        (int x, int y) = WorldCameraProjection.ProjectTile(fixture.Map, 60, 108);
+        WorldPuzzleProjection projection = WorldCameraProjection.FromHeroWorldPosition(
+            fixture.Map, fixture.Puzzles, x, y, 800, 600);
+        (Matrix4x4 Main, Matrix4x4 Shadow) expected = WorldRoleCameraMatrices.Create(
+            fixture.Map, fixture.Puzzles, projection, x, y, (-1 - direction) * 45f, 0.75f);
+
+        Assert.Equal(expected, scene.HeroMatrices);
+    }
+
+    [Fact]
+    public void InvalidHeroDirectionDoesNotReplaceTheCurrentFacing()
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
+        scene.BuildFrame(800, 600, 1000);
+        scene.SetHeroDirection(4);
+        (Matrix4x4 Main, Matrix4x4 Shadow) previous = scene.HeroMatrices;
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => scene.SetHeroDirection(8));
+        Assert.Equal(previous, scene.HeroMatrices);
     }
 
     [Fact]

@@ -21,6 +21,16 @@ create/update 1008 and equipment remove/equip/unequip/durability/snapshot
 other item mutation variants, combat and world transfers remain unimplemented. Movement input must preserve the existing serialized
 secured-write lane and single-reader contract.
 
+The EnterMap acknowledgement seeds the local hero's eight-way direction
+from its packed direction field, independently of the tile coordinates.
+Ordinary local walk acknowledgements advance both the tile and the facing.
+The scene's character transform uses `(-1 - directionIndex) * 45` degrees;
+remote walk packets do not update the authenticated hero. World position
+corrections update the tile without replacing the current facing. Initial
+facing and accepted updates are retained while the map is being prepared,
+then applied before the first world draw. This does not implement outbound
+movement requests, motion transitions or remote character presentation.
+
 The ingress task is canceled and observed before its session is released
 on world exit or application shutdown. Bootstrap timeout policies do not
 become a world-idle disconnect timer.

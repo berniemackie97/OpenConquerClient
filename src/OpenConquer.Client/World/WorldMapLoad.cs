@@ -17,8 +17,10 @@ internal sealed class WorldMapLoad : IDisposable
             token.ThrowIfCancellationRequested();
             GameMapCatalog catalog = GameMapCatalog.Load(source);
             token.ThrowIfCancellationRequested();
-            return WorldMapScene.Load(source, catalog, world.MapDataId, world.X, world.Y,
+            WorldMapScene scene = WorldMapScene.Load(source, catalog, world.MapDataId, world.X, world.Y,
                 unchecked((uint)Environment.TickCount), token);
+            scene.SetHeroDirection(world.DirectionIndex);
+            return scene;
         })
     {
     }

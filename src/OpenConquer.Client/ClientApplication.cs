@@ -810,6 +810,7 @@ internal sealed class ClientApplication : IDisposable
         }
 
         scene.SetCameraTile(state.X, state.Y);
+        scene.SetHeroDirection(state.DirectionIndex);
     }
 
     private void OnLoginRequested()
