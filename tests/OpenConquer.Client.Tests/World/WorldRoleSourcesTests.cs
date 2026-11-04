@@ -51,18 +51,81 @@ public sealed class WorldRoleSourcesTests
             [ItemSnapshot(100, 1111000, placement: 1), ItemSnapshot(200, 130003, placement: 3),
                 ActiveEquipment(headwear: 100, armor: 200)]);
 
-        Assert.Equal(new WorldRoleSources(2_130_000u, 2_111_000u),
+        Assert.Equal(new WorldRoleSources(2_130_000u, 2_111_000u, 0, 0),
             WorldRoleSources.Resolve(1002, 335, equipment));
 
         byte[] upgraded = ItemSnapshot(100, 1111010, placement: 1);
         upgraded[16] = 3;
         Assert.True(equipment.Apply(upgraded));
-        Assert.Equal(new WorldRoleSources(2_130_000u, 2_111_010u),
+        Assert.Equal(new WorldRoleSources(2_130_000u, 2_111_010u, 0, 0),
             WorldRoleSources.Resolve(1002, 335, equipment));
 
         Assert.True(equipment.Apply(ActiveEquipment(armor: 200)));
-        Assert.Equal(new WorldRoleSources(2_130_000u, 2_119_335u),
+        Assert.Equal(new WorldRoleSources(2_130_000u, 2_119_335u, 0, 0),
             WorldRoleSources.Resolve(1002, 335, equipment));
+    }
+
+    [Fact]
+    public void EquippedHandSourcesProjectToTheMatchingAttachmentSlots()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [ItemSnapshot(101, 410003, placement: 4),
+                ItemSnapshot(102, 420033, placement: 5),
+                ActiveEquipment(rightHand: 101, leftHand: 102)]);
+        WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335, equipment);
+
+        Assert.Equal((410000u, 420030u),
+            (sources.RightWeaponModelId, sources.LeftWeaponModelId));
+
+        Assert.True(equipment.Apply(ActiveEquipment(rightHand: 102)));
+        sources = WorldRoleSources.Resolve(1002, 335, equipment);
+        Assert.Equal((420030u, 0u),
+            (sources.RightWeaponModelId, sources.LeftWeaponModelId));
+
+        Assert.True(equipment.Apply(ActiveEquipment()));
+        sources = WorldRoleSources.Resolve(1002, 335, equipment);
+        Assert.Equal((0u, 0u),
+            (sources.RightWeaponModelId, sources.LeftWeaponModelId));
+    }
+
+    [Theory]
+    [InlineData(500003u, 500000u)]
+    [InlineData(370013u, 370010u)]
+    public void RightHandWeaponFamiliesUseTheLeftAttachment(uint itemType, uint expectedSource)
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [ItemSnapshot(101, itemType, placement: 4), ActiveEquipment(rightHand: 101)]);
+
+        WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335, equipment);
+
+        Assert.Equal(0u, sources.RightWeaponModelId);
+        Assert.Equal(expectedSource, sources.LeftWeaponModelId);
+    }
+
+    [Fact]
+    public void LeftHandCompositeHundredFiveUsesTheRightAttachment()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [ItemSnapshot(101, 1_050_003, placement: 5), ActiveEquipment(leftHand: 101)]);
+
+        WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335, equipment);
+
+        Assert.Equal(50_000u, sources.RightWeaponModelId);
+        Assert.Equal(0u, sources.LeftWeaponModelId);
+    }
+
+    [Fact]
+    public void RightHandCompositeHundredFiveReplacesLeftFiveHundredFamily()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [ItemSnapshot(101, 1_050_003, placement: 4),
+                ItemSnapshot(102, 500003, placement: 5),
+                ActiveEquipment(rightHand: 101, leftHand: 102)]);
+
+        WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335, equipment);
+
+        Assert.Equal(50_000u, sources.RightWeaponModelId);
+        Assert.Equal(0u, sources.LeftWeaponModelId);
     }
 
     [Fact]
@@ -91,7 +154,8 @@ public sealed class WorldRoleSourcesTests
         return packet;
     }
 
-    private static byte[] ActiveEquipment(uint headwear = 0, uint armor = 0)
+    private static byte[] ActiveEquipment(uint headwear = 0, uint armor = 0,
+        uint rightHand = 0, uint leftHand = 0)
     {
         byte[] packet = new byte[88];
         BinaryPrimitives.WriteUInt16LittleEndian(packet, 88);
@@ -99,6 +163,8 @@ public sealed class WorldRoleSourcesTests
         BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(12), 46);
         BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(32), headwear);
         BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(40), armor);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(44), rightHand);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(48), leftHand);
         return packet;
     }
 }

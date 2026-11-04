@@ -22,7 +22,7 @@ startup-to-world behavior. Mana and experience have not passed nonzero-value
 smoke tests. Stamina, skill updates, remaining item mutation variants, functional HUD
 actions, character motion and world audio remain open. Initial and live
 equipment snapshots now update equipped state, derived statistics and the
-character's headwear/armor presentation. A verified content set
+character's headwear, armor and hand-attachment presentation. A verified content set
 proves asset integrity, not rendering or audio parity on a running device.
 An absent optional source archive is not an error by itself: the actual
 package-only resource lookup remains authoritative.

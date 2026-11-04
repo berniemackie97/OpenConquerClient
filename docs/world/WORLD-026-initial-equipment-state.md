@@ -28,10 +28,14 @@ also clear their paired off-hand position on unequip. State changes are
 applied in received order on the world render thread.
 
 Durability, addition and enchantment updates become visible to the effective
-stat projection in the next frame. A changed equipped headwear or armor source
-replaces the local character render resources after the new resources load,
-so an unsuccessful load cannot discard the previous renderer. Subtype-46
-snapshots also clamp current life against the recalculated effective maximum.
+stat projection in the next frame. Equipped headwear, armor and hand-item sources
+participate in the local character's render-source identity. When it changes,
+replacement resources load before the previous renderer is released.
+Hand sources bind to the body animation's right/left weapon attachment tracks.
+The right-hand 500 and 370 source families route to the left attachment; a
+left-hand composite 105 source routes to the right attachment. Both are
+evaluated before the six-digit part-source lookup. Subtype-46 snapshots also
+clamp current life against the recalculated effective maximum.
 These operations remain scoped to authenticated local equipment.
 
 The inventory UID table enforces the forty-entry pack limit for new item
