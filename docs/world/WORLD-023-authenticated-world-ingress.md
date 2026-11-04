@@ -15,12 +15,11 @@ The initial application boundary handles position correction (10010 action
 108) for the authenticated hero and stores subsequent weather updates
 (1016). Position corrections update the map camera after the world scene
 is present, including corrections received during map loading. Weather
-state is retained but no visual weather component is claimed. Other
-world packet types are diagnosed once per type/action and are not yet
-applied. In particular, remote spawn/movement, item and status updates,
-world transfers, and the local movement acknowledgement path remain
-unimplemented. The subsequent movement slice must establish a separate
-serialized secured-write lane while preserving the single-reader contract.
+state is retained but no visual weather component is claimed. Other packet types are diagnosed once per type/action. Local attribute 10017, ground-walk acknowledgement 10005, local item
+create/update 1008 and equipment remove/equip/unequip/durability/snapshot
+1009 are consumed in the authenticated world. Remote entity spawn/movement,
+other item mutation variants, combat and world transfers remain unimplemented. Movement input must preserve the existing serialized
+secured-write lane and single-reader contract.
 
 The ingress task is canceled and observed before its session is released
 on world exit or application shutdown. Bootstrap timeout policies do not

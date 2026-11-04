@@ -27,6 +27,65 @@ public sealed class WorldHeroItemStatsTests
     }
 
     [Fact]
+    public void LiveDurabilityAndAdditionUpdatesChangeEffectiveContributions()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 120020, 40), Equipment(100)]);
+        ItemStatCatalog catalog = Catalog();
+
+        Assert.Equal((296, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] broken = Item(100, 120020, 0);
+        broken[16] = 3;
+        Assert.True(equipment.Apply(broken));
+        Assert.Equal((0, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] repaired = Item(100, 120020, 40);
+        repaired[16] = 3;
+        Assert.True(equipment.Apply(repaired));
+        Assert.Equal((296, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] remove = Equipment();
+        BinaryPrimitives.WriteUInt16LittleEndian(remove.AsSpan(12), 3);
+        BinaryPrimitives.WriteUInt32LittleEndian(remove.AsSpan(4), 100);
+        Assert.True(equipment.Apply(remove));
+        Assert.Equal((0, 0), WorldHeroItemStats.Resolve(equipment, catalog));
+    }
+
+    [Fact]
+    public void EquippingAndBreakingAnInventoryItemRecomputesLifeAndMana()
+    {
+        byte[] inventory = Item(100, 120020, 40);
+        inventory[18] = 0;
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration([inventory]);
+        ItemStatCatalog catalog = Catalog();
+
+        Assert.Equal((0, 0), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] equip = Equipment();
+        BinaryPrimitives.WriteUInt16LittleEndian(equip.AsSpan(12), 5);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(4), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal((296, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] durability = Equipment();
+        BinaryPrimitives.WriteUInt16LittleEndian(durability.AsSpan(12), 17);
+        BinaryPrimitives.WriteUInt32LittleEndian(durability.AsSpan(8), 1);
+
+        Assert.True(equipment.Apply(durability));
+        Assert.Equal((0, -10), WorldHeroItemStats.Resolve(equipment, catalog));
+
+        byte[] unequip = Equipment();
+        BinaryPrimitives.WriteUInt16LittleEndian(unequip.AsSpan(12), 6);
+        BinaryPrimitives.WriteUInt32LittleEndian(unequip.AsSpan(8), 1);
+
+        Assert.True(equipment.Apply(unequip));
+        Assert.Equal((0, 0), WorldHeroItemStats.Resolve(equipment, catalog));
+    }
+
+    [Fact]
     public void NormalizesWeaponItemAdditionLookupByFamily()
     {
         Assert.Equal(444000u, WorldHeroItemStats.NormalizeAdditionType(410003));
@@ -85,7 +144,7 @@ public sealed class WorldHeroItemStatsTests
         return frame;
     }
 
-    private static byte[] Equipment(uint headwear)
+    private static byte[] Equipment(uint headwear = 0)
     {
         byte[] frame = new byte[88];
         BinaryPrimitives.WriteUInt16LittleEndian(frame, 88);

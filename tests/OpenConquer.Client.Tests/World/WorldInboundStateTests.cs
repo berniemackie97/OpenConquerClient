@@ -166,6 +166,94 @@ public sealed class WorldInboundStateTests
     }
 
     [Fact]
+    public void LiveEquipmentPacketsUpdateTheAuthenticatedWorldWithoutMovingItsCamera()
+    {
+        WorldInboundState state = CreateState();
+        Assert.Equal(0u, state.EquipmentRevision);
+
+        Assert.False(state.Apply(Item(101, 120020, placement: 1)));
+        Assert.Equal(1u, state.EquipmentRevision);
+        Assert.Null(state.Equipment.GetActiveItem(1));
+
+        Assert.False(state.Apply(ActiveEquipment(headwear: 101)));
+        Assert.Equal(2u, state.EquipmentRevision);
+        Assert.Equal(120020u, state.Equipment.GetActiveItem(1)?.TypeId);
+
+        byte[] update = Item(101, 120020, placement: 1);
+        update[16] = 3;
+        BinaryPrimitives.WriteUInt16LittleEndian(update.AsSpan(12), 0);
+        Assert.False(state.Apply(update));
+        Assert.Equal((ushort)0, state.Equipment.GetActiveItem(1)?.Durability);
+
+        Assert.False(state.Apply(TickRemove(101)));
+        Assert.Null(state.Equipment.GetActiveItem(1));
+        Assert.Equal(4u, state.EquipmentRevision);
+        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+    }
+
+    [Fact]
+    public void ActiveSnapshotClampsCurrentLifeOnlyAfterTheEffectiveMaximumIsKnown()
+    {
+        WorldInboundState state = CreateState();
+        state.Apply(Item(101, 120020, placement: 1));
+        state.Apply(ActiveEquipment(headwear: 101));
+
+        state.ApplyEquipmentLifeClamp(60);
+        Assert.Equal(60u, state.HeroAttributes.CurrentLife);
+
+        state.Apply(Attributes(HeroId, (0, 90, 0)));
+        state.ApplyEquipmentLifeClamp(60);
+        Assert.Equal(90u, state.HeroAttributes.CurrentLife);
+    }
+
+    [Fact]
+    public void MalformedEquipmentPacketsDoNotPartiallyChangeWorldState()
+    {
+        WorldInboundState state = CreateState();
+        state.Apply(Item(101, 120020, placement: 1));
+        byte[] snapshot = ActiveEquipment(headwear: 101);
+        BinaryPrimitives.WriteUInt16LittleEndian(snapshot, 87);
+
+        Assert.Throws<InvalidDataException>(() => state.Apply(snapshot));
+        Assert.Null(state.Equipment.GetActiveItem(1));
+        Assert.Equal(1u, state.EquipmentRevision);
+    }
+
+    [Fact]
+    public void WorldIngressAppliesInventoryEquipmentAndDurabilityInPacketOrder()
+    {
+        WorldInboundState state = CreateState();
+        byte[] item = new byte[68];
+        BinaryPrimitives.WriteUInt16LittleEndian(item, 68);
+        BinaryPrimitives.WriteUInt16LittleEndian(item.AsSpan(2), 1008);
+        BinaryPrimitives.WriteUInt32LittleEndian(item.AsSpan(4), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(item.AsSpan(8), 120020);
+        BinaryPrimitives.WriteUInt16LittleEndian(item.AsSpan(12), 40);
+        item[16] = 1;
+
+        Assert.False(state.Apply(item));
+        Assert.Equal(1u, state.EquipmentRevision);
+        Assert.Null(state.Equipment.GetActiveItem(1));
+
+        byte[] equip = new byte[88];
+        BinaryPrimitives.WriteUInt16LittleEndian(equip, 88);
+        BinaryPrimitives.WriteUInt16LittleEndian(equip.AsSpan(2), 1009);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(4), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        BinaryPrimitives.WriteUInt16LittleEndian(equip.AsSpan(12), 5);
+
+        Assert.False(state.Apply(equip));
+        Assert.Equal(2u, state.EquipmentRevision);
+        Assert.Equal(100u, state.Equipment.GetActiveItem(1)?.Id);
+
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(4), 0);
+        BinaryPrimitives.WriteUInt16LittleEndian(equip.AsSpan(12), 17);
+        Assert.False(state.Apply(equip));
+        Assert.Equal(3u, state.EquipmentRevision);
+        Assert.Equal((ushort)0, state.Equipment.GetActiveItem(1)?.Durability);
+    }
+
+    [Fact]
     public void MalformedPacketHeaderIsRejectedBeforeDispatch()
     {
         WorldInboundState state = CreateState();
@@ -206,6 +294,39 @@ public sealed class WorldInboundStateTests
             BinaryPrimitives.WriteUInt64LittleEndian(entry[12..], entries[i].High);
         }
 
+        return frame;
+    }
+
+    private static byte[] Item(uint id, uint typeId, byte placement)
+    {
+        byte[] frame = new byte[68];
+        BinaryPrimitives.WriteUInt16LittleEndian(frame, 68);
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(2), 1008);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(4), id);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(8), typeId);
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(12), 40);
+        frame[16] = 1;
+        frame[18] = placement;
+        return frame;
+    }
+
+    private static byte[] ActiveEquipment(uint headwear)
+    {
+        byte[] frame = new byte[88];
+        BinaryPrimitives.WriteUInt16LittleEndian(frame, 88);
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(2), 1009);
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(12), 46);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(32), headwear);
+        return frame;
+    }
+
+    private static byte[] TickRemove(uint id)
+    {
+        byte[] frame = new byte[88];
+        BinaryPrimitives.WriteUInt16LittleEndian(frame, 88);
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(2), 1009);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(4), id);
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(12), 3);
         return frame;
     }
 

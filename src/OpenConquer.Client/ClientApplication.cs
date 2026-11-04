@@ -75,6 +75,8 @@ internal sealed class ClientApplication : IDisposable
     private WorldMapLoad? _worldLoad;
     private WorldMapScene? _worldScene;
     private WorldRoleRenderer? _worldRole;
+    private WorldRoleSources? _worldRoleSources;
+    private uint _appliedEquipmentRevision;
     private WorldHudRuntime? _worldHud;
     private bool _worldTexturesReady;
     private WorldMapTextureRenderer? _worldTextures;
@@ -361,6 +363,8 @@ internal sealed class ClientApplication : IDisposable
             _worldHud = null;
             _worldRole?.Dispose();
             _worldRole = null;
+            _worldRoleSources = null;
+            _appliedEquipmentRevision = 0;
             _worldRenderer?.Dispose();
         }
         finally
@@ -502,6 +506,21 @@ internal sealed class ClientApplication : IDisposable
 
         CompleteWorldLoad();
 
+        if (_worldScene is not null && _worldInboundState is { } equipmentState &&
+            equipmentState.EquipmentRevision != _appliedEquipmentRevision)
+        {
+            try
+            {
+                UpdateWorldRoleAppearance(equipmentState);
+                _appliedEquipmentRevision = equipmentState.EquipmentRevision;
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine($"OpenConquer: world character artwork is unavailable ({exception.Message}).");
+                ReturnToLogin();
+            }
+        }
+
         if (_loginErrors is { } messages)
         {
             if (_loginFlow is { } flow)
@@ -575,6 +594,7 @@ internal sealed class ClientApplication : IDisposable
                     (int itemLife, int itemMana) = WorldHeroItemStats.Resolve(state.Equipment, catalog);
                     WorldHeroMaxStats maxima = WorldHeroMaxStats.Resolve(state.HeroAttributes,
                         itemLife, itemMana, entry.MapFlags, hasTransformLook: false, lifeTierDigit: 0);
+                    state.ApplyEquipmentLifeClamp(maxima.Life);
                     followers.Advance(state.HeroAttributes, maxima);
                     bool extended = (state.HeroAttributes.StatusLow & (1UL << 33)) != 0;
                     int maxStamina = extended ? 150 : 100;
@@ -674,6 +694,8 @@ internal sealed class ClientApplication : IDisposable
                     entry.Character.PackedAppearance, entry.Character.HairComposite, equipmentState.Equipment);
                 _worldRole = WorldRoleRenderer.Load(source, graphicsDevice,
                     entry.Character.PackedAppearance, sources);
+                _worldRoleSources = sources;
+                _appliedEquipmentRevision = equipmentState.EquipmentRevision;
                 if (_worldRole is null)
                 {
                     Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");
@@ -716,6 +738,8 @@ internal sealed class ClientApplication : IDisposable
         _worldScene = null;
         _worldRole?.Dispose();
         _worldRole = null;
+        _worldRoleSources = null;
+        _appliedEquipmentRevision = 0;
         _worldHud?.Dispose();
         _worldHud = null;
         _worldRenderer?.Dispose();
@@ -749,6 +773,33 @@ internal sealed class ClientApplication : IDisposable
         {
             ApplyWorldCamera(scene, state);
         }
+    }
+
+    private void UpdateWorldRoleAppearance(WorldInboundState state)
+    {
+        if (_worldEntry is not { } entry || _worldScene is null)
+        {
+            return;
+        }
+
+        WorldRoleSources sources = WorldRoleSources.Resolve(
+            entry.Character.PackedAppearance, entry.Character.HairComposite, state.Equipment);
+        if (sources == _worldRoleSources)
+        {
+            return;
+        }
+
+        IClientContentSource content = _roleContent ??
+            throw new InvalidOperationException("World content source is unavailable.");
+        OpenGLGraphicsDevice graphicsDevice = _graphicsDevice ??
+            throw new InvalidOperationException("World graphics device is unavailable.");
+
+        WorldRoleRenderer? next = WorldRoleRenderer.Load(
+            content, graphicsDevice, entry.Character.PackedAppearance, sources);
+        WorldRoleRenderer? previous = _worldRole;
+        _worldRole = next;
+        _worldRoleSources = sources;
+        previous?.Dispose();
     }
 
     private static void ApplyWorldCamera(WorldMapScene scene, WorldInboundState state)
@@ -1023,7 +1074,7 @@ internal sealed class ClientApplication : IDisposable
     {
         foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
         {
-            if (registration.Outcome != WdfPackageRegistrationOutcome.Registered)
+            if (registration.Outcome is WdfPackageRegistrationOutcome.DuplicatePrefix or WdfPackageRegistrationOutcome.ArchiveUnavailable)
             {
                 Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') resolved as {registration.Outcome}.");
             }

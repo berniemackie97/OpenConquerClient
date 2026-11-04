@@ -134,6 +134,194 @@ public sealed class WorldHeroEquipmentTests
     }
 
     [Fact]
+    public void LiveItemUpdateRefreshesActiveEquipmentStatisticsWithoutAnotherSnapshot()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 120020, placement: 1), Equipment(headwear: 100)]);
+
+        byte[] updated = Item(100, 120020, placement: 1);
+        updated[16] = 3;
+        BinaryPrimitives.WriteUInt16LittleEndian(updated.AsSpan(12), 0);
+        updated[33] = 9;
+        updated[36] = 20;
+
+        Assert.True(equipment.Apply(updated));
+        Assert.Equal(new WorldHeroItem(100, 120020, 0, 9, 20), equipment.GetActiveItem(1));
+    }
+
+    [Fact]
+    public void LiveItemRemovalClearsTrackedAndActiveReferences()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
+
+        Assert.True(equipment.Apply(Tick(3, itemId: 100)));
+        Assert.Null(equipment.GetActiveItem(1));
+        Assert.False(equipment.Apply(Tick(3, itemId: 100)));
+        Assert.Null(WorldHeroEquipment.FromHydration([Equipment(headwear: 100)]).GetActiveItem(1));
+    }
+
+    [Fact]
+    public void LiveActiveSnapshotReplacesThePreviouslyEquippedItem()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Item(200, 1111010, placement: 21),
+                Equipment(headwear: 100)]);
+
+        Assert.True(equipment.Apply(Equipment(headwear: 200)));
+        Assert.Equal(200u, equipment.GetActiveItem(1)?.Id);
+
+        Assert.True(equipment.Apply(Equipment()));
+        Assert.Null(equipment.GetActiveItem(1));
+    }
+
+    [Fact]
+    public void LiveUpdateForUnknownItemCannotCreateTrackedEquipment()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration([]);
+        byte[] update = Item(100, 120020, placement: 1);
+        update[16] = 3;
+
+        Assert.False(equipment.Apply(update));
+        Assert.Null(equipment.GetActiveItem(1));
+        Assert.False(equipment.Apply(Tick(3, itemId: 100)));
+    }
+
+    [Fact]
+    public void LiveItemPlacementChangeClearsItsPreviousActiveSlot()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
+        byte[] update = Item(100, 1111000, placement: 3);
+        update[16] = 3;
+
+        Assert.True(equipment.Apply(update));
+        Assert.Null(equipment.GetActiveItem(1));
+        Assert.True(equipment.Apply(Equipment(armor: 100)));
+        Assert.Equal(100u, equipment.GetActiveItem(3)?.Id);
+    }
+
+    [Fact]
+    public void LiveEquipMovesInventoryItemIntoTheRequestedSlotAndDisplacesThePreviousItem()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Item(200, 1111010, placement: 0),
+                Equipment(headwear: 100)]);
+
+        byte[] equip = Tick(5, itemId: 200);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(20), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(84), 100);
+
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal(200u, equipment.GetActiveItem(1)?.Id);
+
+        byte[] unequip = Tick(6);
+        BinaryPrimitives.WriteUInt32LittleEndian(unequip.AsSpan(8), 1);
+        Assert.True(equipment.Apply(unequip));
+        Assert.Null(equipment.GetActiveItem(1));
+
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(4), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(20), 0);
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
+    }
+
+    [Fact]
+    public void LiveInventoryItemUpdateIsRetainedUntilEquipped()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 0)]);
+
+        byte[] update = Item(100, 1111000, placement: 0);
+        update[16] = 3;
+        BinaryPrimitives.WriteUInt16LittleEndian(update.AsSpan(12), 3);
+        Assert.True(equipment.Apply(update));
+
+        byte[] equip = Tick(5, itemId: 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal((ushort)3, equipment.GetActiveItem(1)?.Durability);
+    }
+
+    [Fact]
+    public void DurabilityUpdateChangesActiveItemWithoutReplacingItsIdentity()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
+        byte[] durability = Tick(17, itemId: 0);
+        BinaryPrimitives.WriteUInt32LittleEndian(durability.AsSpan(8), 1);
+
+        Assert.True(equipment.Apply(durability));
+        Assert.Equal(new WorldHeroItem(100, 1111000, 0, 2, 7), equipment.GetActiveItem(1));
+
+        Assert.False(equipment.Apply(durability));
+        Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
+    }
+
+    [Fact]
+    public void UnequippingTwoHandedWeaponAlsoClearsThePairedHand()
+    {
+        byte[] snapshot = Equipment();
+        BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(44), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(48), 200);
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 500003, placement: 4), Item(200, 410003, placement: 5), snapshot]);
+
+        byte[] unequip = Tick(6);
+        BinaryPrimitives.WriteUInt32LittleEndian(unequip.AsSpan(8), 4);
+
+        Assert.True(equipment.Apply(unequip));
+        Assert.Null(equipment.GetActiveItem(4));
+        Assert.Null(equipment.GetActiveItem(5));
+    }
+
+    [Fact]
+    public void InventoryCreateRejectsMoreThanFortyDistinctItemsWithoutCorruptingExistingItems()
+    {
+        List<byte[]> packets = [];
+        for (uint id = 1; id <= 40; id++)
+        {
+            packets.Add(Item(id, 120020, placement: 0));
+        }
+
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(packets);
+        Assert.Throws<InvalidDataException>(() => equipment.Apply(Item(41, 120020, placement: 0)));
+
+        byte[] equip = Tick(5, itemId: 40);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal(40u, equipment.GetActiveItem(1)?.Id);
+    }
+
+    [Fact]
+    public void MalformedDisplacementCountCannotApplyPartialEquipmentChanges()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Item(200, 1111010, placement: 0),
+                Equipment(headwear: 100)]);
+        byte[] equip = Tick(5, itemId: 200);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(20), 2);
+
+        Assert.Throws<InvalidDataException>(() => equipment.Apply(equip));
+        Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
+    }
+
+    [Fact]
+    public void MalformedLiveMutationsLeaveExistingEquipmentUnchanged()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
+        byte[] malformed = Tick(46);
+        Array.Resize(ref malformed, 84);
+        BinaryPrimitives.WriteUInt16LittleEndian(malformed, 84);
+
+        Assert.Throws<InvalidDataException>(() => equipment.Apply(malformed));
+        Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
+    }
+
+    [Fact]
     public void MalformedItemAndEquipmentEnvelopesAreRejected()
     {
         byte[] item = Item(100, 1111000, placement: 1);
@@ -161,6 +349,16 @@ public sealed class WorldHeroEquipmentTests
         packet[18] = placement;
         packet[33] = 2;
         packet[36] = 7;
+        return packet;
+    }
+
+    private static byte[] Tick(ushort subtype, uint itemId = 0)
+    {
+        byte[] packet = new byte[88];
+        BinaryPrimitives.WriteUInt16LittleEndian(packet, 88);
+        BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(2), 1009);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(4), itemId);
+        BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(12), subtype);
         return packet;
     }
 

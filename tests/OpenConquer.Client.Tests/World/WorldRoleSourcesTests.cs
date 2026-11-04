@@ -45,6 +45,27 @@ public sealed class WorldRoleSourcesTests
     }
 
     [Fact]
+    public void LiveEquipmentMutationsRefreshTheCharacterPartProjection()
+    {
+        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+            [ItemSnapshot(100, 1111000, placement: 1), ItemSnapshot(200, 130003, placement: 3),
+                ActiveEquipment(headwear: 100, armor: 200)]);
+
+        Assert.Equal(new WorldRoleSources(2_130_000u, 2_111_000u),
+            WorldRoleSources.Resolve(1002, 335, equipment));
+
+        byte[] upgraded = ItemSnapshot(100, 1111010, placement: 1);
+        upgraded[16] = 3;
+        Assert.True(equipment.Apply(upgraded));
+        Assert.Equal(new WorldRoleSources(2_130_000u, 2_111_010u),
+            WorldRoleSources.Resolve(1002, 335, equipment));
+
+        Assert.True(equipment.Apply(ActiveEquipment(armor: 200)));
+        Assert.Equal(new WorldRoleSources(2_130_000u, 2_119_335u),
+            WorldRoleSources.Resolve(1002, 335, equipment));
+    }
+
+    [Fact]
     public void InventoryItemsAndUnactivatedEquipmentDoNotChangeAppearance()
     {
         byte[] inventory = ItemSnapshot(100, 130003, placement: 0);
