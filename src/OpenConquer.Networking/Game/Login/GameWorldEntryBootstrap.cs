@@ -47,6 +47,7 @@ internal static class GameWorldEntryBootstrap
             uint weatherKind;
             ushort x;
             ushort y;
+            byte directionIndex;
 
             using (GameSecuredInboundFrame map = await ReadRequiredAsync(session, operation).ConfigureAwait(false))
             {
@@ -88,6 +89,8 @@ internal static class GameWorldEntryBootstrap
                 {
                     throw new InvalidDataException("World entry received a mismatched EnterMap acknowledgement.");
                 }
+
+                directionIndex = (byte)(BinaryPrimitives.ReadUInt16LittleEndian(entered.Packet.Span[22..]) % 8);
             }
 
             operation.ThrowIfCancellationRequested();
@@ -109,7 +112,8 @@ internal static class GameWorldEntryBootstrap
                 s_timeout, operation).ConfigureAwait(false);
             operation.ThrowIfCancellationRequested();
             session.ActivateWorld();
-            return new GameWorldEntrySnapshot(character, mapId, mapDataId, flags, weatherKind, x, y, hydration);
+            return new GameWorldEntrySnapshot(character, mapId, mapDataId, flags, weatherKind, x, y,
+                hydration, directionIndex);
 
             async Task ExchangeAsync(ushort expectedAction, uint entityId, ushort[] acceptedPayloads)
             {
@@ -159,4 +163,5 @@ internal static class GameWorldEntryBootstrap
 }
 
 internal sealed record GameWorldEntrySnapshot(GameCharacterInfo1006 Character, uint MapId, uint MapDataId,
-    ulong MapFlags, uint WeatherKind, ushort X, ushort Y, IReadOnlyList<byte[]> HydrationPackets);
+    ulong MapFlags, uint WeatherKind, ushort X, ushort Y, IReadOnlyList<byte[]> HydrationPackets,
+    byte DirectionIndex);

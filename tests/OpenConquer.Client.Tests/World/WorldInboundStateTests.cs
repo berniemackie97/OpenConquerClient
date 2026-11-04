@@ -15,6 +15,7 @@ public sealed class WorldInboundStateTests
         WorldInboundState state = CreateState();
         Assert.Equal((ushort)61, state.X);
         Assert.Equal((ushort)101, state.Y);
+        Assert.Equal((byte)3, state.DirectionIndex);
         Assert.Equal((1u, 0u, 0u, 0u), state.Weather);
     }
 
@@ -27,6 +28,7 @@ public sealed class WorldInboundStateTests
         Assert.False(state.Apply(Correction(HeroId, 62, 102)));
         Assert.Throws<InvalidDataException>(() => state.Apply(Correction(entityId: HeroId + 1, x: 63, y: 103)));
         Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
+        Assert.Equal((byte)3, state.DirectionIndex);
     }
 
     [Theory]
@@ -46,6 +48,7 @@ public sealed class WorldInboundStateTests
 
         Assert.True(state.Apply(packet));
         Assert.Equal((x, y), (state.X, state.Y));
+        Assert.Equal(direction, state.DirectionIndex);
     }
 
     [Fact]
@@ -57,6 +60,7 @@ public sealed class WorldInboundStateTests
 
         Assert.False(state.Apply(packet));
         Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+        Assert.Equal((byte)3, state.DirectionIndex);
     }
 
     [Fact]
@@ -277,7 +281,7 @@ public sealed class WorldInboundStateTests
                 CurrentProfession = 10,
                 Experience = 12345,
             },
-            1002, 1010, 0, 1, 61, 101, []));
+            1002, 1010, 0, 1, 61, 101, [], 3));
 
     private static byte[] Attributes(uint entityId, params (uint Id, ulong Low, ulong High)[] entries)
     {

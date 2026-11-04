@@ -22,6 +22,7 @@ internal sealed class WorldInboundState
             BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(12)) == 46);
         X = world.X;
         Y = world.Y;
+        DirectionIndex = world.DirectionIndex;
         Weather = (world.WeatherKind, 0, 0, 0);
     }
 
@@ -54,6 +55,12 @@ internal sealed class WorldInboundState
     }
 
     internal WorldHeroAttributes HeroAttributes
+    {
+        get;
+        private set;
+    }
+
+    internal byte DirectionIndex
     {
         get;
         private set;
@@ -108,6 +115,7 @@ internal sealed class WorldInboundState
             }
 
             (X, Y) = ((ushort)x, (ushort)y);
+            DirectionIndex = walk.DirectionIndex;
             return true;
         }
 

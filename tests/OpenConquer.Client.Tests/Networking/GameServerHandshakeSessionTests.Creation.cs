@@ -90,6 +90,7 @@ public sealed partial class GameServerHandshakeSessionTests
         Assert.Equal((1002u, 1015u, (ushort)61, (ushort)101),
             (world.MapId, world.MapDataId, world.X, world.Y));
         Assert.Equal(1u, world.WeatherKind);
+        Assert.Equal((byte)5, world.DirectionIndex);
         Assert.Empty(world.HydrationPackets);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -403,6 +404,7 @@ public sealed partial class GameServerHandshakeSessionTests
         BinaryPrimitives.WriteUInt16LittleEndian(weather.AsSpan(2), 1016);
         BinaryPrimitives.WriteUInt32LittleEndian(weather.AsSpan(4), 1);
         byte[] entered = WorldAction(GameWorldAction10010.EnterMap, hero, 1015);
+        BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(22), 13);
         BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(24), 61);
         BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(26), 101);
         await peer.WritePacketsAsync(token, map, weather, entered);

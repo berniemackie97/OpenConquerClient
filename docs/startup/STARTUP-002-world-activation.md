@@ -17,6 +17,11 @@ world activation.
 | Sound ownership | Login music ends on world transition; map scenery audio instances start once when loaded and update position with the view | Startup playback is paused for world visibility; map ambience and world effects are outstanding |
 | Exit | Reset disables world rendering and releases session-scoped resources | World scene, character graphics, HUD and world framebuffer are released on return and context teardown |
 
+The admitted hero's facing is initialized from the EnterMap direction and
+updated by its eight-way walk acknowledgements before world rendering.
+This closes the static-false-facing startup defect but does not provide
+click-to-move, direction-dependent action selection or walk animation.
+
 The visible initial character and HUD do not establish complete
 startup-to-world behavior. Mana and experience have not passed nonzero-value
 smoke tests. Stamina, skill updates, remaining item mutation variants, functional HUD
