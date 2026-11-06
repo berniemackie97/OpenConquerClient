@@ -30,6 +30,7 @@ internal readonly record struct WorldHeroAttributes(
             12 => this with { Level = (uint)low },
             22 => this with { RebirthCount = (uint)low },
             25 => this with { StatusLow = low, StatusHigh = high },
+            // Native attribute 27 clamps to 100 before storing hero+0x510 (0x757C10..0x757C1F).
             27 => this with { SkillGaugePercent = Math.Min((uint)low, 100u) },
             43 => this with { OverlayLifeBonus = (uint)low },
             _ => this,

@@ -101,7 +101,7 @@ public sealed class WorldHeroItemStatsTests
         Assert.Throws<InvalidDataException>(() => WorldHeroItemStats.Resolve(equipment, Catalog()));
     }
 
-    private static ItemStatCatalog Catalog()
+    internal static ItemStatCatalog Catalog()
     {
         string[] row = Enumerable.Repeat("0", 60).ToArray();
         row[0] = "120020";
@@ -129,7 +129,7 @@ public sealed class WorldHeroItemStatsTests
             Encoding.ASCII.GetBytes("120020 9 239 0 0 23 0 0 0 0\r\n"));
     }
 
-    private static byte[] Item(uint id, uint type, ushort durability)
+    internal static byte[] Item(uint id, uint type, ushort durability)
     {
         byte[] frame = new byte[68];
         BinaryPrimitives.WriteUInt16LittleEndian(frame, 68);
@@ -144,7 +144,7 @@ public sealed class WorldHeroItemStatsTests
         return frame;
     }
 
-    private static byte[] Equipment(uint headwear = 0)
+    internal static byte[] Equipment(uint headwear = 0)
     {
         byte[] frame = new byte[88];
         BinaryPrimitives.WriteUInt16LittleEndian(frame, 88);

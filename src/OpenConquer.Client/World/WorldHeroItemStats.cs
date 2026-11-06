@@ -4,6 +4,9 @@ namespace OpenConquer.Client.World;
 
 internal static class WorldHeroItemStats
 {
+    // Native equipment terms: life 0x65D12B..0x65D1C3, mana 0x65D2EC..0x65D309.
+    // Signed base life/mana, unsigned addition life, broken-life exclusion and slot12 enchant exclusion:
+    // 20_notes/Rendering/14_hero_effective_max_life_mana.md, equipment-loop audit.
     internal static (int Life, int Mana) Resolve(WorldHeroEquipment equipment, ItemStatCatalog catalog)
     {
         int life = 0;
