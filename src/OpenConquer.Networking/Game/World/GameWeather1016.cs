@@ -12,8 +12,8 @@ internal readonly record struct GameWeather1016(uint Kind, uint Intensity, uint 
     internal const int PacketLength = 20;
 
     /// <summary>
-    /// Client ingress policy: kind 1-11 except 6, intensity 0-1022, direction 0-359. Native validation uses signed
-    /// comparisons and normalizes instead of rejecting, so a refusal here is not a native rejection.
+    /// Native input gate (0x7606CD): signed kind 1-11 except 6, intensity 0-1022, direction 0-359; rejection is a no-op.
+    /// Accepted values are retained as the wire tuple here; native rendering-parameter normalization is separate.
     /// </summary>
     internal bool HasSupportedValues => Kind is >= 1 and <= 11 and not 6 && Intensity <= 1022 && DirectionDegrees <= 359;
 

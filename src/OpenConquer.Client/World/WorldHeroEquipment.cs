@@ -2,9 +2,6 @@ using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.World;
 
-internal readonly record struct WorldHeroItem(uint Id, uint TypeId, ushort Durability,
-    byte AdditionLevel, byte EnchantmentLifeBonus);
-
 internal sealed class WorldHeroEquipment
 {
     private const int InventoryCapacity = 40;
@@ -18,45 +15,49 @@ internal sealed class WorldHeroEquipment
     internal WorldHeroItem? GetActiveItem(int slot) => slot is >= 1 and <= 18
         ? _active[slot] : throw new ArgumentOutOfRangeException(nameof(slot));
 
-    /// <summary>Applies a 1008 record. Only add (1) and update (3) are consumed.</summary>
+    /// <summary>
+    /// Applies a 1008 record. Only add (1) and update (3) are consumed. A record native skips is skipped: UID or type 0
+    /// fails <c>CItem_InitIdentityFromItemType</c> 0x67AD6B. The item-table lookup belongs to <see cref="WorldHeroModel"/>.
+    /// </summary>
     internal bool Apply(GameItemRecord1008 record)
     {
-        byte kind = record.Action;
-        if (kind is not GameItemRecord1008.AddAction and not GameItemRecord1008.UpdateAction)
+        if (record.ItemId == 0 || record.ItemTypeId == 0)
         {
             return false;
         }
 
+        return record.Action switch
+        {
+            GameItemRecord1008.AddAction => Add(record),
+            GameItemRecord1008.UpdateAction => Update(record),
+            _ => false,
+        };
+    }
+
+    // Native kind 1: positions 1..18 and 21..29 are tracked (CHeroItem__TrackItemAtPosition 0x6DB042/0x6DB050); other
+    // nonzero positions keep the item nowhere. Position 0 goes through CHeroItem__TryAddInventoryItem, which refuses a
+    // UID already in the inventory (0x6D9399) and a 41st item that is not an arrow (0x6D936B). Native can also leave a
+    // second reference at an old position; this store keeps one location per UID.
+    private bool Add(GameItemRecord1008 record)
+    {
         uint id = record.ItemId;
-        if (id == 0 || record.ItemTypeId == 0)
-        {
-            throw new InvalidDataException("Item snapshot has an invalid identity.");
-        }
-
-        int previous = FindTrackedPosition(id);
-        if (kind == GameItemRecord1008.UpdateAction && previous == 0 && !_inventory.ContainsKey(id))
-        {
-            return false;
-        }
-
         byte position = record.Position;
-        if (position is 19 or 20 or >= 30)
+        if (position != 0 && !IsTrackablePosition(position))
         {
             return false;
         }
 
-        if (position == 0 && !_inventory.ContainsKey(id) && _inventory.Count >= InventoryCapacity)
+        if (position == 0 && (_inventory.ContainsKey(id) ||
+            (_inventory.Count >= InventoryCapacity && !IsArrow(record.ItemTypeId))))
         {
-            throw new InvalidDataException("World inventory exceeds its slot capacity.");
+            return false;
         }
 
-        WorldHeroItem item = new(id, record.ItemTypeId, record.Durability, record.AdditionLevel,
-            record.EnchantmentLifeBonus);
-
+        WorldHeroItem item = new(record);
+        int previous = FindTrackedPosition(id);
         if (previous != 0 && previous != position)
         {
             _tracked[previous] = null;
-            ClearActive(id);
         }
 
         if (position == 0)
@@ -66,24 +67,60 @@ internal sealed class WorldHeroEquipment
         else
         {
             _inventory.Remove(id);
-            _tracked[position] = item;
-        }
-
-        for (int slot = 1; slot < _active.Length; slot++)
-        {
-            if (_active[slot] is { } active && active.Id == id)
-            {
-                _active[slot] = item;
-            }
-        }
-
-        if (position is (>= 10 and <= 12) or (>= 15 and <= 18))
-        {
-            _active[position] = item;
+            Track(position, item);
         }
 
         return true;
     }
+
+    // Native kind 3 (0x763570..0x7638A4): finds the UID in the inventory, then the tracked items; unknown UIDs are
+    // skipped. Fields are rewritten in place. An inventory item ignores +0x12. A tracked item is re-tracked at +0x12
+    // (0x763867), which is a no-op for a position TrackItemAtPosition does not accept, including 0.
+    private bool Update(GameItemRecord1008 record)
+    {
+        uint id = record.ItemId;
+        if (_inventory.TryGetValue(id, out WorldHeroItem? inventoryItem))
+        {
+            inventoryItem.UpdateStats(record);
+            return true;
+        }
+
+        int previous = FindTrackedPosition(id);
+        if (previous == 0 || _tracked[previous] is not { } item)
+        {
+            return false;
+        }
+
+        byte position = record.Position;
+        item.UpdateStats(record);
+        if (IsTrackablePosition(position))
+        {
+            if (position != previous)
+            {
+                _tracked[previous] = null;
+            }
+
+            // Native always re-tracks, even the same position (0x763867), and retains matching active pointers.
+            Track(position, item);
+        }
+
+        return true;
+    }
+
+    private void Track(int position, WorldHeroItem item)
+    {
+        _tracked[position] = item;
+        if (position is (>= 10 and <= 12) or (>= 15 and <= 18))
+        {
+            _active[position] = item;
+        }
+    }
+
+    private static bool IsTrackablePosition(uint position) => position is (>= 1 and <= 18) or (>= 21 and <= 29);
+
+    // CItem_IsArrow 0x5681F9: equipment category 0 (id % 10^7 / 10^5 == 10, 0x67AF1A) and subtype 50000
+    // (id % 10^5 / 10^4 * 10^4, 0x67B0B3).
+    private static bool IsArrow(uint typeId) => typeId % 10_000_000 / 100_000 == 10 && typeId % 100_000 / 10_000 == 5;
 
     /// <summary>Applies a 1009 item mutation. Only subtypes 3, 5, 6, 17 and 46 are consumed.</summary>
     internal bool Apply(GameItem1009 packet)
@@ -136,7 +173,7 @@ internal sealed class WorldHeroEquipment
     private bool EquipItem(GameItem1009 packet, uint itemId, uint position)
     {
         if (position is < 1 or >= 30 or 19 or 20 ||
-            !_inventory.TryGetValue(itemId, out WorldHeroItem item))
+            !_inventory.TryGetValue(itemId, out WorldHeroItem? item))
         {
             return false;
         }
@@ -199,20 +236,7 @@ internal sealed class WorldHeroEquipment
             return false;
         }
 
-        WorldHeroItem updated = item with
-        {
-            Durability = unchecked((ushort)durability),
-        };
-        _tracked[position] = updated;
-        for (int slot = 1; slot < _active.Length; slot++)
-        {
-            if (_active[slot] is { } active && active.Id == item.Id)
-            {
-                _active[slot] = updated;
-            }
-        }
-
-        return updated != item;
+        return item.SetDurability(unchecked((ushort)durability));
     }
 
     private void ClearActive(uint id)

@@ -26,7 +26,7 @@ public sealed class WorldInboundStateTests
         Assert.True(state.Apply(Correction(HeroId, 62, 102)));
         Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
         Assert.False(state.Apply(Correction(HeroId, 62, 102)));
-        Assert.Throws<InvalidDataException>(() => state.Apply(Correction(entityId: HeroId + 1, x: 63, y: 103)));
+        Assert.False(state.Apply(Correction(entityId: HeroId + 1, x: 63, y: 103)));
         Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
         Assert.Equal((byte)3, state.DirectionIndex);
     }
@@ -79,7 +79,7 @@ public sealed class WorldInboundStateTests
         Assert.Equal((2u, 900u, 270u, 17u), state.Weather);
         Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
         BinaryPrimitives.WriteUInt32LittleEndian(weather.AsSpan(8), 1023);
-        Assert.Throws<InvalidDataException>(() => state.Apply(weather));
+        Assert.False(state.Apply(weather));
         Assert.Equal((2u, 900u, 270u, 17u), state.Weather);
     }
 
@@ -286,29 +286,33 @@ public sealed class WorldInboundStateTests
     [Theory]
     [InlineData(8)]
     [InlineData(12)]
+    [InlineData(16)]
     [InlineData(22)]
     [InlineData(28)]
     [InlineData(32)]
     [InlineData(36)]
-    public void CorrectionWithAnyNonzeroRestrictedFieldIsRejectedWithoutMoving(int offset)
+    [InlineData(37)]
+    public void CorrectionIgnoresFieldsNativeDoesNotRead(int offset)
     {
         WorldInboundState state = CreateState();
         byte[] correction = Correction(HeroId, 62, 102);
         correction[offset] = 1;
-        Assert.Throws<InvalidDataException>(() => state.Apply(correction));
-        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+        Assert.True(state.Apply(correction));
+        Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
+        Assert.Equal((byte)3, state.DirectionIndex);
     }
 
     [Fact]
-    public void GoldenAllFieldsCorrectionDecodesButViolatesTheClientPolicy()
+    public void StaticGoldenCorrectionAppliesOnlyItsHeroTileFields()
     {
-        // The static golden frame sets every restricted field, so the codec accepts it and the hero policy refuses it.
+        // Static-disassembly-derived sentinel frame from CP2.3a. Native 108 reads only target and X/Y (0x6FFCBF..CF3).
         WorldInboundState state = CreateState();
         byte[] golden = Convert.FromHexString(
             "26001a2778563412896745239a785634ab8967456c00785689679a78efcdab89f0debc9aa500");
         BinaryPrimitives.WriteUInt32LittleEndian(golden.AsSpan(4), HeroId);
-        Assert.Throws<InvalidDataException>(() => state.Apply(golden));
-        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+        Assert.True(state.Apply(golden));
+        Assert.Equal(((ushort)0x6789, (ushort)0x789A), (state.X, state.Y));
+        Assert.Equal((byte)3, state.DirectionIndex);
     }
 
     [Fact]
@@ -316,8 +320,69 @@ public sealed class WorldInboundStateTests
     {
         WorldInboundState state = CreateState();
         byte[] weather = Convert.FromHexString("1400f80306000000000000000000000000000000");
-        Assert.Throws<InvalidDataException>(() => state.Apply(weather));
+        Assert.False(state.Apply(weather));
         Assert.Equal((1u, 0u, 0u, 0u), state.Weather);
+    }
+
+    [Theory]
+    [InlineData(0u, 0u, 0u)]
+    [InlineData(6u, 0u, 0u)]
+    [InlineData(12u, 0u, 0u)]
+    [InlineData(uint.MaxValue, 0u, 0u)]
+    [InlineData(2u, 1023u, 0u)]
+    [InlineData(2u, uint.MaxValue, 0u)]
+    [InlineData(2u, 0u, 360u)]
+    [InlineData(2u, 0u, uint.MaxValue)]
+    public void NativeRejectedWeatherRetainsPreviousStateAndDoesNotStopLaterPackets(uint kind, uint intensity, uint direction)
+    {
+        // Signed input gates 0x7606D6..0x760711; kind6 table entry -> return0 at 0x7607A9.
+        WorldInboundState state = CreateState();
+        Assert.False(state.Apply(Weather(2, 1022, 359, uint.MaxValue)));
+
+        Assert.False(state.Apply(Weather(kind, intensity, direction, 17)));
+
+        Assert.Equal((2u, 1022u, 359u, uint.MaxValue), state.Weather);
+        Assert.True(state.Apply(Correction(HeroId, 62, 102)));
+        Assert.False(state.Apply(Weather(11, 0, 0, 0)));
+        Assert.Equal((11u, 0u, 0u, 0u), state.Weather);
+    }
+
+    [Theory]
+    [InlineData(0u, 120020u)]
+    [InlineData(102u, 0u)]
+    [InlineData(102u, 130003u)]
+    public void InvalidOrMissingItemIdentityIsSkippedBeforeSnapshotResolution(uint id, uint type)
+    {
+        WorldInboundState state = CreateState();
+        Assert.False(state.Apply(Item(id, type, placement: 1)));
+        Assert.Equal(0u, state.EquipmentRevision);
+        Assert.False(state.Apply(ActiveEquipment(headwear: id)));
+        Assert.Null(state.Equipment.GetActiveItem(1));
+        Assert.False(state.Apply(Item(101, 120020, placement: 1)));
+        Assert.False(state.Apply(ActiveEquipment(headwear: 101)));
+        Assert.Equal(101u, state.Equipment.GetActiveItem(1)?.Id);
+        Assert.Equal(3u, state.EquipmentRevision);
+    }
+
+    [Theory]
+    [InlineData(0u)]
+    [InlineData(130003u)]
+    public void MissingTypeChangeLeavesExistingActiveItemAndRevisionUntouched(uint type)
+    {
+        WorldInboundState state = CreateState(hydration: [Item(101, 120020, 1), ActiveEquipment(101)]);
+        WorldHeroItem original = Assert.IsType<WorldHeroItem>(state.Equipment.GetActiveItem(1));
+        byte[] update = Item(101, type, placement: 15);
+        update[16] = 3;
+        BinaryPrimitives.WriteUInt16LittleEndian(update.AsSpan(12), 0);
+
+        Assert.False(state.Apply(update));
+
+        Assert.Same(original, state.Equipment.GetActiveItem(1));
+        Assert.Null(state.Equipment.GetActiveItem(15));
+        Assert.Equal((120020u, (ushort)40, 2u), (original.TypeId, original.Durability, state.EquipmentRevision));
+        Assert.False(state.Apply(ActiveEquipment(101)));
+        Assert.False(state.Apply(Attributes(HeroId, (0, 77, 0))));
+        Assert.Equal(77u, state.HeroAttributes.CurrentLife);
     }
 
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
@@ -397,5 +462,17 @@ public sealed class WorldInboundStateTests
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(24), x);
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(26), y);
         return frame;
+    }
+
+    private static byte[] Weather(uint kind, uint intensity, uint direction, uint parameter)
+    {
+        byte[] packet = new byte[20];
+        BinaryPrimitives.WriteUInt16LittleEndian(packet, 20);
+        BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(2), 1016);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(4), kind);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(8), intensity);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(12), direction);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(16), parameter);
+        return packet;
     }
 }

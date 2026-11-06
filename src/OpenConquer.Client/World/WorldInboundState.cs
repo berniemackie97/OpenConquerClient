@@ -95,11 +95,10 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
             return false;
         }
 
-        // Client policy, not a native rule: a correction must target the hero and leave every other field zero.
-        if (action.EntityId != _heroId || action.ParameterPair != 0 || action.ActionParameter != 0 ||
-            action.Direction != 0 || action.Data1 != 0 || action.Data2 != 0 || action.Flag != 0)
+        // Native 108 (0x6FFCBF..0x6FFCF3): a role that is not the hero is a silent no-op, and only +24/+26 are read.
+        if (action.EntityId != _heroId)
         {
-            throw new InvalidDataException("World position correction is malformed.");
+            return false;
         }
 
         bool changed = X != action.X || Y != action.Y;
@@ -144,9 +143,10 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
     bool IGameWorldPacketHandler.HandleWeather(GameWeather1016 weather)
     {
+        // CMsgWeatherUpdate__ValidateAndNormalize 0x7606CD rejects these and Process then does nothing.
         if (!weather.HasSupportedValues)
         {
-            throw new InvalidDataException("World weather parameters are invalid.");
+            return false;
         }
 
         Weather = (weather.Kind, weather.Intensity, weather.DirectionDegrees, weather.Parameter);
