@@ -1,5 +1,6 @@
 using OpenConquer.Content.Login;
 using OpenConquer.Content.Tool.Import;
+using OpenConquer.Content.Tool.Manifest;
 using OpenConquer.Content.Tool.Verify;
 
 namespace OpenConquer.Content.Tool.Tests.Import;
@@ -20,8 +21,8 @@ public sealed class LoginLoadingContentImportTests
         }
 
         string destination = destinationParent.ChildPath("set");
-        var imported = ContentSetImporter.Import(source.RootPath, destination, loadingMediaRootPath: media.RootPath);
-        var verified = ContentSetVerifier.Verify(destination);
+        ContentManifest imported = ContentSetImporter.Import(source.RootPath, destination, loadingMediaRootPath: media.RootPath);
+        ContentManifest verified = ContentSetVerifier.Verify(destination);
 
         Assert.Equal(imported.FileCount, verified.FileCount);
         Assert.All(LoginLoadingContentPaths.Paths, path =>

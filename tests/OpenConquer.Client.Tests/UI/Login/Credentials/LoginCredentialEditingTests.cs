@@ -202,7 +202,9 @@ public sealed class LoginCredentialEditingTests
     private static void Enter(LoginCredentialInput input, string value)
     {
         foreach (char c in value)
+        {
             input.TextEntered(c);
+        }
     }
 
     private static void Press(LoginCredentialInput input, DesktopKey key, DesktopKeyModifiers modifiers = DesktopKeyModifiers.None) =>

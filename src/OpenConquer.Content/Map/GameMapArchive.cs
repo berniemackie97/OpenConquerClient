@@ -39,7 +39,7 @@ public static class GameMapArchive
         using IArchive archive = SevenZipArchive.OpenArchive(stream, ReaderOptions.ForExternalStream);
 
         byte[]? result = null;
-        foreach (var entry in archive.Entries)
+        foreach (IArchiveEntry entry in archive.Entries)
         {
             if (result is not null || entry.IsDirectory || !entry.IsComplete ||
                 !string.Equals(entry.Key, expectedEntry, StringComparison.OrdinalIgnoreCase) ||

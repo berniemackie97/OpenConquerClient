@@ -70,7 +70,9 @@ internal static class MainHudSelectedSkillConformance
             using MainHudSelectedSkillCooldownRenderer cooldownRenderer = new(textContext, logicalRenderSize, offsetX: 0, offsetY: 0, textOptions);
 
             foreach (RenderCase testCase in s_cases)
+            {
                 RunRenderCase(graphicsDevice, selectedSkillRenderer, cooldownRenderer, referenceTextures, logicalRenderSize, framebufferSize, colorFormat, testCase);
+            }
         }
     }
 

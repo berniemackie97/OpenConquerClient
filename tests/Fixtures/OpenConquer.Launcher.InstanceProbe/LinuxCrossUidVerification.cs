@@ -178,7 +178,10 @@ internal static class LinuxCrossUidVerification
                 start.Environment["XDG_RUNTIME_DIR"] = runtimeRoot;
             }
             foreach (string argument in arguments)
+            {
                 start.ArgumentList.Add(argument);
+            }
+
             return new Child(Process.Start(start) ?? throw new InvalidOperationException("Verification process did not start."));
         }
 

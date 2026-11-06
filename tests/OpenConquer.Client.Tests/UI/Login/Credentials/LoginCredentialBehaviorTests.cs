@@ -77,7 +77,10 @@ public sealed class LoginCredentialBehaviorTests
         using LoginCredentialInput input = new(selection, layout);
         Assert.True(input.PointerPressed(true, layout.PasswordField.X + 1, layout.PasswordField.Y + 1));
         for (int i = 0; i < 50; i++)
+        {
             input.TextEntered('S');
+        }
+
         Assert.Equal(15, input.PasswordLength);
         Assert.True(input.PointerPressed(true, layout.AccountField.X + 1, layout.AccountField.Y + 1));
         input.TextEntered('N');

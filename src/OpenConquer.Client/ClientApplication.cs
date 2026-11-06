@@ -428,7 +428,7 @@ internal sealed class ClientApplication : IDisposable
 
         if (_role is null && _roleClosing is null &&
             _loginFlow is { Status: LoginAttemptStatus.CharacterCreation } creation &&
-            creation.TryTakeAcceptedGame(out var accepted, out string accountName))
+            creation.TryTakeAcceptedGame(out GameServerHandshakeSession? accepted, out string accountName))
         {
             try
             {

@@ -88,7 +88,9 @@ public sealed class ClientFontSettingsConfiguration
         }
 
         using (stream)
+        {
             return Parse(ContentReader.ReadBytes(stream, RelativePath, MaximumFileLength), gameFont.FaceName);
+        }
     }
 
     internal static ClientFontSettingsConfiguration Parse(ReadOnlySpan<byte> bytes, string defaultFaceName)
@@ -215,7 +217,9 @@ public sealed class ClientFontSettingsConfiguration
     {
         int index = 0;
         while (index < value.Length && IsAsciiWhiteSpace(value[index]))
+        {
             index++;
+        }
 
         bool negative = false;
         if (index < value.Length)
@@ -258,7 +262,9 @@ public sealed class ClientFontSettingsConfiguration
     {
         int index = 0;
         while (index < value.Length && IsAsciiWhiteSpace(value[index]))
+        {
             index++;
+        }
 
         bool negative = false;
         if (index < value.Length && value[index] is '+' or '-')
