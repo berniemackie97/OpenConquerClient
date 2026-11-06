@@ -3,8 +3,6 @@ using OpenConquer.Client.Startup;
 using OpenConquer.Client.Startup.LoginFlow;
 using OpenConquer.Client.UI;
 using OpenConquer.Client.UI.Flash;
-using OpenConquer.Client.UI.Hud.Rendering;
-using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
@@ -15,9 +13,7 @@ using OpenConquer.Client.World;
 using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
-using OpenConquer.Content.Items;
 using OpenConquer.Content.Login;
-using OpenConquer.Content.Progression;
 using OpenConquer.Content.Role;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
@@ -42,8 +38,6 @@ internal sealed class ClientApplication : IDisposable
     private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
 
     private readonly string _contentRootPath;
-    private readonly Action<OpenGLRenderer> _drawWorldRole;
-    private readonly Action<ReadOnlyMemory<byte>> _applyWorldFrame;
     private readonly PresentationPolicy _presentationPolicy;
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
@@ -60,25 +54,10 @@ internal sealed class ClientApplication : IDisposable
     private ResourceOwnership? _graphics;
     private OpenGLGraphicsDevice? _graphicsDevice;
     private OpenGLRenderer? _renderer;
-    private OpenGLRenderer? _worldRenderer;
-    private LogicalRenderSize _worldRenderSize;
     private LoginScreenRenderer? _loginRenderer;
     private LoginLoadingScreen? _loading;
     private RoleCreationScreen? _role;
-    private GameServerHandshakeSession? _worldGame;
-    private WorldFrameIngress? _worldIngress;
-    private WorldInboundState? _worldInboundState;
-    private ItemStatCatalog? _itemStats;
-    private LevelExperienceTable? _levelExperience;
-    private WorldHeroGaugeFollowers? _worldGaugeFollowers;
-    private GameWorldEntrySnapshot? _worldEntry;
-    private WorldMapLoad? _worldLoad;
-    private WorldMapScene? _worldScene;
-    private WorldRoleRenderer? _worldRole;
-    private WorldRoleSources? _worldRoleSources;
-    private uint _appliedEquipmentRevision;
-    private WorldHudRuntime? _worldHud;
-    private bool _worldTexturesReady;
+    private ClientWorld? _world;
     private WorldMapTextureRenderer? _worldTextures;
     private IClientContentSource? _roleContent;
     private SelectCharacterIni? _roleIni;
@@ -88,20 +67,16 @@ internal sealed class ClientApplication : IDisposable
     private FlashStagePresentation? _rolePresentation;
     private bool _returnFromRole;
     private Task? _roleClosing;
-    private Task? _worldClosing;
-    private bool _worldConnectionLost;
     private PixelPoint _lastPointer;
     private bool _runStarted;
     private bool _disposed;
 
-    private bool IsWorldVisible => _worldScene is not null && _worldTexturesReady &&
+    private bool IsWorldVisible => _world is { IsPresentable: true } &&
         (_loading is not { Visible: true } || _loading.CanEnterWorld);
 
     public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
-        _drawWorldRole = DrawWorldRole;
-        _applyWorldFrame = ApplyWorldFrame;
 
         if (!Enum.IsDefined(windowMode))
         {
@@ -197,42 +172,11 @@ internal sealed class ClientApplication : IDisposable
             {
                 try
                 {
-                    _worldClosing?.GetAwaiter().GetResult();
+                    _world?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 }
                 finally
                 {
-                    _worldClosing = null;
-                    try
-                    {
-                        _worldLoad?.Dispose();
-                    }
-                    finally
-                    {
-                        _worldLoad = null;
-                        try
-                        {
-                            try
-                            {
-                                _worldIngress?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-                            }
-                            finally
-                            {
-                                _worldIngress = null;
-                                _worldInboundState = null;
-                                _itemStats = null;
-                                _levelExperience = null;
-                                _worldGaugeFollowers = null;
-                                _worldGame?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-                            }
-                        }
-                        finally
-                        {
-                            _worldGame = null;
-                            _worldEntry = null;
-                            _worldScene = null;
-                            _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-                        }
-                    }
+                    _registrationFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 }
             }
         }
@@ -258,6 +202,7 @@ internal sealed class ClientApplication : IDisposable
                     _catalog = null;
                     _audio = null;
                     _login = null;
+                    _world = null;
                     _window = null;
                 }
             }
@@ -359,17 +304,10 @@ internal sealed class ClientApplication : IDisposable
         _worldTextures = null;
         try
         {
-            _worldHud?.Dispose();
-            _worldHud = null;
-            _worldRole?.Dispose();
-            _worldRole = null;
-            _worldRoleSources = null;
-            _appliedEquipmentRevision = 0;
-            _worldRenderer?.Dispose();
+            _world?.ReleaseGraphics();
         }
         finally
         {
-            _worldRenderer = null;
             _graphicsDevice = null;
             graphics?.Dispose();
         }
@@ -398,7 +336,7 @@ internal sealed class ClientApplication : IDisposable
             }
         }
         _registrationFlow?.Update(_catalog?.CurrentCatalog(now));
-        if (_worldGame is null && _worldLoad is null && _loginFlow is { } existing &&
+        if (_world is null && _loginFlow is { } existing &&
             existing.TryTakeAdmittedWorld(out GameServerHandshakeSession? acceptedGame,
                 out GameWorldEntrySnapshot? acceptedWorld))
         {
@@ -411,14 +349,11 @@ internal sealed class ClientApplication : IDisposable
             closed.GetAwaiter().GetResult();
         }
 
-        if (_worldClosing is { IsCompleted: true } completedWorldClose)
+        if (_world is { } closingWorld && closingWorld.TryObserveClose(out WorldCloseReason closeReason))
         {
-            _worldClosing = null;
-            completedWorldClose.GetAwaiter().GetResult();
-            if (_worldConnectionLost)
+            if (closeReason == WorldCloseReason.ConnectionLost)
             {
                 _loginFlow?.FailWorldConnection();
-                _worldConnectionLost = false;
             }
             else
             {
@@ -471,7 +406,7 @@ internal sealed class ClientApplication : IDisposable
         {
             activeRole.Tick(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
                 TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
-            if (_worldGame is null && activeRole.TryTakeAdmittedWorld(
+            if (_world is null && activeRole.TryTakeAdmittedWorld(
                     out GameServerHandshakeSession? createdGame, out GameWorldEntrySnapshot? createdWorld))
             {
                 _loading?.Start();
@@ -480,7 +415,7 @@ internal sealed class ClientApplication : IDisposable
                 _roleClosing = activeRole.DisposeAsync().AsTask();
             }
 
-            if (_returnFromRole && _worldScene is null)
+            if (_returnFromRole && _world is not { HasScene: true })
             {
                 _returnFromRole = false;
                 _role = null;
@@ -489,37 +424,14 @@ internal sealed class ClientApplication : IDisposable
             }
         }
 
-        if (_worldIngress is { } ingress)
+        _world?.DrainIngress();
+        _world?.CompleteLoad(_graphicsDevice);
+        if (_world is { IsClosed: true })
         {
-            try
-            {
-                ingress.Drain(_applyWorldFrame);
-            }
-            catch (Exception exception) when (exception is IOException or InvalidDataException or
-                System.Net.Sockets.SocketException or UnauthorizedAccessException)
-            {
-                Console.Error.WriteLine($"OpenConquer: world connection closed ({exception.Message}).");
-                _worldConnectionLost = true;
-                ReturnToLogin();
-            }
+            _world = null;
         }
 
-        CompleteWorldLoad();
-
-        if (_worldScene is not null && _worldInboundState is { } equipmentState &&
-            equipmentState.EquipmentRevision != _appliedEquipmentRevision)
-        {
-            try
-            {
-                UpdateWorldRoleAppearance(equipmentState);
-                _appliedEquipmentRevision = equipmentState.EquipmentRevision;
-            }
-            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
-            {
-                Console.Error.WriteLine($"OpenConquer: world character artwork is unavailable ({exception.Message}).");
-                ReturnToLogin();
-            }
-        }
+        _world?.RefreshAppearance(_graphicsDevice);
 
         if (_loginErrors is { } messages)
         {
@@ -533,25 +445,11 @@ internal sealed class ClientApplication : IDisposable
                 login.ApplyRegistrationFeedback(registration.Feedback, messages);
             }
         }
-        if (_worldScene is { } loadingScene && !_worldTexturesReady)
-        {
-            try
-            {
-                OpenGLRenderer worldRenderer = GetWorldRenderer();
-                _worldTexturesReady = loadingScene.Prepare(
-                    _worldTextures ?? throw new InvalidOperationException("World textures are unavailable."),
-                    worldRenderer.Viewport.LogicalWidth, worldRenderer.Viewport.LogicalHeight,
-                    unchecked((uint)Environment.TickCount), textureBudget: 1);
-            }
-            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
-            {
-                Console.Error.WriteLine($"OpenConquer: world artwork is unavailable ({exception.Message}).");
-                ReturnToLogin();
-            }
-        }
+        DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window is unavailable.");
+        _world?.PrepareFirstTextures(_worldTextures, window, _graphicsDevice, renderer);
 
-        _loading?.Update(_worldGame is not null ? LoginAttemptStatus.CharacterReceived : _loginFlow?.Status,
-            _worldScene is not null && _worldTexturesReady,
+        _loading?.Update(_world is { IsActive: true } ? LoginAttemptStatus.CharacterReceived : _loginFlow?.Status,
+            _world is { IsPresentable: true },
             double.IsFinite(elapsedSeconds) && elapsedSeconds > 0
                 ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
 
@@ -564,50 +462,18 @@ internal sealed class ClientApplication : IDisposable
             ContinueCredentialDrag();
         }
 
-        if (_worldEntry is not null && _worldGame is null)
-        {
-            throw new InvalidOperationException("World admission lost its authenticated connection.");
-        }
-
-        OpenGLRenderer frameRenderer = worldVisible ? GetWorldRenderer() : renderer;
-        if (worldVisible && _worldScene is { } scene)
-        {
-            scene.Prepare(_worldTextures ?? throw new InvalidOperationException("World textures are unavailable."),
-                frameRenderer.Viewport.LogicalWidth, frameRenderer.Viewport.LogicalHeight,
-                unchecked((uint)Environment.TickCount));
-        }
+        ClientWorld? visibleWorld = worldVisible ? _world : null;
+        OpenGLRenderer frameRenderer = visibleWorld?.GetRenderer(window, _graphicsDevice, renderer) ?? renderer;
+        visibleWorld?.PrepareFrame(_worldTextures, frameRenderer);
 
         frameRenderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
 
         try
         {
-            if (worldVisible && _worldScene is { } worldScene)
+            if (visibleWorld is not null)
             {
-                worldScene.Draw(_worldTextures!, frameRenderer,
-                    _worldRole is null ? null : _drawWorldRole);
-                if (_worldHud is { } hud && _worldInboundState is { } state &&
-                    _itemStats is { } catalog && _levelExperience is { } experienceTable &&
-                    _worldGaugeFollowers is { } followers &&
-                    _worldEntry is { Character.TransformLookSourceId: 0 } entry)
-                {
-                    (int itemLife, int itemMana) = WorldHeroItemStats.Resolve(state.Equipment, catalog);
-                    WorldHeroMaxStats maxima = WorldHeroMaxStats.Resolve(state.HeroAttributes,
-                        itemLife, itemMana, entry.MapFlags, hasTransformLook: false, lifeTierDigit: 0);
-                    state.ApplyEquipmentLifeClamp(maxima.Life);
-                    followers.Advance(state.HeroAttributes, maxima);
-                    bool extended = (state.HeroAttributes.StatusLow & (1UL << 33)) != 0;
-                    int maxStamina = extended ? 150 : 100;
-                    int stamina = Math.Min(unchecked((int)state.HeroAttributes.CurrentStamina), maxStamina);
-                    hud.SetWorldValues(new MainHudVitalsSnapshot(
-                        unchecked((int)state.HeroAttributes.CurrentLife), followers.Life, maxima.Life,
-                        unchecked((int)state.HeroAttributes.CurrentMana), followers.Mana, maxima.Mana,
-                        stamina, maxStamina, extended),
-                        checked((int)state.HeroAttributes.SkillGaugePercent),
-                        state.HeroAttributes.Experience,
-                        experienceTable.GetNextLevelExperience(state.HeroAttributes.Level));
-                }
-                _worldHud?.Draw(frameRenderer, _window!);
+                visibleWorld.DrawFrame(_worldTextures, frameRenderer, window);
             }
             else if (_role is { } role)
             {
@@ -638,185 +504,14 @@ internal sealed class ClientApplication : IDisposable
 
     private void AcceptWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot world)
     {
-        _worldGame = game;
-        _worldEntry = world;
-        try
-        {
-            _worldInboundState = new WorldInboundState(world);
-            _worldGaugeFollowers = new WorldHeroGaugeFollowers();
-        }
-        catch (InvalidDataException exception)
-        {
-            Console.Error.WriteLine($"OpenConquer: world equipment hydration is invalid ({exception.Message}).");
-            ReturnToLogin();
-            return;
-        }
-        _worldIngress = new WorldFrameIngress(game);
-        _worldTexturesReady = false;
         IClientContentSource source = _roleContent ??
             throw new InvalidOperationException("World content source was not initialized.");
-        _worldLoad = new WorldMapLoad(source, world);
-    }
-
-    private void CompleteWorldLoad()
-    {
-        if (_worldLoad is not { IsCompleted: true } completed)
-        {
-            return;
-        }
-
-        _worldLoad = null;
-        try
-        {
-            WorldMapScene scene = completed.Complete();
-            if (_worldGame is not null)
-            {
-                _worldScene = scene;
-                IClientContentSource content = _roleContent ??
-                    throw new InvalidOperationException("World content source is unavailable.");
-                _itemStats = ItemStatCatalog.Load(content);
-                _levelExperience = LevelExperienceTable.Load(content);
-                if (_worldInboundState is { } inbound)
-                {
-                    ApplyWorldCamera(scene, inbound);
-                }
-
-                IClientContentSource source = _roleContent ??
-                    throw new InvalidOperationException("World content source is unavailable.");
-                OpenGLGraphicsDevice graphicsDevice = _graphicsDevice ??
-                    throw new InvalidOperationException("World graphics device is unavailable.");
-                GameWorldEntrySnapshot entry = _worldEntry ??
-                    throw new InvalidOperationException("World entry is unavailable.");
-
-                WorldInboundState equipmentState = _worldInboundState ??
-                    throw new InvalidOperationException("World equipment state is unavailable.");
-                WorldRoleSources sources = WorldRoleSources.Resolve(
-                    entry.Character.PackedAppearance, entry.Character.HairComposite, equipmentState.Equipment);
-                _worldRole = WorldRoleRenderer.Load(source, graphicsDevice,
-                    entry.Character.PackedAppearance, sources);
-                _worldRoleSources = sources;
-                _appliedEquipmentRevision = equipmentState.EquipmentRevision;
-                if (_worldRole is null)
-                {
-                    Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            if (_worldGame is not null)
-            {
-                ReturnToLogin();
-            }
-        }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
-        {
-            Console.Error.WriteLine($"OpenConquer: unable to load map {_worldEntry?.MapDataId} ({exception.Message}).");
-            ReturnToLogin();
-        }
-        catch
-        {
-            ReturnToLogin();
-            throw;
-        }
-    }
-
-    private void ReturnToLogin()
-    {
-        _loading?.Reset();
-        _worldLoad?.Cancel();
-        _worldTexturesReady = false;
-        GameServerHandshakeSession? game = _worldGame;
-        WorldFrameIngress? ingress = _worldIngress;
-        _worldGame = null;
-        _worldIngress = null;
-        _worldInboundState = null;
-        _itemStats = null;
-        _levelExperience = null;
-        _worldGaugeFollowers = null;
-        _worldEntry = null;
-        _worldScene = null;
-        _worldRole?.Dispose();
-        _worldRole = null;
-        _worldRoleSources = null;
-        _appliedEquipmentRevision = 0;
-        _worldHud?.Dispose();
-        _worldHud = null;
-        _worldRenderer?.Dispose();
-        _worldRenderer = null;
-        if (game is not null)
-        {
-            _worldClosing = CloseWorldAsync(game, ingress);
-        }
-    }
-
-    private static async Task CloseWorldAsync(GameServerHandshakeSession game, WorldFrameIngress? ingress)
-    {
-        try
-        {
-            if (ingress is not null)
-            {
-                await ingress.DisposeAsync().ConfigureAwait(false);
-            }
-        }
-        finally
-        {
-            await game.DisposeAsync().ConfigureAwait(false);
-        }
-    }
-
-    private void ApplyWorldFrame(ReadOnlyMemory<byte> packet)
-    {
-        WorldInboundState state = _worldInboundState ??
-            throw new InvalidOperationException("World inbound state is not active.");
-        if (state.Apply(packet) && _worldScene is { } scene)
-        {
-            ApplyWorldCamera(scene, state);
-        }
-    }
-
-    private void UpdateWorldRoleAppearance(WorldInboundState state)
-    {
-        if (_worldEntry is not { } entry || _worldScene is null)
-        {
-            return;
-        }
-
-        WorldRoleSources sources = WorldRoleSources.Resolve(
-            entry.Character.PackedAppearance, entry.Character.HairComposite, state.Equipment);
-        if (sources == _worldRoleSources)
-        {
-            return;
-        }
-
-        IClientContentSource content = _roleContent ??
-            throw new InvalidOperationException("World content source is unavailable.");
-        OpenGLGraphicsDevice graphicsDevice = _graphicsDevice ??
-            throw new InvalidOperationException("World graphics device is unavailable.");
-
-        WorldRoleRenderer? next = WorldRoleRenderer.Load(
-            content, graphicsDevice, entry.Character.PackedAppearance, sources);
-        WorldRoleRenderer? previous = _worldRole;
-        _worldRole = next;
-        _worldRoleSources = sources;
-        previous?.Dispose();
-    }
-
-    private static void ApplyWorldCamera(WorldMapScene scene, WorldInboundState state)
-    {
-        if (state.X >= scene.Map.CellGrid.Width || state.Y >= scene.Map.CellGrid.Height)
-        {
-            throw new InvalidDataException("GameServer corrected the hero to a tile outside the loaded map.");
-        }
-
-        scene.SetCameraTile(state.X, state.Y);
-        scene.SetHeroDirection(state.DirectionIndex);
+        _world = new ClientWorld(game, world, source, _logicalRenderSize, () => _loading?.Reset());
     }
 
     private void OnLoginRequested()
     {
-        if (_worldGame is null && _worldLoad is null && _worldScene is null && _worldClosing is null &&
-            _roleClosing is null && _login is { } login && _loginFlow is { } flow)
+        if (_world is null && _roleClosing is null && _login is { } login && _loginFlow is { } flow)
         {
             if (_loading is { Visible: false } loading &&
                 login.Credentials.AccountLength != 0 && login.Credentials.PasswordLength != 0)
@@ -859,72 +554,17 @@ internal sealed class ClientApplication : IDisposable
         }
     }
 
-    private void DrawWorldRole(OpenGLRenderer renderer)
-    {
-        WorldRoleRenderer role = _worldRole ??
-            throw new InvalidOperationException("World character renderer is unavailable.");
-        WorldMapScene scene = _worldScene ??
-            throw new InvalidOperationException("World scene is unavailable.");
-        (System.Numerics.Matrix4x4 main, System.Numerics.Matrix4x4 shadow) = scene.HeroMatrices;
-        role.Draw(renderer, main, shadow, unchecked((uint)Environment.TickCount64));
-    }
-
-    private OpenGLRenderer GetWorldRenderer()
-    {
-        PixelSize framebuffer = (_window ?? throw new InvalidOperationException("The desktop window is unavailable.")).FramebufferSize;
-        if (framebuffer.Width == 0 || framebuffer.Height == 0)
-        {
-            return _worldRenderer ?? _renderer ?? throw new InvalidOperationException("The renderer is unavailable.");
-        }
-
-        OpenGLGraphicsDevice device = _graphicsDevice ?? throw new InvalidOperationException("The graphics device is unavailable.");
-        WorldMapScene scene = _worldScene ?? throw new InvalidOperationException("The world scene is unavailable.");
-        LogicalRenderSize size = WorldViewportSize.FromFramebuffer(_logicalRenderSize, framebuffer,
-            scene.BackdropExtent, device.MaximumRenderTargetDimension);
-        if (_worldRenderer is { } existing && _worldRenderSize == size)
-        {
-            return existing;
-        }
-
-        OpenGLRenderer next = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height,
-            PresentationPolicy.Stretch, RenderColorFormat.Rgba8);
-        if (_worldHud is null)
-        {
-            try
-            {
-                IClientContentSource source = _roleContent ??
-                    throw new InvalidOperationException("World content source is unavailable.");
-                _worldHud = new WorldHudRuntime(source, device, _logicalRenderSize, magicHintSource: null);
-            }
-            catch
-            {
-                next.Dispose();
-                throw;
-            }
-        }
-
-        OpenGLRenderer? previous = _worldRenderer;
-        _worldRenderer = next;
-        _worldRenderSize = size;
-        previous?.Dispose();
-        return next;
-    }
-
     private void OnFramebufferResized(PixelSize size)
     {
         _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
-        _worldRenderer?.ResizeHostFramebuffer(size.Width, size.Height);
+        _world?.ResizeFramebuffer(size);
     }
 
     private void OnPointerMoved(PixelPoint point)
     {
         if (IsWorldVisible)
         {
-            if (_worldHud is { } hud && _worldRenderer is { } worldRenderer)
-            {
-                bool hudMapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int hudX, out int hudY);
-                hud.HandlePointerMoved(hudMapped, hudX, hudY);
-            }
+            _world!.HandlePointerMoved(point);
             return;
         }
 
@@ -947,11 +587,7 @@ internal sealed class ClientApplication : IDisposable
     {
         if (IsWorldVisible)
         {
-            if (_worldHud is { } hud && _worldRenderer is { } worldRenderer)
-            {
-                bool hudMapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int hudX, out int hudY);
-                hud.HandlePrimaryPointerPressed(hudMapped, hudX, hudY);
-            }
+            _world!.HandlePointerPressed(point);
             return;
         }
 
@@ -978,11 +614,7 @@ internal sealed class ClientApplication : IDisposable
     {
         if (IsWorldVisible)
         {
-            if (_worldHud is { } hud && _worldRenderer is { } worldRenderer)
-            {
-                bool hudMapped = worldRenderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int hudX, out int hudY);
-                hud.HandlePrimaryPointerReleased(hudMapped, hudX, hudY);
-            }
+            _world!.HandlePointerReleased(point);
             return;
         }
 
