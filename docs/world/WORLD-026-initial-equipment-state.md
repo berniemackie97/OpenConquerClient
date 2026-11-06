@@ -21,7 +21,9 @@ The same bounded equipment store receives live world packets. Item 1008
 subtype 1 creates an inventory or tracked row; subtype 3 updates an existing
 item and can change its placement. System message 1009 subtype 3 removes an
 item by UID, subtype 5 moves a known inventory item to an equipment position
-and returns listed displaced items to inventory, subtype 6 unequips by
+and returns listed displaced items to inventory (the +20 count is unsigned;
+entries past the message are UID 0 and the list stops at 235 entries, the
+0x400 buffer edge), subtype 6 unequips by
 position, and subtype 17 updates durability for the tracked position.
 Subtype 46 reconciles the active UID projection. Equipped two-handed bows
 also clear their paired off-hand position on unequip. State changes are

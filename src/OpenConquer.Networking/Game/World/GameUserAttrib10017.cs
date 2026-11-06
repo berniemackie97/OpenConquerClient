@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+using OpenConquer.Networking.Game.Framing;
 
 namespace OpenConquer.Networking.Game.World;
 
@@ -13,72 +13,59 @@ internal readonly ref struct GameUserAttrib10017
     internal const int HeaderLength = 12;
     internal const int EntryLength = 20;
 
-    private readonly ReadOnlySpan<byte> _entries;
+    /// <summary>
+    /// Entries that lie wholly inside the 0x400 buffer. Native loops the full signed count (0x758B92) and reads past its
+    /// buffer above this; that is not mirrored.
+    /// </summary>
+    internal const int MaximumEntries = (GameMessageBuffer.Capacity - HeaderLength) / EntryLength;
 
-    private GameUserAttrib10017(uint targetId, ReadOnlySpan<byte> entries)
-    {
-        TargetId = targetId;
-        _entries = entries;
-    }
+    private readonly GameMessageBuffer _message;
 
-    internal uint TargetId
-    {
-        get;
-    }
+    private GameUserAttrib10017(GameMessageBuffer message) => _message = message;
 
-    internal int Count => _entries.Length / EntryLength;
+    internal uint TargetId => _message.ReadUInt32(4);
+
+    /// <summary>The signed count at +8, as native compares it.</summary>
+    internal int DeclaredCount => unchecked((int)_message.ReadUInt32(8));
 
     /// <summary>
-    /// Requires the length to be exactly the header plus the declared entries; that exactness is this client's policy,
-    /// not a native parser rule.
+    /// The entries processed: none for a count of zero or less, else the count stopped at <see cref="MaximumEntries"/>.
+    /// Entries past the message but inside the buffer read zero, as native's do.
     /// </summary>
-    internal static bool TryRead(ReadOnlySpan<byte> packet, out GameUserAttrib10017 attributes)
-    {
-        attributes = default;
-        if (packet.Length < HeaderLength ||
-            (packet.Length - HeaderLength) % EntryLength != 0 ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet) != packet.Length ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) != PacketType ||
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]) != (uint)((packet.Length - HeaderLength) / EntryLength))
-        {
-            return false;
-        }
+    internal int Count => Math.Clamp(DeclaredCount, 0, MaximumEntries);
 
-        attributes = new GameUserAttrib10017(BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]), packet[HeaderLength..]);
-        return true;
-    }
+    /// <summary>Parse has no size or count rule; every field is read from the native message buffer.</summary>
+    internal static GameUserAttrib10017 Read(GameMessageBuffer message) => new(message);
 
     // Public only because foreach binds to a public GetEnumerator; the declaring type stays internal.
-    public Enumerator GetEnumerator() => new(_entries);
+    public Enumerator GetEnumerator() => new(_message, Count);
 
     public ref struct Enumerator
     {
-        private readonly ReadOnlySpan<byte> _entries;
-        private int _offset;
+        private readonly GameMessageBuffer _message;
+        private readonly int _count;
+        private int _index;
 
-        internal Enumerator(ReadOnlySpan<byte> entries)
+        internal Enumerator(GameMessageBuffer message, int count)
         {
-            _entries = entries;
-            _offset = -EntryLength;
+            _message = message;
+            _count = count;
+            _index = -1;
         }
 
         public readonly GameUserAttribEntry Current
         {
             get
             {
-                ReadOnlySpan<byte> entry = _entries.Slice(_offset, EntryLength);
+                int offset = HeaderLength + _index * EntryLength;
                 return new GameUserAttribEntry(
-                    BinaryPrimitives.ReadUInt32LittleEndian(entry),
-                    BinaryPrimitives.ReadUInt64LittleEndian(entry[4..]),
-                    BinaryPrimitives.ReadUInt64LittleEndian(entry[12..]));
+                    _message.ReadUInt32(offset),
+                    _message.ReadUInt64(offset + 4),
+                    _message.ReadUInt64(offset + 12));
             }
         }
 
-        public bool MoveNext()
-        {
-            _offset += EntryLength;
-            return _offset < _entries.Length;
-        }
+        public bool MoveNext() => ++_index < _count;
     }
 }
 

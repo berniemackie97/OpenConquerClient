@@ -65,7 +65,8 @@ public sealed partial class GameServerHandshakeSessionTests
         await game.SendWorldWalkAsync(character.EntityId, 6, 0x01020304, 0x05060708, token);
         using GameSecuredInboundFrame walk = await echoed.WaitAsync(TimeSpan.FromSeconds(5), token) ??
             throw new EndOfStreamException();
-        Assert.True(GameWalk10005.TryRead(walk.Packet.Span, out GameWalk10005 confirmed));
+        Assert.Equal(GameWalk10005.PacketLength, walk.Packet.Length);
+        GameWalk10005 confirmed = GameWalk10005.Read(GameMessages.Load(walk.Packet.ToArray()));
         Assert.Equal(character.EntityId, confirmed.EntityId);
         await game.DisposeAsync();
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);

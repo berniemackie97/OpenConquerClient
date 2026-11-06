@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using OpenConquer.Client.Tests.Networking;
 using OpenConquer.Client.World;
 
 namespace OpenConquer.Client.Tests.World;
@@ -294,8 +295,9 @@ public sealed class WorldHeroEquipmentTests
         Assert.Equal(40u, equipment.GetActiveItem(1)?.Id);
     }
 
+    // Native subtype 5 loops the declared count with no length check (0x6EB436); entries past the message are UID 0.
     [Fact]
-    public void MalformedDisplacementCountCannotApplyPartialEquipmentChanges()
+    public void DisplacementCountPastTheMessageReadsZeroUids()
     {
         WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Item(200, 1111010, placement: 0),
@@ -304,37 +306,32 @@ public sealed class WorldHeroEquipmentTests
         BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
         BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(20), 2);
 
-        Assert.Throws<InvalidDataException>(() => equipment.Apply(equip));
-        Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal(200u, equipment.GetActiveItem(1)?.Id);
     }
 
+    // Snapshot UIDs past a short message read zero, and a zero UID clears its slot (0x6EC20A..0x6EC458).
     [Fact]
-    public void MalformedLiveMutationsLeaveExistingEquipmentUnchanged()
+    public void ShortSnapshotClearsTheSlotsPastTheMessage()
     {
         WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
-            [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
-        byte[] malformed = Tick(46);
-        Array.Resize(ref malformed, 84);
-        BinaryPrimitives.WriteUInt16LittleEndian(malformed, 84);
+            [Item(100, 1111000, placement: 1), Item(300, 130003, placement: 3), Equipment(headwear: 100, armor: 300)]);
+        Assert.Equal((100u, 300u), (equipment.GetActiveItem(1)?.Id, equipment.GetActiveItem(3)?.Id));
 
-        Assert.Throws<InvalidDataException>(() => equipment.Apply(malformed));
+        Assert.True(equipment.Apply(GameMessages.Truncate(Equipment(headwear: 100, armor: 300), 0x24)));
+
         Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
+        Assert.Null(equipment.GetActiveItem(3));
     }
 
+    // No native item parser has a size rule; frames native dispatch drops (header shorter than 4) are skipped.
     [Fact]
-    public void MalformedItemAndEquipmentEnvelopesAreRejected()
+    public void ShortItemAndSnapshotEnvelopesApplyAndUndispatchableFramesAreSkipped()
     {
-        byte[] item = Item(100, 1111000, placement: 1);
-        Array.Resize(ref item, 67);
-        BinaryPrimitives.WriteUInt16LittleEndian(item, 67);
-        Assert.Throws<InvalidDataException>(() => WorldEquipmentFrames.Hydrate([item]));
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
+            [GameMessages.Truncate(Item(100, 1111000, placement: 1), 67), new byte[3], GameMessages.Truncate(Equipment(headwear: 100), 84)]);
 
-        byte[] equipment = Equipment(headwear: 100);
-        Array.Resize(ref equipment, 84);
-        BinaryPrimitives.WriteUInt16LittleEndian(equipment, 84);
-        Assert.Throws<InvalidDataException>(() => WorldEquipmentFrames.Hydrate([equipment]));
-
-        Assert.Throws<InvalidDataException>(() => WorldEquipmentFrames.Hydrate([new byte[3]]));
+        Assert.Equal(new WorldHeroItem(100, 1111000, 40, 2, 7), equipment.GetActiveItem(1));
     }
 
     private static byte[] Item(uint id, uint typeId, byte placement)

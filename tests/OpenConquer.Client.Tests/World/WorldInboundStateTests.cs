@@ -143,21 +143,32 @@ public sealed class WorldInboundStateTests
         Assert.Equal((0ul, 0ul), (state.HeroAttributes.StatusLow, state.HeroAttributes.StatusHigh));
     }
 
+    // Native loops the declared count with no length check (0x758B92): an entry past the message is attribute 0 value 0.
     [Fact]
-    public void AttributePacketsRejectMalformedCountsWithoutPartialChanges()
+    public void AttributeCountPastTheMessageAppliesZeroEntriesToTheHero()
     {
         WorldInboundState state = CreateState();
         byte[] packet = Attributes(HeroId, (0, 60, 0), (2, 30, 0));
         BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(8), 3);
 
-        Assert.Throws<InvalidDataException>(() => state.Apply(packet));
-        Assert.Equal((70u, 20u),
-            (state.HeroAttributes.CurrentLife, state.HeroAttributes.CurrentMana));
+        Assert.False(state.Apply(packet));
+        Assert.Equal((0u, 30u), (state.HeroAttributes.CurrentLife, state.HeroAttributes.CurrentMana));
+    }
 
-        packet = Attributes(HeroId, (0, 60, 0));
-        BinaryPrimitives.WriteUInt16LittleEndian(packet, (ushort)(packet.Length - 1));
-        Assert.Throws<InvalidDataException>(() => state.Apply(packet));
-        Assert.Equal(70u, state.HeroAttributes.CurrentLife);
+    // Native dispatch drops a message whose size word is not its byte count and the receive loop continues (0x6DEC3A).
+    [Fact]
+    public void FramesWithAMismatchedSizeWordAreSkippedWithoutChangingState()
+    {
+        WorldInboundState state = CreateState();
+        byte[] attributes = Attributes(HeroId, (0, 60, 0));
+        BinaryPrimitives.WriteUInt16LittleEndian(attributes, (ushort)(attributes.Length - 1));
+        byte[] correction = Correction(HeroId, 61, 102);
+        BinaryPrimitives.WriteUInt16LittleEndian(correction, 37);
+        (ushort x, ushort y) = (state.X, state.Y);
+
+        Assert.False(state.Apply(attributes));
+        Assert.False(state.Apply(correction));
+        Assert.Equal((70u, x, y), (state.HeroAttributes.CurrentLife, state.X, state.Y));
     }
 
     [Fact]
@@ -226,14 +237,14 @@ public sealed class WorldInboundStateTests
     }
 
     [Fact]
-    public void MalformedEquipmentPacketsDoNotPartiallyChangeWorldState()
+    public void EquipmentFrameWithAMismatchedSizeWordIsSkipped()
     {
         WorldInboundState state = CreateState();
         state.Apply(Item(101, 120020, placement: 1));
         byte[] snapshot = ActiveEquipment(headwear: 101);
         BinaryPrimitives.WriteUInt16LittleEndian(snapshot, 87);
 
-        Assert.Throws<InvalidDataException>(() => state.Apply(snapshot));
+        Assert.False(state.Apply(snapshot));
         Assert.Null(state.Equipment.GetActiveItem(1));
         Assert.Equal(1u, state.EquipmentRevision);
     }
@@ -307,15 +318,6 @@ public sealed class WorldInboundStateTests
         byte[] weather = Convert.FromHexString("1400f80306000000000000000000000000000000");
         Assert.Throws<InvalidDataException>(() => state.Apply(weather));
         Assert.Equal((1u, 0u, 0u, 0u), state.Weather);
-    }
-
-    [Fact]
-    public void MalformedPacketHeaderIsRejectedBeforeDispatch()
-    {
-        WorldInboundState state = CreateState();
-        byte[] correction = Correction(HeroId, 61, 102);
-        BinaryPrimitives.WriteUInt16LittleEndian(correction, 37);
-        Assert.Throws<InvalidDataException>(() => state.Apply(correction));
     }
 
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,

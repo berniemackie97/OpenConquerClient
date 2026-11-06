@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+using OpenConquer.Networking.Game.Framing;
 
 namespace OpenConquer.Networking.Game.World;
 
@@ -17,21 +17,10 @@ internal readonly record struct GameWeather1016(uint Kind, uint Intensity, uint 
     /// </summary>
     internal bool HasSupportedValues => Kind is >= 1 and <= 11 and not 6 && Intensity <= 1022 && DirectionDegrees <= 359;
 
-    internal static bool TryRead(ReadOnlySpan<byte> packet, out GameWeather1016 weather)
-    {
-        weather = default;
-        if (packet.Length != PacketLength ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet) != PacketLength ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) != PacketType)
-        {
-            return false;
-        }
-
-        weather = new GameWeather1016(
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[12..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[16..]));
-        return true;
-    }
+    /// <summary>Reads the fields from the native message buffer. Parse has no size rule; fields past a short message read zero.</summary>
+    internal static GameWeather1016 Read(GameMessageBuffer message) => new(
+        message.ReadUInt32(4),
+        message.ReadUInt32(8),
+        message.ReadUInt32(12),
+        message.ReadUInt32(16));
 }

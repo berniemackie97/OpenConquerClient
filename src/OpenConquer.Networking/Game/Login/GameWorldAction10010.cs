@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using OpenConquer.Networking.Game.Framing;
 
 namespace OpenConquer.Networking.Game.Login;
 
@@ -50,31 +51,38 @@ internal readonly record struct GameWorldAction10010(
     }
 
     /// <summary>
-    /// Reads the fixed base. Exact length and a zero string count are this client's ingress policy, not native rules.
+    /// Reads the fixed base from the native message buffer. Parse 0x6FEB93 has no size rule and does not read the +37
+    /// string list; fields past a short message read zero.
+    /// </summary>
+    internal static GameWorldAction10010 Read(GameMessageBuffer message) => new(
+        message.ReadUInt32(4),
+        message.ReadUInt32(8),
+        message.ReadUInt32(12),
+        message.ReadUInt32(16),
+        message.ReadUInt16(20),
+        message.ReadUInt16(22),
+        message.ReadUInt16(24),
+        message.ReadUInt16(26),
+        message.ReadUInt32(28),
+        message.ReadUInt32(32),
+        message.ReadByte(36));
+
+    /// <summary>
+    /// World-entry bootstrap reader: exact length and a zero string count. Bootstrap policy, not a native rule; its
+    /// tolerance is CP2.4c.
     /// </summary>
     internal static bool TryRead(ReadOnlySpan<byte> packet, out GameWorldAction10010 action)
     {
         action = default;
-        if (packet.Length != PacketLength ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet) != PacketLength ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) != PacketType ||
-            packet[37] != 0)
+        Span<byte> storage = stackalloc byte[GameMessageBuffer.Capacity];
+        if (packet.Length != PacketLength || packet[37] != 0 ||
+            !GameMessageBuffer.TryLoad(packet, storage, out GameMessageBuffer message) ||
+            message.Type != PacketType)
         {
             return false;
         }
 
-        action = new GameWorldAction10010(
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[12..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[16..]),
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[20..]),
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[22..]),
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[24..]),
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[26..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[28..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[32..]),
-            packet[36]);
+        action = Read(message);
         return true;
     }
 }

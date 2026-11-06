@@ -95,11 +95,6 @@ internal sealed class WorldHeroEquipment
             return false;
         }
 
-        if (!packet.HasListLayout)
-        {
-            throw new InvalidDataException("Equipment mutation has an invalid length.");
-        }
-
         uint itemId = packet.ParameterA;
         uint position = packet.ParameterB;
         switch (subtype)
@@ -113,11 +108,6 @@ internal sealed class WorldHeroEquipment
             case GameItem1009.UpdateDurability:
                 return UpdateDurability(itemId, position);
             default:
-                if (packet.Length != GameItem1009.FixedLength)
-                {
-                    throw new InvalidDataException("Active-equipment snapshot has an invalid length.");
-                }
-
                 ReadOnlySpan<byte> slots = SnapshotSlots;
                 for (int i = 0; i < slots.Length; i++)
                 {
@@ -145,18 +135,13 @@ internal sealed class WorldHeroEquipment
 
     private bool EquipItem(GameItem1009 packet, uint itemId, uint position)
     {
-        uint count = packet.DeclaredListCount;
-        if (count > (uint)packet.ListCapacity)
-        {
-            throw new InvalidDataException("Equipment displacement list is truncated.");
-        }
-
         if (position is < 1 or >= 30 or 19 or 20 ||
             !_inventory.TryGetValue(itemId, out WorldHeroItem item))
         {
             return false;
         }
 
+        int count = packet.ListCount;
         for (int index = 0; index < count; index++)
         {
             uint displacedId = packet.GetListedId(index);
