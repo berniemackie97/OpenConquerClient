@@ -1,0 +1,253 @@
+{
+  "kind": "static-disassembly-derived-golden-cases",
+  "binarySha256": "b6ba5ab8573ec073ea271f57b16fa14de1c67bfb44efd5aa7cfbfc0d3b488a62",
+  "authority": "20_notes/Rendering/hero-model-cp22.md; native code windows verified against clean PE",
+  "limitation": "Expected values independently derived from signed/wrapping x86 control flow, not observed native runtime or framebuffer outputs.",
+  "anchors": {
+    "life": "0x65D06D",
+    "mana": "0x65D25A",
+    "stamina": "0x66F766/0x66F77C/0x66F792",
+    "clamp": "0x6EC49A..0x6EC4C7"
+  },
+  "common": {
+    "strength": 5,
+    "agility": 6,
+    "vitality": 7,
+    "spirit": 8,
+    "equippedLife": 0,
+    "equippedMana": 0
+  },
+  "maxima": [
+    {
+      "name": "life-profession-10",
+      "profession": 10,
+      "life": 225,
+      "mana": 40
+    },
+    {
+      "name": "life-profession-11",
+      "profession": 11,
+      "life": 236,
+      "mana": 40
+    },
+    {
+      "name": "life-profession-12",
+      "profession": 12,
+      "life": 243,
+      "mana": 40
+    },
+    {
+      "name": "life-profession-13",
+      "profession": 13,
+      "life": 247,
+      "mana": 40
+    },
+    {
+      "name": "life-profession-14",
+      "profession": 14,
+      "life": 252,
+      "mana": 40
+    },
+    {
+      "name": "life-profession-15",
+      "profession": 15,
+      "life": 258,
+      "mana": 40
+    },
+    {
+      "name": "mana-profession-110",
+      "profession": 110,
+      "life": 225,
+      "mana": 40
+    },
+    {
+      "name": "mana-profession-111",
+      "profession": 111,
+      "life": 225,
+      "mana": 80
+    },
+    {
+      "name": "mana-profession-112",
+      "profession": 112,
+      "life": 225,
+      "mana": 120
+    },
+    {
+      "name": "mana-profession-113",
+      "profession": 113,
+      "life": 225,
+      "mana": 160
+    },
+    {
+      "name": "mana-profession-114",
+      "profession": 114,
+      "life": 225,
+      "mana": 200
+    },
+    {
+      "name": "mana-profession-115",
+      "profession": 115,
+      "life": 225,
+      "mana": 240
+    },
+    {
+      "name": "signed-equipment-contributions",
+      "profession": 11,
+      "equippedLife": 296,
+      "equippedMana": -10,
+      "life": 532,
+      "mana": 30
+    },
+    {
+      "name": "overlay-and-tier",
+      "profession": 10,
+      "equippedLife": 296,
+      "equippedMana": -10,
+      "mapFlags": 4194304,
+      "overlay": 25,
+      "lifeTier": 9,
+      "life": 1746,
+      "mana": 30
+    },
+    {
+      "name": "low-map-bit-does-not-override",
+      "profession": 11,
+      "mapFlags": 64,
+      "maxLife": 800,
+      "maxMana": 700,
+      "life": 236,
+      "mana": 40
+    },
+    {
+      "name": "high-map-bit-overrides",
+      "profession": 11,
+      "mapFlags": 274877906944,
+      "maxLife": 800,
+      "maxMana": 700,
+      "life": 800,
+      "mana": 700
+    },
+    {
+      "name": "negative-life-override-is-not-floored",
+      "profession": 11,
+      "mapFlags": 274877906944,
+      "maxLife": 4294967295,
+      "life": -1,
+      "mana": 40
+    },
+    {
+      "name": "transform-zero-life-does-not-override-mana",
+      "profession": 132,
+      "transform": true,
+      "life": 0,
+      "mana": 120
+    },
+    {
+      "name": "final-floors-after-negative-equipment",
+      "profession": 11,
+      "equippedLife": -1000,
+      "equippedMana": -1000,
+      "life": 0,
+      "mana": 0
+    },
+    {
+      "name": "signed-wrapping-profession-multiply",
+      "strength": 357913941,
+      "agility": 0,
+      "vitality": 0,
+      "spirit": 0,
+      "profession": 15,
+      "life": 1063004405,
+      "mana": 0
+    }
+  ],
+  "stamina": [
+    {
+      "name": "ordinary-upper-cap",
+      "low": 0,
+      "high": 0,
+      "current": 120,
+      "maximum": 100,
+      "value": 100
+    },
+    {
+      "name": "extended-upper-cap",
+      "low": 8589934592,
+      "high": 0,
+      "current": 200,
+      "maximum": 150,
+      "value": 150
+    },
+    {
+      "name": "neighbor-bit-32",
+      "low": 4294967296,
+      "high": 0,
+      "current": 120,
+      "maximum": 100,
+      "value": 100
+    },
+    {
+      "name": "neighbor-bit-34",
+      "low": 17179869184,
+      "high": 0,
+      "current": 120,
+      "maximum": 100,
+      "value": 100
+    },
+    {
+      "name": "high-word-bit-is-not-low-bit-33",
+      "low": 0,
+      "high": 8589934592,
+      "current": 120,
+      "maximum": 100,
+      "value": 100
+    },
+    {
+      "name": "signed-current-has-no-zero-floor",
+      "low": 8589934592,
+      "high": 0,
+      "current": 4294967295,
+      "maximum": 150,
+      "value": -1
+    },
+    {
+      "name": "ordinary-under-cap",
+      "low": 0,
+      "high": 0,
+      "current": 99,
+      "maximum": 100,
+      "value": 99
+    },
+    {
+      "name": "extended-under-cap",
+      "low": 8589934592,
+      "high": 0,
+      "current": 149,
+      "maximum": 150,
+      "value": 149
+    }
+  ],
+  "neutralOriginalItemTypeRowBase64": "mAuPet6wHqBj+RrWV0eJPyoAosQpSgR2wJgYx4sTLvfBh/A0kVQQ183bXT1uLgKS4wUF3GvUFKr1ggwE5jYJlcvDtIdQEaDMIM0Oji2w6l0C7k91j355oYbXxYS9LyDgIsWkzuWnKfHSTjFaSm+1y8R0Scj4sRRv/e6tuNeBC1LtC0753rAeEVOzT/dHDwWobQCixClKBHbAmBjHixMu98GH8DSRVBDXzdtdPW4uApLjB8RfbNQIkvVgyYfmNkmtyyN1h1cfoPRQzTtf",
+  "nativeCodeWindows": [
+    {
+      "address": "0x65d0c6",
+      "bytes": "8d04c88b8e2c08000003c7bbe803000003c233d26a0a8d3c408bc1f7f35b6a018bc233d2f7f35b3bc3753a6a0a8bc133d259f7f14a74204a74194a74124a740b4a740433c0eb136a0feb0e6a0ceb0a6a0aeb066a08eb026a05580fafc76a649959f7f903f8"
+    },
+    {
+      "address": "0x65d284",
+      "bytes": "538b9f2c080000558bc333d2bde8030000f7f56a0a8b8f0c0500005d8d34898bc233d2f7f53bc5763f558bc333d25bf7f383fa057c076bc91e8bf1eb2b83fa047c056bc919ebf283fa037c088d3489c1e602eb1483fa027c056bc90febdb83fa017c058d3489d1e66a"
+    },
+    {
+      "address": "0x66f766",
+      "bytes": "6a21e8675907000fb6c0c3"
+    },
+    {
+      "address": "0x66f77c",
+      "bytes": "568bf1e80e0000008bb6300800003bf07f028bc65ec3568bf1e8ccffffff85c08b863408000074058d0440d1e85ec3"
+    },
+    {
+      "address": "0x6ec485",
+      "bytes": "e8e30bf7ff6a018bf0e8cd7fd1ff8bc8e8f879f8ff3bc67e2ee8bd7fd1ff8b10568bc8ff92a4000000566a01e8aa7fd1ff8bc8e8ef79f8ff566a0fe89b7fd1ff8bc8e8e079f8ff"
+    }
+  ]
+}

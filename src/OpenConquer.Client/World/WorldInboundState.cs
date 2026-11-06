@@ -9,56 +9,29 @@ internal sealed class WorldInboundState
     private readonly uint _heroId;
     private readonly HashSet<uint> _unhandled = [];
     private readonly HashSet<uint> _unhandledAttributes = [];
-    private bool _needsEquipmentLifeClamp;
 
     internal WorldInboundState(GameWorldEntrySnapshot world)
     {
         _heroId = world.Character.EntityId;
-        HeroAttributes = WorldHeroAttributes.FromCharacter(world.Character);
-        Equipment = WorldHeroEquipment.FromHydration(world.HydrationPackets);
-        _needsEquipmentLifeClamp = world.HydrationPackets.Any(static packet =>
+        bool needsEquipmentLifeClamp = world.HydrationPackets.Any(static packet =>
             packet.Length == 88 &&
             BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(2)) == 1009 &&
             BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(12)) == 46);
+        Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character),
+            WorldHeroEquipment.FromHydration(world.HydrationPackets), needsEquipmentLifeClamp);
         X = world.X;
         Y = world.Y;
         DirectionIndex = world.DirectionIndex;
         Weather = (world.WeatherKind, 0, 0, 0);
     }
 
-    internal WorldHeroEquipment Equipment
+    internal WorldHeroModel Hero
     {
         get;
     }
-
-    internal uint EquipmentRevision
-    {
-        get;
-        private set;
-    }
-
-    internal void ApplyEquipmentLifeClamp(int maximumLife)
-    {
-        if (!_needsEquipmentLifeClamp)
-        {
-            return;
-        }
-
-        _needsEquipmentLifeClamp = false;
-        if (maximumLife >= 0 && HeroAttributes.CurrentLife > (uint)maximumLife)
-        {
-            HeroAttributes = HeroAttributes with
-            {
-                CurrentLife = (uint)maximumLife,
-            };
-        }
-    }
-
-    internal WorldHeroAttributes HeroAttributes
-    {
-        get;
-        private set;
-    }
+    internal WorldHeroEquipment Equipment => Hero.Equipment;
+    internal uint EquipmentRevision => Hero.EquipmentRevision;
+    internal WorldHeroAttributes HeroAttributes => Hero.Attributes;
 
     internal byte DirectionIndex
     {
@@ -151,11 +124,7 @@ internal sealed class WorldInboundState
         {
             if (Equipment.Apply(data))
             {
-                EquipmentRevision++;
-                if (type == 1009 && BinaryPrimitives.ReadUInt16LittleEndian(data[12..]) == 46)
-                {
-                    _needsEquipmentLifeClamp = true;
-                }
+                Hero.RecordEquipmentChange(type == 1009 && BinaryPrimitives.ReadUInt16LittleEndian(data[12..]) == 46);
             }
 
             return false;
@@ -219,11 +188,7 @@ internal sealed class WorldInboundState
             uint attributeId = BinaryPrimitives.ReadUInt32LittleEndian(entry);
             ulong low = BinaryPrimitives.ReadUInt64LittleEndian(entry[4..]);
             ulong high = BinaryPrimitives.ReadUInt64LittleEndian(entry[12..]);
-            if (HeroAttributes.TryApply(attributeId, low, high, out WorldHeroAttributes updated))
-            {
-                HeroAttributes = updated;
-            }
-            else
+            if (!Hero.TryApplyAttribute(attributeId, low, high))
             {
                 uint diagnosticKey = attributeId is <= 54 or 128 ? attributeId : uint.MaxValue;
                 if (_unhandledAttributes.Add(diagnosticKey))

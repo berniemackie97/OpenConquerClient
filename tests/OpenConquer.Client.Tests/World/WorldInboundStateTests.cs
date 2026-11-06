@@ -202,11 +202,11 @@ public sealed class WorldInboundStateTests
         state.Apply(Item(101, 120020, placement: 1));
         state.Apply(ActiveEquipment(headwear: 101));
 
-        state.ApplyEquipmentLifeClamp(60);
+        state.Hero.ApplyEquipmentLifeClamp(60);
         Assert.Equal(60u, state.HeroAttributes.CurrentLife);
 
         state.Apply(Attributes(HeroId, (0, 90, 0)));
-        state.ApplyEquipmentLifeClamp(60);
+        state.Hero.ApplyEquipmentLifeClamp(60);
         Assert.Equal(90u, state.HeroAttributes.CurrentLife);
     }
 

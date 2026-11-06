@@ -1,5 +1,10 @@
 # WORLD-027: Initial effective stats and HUD activation
 
+Native authority: `20_notes/Rendering/14_hero_effective_max_life_mana.md`,
+`13_hud_progress_gauges.md` and the CP2.2 revalidation in
+`hero-model-cp22.md`. Effective life/mana are `0x65D06D`/`0x65D25A`;
+their equipment loops are `0x65D12B..0x65D1C3`/`0x65D2EC..0x65D309`.
+
 The item-type and item-addition tables are loaded from their verified source
 files through the packaged-content reader. The item-type decoder applies the
 128-byte seeded rotation and reads the signed life/mana fields; addition records
@@ -15,7 +20,13 @@ enchantment. Broken equipment contributes mana but not life.
 On world frames the live local hero updates the existing HUD's HP, MP, stamina
 and skill gauges. Life and mana followers start at zero and use the recorded
 per-frame step of max/80 (or one below 80), snapping immediately on a decrease.
-The extended physical-force bar uses status bit 33.
+The extended physical-force bar uses bit 33 of the low status qword
+(`0x66F766`, status indexing `0x6E50D4`). The supported initialized maximum is
+100 (`0x6570A9`), increased to 150 by the unsigned multiply/shift at `0x66F792`.
+Current stamina uses a signed upper-only cap (`0x66F77C`); dynamic maximum-stamina
+inputs remain unsupported. Follower arithmetic is signed and wrapping
+(`0x65E128..0x65E167`, `0x65E1C9..0x65E24C`). Skill attribute 27 is capped at
+100 before storage (`0x757C10..0x757C1F`).
 
 The initial renderer projection is restricted to characters whose admission
 snapshot has no transformation look source. A completed transform lookup is
@@ -33,3 +44,43 @@ be closed before declaring complete gameplay vitals production-ready.
 The thirteen equipment snapshot UIDs follow packet offsets 32 through 80
 in ascending order and activate slots 1 through 9, then 15 through 18.
 The right-hand and right-accessory entries precede their left counterparts.
+
+## Hero model boundary — CP2.2
+
+| Component | Responsibility |
+| --- | --- |
+| `WorldInboundState` | Existing wire adapter, forwarding hero attribute and equipment changes. Typed codec migration remains CP2.3. |
+| `WorldHeroModel` | World-lifetime hero attributes, equipment/revision, pending snapshot clamp and followers; applies hero rules through `AdvanceVitals`. |
+| `WorldHeroMaxStats` / `WorldHeroItemStats` | Pure stat calculations over attributes, equipment and already-parsed item tables. |
+| `WorldHeroVitals` | Resolved model values, without HUD or graphics types. |
+| `ClientWorld` | Supplies current context and parsed tables, then maps resolved values to HUD input. |
+
+`AdvanceVitals` performs no rendering or content I/O. Item/experience tables are
+read-only inputs; experience lookup supplies the level requirement. Model state
+is used on the existing desktop frame thread and discarded with the world. No
+new tasks, resource lifetimes or cross-thread mutation are introduced.
+
+The model is still advanced once at the existing guarded draw point, after
+`scene.Draw`, when the HUD, tables and untransformed admission state are ready.
+Moving that call to every update would change follower cadence and loading/hidden
+frame behavior. Content loading and draw timing are unchanged by this extraction.
+
+Native 1009 subtype 46 compares current life and effective maximum as signed
+int32, without a nonnegative-maximum guard (`0x6EC49A/0x6EC49C`). An actual clamp
+sets both current life and the HP follower to maximum (`0x6EC4B8/0x6EC4C7`);
+equal/below cases do not reset the follower, and mana is unaffected. The model now
+matches these rules at its existing deferred consumption boundary.
+
+The single pending flag still loses snapshot-to-later-life-update order within
+one ingress batch: native clamps synchronously in the packet handler, while
+managed tables are unavailable during early loading. That gap and the differing
+old-note snapshot-slot descriptions remain assigned to the CP2.3 typed 1009 audit.
+No packet-layout, readiness or ingress-order change is claimed here.
+
+`WorldHeroModelTests` adds 12 cases, including static native-instruction golden
+vectors and encoded item/progression composition. Fixture provenance and limits
+are in `tests/OpenConquer.Client.Tests/Fixtures/Hero/README.md`. Local SDK 10.0.403
+validation: locked restore, Release build with zero warnings/errors, format
+verification, and 2,832 focused tests (Client 1,497; Content 750; Rendering 499;
+Platform 86). These checks do not establish native runtime or interactive client
+smoke-test parity.

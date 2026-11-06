@@ -29,4 +29,8 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Fixtures/Hero/native-stats-5517.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

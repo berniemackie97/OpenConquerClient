@@ -30,7 +30,6 @@ internal sealed class ClientWorld : IClientWorld
     private GameWorldEntrySnapshot? _entry;
     private WorldFrameIngress? _ingress;
     private WorldInboundState? _inbound;
-    private WorldHeroGaugeFollowers? _gaugeFollowers;
     private ItemStatCatalog? _itemStats;
     private LevelExperienceTable? _levelExperience;
     private WorldMapLoad? _load;
@@ -81,7 +80,6 @@ internal sealed class ClientWorld : IClientWorld
         try
         {
             _inbound = new WorldInboundState(entry);
-            _gaugeFollowers = new WorldHeroGaugeFollowers();
         }
         catch (InvalidDataException exception)
         {
@@ -284,23 +282,14 @@ internal sealed class ClientWorld : IClientWorld
 
         scene.Draw(textures!, renderer, _role is null ? null : _drawRole);
         if (_hud is { } hud && _inbound is { } state && _itemStats is { } catalog && _levelExperience is { } experienceTable &&
-            _gaugeFollowers is { } followers && _entry is { Character.TransformLookSourceId: 0 } entry)
+            _entry is { Character.TransformLookSourceId: 0 } entry)
         {
-            (int itemLife, int itemMana) = WorldHeroItemStats.Resolve(state.Equipment, catalog);
-            WorldHeroMaxStats maxima = WorldHeroMaxStats.Resolve(state.HeroAttributes,
-                itemLife, itemMana, entry.MapFlags, hasTransformLook: false, lifeTierDigit: 0);
-            state.ApplyEquipmentLifeClamp(maxima.Life);
-            followers.Advance(state.HeroAttributes, maxima);
-            bool extended = (state.HeroAttributes.StatusLow & (1UL << 33)) != 0;
-            int maxStamina = extended ? 150 : 100;
-            int stamina = Math.Min(unchecked((int)state.HeroAttributes.CurrentStamina), maxStamina);
-            hud.SetWorldValues(new MainHudVitalsSnapshot(
-                unchecked((int)state.HeroAttributes.CurrentLife), followers.Life, maxima.Life,
-                unchecked((int)state.HeroAttributes.CurrentMana), followers.Mana, maxima.Mana,
-                stamina, maxStamina, extended),
-                checked((int)state.HeroAttributes.SkillGaugePercent),
-                state.HeroAttributes.Experience,
-                experienceTable.GetNextLevelExperience(state.HeroAttributes.Level));
+            WorldHeroVitals vitals = state.Hero.AdvanceVitals(catalog, experienceTable, entry.MapFlags,
+                hasTransformLook: false, lifeTierDigit: 0);
+            hud.SetWorldValues(new MainHudVitalsSnapshot(vitals.CurrentLife, vitals.LifeFollower, vitals.MaximumLife,
+                vitals.CurrentMana, vitals.ManaFollower, vitals.MaximumMana,
+                vitals.Stamina, vitals.MaximumStamina, vitals.HasExtendedStamina),
+                vitals.SkillGaugePercent, vitals.Experience, vitals.NextLevelExperience);
         }
 
         _hud?.Draw(renderer, window);
@@ -374,7 +363,6 @@ internal sealed class ClientWorld : IClientWorld
         _inbound = null;
         _itemStats = null;
         _levelExperience = null;
-        _gaugeFollowers = null;
         _entry = null;
         _scene = null;
         try
@@ -422,7 +410,6 @@ internal sealed class ClientWorld : IClientWorld
         _inbound = null;
         _itemStats = null;
         _levelExperience = null;
-        _gaugeFollowers = null;
         if (ingress is not null)
         {
             await cleanup.RunAsync(ingress.DisposeAsync).ConfigureAwait(false);
