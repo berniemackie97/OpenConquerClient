@@ -249,11 +249,11 @@ internal sealed class TestRoleCreationScreen(List<string>? calls = null) : IRole
     }
     public GameServerHandshakeSession? AdmittedSession
     {
-        get; init;
+        get; set;
     }
     public GameWorldEntrySnapshot? AdmittedWorld
     {
-        get; init;
+        get; set;
     }
     public Func<ValueTask> Close { get; set; } = static () => ValueTask.CompletedTask;
     public int DisposeCalls

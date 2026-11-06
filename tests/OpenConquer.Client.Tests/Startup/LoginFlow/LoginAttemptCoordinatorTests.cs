@@ -16,7 +16,7 @@ using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Tests.Startup.LoginFlow;
 
-public sealed class LoginAttemptCoordinatorTests : IDisposable
+public sealed partial class LoginAttemptCoordinatorTests : IDisposable
 {
     private readonly string _folder = Directory.CreateTempSubdirectory("oc-login-flow-").FullName;
 

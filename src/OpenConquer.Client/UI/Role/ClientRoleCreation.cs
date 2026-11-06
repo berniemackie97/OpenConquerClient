@@ -27,6 +27,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
     private readonly Action<GameServerHandshakeSession, GameWorldEntrySnapshot> _admitWorld;
     private readonly Action<bool> _returnToLogin;
     private readonly FlashRasterCache _rasters = new();
+    private readonly Func<GameServerHandshakeSession, string, IRoleCreationScreen> _createScreen;
     private SelectCharacterIni? _ini;
     private RoleCreationText? _text;
     private FontGlyphInk? _glyphInk;
@@ -38,7 +39,8 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
 
     public ClientRoleCreation(IClientContentSource content, Action<LoginAudioCue> playSound, Action requestExit,
         Func<bool> canAdmitWorld, Func<bool> hasWorldScene,
-        Action<GameServerHandshakeSession, GameWorldEntrySnapshot> admitWorld, Action<bool> returnToLogin)
+        Action<GameServerHandshakeSession, GameWorldEntrySnapshot> admitWorld, Action<bool> returnToLogin,
+        Func<GameServerHandshakeSession, string, IRoleCreationScreen>? createScreen = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(playSound);
@@ -54,6 +56,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
         _hasWorldScene = hasWorldScene;
         _admitWorld = admitWorld;
         _returnToLogin = returnToLogin;
+        _createScreen = createScreen ?? CreateScreen;
     }
 
     public bool IsActive => _screen is not null;
@@ -64,7 +67,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(game);
         ArgumentNullException.ThrowIfNull(accountName);
-        return TryOpen(() => CreateScreen(game, accountName), game.DisposeAsync);
+        return TryOpen(() => _createScreen(game, accountName), game.DisposeAsync);
     }
 
     /// <summary>Transfers the accepted session only after its screen is constructed; failed construction closes it.</summary>

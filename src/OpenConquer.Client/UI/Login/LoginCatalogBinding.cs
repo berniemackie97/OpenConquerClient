@@ -14,7 +14,7 @@ internal sealed class LoginCatalogBinding : IDisposable
     private bool _startupSelectionApplied;
     private bool _unavailableReported;
 
-    private LoginCatalogBinding(LoginCatalogRefresh? refresh) => _refresh = refresh;
+    internal LoginCatalogBinding(LoginCatalogRefresh? refresh) => _refresh = refresh;
 
     /// <summary>Binds to the catalog authority embedded at build time, if there is one.</summary>
     public static LoginCatalogBinding ForEmbeddedAuthority()
