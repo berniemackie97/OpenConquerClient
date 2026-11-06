@@ -16,7 +16,7 @@ namespace OpenConquer.Client.UI.Role;
 /// The retail create-role screen: hosts role.dat's stage, answers its host commands as the native
 /// <c>CRoleCreateFlashDlg</c> does, and drives the GameServer exchange behind it.
 /// </summary>
-internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
+internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
 {
     private const double FrameSeconds = 1d / 30d;
     private const double MaximumCatchUpSeconds = 0.25;
@@ -75,7 +75,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IAsyncDisposable
         get; private set;
     }
 
-    internal bool TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? world)
+    public bool TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? world)
     {
         if (_disposed || _worldTransferred || _exchange.IsBusy || WorldEntry is not { } admitted)
         {

@@ -161,6 +161,10 @@ are not architectural requirements.
 
 `OpenConquer.Client` is the only composition root for the game runtime.
 
+The host delegates admitted-world lifetime to `ClientWorld` and role creation to
+`ClientRoleCreation`. See [role-creation ownership](client-role-ownership.md) for
+transition, input and resource boundaries in CP2.1b.
+
 At a high level:
 
 ```text
