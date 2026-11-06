@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Text.Json;
 using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Client.Tests.Networking;
@@ -42,13 +43,39 @@ public sealed class GameWorldAction10010Tests
     [Theory]
     [InlineData(0, 0)]
     [InlineData(2, 1)]
-    [InlineData(37, 1)]
-    public void TryRead_RejectsMalformedHeadersAndStringCounts(int offset, byte corruption)
+    public void TryRead_RejectsMalformedHeaders(int offset, byte corruption)
     {
         byte[] packet = new byte[GameWorldAction10010.PacketLength];
         GameWorldAction10010.Write(packet, GameWorldAction10010.EnterMap, 123);
         packet[offset] = corruption;
         Assert.False(GameWorldAction10010.TryRead(packet, out _));
+    }
+
+    [Fact]
+    public void TryRead_MatchesRetainedOriginalX86ParserReplayResults()
+    {
+        using JsonDocument fixture = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory,
+            "Fixtures", "Bootstrap", "parser-5517.json")));
+        foreach (JsonElement row in fixture.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            byte[] packet = GameMessages.Header(row.GetProperty("size").GetInt32(), row.GetProperty("packet_type").GetUInt16());
+            BinaryPrimitives.WriteUInt16LittleEndian(packet, row.GetProperty("header_size").GetUInt16());
+            Assert.Equal(row.GetProperty("accepted").GetBoolean(), GameWorldAction10010.TryRead(packet, out _));
+        }
+    }
+
+    [Fact]
+    public void TryRead_ZeroFillsMissingFieldsAndDoesNotInterpretTrailingStrings()
+    {
+        byte[] packet = Convert.FromHexString("26001a2778563412896745239a785634ab8967456c00785689679a78efcdab89f0debc9aa500");
+        Assert.True(GameWorldAction10010.TryRead(GameMessages.Truncate(packet, 28), out GameWorldAction10010 shortAction));
+        Assert.Equal(new GameWorldAction10010(0x12345678, 0x23456789, 0x3456789a, 0x456789ab, 108, 0x5678,
+            0x6789, 0x789a, 0, 0, 0), shortAction);
+        byte[] extended = GameMessages.Extend(packet, 6);
+        extended[37] = byte.MaxValue;
+        Assert.True(GameWorldAction10010.TryRead(extended, out GameWorldAction10010 action));
+        Assert.True(GameWorldAction10010.TryRead(packet, out GameWorldAction10010 original));
+        Assert.Equal(original, action);
     }
 
     [Fact]

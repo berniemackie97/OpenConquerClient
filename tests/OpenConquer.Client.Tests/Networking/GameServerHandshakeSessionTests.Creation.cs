@@ -60,14 +60,20 @@ public sealed partial class GameServerHandshakeSessionTests
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
-    [Fact]
-    public async Task CreatedCharacter_CompletesWorldAdmissionRequestsOnTheOriginalSocket()
+    // nativeShortFrames: the peer sends 1110/1016/10010 at lengths native parsers accept (CP2.4d1,
+    // 20_notes Network/bootstrap-tolerance-cp24d.md): short frames read zero, trailing 10010 strings are not read.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreatedCharacter_CompletesWorldAdmissionRequestsOnTheOriginalSocket(bool nativeShortFrames)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
         using TcpListener games = Listen();
         Task accountPeer = AccountPeerAsync(accounts, token);
-        Task gamePeer = CreationPeerAsync(games, CreationScript.AcceptAndEnterWorld, token);
+        Task gamePeer = CreationPeerAsync(games, nativeShortFrames
+            ? CreationScript.AcceptAndEnterWorldWithNativeShortFrames
+            : CreationScript.AcceptAndEnterWorld, token);
 
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
@@ -282,6 +288,7 @@ public sealed partial class GameServerHandshakeSessionTests
         CloseInsteadOfResult,
         NewRoleAfterProof,
         AcceptAndEnterWorld,
+        AcceptAndEnterWorldWithNativeShortFrames,
         StallWorldEntry,
     }
 
@@ -335,6 +342,7 @@ public sealed partial class GameServerHandshakeSessionTests
             case CreationScript.RefuseThenAccept:
             case CreationScript.NewRoleAfterProof:
             case CreationScript.AcceptAndEnterWorld:
+            case CreationScript.AcceptAndEnterWorldWithNativeShortFrames:
             case CreationScript.StallWorldEntry:
                 if (script == CreationScript.RefuseThenAccept)
                 {
@@ -357,9 +365,10 @@ public sealed partial class GameServerHandshakeSessionTests
                 await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
                     Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
                     characterWire[..^8]);
-                if (script == CreationScript.AcceptAndEnterWorld)
+                if (script is CreationScript.AcceptAndEnterWorld or CreationScript.AcceptAndEnterWorldWithNativeShortFrames)
                 {
-                    await WorldEntryPeerAsync(peer, token);
+                    await WorldEntryPeerAsync(peer, token,
+                        nativeShortFrames: script == CreationScript.AcceptAndEnterWorldWithNativeShortFrames);
                     byte[] walk = await peer.ReadPacketAsync(GameWalk10005.PacketLength, token);
                     Assert.Equal(GameWalk10005.PacketLength, walk.Length);
                     GameWalk10005 request = GameWalk10005.Read(GameMessages.Load(walk));
@@ -395,7 +404,7 @@ public sealed partial class GameServerHandshakeSessionTests
         Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
     }
 
-    private static async Task WorldEntryPeerAsync(SecuredTestPeer peer, CancellationToken token)
+    private static async Task WorldEntryPeerAsync(SecuredTestPeer peer, CancellationToken token, bool nativeShortFrames = false)
     {
         const uint hero = 0x11223344;
         await RequireWorldRequestAsync(GameWorldAction10010.EnterMap, hero);
@@ -413,6 +422,13 @@ public sealed partial class GameServerHandshakeSessionTests
         BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(22), 13);
         BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(24), 61);
         BinaryPrimitives.WriteUInt16LittleEndian(entered.AsSpan(26), 101);
+        if (nativeShortFrames)
+        {
+            // Map flags, weather intensity/direction/parameter and EnterMap data past Y are omitted and read as zero.
+            (map, weather, entered) = (GameMessages.Truncate(map, 12), GameMessages.Truncate(weather, 8),
+                GameMessages.Truncate(entered, 28));
+        }
+
         await peer.WritePacketsAsync(token, map, weather, entered);
 
         await RequireWorldRequestAsync(GameWorldAction10010.ClientStateApplied, 0);
@@ -425,7 +441,15 @@ public sealed partial class GameServerHandshakeSessionTests
         {
             await RequireWorldRequestAsync(action,
                 action == GameWorldAction10010.ReportSilentInfo ? 0u : hero);
-            await peer.WritePacketsAsync(token, WorldAction(action, hero));
+            byte[] acknowledgement = WorldAction(action, hero);
+            if (nativeShortFrames)
+            {
+                // A nonzero +37 string count with trailing bytes: Parse 0x6FEB93 does not read the string list.
+                acknowledgement = GameMessages.Extend(acknowledgement, 6);
+                (acknowledgement[37], acknowledgement[38]) = (1, 4);
+            }
+
+            await peer.WritePacketsAsync(token, acknowledgement);
         }
         await RequireWorldRequestAsync(GameWorldAction10010.GetStatistics, hero);
 

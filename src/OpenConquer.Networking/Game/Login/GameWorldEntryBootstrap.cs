@@ -1,6 +1,6 @@
-using System.Buffers.Binary;
 using OpenConquer.Networking.Game.Framing;
 using OpenConquer.Networking.Game.Handshake;
+using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Networking.Game.Login;
 
@@ -51,15 +51,14 @@ internal static class GameWorldEntryBootstrap
 
             using (GameSecuredInboundFrame map = await ReadRequiredAsync(session, operation).ConfigureAwait(false))
             {
-                if (map.PacketType != 1110 || map.PacketLength != 20)
+                if (!GameMapInfo1110.TryRead(map.Packet.Span, out GameMapInfo1110 info))
                 {
                     throw new InvalidDataException("World entry expected the 1110 map information packet.");
                 }
 
-                ReadOnlySpan<byte> bytes = map.Packet.Span;
-                mapId = BinaryPrimitives.ReadUInt32LittleEndian(bytes[4..]);
-                mapDataId = BinaryPrimitives.ReadUInt32LittleEndian(bytes[8..]);
-                flags = BinaryPrimitives.ReadUInt64LittleEndian(bytes[12..]);
+                mapId = info.MapId;
+                mapDataId = info.MapDataId;
+                flags = info.MapFlags;
                 if (mapId == 0 || mapDataId == 0)
                 {
                     throw new InvalidDataException("World entry supplied an invalid map identity.");
@@ -68,12 +67,12 @@ internal static class GameWorldEntryBootstrap
 
             using (GameSecuredInboundFrame weather = await ReadRequiredAsync(session, operation).ConfigureAwait(false))
             {
-                if (weather.PacketType != 1016 || weather.PacketLength != 20)
+                if (!GameWeather1016.TryRead(weather.Packet.Span, out GameWeather1016 info))
                 {
                     throw new InvalidDataException("World entry expected the 1016 weather packet.");
                 }
 
-                weatherKind = BinaryPrimitives.ReadUInt32LittleEndian(weather.Packet.Span[4..]);
+                weatherKind = info.Kind;
                 if (weatherKind is < 1 or > 11 or 6)
                 {
                     throw new InvalidDataException("World entry received an unsupported weather kind.");

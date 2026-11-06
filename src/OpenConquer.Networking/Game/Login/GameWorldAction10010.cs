@@ -68,15 +68,14 @@ internal readonly record struct GameWorldAction10010(
         message.ReadByte(36));
 
     /// <summary>
-    /// World-entry bootstrap reader: exact length and a zero string count. Bootstrap policy, not a native rule; its
-    /// tolerance is CP2.4c.
+    /// Reads through native header/type validation and the zeroed message buffer (0x6FEB93); there is no fixed-size
+    /// or string-count gate. Bootstrap sequencing and action-specific validation are separate responsibilities.
     /// </summary>
     internal static bool TryRead(ReadOnlySpan<byte> packet, out GameWorldAction10010 action)
     {
         action = default;
         Span<byte> storage = stackalloc byte[GameMessageBuffer.Capacity];
-        if (packet.Length != PacketLength || packet[37] != 0 ||
-            !GameMessageBuffer.TryLoad(packet, storage, out GameMessageBuffer message) ||
+        if (!GameMessageBuffer.TryLoad(packet, storage, out GameMessageBuffer message) ||
             message.Type != PacketType)
         {
             return false;
