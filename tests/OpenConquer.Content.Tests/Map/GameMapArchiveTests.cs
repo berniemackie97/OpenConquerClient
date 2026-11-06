@@ -48,7 +48,7 @@ public sealed class GameMapArchiveTests
 
         using MemoryStream output = new();
         using (Stream data = new MemoryStream(noise, writable: false))
-        using (var writer = WriterFactory.OpenWriter(output, ArchiveType.SevenZip,
+        using (IWriter writer = WriterFactory.OpenWriter(output, ArchiveType.SevenZip,
                    new SevenZipWriterOptions(CompressionType.LZMA2) { CompressHeader = true }))
         {
             writer.Write("newbie.DMap", data, DateTime.UnixEpoch);

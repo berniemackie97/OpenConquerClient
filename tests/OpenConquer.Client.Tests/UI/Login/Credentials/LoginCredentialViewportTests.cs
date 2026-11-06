@@ -44,7 +44,10 @@ public sealed class LoginCredentialViewportTests
         using LoginCredentialInput input = new(selection, layout);
         Assert.True(input.PointerPressed(true, layout.AccountField.X + 2, layout.AccountField.Y + 2));
         foreach (char character in new string('A', LoginCredentialInput.MaximumAccountLength))
+        {
             input.TextEntered(character);
+        }
+
         input.PointerReleased();
         Assert.True(input.PointerPressed(true, layout.AccountField.X + 2, layout.AccountField.Y + 2, caretIndex: 16));
         input.PointerDragged(-1000);

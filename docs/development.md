@@ -1,6 +1,6 @@
 # Development
 
-OpenConquer Client targets the SDK pinned by [`global.json`](../global.json).
+OpenConquer Client targets the SDK pinned by [`global.json`](../global.json). The client and server share the [build baseline](architecture/shared-build-baseline.md).
 
 Reference:
 

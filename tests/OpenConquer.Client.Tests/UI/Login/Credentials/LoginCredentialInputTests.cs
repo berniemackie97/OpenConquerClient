@@ -121,11 +121,17 @@ public sealed class LoginCredentialInputTests
         using LoginCredentialInput input = new(selection, layout);
         input.PointerPressed(true, layout.AccountField.X + 2, layout.AccountField.Y + 2);
         for (int i = 0; i < 100; i++)
+        {
             input.TextEntered('A');
+        }
+
         Assert.Equal(LoginCredentialInput.MaximumAccountLength, input.AccountLength);
         input.KeyPressed(new DesktopKeyEvent(DesktopKey.Tab, DesktopKeyModifiers.None, false));
         for (int i = 0; i < 100; i++)
+        {
             input.TextEntered('9');
+        }
+
         Assert.Equal(LoginCredentialInput.MaximumPasswordLength, input.PasswordLength);
         input.KeyPressed(new DesktopKeyEvent(DesktopKey.Backspace, DesktopKeyModifiers.None, false));
         Assert.Equal(LoginCredentialInput.MaximumPasswordLength - 1, input.PasswordLength);

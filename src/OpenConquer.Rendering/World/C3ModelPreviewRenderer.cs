@@ -89,7 +89,7 @@ public sealed class C3ModelPreviewRenderer : IDisposable
 
     public void Dispose()
     {
-        foreach (var item in _meshes)
+        foreach ((WorldRoleMesh Mesh, OpenGLTexture2D Texture) item in _meshes)
         {
             item.Mesh.Dispose();
         }
