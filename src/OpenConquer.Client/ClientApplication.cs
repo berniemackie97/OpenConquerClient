@@ -2,7 +2,6 @@ using System.Runtime.ExceptionServices;
 using OpenConquer.Client.Startup;
 using OpenConquer.Client.Startup.LoginFlow;
 using OpenConquer.Client.UI;
-using OpenConquer.Client.UI.Flash;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
@@ -14,7 +13,6 @@ using OpenConquer.Content;
 using OpenConquer.Content.Configuration;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Login;
-using OpenConquer.Content.Role;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
 using OpenConquer.Networking.Game.Handshake;
@@ -24,7 +22,6 @@ using OpenConquer.Platform.OpenGL;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
-using OpenConquer.Rendering.Text.Fonts;
 using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client;
@@ -56,17 +53,10 @@ internal sealed class ClientApplication : IDisposable
     private OpenGLRenderer? _renderer;
     private LoginScreenRenderer? _loginRenderer;
     private LoginLoadingScreen? _loading;
-    private RoleCreationScreen? _role;
+    private ClientRoleCreation? _roleCreation;
     private ClientWorld? _world;
     private WorldMapTextureRenderer? _worldTextures;
-    private IClientContentSource? _roleContent;
-    private SelectCharacterIni? _roleIni;
-    private RoleCreationText? _roleText;
-    private FontGlyphInk? _roleGlyphInk;
-    private FlashRasterCache? _roleRasters;
-    private FlashStagePresentation? _rolePresentation;
-    private bool _returnFromRole;
-    private Task? _roleClosing;
+    private IClientContentSource? _content;
     private PixelPoint _lastPointer;
     private bool _runStarted;
     private bool _disposed;
@@ -152,20 +142,11 @@ internal sealed class ClientApplication : IDisposable
             {
                 try
                 {
-                    _role?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    _roleCreation?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 }
                 finally
                 {
-                    _role = null;
-                    try
-                    {
-                        _roleClosing?.GetAwaiter().GetResult();
-                    }
-                    finally
-                    {
-                        _roleClosing = null;
-                        _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-                    }
+                    _loginFlow?.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 }
             }
             finally
@@ -194,7 +175,7 @@ internal sealed class ClientApplication : IDisposable
                 {
                     _catalog?.Dispose();
                     _audio?.Dispose();
-                    _roleGlyphInk?.Dispose();
+                    _roleCreation?.ReleaseContent();
                 }
                 finally
                 {
@@ -203,6 +184,7 @@ internal sealed class ClientApplication : IDisposable
                     _audio = null;
                     _login = null;
                     _world = null;
+                    _roleCreation = null;
                     _window = null;
                 }
             }
@@ -214,8 +196,10 @@ internal sealed class ClientApplication : IDisposable
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
 
-        _roleContent = contentSource;
-        _roleRasters = new FlashRasterCache();
+        _content = contentSource;
+        _roleCreation = new ClientRoleCreation(contentSource, cue => _audio?.Play(cue), () => _window?.RequestClose(),
+            () => _world is null, () => _world is { HasScene: true }, AcceptRoleWorld,
+            connectionLost => _loginFlow?.CompleteRoleReturn(connectionLost));
         _login = new LoginScreen(LoginStageLayout.Create(_logicalRenderSize), LoginAccountHistory.ForCurrentUser(),
             ClientVersionLabel.Load(contentSource), cue => _audio?.Play(cue));
         _login.ExitRequested += () => _window?.RequestClose();
@@ -254,15 +238,11 @@ internal sealed class ClientApplication : IDisposable
             _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy,
                 RenderColorFormat.Rgba8));
             _loginRenderer = graphics.Track(new LoginScreenRenderer(device, login,
-                _roleContent ?? throw new InvalidOperationException("Login content source is unavailable."), _loading));
-            _rolePresentation = graphics.Track(new FlashStagePresentation(device,
-                _roleRasters ?? throw new InvalidOperationException("Role raster source is missing.")));
+                _content ?? throw new InvalidOperationException("Login content source is unavailable."), _loading));
+            (_roleCreation ?? throw new InvalidOperationException("Role creation was not initialized.")).CreateGraphics(device, graphics);
             _worldTextures = graphics.Track(new WorldMapTextureRenderer(
-                _roleContent ?? throw new InvalidOperationException("World content source is missing."), device));
-            if (_role is { } activeRole)
-            {
-                activeRole.Stage.TextCaretAt = _rolePresentation.LocateCaret;
-            }
+                _content ?? throw new InvalidOperationException("World content source is missing."), device));
+            _roleCreation.BindCaret();
 
             login.CaretLocator = _loginRenderer.CaretLocator;
             login.RegistrationCaretLocator = _loginRenderer.RegistrationCaretLocator;
@@ -274,7 +254,7 @@ internal sealed class ClientApplication : IDisposable
             _renderer = null;
             _graphicsDevice = null;
             _loginRenderer = null;
-            _rolePresentation = null;
+            _roleCreation?.ReleaseGraphicsBinding();
             _worldTextures = null;
             graphics.DisposeAfterInitializationFailure();
             throw;
@@ -285,10 +265,7 @@ internal sealed class ClientApplication : IDisposable
     {
         _catalog?.Cancel();
         _login?.FocusLost();
-        if (_role is { } activeRole)
-        {
-            activeRole.Stage.TextCaretAt = null;
-        }
+        _roleCreation?.ReleaseGraphicsBinding();
 
         if (_login is not null)
         {
@@ -300,7 +277,6 @@ internal sealed class ClientApplication : IDisposable
         _graphics = null;
         _renderer = null;
         _loginRenderer = null;
-        _rolePresentation = null;
         _worldTextures = null;
         try
         {
@@ -343,11 +319,7 @@ internal sealed class ClientApplication : IDisposable
             AcceptWorld(acceptedGame!, acceptedWorld!);
         }
 
-        if (_roleClosing is { IsCompleted: true } closed)
-        {
-            _roleClosing = null;
-            closed.GetAwaiter().GetResult();
-        }
+        _roleCreation?.ObserveClose();
 
         if (_world is { } closingWorld && closingWorld.TryObserveClose(out WorldCloseReason closeReason))
         {
@@ -361,68 +333,18 @@ internal sealed class ClientApplication : IDisposable
             }
         }
 
-        if (_role is null && _roleClosing is null &&
+        if (_roleCreation is { CanOpen: true } roleCreation &&
             _loginFlow is { Status: LoginAttemptStatus.CharacterCreation } creation &&
             creation.TryTakeAcceptedGame(out GameServerHandshakeSession? accepted, out string accountName))
         {
-            try
+            if (!roleCreation.TryOpen(accepted!, accountName))
             {
-                IClientContentSource roleContent = _roleContent ??
-                    throw new InvalidOperationException("Role content source was not initialized.");
-                _roleIni ??= SelectCharacterIni.Load(roleContent);
-                if (_roleGlyphInk is null)
-                {
-                    ClientFontSettingsConfiguration fontSettings = ClientFontSettingsConfiguration.Load(roleContent);
-                    GameFontConfiguration font = GameFontConfiguration.Load(roleContent);
-                    _roleGlyphInk = new FontGlyphInk(fontSettings.GuiFontFaceName, font.NominalPixelHeight);
-                }
-
-                _roleText ??= RoleCreationText.Load(roleContent, LoginErrorEncoding.ForCurrentHost());
-                _role = new RoleCreationScreen(accepted!, accountName, _roleIni, _roleText,
-                    _roleRasters ?? throw new InvalidOperationException("Role raster source is unavailable."),
-                    _roleGlyphInk.HasMoreThanFivePixels, cue => _audio?.Play(cue));
-                if (_rolePresentation is { } presentation)
-                {
-                    _role.Stage.TextCaretAt = presentation.LocateCaret;
-                }
-
-                _role.ReturnRequested += () => _returnFromRole = true;
-                _role.ExitRequested += () => _window?.RequestClose();
-            }
-            catch (Exception exception) when (exception is FileNotFoundException or InvalidDataException or IOException or UnauthorizedAccessException)
-            {
-                Console.Error.WriteLine($"OpenConquer: retail role content is unavailable ({exception.Message}).");
-                _roleClosing = accepted?.DisposeAsync().AsTask();
                 creation.FailAcceptedGame();
             }
-            catch
-            {
-                _roleClosing = accepted?.DisposeAsync().AsTask();
-                throw;
-            }
         }
 
-        if (_role is { } activeRole)
-        {
-            activeRole.Tick(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
-                TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
-            if (_world is null && activeRole.TryTakeAdmittedWorld(
-                    out GameServerHandshakeSession? createdGame, out GameWorldEntrySnapshot? createdWorld))
-            {
-                _loading?.Start();
-                AcceptWorld(createdGame!, createdWorld!);
-                _role = null;
-                _roleClosing = activeRole.DisposeAsync().AsTask();
-            }
-
-            if (_returnFromRole && _world is not { HasScene: true })
-            {
-                _returnFromRole = false;
-                _role = null;
-                _loginFlow?.CompleteRoleReturn(activeRole.ConnectionLost);
-                _roleClosing = activeRole.DisposeAsync().AsTask();
-            }
-        }
+        _roleCreation?.Update(double.IsFinite(elapsedSeconds) && elapsedSeconds > 0 ?
+            TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero);
 
         _world?.DrainIngress();
         _world?.CompleteLoad(_graphicsDevice);
@@ -475,10 +397,9 @@ internal sealed class ClientApplication : IDisposable
             {
                 visibleWorld.DrawFrame(_worldTextures, frameRenderer, window);
             }
-            else if (_role is { } role)
+            else if (_roleCreation is { IsActive: true } role)
             {
-                (_rolePresentation ?? throw new InvalidOperationException("Role renderer is unavailable."))
-                    .Draw(frameRenderer, role.Stage);
+                role.Draw(frameRenderer);
             }
             else
             {
@@ -504,14 +425,20 @@ internal sealed class ClientApplication : IDisposable
 
     private void AcceptWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot world)
     {
-        IClientContentSource source = _roleContent ??
+        IClientContentSource source = _content ??
             throw new InvalidOperationException("World content source was not initialized.");
         _world = new ClientWorld(game, world, source, _logicalRenderSize, () => _loading?.Reset());
     }
 
+    private void AcceptRoleWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot world)
+    {
+        _loading?.Start();
+        AcceptWorld(game, world);
+    }
+
     private void OnLoginRequested()
     {
-        if (_world is null && _roleClosing is null && _login is { } login && _loginFlow is { } flow)
+        if (_world is null && _roleCreation is not { IsClosing: true } && _login is { } login && _loginFlow is { } flow)
         {
             if (_loading is { Visible: false } loading &&
                 login.Credentials.AccountLength != 0 && login.Credentials.PasswordLength != 0)
@@ -571,9 +498,9 @@ internal sealed class ClientApplication : IDisposable
         _lastPointer = point;
         if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
-            if (_role is { } role)
+            if (_roleCreation is { IsActive: true } role)
             {
-                role.PointerMoved(mapped ? new System.Numerics.Vector2(x, y) : new System.Numerics.Vector2(-1, -1));
+                role.PointerMoved(mapped, x, y);
             }
             else
             {
@@ -595,13 +522,9 @@ internal sealed class ClientApplication : IDisposable
         if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
             bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
-            if (_role is { } role)
+            if (_roleCreation is { IsActive: true } role)
             {
-                if (mapped)
-                {
-                    role.PointerMoved(new System.Numerics.Vector2(x, y));
-                    role.PointerPressed(extend);
-                }
+                role.PointerPressed(mapped, x, y, extend);
             }
             else
             {
@@ -620,10 +543,9 @@ internal sealed class ClientApplication : IDisposable
 
         if (TryMapPointer(point, out bool mapped, out int x, out int y))
         {
-            if (_role is { } role)
+            if (_roleCreation is { IsActive: true } role)
             {
-                role.PointerMoved(mapped ? new System.Numerics.Vector2(x, y) : new System.Numerics.Vector2(-1, -1));
-                role.PointerReleased();
+                role.PointerReleased(mapped, x, y);
             }
             else
             {
@@ -641,7 +563,7 @@ internal sealed class ClientApplication : IDisposable
 
         if (_window is { } window)
         {
-            if (_role is { } role)
+            if (_roleCreation is { IsActive: true } role)
             {
                 role.KeyPressed(key, window.ReadClipboardText, window.WriteClipboardText);
             }
@@ -659,7 +581,7 @@ internal sealed class ClientApplication : IDisposable
             return;
         }
 
-        if (_role is { } role)
+        if (_roleCreation is { IsActive: true } role)
         {
             role.TextEntered(character);
         }
@@ -674,7 +596,7 @@ internal sealed class ClientApplication : IDisposable
         if (!focused)
         {
             _login?.FocusLost();
-            _role?.Stage.SetFocus(null);
+            _roleCreation?.FocusLost();
         }
 
         _audio?.SetFocused(focused);
