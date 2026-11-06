@@ -368,10 +368,9 @@ public sealed partial class GameServerHandshakeSessionTests
                 else if (script == CreationScript.StallWorldEntry)
                 {
                     byte[] request = await peer.ReadPacketAsync(GameWorldAction10010.PacketLength, token);
-                    Assert.True(GameWorldAction10010.TryRead(request, out ushort action, out uint hero,
-                        out uint parameter, out _, out _));
+                    Assert.True(GameWorldAction10010.TryRead(request, out GameWorldAction10010 action));
                     Assert.Equal((GameWorldAction10010.EnterMap, 0x11223344u, 0u),
-                        (action, hero, parameter));
+                        (action.Action, action.EntityId, action.ParameterPair));
                 }
                 break;
         }
@@ -431,10 +430,9 @@ public sealed partial class GameServerHandshakeSessionTests
         async Task RequireWorldRequestAsync(ushort expected, uint expectedEntity)
         {
             byte[] request = await peer.ReadPacketAsync(GameWorldAction10010.PacketLength, token);
-            Assert.True(GameWorldAction10010.TryRead(request, out ushort action, out uint entity, out uint pair,
-                out ushort x, out ushort y));
+            Assert.True(GameWorldAction10010.TryRead(request, out GameWorldAction10010 action));
             Assert.Equal((expected, expectedEntity, 0u, (ushort)0, (ushort)0),
-                (action, entity, pair, x, y));
+                (action.Action, action.EntityId, action.ParameterPair, action.X, action.Y));
         }
     }
 

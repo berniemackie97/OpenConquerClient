@@ -257,6 +257,43 @@ public sealed class WorldInboundStateTests
         Assert.Equal((ushort)0, state.Equipment.GetActiveItem(1)?.Durability);
     }
 
+    [Theory]
+    [InlineData(8)]
+    [InlineData(12)]
+    [InlineData(22)]
+    [InlineData(28)]
+    [InlineData(32)]
+    [InlineData(36)]
+    public void CorrectionWithAnyNonzeroRestrictedFieldIsRejectedWithoutMoving(int offset)
+    {
+        WorldInboundState state = CreateState();
+        byte[] correction = Correction(HeroId, 62, 102);
+        correction[offset] = 1;
+        Assert.Throws<InvalidDataException>(() => state.Apply(correction));
+        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+    }
+
+    [Fact]
+    public void GoldenAllFieldsCorrectionDecodesButViolatesTheClientPolicy()
+    {
+        // The static golden frame sets every restricted field, so the codec accepts it and the hero policy refuses it.
+        WorldInboundState state = CreateState();
+        byte[] golden = Convert.FromHexString(
+            "26001a2778563412896745239a785634ab8967456c00785689679a78efcdab89f0debc9aa500");
+        BinaryPrimitives.WriteUInt32LittleEndian(golden.AsSpan(4), HeroId);
+        Assert.Throws<InvalidDataException>(() => state.Apply(golden));
+        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+    }
+
+    [Fact]
+    public void WeatherKindSixIsRefusedWithoutChangingWeather()
+    {
+        WorldInboundState state = CreateState();
+        byte[] weather = Convert.FromHexString("1400f80306000000000000000000000000000000");
+        Assert.Throws<InvalidDataException>(() => state.Apply(weather));
+        Assert.Equal((1u, 0u, 0u, 0u), state.Weather);
+    }
+
     [Fact]
     public void MalformedPacketHeaderIsRejectedBeforeDispatch()
     {
