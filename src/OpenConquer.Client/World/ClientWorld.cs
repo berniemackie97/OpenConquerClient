@@ -481,11 +481,7 @@ internal sealed class ClientWorld : IClientWorld
 
     private static void ApplyCamera(WorldMapScene scene, WorldInboundState state)
     {
-        if (state.X >= scene.Map.CellGrid.Width || state.Y >= scene.Map.CellGrid.Height)
-        {
-            throw new InvalidDataException("GameServer corrected the hero to a tile outside the loaded map.");
-        }
-
+        // Native retains off-grid tiles; projection clamps the camera, not the hero's model coordinates (CP2.4c).
         scene.SetCameraTile(state.X, state.Y);
         scene.SetHeroDirection(state.DirectionIndex);
     }

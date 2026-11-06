@@ -22,6 +22,8 @@ internal static class WorldRoleCameraMatrices
 
         Matrix4x4 baseTransform = Matrix4x4.CreateScale(scale) *
             Matrix4x4.CreateRotationZ(rotationDegrees * (MathF.PI / 180f));
+        // Ordinary supported role elevation starts at zero (0x64F66B/66E); NULL terrain contributes zero at 0x650949.
+        // Independent action arcs and role offsets are separate inputs, not a map-edge height fallback.
         Matrix4x4 sceneTransform = Matrix4x4.CreateRotationX(-MathF.PI / 6f) *
             Matrix4x4.CreateTranslation(anchorX, 0f, anchorY);
         Matrix4x4 view = new(

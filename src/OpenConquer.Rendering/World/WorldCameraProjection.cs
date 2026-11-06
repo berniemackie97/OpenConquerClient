@@ -11,9 +11,23 @@ internal static class WorldCameraProjection
     {
         ArgumentNullException.ThrowIfNull(map);
 
-        long x = ((long)tileX - tileY) * 32 + (long)map.CellGrid.Width * 32;
-        long y = ((long)tileX + tileY) * 16 + 16;
-        return (checked((int)x), checked((int)y));
+        // 0x61D85C..0x61D879 wraps SUB/LEA/SHL before signed /2, including outside the map.
+        int x = unchecked(((tileX - tileY) << 6) / 2 + map.CellGrid.Width * 32);
+        int y = unchecked(((tileX + tileY) << 5) / 2 + 16);
+        return (x, y);
+    }
+
+    /// <summary>Native inclusive screen test (0x61E00D), independent of map-cell bounds.</summary>
+    internal static bool IsTileWithinScreenBounds(GameMapContent map, WorldPuzzleProjection projection,
+        int tileX, int tileY, int margin)
+    {
+        (int worldX, int worldY) = ProjectTile(map, tileX, tileY);
+        long x = (long)worldX - projection.CenterX;
+        long y = (long)worldY - projection.CenterY;
+        long marginX = (long)margin * 64 * MapScale / projection.ScaleNumerator;
+        long marginY = (long)margin * 32 * MapScale / projection.ScaleNumerator;
+        return x >= -marginX && x <= projection.ScreenWidth + marginX &&
+            y >= -marginY && y <= projection.ScreenHeight + marginY;
     }
 
     public static WorldPuzzleProjection FromHeroWorldPosition(

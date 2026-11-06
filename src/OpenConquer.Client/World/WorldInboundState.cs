@@ -46,13 +46,13 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         private set;
     }
 
-    internal ushort X
+    internal int X
     {
         get;
         private set;
     }
 
-    internal ushort Y
+    internal int Y
     {
         get;
         private set;
@@ -75,14 +75,8 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         }
 
         (int dx, int dy) = walk.GetOrdinaryDelta();
-        int x = X + dx;
-        int y = Y + dy;
-        if ((uint)x > ushort.MaxValue || (uint)y > ushort.MaxValue)
-        {
-            throw new InvalidDataException("World walk acknowledgement has an invalid destination.");
-        }
-
-        (X, Y) = ((ushort)x, (ushort)y);
+        // Native DWORD ADD at 0x7406DB/0x7406DD wraps; the protected tile setter never narrows to ushort.
+        (X, Y) = (unchecked(X + dx), unchecked(Y + dy));
         DirectionIndex = walk.DirectionIndex;
         return true;
     }
