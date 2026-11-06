@@ -13,8 +13,8 @@ public sealed class WorldInboundStateTests
     public void WorldStateStartsFromAuthenticatedAdmission()
     {
         WorldInboundState state = CreateState();
-        Assert.Equal((ushort)61, state.X);
-        Assert.Equal((ushort)101, state.Y);
+        Assert.Equal(61, state.X);
+        Assert.Equal(101, state.Y);
         Assert.Equal((byte)3, state.DirectionIndex);
         Assert.Equal((1u, 0u, 0u, 0u), state.Weather);
     }
@@ -24,10 +24,10 @@ public sealed class WorldInboundStateTests
     {
         WorldInboundState state = CreateState();
         Assert.True(state.Apply(Correction(HeroId, 62, 102)));
-        Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
+        Assert.Equal((62, 102), (state.X, state.Y));
         Assert.False(state.Apply(Correction(HeroId, 62, 102)));
         Assert.False(state.Apply(Correction(entityId: HeroId + 1, x: 63, y: 103)));
-        Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
+        Assert.Equal((62, 102), (state.X, state.Y));
         Assert.Equal((byte)3, state.DirectionIndex);
     }
 
@@ -47,7 +47,7 @@ public sealed class WorldInboundStateTests
         GameWalk10005.WriteOrdinary(packet, HeroId, direction, movementTick: 100, mapState: 0);
 
         Assert.True(state.Apply(packet));
-        Assert.Equal((x, y), (state.X, state.Y));
+        Assert.Equal(((int)x, (int)y), (state.X, state.Y));
         Assert.Equal(direction, state.DirectionIndex);
     }
 
@@ -59,8 +59,32 @@ public sealed class WorldInboundStateTests
         GameWalk10005.WriteOrdinary(packet, HeroId + 1, 6, movementTick: 100, mapState: 0);
 
         Assert.False(state.Apply(packet));
-        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+        Assert.Equal((61, 101), (state.X, state.Y));
         Assert.Equal((byte)3, state.DirectionIndex);
+    }
+
+    [Theory]
+    [InlineData(0, 0, 3, -1, -1)]
+    [InlineData(0, 0, 2, -1, 0)]
+    [InlineData(0, 0, 4, 0, -1)]
+    [InlineData(65535, 65535, 7, 65536, 65536)]
+    [InlineData(65535, 61, 6, 65536, 61)]
+    [InlineData(61, 65535, 0, 61, 65536)]
+    public void WalkAcrossUnsignedWordBoundaryKeepsSignedTilesAndAcceptsLaterCorrection(
+        ushort startX, ushort startY, byte direction, int expectedX, int expectedY)
+    {
+        WorldInboundState state = CreateState();
+        state.Apply(Correction(HeroId, startX, startY));
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, HeroId, direction, movementTick: 1, mapState: 0);
+
+        Assert.True(state.Apply(walk));
+
+        Assert.Equal((expectedX, expectedY), (state.X, state.Y));
+        Assert.Equal(direction, state.DirectionIndex);
+        Assert.True(state.Apply(Correction(HeroId, 61, 101)));
+        Assert.Equal((61, 101), (state.X, state.Y));
+        Assert.Equal(direction, state.DirectionIndex);
     }
 
     [Fact]
@@ -77,7 +101,7 @@ public sealed class WorldInboundStateTests
 
         Assert.False(state.Apply(weather));
         Assert.Equal((2u, 900u, 270u, 17u), state.Weather);
-        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+        Assert.Equal((61, 101), (state.X, state.Y));
         BinaryPrimitives.WriteUInt32LittleEndian(weather.AsSpan(8), 1023);
         Assert.False(state.Apply(weather));
         Assert.Equal((2u, 900u, 270u, 17u), state.Weather);
@@ -113,7 +137,7 @@ public sealed class WorldInboundStateTests
         Assert.Equal((3ul, 2ul), (stats.StatusLow, stats.StatusHigh));
         Assert.Equal((250u, 180u), (stats.MaximumLifeOverride, stats.MaximumManaOverride));
         Assert.Equal(100u, stats.SkillGaugePercent);
-        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+        Assert.Equal((61, 101), (state.X, state.Y));
 
         Assert.False(state.Apply(Attributes(HeroId, (0, 95, 0), (0, 91, 0))));
         Assert.Equal(91u, state.HeroAttributes.CurrentLife);
@@ -164,7 +188,7 @@ public sealed class WorldInboundStateTests
         BinaryPrimitives.WriteUInt16LittleEndian(attributes, (ushort)(attributes.Length - 1));
         byte[] correction = Correction(HeroId, 61, 102);
         BinaryPrimitives.WriteUInt16LittleEndian(correction, 37);
-        (ushort x, ushort y) = (state.X, state.Y);
+        (int x, int y) = (state.X, state.Y);
 
         Assert.False(state.Apply(attributes));
         Assert.False(state.Apply(correction));
@@ -203,7 +227,7 @@ public sealed class WorldInboundStateTests
         Assert.False(state.Apply(TickRemove(101)));
         Assert.Null(state.Equipment.GetActiveItem(1));
         Assert.Equal(4u, state.EquipmentRevision);
-        Assert.Equal(((ushort)61, (ushort)101), (state.X, state.Y));
+        Assert.Equal((61, 101), (state.X, state.Y));
     }
 
     [Fact]
@@ -298,7 +322,7 @@ public sealed class WorldInboundStateTests
         byte[] correction = Correction(HeroId, 62, 102);
         correction[offset] = 1;
         Assert.True(state.Apply(correction));
-        Assert.Equal(((ushort)62, (ushort)102), (state.X, state.Y));
+        Assert.Equal((62, 102), (state.X, state.Y));
         Assert.Equal((byte)3, state.DirectionIndex);
     }
 
@@ -311,7 +335,7 @@ public sealed class WorldInboundStateTests
             "26001a2778563412896745239a785634ab8967456c00785689679a78efcdab89f0debc9aa500");
         BinaryPrimitives.WriteUInt32LittleEndian(golden.AsSpan(4), HeroId);
         Assert.True(state.Apply(golden));
-        Assert.Equal(((ushort)0x6789, (ushort)0x789A), (state.X, state.Y));
+        Assert.Equal((0x6789, 0x789A), (state.X, state.Y));
         Assert.Equal((byte)3, state.DirectionIndex);
     }
 

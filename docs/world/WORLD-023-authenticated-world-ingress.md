@@ -51,8 +51,8 @@ subtype 5 the unsigned count at +20, with entries past the message read as
 zero. Native reads past its buffer for counts above 50 (10017) and 235
 (1009 list); the client stops at the buffer edge.
 
-Transport framing (4..0x400 bytes) is unchanged. Walk destination range and
-map bounds remain CP2.4c; the world-entry bootstrap sequence remains CP2.4d. Evidence:
+Transport framing (4..0x400 bytes) is unchanged. Signed/off-map tiles are handled
+by CP2.4c below; the world-entry bootstrap sequence remains CP2.4d. Evidence:
 `20_notes/Network/inbound-tolerance-cp24.md`.
 
 ## Handler tolerance — CP2.4b
@@ -80,4 +80,32 @@ clean formatting, and 2,919 focused tests (Client 1,584, Content 750, Rendering 
 Platform 86). Thirty-seven client cases are new. Tests include independent static
 golden inputs, skipped-packet continuation, missing-table updates and item-instance
 references. They do not establish running-client or native-runtime comparison.
+
+## Signed and off-map tiles — CP2.4c
+
+World state keeps signed int32 tile coordinates. Ordinary walk acknowledgements
+add the native DWORD direction deltas with wrapping arithmetic (`0x7406DB/6DD`),
+including negative tiles and values above 65535. Correction X/Y remain unsigned
+wire words; a later correction replaces the signed model coordinates normally.
+Remote/mounted walking remains unsupported, and facing behavior is unchanged.
+
+Neither ClientWorld nor WorldMapScene rejects a hero solely for leaving the loaded
+cell grid. The actual hero anchor remains unclamped; the camera retains its existing
+ground-extents clamp. Native cell lookup returns NULL outside the grid (`0x61D9C8`),
+but this is not an admission rule for a role. Native role registration instead uses
+inclusive projected-screen bounds with margin2 (`0x67274A..0x672772`, `0x61E00D`).
+
+Visible off-map roles enter the ordinary scenery/terrain depth ordering. Far
+off-screen roles have no draw entry, while scenery preparation/drawing continues.
+Projection and depth arithmetic preserve native int32 wrapping; WORLD-020 records
+the rendering and height boundary. These changes introduce no network lane, worker,
+content I/O or resource lifetime. World-exit ownership and bootstrap behavior stay
+unchanged. Evidence: `20_notes/Network/off-map-tiles-cp24c.md`.
+
+CP2.4c local validation on SDK10.0.403: locked restore, zero-warning/error Release
+build, format verification, and 2,933 focused tests (Client1,598, +14; Content750;
+Rendering499; Platform86). The 27 native-derived golden inputs cover signed
+projection, visibility and depth. Tests also exercise u16 crossings, subsequent
+corrections, off-map scene anchors and return to an ordinary tile. Running-client
+smoke and native-runtime comparisons remain unverified.
 

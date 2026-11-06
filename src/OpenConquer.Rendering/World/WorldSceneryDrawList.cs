@@ -43,7 +43,7 @@ internal static class WorldSceneryDrawList
                 GameMapTerrainObject item = binding.Terrain;
                 int tileX = checked(groupX + item.AnchorOffsetX);
                 int tileY = checked(groupY + item.AnchorOffsetY);
-                if (!IsVisible(map, projection, tileX, tileY, 8))
+                if (!WorldCameraProjection.IsTileWithinScreenBounds(map, projection, tileX, tileY, 8))
                 {
                     continue;
                 }
@@ -60,7 +60,8 @@ internal static class WorldSceneryDrawList
             }
         }
 
-        if (roleTile is { } tile)
+        // Ordinary roles register only within the screen margin of 2 tiles (0x67274A..0x672772), even off-grid.
+        if (roleTile is { } tile && WorldCameraProjection.IsTileWithinScreenBounds(map, projection, tile.X, tile.Y, 2))
         {
             order.InsertRole(tile.X, tile.Y);
         }
@@ -98,8 +99,8 @@ internal static class WorldSceneryDrawList
 
         (int worldX, int worldY) = WorldCameraProjection.ProjectTile(map, tileX, tileY);
         (int offsetTileX, int offsetTileY) = ProjectToTile(map, worldX - offsetX, worldY - offsetY);
-        if (!IsVisible(map, projection, offsetTileX, offsetTileY, margin) ||
-            !IsVisible(map, projection, tileX, tileY, margin))
+        if (!WorldCameraProjection.IsTileWithinScreenBounds(map, projection, offsetTileX, offsetTileY, margin) ||
+            !WorldCameraProjection.IsTileWithinScreenBounds(map, projection, tileX, tileY, margin))
         {
             return;
         }
@@ -139,15 +140,4 @@ internal static class WorldSceneryDrawList
         return (int)(value + 0.5) > truncated ? truncated + 1 : truncated;
     }
 
-    private static bool IsVisible(GameMapContent map, WorldPuzzleProjection projection,
-        int tileX, int tileY, int margin)
-    {
-        (int worldX, int worldY) = WorldCameraProjection.ProjectTile(map, tileX, tileY);
-        long x = (long)worldX - projection.CenterX;
-        long y = (long)worldY - projection.CenterY;
-        long marginX = (long)margin * 64 * 256 / projection.ScaleNumerator;
-        long marginY = (long)margin * 32 * 256 / projection.ScaleNumerator;
-        return x >= -marginX && x <= projection.ScreenWidth + marginX &&
-            y >= -marginY && y <= projection.ScreenHeight + marginY;
-    }
 }

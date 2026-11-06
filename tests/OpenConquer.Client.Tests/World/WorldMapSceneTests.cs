@@ -77,6 +77,26 @@ public sealed class WorldMapSceneTests
         Assert.Equal(previous, scene.HeroMatrices);
     }
 
+    [Theory]
+    [InlineData(-1, 60, -1.08f, 1f)]
+    [InlineData(60, -1, 1.08f, 1f)]
+    [InlineData(132, 132, 0f, -4.253333f)]
+    public void OffMapHeroKeepsItsAnchorWhileCameraClampsToGroundBounds(int tileX, int tileY, float clipX, float clipY)
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
+
+        scene.SetCameraTile(tileX, tileY);
+        IReadOnlyList<WorldMapLayer> layers = scene.BuildFrame(800, 600, 1000);
+
+        Assert.NotNull(layers[1].Puzzle);
+        Vector4 anchor = Vector4.Transform(new Vector4(0, 0, 0, 1), scene.HeroMatrices.Main);
+        Assert.InRange(anchor.X, clipX - 0.00001f, clipX + 0.00001f);
+        Assert.InRange(anchor.Y, clipY - 0.00001f, clipY + 0.00001f);
+        scene.SetCameraTile(60, 108);
+        Assert.NotEmpty(scene.BuildFrame(800, 600, 1001)[1].Puzzle!);
+    }
+
     [Fact]
     public void MissingGroundPuzzle_LeavesGroundLayerEmptyAndKeepsOtherLayers()
     {

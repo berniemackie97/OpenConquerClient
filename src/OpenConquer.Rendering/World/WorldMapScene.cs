@@ -79,10 +79,7 @@ public sealed class WorldMapScene
 
     public void SetCameraTile(int tileX, int tileY)
     {
-        if ((uint)tileX >= (uint)_map.CellGrid.Width || (uint)tileY >= (uint)_map.CellGrid.Height)
-        {
-            throw new ArgumentOutOfRangeException(nameof(tileX), "The camera tile must lie within the map grid.");
-        }
+        // Native accepts signed off-grid tiles. Screen visibility and the ground-extents camera clamp are separate.
         (_heroX, _heroY) = WorldCameraProjection.ProjectTile(_map, tileX, tileY);
         (_heroTileX, _heroTileY) = (tileX, tileY);
     }
@@ -224,6 +221,12 @@ public sealed class WorldMapScene
 
             if (layer.Scenery is { } scenery)
             {
+                if (_roleDrawIndex < 0)
+                {
+                    textures.Draw(renderer, scenery, _projection, SpriteColor.White, 0, scenery.Count);
+                    continue;
+                }
+
                 textures.Draw(renderer, scenery, _projection, SpriteColor.White, 0, _roleDrawIndex);
                 drawRole?.Invoke(renderer);
                 textures.Draw(renderer, scenery, _projection, SpriteColor.White,

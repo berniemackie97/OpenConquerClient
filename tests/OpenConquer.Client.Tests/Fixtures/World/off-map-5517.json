@@ -1,0 +1,271 @@
+{
+  "kind": "static-disassembly-derived-golden-cases",
+  "binarySha256": "b6ba5ab8573ec073ea271f57b16fa14de1c67bfb44efd5aa7cfbfc0d3b488a62",
+  "authority": "20_notes/Network/off-map-tiles-cp24c.md",
+  "limitation": "Derived from wrapping signed x86 instructions and branch traces; not captured native runtime/framebuffer output.",
+  "mapWidth": 132,
+  "mapHeight": 132,
+  "projection": [
+    {
+      "tileX": -1,
+      "tileY": 60,
+      "worldX": 2272,
+      "worldY": 960
+    },
+    {
+      "tileX": 60,
+      "tileY": -1,
+      "worldX": 6176,
+      "worldY": 960
+    },
+    {
+      "tileX": 132,
+      "tileY": 60,
+      "worldX": 6528,
+      "worldY": 3088
+    },
+    {
+      "tileX": 60,
+      "tileY": 132,
+      "worldX": 1920,
+      "worldY": 3088
+    },
+    {
+      "tileX": 65535,
+      "tileY": 65535,
+      "worldX": 4224,
+      "worldY": 2097136
+    },
+    {
+      "tileX": 65536,
+      "tileY": 0,
+      "worldX": 2101376,
+      "worldY": 1048592
+    },
+    {
+      "tileX": -1,
+      "tileY": 0,
+      "worldX": 4192,
+      "worldY": 0
+    },
+    {
+      "tileX": 33554432,
+      "tileY": 0,
+      "worldX": -1073737600,
+      "worldY": 536870928
+    },
+    {
+      "tileX": 0,
+      "tileY": 67108864,
+      "worldX": 4224,
+      "worldY": -1073741808
+    },
+    {
+      "tileX": 2147483647,
+      "tileY": -2147483648,
+      "worldX": 4192,
+      "worldY": 0
+    },
+    {
+      "tileX": -2147483648,
+      "tileY": 0,
+      "worldX": 4224,
+      "worldY": 16
+    }
+  ],
+  "visibility": [
+    {
+      "tileX": -2,
+      "tileY": 62,
+      "centerX": 2304,
+      "centerY": 960,
+      "scale": 256,
+      "visible": true
+    },
+    {
+      "tileX": -2,
+      "tileY": 63,
+      "centerX": 2304,
+      "centerY": 960,
+      "scale": 256,
+      "visible": false
+    },
+    {
+      "tileX": 0,
+      "tileY": 55,
+      "centerX": 2304,
+      "centerY": 960,
+      "scale": 256,
+      "visible": true
+    },
+    {
+      "tileX": 0,
+      "tileY": 54,
+      "centerX": 2304,
+      "centerY": 960,
+      "scale": 256,
+      "visible": false
+    },
+    {
+      "tileX": 16,
+      "tileY": 47,
+      "centerX": 2304,
+      "centerY": 960,
+      "scale": 256,
+      "visible": true
+    },
+    {
+      "tileX": 17,
+      "tileY": 47,
+      "centerX": 2304,
+      "centerY": 960,
+      "scale": 256,
+      "visible": false
+    },
+    {
+      "tileX": 20,
+      "tileY": 80,
+      "centerX": 2304,
+      "centerY": 952,
+      "scale": 256,
+      "visible": true
+    },
+    {
+      "tileX": 21,
+      "tileY": 80,
+      "centerX": 2304,
+      "centerY": 952,
+      "scale": 256,
+      "visible": false
+    },
+    {
+      "tileX": -2,
+      "tileY": 62,
+      "centerX": 2304,
+      "centerY": 960,
+      "scale": 320,
+      "visible": false
+    },
+    {
+      "tileX": -1,
+      "tileY": 60,
+      "centerX": 2304,
+      "centerY": 960,
+      "scale": 320,
+      "visible": true
+    }
+  ],
+  "depth": [
+    {
+      "name": "negative-tile-before-neighbor",
+      "x": -1,
+      "y": 0,
+      "sprites": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 1,
+          "height": 1,
+          "terrain": false
+        },
+        {
+          "x": 5,
+          "y": 5,
+          "width": 1,
+          "height": 1,
+          "terrain": false
+        }
+      ],
+      "index": 0
+    },
+    {
+      "name": "past-map-edge-after-scenery",
+      "x": 132,
+      "y": 132,
+      "sprites": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 1,
+          "height": 1,
+          "terrain": false
+        },
+        {
+          "x": 131,
+          "y": 131,
+          "width": 1,
+          "height": 1,
+          "terrain": false
+        }
+      ],
+      "index": 2
+    },
+    {
+      "name": "off-grid-terrain-adoption",
+      "x": -1,
+      "y": 60,
+      "sprites": [
+        {
+          "x": 0,
+          "y": 60,
+          "width": 4,
+          "height": 4,
+          "terrain": true
+        },
+        {
+          "x": 10,
+          "y": 70,
+          "width": 1,
+          "height": 1,
+          "terrain": false
+        }
+      ],
+      "index": 1
+    },
+    {
+      "name": "past-ushort-still-orders",
+      "x": 65536,
+      "y": 0,
+      "sprites": [
+        {
+          "x": 65535,
+          "y": 0,
+          "width": 1,
+          "height": 1,
+          "terrain": false
+        }
+      ],
+      "index": 1
+    },
+    {
+      "name": "signed-wrapped-sum-minus-two",
+      "x": 2147483647,
+      "y": 2147483647,
+      "sprites": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 1,
+          "height": 1,
+          "terrain": false
+        }
+      ],
+      "index": 0
+    },
+    {
+      "name": "wrapped-overlap-equal-y-keeps-order",
+      "x": -2147483648,
+      "y": 0,
+      "sprites": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 1,
+          "height": 1,
+          "terrain": false
+        }
+      ],
+      "index": 1
+    }
+  ]
+}

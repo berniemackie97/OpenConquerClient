@@ -19,7 +19,7 @@ resources are reported rather than substituted with an unrelated model.
 
 ## Draw sequencing
 
-The world scene activates a character depth entry after animated and static
+The world scene activates a visible character depth entry after animated and static
 scenery insertion, using the same overlap ordering and terrain-footprint
 adoption. Its stored insertion index divides the scenery draw list into
 two ranges. Rendering the character occurs between those ranges, without
@@ -50,3 +50,33 @@ the required C3 resources. Reimporting and publishing the content closure from
 the source client is required before this body path can become visible.
 Do not treat successful unit tests or a synthetic OpenGL framebuffer check
 as proof that a character appears correctly in map 1010.
+
+## Off-map placement — CP2.4c
+
+Native role tiles are signed int32 values. Map projection wraps SUB/LEA/SHL before
+signed division by2 (`Map_ProjectTileToScreenCoordinates`, `0x61D850`); using an
+unbounded tile multiplication gives different results for extreme coordinates.
+The shared projected-screen predicate (`0x61E00D`) accepts inclusive edges and
+scales the role's margin2 by map zoom. It does not inspect map-cell bounds.
+
+A visible off-map role enters the same `CMapSceneryComponent_ReorderSubcomponentForDepth`
+path (`0x635AE6`), with its virtual tile pair (`0x651875`) and default 1×1 span.
+Type2 terrain can adopt it through the normal half-open footprint (`0x644E0E`).
+Otherwise axis overlap and wrapped signed tile sums select its position. Off-screen
+roles are not inserted; drawing handles the absent role without a negative scenery
+range or skipped scenery preparation.
+
+Ordinary idle/walk rendering initializes vertical locals to zero (`0x64F66B/66E`)
+and does not sample cell altitude. For the terrain-delta helper, NULL from the
+inverse-projected tile lookup returns zero directly (`0x650940..0x650949`, epilogue
+`0x65097C`). The actual RoleView elevation operand is traced at `0x64F832..0x64F854`.
+This does not make independent native role offsets, motion arcs or every vertical
+term zero. The existing supported flat-role transform needs no invented off-map
+cell fallback; those additional action inputs remain unimplemented.
+
+Fixture provenance: `tests/OpenConquer.Client.Tests/Fixtures/World/README.md`.
+The 27 static-disassembly-derived cases cover projection, screen visibility and
+depth; scene tests also check unclamped hero anchors with a clamped camera and
+return to an ordinary tile. Raw evidence and scoped limits:
+`20_notes/Network/off-map-tiles-cp24c.md`. No native runtime/framebuffer comparison
+is claimed by these tests.

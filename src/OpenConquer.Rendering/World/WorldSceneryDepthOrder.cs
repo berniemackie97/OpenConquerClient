@@ -60,7 +60,7 @@ internal sealed class WorldSceneryDepthOrder
             return;
         }
 
-        long sum = Sum(incoming);
+        int sum = Sum(incoming);
         int position = 0;
         while (position < _active.Count && sum >= Sum(_active[position]))
         {
@@ -107,11 +107,11 @@ internal sealed class WorldSceneryDepthOrder
     private int ScanForward(Entry incoming, int pivot)
     {
         int cursor = pivot;
-        long pivotSum = Sum(_active[pivot]);
-        long sum = Sum(incoming);
+        int pivotSum = Sum(_active[pivot]);
+        int sum = Sum(incoming);
         for (int i = pivot + 1; i < _active.Count; i++)
         {
-            long candidate = Sum(_active[i]);
+            int candidate = Sum(_active[i]);
             if (candidate != pivotSum && sum <= candidate)
             {
                 break;
@@ -126,8 +126,8 @@ internal sealed class WorldSceneryDepthOrder
     private void InsertBefore(Entry incoming, int pivot, int cursor)
     {
         int position = pivot;
-        long pivotSum = Sum(_active[pivot]);
-        long sum = Sum(incoming);
+        int pivotSum = Sum(_active[pivot]);
+        int sum = Sum(incoming);
         for (int i = pivot - 1; i >= 0; i--)
         {
             if (i <= cursor || (Sum(_active[i]) != pivotSum && sum >= Sum(_active[i])))
@@ -162,13 +162,15 @@ internal sealed class WorldSceneryDepthOrder
     }
 
     private static bool Contains(Entry parent, Entry entry) =>
-        (long)parent.TileX - parent.Width < entry.TileX && entry.TileX <= parent.TileX &&
-        (long)parent.TileY - parent.Height < entry.TileY && entry.TileY <= parent.TileY;
+        unchecked(parent.TileX - parent.Width) < entry.TileX && entry.TileX <= parent.TileX &&
+        unchecked(parent.TileY - parent.Height) < entry.TileY && entry.TileY <= parent.TileY;
 
+    // Native 0x635C5E..0x635C79 uses wrapped subtractions, INC and signed TEST/JG.
     private static bool Overlaps(int a, int aWidth, int b, int bWidth) =>
-        (long)a - aWidth < b && (long)b - bWidth < a;
+        unchecked(a - aWidth - b + 1) <= 0 && unchecked(b - bWidth - a + 1) <= 0;
 
-    private static long Sum(Entry entry) => (long)entry.TileX + entry.TileY;
+    // Signed wrapping ADD/CMP: 0x635E62..0x635E6B. Footprint subtraction above: 0x644E1A/0x644E1D.
+    private static int Sum(Entry entry) => unchecked(entry.TileX + entry.TileY);
 
     private struct Entry
     {
