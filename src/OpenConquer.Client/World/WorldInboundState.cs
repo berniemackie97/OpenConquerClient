@@ -4,7 +4,7 @@ using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.World;
 
-internal sealed class WorldInboundState
+internal sealed class WorldInboundState : IGameWorldPacketHandler
 {
     private readonly uint _heroId;
     private readonly HashSet<uint> _unhandled = [];
@@ -57,146 +57,98 @@ internal sealed class WorldInboundState
         private set;
     }
 
-    internal bool Apply(ReadOnlyMemory<byte> packet)
+    internal bool Apply(ReadOnlyMemory<byte> packet) => GameWorldPacketDispatcher.Dispatch(packet.Span, this);
+
+    bool IGameWorldPacketHandler.HandleWalk(GameWalk10005 walk)
     {
-        ReadOnlySpan<byte> data = packet.Span;
-        if (data.Length < 4 || BinaryPrimitives.ReadUInt16LittleEndian(data) != data.Length)
+        if (walk.EntityId != _heroId || walk.Selector == GameWalk10005.MountedSelector)
         {
-            throw new InvalidDataException("World packet has an invalid length.");
-        }
-
-        ushort type = BinaryPrimitives.ReadUInt16LittleEndian(data[2..]);
-        if (type == GameWalk10005.PacketType)
-        {
-            if (!GameWalk10005.TryRead(data, out GameWalk10005 walk))
-            {
-                throw new InvalidDataException("World walk packet is malformed.");
-            }
-
-            if (walk.EntityId != _heroId || walk.Selector == GameWalk10005.MountedSelector)
-            {
-                ReportUnhandled(type, 0);
-                return false;
-            }
-
-            (int dx, int dy) = walk.GetOrdinaryDelta();
-            int x = X + dx;
-            int y = Y + dy;
-            if ((uint)x > ushort.MaxValue || (uint)y > ushort.MaxValue)
-            {
-                throw new InvalidDataException("World walk acknowledgement has an invalid destination.");
-            }
-
-            (X, Y) = ((ushort)x, (ushort)y);
-            DirectionIndex = walk.DirectionIndex;
-            return true;
-        }
-
-        if (type == GameWorldAction10010.PacketType)
-        {
-            if (!GameWorldAction10010.TryRead(data, out ushort action, out uint entityId,
-                    out uint parameter, out ushort x, out ushort y))
-            {
-                throw new InvalidDataException("World action packet is malformed.");
-            }
-
-            if (action == 108)
-            {
-                if (entityId != _heroId || parameter != 0 ||
-                    BinaryPrimitives.ReadUInt32LittleEndian(data[12..]) != 0 ||
-                    BinaryPrimitives.ReadUInt16LittleEndian(data[22..]) != 0 ||
-                    BinaryPrimitives.ReadUInt64LittleEndian(data[28..]) != 0 ||
-                    data[36] != 0)
-                {
-                    throw new InvalidDataException("World position correction is malformed.");
-                }
-
-                bool changed = X != x || Y != y;
-                (X, Y) = (x, y);
-                return changed;
-            }
-
-            ReportUnhandled(type, action);
+            ReportUnhandled(GameWalk10005.PacketType, 0);
             return false;
         }
 
-        if (type is 1008 or 1009)
+        (int dx, int dy) = walk.GetOrdinaryDelta();
+        int x = X + dx;
+        int y = Y + dy;
+        if ((uint)x > ushort.MaxValue || (uint)y > ushort.MaxValue)
         {
-            if (Equipment.Apply(data))
-            {
-                Hero.RecordEquipmentChange(type == 1009 && BinaryPrimitives.ReadUInt16LittleEndian(data[12..]) == 46);
-            }
+            throw new InvalidDataException("World walk acknowledgement has an invalid destination.");
+        }
 
+        (X, Y) = ((ushort)x, (ushort)y);
+        DirectionIndex = walk.DirectionIndex;
+        return true;
+    }
+
+    bool IGameWorldPacketHandler.HandleAction(GameWorldAction10010 action)
+    {
+        if (action.Action != GameWorldAction10010.PositionCorrection)
+        {
+            ReportUnhandled(GameWorldAction10010.PacketType, action.Action);
             return false;
         }
 
-        if (type == 10017)
+        // Client policy, not a native rule: a correction must target the hero and leave every other field zero.
+        if (action.EntityId != _heroId || action.ParameterPair != 0 || action.ActionParameter != 0 ||
+            action.Direction != 0 || action.Data1 != 0 || action.Data2 != 0 || action.Flag != 0)
         {
-            ApplyHeroAttributes(data);
-            return false;
+            throw new InvalidDataException("World position correction is malformed.");
         }
 
-        if (type == 1016)
+        bool changed = X != action.X || Y != action.Y;
+        (X, Y) = (action.X, action.Y);
+        return changed;
+    }
+
+    bool IGameWorldPacketHandler.HandleItem(ushort packetType, ReadOnlySpan<byte> packet)
+    {
+        if (Equipment.Apply(packet))
         {
-            if (data.Length != 20)
-            {
-                throw new InvalidDataException("World weather packet has an invalid length.");
-            }
-
-            uint kind = BinaryPrimitives.ReadUInt32LittleEndian(data[4..]);
-            uint intensity = BinaryPrimitives.ReadUInt32LittleEndian(data[8..]);
-            uint direction = BinaryPrimitives.ReadUInt32LittleEndian(data[12..]);
-            uint parameter = BinaryPrimitives.ReadUInt32LittleEndian(data[16..]);
-            if (kind is < 1 or > 11 or 6 || intensity > 1022 || direction > 359)
-            {
-                throw new InvalidDataException("World weather parameters are invalid.");
-            }
-
-            Weather = (kind, intensity, direction, parameter);
-            return false;
+            Hero.RecordEquipmentChange(packetType == GameWorldPacketDispatcher.ItemPacketType &&
+                BinaryPrimitives.ReadUInt16LittleEndian(packet[12..]) == 46);
         }
 
-        ReportUnhandled(type, 0);
         return false;
     }
 
-    private void ApplyHeroAttributes(ReadOnlySpan<byte> data)
+    bool IGameWorldPacketHandler.HandleAttributes(GameUserAttrib10017 attributes)
     {
-        const int headerLength = 12;
-        const int entryLength = 20;
-        if (data.Length < headerLength || (data.Length - headerLength) % entryLength != 0)
+        if (attributes.TargetId != _heroId)
         {
-            throw new InvalidDataException("World attribute packet has an invalid record layout.");
+            ReportUnhandled(GameUserAttrib10017.PacketType, 0);
+            return false;
         }
 
-        uint entityId = BinaryPrimitives.ReadUInt32LittleEndian(data[4..]);
-        uint count = BinaryPrimitives.ReadUInt32LittleEndian(data[8..]);
-        if (count != (uint)((data.Length - headerLength) / entryLength))
+        foreach (GameUserAttribEntry entry in attributes)
         {
-            throw new InvalidDataException("World attribute record count does not match the packet length.");
-        }
-
-        if (entityId != _heroId)
-        {
-            ReportUnhandled(10017, 0);
-            return;
-        }
-
-        for (int offset = headerLength; offset < data.Length; offset += entryLength)
-        {
-            ReadOnlySpan<byte> entry = data.Slice(offset, entryLength);
-            uint attributeId = BinaryPrimitives.ReadUInt32LittleEndian(entry);
-            ulong low = BinaryPrimitives.ReadUInt64LittleEndian(entry[4..]);
-            ulong high = BinaryPrimitives.ReadUInt64LittleEndian(entry[12..]);
-            if (!Hero.TryApplyAttribute(attributeId, low, high))
+            if (!Hero.TryApplyAttribute(entry.AttributeId, entry.Low, entry.High))
             {
-                uint diagnosticKey = attributeId is <= 54 or 128 ? attributeId : uint.MaxValue;
+                uint diagnosticKey = entry.AttributeId is <= 54 or 128 ? entry.AttributeId : uint.MaxValue;
                 if (_unhandledAttributes.Add(diagnosticKey))
                 {
-                    Console.Error.WriteLine($"OpenConquer: world hero attribute {attributeId} is not implemented.");
+                    Console.Error.WriteLine($"OpenConquer: world hero attribute {entry.AttributeId} is not implemented.");
                 }
             }
         }
+
+        return false;
+    }
+
+    bool IGameWorldPacketHandler.HandleWeather(GameWeather1016 weather)
+    {
+        if (!weather.HasSupportedValues)
+        {
+            throw new InvalidDataException("World weather parameters are invalid.");
+        }
+
+        Weather = (weather.Kind, weather.Intensity, weather.DirectionDegrees, weather.Parameter);
+        return false;
+    }
+
+    bool IGameWorldPacketHandler.HandleUnknown(ushort packetType)
+    {
+        ReportUnhandled(packetType, 0);
+        return false;
     }
 
     private void ReportUnhandled(ushort type, ushort action)

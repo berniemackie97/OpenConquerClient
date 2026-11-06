@@ -23,10 +23,20 @@ public sealed class GameWorldAction10010Tests
         Assert.Equal(action, BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(20)));
         Assert.All(packet.AsSpan(22).ToArray(), value => Assert.Equal(0, value));
 
-        Assert.True(GameWorldAction10010.TryRead(packet, out ushort readAction, out uint readEntity, out uint parameter,
-            out ushort x, out ushort y));
-        Assert.Equal((action, entityId, 0x12345678u, (ushort)0, (ushort)0),
-            (readAction, readEntity, parameter, x, y));
+        Assert.True(GameWorldAction10010.TryRead(packet, out GameWorldAction10010 read));
+        Assert.Equal(new GameWorldAction10010(entityId, 0x12345678, 0, 123, action, 0, 0, 0, 0, 0, 0), read);
+    }
+
+    [Fact]
+    public void TryRead_PreservesEveryFieldOfTheStaticGoldenFrame()
+    {
+        // typed-world-dispatch-2026-11-06/wire-layout-golden.json "action-all-fields": synthetic sentinels per offset.
+        byte[] packet = Convert.FromHexString(
+            "26001a2778563412896745239a785634ab8967456c00785689679a78efcdab89f0debc9aa500");
+
+        Assert.True(GameWorldAction10010.TryRead(packet, out GameWorldAction10010 action));
+        Assert.Equal(new GameWorldAction10010(0x12345678, 0x23456789, 0x3456789a, 0x456789ab, 108, 0x5678, 0x6789,
+            0x789a, 0x89abcdef, 0x9abcdef0, 0xa5), action);
     }
 
     [Theory]
@@ -38,6 +48,6 @@ public sealed class GameWorldAction10010Tests
         byte[] packet = new byte[GameWorldAction10010.PacketLength];
         GameWorldAction10010.Write(packet, GameWorldAction10010.EnterMap, 123);
         packet[offset] = corruption;
-        Assert.False(GameWorldAction10010.TryRead(packet, out _, out _, out _, out _, out _));
+        Assert.False(GameWorldAction10010.TryRead(packet, out _));
     }
 }

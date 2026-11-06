@@ -2,8 +2,22 @@ using System.Buffers.Binary;
 
 namespace OpenConquer.Networking.Game.Login;
 
-/// <summary>5517 MsgAction fixed wire layout used during existing-character world entry.</summary>
-internal static class GameWorldAction10010
+/// <summary>
+/// 5517 MsgAction (10010) fixed 38-byte base: parser 0x6FEB93, process 0x6FED1F. Field meaning is action-specific;
+/// +37 is the trailing string-list count.
+/// </summary>
+internal readonly record struct GameWorldAction10010(
+    uint EntityId,
+    uint ParameterPair,
+    uint ActionParameter,
+    uint Timestamp,
+    ushort Action,
+    ushort Direction,
+    ushort X,
+    ushort Y,
+    uint Data1,
+    uint Data2,
+    byte Flag)
 {
     internal const ushort PacketType = 10010;
     internal const int PacketLength = 38;
@@ -14,6 +28,7 @@ internal static class GameWorldAction10010
     internal const ushort GetWeaponSkills = 0x4D;
     internal const ushort GetMagic = 0x4E;
     internal const ushort GetSyndicate = 0x61;
+    internal const ushort PositionCorrection = 108;
     internal const ushort GetStatistics = 0x84;
     internal const ushort ReportSilentInfo = 0xFB;
     internal const ushort ClientStateApplied = 0x198;
@@ -34,12 +49,12 @@ internal static class GameWorldAction10010
         BinaryPrimitives.WriteUInt16LittleEndian(destination[20..], action);
     }
 
-    internal static bool TryRead(ReadOnlySpan<byte> packet, out ushort action, out uint entityId,
-        out uint parameterPair, out ushort x, out ushort y)
+    /// <summary>
+    /// Reads the fixed base. Exact length and a zero string count are this client's ingress policy, not native rules.
+    /// </summary>
+    internal static bool TryRead(ReadOnlySpan<byte> packet, out GameWorldAction10010 action)
     {
-        action = 0;
-        entityId = parameterPair = 0;
-        x = y = 0;
+        action = default;
         if (packet.Length != PacketLength ||
             BinaryPrimitives.ReadUInt16LittleEndian(packet) != PacketLength ||
             BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) != PacketType ||
@@ -48,11 +63,18 @@ internal static class GameWorldAction10010
             return false;
         }
 
-        entityId = BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]);
-        parameterPair = BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]);
-        action = BinaryPrimitives.ReadUInt16LittleEndian(packet[20..]);
-        x = BinaryPrimitives.ReadUInt16LittleEndian(packet[24..]);
-        y = BinaryPrimitives.ReadUInt16LittleEndian(packet[26..]);
+        action = new GameWorldAction10010(
+            BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]),
+            BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]),
+            BinaryPrimitives.ReadUInt32LittleEndian(packet[12..]),
+            BinaryPrimitives.ReadUInt32LittleEndian(packet[16..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(packet[20..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(packet[22..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(packet[24..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(packet[26..]),
+            BinaryPrimitives.ReadUInt32LittleEndian(packet[28..]),
+            BinaryPrimitives.ReadUInt32LittleEndian(packet[32..]),
+            packet[36]);
         return true;
     }
 }

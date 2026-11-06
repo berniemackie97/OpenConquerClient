@@ -82,15 +82,15 @@ internal static class GameWorldEntryBootstrap
 
             using (GameSecuredInboundFrame entered = await ReadRequiredAsync(session, operation).ConfigureAwait(false))
             {
-                if (!GameWorldAction10010.TryRead(entered.Packet.Span, out ushort action, out uint entity,
-                        out uint selectedMapDataId, out x, out y) ||
-                    action != GameWorldAction10010.EnterMap || entity != character.EntityId ||
-                    selectedMapDataId != mapDataId)
+                if (!GameWorldAction10010.TryRead(entered.Packet.Span, out GameWorldAction10010 action) ||
+                    action.Action != GameWorldAction10010.EnterMap || action.EntityId != character.EntityId ||
+                    action.ParameterPair != mapDataId)
                 {
                     throw new InvalidDataException("World entry received a mismatched EnterMap acknowledgement.");
                 }
 
-                directionIndex = (byte)(BinaryPrimitives.ReadUInt16LittleEndian(entered.Packet.Span[22..]) % 8);
+                (x, y) = (action.X, action.Y);
+                directionIndex = (byte)(action.Direction % 8);
             }
 
             operation.ThrowIfCancellationRequested();
@@ -125,9 +125,9 @@ internal static class GameWorldEntryBootstrap
                     using GameSecuredInboundFrame frame = await ReadRequiredAsync(session, operation).ConfigureAwait(false);
                     if (frame.PacketType == GameWorldAction10010.PacketType)
                     {
-                        if (!GameWorldAction10010.TryRead(frame.Packet.Span, out ushort action, out uint acknowledged,
-                                out uint parameter, out _, out _) ||
-                            action != expectedAction || acknowledged != character.EntityId || parameter != 0)
+                        if (!GameWorldAction10010.TryRead(frame.Packet.Span, out GameWorldAction10010 action) ||
+                            action.Action != expectedAction || action.EntityId != character.EntityId ||
+                            action.ParameterPair != 0)
                         {
                             throw new InvalidDataException($"World entry received a mismatched acknowledgement for action {expectedAction}.");
                         }
