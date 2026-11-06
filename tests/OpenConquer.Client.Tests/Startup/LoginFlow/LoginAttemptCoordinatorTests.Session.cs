@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using OpenConquer.Client.Startup.Catalog;
 using OpenConquer.Client.Startup.LoginFlow;
+using OpenConquer.Client.Tests.Networking;
 using OpenConquer.Client.Tests.UI.Login;
 using OpenConquer.Client.Tests.UI.Role;
 using OpenConquer.Client.UI.Login;
@@ -234,7 +235,8 @@ public sealed partial class LoginAttemptCoordinatorTests
         Task<GameSecuredInboundFrame?> echoed = game.ReadWorldFrameAsync(harness.Token);
         await game.SendWorldWalkAsync(character.EntityId, 6, 0x01020304, 0x05060708, harness.Token);
         using GameSecuredInboundFrame walk = await echoed.WaitAsync(harness.Token) ?? throw new EndOfStreamException();
-        Assert.True(GameWalk10005.TryRead(walk.Packet.Span, out GameWalk10005 confirmed));
+        Assert.Equal(GameWalk10005.PacketLength, walk.Packet.Length);
+        GameWalk10005 confirmed = GameWalk10005.Read(GameMessages.Load(walk.Packet.ToArray()));
         Assert.Equal(character.EntityId, confirmed.EntityId);
         harness.Session.Dispose();
         await harness.Peers.WaitAsync(harness.Token);

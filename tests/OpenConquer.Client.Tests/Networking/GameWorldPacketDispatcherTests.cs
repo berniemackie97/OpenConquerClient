@@ -39,32 +39,39 @@ public sealed class GameWorldPacketDispatcherTests
             handler.Calls);
     }
 
-    [Theory]
-    [InlineData(3)]
-    [InlineData(4)]
-    public void Dispatch_RejectsAFrameWhoseHeaderSizeIsNotTheBufferLength(int declaredDelta)
+    // Native dispatch returns no message for these and the receive loop skips them (0x6DEC3A).
+    [Fact]
+    public void Dispatch_DropsWhatNativeDispatchDropsWithoutCallingTheHandler()
     {
-        byte[] packet = Header(8, 2030);
-        BinaryPrimitives.WriteUInt16LittleEndian(packet, (ushort)(8 + declaredDelta));
         RecordingHandler handler = new();
-        Assert.Throws<InvalidDataException>(() => GameWorldPacketDispatcher.Dispatch(packet, handler));
-        Assert.Throws<InvalidDataException>(() => GameWorldPacketDispatcher.Dispatch(packet.AsSpan(0, 3), handler));
+        byte[] mismatched = Header(8, 2030);
+        BinaryPrimitives.WriteUInt16LittleEndian(mismatched, 11);
+
+        Assert.False(GameWorldPacketDispatcher.Dispatch(mismatched, handler));
+        Assert.False(GameWorldPacketDispatcher.Dispatch(mismatched.AsSpan(0, 3), handler));
+        Assert.False(GameWorldPacketDispatcher.Dispatch(Header(8, 0), handler));
+        Assert.False(GameWorldPacketDispatcher.Dispatch(new byte[0x401], handler));
         Assert.Empty(handler.Calls);
     }
 
-    [Theory]
-    [InlineData(GameWalk10005.PacketType, 8)]
-    [InlineData(GameWorldAction10010.PacketType, 37)]
-    [InlineData(GameUserAttrib10017.PacketType, 13)]
-    [InlineData(GameWeather1016.PacketType, 21)]
-    [InlineData(GameItemRecord1008.PacketType, 67)]
-    [InlineData(GameItemRecord1008.PacketType, 69)]
-    [InlineData(GameItem1009.PacketType, 13)]
-    public void Dispatch_RejectsAKnownTypeWhoseLayoutDoesNotMatchItsCodec(ushort type, int length)
+    // No native parser for these types has a size rule; short messages reach Process with zero fields.
+    [Fact]
+    public void Dispatch_DeliversEveryKnownTypeAtLengthsTheOldExactRulesRejected()
     {
         RecordingHandler handler = new();
-        Assert.Throws<InvalidDataException>(() => GameWorldPacketDispatcher.Dispatch(Header(length, type), handler));
-        Assert.Empty(handler.Calls);
+
+        Assert.True(GameWorldPacketDispatcher.Dispatch(Header(8, GameWalk10005.PacketType), handler));
+        Assert.True(GameWorldPacketDispatcher.Dispatch(Header(37, GameWorldAction10010.PacketType), handler));
+        Assert.True(GameWorldPacketDispatcher.Dispatch(Header(13, GameUserAttrib10017.PacketType), handler));
+        Assert.True(GameWorldPacketDispatcher.Dispatch(Header(21, GameWeather1016.PacketType), handler));
+        Assert.True(GameWorldPacketDispatcher.Dispatch(Header(67, GameItemRecord1008.PacketType), handler));
+        Assert.True(GameWorldPacketDispatcher.Dispatch(Header(69, GameItemRecord1008.PacketType), handler));
+        Assert.True(GameWorldPacketDispatcher.Dispatch(Header(13, GameItem1009.PacketType), handler));
+
+        Assert.Equal(
+            ["walk 0", "action 0 0x00000000", "attributes 0x00000000 0", "weather 0 0x00000000", "record 0 0", "record 0 0",
+                "item 0 13"],
+            handler.Calls);
     }
 
     private static byte[] Header(int length, ushort type)

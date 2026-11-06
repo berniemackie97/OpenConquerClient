@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+using OpenConquer.Networking.Game.Framing;
 
 namespace OpenConquer.Networking.Game.World;
 
@@ -21,25 +21,13 @@ internal readonly record struct GameItemRecord1008(
     internal const byte AddAction = 1;
     internal const byte UpdateAction = 3;
 
-    /// <summary>Exact 68-byte length is this client's ingress policy, not a native parser rule.</summary>
-    internal static bool TryRead(ReadOnlySpan<byte> packet, out GameItemRecord1008 record)
-    {
-        record = default;
-        if (packet.Length != PacketLength ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet) != PacketLength ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) != PacketType)
-        {
-            return false;
-        }
-
-        record = new GameItemRecord1008(
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]),
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[12..]),
-            packet[16],
-            packet[18],
-            packet[33],
-            packet[36]);
-        return true;
-    }
+    /// <summary>Reads the fields from the native message buffer. Parse has no size rule; fields past a short record read zero.</summary>
+    internal static GameItemRecord1008 Read(GameMessageBuffer message) => new(
+        message.ReadUInt32(4),
+        message.ReadUInt32(8),
+        message.ReadUInt16(12),
+        message.ReadByte(16),
+        message.ReadByte(18),
+        message.ReadByte(33),
+        message.ReadByte(36));
 }

@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using OpenConquer.Networking.Game.Framing;
 
 namespace OpenConquer.Networking.Game.World;
 
@@ -11,30 +12,16 @@ internal readonly record struct GameWalk10005(
 
     internal byte DirectionIndex => (byte)((byte)PackedDirection % (Selector == MountedSelector ? 24 : 8));
 
-    internal static bool TryRead(ReadOnlySpan<byte> packet, out GameWalk10005 walk)
-    {
-        walk = default;
-        if (packet.Length != PacketLength ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet) != PacketLength ||
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) != PacketType)
-        {
-            return false;
-        }
-
-        uint entityId = BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]);
-        if (entityId == 0)
-        {
-            return false;
-        }
-
-        walk = new GameWalk10005(
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]),
-            entityId,
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[12..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[16..]),
-            BinaryPrimitives.ReadUInt32LittleEndian(packet[20..]));
-        return true;
-    }
+    /// <summary>
+    /// Reads the fields from the native message buffer. Parse has no size or entity rule; an entity that is not the hero
+    /// goes to the role lookup or a 0x66 query in <c>CMsgEntityAction__Process</c> 0x7405E7, so 0 is a valid input.
+    /// </summary>
+    internal static GameWalk10005 Read(GameMessageBuffer message) => new(
+        message.ReadUInt32(4),
+        message.ReadUInt32(8),
+        message.ReadUInt32(12),
+        message.ReadUInt32(16),
+        message.ReadUInt32(20));
 
     internal (int X, int Y) GetOrdinaryDelta()
     {

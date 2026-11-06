@@ -10,8 +10,10 @@ After world entry, attribute message 10017 applies a bounded array of
 20-byte records in wire order. The packet's entity ID determines its
 recipient. Local records update the hero state before world preparation
 and rendering in the same frame. Remote attributes require a separate
-entity owner and must not change the local hero. An invalid record count
-is rejected before any mutation.
+entity owner and must not change the local hero. The signed count at +8 is
+processed as native processes it (0x758B92): zero or negative applies no
+record, and records past the message read as zero (attribute 0, value 0).
+Records stop at the 0x400 message buffer (50 records); see WORLD-023.
 
 The initial implemented direct writers are life (0), life override (1),
 mana (2), mana override (3), experience (5), profession (7),

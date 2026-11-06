@@ -50,4 +50,30 @@ public sealed class GameWorldAction10010Tests
         packet[offset] = corruption;
         Assert.False(GameWorldAction10010.TryRead(packet, out _));
     }
+
+    [Fact]
+    public void Read_PreservesEveryFieldOfTheStaticGoldenFrame()
+    {
+        byte[] packet = Convert.FromHexString(
+            "26001a2778563412896745239a785634ab8967456c00785689679a78efcdab89f0debc9aa500");
+
+        Assert.Equal(new GameWorldAction10010(0x12345678, 0x23456789, 0x3456789a, 0x456789ab, 108, 0x5678, 0x6789,
+            0x789a, 0x89abcdef, 0x9abcdef0, 0xa5), GameWorldAction10010.Read(GameMessages.Load(packet)));
+    }
+
+    // Parse 0x6FEB93 has no size rule and does not read the +37 string list; the buffer is zero past the message.
+    [Fact]
+    public void Read_ReadsZeroPastAShortMessageAndIgnoresTheStringList()
+    {
+        byte[] packet = Convert.FromHexString(
+            "26001a2778563412896745239a785634ab8967456c00785689679a78efcdab89f0debc9aa500");
+
+        Assert.Equal(new GameWorldAction10010(0x12345678, 0x23456789, 0x3456789a, 0x456789ab, 108, 0x5678, 0x6789,
+            0x789a, 0, 0, 0), GameWorldAction10010.Read(GameMessages.Load(GameMessages.Truncate(packet, 28))));
+
+        byte[] withStrings = GameMessages.Extend(packet, 6);
+        withStrings[37] = 1;
+        withStrings[38] = 4;
+        Assert.Equal(GameWorldAction10010.Read(GameMessages.Load(packet)), GameWorldAction10010.Read(GameMessages.Load(withStrings)));
+    }
 }

@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.Tests.Networking;
@@ -9,30 +8,20 @@ public sealed class GameWeather1016Tests
     private const string GoldenFrame = "1400f80302000000fe0300006701000098badcfe";
 
     [Fact]
-    public void TryRead_PreservesTheFullWidthGoldenFields()
+    public void Read_PreservesTheFullWidthGoldenFields()
     {
-        Assert.True(GameWeather1016.TryRead(Convert.FromHexString(GoldenFrame), out GameWeather1016 weather));
+        GameWeather1016 weather = GameWeather1016.Read(GameMessages.Load(Convert.FromHexString(GoldenFrame)));
         Assert.Equal(new GameWeather1016(2, 1022, 359, 0xfedcba98), weather);
         Assert.True(weather.HasSupportedValues);
     }
 
-    [Theory]
-    [InlineData(19)]
-    [InlineData(21)]
-    public void TryRead_RejectsAnyLengthOtherThanTwenty(int length)
-    {
-        byte[] packet = new byte[length];
-        BinaryPrimitives.WriteUInt16LittleEndian(packet, (ushort)length);
-        BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(2), GameWeather1016.PacketType);
-        Assert.False(GameWeather1016.TryRead(packet, out _));
-    }
-
+    // Parse 0x7607DE has no size rule; the buffer is zero past the message and extra bytes are not fields.
     [Fact]
-    public void TryRead_RejectsAMismatchedType()
+    public void Read_ReadsZeroPastAShortMessageAndIgnoresExtraBytes()
     {
-        byte[] packet = Convert.FromHexString(GoldenFrame);
-        BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(2), 1017);
-        Assert.False(GameWeather1016.TryRead(packet, out _));
+        byte[] golden = Convert.FromHexString(GoldenFrame);
+        Assert.Equal(new GameWeather1016(2, 1022, 0, 0), GameWeather1016.Read(GameMessages.Load(GameMessages.Truncate(golden, 12))));
+        Assert.Equal(new GameWeather1016(2, 1022, 359, 0xfedcba98), GameWeather1016.Read(GameMessages.Load(GameMessages.Extend(golden, 8))));
     }
 
     [Theory]

@@ -10,66 +10,75 @@ public sealed class GameUserAttrib10017Tests
         "340021277856341202000000050000001032547698badcfe000000000000000019000000efcdab89674523011032547698badcfe";
 
     [Fact]
-    public void TryRead_PreservesEntryOrderAndBothPayloadHalves()
+    public void Read_PreservesEntryOrderAndBothPayloadHalves()
     {
-        Assert.True(GameUserAttrib10017.TryRead(Convert.FromHexString(GoldenFrame), out GameUserAttrib10017 attributes));
+        GameUserAttrib10017 attributes = GameUserAttrib10017.Read(GameMessages.Load(Convert.FromHexString(GoldenFrame)));
         Assert.Equal(0x12345678u, attributes.TargetId);
         Assert.Equal(2, attributes.Count);
-
-        List<GameUserAttribEntry> entries = [];
-        foreach (GameUserAttribEntry entry in attributes)
-        {
-            entries.Add(entry);
-        }
 
         Assert.Equal(
             [
                 new GameUserAttribEntry(5, 0xfedcba9876543210, 0),
                 new GameUserAttribEntry(25, 0x0123456789abcdef, 0xfedcba9876543210),
             ],
-            entries);
+            Entries(attributes));
+    }
+
+    // Native loops the declared count with no length check (0x758B92); entries past the message read zero.
+    [Fact]
+    public void Read_ProcessesTheDeclaredCountWithZeroEntriesPastTheMessage()
+    {
+        byte[] packet = Frame(entryCount: 1, declaredCount: 3);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(12), 5);
+        BinaryPrimitives.WriteUInt64LittleEndian(packet.AsSpan(16), 0x1234);
+
+        GameUserAttrib10017 attributes = GameUserAttrib10017.Read(GameMessages.Load(packet));
+
+        Assert.Equal(
+            [new GameUserAttribEntry(5, 0x1234, 0), new GameUserAttribEntry(0, 0, 0), new GameUserAttribEntry(0, 0, 0)],
+            Entries(attributes));
     }
 
     [Fact]
-    public void TryRead_AcceptsAnEmptyEntryList()
+    public void Read_IgnoresEntriesBeyondTheDeclaredCount()
     {
-        byte[] packet = Frame(entryCount: 0, declaredCount: 0);
-        Assert.True(GameUserAttrib10017.TryRead(packet, out GameUserAttrib10017 attributes));
-        Assert.Equal(0, attributes.Count);
+        byte[] packet = Frame(entryCount: 2, declaredCount: 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(32), 7);
+
+        Assert.Equal([new GameUserAttribEntry(0, 0, 0)], Entries(GameUserAttrib10017.Read(GameMessages.Load(packet))));
     }
 
+    // The native count is signed (jl): zero or negative runs no entries. Above 50 native reads past its buffer; the
+    // managed reader stops at the last whole entry inside it.
     [Theory]
-    [InlineData(1, 0)]
-    [InlineData(1, 2)]
-    [InlineData(2, uint.MaxValue)]
-    public void TryRead_RejectsACountThatDisagreesWithTheLength(int entryCount, uint declaredCount) =>
-        Assert.False(GameUserAttrib10017.TryRead(Frame(entryCount, declaredCount), out _));
-
-    [Theory]
-    [InlineData(11)]
-    [InlineData(13)]
-    [InlineData(31)]
-    public void TryRead_RejectsLengthsThatAreNotWholeEntries(int length)
+    [InlineData(0u, 0)]
+    [InlineData(0x80000000u, 0)]
+    [InlineData(uint.MaxValue, 0)]
+    [InlineData(50u, 50)]
+    [InlineData(51u, 50)]
+    [InlineData(0x7fffffffu, 50)]
+    public void Count_FollowsTheSignedNativeCountUpToTheBufferEdge(uint declared, int expected)
     {
-        byte[] packet = new byte[length];
-        BinaryPrimitives.WriteUInt16LittleEndian(packet, (ushort)length);
-        BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(2), GameUserAttrib10017.PacketType);
-        Assert.False(GameUserAttrib10017.TryRead(packet, out _));
+        GameUserAttrib10017 attributes = GameUserAttrib10017.Read(GameMessages.Load(Frame(entryCount: 0, declaredCount: declared)));
+        Assert.Equal(expected, attributes.Count);
+        Assert.Equal(expected, Entries(attributes).Count);
     }
 
-    [Fact]
-    public void TryRead_RejectsAHeaderSizeThatDisagreesWithTheBuffer()
+    private static List<GameUserAttribEntry> Entries(GameUserAttrib10017 attributes)
     {
-        byte[] packet = Frame(entryCount: 1, declaredCount: 1);
-        BinaryPrimitives.WriteUInt16LittleEndian(packet, (ushort)(packet.Length + 20));
-        Assert.False(GameUserAttrib10017.TryRead(packet, out _));
+        List<GameUserAttribEntry> entries = [];
+        foreach (GameUserAttribEntry entry in attributes)
+        {
+            entries.Add(entry);
+        }
+
+        return entries;
     }
 
     private static byte[] Frame(int entryCount, uint declaredCount)
     {
-        byte[] packet = new byte[GameUserAttrib10017.HeaderLength + entryCount * GameUserAttrib10017.EntryLength];
-        BinaryPrimitives.WriteUInt16LittleEndian(packet, (ushort)packet.Length);
-        BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(2), GameUserAttrib10017.PacketType);
+        byte[] packet = GameMessages.Header(GameUserAttrib10017.HeaderLength + entryCount * GameUserAttrib10017.EntryLength,
+            GameUserAttrib10017.PacketType);
         BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(8), declaredCount);
         return packet;
     }

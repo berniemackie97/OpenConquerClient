@@ -34,3 +34,26 @@ movement requests, motion transitions or remote character presentation.
 The ingress task is canceled and observed before its session is released
 on world exit or application shutdown. Bootstrap timeout policies do not
 become a world-idle disconnect timer.
+
+## Message tolerance — CP2.4a
+
+Each world message is loaded into a zeroed 0x400-byte buffer before decoding,
+as native `CNetMsg` objects are (`CNetMsg__ResetPacketBuffer` 0x6DF290). None
+of the native parsers for 10005, 10010, 1008, 1009, 1016 or 10017 checks
+length, so a short message decodes with zero fields past its end and extra
+bytes are ignored. A message native dispatch drops before Parse (size above
+0x400, size word not equal to the byte count, type 0) is skipped without
+closing the world; native skips it and continues (0x6DEC3A). Walk entity 0 is
+decoded and handled as a non-hero walk.
+
+Variable counts follow native: 10017 uses the signed count at +8 and 1009
+subtype 5 the unsigned count at +20, with entries past the message read as
+zero. Native reads past its buffer for counts above 50 (10017) and 235
+(1009 list); the client stops at the buffer edge.
+
+Transport framing (4..0x400 bytes) is unchanged. Handler-level rejections
+(position-correction field rules, walk destination range, weather ranges,
+item identity and capacity, map bounds, missing item-table rows) and the
+world-entry bootstrap sequence are scheduled for CP2.4b/c. Evidence:
+`20_notes/Network/inbound-tolerance-cp24.md`.
+
