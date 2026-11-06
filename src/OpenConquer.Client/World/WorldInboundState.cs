@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+using OpenConquer.Content.Items;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Networking.Game.World;
 
@@ -10,15 +10,22 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     private readonly HashSet<uint> _unhandled = [];
     private readonly HashSet<uint> _unhandledAttributes = [];
 
-    internal WorldInboundState(GameWorldEntrySnapshot world)
+    /// <summary>
+    /// Seeds the hero from the admission snapshot, then replays the hydration item frames in arrival order, so a
+    /// subtype-46 snapshot clamps against the hero life that preceded it. Other hydration frames are not consumed.
+    /// </summary>
+    internal WorldInboundState(GameWorldEntrySnapshot world, ItemStatCatalog itemStats)
     {
+        ArgumentNullException.ThrowIfNull(world);
         _heroId = world.Character.EntityId;
-        bool needsEquipmentLifeClamp = world.HydrationPackets.Any(static packet =>
-            packet.Length == 88 &&
-            BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(2)) == 1009 &&
-            BinaryPrimitives.ReadUInt16LittleEndian(packet.AsSpan(12)) == 46);
-        Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character),
-            WorldHeroEquipment.FromHydration(world.HydrationPackets), needsEquipmentLifeClamp);
+        Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character), itemStats, world.MapFlags,
+            world.Character.TransformLookSourceId != 0);
+        HydrationItems hydration = new(Hero);
+        foreach (byte[] packet in world.HydrationPackets)
+        {
+            GameWorldPacketDispatcher.Dispatch(packet, hydration);
+        }
+
         X = world.X;
         Y = world.Y;
         DirectionIndex = world.DirectionIndex;
@@ -100,14 +107,15 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         return changed;
     }
 
-    bool IGameWorldPacketHandler.HandleItem(ushort packetType, ReadOnlySpan<byte> packet)
+    bool IGameWorldPacketHandler.HandleItemRecord(GameItemRecord1008 record)
     {
-        if (Equipment.Apply(packet))
-        {
-            Hero.RecordEquipmentChange(packetType == GameWorldPacketDispatcher.ItemPacketType &&
-                BinaryPrimitives.ReadUInt16LittleEndian(packet[12..]) == 46);
-        }
+        Hero.ApplyItemRecord(record);
+        return false;
+    }
 
+    bool IGameWorldPacketHandler.HandleItem(GameItem1009 item)
+    {
+        Hero.ApplyItem(item);
         return false;
     }
 
@@ -159,5 +167,31 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
                 ? $"OpenConquer: world packet {type} is not implemented."
                 : $"OpenConquer: world action {type}/{action} is not implemented.");
         }
+    }
+
+    /// <summary>Consumes only hydration item frames, as world entry delivers them before ingress starts.</summary>
+    private sealed class HydrationItems(WorldHeroModel hero) : IGameWorldPacketHandler
+    {
+        public bool HandleItemRecord(GameItemRecord1008 record)
+        {
+            hero.ApplyItemRecord(record);
+            return false;
+        }
+
+        public bool HandleItem(GameItem1009 item)
+        {
+            hero.ApplyItem(item);
+            return false;
+        }
+
+        public bool HandleWalk(GameWalk10005 walk) => false;
+
+        public bool HandleAction(GameWorldAction10010 action) => false;
+
+        public bool HandleAttributes(GameUserAttrib10017 attributes) => false;
+
+        public bool HandleWeather(GameWeather1016 weather) => false;
+
+        public bool HandleUnknown(ushort packetType) => false;
     }
 }

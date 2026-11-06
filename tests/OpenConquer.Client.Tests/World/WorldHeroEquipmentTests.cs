@@ -8,13 +8,13 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void TrackedItemsRequireTheActivationSnapshotForOrdinarySlots()
     {
-        WorldHeroEquipment tracked = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment tracked = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Item(200, 130003, placement: 3)]);
 
         Assert.Null(tracked.GetActiveItem(1));
         Assert.Null(tracked.GetActiveItem(3));
 
-        WorldHeroEquipment activated = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment activated = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Item(200, 130003, placement: 3),
                 Equipment(headwear: 100, armor: 200)]);
 
@@ -25,7 +25,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void EquipmentSnapshotResolvesTrackedUidWithoutRequiringAMatchingPlacement()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 3), Equipment(headwear: 100)]);
 
         Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
@@ -40,7 +40,7 @@ public sealed class WorldHeroEquipmentTests
         BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(68), 103);
         BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(72), 104);
 
-        WorldHeroEquipment state = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment state = WorldEquipmentFrames.Hydrate(
             [Item(101, 410003, placement: 4), Item(102, 420003, placement: 5),
                 Item(103, 215003, placement: 15), Item(104, 216003, placement: 16), snapshot]);
 
@@ -65,7 +65,7 @@ public sealed class WorldHeroEquipmentTests
         }
 
         hydration.Add(snapshot);
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(hydration);
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(hydration);
 
         for (int index = 0; index < slots.Length; index++)
         {
@@ -76,13 +76,13 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void MissingAndZeroUidsClearPreviouslyActivatedSlots()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Equipment(headwear: 100),
                 Equipment(headwear: 999)]);
 
         Assert.Null(equipment.GetActiveItem(1));
 
-        equipment = WorldHeroEquipment.FromHydration(
+        equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Equipment(headwear: 100), Equipment()]);
 
         Assert.Null(equipment.GetActiveItem(1));
@@ -91,7 +91,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void SpecialEquipmentSlotsActivateWhenTheirTrackedItemArrives()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 201003, placement: 10), Item(200, 202003, placement: 11),
                 Item(300, 130003, placement: 13)]);
 
@@ -103,7 +103,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void AlternatePlacementAndInventoryDoNotActivateWithoutTheUidSnapshot()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 21), Item(200, 130003, placement: 0),
                 Equipment(headwear: 100, armor: 200)]);
 
@@ -114,7 +114,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void HydrationRetainsVerifiedItemStatInputs()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
 
         Assert.Equal(new WorldHeroItem(100, 1111000, 40, 2, 7), equipment.GetActiveItem(1));
@@ -128,7 +128,7 @@ public sealed class WorldHeroEquipmentTests
         byte[] equipment = Equipment(headwear: 100);
         BinaryPrimitives.WriteUInt16LittleEndian(equipment.AsSpan(12), 17);
 
-        WorldHeroEquipment state = WorldHeroEquipment.FromHydration([item, equipment]);
+        WorldHeroEquipment state = WorldEquipmentFrames.Hydrate([item, equipment]);
 
         Assert.Null(state.GetActiveItem(1));
     }
@@ -136,7 +136,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void LiveItemUpdateRefreshesActiveEquipmentStatisticsWithoutAnotherSnapshot()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 120020, placement: 1), Equipment(headwear: 100)]);
 
         byte[] updated = Item(100, 120020, placement: 1);
@@ -152,19 +152,19 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void LiveItemRemovalClearsTrackedAndActiveReferences()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
 
         Assert.True(equipment.Apply(Tick(3, itemId: 100)));
         Assert.Null(equipment.GetActiveItem(1));
         Assert.False(equipment.Apply(Tick(3, itemId: 100)));
-        Assert.Null(WorldHeroEquipment.FromHydration([Equipment(headwear: 100)]).GetActiveItem(1));
+        Assert.Null(WorldEquipmentFrames.Hydrate([Equipment(headwear: 100)]).GetActiveItem(1));
     }
 
     [Fact]
     public void LiveActiveSnapshotReplacesThePreviouslyEquippedItem()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Item(200, 1111010, placement: 21),
                 Equipment(headwear: 100)]);
 
@@ -178,7 +178,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void LiveUpdateForUnknownItemCannotCreateTrackedEquipment()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration([]);
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate([]);
         byte[] update = Item(100, 120020, placement: 1);
         update[16] = 3;
 
@@ -190,7 +190,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void LiveItemPlacementChangeClearsItsPreviousActiveSlot()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
         byte[] update = Item(100, 1111000, placement: 3);
         update[16] = 3;
@@ -204,7 +204,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void LiveEquipMovesInventoryItemIntoTheRequestedSlotAndDisplacesThePreviousItem()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Item(200, 1111010, placement: 0),
                 Equipment(headwear: 100)]);
 
@@ -230,7 +230,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void LiveInventoryItemUpdateIsRetainedUntilEquipped()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 0)]);
 
         byte[] update = Item(100, 1111000, placement: 0);
@@ -247,7 +247,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void DurabilityUpdateChangesActiveItemWithoutReplacingItsIdentity()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
         byte[] durability = Tick(17, itemId: 0);
         BinaryPrimitives.WriteUInt32LittleEndian(durability.AsSpan(8), 1);
@@ -265,7 +265,7 @@ public sealed class WorldHeroEquipmentTests
         byte[] snapshot = Equipment();
         BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(44), 100);
         BinaryPrimitives.WriteUInt32LittleEndian(snapshot.AsSpan(48), 200);
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 500003, placement: 4), Item(200, 410003, placement: 5), snapshot]);
 
         byte[] unequip = Tick(6);
@@ -285,7 +285,7 @@ public sealed class WorldHeroEquipmentTests
             packets.Add(Item(id, 120020, placement: 0));
         }
 
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(packets);
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(packets);
         Assert.Throws<InvalidDataException>(() => equipment.Apply(Item(41, 120020, placement: 0)));
 
         byte[] equip = Tick(5, itemId: 40);
@@ -297,7 +297,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void MalformedDisplacementCountCannotApplyPartialEquipmentChanges()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Item(200, 1111010, placement: 0),
                 Equipment(headwear: 100)]);
         byte[] equip = Tick(5, itemId: 200);
@@ -311,7 +311,7 @@ public sealed class WorldHeroEquipmentTests
     [Fact]
     public void MalformedLiveMutationsLeaveExistingEquipmentUnchanged()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
         byte[] malformed = Tick(46);
         Array.Resize(ref malformed, 84);
@@ -327,14 +327,14 @@ public sealed class WorldHeroEquipmentTests
         byte[] item = Item(100, 1111000, placement: 1);
         Array.Resize(ref item, 67);
         BinaryPrimitives.WriteUInt16LittleEndian(item, 67);
-        Assert.Throws<InvalidDataException>(() => WorldHeroEquipment.FromHydration([item]));
+        Assert.Throws<InvalidDataException>(() => WorldEquipmentFrames.Hydrate([item]));
 
         byte[] equipment = Equipment(headwear: 100);
         Array.Resize(ref equipment, 84);
         BinaryPrimitives.WriteUInt16LittleEndian(equipment, 84);
-        Assert.Throws<InvalidDataException>(() => WorldHeroEquipment.FromHydration([equipment]));
+        Assert.Throws<InvalidDataException>(() => WorldEquipmentFrames.Hydrate([equipment]));
 
-        Assert.Throws<InvalidDataException>(() => WorldHeroEquipment.FromHydration([new byte[3]]));
+        Assert.Throws<InvalidDataException>(() => WorldEquipmentFrames.Hydrate([new byte[3]]));
     }
 
     private static byte[] Item(uint id, uint typeId, byte placement)

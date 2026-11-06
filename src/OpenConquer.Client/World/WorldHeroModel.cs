@@ -1,5 +1,6 @@
 using OpenConquer.Content.Items;
 using OpenConquer.Content.Progression;
+using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.World;
 
@@ -16,14 +17,22 @@ internal sealed class WorldHeroModel
     private const ulong ExtendedStaminaStatusMask = 1UL << 33;
 
     private readonly WorldHeroGaugeFollowers _followers = new();
-    private bool _needsEquipmentLifeClamp;
+    private readonly ItemStatCatalog _itemStats;
+    private readonly ulong _mapFlags;
+    private readonly bool _hasTransformLookSource;
 
-    internal WorldHeroModel(WorldHeroAttributes attributes, WorldHeroEquipment equipment, bool needsEquipmentLifeClamp)
+    /// <summary>
+    /// The item table and map flags are fixed inputs of the effective-maximum rules for one world, so they are bound
+    /// before any equipment packet. A transform-look source is not a supported maximum-life input yet.
+    /// </summary>
+    internal WorldHeroModel(WorldHeroAttributes attributes, ItemStatCatalog itemStats, ulong mapFlags,
+        bool hasTransformLookSource)
     {
-        ArgumentNullException.ThrowIfNull(equipment);
+        ArgumentNullException.ThrowIfNull(itemStats);
         Attributes = attributes;
-        Equipment = equipment;
-        _needsEquipmentLifeClamp = needsEquipmentLifeClamp;
+        _itemStats = itemStats;
+        _mapFlags = mapFlags;
+        _hasTransformLookSource = hasTransformLookSource;
     }
 
     internal WorldHeroAttributes Attributes
@@ -32,10 +41,8 @@ internal sealed class WorldHeroModel
         private set;
     }
 
-    internal WorldHeroEquipment Equipment
-    {
-        get;
-    }
+    internal WorldHeroEquipment Equipment { get; } = new();
+
     internal uint EquipmentRevision
     {
         get;
@@ -53,43 +60,33 @@ internal sealed class WorldHeroModel
         return true;
     }
 
-    internal void RecordEquipmentChange(bool isSnapshot)
+    internal void ApplyItemRecord(GameItemRecord1008 record)
     {
-        EquipmentRevision++;
-        _needsEquipmentLifeClamp |= isSnapshot;
+        if (Equipment.Apply(record))
+        {
+            EquipmentRevision++;
+        }
     }
 
-    internal void ApplyEquipmentLifeClamp(int maximumLife)
+    internal void ApplyItem(GameItem1009 item)
     {
-        if (!_needsEquipmentLifeClamp)
+        if (!Equipment.Apply(item))
         {
             return;
         }
 
-        _needsEquipmentLifeClamp = false;
-        // Native 1009 subtype 46: signed CMP/JLE 0x6EC49A/49C; no max>=0 guard.
-        // Actual clamp writes both current index1 and follower index15 at 0x6EC4B8/4C7.
-        // Consumption is still deferred to the content-ready frame; packet-batch ordering is a CP2.3 residual.
-        if (unchecked((int)Attributes.CurrentLife) > maximumLife)
+        EquipmentRevision++;
+        if (item.Subtype == GameItem1009.EquipmentSnapshot)
         {
-            Attributes = Attributes with
-            {
-                CurrentLife = unchecked((uint)maximumLife)
-            };
-            _followers.ResetLifeForEquipmentClamp(maximumLife);
+            ClampLifeAfterEquipmentSnapshot();
         }
     }
 
     /// <summary>Called once at the existing guarded world-draw point, after scene drawing.</summary>
-    internal WorldHeroVitals AdvanceVitals(ItemStatCatalog catalog, LevelExperienceTable experience,
-        ulong mapFlags, bool hasTransformLook, int lifeTierDigit)
+    internal WorldHeroVitals AdvanceVitals(LevelExperienceTable experience)
     {
-        ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(experience);
-        (int itemLife, int itemMana) = WorldHeroItemStats.Resolve(Equipment, catalog);
-        WorldHeroMaxStats maxima = WorldHeroMaxStats.Resolve(Attributes, itemLife, itemMana,
-            mapFlags, hasTransformLook, lifeTierDigit);
-        ApplyEquipmentLifeClamp(maxima.Life);
+        WorldHeroMaxStats maxima = ResolveMaxima();
         _followers.Advance(Attributes, maxima);
         bool extended = (Attributes.StatusLow & ExtendedStaminaStatusMask) != 0;
         int maximumStamina = extended ? ExtendedStaminaMaximum : NormalStaminaMaximum;
@@ -99,6 +96,35 @@ internal sealed class WorldHeroModel
             unchecked((int)Attributes.CurrentMana), _followers.Mana, maxima.Mana,
             stamina, maximumStamina, extended, checked((int)Attributes.SkillGaugePercent),
             Attributes.Experience, experience.GetNextLevelExperience(Attributes.Level));
+    }
+
+    // Supported inputs only: no transform look, neutral life tier.
+    private WorldHeroMaxStats ResolveMaxima()
+    {
+        (int itemLife, int itemMana) = WorldHeroItemStats.Resolve(Equipment, _itemStats);
+        return WorldHeroMaxStats.Resolve(Attributes, itemLife, itemMana, _mapFlags, hasTransformLook: false,
+            lifeTierDigit: 0);
+    }
+
+    // Native 1009 subtype 46 clamps synchronously after CHero__RefreshEquipmentDerivedStats (0x6EC479), so a later
+    // life write in the same batch is never clamped. Signed CMP/JLE 0x6EC49A/49C, no max>=0 guard; the clamp writes
+    // current index1 and HP follower index15 (0x6EC4B8/4C7), never MP.
+    private void ClampLifeAfterEquipmentSnapshot()
+    {
+        if (_hasTransformLookSource)
+        {
+            return;
+        }
+
+        int maximumLife = ResolveMaxima().Life;
+        if (unchecked((int)Attributes.CurrentLife) > maximumLife)
+        {
+            Attributes = Attributes with
+            {
+                CurrentLife = unchecked((uint)maximumLife)
+            };
+            _followers.ResetLifeForEquipmentClamp(maximumLife);
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.World;
 
@@ -8,6 +8,7 @@ internal readonly record struct WorldHeroItem(uint Id, uint TypeId, ushort Durab
 internal sealed class WorldHeroEquipment
 {
     private const int InventoryCapacity = 40;
+    // 1009 subtype 46 offset->slot map, ascending (CP2.3b audit 0x6EC20A..0x6EC458; native call order is 5-then-4, 16-then-15).
     private static ReadOnlySpan<byte> SnapshotSlots => [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 18];
 
     private readonly Dictionary<uint, WorldHeroItem> _inventory = [];
@@ -17,59 +18,28 @@ internal sealed class WorldHeroEquipment
     internal WorldHeroItem? GetActiveItem(int slot) => slot is >= 1 and <= 18
         ? _active[slot] : throw new ArgumentOutOfRangeException(nameof(slot));
 
-    internal static WorldHeroEquipment FromHydration(IReadOnlyList<byte[]> packets)
+    /// <summary>Applies a 1008 record. Only add (1) and update (3) are consumed.</summary>
+    internal bool Apply(GameItemRecord1008 record)
     {
-        WorldHeroEquipment equipment = new();
-        foreach (byte[] packet in packets)
-        {
-            equipment.Apply(packet);
-        }
-
-        return equipment;
-    }
-
-    internal bool Apply(ReadOnlySpan<byte> packet)
-    {
-        if (packet.Length < 4 || BinaryPrimitives.ReadUInt16LittleEndian(packet) != packet.Length)
-        {
-            throw new InvalidDataException("Equipment packet has an invalid header.");
-        }
-
-        return BinaryPrimitives.ReadUInt16LittleEndian(packet[2..]) switch
-        {
-            1008 => ApplyItem(packet),
-            1009 => ApplyTick(packet),
-            _ => false,
-        };
-    }
-
-    private bool ApplyItem(ReadOnlySpan<byte> packet)
-    {
-        if (packet.Length != 68)
-        {
-            throw new InvalidDataException("Item snapshot has an invalid length.");
-        }
-
-        byte kind = packet[16];
-        if (kind is not 1 and not 3)
+        byte kind = record.Action;
+        if (kind is not GameItemRecord1008.AddAction and not GameItemRecord1008.UpdateAction)
         {
             return false;
         }
 
-        uint id = BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]);
-        uint typeId = BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]);
-        if (id == 0 || typeId == 0)
+        uint id = record.ItemId;
+        if (id == 0 || record.ItemTypeId == 0)
         {
             throw new InvalidDataException("Item snapshot has an invalid identity.");
         }
 
         int previous = FindTrackedPosition(id);
-        if (kind == 3 && previous == 0 && !_inventory.ContainsKey(id))
+        if (kind == GameItemRecord1008.UpdateAction && previous == 0 && !_inventory.ContainsKey(id))
         {
             return false;
         }
 
-        byte position = packet[18];
+        byte position = record.Position;
         if (position is 19 or 20 or >= 30)
         {
             return false;
@@ -80,8 +50,8 @@ internal sealed class WorldHeroEquipment
             throw new InvalidDataException("World inventory exceeds its slot capacity.");
         }
 
-        WorldHeroItem item = new(id, typeId,
-            BinaryPrimitives.ReadUInt16LittleEndian(packet[12..]), packet[33], packet[36]);
+        WorldHeroItem item = new(id, record.ItemTypeId, record.Durability, record.AdditionLevel,
+            record.EnchantmentLifeBonus);
 
         if (previous != 0 && previous != position)
         {
@@ -115,38 +85,35 @@ internal sealed class WorldHeroEquipment
         return true;
     }
 
-    private bool ApplyTick(ReadOnlySpan<byte> packet)
+    /// <summary>Applies a 1009 item mutation. Only subtypes 3, 5, 6, 17 and 46 are consumed.</summary>
+    internal bool Apply(GameItem1009 packet)
     {
-        if (packet.Length < 14)
-        {
-            throw new InvalidDataException("Equipment packet is truncated.");
-        }
-
-        ushort subtype = BinaryPrimitives.ReadUInt16LittleEndian(packet[12..]);
-        if (subtype is not (3 or 5 or 6 or 17 or 46))
+        ushort subtype = packet.Subtype;
+        if (subtype is not (GameItem1009.RemoveItem or GameItem1009.EquipItem or GameItem1009.UnequipItem or
+            GameItem1009.UpdateDurability or GameItem1009.EquipmentSnapshot))
         {
             return false;
         }
 
-        if (packet.Length < 88 || (packet.Length - 84) % 4 != 0)
+        if (!packet.HasListLayout)
         {
             throw new InvalidDataException("Equipment mutation has an invalid length.");
         }
 
-        uint itemId = BinaryPrimitives.ReadUInt32LittleEndian(packet[4..]);
-        uint position = BinaryPrimitives.ReadUInt32LittleEndian(packet[8..]);
+        uint itemId = packet.ParameterA;
+        uint position = packet.ParameterB;
         switch (subtype)
         {
-            case 3:
+            case GameItem1009.RemoveItem:
                 return RemoveItem(itemId);
-            case 5:
+            case GameItem1009.EquipItem:
                 return EquipItem(packet, itemId, position);
-            case 6:
+            case GameItem1009.UnequipItem:
                 return UnequipItem(position);
-            case 17:
+            case GameItem1009.UpdateDurability:
                 return UpdateDurability(itemId, position);
             default:
-                if (packet.Length != 88)
+                if (packet.Length != GameItem1009.FixedLength)
                 {
                     throw new InvalidDataException("Active-equipment snapshot has an invalid length.");
                 }
@@ -154,7 +121,7 @@ internal sealed class WorldHeroEquipment
                 ReadOnlySpan<byte> slots = SnapshotSlots;
                 for (int i = 0; i < slots.Length; i++)
                 {
-                    uint id = BinaryPrimitives.ReadUInt32LittleEndian(packet[(32 + i * 4)..]);
+                    uint id = packet.GetSnapshotItemId(i);
                     _active[slots[i]] = id == 0 ? null : FindTracked(id);
                 }
 
@@ -176,10 +143,10 @@ internal sealed class WorldHeroEquipment
         return removed;
     }
 
-    private bool EquipItem(ReadOnlySpan<byte> packet, uint itemId, uint position)
+    private bool EquipItem(GameItem1009 packet, uint itemId, uint position)
     {
-        uint count = BinaryPrimitives.ReadUInt32LittleEndian(packet[20..]);
-        if (count > (uint)((packet.Length - 84) / 4))
+        uint count = packet.DeclaredListCount;
+        if (count > (uint)packet.ListCapacity)
         {
             throw new InvalidDataException("Equipment displacement list is truncated.");
         }
@@ -192,7 +159,7 @@ internal sealed class WorldHeroEquipment
 
         for (int index = 0; index < count; index++)
         {
-            uint displacedId = BinaryPrimitives.ReadUInt32LittleEndian(packet[(84 + index * 4)..]);
+            uint displacedId = packet.GetListedId(index);
             int displacedPosition = FindTrackedPosition(displacedId);
             if (displacedPosition != 0 && _tracked[displacedPosition] is { } displaced)
             {

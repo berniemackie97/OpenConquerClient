@@ -13,7 +13,7 @@ public sealed class WorldRoleSourcesTests
         uint appearance, int hair, uint expectedBody, uint expectedArmet)
     {
         WorldRoleSources sources = WorldRoleSources.Resolve(appearance, checked((ushort)hair),
-            WorldHeroEquipment.FromHydration([]));
+            WorldEquipmentFrames.Hydrate([]));
         Assert.Equal(expectedBody, sources.BodyModelId);
         Assert.Equal(expectedArmet, sources.ArmetModelId);
     }
@@ -24,12 +24,12 @@ public sealed class WorldRoleSourcesTests
         byte[] helmet = ItemSnapshot(100, 1111000, placement: 1);
         byte[] armor = ItemSnapshot(200, 130003, placement: 3);
         WorldRoleSources withoutActivation = WorldRoleSources.Resolve(1002, 335,
-            WorldHeroEquipment.FromHydration([helmet, armor]));
+            WorldEquipmentFrames.Hydrate([helmet, armor]));
         Assert.Equal(2_000_000u, withoutActivation.BodyModelId);
         Assert.Equal(2_119_335u, withoutActivation.ArmetModelId);
 
         WorldRoleSources active = WorldRoleSources.Resolve(1002, 335,
-            WorldHeroEquipment.FromHydration([helmet, armor, ActiveEquipment(headwear: 100, armor: 200)]));
+            WorldEquipmentFrames.Hydrate([helmet, armor, ActiveEquipment(headwear: 100, armor: 200)]));
         Assert.Equal(2_130_000u, active.BodyModelId);
         Assert.Equal(2_111_000u, active.ArmetModelId);
     }
@@ -38,7 +38,7 @@ public sealed class WorldRoleSourcesTests
     public void MissingEquipmentUidClearsTheSlotWithoutPreventingWorldEntry()
     {
         WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335,
-            WorldHeroEquipment.FromHydration([ActiveEquipment(headwear: 999, armor: 200)]));
+            WorldEquipmentFrames.Hydrate([ActiveEquipment(headwear: 999, armor: 200)]));
 
         Assert.Equal(2_000_000u, sources.BodyModelId);
         Assert.Equal(2_119_335u, sources.ArmetModelId);
@@ -47,7 +47,7 @@ public sealed class WorldRoleSourcesTests
     [Fact]
     public void LiveEquipmentMutationsRefreshTheCharacterPartProjection()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [ItemSnapshot(100, 1111000, placement: 1), ItemSnapshot(200, 130003, placement: 3),
                 ActiveEquipment(headwear: 100, armor: 200)]);
 
@@ -68,7 +68,7 @@ public sealed class WorldRoleSourcesTests
     [Fact]
     public void EquippedHandSourcesProjectToTheMatchingAttachmentSlots()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [ItemSnapshot(101, 410003, placement: 4),
                 ItemSnapshot(102, 420033, placement: 5),
                 ActiveEquipment(rightHand: 101, leftHand: 102)]);
@@ -93,7 +93,7 @@ public sealed class WorldRoleSourcesTests
     [InlineData(370013u, 370010u)]
     public void RightHandWeaponFamiliesUseTheLeftAttachment(uint itemType, uint expectedSource)
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [ItemSnapshot(101, itemType, placement: 4), ActiveEquipment(rightHand: 101)]);
 
         WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335, equipment);
@@ -105,7 +105,7 @@ public sealed class WorldRoleSourcesTests
     [Fact]
     public void LeftHandCompositeHundredFiveUsesTheRightAttachment()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [ItemSnapshot(101, 1_050_003, placement: 5), ActiveEquipment(leftHand: 101)]);
 
         WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335, equipment);
@@ -117,7 +117,7 @@ public sealed class WorldRoleSourcesTests
     [Fact]
     public void RightHandCompositeHundredFiveReplacesLeftFiveHundredFamily()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [ItemSnapshot(101, 1_050_003, placement: 4),
                 ItemSnapshot(102, 500003, placement: 5),
                 ActiveEquipment(rightHand: 101, leftHand: 102)]);
@@ -136,7 +136,7 @@ public sealed class WorldRoleSourcesTests
         BinaryPrimitives.WriteUInt16LittleEndian(unrelated.AsSpan(12), 12);
 
         WorldRoleSources sources = WorldRoleSources.Resolve(1002, 335,
-            WorldHeroEquipment.FromHydration([inventory, unrelated]));
+            WorldEquipmentFrames.Hydrate([inventory, unrelated]));
 
         Assert.Equal(2_000_000u, sources.BodyModelId);
         Assert.Equal(2_119_335u, sources.ArmetModelId);
