@@ -30,7 +30,6 @@ internal sealed class ClientWorld : IClientWorld
     private GameWorldEntrySnapshot? _entry;
     private WorldFrameIngress? _ingress;
     private WorldInboundState? _inbound;
-    private ItemStatCatalog? _itemStats;
     private LevelExperienceTable? _levelExperience;
     private WorldMapLoad? _load;
     private WorldMapScene? _scene;
@@ -77,9 +76,22 @@ internal sealed class ClientWorld : IClientWorld
         _closeSession = closeSession;
         _entry = entry;
 
+        // Item stats feed the hero's equipment snapshot rules, so they load before any hydration or ingress frame.
+        ItemStatCatalog itemStats;
         try
         {
-            _inbound = new WorldInboundState(entry);
+            itemStats = ItemStatCatalog.Load(content);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"OpenConquer: world item tables are unavailable ({exception.Message}).");
+            BeginClose(WorldCloseReason.ContentUnavailable);
+            return;
+        }
+
+        try
+        {
+            _inbound = new WorldInboundState(entry, itemStats);
         }
         catch (InvalidDataException exception)
         {
@@ -141,7 +153,6 @@ internal sealed class ClientWorld : IClientWorld
             if (IsActive)
             {
                 _scene = scene;
-                _itemStats = ItemStatCatalog.Load(_content);
                 _levelExperience = LevelExperienceTable.Load(_content);
                 if (_inbound is { } inbound)
                 {
@@ -281,11 +292,10 @@ internal sealed class ClientWorld : IClientWorld
         }
 
         scene.Draw(textures!, renderer, _role is null ? null : _drawRole);
-        if (_hud is { } hud && _inbound is { } state && _itemStats is { } catalog && _levelExperience is { } experienceTable &&
-            _entry is { Character.TransformLookSourceId: 0 } entry)
+        if (_hud is { } hud && _inbound is { } state && _levelExperience is { } experienceTable &&
+            _entry is { Character.TransformLookSourceId: 0 })
         {
-            WorldHeroVitals vitals = state.Hero.AdvanceVitals(catalog, experienceTable, entry.MapFlags,
-                hasTransformLook: false, lifeTierDigit: 0);
+            WorldHeroVitals vitals = state.Hero.AdvanceVitals(experienceTable);
             hud.SetWorldValues(new MainHudVitalsSnapshot(vitals.CurrentLife, vitals.LifeFollower, vitals.MaximumLife,
                 vitals.CurrentMana, vitals.ManaFollower, vitals.MaximumMana,
                 vitals.Stamina, vitals.MaximumStamina, vitals.HasExtendedStamina),
@@ -361,7 +371,6 @@ internal sealed class ClientWorld : IClientWorld
         _closeSession = null;
         _ingress = null;
         _inbound = null;
-        _itemStats = null;
         _levelExperience = null;
         _entry = null;
         _scene = null;
@@ -408,7 +417,6 @@ internal sealed class ClientWorld : IClientWorld
         WorldFrameIngress? ingress = _ingress;
         _ingress = null;
         _inbound = null;
-        _itemStats = null;
         _levelExperience = null;
         if (ingress is not null)
         {

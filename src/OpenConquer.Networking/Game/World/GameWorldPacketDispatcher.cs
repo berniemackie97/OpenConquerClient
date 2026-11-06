@@ -10,8 +10,9 @@ internal interface IGameWorldPacketHandler
 
     bool HandleAction(GameWorldAction10010 action);
 
-    /// <summary>1008/1009 item frames, still raw until their codecs land.</summary>
-    bool HandleItem(ushort packetType, ReadOnlySpan<byte> packet);
+    bool HandleItemRecord(GameItemRecord1008 record);
+
+    bool HandleItem(GameItem1009 item);
 
     bool HandleAttributes(GameUserAttrib10017 attributes);
 
@@ -27,9 +28,6 @@ internal interface IGameWorldPacketHandler
 /// </summary>
 internal static class GameWorldPacketDispatcher
 {
-    internal const ushort ItemInfoPacketType = 1008;
-    internal const ushort ItemPacketType = 1009;
-
     /// <returns>The handler's result.</returns>
     internal static bool Dispatch(ReadOnlySpan<byte> packet, IGameWorldPacketHandler handler)
     {
@@ -50,8 +48,14 @@ internal static class GameWorldPacketDispatcher
                 return GameWorldAction10010.TryRead(packet, out GameWorldAction10010 action)
                     ? handler.HandleAction(action)
                     : throw new InvalidDataException("World action packet is malformed.");
-            case ItemInfoPacketType or ItemPacketType:
-                return handler.HandleItem(type, packet);
+            case GameItemRecord1008.PacketType:
+                return GameItemRecord1008.TryRead(packet, out GameItemRecord1008 record)
+                    ? handler.HandleItemRecord(record)
+                    : throw new InvalidDataException("World item record has an invalid length.");
+            case GameItem1009.PacketType:
+                return GameItem1009.TryRead(packet, out GameItem1009 item)
+                    ? handler.HandleItem(item)
+                    : throw new InvalidDataException("World item packet is truncated.");
             case GameUserAttrib10017.PacketType:
                 return GameUserAttrib10017.TryRead(packet, out GameUserAttrib10017 attributes)
                     ? handler.HandleAttributes(attributes)

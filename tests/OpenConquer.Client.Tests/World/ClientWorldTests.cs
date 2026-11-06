@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using OpenConquer.Client.World;
 using OpenConquer.Content;
+using OpenConquer.Content.Items;
 using OpenConquer.Networking.Game.Framing;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Rendering.Presentation;
@@ -177,15 +178,23 @@ public sealed class ClientWorldTests
             1002, 1010, 0, 1, 61, 101, [], 3);
     }
 
+    /// <summary>Serves only the item tables world construction needs; every map resource is missing.</summary>
     private sealed class MissingContentSource : IClientContentSource
     {
         public bool TryOpenRead(string contentPath, ContentLookupMode mode, [NotNullWhen(true)] out Stream? stream)
         {
-            stream = null;
-            return false;
+            stream = contentPath switch
+            {
+                ItemStatCatalog.ItemTypePath => new MemoryStream(WorldHeroItemStatsTests.ItemTypeBytes()),
+                ItemStatCatalog.ItemAddPath => new MemoryStream(WorldHeroItemStatsTests.ItemAddBytes()),
+                _ => null,
+            };
+            return stream is not null;
         }
 
         public Stream OpenRequiredRead(string contentPath, ContentLookupMode mode) =>
-            throw new FileNotFoundException($"Content '{contentPath}' is unavailable.");
+            TryOpenRead(contentPath, mode, out Stream? stream)
+                ? stream
+                : throw new FileNotFoundException($"Content '{contentPath}' is unavailable.");
     }
 }

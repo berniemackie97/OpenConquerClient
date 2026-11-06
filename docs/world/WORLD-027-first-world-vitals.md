@@ -49,8 +49,8 @@ The right-hand and right-accessory entries precede their left counterparts.
 
 | Component | Responsibility |
 | --- | --- |
-| `WorldInboundState` | Existing wire adapter, forwarding hero attribute and equipment changes. Typed codec migration remains CP2.3. |
-| `WorldHeroModel` | World-lifetime hero attributes, equipment/revision, pending snapshot clamp and followers; applies hero rules through `AdvanceVitals`. |
+| `WorldInboundState` | `IGameWorldPacketHandler` for typed world frames; replays hydration item frames in order (CP2.3). |
+| `WorldHeroModel` | World-lifetime hero attributes, equipment/revision, followers and the bound item table/map flags; clamps on the 1009 subtype-46 snapshot and advances vitals through `AdvanceVitals`. |
 | `WorldHeroMaxStats` / `WorldHeroItemStats` | Pure stat calculations over attributes, equipment and already-parsed item tables. |
 | `WorldHeroVitals` | Resolved model values, without HUD or graphics types. |
 | `ClientWorld` | Supplies current context and parsed tables, then maps resolved values to HUD input. |
@@ -71,11 +71,21 @@ sets both current life and the HP follower to maximum (`0x6EC4B8/0x6EC4C7`);
 equal/below cases do not reset the follower, and mana is unaffected. The model now
 matches these rules at its existing deferred consumption boundary.
 
-The single pending flag still loses snapshot-to-later-life-update order within
-one ingress batch: native clamps synchronously in the packet handler, while
-managed tables are unavailable during early loading. That gap and the differing
-old-note snapshot-slot descriptions remain assigned to the CP2.3 typed 1009 audit.
-No packet-layout, readiness or ingress-order change is claimed here.
+## Snapshot clamp order — CP2.3
+
+`ClientWorld` loads the item tables before it builds world state; a load failure
+closes the world as content-unavailable. The model then clamps inside the 1009
+subtype-46 handler, after the equipment slots change, as native does at
+`0x6EC479..0x6EC4C7`. Hydration snapshots clamp against the admission life, and a
+later life write in the same ingress batch is never clamped. There is no pending
+flag, queue or extra buffering. While a transform-look source is active the clamp
+is skipped, because that maximum-life input is not modeled; CP2.2 never consumed
+the clamp in that state either.
+
+The snapshot offset-to-slot map is ascending (`+0x2C`→4, `+0x30`→5, `+0x44`→15,
+`+0x48`→16). Native calls `CHeroItem__SetEquipSlot` 5 before 4 and 16 before 15.
+The audit and the open two-handed displacement question are in
+`20_notes/Network/typed-world-dispatch-cp23.md`.
 
 `WorldHeroModelTests` adds 12 cases, including static native-instruction golden
 vectors and encoded item/progression composition. Fixture provenance and limits

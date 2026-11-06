@@ -196,18 +196,33 @@ public sealed class WorldInboundStateTests
     }
 
     [Fact]
-    public void ActiveSnapshotClampsCurrentLifeOnlyAfterTheEffectiveMaximumIsKnown()
+    public void ActiveSnapshotClampsAtItsOwnPositionInTheBatchAndNotALaterLifeWrite()
     {
+        // Base maximum life for the test hero is (5 + 6 + 7*8 + 8) * 3 = 225 with no active items.
         WorldInboundState state = CreateState();
-        state.Apply(Item(101, 120020, placement: 1));
-        state.Apply(ActiveEquipment(headwear: 101));
+        state.Apply(Attributes(HeroId, (0, 900, 0)));
 
-        state.Hero.ApplyEquipmentLifeClamp(60);
-        Assert.Equal(60u, state.HeroAttributes.CurrentLife);
+        state.Apply(ActiveEquipment(headwear: 0));
+        Assert.Equal(225u, state.HeroAttributes.CurrentLife);
 
-        state.Apply(Attributes(HeroId, (0, 90, 0)));
-        state.Hero.ApplyEquipmentLifeClamp(60);
-        Assert.Equal(90u, state.HeroAttributes.CurrentLife);
+        state.Apply(Attributes(HeroId, (0, 900, 0)));
+        Assert.Equal(900u, state.HeroAttributes.CurrentLife);
+    }
+
+    [Fact]
+    public void HydrationSnapshotClampsTheAdmissionLifeBeforeAnyLivePacket()
+    {
+        WorldInboundState state = CreateState(currentLife: 900, hydration: [ActiveEquipment(headwear: 0)]);
+        Assert.Equal(225u, state.HeroAttributes.CurrentLife);
+        Assert.Equal(1u, state.EquipmentRevision);
+    }
+
+    [Fact]
+    public void SnapshotLeavesLifeUnclampedWhileATransformLookSourceIsActive()
+    {
+        WorldInboundState state = CreateState(currentLife: 900, hydration: [ActiveEquipment(headwear: 0)],
+            transformLookSourceId: 1);
+        Assert.Equal(900u, state.HeroAttributes.CurrentLife);
     }
 
     [Fact]
@@ -303,7 +318,8 @@ public sealed class WorldInboundStateTests
         Assert.Throws<InvalidDataException>(() => state.Apply(correction));
     }
 
-    private static WorldInboundState CreateState() =>
+    private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
+        ushort transformLookSourceId = 0) =>
         new(new GameWorldEntrySnapshot(
             new GameCharacterInfo1006
             {
@@ -312,13 +328,14 @@ public sealed class WorldInboundStateTests
                 Agility = 6,
                 Vitality = 7,
                 Spirit = 8,
-                CurrentLife = 70,
+                CurrentLife = (ushort)currentLife,
                 CurrentMana = 20,
                 Level = 42,
                 CurrentProfession = 10,
                 Experience = 12345,
+                TransformLookSourceId = transformLookSourceId,
             },
-            1002, 1010, 0, 1, 61, 101, [], 3));
+            1002, 1010, 0, 1, 61, 101, hydration ?? [], 3), WorldHeroItemStatsTests.Catalog());
 
     private static byte[] Attributes(uint entityId, params (uint Id, ulong Low, ulong High)[] entries)
     {

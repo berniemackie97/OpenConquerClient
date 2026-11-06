@@ -18,8 +18,13 @@ public sealed class GameWorldPacketDispatcherTests
         Assert.True(GameWorldPacketDispatcher.Dispatch(Convert.FromHexString(
             "340021277856341202000000050000001032547698badcfe000000000000000019000000efcdab89674523011032547698badcfe"),
             handler));
-        Assert.True(GameWorldPacketDispatcher.Dispatch(Header(68, 1008), handler));
-        Assert.True(GameWorldPacketDispatcher.Dispatch(Header(88, 1009), handler));
+        byte[] record = Header(68, 1008);
+        BinaryPrimitives.WriteUInt32LittleEndian(record.AsSpan(4), 77);
+        record[18] = 3;
+        Assert.True(GameWorldPacketDispatcher.Dispatch(record, handler));
+        byte[] item = Header(88, 1009);
+        BinaryPrimitives.WriteUInt16LittleEndian(item.AsSpan(12), 46);
+        Assert.True(GameWorldPacketDispatcher.Dispatch(item, handler));
         Assert.True(GameWorldPacketDispatcher.Dispatch(Header(8, 2030), handler));
 
         Assert.Equal(
@@ -27,8 +32,8 @@ public sealed class GameWorldPacketDispatcherTests
                 "action 108 0x12345678",
                 "weather 2 0xfedcba98",
                 "attributes 0x12345678 2",
-                "item 1008 68",
-                "item 1009 88",
+                "record 77 3",
+                "item 46 88",
                 "unknown 2030",
             ],
             handler.Calls);
@@ -52,6 +57,9 @@ public sealed class GameWorldPacketDispatcherTests
     [InlineData(GameWorldAction10010.PacketType, 37)]
     [InlineData(GameUserAttrib10017.PacketType, 13)]
     [InlineData(GameWeather1016.PacketType, 21)]
+    [InlineData(GameItemRecord1008.PacketType, 67)]
+    [InlineData(GameItemRecord1008.PacketType, 69)]
+    [InlineData(GameItem1009.PacketType, 13)]
     public void Dispatch_RejectsAKnownTypeWhoseLayoutDoesNotMatchItsCodec(ushort type, int length)
     {
         RecordingHandler handler = new();
@@ -75,7 +83,9 @@ public sealed class GameWorldPacketDispatcherTests
 
         public bool HandleAction(GameWorldAction10010 action) => Record($"action {action.Action} 0x{action.EntityId:x8}");
 
-        public bool HandleItem(ushort packetType, ReadOnlySpan<byte> packet) => Record($"item {packetType} {packet.Length}");
+        public bool HandleItemRecord(GameItemRecord1008 record) => Record($"record {record.ItemId} {record.Position}");
+
+        public bool HandleItem(GameItem1009 item) => Record($"item {item.Subtype} {item.Length}");
 
         public bool HandleAttributes(GameUserAttrib10017 attributes) =>
             Record($"attributes 0x{attributes.TargetId:x8} {attributes.Count}");

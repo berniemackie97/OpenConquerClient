@@ -47,8 +47,8 @@ public sealed class WorldHeroModelTests
                 CurrentStamina = UInt(row, "current"),
                 StatusLow = ULong(row, "low"),
                 StatusHigh = ULong(row, "high"),
-            });
-            WorldHeroVitals result = Advance(model, catalog, experience);
+            }, catalog);
+            WorldHeroVitals result = model.AdvanceVitals(experience);
             Assert.Equal(Int(row, "maximum"), result.MaximumStamina);
             Assert.Equal(Int(row, "value"), result.Stamina);
             Assert.Equal(Int(row, "maximum") == 150, result.HasExtendedStamina);
@@ -67,9 +67,10 @@ public sealed class WorldHeroModelTests
         WorldHeroModel model = Model(Hero() with
         {
             CurrentLife = current
-        }, pendingClamp: true);
+        }, NeutralCatalog(fixture));
+        model.Apply(Snapshot());
 
-        WorldHeroVitals frame = Advance(model, NeutralCatalog(fixture), Experience());
+        WorldHeroVitals frame = model.AdvanceVitals(Experience());
 
         Assert.Equal(expected, model.Attributes.CurrentLife);
         Assert.Equal(unchecked((int)expected), frame.CurrentLife);
@@ -82,14 +83,17 @@ public sealed class WorldHeroModelTests
     public void NegativeNativeOverrideDoesNotAddANonnegativeClampGuard(bool snapshot)
     {
         using JsonDocument fixture = Fixture();
-        WorldHeroModel model = Model(Hero() with
+        WorldHeroModel model = new(Hero() with
         {
             CurrentLife = 100,
             MaximumLifeOverride = uint.MaxValue
-        }, snapshot);
+        }, NeutralCatalog(fixture), mapFlags: 0x4000000000UL, hasTransformLookSource: false);
+        if (snapshot)
+        {
+            model.Apply(Snapshot());
+        }
 
-        WorldHeroVitals result = model.AdvanceVitals(NeutralCatalog(fixture), Experience(),
-            mapFlags: 0x4000000000UL, hasTransformLook: false, lifeTierDigit: 0);
+        WorldHeroVitals result = model.AdvanceVitals(Experience());
 
         Assert.Equal(-1, result.MaximumLife);
         Assert.Equal(snapshot ? -1 : 100, result.CurrentLife);
@@ -106,17 +110,17 @@ public sealed class WorldHeroModelTests
         {
             CurrentLife = 300,
             CurrentMana = 60
-        });
-        WorldHeroVitals first = Advance(model, catalog, experience);
+        }, catalog);
+        WorldHeroVitals first = model.AdvanceVitals(experience);
         Assert.Equal((2, 1), (first.LifeFollower, first.ManaFollower));
-        model.RecordEquipmentChange(isSnapshot: true);
+        model.Apply(Snapshot());
 
-        WorldHeroVitals clamped = Advance(model, catalog, experience);
+        WorldHeroVitals clamped = model.AdvanceVitals(experience);
 
         Assert.Equal((236, 236), (clamped.CurrentLife, clamped.LifeFollower));
         Assert.Equal((60, 2), (clamped.CurrentMana, clamped.ManaFollower));
         Assert.True(model.TryApplyAttribute(0, 300, 0));
-        WorldHeroVitals later = Advance(model, catalog, experience);
+        WorldHeroVitals later = model.AdvanceVitals(experience);
         Assert.Equal((300, 238, 3), (later.CurrentLife, later.LifeFollower, later.ManaFollower));
     }
 
@@ -126,29 +130,30 @@ public sealed class WorldHeroModelTests
         using JsonDocument fixture = Fixture();
         ItemStatCatalog catalog = NeutralCatalog(fixture);
         LevelExperienceTable experience = Experience();
-        WorldHeroModel previous = Model(Hero());
-        Assert.Equal(2, Advance(previous, catalog, experience).LifeFollower);
-        Assert.Equal(4, Advance(previous, catalog, experience).LifeFollower);
+        WorldHeroModel previous = Model(Hero(), catalog);
+        Assert.Equal(2, previous.AdvanceVitals(experience).LifeFollower);
+        Assert.Equal(4, previous.AdvanceVitals(experience).LifeFollower);
 
-        Assert.Equal(2, Advance(Model(Hero()), catalog, experience).LifeFollower);
+        Assert.Equal(2, Model(Hero(), catalog).AdvanceVitals(experience).LifeFollower);
     }
 
     [Fact]
     public void EncodedItemTablesAndLiveEquipmentComposeBeforeSnapshotClampAndProjection()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
-            [WorldHeroItemStatsTests.Item(100, 120020, 40), WorldHeroItemStatsTests.Equipment(100)]);
-        WorldHeroModel model = new(Hero() with
+        ItemStatCatalog catalog = WorldHeroItemStatsTests.Catalog();
+        WorldHeroModel model = Model(Hero() with
         {
             CurrentLife = 600,
             CurrentMana = 50,
             StatusLow = 1UL << 33
-        }, equipment, true);
-        ItemStatCatalog catalog = WorldHeroItemStatsTests.Catalog();
+        }, catalog);
+        model.Apply(WorldHeroItemStatsTests.Item(100, 120020, 40));
+        model.Apply(WorldHeroItemStatsTests.Equipment(100));
+        Assert.Equal(2u, model.EquipmentRevision);
         LevelExperienceTable experience = Experience();
         Assert.True(model.TryApplyAttribute(27, 150, 0));
 
-        WorldHeroVitals frame = Advance(model, catalog, experience);
+        WorldHeroVitals frame = model.AdvanceVitals(experience);
 
         Assert.Equal((532, 532, 532), (frame.CurrentLife, frame.LifeFollower, frame.MaximumLife));
         Assert.Equal((50, 1, 30), (frame.CurrentMana, frame.ManaFollower, frame.MaximumMana));
@@ -156,22 +161,21 @@ public sealed class WorldHeroModelTests
             (frame.MaximumStamina, frame.SkillGaugePercent, frame.Experience, frame.NextLevelExperience));
         byte[] broken = WorldHeroItemStatsTests.Item(100, 120020, 0);
         broken[16] = 3;
-        Assert.True(model.Equipment.Apply(broken));
-        model.RecordEquipmentChange(isSnapshot: false);
-        WorldHeroVitals afterBreak = Advance(model, catalog, experience);
+        model.Apply(broken);
+        WorldHeroVitals afterBreak = model.AdvanceVitals(experience);
         Assert.Equal((236, 30, 532), (afterBreak.MaximumLife, afterBreak.MaximumMana, afterBreak.CurrentLife));
-        Assert.Equal(1u, model.EquipmentRevision);
-        model.RecordEquipmentChange(isSnapshot: true);
-        WorldHeroVitals afterSnapshot = Advance(model, catalog, experience);
+        Assert.Equal(3u, model.EquipmentRevision);
+        model.Apply(WorldHeroItemStatsTests.Equipment(100));
+        WorldHeroVitals afterSnapshot = model.AdvanceVitals(experience);
         Assert.Equal((236, 236), (afterSnapshot.CurrentLife, afterSnapshot.LifeFollower));
-        Assert.Equal(2u, model.EquipmentRevision);
+        Assert.Equal(4u, model.EquipmentRevision);
     }
 
-    private static WorldHeroModel Model(WorldHeroAttributes hero, bool pendingClamp = false) =>
-        new(hero, WorldHeroEquipment.FromHydration([]), pendingClamp);
+    private static WorldHeroModel Model(WorldHeroAttributes hero, ItemStatCatalog catalog) =>
+        new(hero, catalog, mapFlags: 0, hasTransformLookSource: false);
 
-    private static WorldHeroVitals Advance(WorldHeroModel model, ItemStatCatalog catalog, LevelExperienceTable experience) =>
-        model.AdvanceVitals(catalog, experience, mapFlags: 0, hasTransformLook: false, lifeTierDigit: 0);
+    // An empty 1009 subtype-46 snapshot: no active items, so only the life clamp is observable.
+    private static byte[] Snapshot() => WorldHeroItemStatsTests.Equipment();
 
     private static WorldHeroAttributes Hero() => WorldHeroAttributes.FromCharacter(new GameCharacterInfo1006
     {

@@ -10,7 +10,7 @@ public sealed class WorldHeroItemStatsTests
     [Fact]
     public void AddsVerifiedBaseItemAdditionAndEnchantmentWithSignedMana()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 120020, 40), Equipment(100)]);
         (int life, int mana) = WorldHeroItemStats.Resolve(equipment, Catalog());
 
@@ -21,7 +21,7 @@ public sealed class WorldHeroItemStatsTests
     [Fact]
     public void BrokenItemSkipsLifeButStillContributesMana()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 120020, 0), Equipment(100)]);
         Assert.Equal((0, -10), WorldHeroItemStats.Resolve(equipment, Catalog()));
     }
@@ -29,7 +29,7 @@ public sealed class WorldHeroItemStatsTests
     [Fact]
     public void LiveDurabilityAndAdditionUpdatesChangeEffectiveContributions()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 120020, 40), Equipment(100)]);
         ItemStatCatalog catalog = Catalog();
 
@@ -57,7 +57,7 @@ public sealed class WorldHeroItemStatsTests
     {
         byte[] inventory = Item(100, 120020, 40);
         inventory[18] = 0;
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration([inventory]);
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate([inventory]);
         ItemStatCatalog catalog = Catalog();
 
         Assert.Equal((0, 0), WorldHeroItemStats.Resolve(equipment, catalog));
@@ -96,12 +96,16 @@ public sealed class WorldHeroItemStatsTests
     [Fact]
     public void DoesNotUseUnknownEquippedItemStatsAsZero()
     {
-        WorldHeroEquipment equipment = WorldHeroEquipment.FromHydration(
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 130003, 40), Equipment(100)]);
         Assert.Throws<InvalidDataException>(() => WorldHeroItemStats.Resolve(equipment, Catalog()));
     }
 
-    internal static ItemStatCatalog Catalog()
+    internal static ItemStatCatalog Catalog() => ItemStatCatalog.Parse(ItemTypeBytes(), ItemAddBytes());
+
+    internal static byte[] ItemAddBytes() => Encoding.ASCII.GetBytes("120020 9 239 0 0 23 0 0 0 0\r\n");
+
+    internal static byte[] ItemTypeBytes()
     {
         string[] row = Enumerable.Repeat("0", 60).ToArray();
         row[0] = "120020";
@@ -125,8 +129,7 @@ public sealed class WorldHeroItemStatsTests
             text[i] = (byte)((rotate == 0 ? value : (value << rotate | value >> (8 - rotate))) ^ keys[i % 128]);
         }
 
-        return ItemStatCatalog.Parse(text,
-            Encoding.ASCII.GetBytes("120020 9 239 0 0 23 0 0 0 0\r\n"));
+        return text;
     }
 
     internal static byte[] Item(uint id, uint type, ushort durability)
