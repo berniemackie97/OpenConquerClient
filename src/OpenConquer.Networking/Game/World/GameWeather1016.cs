@@ -23,4 +23,18 @@ internal readonly record struct GameWeather1016(uint Kind, uint Intensity, uint 
         message.ReadUInt32(8),
         message.ReadUInt32(12),
         message.ReadUInt32(16));
+
+    /// <summary>Uses the same native header/type validation in bootstrap as in world ingress (0x7607DE).</summary>
+    internal static bool TryRead(ReadOnlySpan<byte> packet, out GameWeather1016 weather)
+    {
+        weather = default;
+        Span<byte> storage = stackalloc byte[GameMessageBuffer.Capacity];
+        if (!GameMessageBuffer.TryLoad(packet, storage, out GameMessageBuffer message) || message.Type != PacketType)
+        {
+            return false;
+        }
+
+        weather = Read(message);
+        return true;
+    }
 }

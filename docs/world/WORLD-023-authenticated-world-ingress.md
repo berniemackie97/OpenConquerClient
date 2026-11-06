@@ -52,7 +52,7 @@ zero. Native reads past its buffer for counts above 50 (10017) and 235
 (1009 list); the client stops at the buffer edge.
 
 Transport framing (4..0x400 bytes) is unchanged. Signed/off-map tiles are handled
-by CP2.4c below; the world-entry bootstrap sequence remains CP2.4d. Evidence:
+by CP2.4c below; the world-entry bootstrap is CP2.4d below. Evidence:
 `20_notes/Network/inbound-tolerance-cp24.md`.
 
 ## Handler tolerance — CP2.4b
@@ -108,4 +108,21 @@ Rendering499; Platform86). The 27 native-derived golden inputs cover signed
 projection, visibility and depth. Tests also exercise u16 crossings, subsequent
 corrections, off-map scene anchors and return to an ordinary tile. Running-client
 smoke and native-runtime comparisons remain unverified.
+
+## World-entry bootstrap decoders — CP2.4d1
+
+World entry decodes 1110 map information (`GameMapInfo1110`), 1016 weather and
+10010 acknowledgements through the same zeroed 0x400-byte buffer as world
+ingress. The native parsers check only the header size, nonzero type and the
+type word: 1110 `CMsgMapInfo1110__Parse` 0x732AED (buffer reset in the
+constructor at 0x732AA9), 1016 0x7607DE and 10010 0x6FEB93. A short frame
+reads zero past its end, extra bytes are ignored, and a nonzero +37 string
+count no longer rejects an acknowledgement. 1110 fields are +4 map identity,
++8 map document and +12/+16 flags (`CMsgMapInfo1110__Process`
+0x732B6F/0x732B84/0x732B99).
+
+The bootstrap's ordering, entity, parameter, map-identity and weather-kind
+checks, hydration budgets, deadlines and activation point are unchanged. Native
+has no rung-order gate; those checks are CP2.4d2. Evidence:
+`20_notes/Network/bootstrap-tolerance-cp24d.md`.
 

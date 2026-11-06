@@ -25,6 +25,29 @@ public sealed class GameWeather1016Tests
     }
 
     [Theory]
+    [InlineData(8, 0u, 0u, 0u)]
+    [InlineData(12, 1022u, 0u, 0u)]
+    [InlineData(16, 1022u, 359u, 0u)]
+    [InlineData(20, 1022u, 359u, 0xfedcba98u)]
+    public void TryRead_UsesTheSameZeroFilledFieldsInBootstrap(int length, uint intensity, uint direction, uint parameter)
+    {
+        Assert.True(GameWeather1016.TryRead(GameMessages.Truncate(Convert.FromHexString(GoldenFrame), length), out GameWeather1016 weather));
+        Assert.Equal(new GameWeather1016(2, intensity, direction, parameter), weather);
+    }
+
+    [Fact]
+    public void TryRead_SeparatesHeaderValidationFromWeatherValueHandling()
+    {
+        byte[] packet = GameMessages.Header(4, GameWeather1016.PacketType);
+        Assert.True(GameWeather1016.TryRead(packet, out GameWeather1016 weather));
+        Assert.False(weather.HasSupportedValues);
+        Assert.True(GameWeather1016.TryRead(GameMessages.Extend(Convert.FromHexString(GoldenFrame), 8), out weather));
+        Assert.Equal(new GameWeather1016(2, 1022, 359, 0xfedcba98), weather);
+        packet[2] = 0;
+        Assert.False(GameWeather1016.TryRead(packet, out _));
+    }
+
+    [Theory]
     [InlineData(0u, 0u, 0u, false)]
     [InlineData(1u, 0u, 0u, true)]
     [InlineData(6u, 0u, 0u, false)]

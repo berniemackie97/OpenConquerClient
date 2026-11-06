@@ -1,0 +1,57 @@
+{
+  "kind": "retained-original-x86-parser-replay-results",
+  "binarySha256": "b6ba5ab8573ec073ea271f57b16fa14de1c67bfb44efd5aa7cfbfc0d3b488a62",
+  "source": "10_work/docs/evidence/msgaction-0061-bootstrap-5517/replay-vectors.json",
+  "sourceSha256": "5888ea205f6592875bfb1e2c176111a211b669e47720f4e75d5c493c087224b5",
+  "limitation": "Existing execution of original parser instructions with recorded constructor/copy boundaries; not rerun here, not a live Windows client or socket capture.",
+  "cases": [
+    {
+      "size": 4,
+      "header_size": 4,
+      "packet_type": 10010,
+      "accepted": true
+    },
+    {
+      "size": 8,
+      "header_size": 8,
+      "packet_type": 10010,
+      "accepted": true
+    },
+    {
+      "size": 22,
+      "header_size": 22,
+      "packet_type": 10010,
+      "accepted": true
+    },
+    {
+      "size": 38,
+      "header_size": 38,
+      "packet_type": 10010,
+      "accepted": true
+    },
+    {
+      "size": 39,
+      "header_size": 39,
+      "packet_type": 10010,
+      "accepted": true
+    },
+    {
+      "size": 92,
+      "header_size": 92,
+      "packet_type": 10010,
+      "accepted": true
+    },
+    {
+      "size": 38,
+      "header_size": 38,
+      "packet_type": 10011,
+      "accepted": false
+    },
+    {
+      "size": 38,
+      "header_size": 39,
+      "packet_type": 10010,
+      "accepted": false
+    }
+  ]
+}
