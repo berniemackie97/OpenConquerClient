@@ -10,17 +10,19 @@ namespace OpenConquer.Client.Tests.World;
 
 public sealed class ClientWorldTests
 {
+    private static readonly TimeSpan s_timeout = TimeSpan.FromSeconds(10);
+
     [Fact]
     public async Task ConnectionLoss_ClosesOnceAndReportsConnectionLost()
     {
         Harness harness = new(endOfStream: true);
-        ClientWorld world = harness.Create();
+        await using ClientWorld world = harness.Create();
 
         world.DrainIngress();
 
         Assert.False(world.IsActive);
         Assert.Equal(1, harness.ClosingCalls);
-        await harness.SessionClosed.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await harness.SessionClosed.Task.WaitAsync(s_timeout, TestContext.Current.CancellationToken);
         Assert.True(world.TryObserveClose(out WorldCloseReason reason));
         Assert.Equal(WorldCloseReason.ConnectionLost, reason);
         Assert.False(world.TryObserveClose(out _));
@@ -31,14 +33,14 @@ public sealed class ClientWorldTests
     public async Task CanceledMapLoad_KeepsTheWorldUntilTheLoadIsReaped()
     {
         Harness harness = new(endOfStream: true);
-        ClientWorld world = harness.Create();
+        await using ClientWorld world = harness.Create();
 
         world.DrainIngress();
-        await harness.SessionClosed.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await harness.SessionClosed.Task.WaitAsync(s_timeout, TestContext.Current.CancellationToken);
         Assert.True(world.TryObserveClose(out _));
         Assert.False(world.IsClosed);
 
-        await harness.LoadFinished.Task.WaitAsync(TestContext.Current.CancellationToken);
+        // Task.Run may cancel before its delegate starts, so the delegate's finally is not a completion signal.
         await WaitUntilAsync(() => harness.Load!.IsCompleted);
         world.CompleteLoad(graphicsDevice: null);
 
@@ -47,10 +49,10 @@ public sealed class ClientWorldTests
     }
 
     [Fact]
-    public void BeginClose_IsIdempotentAndKeepsTheFirstReason()
+    public async Task BeginClose_IsIdempotentAndKeepsTheFirstReason()
     {
         Harness harness = new(endOfStream: false);
-        ClientWorld world = harness.Create();
+        await using ClientWorld world = harness.Create();
 
         world.BeginClose(WorldCloseReason.ContentUnavailable);
         world.BeginClose(WorldCloseReason.ConnectionLost);
@@ -63,7 +65,7 @@ public sealed class ClientWorldTests
     public async Task DisposeAsync_ClosesTheSessionAndCancelsTheMapLoad()
     {
         Harness harness = new(endOfStream: false);
-        ClientWorld world = harness.Create();
+        await using ClientWorld world = harness.Create();
 
         await world.DisposeAsync();
 
@@ -74,9 +76,11 @@ public sealed class ClientWorldTests
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
+        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(s_timeout);
         while (!condition())
         {
-            await Task.Delay(1, TestContext.Current.CancellationToken);
+            await Task.Delay(1, deadline.Token);
         }
     }
 
@@ -93,8 +97,6 @@ public sealed class ClientWorldTests
         }
 
         public TaskCompletionSource SessionClosed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public TaskCompletionSource LoadFinished { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public WorldMapLoad? Load
         {
@@ -123,15 +125,8 @@ public sealed class ClientWorldTests
 
         private WorldMapScene LoadUntilCanceled(CancellationToken cancellationToken)
         {
-            try
-            {
-                cancellationToken.WaitHandle.WaitOne();
-                throw new OperationCanceledException(cancellationToken);
-            }
-            finally
-            {
-                LoadFinished.TrySetResult();
-            }
+            cancellationToken.WaitHandle.WaitOne();
+            throw new OperationCanceledException(cancellationToken);
         }
 
         private static async Task<GameSecuredInboundFrame?> WaitForeverAsync(CancellationToken cancellationToken)
