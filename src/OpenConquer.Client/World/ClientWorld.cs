@@ -18,7 +18,7 @@ namespace OpenConquer.Client.World;
 /// inbound frames and state, the map load and scene, the hero renderer and the HUD. Graphics resources are created
 /// lazily on the window's context and released by <see cref="ReleaseGraphics"/>, separately from the network session.
 /// </summary>
-internal sealed class ClientWorld : IAsyncDisposable
+internal sealed class ClientWorld : IClientWorld
 {
     private readonly IClientContentSource _content;
     private readonly LogicalRenderSize _logicalRenderSize;
@@ -43,6 +43,7 @@ internal sealed class ClientWorld : IAsyncDisposable
     private LogicalRenderSize _rendererSize;
     private bool _texturesReady;
     private Task? _closing;
+    private Task? _disposeTask;
     private WorldCloseReason _closeReason;
     private bool _closeObserved;
 
@@ -94,7 +95,7 @@ internal sealed class ClientWorld : IAsyncDisposable
     }
 
     /// <summary>True until the world starts closing.</summary>
-    public bool IsActive => _closing is null;
+    public bool IsActive => _closing is null && _disposeTask is null;
 
     /// <summary>The map scene is loaded.</summary>
     public bool HasScene => _scene is not null;
@@ -337,20 +338,19 @@ internal sealed class ClientWorld : IAsyncDisposable
     /// <summary>Releases the world's OpenGL resources when the window's context goes away.</summary>
     public void ReleaseGraphics()
     {
-        try
-        {
-            _hud?.Dispose();
-            _hud = null;
-            _role?.Dispose();
-            _role = null;
-            _roleSources = null;
-            _appliedEquipmentRevision = 0;
-            _renderer?.Dispose();
-        }
-        finally
-        {
-            _renderer = null;
-        }
+        WorldHudRuntime? hud = _hud;
+        WorldRoleRenderer? role = _role;
+        OpenGLRenderer? renderer = _renderer;
+        _hud = null;
+        _role = null;
+        _roleSources = null;
+        _appliedEquipmentRevision = 0;
+        _renderer = null;
+        ClientShutdown cleanup = new();
+        cleanup.Run(() => hud?.Dispose());
+        cleanup.Run(() => role?.Dispose());
+        cleanup.Run(() => renderer?.Dispose());
+        cleanup.ThrowIfFailed();
     }
 
     /// <summary>
@@ -358,7 +358,7 @@ internal sealed class ClientWorld : IAsyncDisposable
     /// </summary>
     public void BeginClose(WorldCloseReason reason)
     {
-        if (_closing is not null)
+        if (_closing is not null || _disposeTask is not null)
         {
             return;
         }
@@ -377,8 +377,15 @@ internal sealed class ClientWorld : IAsyncDisposable
         _gaugeFollowers = null;
         _entry = null;
         _scene = null;
-        ReleaseGraphics();
-        _closing = closeSession is null ? Task.CompletedTask : CloseSessionAsync(closeSession, ingress);
+        try
+        {
+            ReleaseGraphics();
+        }
+        finally
+        {
+            // Network ownership must not be lost when releasing graphics fails.
+            _closing = closeSession is null ? Task.CompletedTask : CloseSessionAsync(closeSession, ingress);
+        }
     }
 
     /// <summary>
@@ -398,38 +405,36 @@ internal sealed class ClientWorld : IAsyncDisposable
     }
 
     /// <summary>Closes the network session and any map load. Graphics are released separately.</summary>
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+
+    private async Task DisposeCoreAsync()
     {
+        ClientShutdown cleanup = new();
         if (_closing is { } closing)
         {
-            await closing.ConfigureAwait(false);
+            await cleanup.RunAsync(() => new ValueTask(closing)).ConfigureAwait(false);
         }
-
-        _load?.Dispose();
+        WorldMapLoad? load = _load;
         _load = null;
-        try
+        cleanup.Run(() => load?.Dispose());
+        WorldFrameIngress? ingress = _ingress;
+        _ingress = null;
+        _inbound = null;
+        _itemStats = null;
+        _levelExperience = null;
+        _gaugeFollowers = null;
+        if (ingress is not null)
         {
-            if (_ingress is { } ingress)
-            {
-                await ingress.DisposeAsync().ConfigureAwait(false);
-            }
+            await cleanup.RunAsync(ingress.DisposeAsync).ConfigureAwait(false);
         }
-        finally
+        if (_closeSession is { } closeSession)
         {
-            _ingress = null;
-            _inbound = null;
-            _itemStats = null;
-            _levelExperience = null;
-            _gaugeFollowers = null;
-            if (_closeSession is { } closeSession)
-            {
-                _closeSession = null;
-                await closeSession().ConfigureAwait(false);
-            }
-
-            _entry = null;
-            _scene = null;
+            _closeSession = null;
+            await cleanup.RunAsync(closeSession).ConfigureAwait(false);
         }
+        _entry = null;
+        _scene = null;
+        cleanup.ThrowIfFailed();
     }
 
     private static async Task CloseSessionAsync(Func<ValueTask> closeSession, WorldFrameIngress? ingress)

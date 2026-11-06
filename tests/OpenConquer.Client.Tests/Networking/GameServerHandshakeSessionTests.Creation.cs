@@ -302,10 +302,15 @@ public sealed partial class GameServerHandshakeSessionTests
         }
     }
 
-    private static async Task CreationPeerAsync(TcpListener listener, CreationScript script, CancellationToken token)
+    internal static Task CoordinatorCreationPeerAsync(TcpListener listener, bool enterWorld, CancellationToken token) =>
+        CreationPeerAsync(listener, enterWorld ? CreationScript.AcceptAndEnterWorld : CreationScript.NewRoleOnly, token, coordinator: true);
+
+    private static async Task CreationPeerAsync(TcpListener listener, CreationScript script, CancellationToken token, bool coordinator = false)
     {
         using SecuredTestPeer peer = await AcceptSecuredPeerAsync(listener, token);
-        Assert.Equal(ProofPacket, Convert.ToHexString(await peer.ReadPacketAsync(28, token)));
+        // Coordinator fixtures model native NetBIOS failure: six raw zeros instead of the explicit test MAC.
+        string proof = coordinator ? ProofPacket.Replace("001122AABBCC", "000000000000", StringComparison.Ordinal) : ProofPacket;
+        Assert.Equal(proof, Convert.ToHexString(await peer.ReadPacketAsync(28, token)));
         await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "NEW_ROLE"));
 
         switch (script)
@@ -339,7 +344,7 @@ public sealed partial class GameServerHandshakeSessionTests
 
                 Assert.Equal(s_heroRequest, Convert.ToHexString(await peer.ReadPacketAsync(124, token)));
                 await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.CreationChannel, "ANSWER_OK"));
-                Assert.Equal(ProofPacket, Convert.ToHexString(await peer.ReadPacketAsync(28, token)));
+                Assert.Equal(proof, Convert.ToHexString(await peer.ReadPacketAsync(28, token)));
                 if (script == CreationScript.NewRoleAfterProof)
                 {
                     await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "NEW_ROLE"));

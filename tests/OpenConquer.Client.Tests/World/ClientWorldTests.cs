@@ -68,10 +68,35 @@ public sealed class ClientWorldTests
         await using ClientWorld world = harness.Create();
 
         await world.DisposeAsync();
+        world.BeginClose(WorldCloseReason.ConnectionLost);
 
         Assert.Equal(1, harness.SessionCloseCalls);
         Assert.True(harness.Load!.IsCompleted);
         Assert.Equal(0, harness.ClosingCalls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FailedMapLoad_DisposalStillStopsIngressAndClosesSession(bool failSession)
+    {
+        Harness harness = new(endOfStream: false, failLoad: true, failSession: failSession);
+        ClientWorld world = harness.Create();
+        await WaitUntilAsync(() => harness.Load!.IsCompleted);
+
+        if (failSession)
+        {
+            AggregateException failure = await Assert.ThrowsAsync<AggregateException>(() => world.DisposeAsync().AsTask());
+            Assert.Equal(2, failure.InnerExceptions.Count);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<IOException>(() => world.DisposeAsync().AsTask());
+        }
+
+        Assert.True(harness.IngressStopped);
+        Assert.Equal(1, harness.SessionCloseCalls);
+        Assert.False(world.IsActive);
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -84,7 +109,7 @@ public sealed class ClientWorldTests
         }
     }
 
-    private sealed class Harness(bool endOfStream)
+    private sealed class Harness(bool endOfStream, bool failLoad = false, bool failSession = false)
     {
         public int ClosingCalls
         {
@@ -97,6 +122,10 @@ public sealed class ClientWorldTests
         }
 
         public TaskCompletionSource SessionClosed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool IngressStopped
+        {
+            get; private set;
+        }
 
         public WorldMapLoad? Load
         {
@@ -110,7 +139,7 @@ public sealed class ClientWorldTests
         {
             SessionCloseCalls++;
             SessionClosed.TrySetResult();
-            return ValueTask.CompletedTask;
+            return failSession ? ValueTask.FromException(new IOException("Session cleanup failed.")) : ValueTask.CompletedTask;
         }
 
         private WorldFrameIngress CreateIngress() => endOfStream
@@ -125,13 +154,21 @@ public sealed class ClientWorldTests
 
         private WorldMapScene LoadUntilCanceled(CancellationToken cancellationToken)
         {
+            if (failLoad)
+            {
+                throw new IOException("Map load failed.");
+            }
             cancellationToken.WaitHandle.WaitOne();
             throw new OperationCanceledException(cancellationToken);
         }
 
-        private static async Task<GameSecuredInboundFrame?> WaitForeverAsync(CancellationToken cancellationToken)
+        private async Task<GameSecuredInboundFrame?> WaitForeverAsync(CancellationToken cancellationToken)
         {
-            await Task.Delay(Timeout.Infinite, cancellationToken);
+            try
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+            }
+            finally { IngressStopped = true; }
             return null;
         }
 
