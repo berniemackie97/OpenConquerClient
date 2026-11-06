@@ -51,9 +51,33 @@ subtype 5 the unsigned count at +20, with entries past the message read as
 zero. Native reads past its buffer for counts above 50 (10017) and 235
 (1009 list); the client stops at the buffer edge.
 
-Transport framing (4..0x400 bytes) is unchanged. Handler-level rejections
-(position-correction field rules, walk destination range, weather ranges,
-item identity and capacity, map bounds, missing item-table rows) and the
-world-entry bootstrap sequence are scheduled for CP2.4b/c. Evidence:
+Transport framing (4..0x400 bytes) is unchanged. Walk destination range and
+map bounds remain CP2.4c; the world-entry bootstrap sequence remains CP2.4d. Evidence:
 `20_notes/Network/inbound-tolerance-cp24.md`.
+
+## Handler tolerance — CP2.4b
+
+Action 108 targeting a non-hero is ignored. For the hero it reads X/Y at
+packet +24/+26 and leaves facing unchanged; other action fields are ignored
+(`CMsgAction__Process`, `0x6FFCBF..0x6FFCF3`). These are not generic reserved
+fields. The static-disassembly-derived all-fields sentinel frame now exercises
+the actual hero tile behavior. Native additionally sends reply 146 at
+`0x6FFD80`; that missing outbound feature is tracked in issue #263.
+
+Weather inputs native rejects are ignored without changing prior weather or
+stopping subsequent packets. The gate is signed kind 1..11 except 6,
+intensity 0..1022, direction 0..359 (`0x7606CD..0x760711`); kind 6's table
+entry targets rejection `0x7607A9`. Accepted values remain the original wire
+tuple here. Native rendering-parameter normalization and weather effects are
+not implemented by this state-retention boundary.
+
+Invalid item identities, missing item-table rows, duplicate inventory adds and
+ordinary inventory capacity refusals likewise skip the item rather than closing
+the world. Item ownership, update and arrow rules are detailed in WORLD-026.
+
+SDK 10.0.403 validation: locked restore, Release build with zero warnings/errors,
+clean formatting, and 2,919 focused tests (Client 1,584, Content 750, Rendering 499,
+Platform 86). Thirty-seven client cases are new. Tests include independent static
+golden inputs, skipped-packet continuation, missing-table updates and item-instance
+references. They do not establish running-client or native-runtime comparison.
 

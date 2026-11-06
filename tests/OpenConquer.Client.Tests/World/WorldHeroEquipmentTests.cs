@@ -118,7 +118,7 @@ public sealed class WorldHeroEquipmentTests
         WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
 
-        Assert.Equal(new WorldHeroItem(100, 1111000, 40, 2, 7), equipment.GetActiveItem(1));
+        Assert.Equal((100u, 1111000u, (ushort)40, (byte)2, (byte)7), Stats(equipment.GetActiveItem(1)));
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class WorldHeroEquipmentTests
         updated[36] = 20;
 
         Assert.True(equipment.Apply(updated));
-        Assert.Equal(new WorldHeroItem(100, 120020, 0, 9, 20), equipment.GetActiveItem(1));
+        Assert.Equal((100u, 120020u, (ushort)0, (byte)9, (byte)20), Stats(equipment.GetActiveItem(1)));
     }
 
     [Fact]
@@ -188,18 +188,23 @@ public sealed class WorldHeroEquipmentTests
         Assert.False(equipment.Apply(Tick(3, itemId: 100)));
     }
 
-    [Fact]
-    public void LiveItemPlacementChangeClearsItsPreviousActiveSlot()
+    [Theory]
+    [InlineData(3)]
+    [InlineData(21)]
+    public void TrackedUpdateRetainsItsActiveInstanceUntilTheNextSnapshot(byte placement)
     {
         WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [Item(100, 1111000, placement: 1), Equipment(headwear: 100)]);
-        byte[] update = Item(100, 1111000, placement: 3);
+        WorldHeroItem original = Assert.IsType<WorldHeroItem>(equipment.GetActiveItem(1));
+        byte[] update = Item(100, 1111000, placement, durability: 0);
         update[16] = 3;
 
         Assert.True(equipment.Apply(update));
-        Assert.Null(equipment.GetActiveItem(1));
+        Assert.Same(original, equipment.GetActiveItem(1));
+        Assert.Equal((ushort)0, original.Durability);
         Assert.True(equipment.Apply(Equipment(armor: 100)));
-        Assert.Equal(100u, equipment.GetActiveItem(3)?.Id);
+        Assert.Null(equipment.GetActiveItem(1));
+        Assert.Same(original, equipment.GetActiveItem(3));
     }
 
     [Fact]
@@ -254,7 +259,7 @@ public sealed class WorldHeroEquipmentTests
         BinaryPrimitives.WriteUInt32LittleEndian(durability.AsSpan(8), 1);
 
         Assert.True(equipment.Apply(durability));
-        Assert.Equal(new WorldHeroItem(100, 1111000, 0, 2, 7), equipment.GetActiveItem(1));
+        Assert.Equal((100u, 1111000u, (ushort)0, (byte)2, (byte)7), Stats(equipment.GetActiveItem(1)));
 
         Assert.False(equipment.Apply(durability));
         Assert.Equal(100u, equipment.GetActiveItem(1)?.Id);
@@ -278,7 +283,7 @@ public sealed class WorldHeroEquipmentTests
     }
 
     [Fact]
-    public void InventoryCreateRejectsMoreThanFortyDistinctItemsWithoutCorruptingExistingItems()
+    public void InventoryCreateSkipsTheFortyFirstOrdinaryItemWithoutCorruptingExistingItems()
     {
         List<byte[]> packets = [];
         for (uint id = 1; id <= 40; id++)
@@ -287,7 +292,11 @@ public sealed class WorldHeroEquipmentTests
         }
 
         WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(packets);
-        Assert.Throws<InvalidDataException>(() => equipment.Apply(Item(41, 120020, placement: 0)));
+        Assert.False(equipment.Apply(Item(41, 120020, placement: 0)));
+
+        byte[] refused = Tick(5, itemId: 41);
+        BinaryPrimitives.WriteUInt32LittleEndian(refused.AsSpan(8), 1);
+        Assert.False(equipment.Apply(refused));
 
         byte[] equip = Tick(5, itemId: 40);
         BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
@@ -331,17 +340,137 @@ public sealed class WorldHeroEquipmentTests
         WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
             [GameMessages.Truncate(Item(100, 1111000, placement: 1), 67), new byte[3], GameMessages.Truncate(Equipment(headwear: 100), 84)]);
 
-        Assert.Equal(new WorldHeroItem(100, 1111000, 40, 2, 7), equipment.GetActiveItem(1));
+        Assert.Equal((100u, 1111000u, (ushort)40, (byte)2, (byte)7), Stats(equipment.GetActiveItem(1)));
     }
 
-    private static byte[] Item(uint id, uint typeId, byte placement)
+    [Theory]
+    [InlineData(0)]
+    [InlineData(19)]
+    [InlineData(20)]
+    [InlineData(30)]
+    [InlineData(255)]
+    public void InvalidTrackedUpdatePlacementStillUpdatesTheSameItem(byte placement)
+    {
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
+            [Item(100, 120020, 1), Equipment(headwear: 100)]);
+        WorldHeroItem original = Assert.IsType<WorldHeroItem>(equipment.GetActiveItem(1));
+        byte[] update = Item(100, 120020, placement, durability: 0);
+        update[16] = 3;
+
+        Assert.True(equipment.Apply(update));
+
+        Assert.Same(original, equipment.GetActiveItem(1));
+        Assert.Equal((ushort)0, original.Durability);
+        Assert.True(equipment.Apply(Equipment(headwear: 100)));
+        Assert.Same(original, equipment.GetActiveItem(1));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(15)]
+    [InlineData(19)]
+    [InlineData(255)]
+    public void InventoryUpdateIgnoresPlacementAndKeepsItsStatsForLaterEquip(byte placement)
+    {
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate([Item(100, 120020, 0)]);
+        byte[] update = Item(100, 120020, placement, durability: 0);
+        update[16] = 3;
+
+        Assert.True(equipment.Apply(update));
+        Assert.Null(equipment.GetActiveItem(15));
+        byte[] equip = Tick(5, itemId: 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal((ushort)0, equipment.GetActiveItem(1)?.Durability);
+    }
+
+    [Theory]
+    [InlineData(15)]
+    [InlineData(16)]
+    [InlineData(17)]
+    [InlineData(18)]
+    public void SamePositionTrackedUpdateReactivatesASnapshotClearedSpecialSlot(byte placement)
+    {
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate([Item(100, 120020, placement)]);
+        WorldHeroItem original = Assert.IsType<WorldHeroItem>(equipment.GetActiveItem(placement));
+        Assert.True(equipment.Apply(Equipment()));
+        Assert.Null(equipment.GetActiveItem(placement));
+        byte[] update = Item(100, 120020, placement, durability: 0);
+        update[16] = 3;
+
+        Assert.True(equipment.Apply(update));
+
+        Assert.Same(original, equipment.GetActiveItem(placement));
+        Assert.Equal((ushort)0, original.Durability);
+    }
+
+    [Fact]
+    public void FreshAddWithTheSameUidDoesNotReplaceTheOldActiveInstance()
+    {
+        // Native Add creates a new CItem (0x762D84/9C); tracking refreshes pointers, never equal UIDs (0x6DB0C0).
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate([Item(100, 120020, 1), Equipment(headwear: 100)]);
+        WorldHeroItem original = Assert.IsType<WorldHeroItem>(equipment.GetActiveItem(1));
+        Assert.True(equipment.Apply(Item(100, 120020, 1, durability: 0)));
+        byte[] update = Item(100, 120020, 1, durability: 7);
+        update[16] = 3;
+        Assert.True(equipment.Apply(update));
+
+        Assert.Same(original, equipment.GetActiveItem(1));
+        Assert.Equal((ushort)40, original.Durability);
+        Assert.True(equipment.Apply(Equipment(headwear: 100)));
+        Assert.NotSame(original, equipment.GetActiveItem(1));
+        Assert.Equal((ushort)7, equipment.GetActiveItem(1)?.Durability);
+    }
+
+    [Fact]
+    public void DuplicateInventoryAddIsSkippedWithoutOverwritingItsStats()
+    {
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate([Item(100, 120020, 0)]);
+
+        Assert.False(equipment.Apply(Item(100, 120020, 0, durability: 0)));
+
+        byte[] equip = Tick(5, itemId: 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 1);
+        Assert.True(equipment.Apply(equip));
+        Assert.Equal((ushort)40, equipment.GetActiveItem(1)?.Durability);
+    }
+
+    [Theory]
+    [InlineData(1050000u, true)]
+    [InlineData(11050000u, true)]
+    [InlineData(1049999u, false)]
+    [InlineData(1060000u, false)]
+    [InlineData(2050000u, false)]
+    [InlineData(500003u, false)]
+    public void NativeArrowCategoryAloneBypassesTheFortyItemLimit(uint type, bool accepted)
+    {
+        // Golden branch inputs from CItem_IsArrow 0x5681F9 and category/subtype helpers 0x67AF1A/0x67B0B3.
+        WorldHeroEquipment equipment = WorldEquipmentFrames.Hydrate(
+            Enumerable.Range(1, 40).Select(id => Item((uint)id, 120020, 0)));
+
+        Assert.Equal(accepted, equipment.Apply(Item(41, type, 0)));
+
+        byte[] equip = Tick(5, itemId: 41);
+        BinaryPrimitives.WriteUInt32LittleEndian(equip.AsSpan(8), 4);
+        Assert.Equal(accepted, equipment.Apply(equip));
+        Assert.Equal(accepted ? type : (uint?)null, equipment.GetActiveItem(4)?.TypeId);
+        Assert.False(equipment.Apply(Item(1, 120020, 0)));
+    }
+
+    private static (uint Id, uint Type, ushort Durability, byte Addition, byte Enchantment) Stats(WorldHeroItem? value)
+    {
+        WorldHeroItem item = Assert.IsType<WorldHeroItem>(value);
+        return (item.Id, item.TypeId, item.Durability, item.AdditionLevel, item.EnchantmentLifeBonus);
+    }
+
+    private static byte[] Item(uint id, uint typeId, byte placement, ushort durability = 40)
     {
         byte[] packet = new byte[68];
         BinaryPrimitives.WriteUInt16LittleEndian(packet, 68);
         BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(2), 1008);
         BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(4), id);
         BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(8), typeId);
-        BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(12), 40);
+        BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(12), durability);
         packet[16] = 1;
         packet[18] = placement;
         packet[33] = 2;

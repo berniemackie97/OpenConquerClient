@@ -60,9 +60,13 @@ internal sealed class WorldHeroModel
         return true;
     }
 
+    /// <summary>
+    /// A type with no item-table row is skipped, as <c>CItem_InitIdentityFromItemType</c> 0x67AD6B fails on an
+    /// ItemType.dat miss. Native looks the type up on create and on a type change; an unchanged type was already found.
+    /// </summary>
     internal void ApplyItemRecord(GameItemRecord1008 record)
     {
-        if (Equipment.Apply(record))
+        if (_itemStats.TryGetItem(record.ItemTypeId, out _) && Equipment.Apply(record))
         {
             EquipmentRevision++;
         }
