@@ -60,12 +60,16 @@ public sealed partial class GameServerHandshakeSessionTests
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
-    // nativeShortFrames: the peer sends 1110/1016/10010 at lengths native parsers accept (CP2.4d1,
-    // 20_notes Network/bootstrap-tolerance-cp24d.md): short frames read zero, trailing 10010 strings are not read.
+    // 20_notes Network/bootstrap-tolerance-cp24d.md. nativeShortFrames: 1110/1016/10010 at lengths native parsers
+    // accept (CP2.4d1). bit38Map: 1110 flags with bit38 make the client send 408 (0x732CFD); otherwise none is sent.
+    // packedAppearance 12001 (body digit 2): 1151 subtype 2 follows EnterMap (0x7648B4..0x7648E6).
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CreatedCharacter_CompletesWorldAdmissionRequestsOnTheOriginalSocket(bool nativeShortFrames)
+    [InlineData(false, false, 0u)]
+    [InlineData(true, false, 0u)]
+    [InlineData(false, true, 12001u)]
+    [InlineData(true, true, 12001u)]
+    public async Task CreatedCharacter_CompletesWorldAdmissionRequestsOnTheOriginalSocket(bool nativeShortFrames, bool bit38Map,
+        uint packedAppearance)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
@@ -73,7 +77,8 @@ public sealed partial class GameServerHandshakeSessionTests
         Task accountPeer = AccountPeerAsync(accounts, token);
         Task gamePeer = CreationPeerAsync(games, nativeShortFrames
             ? CreationScript.AcceptAndEnterWorldWithNativeShortFrames
-            : CreationScript.AcceptAndEnterWorld, token);
+            : CreationScript.AcceptAndEnterWorld, token,
+            world: new WorldEntryOptions(ClientStateAppliedMap: bit38Map, PackedAppearance: packedAppearance));
 
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
@@ -313,8 +318,13 @@ public sealed partial class GameServerHandshakeSessionTests
     internal static Task CoordinatorCreationPeerAsync(TcpListener listener, bool enterWorld, CancellationToken token) =>
         CreationPeerAsync(listener, enterWorld ? CreationScript.AcceptAndEnterWorld : CreationScript.NewRoleOnly, token, coordinator: true);
 
-    private static async Task CreationPeerAsync(TcpListener listener, CreationScript script, CancellationToken token, bool coordinator = false)
+    private sealed record WorldEntryOptions(bool NativeShortFrames = false, bool ClientStateAppliedMap = false,
+        uint PackedAppearance = 0);
+
+    private static async Task CreationPeerAsync(TcpListener listener, CreationScript script, CancellationToken token,
+        bool coordinator = false, WorldEntryOptions? world = null)
     {
+        world ??= new WorldEntryOptions();
         using SecuredTestPeer peer = await AcceptSecuredPeerAsync(listener, token);
         // Coordinator fixtures model native NetBIOS failure: six raw zeros instead of the explicit test MAC.
         string proof = coordinator ? ProofPacket.Replace("001122AABBCC", "000000000000", StringComparison.Ordinal) : ProofPacket;
@@ -361,14 +371,16 @@ public sealed partial class GameServerHandshakeSessionTests
                 }
 
                 // The existing-character bootstrap that follows on the same socket.
-                byte[] characterWire = CreateCharacterInfoWire(invalidType: false);
+                byte[] characterWire = CreateCharacterInfoWire(invalidType: false, world.PackedAppearance);
                 await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
                     Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
                     characterWire[..^8]);
                 if (script is CreationScript.AcceptAndEnterWorld or CreationScript.AcceptAndEnterWorldWithNativeShortFrames)
                 {
-                    await WorldEntryPeerAsync(peer, token,
-                        nativeShortFrames: script == CreationScript.AcceptAndEnterWorldWithNativeShortFrames);
+                    await WorldEntryPeerAsync(peer, world with
+                    {
+                        NativeShortFrames = script == CreationScript.AcceptAndEnterWorldWithNativeShortFrames,
+                    }, token);
                     byte[] walk = await peer.ReadPacketAsync(GameWalk10005.PacketLength, token);
                     Assert.Equal(GameWalk10005.PacketLength, walk.Length);
                     GameWalk10005 request = GameWalk10005.Read(GameMessages.Load(walk));
@@ -400,20 +412,35 @@ public sealed partial class GameServerHandshakeSessionTests
         await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
             Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
             character[..^8]);
-        await WorldEntryPeerAsync(peer, token);
+        await WorldEntryPeerAsync(peer, new WorldEntryOptions(), token);
         Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
     }
 
-    private static async Task WorldEntryPeerAsync(SecuredTestPeer peer, CancellationToken token, bool nativeShortFrames = false)
+    private static async Task WorldEntryPeerAsync(SecuredTestPeer peer, WorldEntryOptions options, CancellationToken token)
     {
         const uint hero = 0x11223344;
+        bool nativeShortFrames = options.NativeShortFrames;
         await RequireWorldRequestAsync(GameWorldAction10010.EnterMap, hero);
+        if (options.PackedAppearance / 1000 % 10 == 2)
+        {
+            byte[] flower = await peer.ReadPacketAsync(GameFlowerRankRequest1151.PacketLength, token);
+            byte[] expected = new byte[GameFlowerRankRequest1151.PacketLength];
+            BinaryPrimitives.WriteUInt16LittleEndian(expected, 80);
+            BinaryPrimitives.WriteUInt16LittleEndian(expected.AsSpan(2), 1151);
+            expected[4] = 2;
+            Assert.Equal(Convert.ToHexString(expected), Convert.ToHexString(flower));
+        }
 
         byte[] map = new byte[20];
         BinaryPrimitives.WriteUInt16LittleEndian(map, 20);
         BinaryPrimitives.WriteUInt16LittleEndian(map.AsSpan(2), 1110);
         BinaryPrimitives.WriteUInt32LittleEndian(map.AsSpan(4), 1002);
         BinaryPrimitives.WriteUInt32LittleEndian(map.AsSpan(8), 1015);
+        if (options.ClientStateAppliedMap)
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(map.AsSpan(12), 1UL << 38);
+        }
+
         byte[] weather = new byte[20];
         BinaryPrimitives.WriteUInt16LittleEndian(weather, 20);
         BinaryPrimitives.WriteUInt16LittleEndian(weather.AsSpan(2), 1016);
@@ -425,13 +452,19 @@ public sealed partial class GameServerHandshakeSessionTests
         if (nativeShortFrames)
         {
             // Map flags, weather intensity/direction/parameter and EnterMap data past Y are omitted and read as zero.
-            (map, weather, entered) = (GameMessages.Truncate(map, 12), GameMessages.Truncate(weather, 8),
-                GameMessages.Truncate(entered, 28));
+            // A bit38 map keeps its flag word: truncating it would read the flags as zero.
+            (map, weather, entered) = (options.ClientStateAppliedMap ? GameMessages.Truncate(map, 18) : GameMessages.Truncate(map, 12),
+                GameMessages.Truncate(weather, 8), GameMessages.Truncate(entered, 28));
         }
 
         await peer.WritePacketsAsync(token, map, weather, entered);
 
-        await RequireWorldRequestAsync(GameWorldAction10010.ClientStateApplied, 0);
+        if (options.ClientStateAppliedMap)
+        {
+            await RequireWorldRequestAsync(GameWorldAction10010.ClientStateApplied, 0);
+        }
+
+        await RequireWorldRequestAsync(GameWorldAction10010.BoothClose, hero);
         foreach (ushort action in new ushort[]
                  {
                      GameWorldAction10010.GetItems, GameWorldAction10010.GetFriends,

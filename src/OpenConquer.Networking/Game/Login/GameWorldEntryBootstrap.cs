@@ -14,6 +14,7 @@ internal static class GameWorldEntryBootstrap
     private static readonly TimeSpan s_maximumDuration = TimeSpan.FromMinutes(2);
     private const int MaximumHydrationFrames = 4096;
     private const int MaximumHydrationBytes = 4 * 1024 * 1024;
+    private const ulong ClientStateAppliedMapFlag = 1UL << 38;
 
     internal static async Task<GameWorldEntrySnapshot> RunAsync(GameServerHandshakeSession session,
         GameCharacterInfo1006 character, Action? onMapEntered = null, TimeSpan? completionTimeout = null, CancellationToken cancellationToken = default)
@@ -40,6 +41,10 @@ internal static class GameWorldEntryBootstrap
             int byteCount = 0;
             await session.SendWorldActionAsync(GameWorldAction10010.EnterMap, character.EntityId, 0,
                 s_timeout, operation).ConfigureAwait(false);
+            if (GameFlowerRankRequest1151.IsSentAfterEnterMap(character.PackedAppearance))
+            {
+                await session.SendWorldEntryFlowerRankAsync(s_timeout, operation).ConfigureAwait(false);
+            }
 
             uint mapId;
             uint mapDataId;
@@ -63,6 +68,14 @@ internal static class GameWorldEntryBootstrap
                 {
                     throw new InvalidDataException("World entry supplied an invalid map identity.");
                 }
+            }
+
+            // CMsgMapInfo1110__Process sends action 408 only when map-flag bit38 changes (0x732CFD/0x732D4C). The
+            // native map flags start at zero (CGameMap ctor 0x61B875), so first entry sends it only for a bit38 map.
+            if ((flags & ClientStateAppliedMapFlag) != 0)
+            {
+                await session.SendWorldActionAsync(GameWorldAction10010.ClientStateApplied, 0, 0,
+                    s_timeout, operation).ConfigureAwait(false);
             }
 
             using (GameSecuredInboundFrame weather = await ReadRequiredAsync(session, operation).ConfigureAwait(false))
@@ -95,8 +108,9 @@ internal static class GameWorldEntryBootstrap
             operation.ThrowIfCancellationRequested();
             onMapEntered?.Invoke();
 
-            // The native client emits action 0x198 once the server EnterMap state has been applied.
-            await session.SendWorldActionAsync(GameWorldAction10010.ClientStateApplied, 0, 0,
+            // Native map creation for the 74 reply closes the booth, which always sends action 114 for the hero before
+            // the 75 request (CGameMap_CreateFromDataId 0x61DB1E -> CBoothManager_Close 0x70AC3D).
+            await session.SendWorldActionAsync(GameWorldAction10010.BoothClose, character.EntityId, 0,
                 s_timeout, operation).ConfigureAwait(false);
 
             await ExchangeAsync(GameWorldAction10010.GetItems, character.EntityId, [1008, 1009]).ConfigureAwait(false);
