@@ -7,9 +7,10 @@ internal sealed class LoginCatalogClient : IDisposable
 {
     private static readonly TimeSpan s_operationTimeout = TimeSpan.FromSeconds(12);
     private readonly HttpClient _client;
+    private readonly TimeProvider _clock;
     private bool _disposed;
 
-    public LoginCatalogClient() : this(new SocketsHttpHandler
+    public LoginCatalogClient(TimeProvider clock) : this(new SocketsHttpHandler
     {
         AllowAutoRedirect = false,
         AutomaticDecompression = DecompressionMethods.None,
@@ -18,13 +19,14 @@ internal sealed class LoginCatalogClient : IDisposable
         DefaultProxyCredentials = null,
         UseCookies = false,
         MaxConnectionsPerServer = 2,
-    })
+    }, clock)
     {
     }
 
-    internal LoginCatalogClient(HttpMessageHandler handler)
+    internal LoginCatalogClient(HttpMessageHandler handler, TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
+        _clock = clock ?? TimeProvider.System;
         _client = new HttpClient(handler, disposeHandler: true) { Timeout = Timeout.InfiniteTimeSpan };
     }
 
@@ -34,19 +36,19 @@ internal sealed class LoginCatalogClient : IDisposable
         ArgumentNullException.ThrowIfNull(authority);
         cancellationToken.ThrowIfCancellationRequested();
 
-        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(s_operationTimeout);
+        using CancellationTokenSource timeout = new(s_operationTimeout, _clock);
+        using CancellationTokenSource operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
 
         try
         {
-            byte[]? payload = await DownloadAsync(authority.CatalogUri, SignedLoginCatalog.MaximumCatalogBytes, timeout.Token).ConfigureAwait(false);
+            byte[]? payload = await DownloadAsync(authority.CatalogUri, SignedLoginCatalog.MaximumCatalogBytes, operation.Token).ConfigureAwait(false);
 
             if (payload is null)
             {
                 return null;
             }
 
-            byte[]? signature = await DownloadAsync(authority.SignatureUri, SignedLoginCatalog.SignatureBytes, timeout.Token).ConfigureAwait(false);
+            byte[]? signature = await DownloadAsync(authority.SignatureUri, SignedLoginCatalog.SignatureBytes, operation.Token).ConfigureAwait(false);
 
             if (signature is null)
             {

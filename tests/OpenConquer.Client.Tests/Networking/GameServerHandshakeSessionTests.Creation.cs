@@ -80,7 +80,7 @@ public sealed partial class GameServerHandshakeSessionTests
             ? CreationScript.AcceptAndEnterWorldWithNativeShortFrames
             : CreationScript.AcceptAndEnterWorld, token,
             world: new WorldEntryOptions(ClientStateAppliedMap: bit38Map, PackedAppearance: packedAppearance, Scrambled: scrambled,
-                ExpectHeartbeat: true));
+                ExpectHeartbeat: true, ClientTimestamp: 0x100));
 
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
@@ -96,8 +96,11 @@ public sealed partial class GameServerHandshakeSessionTests
         GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
 
         int mapEntered = 0;
-        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(game, character, () => mapEntered++, cancellationToken: token);
+        using ManualDeadlineClock clock = new((long)uint.MaxValue + 0x101);
+        GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(game, character, () => mapEntered++,
+            clock: clock, cancellationToken: token);
 
+        Assert.Equal(0x100u, world.HeartbeatStartedAt);
         Assert.Equal(1, mapEntered);
         Assert.Equal(0x11223344u, world.Character.EntityId);
         // Scrambled: the map key comes from the 74 reply (0x6FF478), weather kind 6 is a no-op (0x7606CD), and the
@@ -137,14 +140,17 @@ public sealed partial class GameServerHandshakeSessionTests
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
     }
 
-    [Fact]
-    public async Task WorldEntryDeadlineClosesTheSessionEvenWhenIndividualReadsHaveTimeRemaining()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WorldEntryCancellationClosesTheSessionAndPreservesTheCause(bool cancelCaller)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
         using TcpListener games = Listen();
         Task accountPeer = AccountPeerAsync(accounts, token);
-        Task gamePeer = CreationPeerAsync(games, CreationScript.StallWorldEntry, token);
+        TaskCompletionSource worldEntryRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task gamePeer = CreationPeerAsync(games, CreationScript.StallWorldEntry, token, worldEntryRequested: worldEntryRequested);
 
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
@@ -159,10 +165,27 @@ public sealed partial class GameServerHandshakeSessionTests
         _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
         GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
 
-        await Assert.ThrowsAsync<TimeoutException>(() => GameWorldEntryBootstrap.RunAsync(game,
-            character, completionTimeout: TimeSpan.FromMilliseconds(250), cancellationToken: token));
+        using CancellationTokenSource caller = CancellationTokenSource.CreateLinkedTokenSource(token);
+        using ManualDeadlineClock clock = new();
+        TimeSpan timeout = TimeSpan.FromMilliseconds(250);
+        Task<GameWorldEntrySnapshot> bootstrap = GameWorldEntryBootstrap.RunAsync(game,
+            character, completionTimeout: timeout, clock: clock, cancellationToken: caller.Token);
+        await worldEntryRequested.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+        Assert.Equal(timeout, clock.DueTime);
+        Assert.False(bootstrap.IsCompleted);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        if (cancelCaller)
+        {
+            await caller.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => bootstrap);
+        }
+        else
+        {
+            clock.Fire();
+            await Assert.ThrowsAsync<TimeoutException>(() => bootstrap);
+        }
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
             game.SendWorldActionAsync(GameWorldAction10010.GetItems, character.EntityId, 0,
                 TimeSpan.FromSeconds(5), token));
         await gamePeer.WaitAsync(TimeSpan.FromSeconds(5), token);
@@ -328,10 +351,10 @@ public sealed partial class GameServerHandshakeSessionTests
         CreationPeerAsync(listener, enterWorld ? CreationScript.AcceptAndEnterWorld : CreationScript.NewRoleOnly, token, coordinator: true);
 
     private sealed record WorldEntryOptions(bool NativeShortFrames = false, bool ClientStateAppliedMap = false,
-        uint PackedAppearance = 0, bool Scrambled = false, bool ExpectHeartbeat = false);
+        uint PackedAppearance = 0, bool Scrambled = false, bool ExpectHeartbeat = false, uint? ClientTimestamp = null);
 
     private static async Task CreationPeerAsync(TcpListener listener, CreationScript script, CancellationToken token,
-        bool coordinator = false, WorldEntryOptions? world = null)
+        bool coordinator = false, WorldEntryOptions? world = null, TaskCompletionSource? worldEntryRequested = null)
     {
         world ??= new WorldEntryOptions();
         using SecuredTestPeer peer = await AcceptSecuredPeerAsync(listener, token);
@@ -414,6 +437,7 @@ public sealed partial class GameServerHandshakeSessionTests
                     Assert.True(GameWorldAction10010.TryRead(request, out GameWorldAction10010 action));
                     Assert.Equal((GameWorldAction10010.EnterMap, 0x11223344u, 0u),
                         (action.Action, action.EntityId, action.ParameterPair));
+                    worldEntryRequested?.SetResult();
                 }
                 break;
         }
@@ -539,9 +563,17 @@ public sealed partial class GameServerHandshakeSessionTests
             {
                 Assert.Equal(1u, action.Timestamp);
             }
+            else if (expected == GameWorldAction10010.ClientStateApplied)
+            {
+                Assert.Equal(0u, action.Timestamp);
+            }
+            else if (options.ClientTimestamp is uint timestamp)
+            {
+                Assert.Equal(timestamp, action.Timestamp);
+            }
             else
             {
-                Assert.Equal(expected != GameWorldAction10010.ClientStateApplied, action.Timestamp != 0);
+                Assert.NotEqual(0u, action.Timestamp);
             }
         }
     }

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using OpenConquer.Client.UI.Login.Stage;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Text;
@@ -25,14 +24,16 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
     private OpenGLTextContext? _font;
     private int _lastContentRevision = -1;
     private int _lastRevision = -1;
+    private readonly TimeProvider _clock;
     private long _blinkStarted;
     private bool _disposed;
 
-    public LoginCredentialPresentation(OpenGLGraphicsDevice graphics, LoginStageLayout layout)
+    public LoginCredentialPresentation(OpenGLGraphicsDevice graphics, LoginStageLayout layout, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(graphics);
         ArgumentNullException.ThrowIfNull(layout);
         _graphics = graphics;
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _layout = LoginCredentialLayout.Create(layout);
         _fontHeight = Math.Max(1, layout.Scale(14));
         int padding = Math.Max(1, layout.Scale(2));
@@ -41,7 +42,7 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
     }
 
     /// <summary>The caret blinks 530 ms on, 470 ms off, restarting whenever the caret or text changes.</summary>
-    internal static bool CaretVisible(long blinkStarted) => Stopwatch.GetElapsedTime(blinkStarted).TotalMilliseconds % 1000 < 530;
+    internal static bool CaretVisible(TimeSpan elapsed) => elapsed.TotalMilliseconds % 1000 < 530;
 
     public void Draw(OpenGLRenderer renderer, LoginCredentialInput input)
     {
@@ -55,7 +56,7 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
         }
         EnsureLayout(input);
         OpenGLTextContext font = GetFont();
-        bool caretVisible = CaretVisible(_blinkStarted);
+        bool caretVisible = CaretVisible(_clock.GetElapsedTime(_blinkStarted));
         _account.Draw(renderer, font, TextStyle, TextColor, SelectionColor, State(input, LoginCredentialFocus.Account, caretVisible));
         _password.Draw(renderer, font, TextStyle, TextColor, SelectionColor, State(input, LoginCredentialFocus.Password, caretVisible));
     }
@@ -128,7 +129,7 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
             input.Focus == LoginCredentialFocus.Password ? input.CaretIndex : -1);
         _lastContentRevision = input.ContentRevision;
         _lastRevision = input.Revision;
-        _blinkStarted = Stopwatch.GetTimestamp();
+        _blinkStarted = _clock.GetTimestamp();
     }
 
     private void ReleaseFont()

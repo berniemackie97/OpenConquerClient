@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using OpenConquer.Client.UI.Login.Controls;
 using OpenConquer.Client.UI.Login.Credentials;
 using OpenConquer.Client.UI.Login.Stage;
@@ -38,12 +37,14 @@ internal sealed class LoginRegistrationPresentation : ILoginRegistrationCaretLoc
     private OpenGLTextLayout[] _messageLines = [];
     private int _lastRevision = -1;
     private int _lastContentRevision = -1;
+    private readonly TimeProvider _clock;
     private long _blinkStarted;
 
-    public LoginRegistrationPresentation(OpenGLGraphicsDevice graphicsDevice, LoginRegistrationLayout layout)
+    public LoginRegistrationPresentation(OpenGLGraphicsDevice graphicsDevice, LoginRegistrationLayout layout, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         _layout = layout ?? throw new ArgumentNullException(nameof(layout));
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
 
         try
         {
@@ -101,7 +102,7 @@ internal sealed class LoginRegistrationPresentation : ILoginRegistrationCaretLoc
         DrawCentred(renderer, _title, LoginCredentialPresentation.TextStyle, _layout.Title);
 
         EnsureLayout(form);
-        bool caretVisible = LoginCredentialPresentation.CaretVisible(_blinkStarted);
+        bool caretVisible = LoginCredentialPresentation.CaretVisible(_clock.GetElapsedTime(_blinkStarted));
         foreach (LoginRegistrationField field in Enum.GetValues<LoginRegistrationField>())
         {
             LoginRect box = _layout.Box(field);
@@ -161,7 +162,7 @@ internal sealed class LoginRegistrationPresentation : ILoginRegistrationCaretLoc
 
         _lastContentRevision = form.ContentRevision;
         _lastRevision = form.Revision;
-        _blinkStarted = Stopwatch.GetTimestamp();
+        _blinkStarted = _clock.GetTimestamp();
     }
 
     private void DrawMessage(OpenGLRenderer renderer, LoginRegistrationForm form)

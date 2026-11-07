@@ -35,7 +35,7 @@ internal sealed class LoginScreenRenderer : IDisposable
     private readonly LoginLoadingPresentation? _loadingPresentation;
     private readonly LoginLoadingScreen? _loading;
 
-    public LoginScreenRenderer(OpenGLGraphicsDevice graphicsDevice, LoginScreen screen,
+    public LoginScreenRenderer(OpenGLGraphicsDevice graphicsDevice, LoginScreen screen, TimeProvider clock,
         IClientContentSource? contentSource = null, LoginLoadingScreen? loading = null)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
@@ -52,10 +52,10 @@ internal sealed class LoginScreenRenderer : IDisposable
             _directoryStatus = _ownership.Track(new LoginDirectoryStatusPresentation(graphicsDevice, layout));
             _errors = _ownership.Track(new LoginErrorPresentation(graphicsDevice, layout));
             _regions = _ownership.Track(new LoginRegionPresentation(graphicsDevice, layout));
-            _credentials = _ownership.Track(new LoginCredentialPresentation(graphicsDevice, layout));
+            _credentials = _ownership.Track(new LoginCredentialPresentation(graphicsDevice, layout, clock));
             _buttons = _ownership.Track(new LoginButtonPresentation(graphicsDevice));
             _account = _ownership.Track(new LoginAccountPresentation(graphicsDevice, screen.AccountLayout));
-            _registration = _ownership.Track(new LoginRegistrationPresentation(graphicsDevice, screen.Registration.Layout));
+            _registration = _ownership.Track(new LoginRegistrationPresentation(graphicsDevice, screen.Registration.Layout, clock));
             _logo = _ownership.Track(new LoginLogoPresentation(graphicsDevice, layout));
             _version = _ownership.Track(new LoginVersionPresentation(graphicsDevice, layout, screen.VersionLabel));
             _opening = _ownership.Track(new LoginOpeningPresentation(graphicsDevice, layout));

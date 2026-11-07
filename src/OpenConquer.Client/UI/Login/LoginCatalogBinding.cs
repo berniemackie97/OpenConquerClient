@@ -17,7 +17,7 @@ internal sealed class LoginCatalogBinding : IDisposable
     internal LoginCatalogBinding(LoginCatalogRefresh? refresh) => _refresh = refresh;
 
     /// <summary>Binds to the catalog authority embedded at build time, if there is one.</summary>
-    public static LoginCatalogBinding ForEmbeddedAuthority()
+    public static LoginCatalogBinding ForEmbeddedAuthority(TimeProvider clock)
     {
         if (LoginCatalogAuthority.LoadEmbedded() is not { } authority)
         {
@@ -25,7 +25,7 @@ internal sealed class LoginCatalogBinding : IDisposable
             return new LoginCatalogBinding(refresh: null);
         }
 
-        return new LoginCatalogBinding(new LoginCatalogRefresh(token => FetchAsync(authority, token)));
+        return new LoginCatalogBinding(new LoginCatalogRefresh(token => FetchAsync(authority, clock, token)));
     }
 
     /// <summary>Returns only the currently presented, still-valid signed authority.</summary>
@@ -72,9 +72,9 @@ internal sealed class LoginCatalogBinding : IDisposable
 
     public void Dispose() => _refresh?.Dispose();
 
-    private static async Task<SignedLoginCatalog?> FetchAsync(LoginCatalogAuthority authority, CancellationToken token)
+    private static async Task<SignedLoginCatalog?> FetchAsync(LoginCatalogAuthority authority, TimeProvider clock, CancellationToken token)
     {
-        using LoginCatalogClient client = new();
-        return await client.FetchAsync(authority, DateTimeOffset.UtcNow, token).ConfigureAwait(false);
+        using LoginCatalogClient client = new(clock);
+        return await client.FetchAsync(authority, clock.GetUtcNow(), token).ConfigureAwait(false);
     }
 }

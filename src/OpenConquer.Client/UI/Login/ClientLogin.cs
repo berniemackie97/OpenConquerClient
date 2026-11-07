@@ -69,7 +69,7 @@ internal sealed class ClientLogin : IDisposable
     public bool CanPresentWorld => Loading is not { Visible: true } || Loading.CanEnterWorld;
 
     public static ClientLogin Create(string contentRoot, IClientContentSource content, LogicalRenderSize size,
-        Func<bool> canLogin, Action requestExit)
+        Func<bool> canLogin, Action requestExit, TimeProvider clock)
     {
         LoginScreen? screen = null;
         LoginAttemptCoordinator? attempts = null;
@@ -80,11 +80,11 @@ internal sealed class ClientLogin : IDisposable
             screen = new LoginScreen(LoginStageLayout.Create(size), LoginAccountHistory.ForCurrentUser(),
                 ClientVersionLabel.Load(content), cue => owner?.PlaySound(cue));
             screen.ExitRequested += requestExit;
-            attempts = new LoginAttemptCoordinator(contentRoot);
+            attempts = new LoginAttemptCoordinator(contentRoot, clock);
             LoginErrorMessages errors = LoginErrorMessages.Load(content, LoginErrorEncoding.ForCurrentHost());
             LoginLoadingScreen? loading = LoginLoadingScreen.LoadIfPresent(content);
-            registration = new LoginRegistrationCoordinator();
-            owner = new ClientLogin(content, screen, attempts, registration, errors, loading, canLogin);
+            registration = new LoginRegistrationCoordinator(clock);
+            owner = new ClientLogin(content, screen, attempts, registration, errors, loading, canLogin, clock);
             return owner;
         }
         catch
@@ -105,7 +105,7 @@ internal sealed class ClientLogin : IDisposable
         {
             throw new InvalidOperationException("Login services have already started.");
         }
-        _catalog = LoginCatalogBinding.ForEmbeddedAuthority();
+        _catalog = LoginCatalogBinding.ForEmbeddedAuthority(_clock);
         _audio = LoginAudioPlayer.TryCreate();
     }
 
@@ -145,7 +145,7 @@ internal sealed class ClientLogin : IDisposable
 
     public void CreateGraphics(OpenGLGraphicsDevice device, ResourceOwnership graphics)
     {
-        _renderer = graphics.Track(new LoginScreenRenderer(device, Screen, _content, Loading));
+        _renderer = graphics.Track(new LoginScreenRenderer(device, Screen, _clock, _content, Loading));
     }
 
     public void BindCaret()

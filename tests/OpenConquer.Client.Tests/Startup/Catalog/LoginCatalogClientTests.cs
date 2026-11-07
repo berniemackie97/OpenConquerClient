@@ -70,6 +70,46 @@ public sealed class LoginCatalogClientTests
         Assert.Null(await compressed.FetchAsync(authority, s_now, CancellationToken.None));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FetchAsync_StopsAnActiveRequestOnDeadlineOrCallerCancellation(bool cancelCaller)
+    {
+        CancellationToken testToken = TestContext.Current.CancellationToken;
+        using CancellationTokenSource caller = CancellationTokenSource.CreateLinkedTokenSource(testToken);
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        LoginCatalogAuthority authority = SignedLoginCatalogTests.Authority(signer);
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualDeadlineClock clock = new();
+        using LoginCatalogClient client = new(new WaitingHandler(started), clock);
+
+        Task<SignedLoginCatalog?> fetch = client.FetchAsync(authority, s_now, caller.Token);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), testToken);
+        Assert.Equal(TimeSpan.FromSeconds(12), clock.DueTime);
+        Assert.False(fetch.IsCompleted);
+
+        if (cancelCaller)
+        {
+            await caller.CancelAsync();
+        }
+        else
+        {
+            clock.Fire();
+        }
+
+        Assert.Null(await fetch.WaitAsync(TimeSpan.FromSeconds(5), testToken));
+    }
+
+    private sealed class WaitingHandler(TaskCompletionSource started) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            started.SetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException("The request completed without cancellation.");
+        }
+    }
+
     private sealed class TestHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>

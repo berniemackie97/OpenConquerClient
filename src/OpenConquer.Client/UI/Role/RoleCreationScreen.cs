@@ -38,7 +38,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
     private bool _disposed;
 
     public RoleCreationScreen(GameServerHandshakeSession game, string account, SelectCharacterIni ini, RoleCreationText text,
-        IFlashRasterSource rasters, Func<Rune, bool> hasGlyphInk, Action<LoginAudioCue> playSound)
+        IFlashRasterSource rasters, Func<Rune, bool> hasGlyphInk, Action<LoginAudioCue> playSound, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(game);
         ArgumentNullException.ThrowIfNull(account);
@@ -52,7 +52,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
         _scripts.Register(table);
         new CharacterInAndOutScripts(_scripts).Register(table);
         _stage = new FlashStage(RoleMovies.LoadRole(), table, rasters);
-        _exchange = new RoleCreationExchange(game, text);
+        _exchange = new RoleCreationExchange(game, text, clock);
         _stage.Start();
         _scripts.Receive("USERACCOUNT|" + account);
         _scripts.Receive("PATH|");

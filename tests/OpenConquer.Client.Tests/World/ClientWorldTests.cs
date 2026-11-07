@@ -22,7 +22,7 @@ public sealed class ClientWorldTests
         Harness harness = new(endOfStream: true);
         await using ClientWorld world = harness.Create();
 
-        world.DrainIngress();
+        world.DrainIngress(frameMilliseconds: 0);
 
         Assert.False(world.IsActive);
         Assert.Equal(1, harness.ClosingCalls);
@@ -40,7 +40,7 @@ public sealed class ClientWorldTests
         Harness harness = new(endOfStream: true);
         await using ClientWorld world = harness.Create();
 
-        world.DrainIngress();
+        world.DrainIngress(frameMilliseconds: 0);
         await harness.SessionClosed.Task.WaitAsync(s_timeout, TestContext.Current.CancellationToken);
         await WaitUntilAsync(() => world.TryObserveClose(out _));
         Assert.False(world.IsClosed);
@@ -145,7 +145,7 @@ public sealed class ClientWorldTests
         {
             await reading.Task.WaitAsync(s_timeout, token);
             world.CompleteLoad();
-            world.DrainIngress();
+            world.DrainIngress(frameMilliseconds: 0);
             Assert.False(world.HasScene);
             Assert.Equal(1, receives);
 
@@ -156,7 +156,7 @@ public sealed class ClientWorldTests
                 return world.HasScene;
             });
             AssertCameraAt(62, 102);
-            world.DrainIngress();
+            world.DrainIngress(frameMilliseconds: 0);
             Assert.Equal(2, receives);
             AssertCameraAt(63, 103);
         }

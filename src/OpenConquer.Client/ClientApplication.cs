@@ -6,6 +6,7 @@ using OpenConquer.Content.Images;
 using OpenConquer.Content.Login;
 using OpenConquer.Content.Startup;
 using OpenConquer.Content.Wdf;
+using OpenConquer.Networking.Game;
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.OpenGL;
 using OpenConquer.Platform.Windowing.Desktop;
@@ -19,6 +20,7 @@ internal sealed class ClientApplication : IDisposable
 {
     private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
     private readonly string _contentRootPath;
+    private readonly TimeProvider _clock;
     private readonly PresentationPolicy _presentationPolicy;
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
@@ -38,7 +40,7 @@ internal sealed class ClientApplication : IDisposable
         Disposed,
     }
 
-    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null)
+    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null, TimeProvider? clock = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
 
@@ -48,6 +50,7 @@ internal sealed class ClientApplication : IDisposable
         }
 
         _contentRootPath = contentRootPath;
+        _clock = clock ?? TimeProvider.System;
         _presentationPolicy = presentationPolicy;
         _windowMode = windowMode;
 
@@ -71,7 +74,7 @@ internal sealed class ClientApplication : IDisposable
         PackagedClientContentSource contentSource = PackagedClientContentSource.Open(_contentRootPath);
         ReportPackageRegistrationWarnings(contentSource);
 
-        StartupLogo startupLogo = StartupLogo.Load(contentSource, Environment.TickCount64);
+        StartupLogo startupLogo = StartupLogo.Load(contentSource, GameClientClock.TimestampMilliseconds(_clock, _clock.GetTimestamp()));
         if (startupLogo.UnavailableReason is { } unavailableReason)
         {
             Console.Error.WriteLine($"OpenConquer: startup logo unavailable; {unavailableReason}");
@@ -126,7 +129,7 @@ internal sealed class ClientApplication : IDisposable
     {
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
-        _session = new ClientSession(_contentRootPath, contentSource, _logicalRenderSize, () => _window?.RequestClose(), () => _window?.Dispose());
+        _session = new ClientSession(_contentRootPath, contentSource, _logicalRenderSize, () => _window?.RequestClose(), () => _window?.Dispose(), _clock);
         IReadOnlyList<RgbaImage> cursorFrames = LoginCursorArtwork.Load();
         _cursor = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
             cursorFrames[0].Height, LoginCursorArtwork.HotspotX, LoginCursorArtwork.HotspotY, LoginCursorArtwork.FrameDuration);
@@ -177,9 +180,9 @@ internal sealed class ClientApplication : IDisposable
         cleanup.ThrowIfFailed();
     }
 
-    private void OnRendering(double elapsedSeconds)
+    private void OnRendering(double _)
     {
-        (_session ?? throw new InvalidOperationException("The client session is not initialized.")).RenderFrame(elapsedSeconds,
+        (_session ?? throw new InvalidOperationException("The client session is not initialized.")).RenderFrame(
             _window ?? throw new InvalidOperationException("The desktop window is unavailable."),
             _graphicsDevice ?? throw new InvalidOperationException("The graphics device is unavailable."),
             _renderer ?? throw new InvalidOperationException("The renderer is not initialized."));
