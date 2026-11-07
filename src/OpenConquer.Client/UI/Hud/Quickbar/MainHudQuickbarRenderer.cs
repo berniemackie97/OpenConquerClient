@@ -32,6 +32,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 {
     private const int QuantitySize = 16;
     private const int QuantityStride = 8;
+    private const int MaximumSignedDecimalLength = 11;
     private const int ImageUploadsPerDraw = 4;
 
     private readonly MainHudQuickbarAssets _assets;
@@ -47,6 +48,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
     private readonly Dictionary<string, OpenGLTexture2D?> _fixedTextures = new(StringComparer.Ordinal);
     private readonly List<OpenGLTexture2D> _fixedOwnedTextures = [];
     private readonly SlotTextureCache[] _slotTextures = CreateSlotTextureCaches();
+    private readonly OpenGLTexture2D?[] _numberTextures = new OpenGLTexture2D?[MaximumSignedDecimalLength];
     private int _remainingImageUploads;
     private bool _canUploadGlow;
     private bool _disposed;
@@ -156,6 +158,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
         _fixedTextures.Clear();
         _fixedOwnedTextures.Clear();
+        Array.Clear(_numberTextures);
         _disposed = true;
         firstFailure?.Throw();
     }
@@ -273,20 +276,30 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
     private void DrawQuantity(OpenGLRenderer renderer, MainHudQuickbarSlotBounds bounds, uint rawQuantity)
     {
         string text = unchecked((int)rawQuantity).ToString(CultureInfo.InvariantCulture);
-        int x = bounds.X + 2;
-
+        int count = 0;
         foreach (char character in text)
         {
             int digit = character - '0';
             string section = $"Main3_Num{digit}Pic";
-            OpenGLTexture2D? texture = GetFixedTexture($"control:{section}", new QuickbarImageRequest(QuickbarImageKind.Control, section), exactWidth: 16, exactHeight: 16);
+            TextureLookup<OpenGLTexture2D> result = GetFixedTexture($"control:{section}",
+                new QuickbarImageRequest(QuickbarImageKind.Control, section), exactWidth: 16, exactHeight: 16);
+            if (!result.IsResolved)
+            {
+                return;
+            }
 
-            if (texture is null)
+            if (result.Texture is not { } texture)
             {
                 break;
             }
 
-            renderer.DrawSprite(texture, x, bounds.Y + 2, QuantitySize, QuantitySize);
+            _numberTextures[count++] = texture;
+        }
+
+        int x = bounds.X + 2;
+        for (int index = 0; index < count; index++)
+        {
+            renderer.DrawSprite(_numberTextures[index]!, x, bounds.Y + 2, QuantitySize, QuantitySize);
             x += QuantityStride;
         }
     }
@@ -301,33 +314,48 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         }
 
         string text = addLevel.ToString(CultureInfo.InvariantCulture);
-        int x = bounds.X + MainHudQuickbarDefinition.CellWidth - 11;
-
+        int count = 0;
         for (int index = text.Length - 1; index >= 0; index--)
         {
             string section = $"Equip_Num{text[index]}";
-            OpenGLTexture2D? digit = GetFixedTexture($"control:{section}", new QuickbarImageRequest(QuickbarImageKind.Control, section), exactWidth: 16, exactHeight: 16);
+            TextureLookup<OpenGLTexture2D> result = GetFixedTexture($"control:{section}",
+                new QuickbarImageRequest(QuickbarImageKind.Control, section), exactWidth: 16, exactHeight: 16);
+            if (!result.IsResolved)
+            {
+                return;
+            }
 
-            if (digit is null)
+            if (result.Texture is not { } digit)
             {
                 break;
             }
 
-            renderer.DrawSprite(digit, x, bounds.Y);
+            _numberTextures[count++] = digit;
+        }
+
+        TextureLookup<OpenGLTexture2D> plus = GetFixedTexture("control:Equip_AddPic",
+            new QuickbarImageRequest(QuickbarImageKind.Control, "Equip_AddPic"), exactWidth: 16, exactHeight: 16);
+        if (!plus.IsResolved)
+        {
+            return;
+        }
+
+        int x = bounds.X + MainHudQuickbarDefinition.CellWidth - 11;
+        for (int index = 0; index < count; index++)
+        {
+            renderer.DrawSprite(_numberTextures[index]!, x, bounds.Y);
             x -= 9;
         }
 
-        OpenGLTexture2D? plus = GetFixedTexture("control:Equip_AddPic", new QuickbarImageRequest(QuickbarImageKind.Control, "Equip_AddPic"), exactWidth: 16, exactHeight: 16);
-
-        if (plus is not null)
+        if (plus.Texture is { } texture)
         {
-            renderer.DrawSprite(plus, x, bounds.Y);
+            renderer.DrawSprite(texture, x, bounds.Y);
         }
     }
 
     private void DrawCover(OpenGLRenderer renderer, MainHudQuickbarSlotBounds bounds)
     {
-        OpenGLTexture2D? texture = GetFixedTexture("control:Compose_CoverPic", new QuickbarImageRequest(QuickbarImageKind.Cover), exactWidth: 64, exactHeight: 64);
+        OpenGLTexture2D? texture = GetFixedTexture("control:Compose_CoverPic", new QuickbarImageRequest(QuickbarImageKind.Cover), exactWidth: 64, exactHeight: 64).Texture;
 
         if (texture is not null)
         {
@@ -395,17 +423,17 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         }
     }
 
-    private OpenGLTexture2D? GetFixedTexture(string key, QuickbarImageRequest request, int? exactWidth = null, int? exactHeight = null, int? minimumWidth = null, int? minimumHeight = null)
+    private TextureLookup<OpenGLTexture2D> GetFixedTexture(string key, QuickbarImageRequest request, int? exactWidth = null, int? exactHeight = null, int? minimumWidth = null, int? minimumHeight = null)
     {
         if (_fixedTextures.TryGetValue(key, out OpenGLTexture2D? cached))
         {
-            return cached;
+            return new TextureLookup<OpenGLTexture2D>(true, cached);
         }
 
         TextureLookup<OpenGLTexture2D> result = CreateTexture(key, request, exactWidth, exactHeight, minimumWidth, minimumHeight);
         if (!result.IsResolved)
         {
-            return null;
+            return default;
         }
 
         _fixedTextures.Add(key, result.Texture);
@@ -414,7 +442,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
             _fixedOwnedTextures.Add(texture);
         }
 
-        return result.Texture;
+        return result;
     }
 
     private TextureLookup<OpenGLTexture2D> CreateTexture(string key, QuickbarImageRequest request, int? exactWidth = null,

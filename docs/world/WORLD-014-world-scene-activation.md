@@ -181,7 +181,9 @@ distinct requests per batch, stopping after the decoded output reaches
 limits. The context thread uploads up to four ready images and one glow set
 per draw. An upload deferred by the budget retains its pixels while the
 current slot still needs them. Pending artwork is absent from the draw and
-only a completed lookup can cache a missing image.
+only a completed lookup can cache a missing image. Quantity and addition
+overlays wait for their required lookups before drawing, so pending digits
+cannot display a partial number.
 
 Item fallback, source rectangles, overlay order and the glow clock carry
 forward. Glow time starts at its first draw. The native rules are recorded
