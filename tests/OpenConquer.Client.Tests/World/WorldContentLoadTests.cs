@@ -1,22 +1,20 @@
 using OpenConquer.Client.World;
-using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.Tests.World;
 
-public sealed class WorldMapLoadTests
+public sealed class WorldContentLoadTests
 {
     [Fact]
     public async Task PreparationDoesNotBlockCallerAndCompletesAfterWorker()
     {
         using ManualResetEventSlim release = new();
         using ManualResetEventSlim started = new();
-        using WorldMapFixture fixture = new();
-        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
-        using WorldMapLoad load = new(token =>
+        object content = new();
+        await using WorldContentLoad<object> load = new(token =>
         {
             started.Set();
             release.Wait(token);
-            return scene;
+            return content;
         });
 
         try
@@ -26,7 +24,7 @@ public sealed class WorldMapLoadTests
             release.Set();
             await Task.Run(() => SpinWait.SpinUntil(() => load.IsCompleted, TimeSpan.FromSeconds(5)), TestContext.Current.CancellationToken);
             Assert.True(load.IsCompleted);
-            Assert.Same(scene, load.Complete());
+            Assert.Same(content, load.Complete());
         }
         finally
         {
@@ -38,7 +36,7 @@ public sealed class WorldMapLoadTests
     public async Task CancellationInterruptsAWaitingWorkerAndIsObserved()
     {
         using ManualResetEventSlim started = new();
-        using WorldMapLoad load = new(token =>
+        await using WorldContentLoad<object> load = new(token =>
         {
             started.Set();
             token.WaitHandle.WaitOne();
@@ -47,14 +45,14 @@ public sealed class WorldMapLoadTests
         });
 
         Assert.True(await Task.Run(() => started.Wait(TimeSpan.FromSeconds(5)), TestContext.Current.CancellationToken));
-        await Task.Run(load.Dispose, TestContext.Current.CancellationToken);
+        await load.DisposeAsync();
         Assert.True(load.IsCompleted);
     }
 
     [Fact]
     public async Task PreparationFailuresAreReturnedToTheOwner()
     {
-        using WorldMapLoad load = new(_ => throw new InvalidDataException("Invalid scene"));
+        await using WorldContentLoad<object> load = new(_ => throw new InvalidDataException("Invalid scene"));
         Assert.True(await Task.Run(() => SpinWait.SpinUntil(() => load.IsCompleted, TimeSpan.FromSeconds(5)), TestContext.Current.CancellationToken));
         Assert.Throws<InvalidDataException>(load.Complete);
     }

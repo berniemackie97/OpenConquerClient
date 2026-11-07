@@ -1,7 +1,10 @@
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
 using OpenConquer.Client.World;
 using OpenConquer.Content;
 using OpenConquer.Content.Items;
+using OpenConquer.Content.Progression;
 using OpenConquer.Networking.Game.Framing;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Rendering.Presentation;
@@ -24,7 +27,8 @@ public sealed class ClientWorldTests
         Assert.False(world.IsActive);
         Assert.Equal(1, harness.ClosingCalls);
         await harness.SessionClosed.Task.WaitAsync(s_timeout, TestContext.Current.CancellationToken);
-        Assert.True(world.TryObserveClose(out WorldCloseReason reason));
+        WorldCloseReason reason = default;
+        await WaitUntilAsync(() => world.TryObserveClose(out reason));
         Assert.Equal(WorldCloseReason.ConnectionLost, reason);
         Assert.False(world.TryObserveClose(out _));
         Assert.Equal(1, harness.SessionCloseCalls);
@@ -38,14 +42,16 @@ public sealed class ClientWorldTests
 
         world.DrainIngress();
         await harness.SessionClosed.Task.WaitAsync(s_timeout, TestContext.Current.CancellationToken);
-        Assert.True(world.TryObserveClose(out _));
+        await WaitUntilAsync(() => world.TryObserveClose(out _));
         Assert.False(world.IsClosed);
 
         // Task.Run may cancel before its delegate starts, so the delegate's finally is not a completion signal.
         await WaitUntilAsync(() => harness.Load!.IsCompleted);
-        world.CompleteLoad();
-
-        Assert.True(world.IsClosed);
+        await WaitUntilAsync(() =>
+        {
+            world.CompleteLoad();
+            return world.IsClosed;
+        });
         Assert.Equal(1, harness.ClosingCalls);
     }
 
@@ -100,6 +106,141 @@ public sealed class ClientWorldTests
         Assert.False(world.IsActive);
     }
 
+    [Fact]
+    public async Task CatalogGate_KeepsMapUnpublishedAndReplaysHydrationBeforePrefetchedFrame()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TaskCompletionSource reading = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        CatalogContentSource content = new(() =>
+        {
+            reading.SetResult();
+            release.Task.WaitAsync(s_timeout, token).GetAwaiter().GetResult();
+        });
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 61, 101, 100, 1000);
+        GameWorldEntrySnapshot entry = Entry() with
+        {
+            HydrationPackets = [Correction(62, 102)],
+        };
+        int receives = 0;
+        Task<GameSecuredInboundFrame?> Receive(CancellationToken stopping)
+        {
+            if (++receives == 1)
+            {
+                byte[] packet = Correction(63, 103);
+                byte[] rented = ArrayPool<byte>.Shared.Rent(packet.Length);
+                packet.CopyTo(rented, 0);
+                return Task.FromResult<GameSecuredInboundFrame?>(new GameSecuredInboundFrame(rented, packet.Length));
+            }
+
+            return WaitForDisconnectAsync(stopping);
+        }
+
+        await using ClientWorld world = new(entry, content, new LogicalRenderSize(1024, 768), static () => { },
+            static () => ValueTask.CompletedTask, () => new WorldFrameIngress(Receive),
+            () => new WorldContentLoad<WorldMapScene>(_ => scene));
+
+        try
+        {
+            await reading.Task.WaitAsync(s_timeout, token);
+            world.CompleteLoad();
+            world.DrainIngress();
+            Assert.False(world.HasScene);
+            Assert.Equal(1, receives);
+
+            release.SetResult();
+            await WaitUntilAsync(() =>
+            {
+                world.CompleteLoad();
+                return world.HasScene;
+            });
+            AssertCameraAt(62, 102);
+            world.DrainIngress();
+            Assert.Equal(2, receives);
+            AssertCameraAt(63, 103);
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+
+        void AssertCameraAt(int x, int y)
+        {
+            WorldMapScene expected = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, x, y, 100, 1000);
+            expected.SetHeroDirection(entry.DirectionIndex);
+            _ = scene.BuildFrame(640, 480, 1000);
+            _ = expected.BuildFrame(640, 480, 1000);
+            Assert.Equal(expected.HeroMatrices, scene.HeroMatrices);
+        }
+    }
+
+    [Fact]
+    public async Task MissingExperienceTable_ClosesWithContentFailure()
+    {
+        Harness harness = new(endOfStream: false);
+        await using ClientWorld world = harness.Create(new CatalogContentSource(hasExperience: false));
+        await WaitUntilAsync(() =>
+        {
+            world.CompleteLoad();
+            return !world.IsActive;
+        });
+        Assert.False(world.HasScene);
+        WorldCloseReason reason = default;
+        await WaitUntilAsync(() => world.TryObserveClose(out reason));
+        Assert.Equal(WorldCloseReason.ContentUnavailable, reason);
+        Assert.Equal(1, harness.SessionCloseCalls);
+    }
+
+    [Fact]
+    public async Task Shutdown_ClosesSocketBeforeWaitingForCatalogReadToReturn()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TaskCompletionSource reading = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        CatalogContentSource content = new(() =>
+        {
+            reading.SetResult();
+            release.Task.WaitAsync(s_timeout, token).GetAwaiter().GetResult();
+        });
+        Harness harness = new(endOfStream: false);
+        await using ClientWorld world = harness.Create(content);
+        try
+        {
+            await reading.Task.WaitAsync(s_timeout, token);
+            Task shutdown = world.DisposeAsync().AsTask();
+            await harness.SessionClosed.Task.WaitAsync(s_timeout, token);
+            Assert.False(shutdown.IsCompleted);
+            release.SetResult();
+            await shutdown.WaitAsync(s_timeout, token);
+            Assert.True(harness.IngressStopped);
+            Assert.Equal(1, harness.SessionCloseCalls);
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+    }
+
+    private static GameWorldEntrySnapshot Entry() => new(
+        new GameCharacterInfo1006 { EntityId = 0x11223344, Level = 1, CurrentProfession = 10 },
+        1002, 1010, 0, 1, 61, 101, [], 3);
+
+    private static byte[] Correction(ushort x, ushort y)
+    {
+        byte[] frame = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(frame, GameWorldAction10010.PositionCorrection, 0x11223344);
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(24), x);
+        BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(26), y);
+        return frame;
+    }
+
+    private static async Task<GameSecuredInboundFrame?> WaitForDisconnectAsync(CancellationToken token)
+    {
+        await Task.Delay(Timeout.InfiniteTimeSpan, token);
+        return null;
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
         using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -128,12 +269,12 @@ public sealed class ClientWorldTests
             get; private set;
         }
 
-        public WorldMapLoad? Load
+        public WorldContentLoad<WorldMapScene>? Load
         {
             get; private set;
         }
 
-        public ClientWorld Create() => new(Entry(), new MissingContentSource(), new LogicalRenderSize(1024, 768),
+        public ClientWorld Create(IClientContentSource? content = null) => new(Entry(), content ?? new CatalogContentSource(), new LogicalRenderSize(1024, 768),
             () => ClosingCalls++, CloseSessionAsync, CreateIngress, CreateLoad);
 
         private ValueTask CloseSessionAsync()
@@ -147,9 +288,9 @@ public sealed class ClientWorldTests
             ? new WorldFrameIngress(_ => Task.FromResult<GameSecuredInboundFrame?>(null))
             : new WorldFrameIngress(WaitForeverAsync);
 
-        private WorldMapLoad CreateLoad()
+        private WorldContentLoad<WorldMapScene> CreateLoad()
         {
-            Load = new WorldMapLoad(LoadUntilCanceled);
+            Load = new WorldContentLoad<WorldMapScene>(LoadUntilCanceled);
             return Load;
         }
 
@@ -173,20 +314,23 @@ public sealed class ClientWorldTests
             return null;
         }
 
-        private static GameWorldEntrySnapshot Entry() => new(
-            new GameCharacterInfo1006 { EntityId = 0x11223344, Level = 1, CurrentProfession = 10 },
-            1002, 1010, 0, 1, 61, 101, [], 3);
     }
 
-    /// <summary>Serves only the item tables world construction needs; every map resource is missing.</summary>
-    private sealed class MissingContentSource : IClientContentSource
+    /// <summary>Serves the required world entry catalogs without reading the host filesystem.</summary>
+    private sealed class CatalogContentSource(Action? beforeItemTable = null, bool hasExperience = true) : IClientContentSource
     {
         public bool TryOpenRead(string contentPath, ContentLookupMode mode, [NotNullWhen(true)] out Stream? stream)
         {
+            if (contentPath == ItemStatCatalog.ItemTypePath)
+            {
+                beforeItemTable?.Invoke();
+            }
+
             stream = contentPath switch
             {
                 ItemStatCatalog.ItemTypePath => new MemoryStream(WorldHeroItemStatsTests.ItemTypeBytes()),
                 ItemStatCatalog.ItemAddPath => new MemoryStream(WorldHeroItemStatsTests.ItemAddBytes()),
+                LevelExperienceTable.RelativePath when hasExperience => new MemoryStream(Convert.FromHexString("d4951d370363a6ace8b8297e63")),
                 _ => null,
             };
             return stream is not null;
