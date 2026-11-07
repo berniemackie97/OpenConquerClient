@@ -155,3 +155,21 @@ and magic text rendered through synchronous and prepared faces. All
 six framebuffer comparisons matched. Repeat attachment of the entire HUD
 took 0.76–0.90 ms after preparation. This probe isolates HUD attachment
 from full world frame pacing.
+
+### Selected skill images
+
+The selected skill frame and its independent cover resolve on a world-owned
+worker when requested. The frame thread uploads completed images before
+drawing. A pending or missing selection draws no selected image. A completed
+request for an older selection is discarded. The independent cover can draw
+without the selected image, including when the selection is cleared.
+
+The existing frame index, source rectangles, lookup rules and draw order
+carry forward. See `20_notes/Rendering/20_main_hud_selected_skill_native_contract.md`
+for the native draw at `0x5A2961` and the independent Control.ani Image0
+cover. The worker and pending display are managed scheduling choices.
+
+A local OpenGL probe using retail Magic0 and Image0 observed zero opens on
+the context thread and matched six synchronous framebuffer comparisons.
+The probe drives the selected skill state directly. On-demand quickbar
+images and full world frame pacing remain under CP2.5.

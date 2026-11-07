@@ -74,10 +74,11 @@ internal sealed class MainHudRenderResources : IDisposable
     }
 
     public MainHudRenderResources(OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize,
-        MainHudPreparation preparation, Func<uint> readTickCount)
+        MainHudPreparation preparation, MainHudSelectedSkillImageLoader selectedSkillImages, Func<uint> readTickCount)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(preparation);
+        ArgumentNullException.ThrowIfNull(selectedSkillImages);
         ArgumentNullException.ThrowIfNull(readTickCount);
 
         MainHudContent content = preparation.Content;
@@ -92,7 +93,7 @@ internal sealed class MainHudRenderResources : IDisposable
             Quickbar = _ownership.Track(new MainHudQuickbarRenderer(graphicsDevice, content.QuickbarAssets, logicalRenderSize, readTickCount: readTickCount));
             ActionButtons = _ownership.Track(new MainHudActionButtonStripRenderer(graphicsDevice, content.ActionButtonAssets, logicalRenderSize));
             CheckControls = _ownership.Track(new MainHudCheckControlRenderer(graphicsDevice, content.CheckControlAssets, logicalRenderSize));
-            SelectedSkill = _ownership.Track(new MainHudSelectedSkillRenderer(graphicsDevice, content.SelectedSkillAssets, logicalRenderSize));
+            SelectedSkill = _ownership.Track(new MainHudSelectedSkillRenderer(graphicsDevice, content.SelectedSkillAssets, logicalRenderSize, selectedSkillImages));
             SelectedSkillCooldown = _ownership.Track(new MainHudSelectedSkillCooldownRenderer(graphicsDevice,
                 content.CooldownTextConfiguration, content.FontSettingsConfiguration, content.CodePageConfiguration, logicalRenderSize,
                 () => AttachFont(MainHudPreparation.CooldownFont)));

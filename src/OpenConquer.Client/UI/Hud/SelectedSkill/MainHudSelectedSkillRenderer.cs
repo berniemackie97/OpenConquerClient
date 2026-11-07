@@ -12,6 +12,7 @@ internal sealed class MainHudSelectedSkillRenderer : IDisposable
     private readonly OpenGLGraphicsDevice _graphicsDevice;
     private readonly MainHudSelectedSkillAssets _assets;
     private readonly MainHudSelectedSkillLayout _layout;
+    private readonly MainHudSelectedSkillImageLoader? _images;
 
     private OpenGLTexture2D? _selectedTexture;
     private OpenGLTexture2D? _coverTexture;
@@ -23,14 +24,43 @@ internal sealed class MainHudSelectedSkillRenderer : IDisposable
     public MainHudSelectedSkillRenderer(
         OpenGLGraphicsDevice graphicsDevice,
         MainHudSelectedSkillAssets assets,
-        LogicalRenderSize logicalRenderSize)
+        LogicalRenderSize logicalRenderSize,
+        MainHudSelectedSkillImageLoader? images = null)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(assets);
 
         _graphicsDevice = graphicsDevice;
         _assets = assets;
+        _images = images;
         _layout = MainHudSelectedSkillLayout.Create(logicalRenderSize);
+    }
+
+    internal void Prepare(MainHudSelectedSkillState state)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_images is not { } images)
+        {
+            return;
+        }
+
+        if (state.IsImageActive && !string.Equals(_selectedSectionName, state.SectionName, StringComparison.Ordinal))
+        {
+            ChangeSection(state.SectionName);
+        }
+
+        string? section = state.IsImageActive && !_selectedTextureResolved ? state.SectionName : null;
+        (MainHudSelectedSkillImageLoader.ImageResult selected, MainHudSelectedSkillImageLoader.ImageResult cover) =
+            images.Poll(section, state.IsCovered && !_coverTextureResolved);
+        if (selected.IsComplete)
+        {
+            InstallSelectedTexture(state.SectionName, selected.GetImage());
+        }
+
+        if (cover.IsComplete)
+        {
+            InstallCoverTexture(cover.GetImage());
+        }
     }
 
     public void Draw(OpenGLRenderer renderer, MainHudSelectedSkillState state)
@@ -126,76 +156,58 @@ internal sealed class MainHudSelectedSkillRenderer : IDisposable
             return _selectedTexture;
         }
 
-        ReplaceSelectedTexture(sectionName);
+        if (_images is not null)
+        {
+            return null;
+        }
+
+        ChangeSection(sectionName);
+        InstallSelectedTexture(sectionName, _assets.GetSelectedFrame(sectionName, MainHudSelectedSkillDefinition.FrameIndex));
         return _selectedTexture;
     }
 
-    private void ReplaceSelectedTexture(string sectionName)
+    private void ChangeSection(string sectionName)
     {
         ArgumentException.ThrowIfNullOrEmpty(sectionName);
-
         _selectedTexture?.Dispose();
         _selectedTexture = null;
         _selectedSectionName = sectionName;
+        _selectedTextureResolved = false;
+    }
+
+    private void InstallSelectedTexture(string sectionName, RgbaImage? image)
+    {
+        _selectedTexture = CreateTexture($"selected-skill section [{sectionName}]", image,
+            MainHudSelectedSkillDefinition.SourceWidth, MainHudSelectedSkillDefinition.SourceHeight);
         _selectedTextureResolved = true;
-
-        try
-        {
-            RgbaImage? image = _assets.GetSelectedFrame(sectionName, MainHudSelectedSkillDefinition.FrameIndex);
-
-            if (image is null)
-            {
-                return;
-            }
-
-            ValidateMinimumDimensions(
-                $"selected-skill section [{sectionName}]",
-                image,
-                MainHudSelectedSkillDefinition.SourceWidth,
-                MainHudSelectedSkillDefinition.SourceHeight);
-
-            _selectedTexture = _graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
-        }
-        catch
-        {
-            _selectedSectionName = null;
-            _selectedTextureResolved = false;
-            throw;
-        }
     }
 
     private OpenGLTexture2D? GetCoverTexture()
     {
-        if (_coverTextureResolved)
+        if (!_coverTextureResolved && _images is null)
         {
-            return _coverTexture;
+            InstallCoverTexture(_assets.GetCoverFrame());
         }
 
+        return _coverTexture;
+    }
+
+    private void InstallCoverTexture(RgbaImage? image)
+    {
+        _coverTexture = CreateTexture($"selected-skill cover [{MainHudSelectedSkillDefinition.CoverSectionName}]", image,
+            MainHudSelectedSkillDefinition.CoverSourceWidth, MainHudSelectedSkillDefinition.CoverSourceHeight);
         _coverTextureResolved = true;
+    }
 
-        try
+    private OpenGLTexture2D? CreateTexture(string assetName, RgbaImage? image, int minimumWidth, int minimumHeight)
+    {
+        if (image is null)
         {
-            RgbaImage? image = _assets.GetCoverFrame();
-
-            if (image is null)
-            {
-                return null;
-            }
-
-            ValidateMinimumDimensions(
-                $"selected-skill cover [{MainHudSelectedSkillDefinition.CoverSectionName}]",
-                image,
-                MainHudSelectedSkillDefinition.CoverSourceWidth,
-                MainHudSelectedSkillDefinition.CoverSourceHeight);
-
-            _coverTexture = _graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
-            return _coverTexture;
+            return null;
         }
-        catch
-        {
-            _coverTextureResolved = false;
-            throw;
-        }
+
+        ValidateMinimumDimensions(assetName, image, minimumWidth, minimumHeight);
+        return _graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
     }
 
     private static void ValidateMinimumDimensions(string assetName, RgbaImage image, int minimumWidth, int minimumHeight)
