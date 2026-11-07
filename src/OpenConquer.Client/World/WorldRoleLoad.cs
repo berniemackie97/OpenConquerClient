@@ -1,3 +1,6 @@
+using OpenConquer.Content;
+using OpenConquer.Content.Mesh;
+
 namespace OpenConquer.Client.World;
 
 /// <summary>
@@ -9,6 +12,35 @@ internal sealed class WorldRoleLoad(Func<WorldRoleSources, CancellationToken, Wo
     private readonly CancellationTokenSource _stop = new();
     private Task<WorldRoleAssets?>? _pending;
     private WorldRoleSources _requested;
+
+    internal WorldRoleLoad(IClientContentSource source, uint packedAppearance)
+        : this(CreateAssetReader(source, packedAppearance))
+    {
+    }
+
+    private static Func<WorldRoleSources, CancellationToken, WorldRoleAssets?> CreateAssetReader(
+        IClientContentSource source, uint packedAppearance)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        C3RoleCatalog? catalog = null;
+        return (sources, token) =>
+        {
+            token.ThrowIfCancellationRequested();
+            // Jobs run serially. Keep the successful catalog for this world and let failed loads retry.
+            if (catalog is null)
+            {
+                if (!source.TryOpenRead("ini/c3.wdb", ContentLookupMode.LooseOnly, out Stream? probe))
+                {
+                    return null;
+                }
+
+                probe.Dispose();
+                catalog = C3RoleCatalog.Load(source);
+            }
+
+            return WorldRoleAssets.Load(source, catalog, packedAppearance, sources, token);
+        };
+    }
 
     internal bool TryPrepare(WorldRoleSources desired, WorldRoleSources? installed, out WorldRoleAssets? assets)
     {

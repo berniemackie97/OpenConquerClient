@@ -5,11 +5,18 @@ namespace OpenConquer.Rendering.Conformance;
 
 internal static class Program
 {
-    private static int Main(string[] args)
+    private static async Task<int> Main(string[] args)
     {
         if (args is ["--indexed-mesh"])
         {
             OpenGLConformanceHost.Run(IndexedMeshConformance.Run);
+            return 0;
+        }
+
+        if (args is ["--world-map-residency", .. string[] contentArguments])
+        {
+            ConformanceOptions residencyOptions = ConformanceOptions.Parse(contentArguments);
+            await WorldMapResidencyConformance.RunAsync(residencyOptions.ContentRoot).ConfigureAwait(false);
             return 0;
         }
 

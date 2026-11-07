@@ -225,7 +225,6 @@ public sealed class WorldMapScene
             }
         }
 
-        textures.EndPreparation();
         if (complete || !textures.IsStreaming)
         {
             _frame = candidate;
@@ -244,6 +243,7 @@ public sealed class WorldMapScene
             }
         }
 
+        textures.EndPreparation(complete);
         return complete;
     }
 

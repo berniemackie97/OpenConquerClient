@@ -1,4 +1,3 @@
-using System.Runtime.ExceptionServices;
 using OpenConquer.Content;
 using OpenConquer.Content.Ani;
 using OpenConquer.Content.Images;
@@ -13,40 +12,53 @@ public sealed class WorldMapTextureRenderer : IDisposable
     private readonly IClientContentSource? _source;
     private readonly WorldMapImageLoader? _stream;
     private readonly OpenGLGraphicsDevice _device;
-    private readonly Dictionary<string, OpenGLTexture2D> _textures = new(StringComparer.OrdinalIgnoreCase);
+    private const int StreamingTextureTarget = 512;
+    private const long StreamingPixelByteTarget = 128 * 1024 * 1024;
+    private readonly WorldMapTextureCache<OpenGLTexture2D> _textures;
     private bool _disposed;
-    private readonly int _maximumTextures;
-    private readonly long _maximumPixelBytes;
-    private long _pixelBytes;
 
     public WorldMapTextureRenderer(IClientContentSource source, OpenGLGraphicsDevice device,
         int maximumTextures = int.MaxValue, long maximumPixelBytes = long.MaxValue)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumTextures);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumPixelBytes);
-        _maximumTextures = maximumTextures;
-        _maximumPixelBytes = maximumPixelBytes;
         _source = source ?? throw new ArgumentNullException(nameof(source));
         _device = device ?? throw new ArgumentNullException(nameof(device));
+        _textures = new(maximumTextures, maximumPixelBytes, streaming: false);
     }
 
     /// <summary>Creates a context-owned texture cache fed by a separately owned map image loader.</summary>
     public static WorldMapTextureRenderer CreateStreaming(WorldMapImageLoader images, OpenGLGraphicsDevice device) =>
-        new(images, device);
+        new(images, device, StreamingTextureTarget, StreamingPixelByteTarget);
 
-    private WorldMapTextureRenderer(WorldMapImageLoader stream, OpenGLGraphicsDevice device)
+    internal WorldMapTextureRenderer(WorldMapImageLoader stream, OpenGLGraphicsDevice device,
+        int maximumTextures, long maximumPixelBytes)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumTextures);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumPixelBytes);
         _stream = stream ?? throw new ArgumentNullException(nameof(stream));
         _device = device ?? throw new ArgumentNullException(nameof(device));
-        _maximumTextures = int.MaxValue;
-        _maximumPixelBytes = long.MaxValue;
+        _textures = new(maximumTextures, maximumPixelBytes, streaming: true);
     }
 
     internal bool IsStreaming => _stream is not null;
+    internal int ResidentTextureCount => _textures.Count;
+    internal long ResidentPixelBytes => _textures.PixelBytes;
 
-    internal void BeginPreparation() => _stream?.BeginPreparation();
+    internal void BeginPreparation()
+    {
+        _stream?.BeginPreparation();
+        _textures.BeginPreparation();
+    }
 
-    internal void EndPreparation() => _stream?.EndPreparation();
+    internal void EndPreparation(bool complete)
+    {
+        if (_stream is not null)
+        {
+            _stream.EndPreparation();
+            _textures.EndPreparation(complete);
+        }
+    }
 
     internal bool Prepare(IReadOnlyList<WorldPuzzleTile> tiles, ref int remaining)
     {
@@ -126,7 +138,7 @@ public sealed class WorldMapTextureRenderer : IDisposable
     private bool EnsureTexture(AniIndexSection animation, int frameIndex, ref int remaining)
     {
         string path = animation.FramePaths[frameIndex];
-        if (_textures.ContainsKey(path))
+        if (_textures.Keep(path))
         {
             return true;
         }
@@ -151,15 +163,14 @@ public sealed class WorldMapTextureRenderer : IDisposable
             frame = AniFrameLoader.LoadWrappedFrame(source, animation, (uint)frameIndex, ContentLookupMode.LooseThenPackage);
         }
 
-        if (_textures.Count >= _maximumTextures || frame.Pixels.Length > _maximumPixelBytes - _pixelBytes)
+        if (_stream is null && !_textures.Fits(frame.Pixels.Length))
         {
             throw new InvalidDataException("The map preview exceeds its resident texture count or pixel-byte budget.");
         }
         OpenGLTexture2D texture = _device.CreateTexture2D(frame.Width, frame.Height, frame.Pixels.Span);
         try
         {
-            _textures.Add(path, texture);
-            _pixelBytes += frame.Pixels.Length;
+            _textures.Add(path, texture, frame.Pixels.Length);
             remaining--;
             return true;
         }
@@ -172,7 +183,7 @@ public sealed class WorldMapTextureRenderer : IDisposable
 
     internal bool TryGetFrameExtent(string path, out int width, out int height)
     {
-        if (_textures.TryGetValue(path, out OpenGLTexture2D? texture))
+        if (_textures.Find(path) is { } texture)
         {
             width = texture.Width;
             height = texture.Height;
@@ -185,8 +196,7 @@ public sealed class WorldMapTextureRenderer : IDisposable
     }
 
     private OpenGLTexture2D GetPrepared(string path) =>
-        _textures.TryGetValue(path, out OpenGLTexture2D? texture)
-            ? texture : throw new InvalidOperationException($"World frame '{path}' has not been prepared.");
+        _textures.Find(path) ?? throw new InvalidOperationException($"World frame '{path}' has not been prepared.");
 
     public void Dispose()
     {
@@ -195,21 +205,7 @@ public sealed class WorldMapTextureRenderer : IDisposable
             return;
         }
 
-        ExceptionDispatchInfo? firstFailure = null;
-        foreach (OpenGLTexture2D texture in _textures.Values)
-        {
-            try
-            {
-                texture.Dispose();
-            }
-            catch (Exception exception)
-            {
-                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-            }
-        }
-
-        _textures.Clear();
         _disposed = true;
-        firstFailure?.Throw();
+        _textures.Dispose();
     }
 }
