@@ -115,3 +115,22 @@ A local Apple M4 OpenGL probe compared four views of retail map 1010.
 All four framebuffer hashes matched, and a pending view kept the prior
 framebuffer. This measures map preparation and rendering in isolation.
 HUD asset reads and full frame timing remain separate work.
+
+## HUD startup preparation
+
+The first world view starts a cancellable job for the HUD's static artwork,
+settings and metadata while map textures prepare. The context thread builds
+the HUD from the completed CPU content and the loading overlay stays visible
+until the first map view, appearance and HUD are ready. Context recreation
+can reuse the prepared HUD content. The world cancels or observes its job
+when it closes.
+
+This uses the worker-to-context division described above. The existing HUD
+layout, input and drawing order carry forward. On-demand quickbar and
+selected skill image requests and host font setup remain separate paths.
+
+A local Apple M4 OpenGL probe with the curated 5517 content verified that
+76 game-content open attempts took place during worker preparation and that
+creating the HUD from the result made no game-content opens. The chrome
+and vitals framebuffer hash matched the synchronous baseline. This probe
+isolates startup preparation from full frame pacing.
