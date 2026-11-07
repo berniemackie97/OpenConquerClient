@@ -8,79 +8,10 @@ using OpenConquer.Client.UI.Hud.StatusHints;
 using OpenConquer.Client.UI.Hud.StatusHints.Equipment;
 using OpenConquer.Client.UI.Hud.StatusHints.Magic;
 using OpenConquer.Client.UI.Hud.Vitals;
-using OpenConquer.Content.Configuration;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.UI.Hud.Rendering;
-
-internal sealed class MainHudRenderResourceDependencies
-{
-    public required MainHudChromeAssets ChromeAssets
-    {
-        get; init;
-    }
-
-    public required MainHudVitalsAssets VitalsAssets
-    {
-        get; init;
-    }
-
-    public required MainHudSkillAssets SkillAssets
-    {
-        get; init;
-    }
-
-    public required MainHudQuickbarAssets QuickbarAssets
-    {
-        get; init;
-    }
-
-    public required MainHudActionButtonAssets ActionButtonAssets
-    {
-        get; init;
-    }
-
-    public required MainHudCheckControlAssets CheckControlAssets
-    {
-        get; init;
-    }
-
-    public required MainHudSelectedSkillAssets SelectedSkillAssets
-    {
-        get; init;
-    }
-
-    public required MainHudStatusHintAssets StatusHintAssets
-    {
-        get; init;
-    }
-
-    public required MainHudMagicHintContent MagicHintContent
-    {
-        get; init;
-    }
-
-    public required SelectedMagicCooldownTextConfiguration CooldownTextConfiguration
-    {
-        get; init;
-    }
-
-    public required ClientFontSettingsConfiguration FontSettingsConfiguration
-    {
-        get; init;
-    }
-
-    public required ClientFontSizeConfiguration FontSizeConfiguration
-    {
-        get; init;
-    }
-
-    public required ClientCodePageConfiguration CodePageConfiguration
-    {
-        get; init;
-    }
-}
 
 internal sealed class MainHudRenderResources : IDisposable
 {
@@ -142,29 +73,29 @@ internal sealed class MainHudRenderResources : IDisposable
     }
 
     public MainHudRenderResources(OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize,
-        MainHudRenderResourceDependencies dependencies, Func<uint> readTickCount)
+        MainHudContent content, Func<uint> readTickCount)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
-        ArgumentNullException.ThrowIfNull(dependencies);
+        ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(readTickCount);
 
         try
         {
-            Chrome = _ownership.Track(new MainHudChromeRenderer(graphicsDevice, dependencies.ChromeAssets, logicalRenderSize));
-            Vitals = _ownership.Track(new MainHudVitalsRenderer(graphicsDevice, dependencies.VitalsAssets, logicalRenderSize));
-            SkillExperience = _ownership.Track(new MainHudSkillExperienceRenderer(graphicsDevice, dependencies.SkillAssets, logicalRenderSize));
-            Quickbar = _ownership.Track(new MainHudQuickbarRenderer(graphicsDevice, dependencies.QuickbarAssets, logicalRenderSize, readTickCount: readTickCount));
-            ActionButtons = _ownership.Track(new MainHudActionButtonStripRenderer(graphicsDevice, dependencies.ActionButtonAssets, logicalRenderSize));
-            CheckControls = _ownership.Track(new MainHudCheckControlRenderer(graphicsDevice, dependencies.CheckControlAssets, logicalRenderSize));
-            SelectedSkill = _ownership.Track(new MainHudSelectedSkillRenderer(graphicsDevice, dependencies.SelectedSkillAssets, logicalRenderSize));
+            Chrome = _ownership.Track(new MainHudChromeRenderer(graphicsDevice, content.ChromeAssets, logicalRenderSize));
+            Vitals = _ownership.Track(new MainHudVitalsRenderer(graphicsDevice, content.VitalsAssets, logicalRenderSize));
+            SkillExperience = _ownership.Track(new MainHudSkillExperienceRenderer(graphicsDevice, content.SkillAssets, logicalRenderSize));
+            Quickbar = _ownership.Track(new MainHudQuickbarRenderer(graphicsDevice, content.QuickbarAssets, logicalRenderSize, readTickCount: readTickCount));
+            ActionButtons = _ownership.Track(new MainHudActionButtonStripRenderer(graphicsDevice, content.ActionButtonAssets, logicalRenderSize));
+            CheckControls = _ownership.Track(new MainHudCheckControlRenderer(graphicsDevice, content.CheckControlAssets, logicalRenderSize));
+            SelectedSkill = _ownership.Track(new MainHudSelectedSkillRenderer(graphicsDevice, content.SelectedSkillAssets, logicalRenderSize));
             SelectedSkillCooldown = _ownership.Track(new MainHudSelectedSkillCooldownRenderer(graphicsDevice,
-                dependencies.CooldownTextConfiguration, dependencies.FontSettingsConfiguration, dependencies.CodePageConfiguration, logicalRenderSize));
-            StatusHints = _ownership.Track(new MainHudStatusHintRenderer(graphicsDevice, dependencies.StatusHintAssets,
-                dependencies.FontSettingsConfiguration, dependencies.FontSizeConfiguration, dependencies.CodePageConfiguration, logicalRenderSize));
-            MagicHint = _ownership.Track(new MainHudMagicHintRenderer(graphicsDevice, StatusHints, dependencies.MagicHintContent,
-                dependencies.StatusHintAssets.Strings, dependencies.FontSettingsConfiguration, dependencies.CodePageConfiguration, logicalRenderSize));
-            EquipmentHint = new MainHudEquipmentHintRenderer(StatusHints, dependencies.MagicHintContent.KeyedStrings,
-                dependencies.FontSizeConfiguration, logicalRenderSize, dependencies.StatusHintAssets.Strings.UsesArabicLayout);
+                content.CooldownTextConfiguration, content.FontSettingsConfiguration, content.CodePageConfiguration, logicalRenderSize));
+            StatusHints = _ownership.Track(new MainHudStatusHintRenderer(graphicsDevice, content.StatusHintAssets,
+                content.FontSettingsConfiguration, content.FontSizeConfiguration, content.CodePageConfiguration, logicalRenderSize));
+            MagicHint = _ownership.Track(new MainHudMagicHintRenderer(graphicsDevice, StatusHints, content.MagicHintContent,
+                content.StatusHintAssets.Strings, content.FontSettingsConfiguration, content.CodePageConfiguration, logicalRenderSize));
+            EquipmentHint = new MainHudEquipmentHintRenderer(StatusHints, content.MagicHintContent.KeyedStrings,
+                content.FontSizeConfiguration, logicalRenderSize, content.StatusHintAssets.Strings.UsesArabicLayout);
         }
         catch
         {

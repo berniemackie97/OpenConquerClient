@@ -8,8 +8,6 @@ using OpenConquer.Client.UI.Hud.SkillExperience;
 using OpenConquer.Client.UI.Hud.StatusHints;
 using OpenConquer.Client.UI.Hud.StatusHints.Magic;
 using OpenConquer.Client.UI.Hud.Vitals;
-using OpenConquer.Content;
-using OpenConquer.Content.Configuration;
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
@@ -18,8 +16,7 @@ using OpenConquer.Rendering.Presentation;
 namespace OpenConquer.Client.UI.Hud.Rendering;
 
 /// <summary>
-/// The gameplay HUD's content, input and GPU resources, created and disposed together for one signed-in world.
-/// Create it only after the world session is authorized and its OpenGL context is current.
+/// The gameplay HUD's input and OpenGL resources. The admitted world supplies prepared content and the current context.
 /// </summary>
 internal sealed class WorldHudRuntime : IDisposable
 {
@@ -42,27 +39,17 @@ internal sealed class WorldHudRuntime : IDisposable
     private readonly MainHudRenderResources _resources;
     private bool _disposed;
 
-    public WorldHudRuntime(IClientContentSource contentSource, OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize, IMainHudMagicHintSource? magicHintSource)
+    public WorldHudRuntime(MainHudContent content, OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize, IMainHudMagicHintSource? magicHintSource)
     {
-        ArgumentNullException.ThrowIfNull(contentSource);
+        ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(graphicsDevice);
 
         _magicHintSource = magicHintSource;
 
-        SelectedMagicCooldownTextConfiguration cooldownText = SelectedMagicCooldownTextConfiguration.Load(contentSource);
-        ClientFontSettingsConfiguration fontSettings = ClientFontSettingsConfiguration.Load(contentSource);
-        ClientFontSizeConfiguration fontSize = ClientFontSizeConfiguration.Load(contentSource);
-        ClientCodePageConfiguration codePage = ClientCodePageConfiguration.Load(contentSource);
-
-        _chromeAssets = MainHudChromeAssets.Load(contentSource);
-        MainHudVitalsAssets vitalsAssets = MainHudVitalsAssets.Load(contentSource);
-        MainHudSkillAssets skillAssets = MainHudSkillAssets.Load(contentSource);
-        MainHudQuickbarAssets quickbarAssets = new(contentSource);
-        _actionAssets = MainHudActionButtonAssets.Load(contentSource);
-        _checkAssets = MainHudCheckControlAssets.Load(contentSource);
-        MainHudSelectedSkillAssets selectedSkillAssets = new(contentSource);
-        MainHudStatusHintAssets statusHintAssets = MainHudStatusHintAssets.Load(contentSource);
-        MainHudMagicHintContent magicHintContent = MainHudMagicHintContent.Load(contentSource);
+        _chromeAssets = content.ChromeAssets;
+        _actionAssets = content.ActionButtonAssets;
+        _checkAssets = content.CheckControlAssets;
+        MainHudStatusHintAssets statusHintAssets = content.StatusHintAssets;
 
         MainHudQuickbarLayout quickbarLayout = MainHudQuickbarLayout.Create(logicalRenderSize);
         MainHudActionButtonLayout actionLayout = MainHudActionButtonLayout.Create(logicalRenderSize);
@@ -78,24 +65,7 @@ internal sealed class WorldHudRuntime : IDisposable
 
         _input = new MainHudInputCoordinator(actionInput, quickbarInput, checkInput, statusHintInput, _statusHintState);
 
-        MainHudRenderResourceDependencies dependencies = new()
-        {
-            ChromeAssets = _chromeAssets,
-            VitalsAssets = vitalsAssets,
-            SkillAssets = skillAssets,
-            QuickbarAssets = quickbarAssets,
-            ActionButtonAssets = _actionAssets,
-            CheckControlAssets = _checkAssets,
-            SelectedSkillAssets = selectedSkillAssets,
-            StatusHintAssets = statusHintAssets,
-            MagicHintContent = magicHintContent,
-            CooldownTextConfiguration = cooldownText,
-            FontSettingsConfiguration = fontSettings,
-            FontSizeConfiguration = fontSize,
-            CodePageConfiguration = codePage,
-        };
-
-        _resources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, dependencies, s_readTickCount);
+        _resources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, content, s_readTickCount);
     }
 
     public void HandlePointerMoved(bool mapped, int x, int y)

@@ -43,6 +43,8 @@ internal sealed class ClientWorld : IClientWorld
     private WorldRoleLoad? _roleLoad;
     private WorldRoleRenderer? _role;
     private WorldRoleSources? _roleSources;
+    private WorldContentLoad<MainHudContent>? _hudLoad;
+    private MainHudContent? _hudContent;
     private WorldHudRuntime? _hud;
     private OpenGLRenderer? _renderer;
     private LogicalRenderSize _rendererSize;
@@ -107,11 +109,11 @@ internal sealed class ClientWorld : IClientWorld
     /// <summary>The map scene is loaded.</summary>
     public bool HasScene => _scene is not null;
 
-    /// <summary>The scene, its first textures and the initial appearance are ready to draw.</summary>
-    public bool IsPresentable => IsActive && _scene is not null && _texturesReady && _roleSources.HasValue;
+    /// <summary>The first map view, role appearance and HUD are ready to draw.</summary>
+    public bool IsPresentable => IsActive && _scene is not null && _texturesReady && _roleSources.HasValue && _hud is not null;
 
     /// <summary>The session and workers have closed and their results have been observed.</summary>
-    public bool IsClosed => _closeObserved && _mapLoad is null && _catalogLoad is null;
+    public bool IsClosed => _closeObserved && _mapLoad is null && _catalogLoad is null && _hudLoad is null;
 
     public void DrainIngress()
     {
@@ -164,6 +166,16 @@ internal sealed class ClientWorld : IClientWorld
                 {
                     ApplyCamera(scene, inbound);
                     _scene = scene;
+                }
+            }
+
+            if (_hudLoad is { IsCompleted: true } hudLoad)
+            {
+                _hudLoad = null;
+                MainHudContent content = hudLoad.Complete();
+                if (IsActive)
+                {
+                    _hudContent = content;
                 }
             }
         }
@@ -226,18 +238,22 @@ internal sealed class ClientWorld : IClientWorld
     /// <summary>Prepares the first complete map view while the login overlay is still visible.</summary>
     public void PrepareFirstTextures(DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback)
     {
-        if (_scene is null || _texturesReady)
+        if (_scene is null || (_texturesReady && _hud is not null))
         {
             return;
         }
 
         try
         {
-            _texturesReady = PrepareMapTextures(device, GetRenderer(window, device, fallback));
+            PrepareHudGraphics(device);
+            if (!_texturesReady)
+            {
+                _texturesReady = PrepareMapTextures(device, GetRenderer(window, device, fallback));
+            }
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            CloseForMapArtworkFailure();
+            CloseForPresentationContentFailure();
         }
     }
 
@@ -263,19 +279,6 @@ internal sealed class ClientWorld : IClientWorld
 
         OpenGLRenderer next = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height,
             PresentationPolicy.Stretch, RenderColorFormat.Rgba8);
-        if (_hud is null)
-        {
-            try
-            {
-                _hud = new WorldHudRuntime(_content, device, _logicalRenderSize, magicHintSource: null);
-            }
-            catch
-            {
-                next.Dispose();
-                throw;
-            }
-        }
-
         OpenGLRenderer? previous = _renderer;
         _renderer = next;
         _rendererSize = size;
@@ -287,11 +290,30 @@ internal sealed class ClientWorld : IClientWorld
     {
         try
         {
+            PrepareHudGraphics(device);
             _ = PrepareMapTextures(device, renderer);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            CloseForMapArtworkFailure();
+            CloseForPresentationContentFailure();
+        }
+    }
+
+    private void PrepareHudGraphics(OpenGLGraphicsDevice device)
+    {
+        if (_hud is not null)
+        {
+            return;
+        }
+
+        if (_hudContent is { } content)
+        {
+            _hud = new WorldHudRuntime(content, device, _logicalRenderSize, magicHintSource: null);
+        }
+        else
+        {
+            IClientContentSource source = _content;
+            _hudLoad ??= new WorldContentLoad<MainHudContent>(token => MainHudContent.Load(source, token));
         }
     }
 
@@ -308,9 +330,9 @@ internal sealed class ClientWorld : IClientWorld
             unchecked((uint)Environment.TickCount), textureBudget: MapTextureUploadsPerFrame);
     }
 
-    private void CloseForMapArtworkFailure()
+    private void CloseForPresentationContentFailure()
     {
-        Console.Error.WriteLine("OpenConquer: world map artwork is unavailable.");
+        Console.Error.WriteLine("OpenConquer: world presentation content is unavailable.");
         BeginClose(WorldCloseReason.ContentUnavailable);
     }
 
@@ -399,6 +421,7 @@ internal sealed class ClientWorld : IClientWorld
         _closeReason = reason;
         _catalogLoad?.Cancel();
         _mapLoad?.Cancel();
+        _hudLoad?.Cancel();
         WorldRoleLoad? roleLoad = _roleLoad;
         _roleLoad = null;
         roleLoad?.Cancel();
@@ -414,6 +437,7 @@ internal sealed class ClientWorld : IClientWorld
         _egress = null;
         _inbound = null;
         _levelExperience = null;
+        _hudContent = null;
         _entry = null;
         _scene = null;
         try
@@ -465,12 +489,16 @@ internal sealed class ClientWorld : IClientWorld
         WorldContentLoad<WorldMapScene>? mapLoad = _mapLoad;
         _mapLoad = null;
         mapLoad?.Cancel();
+        WorldContentLoad<MainHudContent>? hudLoad = _hudLoad;
+        _hudLoad = null;
+        hudLoad?.Cancel();
         WorldFrameIngress? ingress = _ingress;
         WorldFrameEgress? egress = _egress;
         _ingress = null;
         _egress = null;
         _inbound = null;
         _levelExperience = null;
+        _hudContent = null;
         Func<ValueTask>? closeSession = _closeSession;
         _closeSession = null;
         await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader)))
@@ -484,6 +512,11 @@ internal sealed class ClientWorld : IClientWorld
         if (mapLoad is not null)
         {
             await cleanup.RunAsync(mapLoad.DisposeAsync).ConfigureAwait(false);
+        }
+
+        if (hudLoad is not null)
+        {
+            await cleanup.RunAsync(hudLoad.DisposeAsync).ConfigureAwait(false);
         }
 
         _entry = null;
