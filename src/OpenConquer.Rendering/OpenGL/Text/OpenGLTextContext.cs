@@ -79,6 +79,16 @@ public sealed class OpenGLTextContext : IDisposable
         }
     }
 
+    /// <summary>Creates the graphics resources and takes ownership of one prepared font.</summary>
+    public static OpenGLTextContext AttachPrepared(OpenGLGraphicsDevice graphicsDevice, PreparedTextFonts fonts,
+        int fontIndex, int effectiveCodePage)
+    {
+        ArgumentNullException.ThrowIfNull(graphicsDevice);
+        ArgumentNullException.ThrowIfNull(fonts);
+        IGlyphRasterizer rasterizer = fonts.Take(fontIndex, out int nominalPixelHeight);
+        return new OpenGLTextContext(graphicsDevice, rasterizer, nominalPixelHeight, effectiveCodePage);
+    }
+
     public OpenGLTextLayout Layout(ReadOnlySpan<byte> encodedText, bool recognizeDataIcons = false, int dataIconWidthPixels = 0)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

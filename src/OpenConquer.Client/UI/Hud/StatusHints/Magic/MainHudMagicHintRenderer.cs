@@ -12,7 +12,7 @@ namespace OpenConquer.Client.UI.Hud.StatusHints.Magic;
 
 internal sealed class MainHudMagicHintRenderer : IDisposable
 {
-    private const int HintFontHeight = 12;
+    internal const int HintFontHeight = 12;
     private const int WrapCharacterLimit = 30;
     private const int WrapPixelLimit = 180;
     private const int DataIconWidth = 21;
@@ -33,7 +33,7 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
 
     private bool _disposed;
 
-    public MainHudMagicHintRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintRenderer shared, MainHudMagicHintContent content, ClientStringResources strings, ClientFontSettingsConfiguration fontSettings, ClientCodePageConfiguration codePage, LogicalRenderSize logicalRenderSize)
+    public MainHudMagicHintRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintRenderer shared, MainHudMagicHintContent content, ClientStringResources strings, ClientFontSettingsConfiguration fontSettings, ClientCodePageConfiguration codePage, LogicalRenderSize logicalRenderSize, Func<OpenGLTextContext>? createTextContext = null)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(shared);
@@ -53,7 +53,7 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
         _whiteOptions = CreateTextOptions(fontSettings, SpriteColor.White);
         _redOptions = CreateTextOptions(fontSettings, new SpriteColor(255, 0, 0, 255));
 
-        OpenGLTextContext magicText = new(graphicsDevice, fontSettings.GuiFontFaceName, HintFontHeight, codePage.EffectiveCodePage, fontSettings.AntialiasEnabled);
+        OpenGLTextContext magicText = createTextContext?.Invoke() ?? new OpenGLTextContext(graphicsDevice, fontSettings.GuiFontFaceName, HintFontHeight, codePage.EffectiveCodePage, fontSettings.AntialiasEnabled);
 
         try
         {

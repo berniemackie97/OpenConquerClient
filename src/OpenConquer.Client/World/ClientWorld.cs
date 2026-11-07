@@ -43,8 +43,9 @@ internal sealed class ClientWorld : IClientWorld
     private WorldRoleLoad? _roleLoad;
     private WorldRoleRenderer? _role;
     private WorldRoleSources? _roleSources;
-    private WorldContentLoad<MainHudContent>? _hudLoad;
+    private WorldContentLoad<MainHudPreparation>? _hudLoad;
     private MainHudContent? _hudContent;
+    private MainHudPreparation? _hudPreparation;
     private WorldHudRuntime? _hud;
     private OpenGLRenderer? _renderer;
     private LogicalRenderSize _rendererSize;
@@ -172,10 +173,15 @@ internal sealed class ClientWorld : IClientWorld
             if (_hudLoad is { IsCompleted: true } hudLoad)
             {
                 _hudLoad = null;
-                MainHudContent content = hudLoad.Complete();
+                MainHudPreparation preparation = hudLoad.Complete();
                 if (IsActive)
                 {
-                    _hudContent = content;
+                    _hudContent = preparation.Content;
+                    _hudPreparation = preparation;
+                }
+                else
+                {
+                    preparation.Dispose();
                 }
             }
         }
@@ -306,14 +312,20 @@ internal sealed class ClientWorld : IClientWorld
             return;
         }
 
-        if (_hudContent is { } content)
+        if (_hudPreparation is { } preparation)
         {
-            _hud = new WorldHudRuntime(content, device, _logicalRenderSize, magicHintSource: null);
+            _hudPreparation = null;
+            using (preparation)
+            {
+                _hud = new WorldHudRuntime(preparation, device, _logicalRenderSize, magicHintSource: null);
+            }
         }
         else
         {
             IClientContentSource source = _content;
-            _hudLoad ??= new WorldContentLoad<MainHudContent>(token => MainHudContent.Load(source, token));
+            MainHudContent? retainedContent = _hudContent;
+            _hudLoad ??= new WorldContentLoad<MainHudPreparation>(
+                token => MainHudPreparation.Load(source, retainedContent, token));
         }
     }
 
@@ -438,11 +450,16 @@ internal sealed class ClientWorld : IClientWorld
         _inbound = null;
         _levelExperience = null;
         _hudContent = null;
+        MainHudPreparation? hudPreparation = _hudPreparation;
+        _hudPreparation = null;
         _entry = null;
         _scene = null;
         try
         {
-            ReleaseGraphics();
+            ClientShutdown cleanup = new();
+            cleanup.Run(ReleaseGraphics);
+            cleanup.Run(() => hudPreparation?.Dispose());
+            cleanup.ThrowIfFailed();
         }
         finally
         {
@@ -489,7 +506,7 @@ internal sealed class ClientWorld : IClientWorld
         WorldContentLoad<WorldMapScene>? mapLoad = _mapLoad;
         _mapLoad = null;
         mapLoad?.Cancel();
-        WorldContentLoad<MainHudContent>? hudLoad = _hudLoad;
+        WorldContentLoad<MainHudPreparation>? hudLoad = _hudLoad;
         _hudLoad = null;
         hudLoad?.Cancel();
         WorldFrameIngress? ingress = _ingress;
@@ -499,6 +516,8 @@ internal sealed class ClientWorld : IClientWorld
         _inbound = null;
         _levelExperience = null;
         _hudContent = null;
+        MainHudPreparation? hudPreparation = _hudPreparation;
+        _hudPreparation = null;
         Func<ValueTask>? closeSession = _closeSession;
         _closeSession = null;
         await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader)))
@@ -519,6 +538,7 @@ internal sealed class ClientWorld : IClientWorld
             await cleanup.RunAsync(hudLoad.DisposeAsync).ConfigureAwait(false);
         }
 
+        cleanup.Run(() => hudPreparation?.Dispose());
         _entry = null;
         _scene = null;
         cleanup.ThrowIfFailed();

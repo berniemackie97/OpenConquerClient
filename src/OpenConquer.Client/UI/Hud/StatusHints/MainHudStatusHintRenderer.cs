@@ -35,7 +35,7 @@ internal sealed class MainHudStatusHintRenderer : IDisposable
     internal OpenGLTextContext NormalTextContext => _textContext;
     internal NativeTextRenderOptions NormalTextOptions => _textOptions;
 
-    public MainHudStatusHintRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintAssets assets, ClientFontSettingsConfiguration fontSettings, ClientFontSizeConfiguration fontSize, ClientCodePageConfiguration codePage, LogicalRenderSize logicalRenderSize)
+    public MainHudStatusHintRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudStatusHintAssets assets, ClientFontSettingsConfiguration fontSettings, ClientFontSizeConfiguration fontSize, ClientCodePageConfiguration codePage, LogicalRenderSize logicalRenderSize, Func<OpenGLTextContext>? createTextContext = null)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(assets);
@@ -60,7 +60,7 @@ internal sealed class MainHudStatusHintRenderer : IDisposable
                 backdrop = graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
             }
 
-            _textContext = new OpenGLTextContext(graphicsDevice, fontSettings.GuiFontFaceName, fontSize.NormalFontHeightPixels, codePage.EffectiveCodePage, fontSettings.AntialiasEnabled);
+            _textContext = createTextContext?.Invoke() ?? new OpenGLTextContext(graphicsDevice, fontSettings.GuiFontFaceName, fontSize.NormalFontHeightPixels, codePage.EffectiveCodePage, fontSettings.AntialiasEnabled);
             _backdrop = backdrop;
         }
         catch

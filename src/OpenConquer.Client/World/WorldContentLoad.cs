@@ -1,6 +1,8 @@
 namespace OpenConquer.Client.World;
 
-/// <summary>One cancellable world entry job. Its owner can poll completion or await cleanup.</summary>
+/// <summary>
+/// One cancellable world entry job. Completion transfers the result. Disposal releases an unclaimed disposable result.
+/// </summary>
 internal sealed class WorldContentLoad<T> : IAsyncDisposable
 {
     private readonly CancellationTokenSource _cancellation = new();
@@ -16,18 +18,19 @@ internal sealed class WorldContentLoad<T> : IAsyncDisposable
 
     internal T Complete()
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         if (!_task.IsCompleted)
         {
             throw new InvalidOperationException("World content preparation has not completed.");
         }
 
+        _disposed = true;
         try
         {
             return _task.GetAwaiter().GetResult();
         }
         finally
         {
-            _disposed = true;
             _cancellation.Dispose();
         }
     }
@@ -47,18 +50,28 @@ internal sealed class WorldContentLoad<T> : IAsyncDisposable
             return;
         }
 
-        _cancellation.Cancel();
+        _disposed = true;
         try
         {
-            await _task.ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (_cancellation.IsCancellationRequested)
-        {
-            // Disposal owns cancellation of this job.
+            _cancellation.Cancel();
+            T result;
+            try
+            {
+                result = await _task.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (_cancellation.IsCancellationRequested)
+            {
+                // Disposal owns cancellation of this job.
+                return;
+            }
+
+            if (result is IDisposable unclaimed)
+            {
+                unclaimed.Dispose();
+            }
         }
         finally
         {
-            _disposed = true;
             _cancellation.Dispose();
         }
     }

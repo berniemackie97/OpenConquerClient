@@ -7,7 +7,7 @@ namespace OpenConquer.Rendering.Text.Fonts.Discovery;
 /// </summary>
 internal sealed class HostFontCatalog
 {
-    public HostFontCatalog(FreeTypeFontInspector inspector, HostFontDiscovery discovery)
+    public HostFontCatalog(FreeTypeFontInspector inspector, HostFontDiscovery discovery, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(inspector);
         ArgumentNullException.ThrowIfNull(discovery);
@@ -17,7 +17,7 @@ internal sealed class HostFontCatalog
         List<FontReferenceGroup> groups = groupsByPath.Values.OrderBy(static group => group.FilePath, StringComparer.OrdinalIgnoreCase).ThenBy(static group => group.FilePath, StringComparer.Ordinal).ToList();
 
         Dictionary<string, FreeTypeFontInspector.FaceInfo[]> facesByPath = new(pathComparer);
-        List<Entry> entries = BuildEntries(inspector, groups, facesByPath);
+        List<Entry> entries = BuildEntries(inspector, groups, facesByPath, cancellationToken);
 
         FontFiles = Array.AsReadOnly(groups.Select(static group => group.FilePath).ToArray());
         Entries = entries.AsReadOnly();
@@ -75,12 +75,14 @@ internal sealed class HostFontCatalog
     private static List<Entry> BuildEntries(
         FreeTypeFontInspector inspector,
         IReadOnlyList<FontReferenceGroup> groups,
-        Dictionary<string, FreeTypeFontInspector.FaceInfo[]> facesByPath)
+        Dictionary<string, FreeTypeFontInspector.FaceInfo[]> facesByPath,
+        CancellationToken cancellationToken)
     {
         List<Entry> entries = [];
 
         foreach (FontReferenceGroup group in groups)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             FreeTypeFontInspector.FaceInfo[] faces;
 
             try
