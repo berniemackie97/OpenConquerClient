@@ -25,10 +25,9 @@ texture cache remains alive. The depth attachment still requires 16-bit precisio
 The render target is constrained by the device's reported renderbuffer and texture
 size limits before resource allocation.
 
-CPU map and scene content is loaded on a cancellable worker. Texture decoding and
-incremental uploads happen on the graphics thread before `OpenGLRenderer.BeginFrame`.
-The texture cache is tracked by the graphics-context owner; decoded map and
-scene state survive context recreation. After admission, login
+CPU map and scene content loads on a cancellable worker. The admitted world
+also owns image preparation and the context's texture cache, described below.
+Decoded map and scene state survive context recreation. After admission, login
 and role input are no longer dispatched to their inactive screens.
 
 ## Remaining work
@@ -94,3 +93,25 @@ sprite projection, shared scenery depth insertion, terrain-footprint adoption, a
 Content tests verify interval parsing and the
 default. Validate the source assets with the map puzzle and terrain-scene content tools
 before a local end-to-end smoke test.
+
+## Playable map image preparation
+
+The admitted world owns the map image loader and its OpenGL texture cache.
+Each loader batch reads and decodes up to eight ANI images off the frame
+thread. A batch stops after its decoded pixels reach 8 MiB and can finish
+one larger image within the decoder's existing limits. The context thread
+uploads up to four ready textures per frame. It keeps drawing the last
+complete map view while the new one is pending, with that view's camera and
+role transform. The first map view still gates world presentation. If a
+needed image fails to load, the world closes with the content failure reason.
+
+Native resource requests and completion are separate operations (DataThread.dll
+`0x1000113A`, GraphicData.dll `0x10003A32`, `0x10003F1C/44`). The playable
+client's batch size, upload budget and coherent view are managed policies.
+The Studio preview keeps its synchronous preparation contract. Leaving a
+world cancels and observes its loader and releases its OpenGL texture cache.
+
+A local Apple M4 OpenGL probe compared four views of retail map 1010.
+All four framebuffer hashes matched, and a pending view kept the prior
+framebuffer. This measures map preparation and rendering in isolation.
+HUD asset reads and full frame timing remain separate work.

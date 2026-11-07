@@ -20,7 +20,6 @@ using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
-using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.Tests.Startup.LoginFlow;
 
@@ -473,10 +472,10 @@ internal sealed class TestClientWorld(Action closing, Func<ValueTask> close, Lis
     public void RefreshAppearance(OpenGLGraphicsDevice? device)
     {
     }
-    public void PrepareFirstTextures(WorldMapTextureRenderer? textures, DesktopWindow window, OpenGLGraphicsDevice? device, OpenGLRenderer fallback) => throw new NotSupportedException();
+    public void PrepareFirstTextures(DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback) => throw new NotSupportedException();
     public OpenGLRenderer GetRenderer(DesktopWindow window, OpenGLGraphicsDevice? device, OpenGLRenderer fallback) => throw new NotSupportedException();
-    public void PrepareFrame(WorldMapTextureRenderer? textures, OpenGLRenderer renderer) => throw new NotSupportedException();
-    public void DrawFrame(WorldMapTextureRenderer? textures, OpenGLRenderer renderer, DesktopWindow window) => throw new NotSupportedException();
+    public void PrepareFrame(OpenGLGraphicsDevice device, OpenGLRenderer renderer) => throw new NotSupportedException();
+    public void DrawFrame(OpenGLRenderer renderer, DesktopWindow window) => throw new NotSupportedException();
     public void HandlePointerMoved(PixelPoint point) => throw new NotSupportedException();
     public void HandlePointerPressed(PixelPoint point) => throw new NotSupportedException();
     public void HandlePointerReleased(PixelPoint point) => throw new NotSupportedException();
