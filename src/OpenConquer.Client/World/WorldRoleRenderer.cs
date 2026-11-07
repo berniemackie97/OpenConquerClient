@@ -1,5 +1,4 @@
 using System.Numerics;
-using OpenConquer.Content;
 using OpenConquer.Content.Mesh;
 using OpenConquer.Rendering.OpenGL;
 
@@ -29,60 +28,28 @@ internal sealed class WorldRoleRenderer : IDisposable
         _leftWeaponAttachment = leftWeaponAttachment;
     }
 
-    internal static ulong InitialBodyMotionKey(uint packedAppearance) =>
-        (packedAppearance % 1000UL) * 1_000_000UL + 100UL;
-
-    internal static WorldRoleRenderer? Load(IClientContentSource source,
-        OpenGLGraphicsDevice device, uint packedAppearance, WorldRoleSources sources)
+    internal static WorldRoleRenderer Create(OpenGLGraphicsDevice device, WorldRoleAssets assets)
     {
-        if (!source.TryOpenRead("ini/c3.wdb", ContentLookupMode.LooseOnly, out Stream? probe))
-        {
-            return null;
-        }
-
-        probe.Dispose();
-        C3RoleCatalog catalog = C3RoleCatalog.Load(source);
-        C3ResolvedPart bodySource = ResolveSinglePart(catalog, "body", sources.BodyModelId);
-        string? motionPath = catalog.TryResolveMotionPath("body", InitialBodyMotionKey(packedAppearance),
-            out string resolvedMotion) ? resolvedMotion : null;
-
         WorldRolePart? body = null;
         WorldRolePart? armet = null;
         WorldRolePart[] rightWeapon = [];
         WorldRolePart[] leftWeapon = [];
         try
         {
-            body = WorldRolePart.Load(source, device, catalog, bodySource, motionPath);
-            C3Motion? attachment = null;
-            if (sources.ArmetModelId != 0)
+            body = WorldRolePart.Create(device, assets.Body);
+            if (assets.Armet is { } headwear)
             {
-                if (catalog.TryResolve("armet", sources.ArmetModelId, out IReadOnlyList<C3ResolvedPart> parts))
-                {
-                    if (parts.Count != 1 || !body.TryGetAttachment("v_armet", out C3Motion linkedMotion))
-                    {
-                        throw new InvalidDataException("The character headwear has an unsupported attachment layout.");
-                    }
-
-                    attachment = linkedMotion;
-                    armet = WorldRolePart.Load(source, device, catalog, parts[0]);
-                }
-                else
-                {
-                    Console.Error.WriteLine($"OpenConquer: character headwear model {sources.ArmetModelId} is not present in the C3 catalog.");
-                }
+                armet = WorldRolePart.Create(device, headwear);
             }
 
-            (WorldRolePart[] loadedRight, C3Motion? rightAttachment) = LoadWeapon(
-                source, device, catalog, body, "r_weapon", "v_r_weapon", sources.RightWeaponModelId);
-            rightWeapon = loadedRight;
-            (WorldRolePart[] loadedLeft, C3Motion? leftAttachment) = LoadWeapon(
-                source, device, catalog, body, "l_weapon", "v_l_weapon", sources.LeftWeaponModelId);
-            leftWeapon = loadedLeft;
-            return new WorldRoleRenderer(body, armet, attachment,
-                rightWeapon, rightAttachment, leftWeapon, leftAttachment);
+            rightWeapon = CreateParts(device, assets.RightWeapon);
+            leftWeapon = CreateParts(device, assets.LeftWeapon);
+            return new WorldRoleRenderer(body, armet, assets.ArmetAttachment,
+                rightWeapon, assets.RightWeaponAttachment, leftWeapon, assets.LeftWeaponAttachment);
         }
         catch
         {
+            // Release every part uploaded before an incomplete appearance can reach the frame.
             DisposeParts(leftWeapon);
             DisposeParts(rightWeapon);
             armet?.Dispose();
@@ -91,38 +58,21 @@ internal sealed class WorldRoleRenderer : IDisposable
         }
     }
 
-    private static (WorldRolePart[] Parts, C3Motion? Attachment) LoadWeapon(
-        IClientContentSource source, OpenGLGraphicsDevice device, C3RoleCatalog catalog,
-        WorldRolePart body, string name, string track, uint modelId)
+    private static WorldRolePart[] CreateParts(OpenGLGraphicsDevice device, WorldRolePartAssets[] assets)
     {
-        if (modelId == 0)
-        {
-            return ([], null);
-        }
-
-        if (!catalog.TryResolve(name, modelId, out IReadOnlyList<C3ResolvedPart> sources))
-        {
-            Console.Error.WriteLine($"OpenConquer: character {name} model {modelId} is not present in the C3 catalog.");
-            return ([], null);
-        }
-
-        if (sources.Count == 0 || !body.TryGetAttachment(track, out C3Motion attachment))
-        {
-            throw new InvalidDataException($"The character {name} has an unsupported attachment layout.");
-        }
-
-        List<WorldRolePart> parts = new(sources.Count);
+        List<WorldRolePart> parts = new(assets.Length);
         try
         {
-            foreach (C3ResolvedPart part in sources)
+            foreach (WorldRolePartAssets part in assets)
             {
-                parts.Add(WorldRolePart.Load(source, device, catalog, part));
+                parts.Add(WorldRolePart.Create(device, part));
             }
 
-            return ([.. parts], attachment);
+            return [.. parts];
         }
         catch
         {
+            // The caller owns the array only after all parts are created.
             foreach (WorldRolePart part in parts)
             {
                 part.Dispose();
@@ -130,16 +80,6 @@ internal sealed class WorldRoleRenderer : IDisposable
 
             throw;
         }
-    }
-
-    private static C3ResolvedPart ResolveSinglePart(C3RoleCatalog catalog, string name, uint modelId)
-    {
-        if (!catalog.TryResolve(name, modelId, out IReadOnlyList<C3ResolvedPart> parts) || parts.Count != 1)
-        {
-            throw new InvalidDataException($"The character {name} model {modelId} is unavailable in the 3D resource catalog.");
-        }
-
-        return parts[0];
     }
 
     internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, uint nowMilliseconds)

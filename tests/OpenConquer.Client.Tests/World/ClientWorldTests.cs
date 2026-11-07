@@ -43,7 +43,7 @@ public sealed class ClientWorldTests
 
         // Task.Run may cancel before its delegate starts, so the delegate's finally is not a completion signal.
         await WaitUntilAsync(() => harness.Load!.IsCompleted);
-        world.CompleteLoad(graphicsDevice: null);
+        world.CompleteLoad();
 
         Assert.True(world.IsClosed);
         Assert.Equal(1, harness.ClosingCalls);

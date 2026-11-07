@@ -36,9 +36,9 @@ internal sealed class ClientWorld : IClientWorld
     private LevelExperienceTable? _levelExperience;
     private WorldMapLoad? _load;
     private WorldMapScene? _scene;
+    private WorldRoleLoad? _roleLoad;
     private WorldRoleRenderer? _role;
     private WorldRoleSources? _roleSources;
-    private uint _appliedEquipmentRevision;
     private WorldHudRuntime? _hud;
     private OpenGLRenderer? _renderer;
     private LogicalRenderSize _rendererSize;
@@ -116,6 +116,8 @@ internal sealed class ClientWorld : IClientWorld
         _ingress = createIngress();
         _egress = createEgress?.Invoke();
         _load = createLoad();
+        uint appearance = entry.Character.PackedAppearance;
+        _roleLoad = new WorldRoleLoad((sources, token) => WorldRoleAssets.Load(content, appearance, sources, token));
     }
 
     /// <summary>True until the world starts closing.</summary>
@@ -124,10 +126,10 @@ internal sealed class ClientWorld : IClientWorld
     /// <summary>The map scene is loaded.</summary>
     public bool HasScene => _scene is not null;
 
-    /// <summary>The scene is loaded and its first textures are ready to draw.</summary>
-    public bool IsPresentable => IsActive && _scene is not null && _texturesReady;
+    /// <summary>The scene, its first textures and the initial appearance are ready to draw.</summary>
+    public bool IsPresentable => IsActive && _scene is not null && _texturesReady && _roleSources.HasValue;
 
-    /// <summary>The close has been observed and no canceled map load is still outstanding.</summary>
+    /// <summary>The session and appearance worker have closed and the canceled map load has been reaped.</summary>
     public bool IsClosed => _closeObserved && _load is null;
 
     public void DrainIngress()
@@ -157,7 +159,7 @@ internal sealed class ClientWorld : IClientWorld
     /// Takes a finished map load. A load canceled by closing is observed here too, so no background task outlives the
     /// world.
     /// </summary>
-    public void CompleteLoad(OpenGLGraphicsDevice? graphicsDevice)
+    public void CompleteLoad()
     {
         if (_load is not { IsCompleted: true } completed)
         {
@@ -175,22 +177,6 @@ internal sealed class ClientWorld : IClientWorld
                 if (_inbound is { } inbound)
                 {
                     ApplyCamera(scene, inbound);
-                }
-
-                OpenGLGraphicsDevice device = graphicsDevice ??
-                    throw new InvalidOperationException("World graphics device is unavailable.");
-                GameWorldEntrySnapshot entry = _entry ??
-                    throw new InvalidOperationException("World entry is unavailable.");
-                WorldInboundState equipmentState = _inbound ??
-                    throw new InvalidOperationException("World equipment state is unavailable.");
-                WorldRoleSources sources = WorldRoleSources.Resolve(
-                    entry.Character.PackedAppearance, entry.Character.HairComposite, equipmentState.Equipment);
-                _role = WorldRoleRenderer.Load(_content, device, entry.Character.PackedAppearance, sources);
-                _roleSources = sources;
-                _appliedEquipmentRevision = equipmentState.EquipmentRevision;
-                if (_role is null)
-                {
-                    Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");
                 }
             }
         }
@@ -212,19 +198,36 @@ internal sealed class ClientWorld : IClientWorld
 
     public void RefreshAppearance(OpenGLGraphicsDevice? graphicsDevice)
     {
-        if (_scene is null || _inbound is not { } state || state.EquipmentRevision == _appliedEquipmentRevision)
+        if (_scene is null || _inbound is not { } state || _entry is not { } entry || _roleLoad is not { } load)
         {
             return;
         }
 
+        WorldRoleSources sources = WorldRoleSources.Resolve(
+            entry.Character.PackedAppearance, entry.Character.HairComposite, state.Equipment);
         try
         {
-            UpdateRoleAppearance(state, graphicsDevice);
-            _appliedEquipmentRevision = state.EquipmentRevision;
+            if (!load.TryPrepare(sources, _roleSources, out WorldRoleAssets? assets))
+            {
+                return;
+            }
+
+            OpenGLGraphicsDevice device = graphicsDevice ??
+                throw new InvalidOperationException("World graphics device is unavailable.");
+            WorldRoleRenderer? next = assets is null ? null : WorldRoleRenderer.Create(device, assets);
+            WorldRoleRenderer? previous = _role;
+            _role = next;
+            _roleSources = sources;
+            previous?.Dispose();
+            if (next is null && previous is null)
+            {
+                Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");
+            }
         }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        catch (Exception exception) when (WorldRoleLoad.IsContentFailure(exception))
         {
-            Console.Error.WriteLine($"OpenConquer: world character artwork is unavailable ({exception.Message}).");
+            // A failure preparing the current appearance means required world content is unavailable.
+            Console.Error.WriteLine("OpenConquer: world character artwork is unavailable.");
             BeginClose(WorldCloseReason.ContentUnavailable);
         }
     }
@@ -361,7 +364,6 @@ internal sealed class ClientWorld : IClientWorld
         _hud = null;
         _role = null;
         _roleSources = null;
-        _appliedEquipmentRevision = 0;
         _renderer = null;
         ClientShutdown cleanup = new();
         cleanup.Run(() => hud?.Dispose());
@@ -383,6 +385,9 @@ internal sealed class ClientWorld : IClientWorld
         _onClosing();
         _closeReason = reason;
         _load?.Cancel();
+        WorldRoleLoad? roleLoad = _roleLoad;
+        _roleLoad = null;
+        roleLoad?.Cancel();
         _texturesReady = false;
         Func<ValueTask>? closeSession = _closeSession;
         WorldFrameIngress? ingress = _ingress;
@@ -401,7 +406,7 @@ internal sealed class ClientWorld : IClientWorld
         finally
         {
             // Network ownership must not be lost when releasing graphics fails.
-            _closing = closeSession is null ? Task.CompletedTask : CloseSessionAsync(closeSession, ingress, egress);
+            _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad);
         }
     }
 
@@ -421,7 +426,7 @@ internal sealed class ClientWorld : IClientWorld
         return true;
     }
 
-    /// <summary>Closes the network session and any map load. Graphics are released separately.</summary>
+    /// <summary>Closes the network session and reaps background preparation. Graphics are released separately.</summary>
     public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
 
     private async Task DisposeCoreAsync()
@@ -431,6 +436,9 @@ internal sealed class ClientWorld : IClientWorld
         {
             await cleanup.RunAsync(() => new ValueTask(closing)).ConfigureAwait(false);
         }
+        WorldRoleLoad? roleLoad = _roleLoad;
+        _roleLoad = null;
+        roleLoad?.Cancel();
         WorldMapLoad? load = _load;
         _load = null;
         cleanup.Run(() => load?.Dispose());
@@ -440,6 +448,20 @@ internal sealed class ClientWorld : IClientWorld
         _egress = null;
         _inbound = null;
         _levelExperience = null;
+        Func<ValueTask>? closeSession = _closeSession;
+        _closeSession = null;
+        await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad)))
+            .ConfigureAwait(false);
+
+        _entry = null;
+        _scene = null;
+        cleanup.ThrowIfFailed();
+    }
+
+    private static async Task CloseWorldAsync(Func<ValueTask>? closeSession, WorldFrameIngress? ingress,
+        WorldFrameEgress? egress, WorldRoleLoad? roleLoad)
+    {
+        ClientShutdown cleanup = new();
         if (egress is not null)
         {
             await cleanup.RunAsync(egress.DisposeAsync).ConfigureAwait(false);
@@ -449,40 +471,18 @@ internal sealed class ClientWorld : IClientWorld
         {
             await cleanup.RunAsync(ingress.DisposeAsync).ConfigureAwait(false);
         }
-        if (_closeSession is { } closeSession)
+
+        if (closeSession is not null)
         {
-            _closeSession = null;
             await cleanup.RunAsync(closeSession).ConfigureAwait(false);
         }
-        _entry = null;
-        _scene = null;
-        cleanup.ThrowIfFailed();
-    }
 
-    private static async Task CloseSessionAsync(Func<ValueTask> closeSession, WorldFrameIngress? ingress,
-        WorldFrameEgress? egress)
-    {
-        try
+        if (roleLoad is not null)
         {
-            try
-            {
-                if (egress is not null)
-                {
-                    await egress.DisposeAsync().ConfigureAwait(false);
-                }
-            }
-            finally
-            {
-                if (ingress is not null)
-                {
-                    await ingress.DisposeAsync().ConfigureAwait(false);
-                }
-            }
+            await cleanup.RunAsync(roleLoad.DisposeAsync).ConfigureAwait(false);
         }
-        finally
-        {
-            await closeSession().ConfigureAwait(false);
-        }
+
+        cleanup.ThrowIfFailed();
     }
 
     private void ApplyFrame(ReadOnlyMemory<byte> packet)
@@ -492,29 +492,6 @@ internal sealed class ClientWorld : IClientWorld
         {
             ApplyCamera(scene, state);
         }
-    }
-
-    private void UpdateRoleAppearance(WorldInboundState state, OpenGLGraphicsDevice? graphicsDevice)
-    {
-        if (_entry is not { } entry || _scene is null)
-        {
-            return;
-        }
-
-        WorldRoleSources sources = WorldRoleSources.Resolve(
-            entry.Character.PackedAppearance, entry.Character.HairComposite, state.Equipment);
-        if (sources == _roleSources)
-        {
-            return;
-        }
-
-        OpenGLGraphicsDevice device = graphicsDevice ??
-            throw new InvalidOperationException("World graphics device is unavailable.");
-        WorldRoleRenderer? next = WorldRoleRenderer.Load(_content, device, entry.Character.PackedAppearance, sources);
-        WorldRoleRenderer? previous = _role;
-        _role = next;
-        _roleSources = sources;
-        previous?.Dispose();
     }
 
     private static void ApplyCamera(WorldMapScene scene, WorldInboundState state)
