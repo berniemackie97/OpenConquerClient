@@ -44,7 +44,6 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
     private readonly IMainHudQuickbarCooldownTextRenderer? _cooldownTextRenderer;
     private readonly IMainHudQuickbarGlowSectionResolver? _glowSectionResolver;
     private readonly Func<bool> _useAlternateSwapIcon;
-    private readonly Func<uint> _readTickCount;
     private readonly Dictionary<string, OpenGLTexture2D?> _fixedTextures = new(StringComparer.Ordinal);
     private readonly List<OpenGLTexture2D> _fixedOwnedTextures = [];
     private readonly SlotTextureCache[] _slotTextures = CreateSlotTextureCaches();
@@ -53,7 +52,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
     private bool _canUploadGlow;
     private bool _disposed;
 
-    public MainHudQuickbarRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudQuickbarAssets assets, LogicalRenderSize logicalRenderSize, IMainHudQuickbarItemIconKeyResolver? itemIconKeyResolver = null, IMainHudQuickbarCooldownSource? cooldownSource = null, IMainHudQuickbarCooldownTextRenderer? cooldownTextRenderer = null, IMainHudQuickbarGlowSectionResolver? glowSectionResolver = null, Func<bool>? useAlternateSwapIcon = null, Func<uint>? readTickCount = null, MainHudQuickbarImageLoader? images = null)
+    public MainHudQuickbarRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudQuickbarAssets assets, LogicalRenderSize logicalRenderSize, IMainHudQuickbarItemIconKeyResolver? itemIconKeyResolver = null, IMainHudQuickbarCooldownSource? cooldownSource = null, IMainHudQuickbarCooldownTextRenderer? cooldownTextRenderer = null, IMainHudQuickbarGlowSectionResolver? glowSectionResolver = null, Func<bool>? useAlternateSwapIcon = null, MainHudQuickbarImageLoader? images = null)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(assets);
@@ -72,10 +71,9 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         _cooldownTextRenderer = cooldownTextRenderer;
         _glowSectionResolver = glowSectionResolver;
         _useAlternateSwapIcon = useAlternateSwapIcon ?? (static () => false);
-        _readTickCount = readTickCount ?? (static () => unchecked((uint)Environment.TickCount64));
     }
 
-    public void Draw(OpenGLRenderer renderer, MainHudQuickbarState state)
+    public void Draw(OpenGLRenderer renderer, MainHudQuickbarState state, uint now)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
@@ -93,8 +91,6 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
             if (slot.IsOccupied)
             {
-                uint now = _readTickCount();
-
                 DrawGlow(renderer, state, slotIndex, bounds, slot, now);
                 itemIconDrawn = DrawContent(renderer, slotIndex, bounds, slot, now, out cooldown);
 

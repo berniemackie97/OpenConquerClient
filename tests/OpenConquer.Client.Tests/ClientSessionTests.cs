@@ -57,7 +57,7 @@ public sealed class ClientSessionTests : IDisposable
         Assert.Throws<ObjectDisposedException>(() => login.Screen.Advance(TimeSpan.Zero));
         Assert.Throws<ObjectDisposedException>(() => login.Attempts.TryStart(login.Screen, null));
         Assert.Throws<ObjectDisposedException>(() => login.Registration.Open(login.Screen.Selection, null));
-        Assert.Throws<ObjectDisposedException>(() => session.Update(TimeSpan.Zero, null));
+        Assert.Throws<ObjectDisposedException>(() => session.Update(TimeSpan.Zero, null, frameMilliseconds: 0));
         session.Dispose();
         Assert.Equal(1, windows);
     }
@@ -75,7 +75,7 @@ public sealed class ClientSessionTests : IDisposable
         using ClientSession session = new(new ClientRoleCreationTests.MissingContentSource(), new LogicalRenderSize(1024, 768),
             () => { }, () => Assert.True(canceled),
             canLogin => login = CreateLogin(canLogin, new LoginCatalogBinding(refresh)));
-        session.Update(TimeSpan.Zero, null);
+        session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
 
         session.Dispose();
 

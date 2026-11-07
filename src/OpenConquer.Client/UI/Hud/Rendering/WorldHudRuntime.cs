@@ -9,6 +9,7 @@ using OpenConquer.Client.UI.Hud.SkillExperience;
 using OpenConquer.Client.UI.Hud.StatusHints;
 using OpenConquer.Client.UI.Hud.StatusHints.Magic;
 using OpenConquer.Client.UI.Hud.Vitals;
+using OpenConquer.Networking.Game;
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
@@ -21,7 +22,7 @@ namespace OpenConquer.Client.UI.Hud.Rendering;
 /// </summary>
 internal sealed class WorldHudRuntime : IDisposable
 {
-    private static readonly Func<uint> s_readTickCount = static () => unchecked((uint)Environment.TickCount64);
+    private readonly Func<uint> _readMilliseconds;
 
     private readonly IMainHudMagicHintSource? _magicHintSource;
     private readonly MainHudVitalsState _vitalsState = new();
@@ -43,11 +44,13 @@ internal sealed class WorldHudRuntime : IDisposable
 
     public WorldHudRuntime(MainHudPreparation preparation, MainHudSelectedSkillImageLoader selectedSkillImages,
         MainHudQuickbarImageLoader quickbarImages, OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize,
-        IMainHudMagicHintSource? magicHintSource)
+        TimeProvider clock, IMainHudMagicHintSource? magicHintSource)
     {
         ArgumentNullException.ThrowIfNull(preparation);
         ArgumentNullException.ThrowIfNull(graphicsDevice);
 
+        ArgumentNullException.ThrowIfNull(clock);
+        _readMilliseconds = () => GameClientClock.Milliseconds(clock);
         _magicHintSource = magicHintSource;
         MainHudContent content = preparation.Content;
 
@@ -71,7 +74,7 @@ internal sealed class WorldHudRuntime : IDisposable
         _input = new MainHudInputCoordinator(actionInput, quickbarInput, checkInput, statusHintInput, _statusHintState);
 
         _resources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, preparation, selectedSkillImages,
-            quickbarImages, s_readTickCount);
+            quickbarImages);
     }
 
     public void HandlePointerMoved(bool mapped, int x, int y)
@@ -109,7 +112,7 @@ internal sealed class WorldHudRuntime : IDisposable
         }
     }
 
-    public void Draw(OpenGLRenderer renderer, DesktopWindow window)
+    public void Draw(OpenGLRenderer renderer, DesktopWindow window, uint frameMilliseconds)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
@@ -123,7 +126,7 @@ internal sealed class WorldHudRuntime : IDisposable
             _resources.SkillExperience.Draw(renderer, _skillState);
             try
             {
-                _resources.Quickbar.Draw(renderer, _quickbarState);
+                _resources.Quickbar.Draw(renderer, _quickbarState, frameMilliseconds);
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
             {
@@ -137,13 +140,13 @@ internal sealed class WorldHudRuntime : IDisposable
                 _input.PollQuickbarPointer(mapped, x, y);
             }
 
-            _actionState.AdvancePkBeforeDraw(s_readTickCount);
-            _actionState.AdvanceOrganiseBeforeDraw(s_readTickCount);
+            _actionState.AdvancePkBeforeDraw(_readMilliseconds);
+            _actionState.AdvanceOrganiseBeforeDraw(_readMilliseconds);
             _resources.ActionButtons.Draw(renderer, _actionState);
             _resources.CheckControls.Draw(renderer, _checkState);
             _resources.SelectedSkill.Draw(renderer, _selectedSkillState);
             _resources.SelectedSkillCooldown.DrawAfterSelectedImage(renderer, _selectedSkillState, _cooldownState);
-            _skillState.AdvanceAfterHudDraw(unchecked((uint)Environment.TickCount64));
+            _skillState.AdvanceAfterHudDraw(frameMilliseconds);
         }
 
         _resources.StatusHints.Draw(renderer, _statusHintState, _checkState, _vitalsState, _skillState);

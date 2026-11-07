@@ -28,6 +28,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
     private readonly Action<bool> _returnToLogin;
     private readonly FlashRasterCache _rasters = new();
     private readonly Func<GameServerHandshakeSession, string, IRoleCreationScreen> _createScreen;
+    private readonly TimeProvider _clock;
     private SelectCharacterIni? _ini;
     private RoleCreationText? _text;
     private FontGlyphInk? _glyphInk;
@@ -40,7 +41,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
     public ClientRoleCreation(IClientContentSource content, Action<LoginAudioCue> playSound, Action requestExit,
         Func<bool> canAdmitWorld, Func<bool> hasWorldScene,
         Action<GameServerHandshakeSession, GameWorldEntrySnapshot> admitWorld, Action<bool> returnToLogin,
-        Func<GameServerHandshakeSession, string, IRoleCreationScreen>? createScreen = null)
+        Func<GameServerHandshakeSession, string, IRoleCreationScreen>? createScreen = null, TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(playSound);
@@ -56,6 +57,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
         _hasWorldScene = hasWorldScene;
         _admitWorld = admitWorld;
         _returnToLogin = returnToLogin;
+        _clock = clock ?? TimeProvider.System;
         _createScreen = createScreen ?? CreateScreen;
     }
 
@@ -245,7 +247,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
         }
 
         _text ??= RoleCreationText.Load(_content, LoginErrorEncoding.ForCurrentHost());
-        return new RoleCreationScreen(game, accountName, _ini, _text, _rasters, _glyphInk.HasMoreThanFivePixels, _playSound);
+        return new RoleCreationScreen(game, accountName, _ini, _text, _rasters, _glyphInk.HasMoreThanFivePixels, _playSound, _clock);
     }
 
     private void OnReturnRequested() => _returnRequested = true;

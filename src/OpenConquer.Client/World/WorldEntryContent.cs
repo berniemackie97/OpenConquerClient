@@ -21,13 +21,13 @@ internal static class WorldEntryContent
         return new WorldEntryCatalogs(items, experience);
     }
 
-    internal static WorldMapScene LoadMap(IClientContentSource source, GameWorldEntrySnapshot entry, CancellationToken cancellationToken)
+    internal static WorldMapScene LoadMap(IClientContentSource source, GameWorldEntrySnapshot entry, uint startMilliseconds, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         GameMapCatalog catalog = GameMapCatalog.Load(source);
         cancellationToken.ThrowIfCancellationRequested();
         WorldMapScene scene = WorldMapScene.Load(source, catalog, entry.MapDataId, entry.X, entry.Y,
-            unchecked((uint)Environment.TickCount), cancellationToken);
+            startMilliseconds, cancellationToken);
         scene.SetHeroDirection(entry.DirectionIndex);
         return scene;
     }

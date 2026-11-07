@@ -38,10 +38,11 @@ internal static class GameWorldEntryBootstrap
             throw new ArgumentOutOfRangeException(nameof(completionTimeout));
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         clock ??= TimeProvider.System;
-        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        deadline.CancelAfter(duration);
-        CancellationToken operation = deadline.Token;
+        using CancellationTokenSource deadline = new(duration, clock);
+        using CancellationTokenSource lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
+        CancellationToken operation = lifetime.Token;
         uint hero = character.EntityId;
         try
         {
@@ -173,9 +174,16 @@ internal static class GameWorldEntryBootstrap
             Task SendActionAsync(ushort action, uint entityId, uint parameter = 0) =>
                 session.SendWorldActionAsync(action, entityId, parameter, GameClientClock.Milliseconds(clock), s_timeout, operation);
         }
-        catch (OperationCanceledException) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException exception) when (operation.IsCancellationRequested)
         {
-            throw new TimeoutException("GameServer world-entry bootstrap exceeded its overall deadline.");
+            // Cancellation can land between socket operations. A partial request ladder cannot be resumed.
+            await session.DisposeAsync().ConfigureAwait(false);
+            if (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException("GameServer world-entry bootstrap exceeded its overall deadline.", exception);
+            }
+
+            throw;
         }
     }
 

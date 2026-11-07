@@ -4,7 +4,6 @@ using OpenConquer.Client.UI.Hud.SelectedSkill;
 using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Content;
 using OpenConquer.Content.Progression;
-using OpenConquer.Networking.Game;
 using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Platform.Geometry;
@@ -32,6 +31,7 @@ internal sealed class ClientWorld : IClientWorld
     private Func<ValueTask>? _closeSession;
     private GameWorldEntrySnapshot? _entry;
     private readonly TimeProvider _clock;
+    private uint _frameMilliseconds;
     private readonly uint _clientStartedAt;
     private WorldFrameIngress? _ingress;
     private WorldFrameEgress? _egress;
@@ -64,11 +64,11 @@ internal sealed class ClientWorld : IClientWorld
     /// closing. <c>clientStartedAt</c> is the client millisecond counter at client start (native hero construction).
     /// </summary>
     public ClientWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot entry, IClientContentSource content,
-        LogicalRenderSize logicalRenderSize, Action onClosing, uint clientStartedAt = 0, TimeProvider? clock = null)
+        LogicalRenderSize logicalRenderSize, Action onClosing, uint clientStartedAt, uint mapStartedAt, TimeProvider clock)
         : this(entry, content, logicalRenderSize, onClosing,
             (game ?? throw new ArgumentNullException(nameof(game))).DisposeAsync,
             () => new WorldFrameIngress(game), () => new WorldContentLoad<WorldMapScene>(
-                token => WorldEntryContent.LoadMap(content, entry, token)),
+                token => WorldEntryContent.LoadMap(content, entry, mapStartedAt, token)),
             () => new WorldFrameEgress(
                 (now, token) => game.SendWorldLatencyTickAsync(entry.Character.EntityId, now, token),
                 (address, latency, now, token) => game.SendWorldLatencyReportAsync(address, latency, now, token)),
@@ -119,8 +119,9 @@ internal sealed class ClientWorld : IClientWorld
     /// <summary>The session and workers have closed and their results have been observed.</summary>
     public bool IsClosed => _closeObserved && _mapLoad is null && _catalogLoad is null && _hudLoad is null;
 
-    public void DrainIngress()
+    public void DrainIngress(uint frameMilliseconds)
     {
+        _frameMilliseconds = frameMilliseconds;
         if (_ingress is not { } ingress)
         {
             return;
@@ -135,7 +136,7 @@ internal sealed class ClientWorld : IClientWorld
             }
 
             ingress.Drain(_applyFrame);
-            _egress?.Pump(state.Heartbeat, GameClientClock.Milliseconds(_clock));
+            _egress?.Pump(state.Heartbeat, _frameMilliseconds);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or
             System.Net.Sockets.SocketException or UnauthorizedAccessException)
@@ -156,7 +157,7 @@ internal sealed class ClientWorld : IClientWorld
                 WorldEntryCatalogs catalogs = catalogLoad.Complete();
                 if (IsActive && _entry is { } entry)
                 {
-                    _inbound = new WorldInboundState(entry, catalogs.Items, () => GameClientClock.Milliseconds(_clock),
+                    _inbound = new WorldInboundState(entry, catalogs.Items, () => _frameMilliseconds,
                         _clientStartedAt);
                     _levelExperience = catalogs.Experience;
                 }
@@ -325,7 +326,7 @@ internal sealed class ClientWorld : IClientWorld
                 _selectedSkillImages ??= new MainHudSelectedSkillImageLoader(preparation.Content.SelectedSkillAssets);
                 _quickbarImages ??= new MainHudQuickbarImageLoader(preparation.Content.QuickbarAssets);
                 _hud = new WorldHudRuntime(preparation, _selectedSkillImages, _quickbarImages, device,
-                    _logicalRenderSize, magicHintSource: null);
+                    _logicalRenderSize, _clock, magicHintSource: null);
             }
         }
         else
@@ -347,7 +348,7 @@ internal sealed class ClientWorld : IClientWorld
         _mapImageLoader ??= new WorldMapImageLoader(_content);
         _mapTextures ??= WorldMapTextureRenderer.CreateStreaming(_mapImageLoader, device);
         return scene.Prepare(_mapTextures, renderer.Viewport.LogicalWidth, renderer.Viewport.LogicalHeight,
-            unchecked((uint)Environment.TickCount), textureBudget: MapTextureUploadsPerFrame);
+            _frameMilliseconds, textureBudget: MapTextureUploadsPerFrame);
     }
 
     private void CloseForPresentationContentFailure()
@@ -374,7 +375,7 @@ internal sealed class ClientWorld : IClientWorld
                 vitals.SkillGaugePercent, vitals.Experience, vitals.NextLevelExperience);
         }
 
-        _hud?.Draw(renderer, window);
+        _hud?.Draw(renderer, window, _frameMilliseconds);
     }
 
     public void HandlePointerMoved(PixelPoint point)
@@ -628,7 +629,7 @@ internal sealed class ClientWorld : IClientWorld
         WorldRoleRenderer role = _role ?? throw new InvalidOperationException("World character renderer is unavailable.");
         WorldMapScene scene = _scene ?? throw new InvalidOperationException("World scene is unavailable.");
         (System.Numerics.Matrix4x4 main, System.Numerics.Matrix4x4 shadow) = scene.HeroMatrices;
-        role.Draw(renderer, main, shadow, unchecked((uint)Environment.TickCount64));
+        role.Draw(renderer, main, shadow, _frameMilliseconds);
     }
 }
 

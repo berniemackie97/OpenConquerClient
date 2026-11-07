@@ -24,7 +24,7 @@ internal interface IClientWorld : IAsyncDisposable
         get;
     }
     bool TryObserveClose(out WorldCloseReason reason);
-    void DrainIngress();
+    void DrainIngress(uint frameMilliseconds);
     void CompleteLoad();
     void RefreshAppearance(OpenGLGraphicsDevice? graphicsDevice);
     void PrepareFirstTextures(DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback);

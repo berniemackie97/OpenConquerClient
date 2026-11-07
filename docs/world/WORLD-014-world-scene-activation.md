@@ -225,3 +225,26 @@ Equipment-change windows took 9.90 ms p95 and 13.84 ms maximum. The first
 world draw still took 44.69 ms. The trace injects inbound packets after
 admission and measures one Apple M4 OpenGL host. It excludes authentication
 and compositor presentation time.
+
+
+## Client timing
+
+The client session takes one monotonic timestamp at the start of each
+frame. Its delta drives the login and role timelines. The same sample,
+truncated to wrapping 32-bit milliseconds, drives world ingress,
+heartbeat polling, map preparation, role motion and quickbar presentation.
+The first frame has zero elapsed time. Map scenery starts from the world
+handoff frame so async loading cannot set an epoch later than the frame
+that first uses it.
+
+Both world-entry routes stamp packets and start the heartbeat from the
+shared provider. Packet send timestamps are sampled when the packet is
+built. The native PK blink retains separate phase and expiry reads, and
+login caret blink uses elapsed monotonic time. Signed realm discovery
+uses UTC from the same provider for freshness and rollback checks.
+
+The provider also drives the overall discovery and world-entry deadlines.
+Caller cancellation retains its cancellation outcome. A canceled entry
+closes its partially initialized socket. The desktop event loop owns
+pacing, cursor animation and key repeat. DNS, connect, and individual
+socket operation deadlines remain transport boundaries.

@@ -28,7 +28,7 @@ internal sealed record RoleCreationOutcome(RoleCreationOutcomeKind Kind, string?
 /// the 1001 request and its result, the repeated 1052 proof and the existing-character bootstrap, or the cancel.
 /// The UI thread starts exchanges and collects their outcomes; loading texts arrive through <see cref="TryDequeueLoadingMessage"/>.
 /// </summary>
-internal sealed class RoleCreationExchange(GameServerHandshakeSession game, RoleCreationText text) : IAsyncDisposable
+internal sealed class RoleCreationExchange(GameServerHandshakeSession game, RoleCreationText text, TimeProvider clock) : IAsyncDisposable
 {
     private static readonly TimeSpan s_networkTimeout = TimeSpan.FromSeconds(10);
 
@@ -176,7 +176,7 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         _ = await _game.ReadExistingCharacterPreludeAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         GameCharacterInfo1006 character = await _game.ReadCharacterInfoAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(_game, character,
-                () => _loadingMessages.Enqueue("LOADING_TRACE|" + _text.CreatingMaps), cancellationToken: cancellationToken)
+                () => _loadingMessages.Enqueue("LOADING_TRACE|" + _text.CreatingMaps), clock: clock, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         return new RoleCreationOutcome(RoleCreationOutcomeKind.Admitted, World: world);
     }

@@ -19,36 +19,40 @@ namespace OpenConquer.Client;
 internal sealed class ClientSession : IDisposable
 {
     private readonly ClientLogin _login;
+    private readonly ClientFrameClock _frameClock;
     private readonly ClientRoleCreation _roles;
     private readonly Action _closeWindow;
     private readonly Func<GameServerHandshakeSession, GameWorldEntrySnapshot, Action, IClientWorld> _createWorld;
     private IClientWorld? _world;
     private Task? _failedHandoff;
+    private uint _frameMilliseconds;
 
     public ClientSession(string contentRoot, IClientContentSource content, LogicalRenderSize size,
-        Action requestExit, Action closeWindow)
+        Action requestExit, Action closeWindow, TimeProvider clock)
         : this(content, size, requestExit, closeWindow,
-            canLogin => ClientLogin.Create(contentRoot, content, size, canLogin, requestExit))
+            canLogin => ClientLogin.Create(contentRoot, content, size, canLogin, requestExit, clock), clock: clock)
     {
     }
 
     internal ClientSession(IClientContentSource content, LogicalRenderSize size, Action requestExit, Action closeWindow,
         Func<Func<bool>, ClientLogin> createLogin,
         Func<GameServerHandshakeSession, string, IRoleCreationScreen>? createRoleScreen = null,
-        Func<GameServerHandshakeSession, GameWorldEntrySnapshot, Action, IClientWorld>? createWorld = null)
+        Func<GameServerHandshakeSession, GameWorldEntrySnapshot, Action, IClientWorld>? createWorld = null, TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(requestExit);
         ArgumentNullException.ThrowIfNull(closeWindow);
         ArgumentNullException.ThrowIfNull(createLogin);
         _closeWindow = closeWindow;
+        TimeProvider time = clock ?? TimeProvider.System;
+        _frameClock = new ClientFrameClock(time);
         _login = createLogin(() => State == ClientState.Login);
         _roles = new ClientRoleCreation(content, _login.PlaySound, requestExit,
-            () => _world is null, () => _world is { HasScene: true }, AcceptRoleWorld, ReturnFromRole, createRoleScreen);
+            () => _world is null, () => _world is { HasScene: true }, AcceptRoleWorld, ReturnFromRole, createRoleScreen, time);
         // Native hero construction stamps hero+0x2F74 at client start (0x655BAD); the 1037 report window starts there.
-        uint clientStartedAt = GameClientClock.Milliseconds(TimeProvider.System);
+        uint clientStartedAt = GameClientClock.Milliseconds(time);
         _createWorld = createWorld ?? ((game, entry, closing) =>
-            new ClientWorld(game, entry, content, size, closing, clientStartedAt));
+            new ClientWorld(game, entry, content, size, closing, clientStartedAt, _frameMilliseconds, time));
     }
 
     private IClientWorld ActiveWorld => _world ?? throw new InvalidOperationException("World state has no admitted owner.");
@@ -80,9 +84,10 @@ internal sealed class ClientSession : IDisposable
         cleanup.ThrowIfFailed();
     }
 
-    internal void Update(TimeSpan elapsed, OpenGLGraphicsDevice? device)
+    internal void Update(TimeSpan elapsed, OpenGLGraphicsDevice? device, uint frameMilliseconds)
     {
         ObjectDisposedException.ThrowIf(State is ClientState.Closing or ClientState.Closed, this);
+        _frameMilliseconds = frameMilliseconds;
         _login.Update();
         if (State == ClientState.Login && _login.Attempts.TryTakeAdmittedWorld(
                 out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? entry))
@@ -113,7 +118,7 @@ internal sealed class ClientSession : IDisposable
             }
         }
         _roles.Update(elapsed);
-        _world?.DrainIngress();
+        _world?.DrainIngress(frameMilliseconds);
         _world?.CompleteLoad();
         if (_world is { IsClosed: true })
         {
@@ -137,11 +142,10 @@ internal sealed class ClientSession : IDisposable
         _login.SetWorldActive(State == ClientState.World);
     }
 
-    public void RenderFrame(double elapsedSeconds, DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback)
+    public void RenderFrame(DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback)
     {
-        TimeSpan elapsed = double.IsFinite(elapsedSeconds) && elapsedSeconds > 0
-            ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero;
-        Update(elapsed, device);
+        (TimeSpan elapsed, uint frameMilliseconds) = _frameClock.Next();
+        Update(elapsed, device, frameMilliseconds);
         bool alreadyPresentingWorld = State == ClientState.World;
         if (!alreadyPresentingWorld)
         {

@@ -66,7 +66,7 @@ public sealed partial class LoginAttemptCoordinatorTests
     public async Task Session_ShutdownDuringRoleCreationClosesItsSocketAndUi()
     {
         await using SessionHarness harness = await OpenSessionAsync(creation: true);
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         Assert.Equal(ClientState.RoleCreation, harness.Session.State);
         TestRoleCreationScreen screen = Assert.IsType<TestRoleCreationScreen>(harness.Role);
 
@@ -88,7 +88,7 @@ public sealed partial class LoginAttemptCoordinatorTests
         WorldCloseReason reason = connectionLost ? WorldCloseReason.ConnectionLost : WorldCloseReason.ContentUnavailable;
         await using SessionHarness harness = await OpenSessionAsync();
         Assert.Equal(ClientState.Login, harness.Session.State);
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         Assert.Equal(ClientState.WorldLoading, harness.Session.State);
         TestClientWorld world = Assert.IsType<TestClientWorld>(harness.World);
         harness.Session.UpdatePresentation(TimeSpan.Zero);
@@ -101,12 +101,12 @@ public sealed partial class LoginAttemptCoordinatorTests
         world.BeginClose(reason);
         Assert.Equal(ClientState.ReturningToLogin, harness.Session.State);
         await world.ClosedTask.WaitAsync(harness.Token);
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         Assert.Equal(delayedLoad ? ClientState.ReturningToLogin : ClientState.Login, harness.Session.State);
         Assert.Equal(reason == WorldCloseReason.ConnectionLost ? LoginFailureKind.Resource : LoginFailureKind.WorldContent,
             harness.Login.Attempts.Feedback.Failure!.Kind);
         world.LoadReaped = true;
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         Assert.Equal(ClientState.Login, harness.Session.State);
         await harness.Peers.WaitAsync(harness.Token);
     }
@@ -117,7 +117,7 @@ public sealed partial class LoginAttemptCoordinatorTests
         LoginLoadingScreen loading = LoadingScreen();
         loading.Start();
         await using SessionHarness harness = await OpenSessionAsync(loading: loading);
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         TestClientWorld world = Assert.IsType<TestClientWorld>(harness.World);
         for (int tick = 0; tick < 80; tick++)
         {
@@ -144,7 +144,7 @@ public sealed partial class LoginAttemptCoordinatorTests
     public async Task Session_ShutdownClosesLoadingOrVisibleWorldBeforeWindow(bool visible)
     {
         await using SessionHarness harness = await OpenSessionAsync();
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         TestClientWorld world = Assert.IsType<TestClientWorld>(harness.World);
         world.IsPresentable = visible;
         harness.Session.UpdatePresentation(TimeSpan.Zero);
@@ -163,7 +163,7 @@ public sealed partial class LoginAttemptCoordinatorTests
     public async Task Session_RoleReturnWaitsForCloseAndPreservesConnectionLoss(bool connectionLost)
     {
         await using SessionHarness harness = await OpenSessionAsync(creation: true);
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         Assert.Equal(ClientState.RoleCreation, harness.Session.State);
         TestRoleCreationScreen screen = Assert.IsType<TestRoleCreationScreen>(harness.Role);
         GameServerHandshakeSession game = Assert.IsType<GameServerHandshakeSession>(harness.Game);
@@ -174,15 +174,15 @@ public sealed partial class LoginAttemptCoordinatorTests
         try
         {
             screen.RequestReturn();
-            harness.Session.Update(TimeSpan.Zero, null);
+            harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
             Assert.Equal(ClientState.ReturningToLogin, harness.Session.State);
-            harness.Session.Update(TimeSpan.Zero, null);
+            harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
             Assert.Equal(ClientState.ReturningToLogin, harness.Session.State);
         }
         finally { release.TrySetResult(); }
         Assert.NotNull(closing);
         await closing.WaitAsync(harness.Token);
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         Assert.Equal(ClientState.Login, harness.Session.State);
         Assert.Equal(connectionLost ? LoginAttemptStatus.Unavailable : LoginAttemptStatus.Idle, harness.Login.Attempts.Status);
         Assert.Equal(1, screen.DisposeCalls);
@@ -194,11 +194,11 @@ public sealed partial class LoginAttemptCoordinatorTests
     {
         await using SessionHarness harness = await OpenSessionAsync(creation: true);
         harness.RoleFailure = new FileNotFoundException();
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         Assert.Equal(ClientState.ReturningToLogin, harness.Session.State);
         while (harness.Session.State != ClientState.Login)
         {
-            harness.Session.Update(TimeSpan.Zero, null);
+            harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
             await Task.Delay(1, harness.Token);
         }
         Assert.Equal(100116u, harness.Login.Attempts.Feedback.Failure!.Code);
@@ -209,7 +209,7 @@ public sealed partial class LoginAttemptCoordinatorTests
     public async Task Session_RoleAdmissionTransfersOriginalSocketThroughWorldLoadingAndWorld()
     {
         await using SessionHarness harness = await OpenSessionAsync(creation: true, enterCreatedWorld: true);
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         Assert.Equal(ClientState.RoleCreation, harness.Session.State);
         TestRoleCreationScreen screen = Assert.IsType<TestRoleCreationScreen>(harness.Role);
         GameServerHandshakeSession game = Assert.IsType<GameServerHandshakeSession>(harness.Game);
@@ -224,7 +224,7 @@ public sealed partial class LoginAttemptCoordinatorTests
         screen.AdmittedSession = game;
         screen.AdmittedWorld = await GameWorldEntryBootstrap.RunAsync(game, character, cancellationToken: harness.Token);
 
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         Assert.Equal(ClientState.WorldLoading, harness.Session.State);
         Assert.Equal(1, screen.DisposeCalls);
         TestClientWorld world = Assert.IsType<TestClientWorld>(harness.World);
@@ -247,7 +247,7 @@ public sealed partial class LoginAttemptCoordinatorTests
         await using SessionHarness harness = await OpenSessionAsync();
         InvalidOperationException failure = new("World factory failed.");
         harness.WorldFailure = failure;
-        Assert.Same(failure, Assert.Throws<InvalidOperationException>(() => harness.Session.Update(TimeSpan.Zero, null)));
+        Assert.Same(failure, Assert.Throws<InvalidOperationException>(() => harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0)));
         Assert.Equal(ClientState.ReturningToLogin, harness.Session.State);
         harness.Session.Dispose();
         Assert.Equal(ClientState.Closed, harness.Session.State);
@@ -258,7 +258,7 @@ public sealed partial class LoginAttemptCoordinatorTests
     public async Task Session_ShutdownRetainsWorldAndWindowFailuresAndReleasesLogin()
     {
         await using SessionHarness harness = await OpenSessionAsync();
-        harness.Session.Update(TimeSpan.Zero, null);
+        harness.Session.Update(TimeSpan.Zero, null, frameMilliseconds: 0);
         TestClientWorld world = Assert.IsType<TestClientWorld>(harness.World);
         IOException first = new("World cleanup failed.");
         IOException second = new("Window cleanup failed.");
@@ -463,7 +463,7 @@ internal sealed class TestClientWorld(Action closing, Func<ValueTask> close, Lis
         order.Add("world.close");
         return new ValueTask(_closed ??= Close().AsTask());
     }
-    public void DrainIngress()
+    public void DrainIngress(uint frameMilliseconds)
     {
     }
     public void CompleteLoad()

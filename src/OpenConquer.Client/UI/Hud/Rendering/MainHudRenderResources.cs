@@ -75,13 +75,12 @@ internal sealed class MainHudRenderResources : IDisposable
 
     public MainHudRenderResources(OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize,
         MainHudPreparation preparation, MainHudSelectedSkillImageLoader selectedSkillImages,
-        MainHudQuickbarImageLoader quickbarImages, Func<uint> readTickCount)
+        MainHudQuickbarImageLoader quickbarImages)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(preparation);
         ArgumentNullException.ThrowIfNull(selectedSkillImages);
         ArgumentNullException.ThrowIfNull(quickbarImages);
-        ArgumentNullException.ThrowIfNull(readTickCount);
 
         MainHudContent content = preparation.Content;
         OpenGLTextContext AttachFont(int index) => OpenGLTextContext.AttachPrepared(graphicsDevice, preparation.Fonts,
@@ -93,7 +92,7 @@ internal sealed class MainHudRenderResources : IDisposable
             Vitals = _ownership.Track(new MainHudVitalsRenderer(graphicsDevice, content.VitalsAssets, logicalRenderSize));
             SkillExperience = _ownership.Track(new MainHudSkillExperienceRenderer(graphicsDevice, content.SkillAssets, logicalRenderSize));
             Quickbar = _ownership.Track(new MainHudQuickbarRenderer(graphicsDevice, content.QuickbarAssets, logicalRenderSize,
-                readTickCount: readTickCount, images: quickbarImages));
+                images: quickbarImages));
             ActionButtons = _ownership.Track(new MainHudActionButtonStripRenderer(graphicsDevice, content.ActionButtonAssets, logicalRenderSize));
             CheckControls = _ownership.Track(new MainHudCheckControlRenderer(graphicsDevice, content.CheckControlAssets, logicalRenderSize));
             SelectedSkill = _ownership.Track(new MainHudSelectedSkillRenderer(graphicsDevice, content.SelectedSkillAssets, logicalRenderSize, selectedSkillImages));

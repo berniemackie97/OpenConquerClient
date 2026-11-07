@@ -77,10 +77,9 @@ internal static class MainHudQuickbarConformance
             assets,
             logicalRenderSize,
             itemIconKeyResolver: testCase.Kind == RenderCaseKind.Item ? FixedItemIconKeyResolver.Instance : null,
-            useAlternateSwapIcon: () => testCase.AlternateSwap,
-            readTickCount: () => testCase.Tick);
+            useAlternateSwapIcon: () => testCase.AlternateSwap);
 
-        byte[] actual = RenderProduction(graphicsDevice, quickbarRenderer, state, logicalRenderSize, framebufferSize);
+        byte[] actual = RenderProduction(graphicsDevice, quickbarRenderer, state, logicalRenderSize, framebufferSize, testCase.Tick);
         byte[] expected = RenderReference(graphicsDevice, referenceTextures, logicalRenderSize, framebufferSize, testCase);
 
         string label = $"Main HUD quickbar {testCase.Name} {logicalRenderSize.Width}x{logicalRenderSize.Height}";
@@ -136,12 +135,12 @@ internal static class MainHudQuickbarConformance
         return state;
     }
 
-    private static byte[] RenderProduction(OpenGLGraphicsDevice graphicsDevice, MainHudQuickbarRenderer quickbarRenderer, MainHudQuickbarState state, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize)
+    private static byte[] RenderProduction(OpenGLGraphicsDevice graphicsDevice, MainHudQuickbarRenderer quickbarRenderer, MainHudQuickbarState state, LogicalRenderSize logicalRenderSize, PixelSize framebufferSize, uint now)
     {
         using OpenGLRenderer renderer = graphicsDevice.CreateRenderer(logicalRenderSize, framebufferSize.Width, framebufferSize.Height);
 
         renderer.BeginFrame();
-        quickbarRenderer.Draw(renderer, state);
+        quickbarRenderer.Draw(renderer, state, now);
         byte[] framebuffer = renderer.ReadFrameTopLeftRgba();
         renderer.EndFrame();
 
