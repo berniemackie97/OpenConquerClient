@@ -68,8 +68,9 @@ public sealed partial class GameServerHandshakeSessionTests
     [InlineData(true, false, 0u)]
     [InlineData(false, true, 12001u)]
     [InlineData(true, true, 12001u)]
+    [InlineData(false, false, 0u, true)]
     public async Task CreatedCharacter_CompletesWorldAdmissionRequestsOnTheOriginalSocket(bool nativeShortFrames, bool bit38Map,
-        uint packedAppearance)
+        uint packedAppearance, bool scrambled = false)
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using TcpListener accounts = Listen();
@@ -78,7 +79,7 @@ public sealed partial class GameServerHandshakeSessionTests
         Task gamePeer = CreationPeerAsync(games, nativeShortFrames
             ? CreationScript.AcceptAndEnterWorldWithNativeShortFrames
             : CreationScript.AcceptAndEnterWorld, token,
-            world: new WorldEntryOptions(ClientStateAppliedMap: bit38Map, PackedAppearance: packedAppearance));
+            world: new WorldEntryOptions(ClientStateAppliedMap: bit38Map, PackedAppearance: packedAppearance, Scrambled: scrambled));
 
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
@@ -98,11 +99,14 @@ public sealed partial class GameServerHandshakeSessionTests
 
         Assert.Equal(1, mapEntered);
         Assert.Equal(0x11223344u, world.Character.EntityId);
-        Assert.Equal((1002u, 1015u, (ushort)61, (ushort)101),
+        // Scrambled: the map key comes from the 74 reply (0x6FF478), weather kind 6 is a no-op (0x7606CD), and the
+        // unknown frame before the reply is kept for world ingress ahead of the entry position.
+        Assert.Equal((1002u, scrambled ? 1016u : 1015u, (ushort)61, (ushort)101),
             (world.MapId, world.MapDataId, world.X, world.Y));
-        Assert.Equal(1u, world.WeatherKind);
+        Assert.Equal(scrambled ? 0u : 1u, world.WeatherKind);
         Assert.Equal((byte)5, world.DirectionIndex);
-        Assert.Empty(world.HydrationPackets);
+        Assert.Equal(scrambled ? 1 : 0, world.HydrationPackets.Count);
+        Assert.Equal(scrambled ? 1 : 0, world.HydrationEnteredAt);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
@@ -319,7 +323,7 @@ public sealed partial class GameServerHandshakeSessionTests
         CreationPeerAsync(listener, enterWorld ? CreationScript.AcceptAndEnterWorld : CreationScript.NewRoleOnly, token, coordinator: true);
 
     private sealed record WorldEntryOptions(bool NativeShortFrames = false, bool ClientStateAppliedMap = false,
-        uint PackedAppearance = 0);
+        uint PackedAppearance = 0, bool Scrambled = false);
 
     private static async Task CreationPeerAsync(TcpListener listener, CreationScript script, CancellationToken token,
         bool coordinator = false, WorldEntryOptions? world = null)
@@ -457,7 +461,20 @@ public sealed partial class GameServerHandshakeSessionTests
                 GameMessages.Truncate(weather, 8), GameMessages.Truncate(entered, 28));
         }
 
-        await peer.WritePacketsAsync(token, map, weather, entered);
+        if (options.Scrambled)
+        {
+            // Native has no order gate: weather kind 6, an unknown frame, an acknowledgement for another entity, an
+            // EnterMap reply with entity 0 and a different map key, and 1110 last.
+            BinaryPrimitives.WriteUInt32LittleEndian(weather.AsSpan(4), 6);
+            BinaryPrimitives.WriteUInt32LittleEndian(entered.AsSpan(4), 0);
+            BinaryPrimitives.WriteUInt32LittleEndian(entered.AsSpan(8), 1016);
+            byte[] unknown = GameMessages.Header(8, 2030);
+            await peer.WritePacketsAsync(token, weather, unknown, WorldAction(GameWorldAction10010.GetItems, hero + 1), entered, map);
+        }
+        else
+        {
+            await peer.WritePacketsAsync(token, map, weather, entered);
+        }
 
         if (options.ClientStateAppliedMap)
         {
@@ -474,7 +491,14 @@ public sealed partial class GameServerHandshakeSessionTests
         {
             await RequireWorldRequestAsync(action,
                 action == GameWorldAction10010.ReportSilentInfo ? 0u : hero);
-            byte[] acknowledgement = WorldAction(action, hero);
+            if (action == GameWorldAction10010.GetFriends)
+            {
+                // 75-ack handler: 76, then main msg 0x401 -> PK mode 3 (0x6FF3CD, 0x4BDD30).
+                await RequireWorldRequestAsync(GameWorldAction10010.SetPkMode, hero, parameter: 3);
+            }
+
+            // The acknowledgement parameter is not read (CMsgAction__Process consumes only +4 and +20).
+            byte[] acknowledgement = WorldAction(action, hero, options.Scrambled ? 0x55u : 0u);
             if (nativeShortFrames)
             {
                 // A nonzero +37 string count with trailing bytes: Parse 0x6FEB93 does not read the string list.
@@ -486,12 +510,16 @@ public sealed partial class GameServerHandshakeSessionTests
         }
         await RequireWorldRequestAsync(GameWorldAction10010.GetStatistics, hero);
 
-        async Task RequireWorldRequestAsync(ushort expected, uint expectedEntity)
+        async Task RequireWorldRequestAsync(ushort expected, uint expectedEntity, uint parameter = 0)
         {
             byte[] request = await peer.ReadPacketAsync(GameWorldAction10010.PacketLength, token);
             Assert.True(GameWorldAction10010.TryRead(request, out GameWorldAction10010 action));
-            Assert.Equal((expected, expectedEntity, 0u, (ushort)0, (ushort)0),
+            Assert.Equal((expected, expectedEntity, parameter, (ushort)0, (ushort)0),
                 (action.Action, action.EntityId, action.ParameterPair, action.X, action.Y));
+
+            // CMsgAction__Create stamps timeGetTime (0x6FE99C); BuildType10010 (408) and the 251 report do not.
+            bool stamped = expected is not (GameWorldAction10010.ClientStateApplied or GameWorldAction10010.ReportSilentInfo);
+            Assert.Equal(stamped, action.Timestamp != 0);
         }
     }
 

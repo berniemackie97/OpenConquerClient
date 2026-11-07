@@ -144,8 +144,31 @@ statically and in a 2026-11-06 retail-client probe against OCS:
   `CBoothManager_Close` 0x70AC3D).
 
 The previous unconditional 408 after the 74 reply was not native and is
-removed. Not yet sent: PK mode 96 (main-dialog init, 0x4BDD30), the client
-1009/1037 frames the probe showed in world, and native `timeGetTime`
-timestamps on actions. Those are tracked in OCC #240. Ordering checks in the
-bootstrap are unchanged. Evidence: `20_notes/Network/bootstrap-tolerance-cp24d.md`.
+removed. Evidence: `20_notes/Network/bootstrap-tolerance-cp24d.md`.
+
+## World-entry ladder without order checks — CP2.4d2b
+
+The 5517 client answers each server acknowledgement as it arrives; nothing
+else orders the ladder. The bootstrap now does the same:
+
+- `CMsgAction__Process` reads only the entity and action of an
+  acknowledgement (common entity gate 0x6FF15D..0x6FF18A). An acknowledgement
+  for another entity is ignored, its parameter is not read, and each accepted
+  acknowledgement sends the next request again if repeated.
+- The 74 reply's entity is replaced by the hero (0x6FEE14) and its +8 is the
+  map key the client loads (0x6FF478), independent of 1110. 1110 and 1016 are
+  applied whenever they arrive; an unsupported weather value is a no-op.
+- After the 76 request the client sends PK mode 96 with mode 3 (75-ack
+  handler posts main message 0x401, 0x6FF3CD → 0x4BDD30).
+- Requests built by `CMsgAction__Create` carry `timeGetTime` at +16
+  (0x6FE99C), taken from the injected `TimeProvider`. 408 and the 251 report
+  keep their own fields.
+- Any other frame is kept, in arrival order and within the hydration budget,
+  and the world state replays all of them through its normal handlers. Frames
+  that arrived before the 74 reply apply before its position.
+
+The world still needs a 1110 before activation; that is this client's
+requirement, not a native one. Not yet modelled: the 10-second 1009/27
+heartbeat started by the 74 reply (0x6FF580), the 30-minute 1037 latency
+report, and the 251 checksum and version.
 
