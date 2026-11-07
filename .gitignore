@@ -517,3 +517,6 @@ $RECYCLE.BIN/
 
 # Local game assets stay outside Git until distribution is configured.
 /content/
+
+# Local Build Bouncer configuration and assets
+/.buildbouncer/
