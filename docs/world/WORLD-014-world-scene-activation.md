@@ -125,9 +125,8 @@ until the first map view, appearance and HUD are ready. Context recreation
 can reuse the prepared HUD content. The world cancels or observes its job
 when it closes.
 
-This uses the worker-to-context division described above. The existing HUD
-layout, input and drawing order carry forward. On-demand quickbar and
-selected skill image requests and host font setup remain separate paths.
+The existing HUD layout, input and drawing order carry forward.
+The following sections cover host font setup and on-demand HUD artwork.
 
 A local Apple M4 OpenGL probe with the curated 5517 content verified that
 76 game-content open attempts took place during worker preparation and that
@@ -171,5 +170,28 @@ cover. The worker and pending display are managed scheduling choices.
 
 A local OpenGL probe using retail Magic0 and Image0 observed zero opens on
 the context thread and matched six synchronous framebuffer comparisons.
-The probe drives the selected skill state directly. On-demand quickbar
-images and full world frame pacing remain under CP2.5.
+The probe drives the selected skill state directly. Full world frame pacing
+remains under CP2.5.
+
+### Quickbar artwork
+
+The world owns one quickbar image worker. It reads and decodes up to eight
+distinct requests per batch, stopping after the decoded output reaches
+8 MiB. A single decode can exceed that threshold within the existing decoder
+limits. The context thread uploads up to four ready images and one glow set
+per draw. An upload deferred by the budget retains its pixels while the
+current slot still needs them. Pending artwork is absent from the draw and
+only a completed lookup can cache a missing image.
+
+Item fallback, source rectangles, overlay order and the glow clock carry
+forward. Glow time starts at its first draw. The native rules are recorded
+in `20_notes/Rendering/19_main_hud_quickbar_native_contract.md` §6.
+Graphics recreation retains the CPU worker. World close cancels queued
+reads and waits for any active read. A current artwork failure uses the
+world content failure path before the next draw.
+
+A local Apple M4 OpenGL probe used the curated 5517 artwork with action,
+magic, item fallback, quantity, addition, cover and glow. All six ready
+framebuffers matched the synchronous baseline. The worker made 21 content
+opens per repeat and the context thread made zero. This probe drives slot
+state directly and measures the quickbar draw in isolation.

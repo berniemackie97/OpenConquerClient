@@ -1,3 +1,4 @@
+using OpenConquer.Client.UI.Hud.Quickbar;
 using OpenConquer.Client.UI.Hud.Rendering;
 using OpenConquer.Client.UI.Hud.SelectedSkill;
 using OpenConquer.Client.UI.Hud.Vitals;
@@ -48,6 +49,7 @@ internal sealed class ClientWorld : IClientWorld
     private MainHudContent? _hudContent;
     private MainHudPreparation? _hudPreparation;
     private MainHudSelectedSkillImageLoader? _selectedSkillImages;
+    private MainHudQuickbarImageLoader? _quickbarImages;
     private WorldHudRuntime? _hud;
     private OpenGLRenderer? _renderer;
     private LogicalRenderSize _rendererSize;
@@ -322,7 +324,9 @@ internal sealed class ClientWorld : IClientWorld
             using (preparation)
             {
                 _selectedSkillImages ??= new MainHudSelectedSkillImageLoader(preparation.Content.SelectedSkillAssets);
-                _hud = new WorldHudRuntime(preparation, _selectedSkillImages, device, _logicalRenderSize, magicHintSource: null);
+                _quickbarImages ??= new MainHudQuickbarImageLoader(preparation.Content.QuickbarAssets);
+                _hud = new WorldHudRuntime(preparation, _selectedSkillImages, _quickbarImages, device,
+                    _logicalRenderSize, magicHintSource: null);
             }
         }
         else
@@ -448,6 +452,9 @@ internal sealed class ClientWorld : IClientWorld
         MainHudSelectedSkillImageLoader? selectedSkillImages = _selectedSkillImages;
         _selectedSkillImages = null;
         selectedSkillImages?.Cancel();
+        MainHudQuickbarImageLoader? quickbarImages = _quickbarImages;
+        _quickbarImages = null;
+        quickbarImages?.Cancel();
         _texturesReady = false;
         Func<ValueTask>? closeSession = _closeSession;
         WorldFrameIngress? ingress = _ingress;
@@ -472,7 +479,7 @@ internal sealed class ClientWorld : IClientWorld
         finally
         {
             // Network ownership must not be lost when releasing graphics fails.
-            _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages);
+            _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages, quickbarImages);
         }
     }
 
@@ -511,6 +518,9 @@ internal sealed class ClientWorld : IClientWorld
         MainHudSelectedSkillImageLoader? selectedSkillImages = _selectedSkillImages;
         _selectedSkillImages = null;
         selectedSkillImages?.Cancel();
+        MainHudQuickbarImageLoader? quickbarImages = _quickbarImages;
+        _quickbarImages = null;
+        quickbarImages?.Cancel();
         WorldContentLoad<WorldEntryCatalogs>? catalogLoad = _catalogLoad;
         _catalogLoad = null;
         catalogLoad?.Cancel();
@@ -531,7 +541,7 @@ internal sealed class ClientWorld : IClientWorld
         _hudPreparation = null;
         Func<ValueTask>? closeSession = _closeSession;
         _closeSession = null;
-        await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages)))
+        await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages, quickbarImages)))
             .ConfigureAwait(false);
 
         if (catalogLoad is not null)
@@ -556,7 +566,8 @@ internal sealed class ClientWorld : IClientWorld
     }
 
     private static async Task CloseWorldAsync(Func<ValueTask>? closeSession, WorldFrameIngress? ingress,
-        WorldFrameEgress? egress, WorldRoleLoad? roleLoad, WorldMapImageLoader? mapImageLoader, MainHudSelectedSkillImageLoader? selectedSkillImages)
+        WorldFrameEgress? egress, WorldRoleLoad? roleLoad, WorldMapImageLoader? mapImageLoader,
+        MainHudSelectedSkillImageLoader? selectedSkillImages, MainHudQuickbarImageLoader? quickbarImages)
     {
         ClientShutdown cleanup = new();
         if (egress is not null)
@@ -587,6 +598,11 @@ internal sealed class ClientWorld : IClientWorld
         if (selectedSkillImages is not null)
         {
             await cleanup.RunAsync(selectedSkillImages.DisposeAsync).ConfigureAwait(false);
+        }
+
+        if (quickbarImages is not null)
+        {
+            await cleanup.RunAsync(quickbarImages.DisposeAsync).ConfigureAwait(false);
         }
 
         cleanup.ThrowIfFailed();

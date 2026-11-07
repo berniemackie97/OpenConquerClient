@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using OpenConquer.Client.UI.Hud.ActionButtons;
 using OpenConquer.Client.UI.Hud.CheckControls;
 using OpenConquer.Client.UI.Hud.Chrome;
@@ -37,9 +38,12 @@ internal sealed class WorldHudRuntime : IDisposable
     private readonly MainHudCheckControlAssets _checkAssets;
     private readonly MainHudInputCoordinator _input;
     private readonly MainHudRenderResources _resources;
+    private ExceptionDispatchInfo? _quickbarArtworkFailure;
     private bool _disposed;
 
-    public WorldHudRuntime(MainHudPreparation preparation, MainHudSelectedSkillImageLoader selectedSkillImages, OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize, IMainHudMagicHintSource? magicHintSource)
+    public WorldHudRuntime(MainHudPreparation preparation, MainHudSelectedSkillImageLoader selectedSkillImages,
+        MainHudQuickbarImageLoader quickbarImages, OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize,
+        IMainHudMagicHintSource? magicHintSource)
     {
         ArgumentNullException.ThrowIfNull(preparation);
         ArgumentNullException.ThrowIfNull(graphicsDevice);
@@ -66,7 +70,8 @@ internal sealed class WorldHudRuntime : IDisposable
 
         _input = new MainHudInputCoordinator(actionInput, quickbarInput, checkInput, statusHintInput, _statusHintState);
 
-        _resources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, preparation, selectedSkillImages, s_readTickCount);
+        _resources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, preparation, selectedSkillImages,
+            quickbarImages, s_readTickCount);
     }
 
     public void HandlePointerMoved(bool mapped, int x, int y)
@@ -97,6 +102,7 @@ internal sealed class WorldHudRuntime : IDisposable
     internal void PrepareFrame()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        _quickbarArtworkFailure?.Throw();
         if (_chromeAssets.HasDialogPanels)
         {
             _resources.SelectedSkill.Prepare(_selectedSkillState);
@@ -115,7 +121,15 @@ internal sealed class WorldHudRuntime : IDisposable
         if (_resources.Chrome.DrawPanels(renderer))
         {
             _resources.SkillExperience.Draw(renderer, _skillState);
-            _resources.Quickbar.Draw(renderer, _quickbarState);
+            try
+            {
+                _resources.Quickbar.Draw(renderer, _quickbarState);
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+                // Route current artwork failures through world preparation before the next OpenGL frame.
+                _quickbarArtworkFailure = ExceptionDispatchInfo.Capture(exception);
+            }
 
             if (window.TryGetPointerPosition(out PixelPoint point))
             {
