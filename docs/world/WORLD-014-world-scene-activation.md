@@ -111,10 +111,23 @@ client's batch size, upload budget and coherent view are managed policies.
 The Studio preview keeps its synchronous preparation contract. Leaving a
 world cancels and observes its loader and releases its OpenGL texture cache.
 
-A local Apple M4 OpenGL probe compared four views of retail map 1010.
-All four framebuffer hashes matched, and a pending view kept the prior
-framebuffer. This measures map preparation and rendering in isolation.
-HUD asset reads and full frame timing remain separate work.
+The playable cache targets 512 resident textures and 128 MiB of uploaded
+RGBA pixels. It evicts least-recently-used idle textures when either target
+is exceeded. The displayed view and the view being prepared both keep their
+textures until handoff. A working set larger than the target can finish and
+draw, and replacing it makes its unused textures eligible for eviction.
+Studio retains its hard preview limits.
+
+An OpenGL pressure test on retail map 1010 compared 24 completed
+framebuffers against the synchronous renderer and 99 pending framebuffers
+against the preceding view. The tight test cache held at most 24 textures
+and 5.81 MiB after each handoff, versus 49 textures and 11.31 MiB in the
+unbounded reference. Returning to an evicted view reloaded its art on the
+worker. Run the map residency case with the curated payload:
+
+```sh
+dotnet run --project tests/Conformance/OpenConquer.Rendering.Conformance -c Release -- --world-map-residency --content-root content/retail-5517/payload
+```
 
 ## HUD startup preparation
 
@@ -170,8 +183,7 @@ cover. The worker and pending display are managed scheduling choices.
 
 A local OpenGL probe using retail Magic0 and Image0 observed zero opens on
 the context thread and matched six synchronous framebuffer comparisons.
-The probe drives the selected skill state directly. Full world frame pacing
-remains under CP2.5.
+The probe drives the selected skill state directly.
 
 ### Quickbar artwork
 
@@ -197,3 +209,19 @@ magic, item fallback, quantity, addition, cover and glow. All six ready
 framebuffers matched the synchronous baseline. The worker made 21 content
 opens per repeat and the context thread made zero. This probe drives slot
 state directly and measures the quickbar draw in isolation.
+
+## World frame timing
+
+The appearance worker reuses its successfully loaded C3 catalog for the
+life of the world. Equipment changes still decode the requested parts on
+the worker and install only the current result on the context thread.
+
+A 420-frame desktop trace used the production admitted world, curated
+retail map 1010, 40 camera corrections and 20 equipment changes. Its
+content source rejected context-thread opens. C3 catalog opens dropped from
+42 to 2. After warmup the final run spent 5.75 ms median and 9.11 ms p95
+in the world callback, including drawing and presentation submission.
+Equipment-change windows took 9.90 ms p95 and 13.84 ms maximum. The first
+world draw still took 44.69 ms. The trace injects inbound packets after
+admission and measures one Apple M4 OpenGL host. It excludes authentication
+and compositor presentation time.

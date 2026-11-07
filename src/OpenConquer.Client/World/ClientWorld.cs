@@ -104,8 +104,7 @@ internal sealed class ClientWorld : IClientWorld
         _egress = createEgress?.Invoke();
         _mapLoad = createMapLoad();
         _catalogLoad = new WorldContentLoad<WorldEntryCatalogs>(token => WorldEntryContent.LoadCatalogs(content, token));
-        uint appearance = entry.Character.PackedAppearance;
-        _roleLoad = new WorldRoleLoad((sources, token) => WorldRoleAssets.Load(content, appearance, sources, token));
+        _roleLoad = new WorldRoleLoad(content, entry.Character.PackedAppearance);
     }
 
     /// <summary>True until the world starts closing.</summary>
