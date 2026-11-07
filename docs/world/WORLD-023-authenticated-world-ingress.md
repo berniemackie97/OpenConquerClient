@@ -126,3 +126,26 @@ checks, hydration budgets, deadlines and activation point are unchanged. Native
 has no rung-order gate; those checks are CP2.4d2. Evidence:
 `20_notes/Network/bootstrap-tolerance-cp24d.md`.
 
+## World-entry outbound frames — CP2.4d2
+
+The bootstrap sends what the native client sends around EnterMap, proven
+statically and in a 2026-11-06 retail-client probe against OCS:
+
+- After the 74 request, `1151` subtype 2 (80 bytes, parameters zero) when the
+  hero's body digit (appearance / 1000 % 10) is 2 (`CMsgUserInfo__Process`
+  0x7648B4..0x7648E6).
+- Action 408 only when the 1110 map flags have bit 38. Native sends it from
+  `CMsgMapInfo1110__Process` when bit 38 changes (0x732CFD/0x732D4C), and map
+  flags start at zero (`CGameMap` constructor 0x61B875). Each OCC world entry
+  starts from zero; a native process that re-logs keeps the previous map's
+  flags, which OCC does not model.
+- Action 114 for the hero after the 74 reply and before 75: native map
+  creation always closes the booth (`CGameMap_CreateFromDataId` 0x61DB1E →
+  `CBoothManager_Close` 0x70AC3D).
+
+The previous unconditional 408 after the 74 reply was not native and is
+removed. Not yet sent: PK mode 96 (main-dialog init, 0x4BDD30), the client
+1009/1037 frames the probe showed in world, and native `timeGetTime`
+timestamps on actions. Those are tracked in OCC #240. Ordering checks in the
+bootstrap are unchanged. Evidence: `20_notes/Network/bootstrap-tolerance-cp24d.md`.
+

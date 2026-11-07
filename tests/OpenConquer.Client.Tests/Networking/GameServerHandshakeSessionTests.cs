@@ -1041,7 +1041,7 @@ public sealed partial class GameServerHandshakeSessionTests
         }
     }
 
-    private static byte[] CreateCharacterInfoWire(bool invalidType)
+    private static byte[] CreateCharacterInfoWire(bool invalidType, uint packedAppearance = 0)
     {
         // Independently constructed current companion-server 1006 layout:
         // 110 fixed bytes, three string-list entries, eight-byte server trailer.
@@ -1049,6 +1049,7 @@ public sealed partial class GameServerHandshakeSessionTests
         BinaryPrimitives.WriteUInt16LittleEndian(wire, 120);
         BinaryPrimitives.WriteUInt16LittleEndian(wire.AsSpan(2), invalidType ? (ushort)1009 : (ushort)1006);
         BinaryPrimitives.WriteUInt32LittleEndian(wire.AsSpan(4), 0x11223344);
+        BinaryPrimitives.WriteUInt32LittleEndian(wire.AsSpan(10), packedAppearance);
         BinaryPrimitives.WriteInt16LittleEndian(wire.AsSpan(66), -7);
         wire[110] = 3;
         wire[111] = 3;

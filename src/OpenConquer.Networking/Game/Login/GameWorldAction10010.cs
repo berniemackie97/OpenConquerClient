@@ -34,6 +34,9 @@ internal readonly record struct GameWorldAction10010(
     internal const ushort ReportSilentInfo = 0xFB;
     internal const ushort ClientStateApplied = 0x198;
 
+    /// <summary>Booth close: <c>CBoothManager_Close</c> sends it for the hero on every map creation (0x61DB1E, 0x70AC31).</summary>
+    internal const ushort BoothClose = 0x72;
+
     internal static void Write(Span<byte> destination, ushort action, uint entityId, uint parameterPair = 0, uint timestamp = 0)
     {
         if (destination.Length != PacketLength)

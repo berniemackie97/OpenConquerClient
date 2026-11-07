@@ -712,8 +712,23 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     }
 
     /// <summary>Sends one fixed world-entry 10010 action after typed character information is accepted.</summary>
-    internal async Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair,
+    internal Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair,
         TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(packet, action, entityId, parameterPair);
+        return SendWorldEntryPacketAsync(packet, timeout, cancellationToken);
+    }
+
+    /// <summary>Sends the 1151 request native emits right after EnterMap for body digit 2.</summary>
+    internal Task SendWorldEntryFlowerRankAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        byte[] packet = new byte[GameFlowerRankRequest1151.PacketLength];
+        GameFlowerRankRequest1151.Write(packet, GameFlowerRankRequest1151.EnterMapSubtype);
+        return SendWorldEntryPacketAsync(packet, timeout, cancellationToken);
+    }
+
+    private async Task SendWorldEntryPacketAsync(byte[] packet, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ValidateTimeout(timeout);
         cancellationToken.ThrowIfCancellationRequested();
@@ -730,11 +745,9 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
             _activeOperations++;
         }
 
-        byte[] packet = new byte[GameWorldAction10010.PacketLength];
         bool completed = false;
         try
         {
-            GameWorldAction10010.Write(packet, action, entityId, parameterPair);
             await WriteSecuredPacketAsync(packet, timeout, "GameServer world-entry action write timed out.",
                 cancellationToken).ConfigureAwait(false);
             completed = true;
