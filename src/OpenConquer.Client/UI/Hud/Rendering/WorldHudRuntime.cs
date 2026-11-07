@@ -39,12 +39,13 @@ internal sealed class WorldHudRuntime : IDisposable
     private readonly MainHudRenderResources _resources;
     private bool _disposed;
 
-    public WorldHudRuntime(MainHudContent content, OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize, IMainHudMagicHintSource? magicHintSource)
+    public WorldHudRuntime(MainHudPreparation preparation, OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize, IMainHudMagicHintSource? magicHintSource)
     {
-        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(preparation);
         ArgumentNullException.ThrowIfNull(graphicsDevice);
 
         _magicHintSource = magicHintSource;
+        MainHudContent content = preparation.Content;
 
         _chromeAssets = content.ChromeAssets;
         _actionAssets = content.ActionButtonAssets;
@@ -65,7 +66,7 @@ internal sealed class WorldHudRuntime : IDisposable
 
         _input = new MainHudInputCoordinator(actionInput, quickbarInput, checkInput, statusHintInput, _statusHintState);
 
-        _resources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, content, s_readTickCount);
+        _resources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, preparation, s_readTickCount);
     }
 
     public void HandlePointerMoved(bool mapped, int x, int y)

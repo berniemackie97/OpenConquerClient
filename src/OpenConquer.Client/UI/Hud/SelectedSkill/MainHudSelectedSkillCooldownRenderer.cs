@@ -20,7 +20,7 @@ internal sealed class MainHudSelectedSkillCooldownRenderer : IDisposable
     private uint _cachedSeconds;
     private bool _disposed;
 
-    public MainHudSelectedSkillCooldownRenderer(OpenGLGraphicsDevice graphicsDevice, SelectedMagicCooldownTextConfiguration cooldownConfiguration, ClientFontSettingsConfiguration fontSettings, ClientCodePageConfiguration codePageConfiguration, LogicalRenderSize logicalRenderSize)
+    public MainHudSelectedSkillCooldownRenderer(OpenGLGraphicsDevice graphicsDevice, SelectedMagicCooldownTextConfiguration cooldownConfiguration, ClientFontSettingsConfiguration fontSettings, ClientCodePageConfiguration codePageConfiguration, LogicalRenderSize logicalRenderSize, Func<OpenGLTextContext>? createTextContext = null)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(cooldownConfiguration);
@@ -41,7 +41,7 @@ internal sealed class MainHudSelectedSkillCooldownRenderer : IDisposable
             ClientFontSettingsConfiguration.DefaultCornerOffsetYPixels,
             NativeTextVertexColors.Solid(textColor));
 
-        _textContext = new OpenGLTextContext(graphicsDevice, fontSettings.GuiFontFaceName, cooldownConfiguration.FontSizePixels, codePageConfiguration.EffectiveCodePage, fontSettings.AntialiasEnabled);
+        _textContext = createTextContext?.Invoke() ?? new OpenGLTextContext(graphicsDevice, fontSettings.GuiFontFaceName, cooldownConfiguration.FontSizePixels, codePageConfiguration.EffectiveCodePage, fontSettings.AntialiasEnabled);
     }
 
     internal MainHudSelectedSkillCooldownRenderer(OpenGLTextContext ownedTextContext, LogicalRenderSize logicalRenderSize, int offsetX, int offsetY, NativeTextRenderOptions renderOptions)

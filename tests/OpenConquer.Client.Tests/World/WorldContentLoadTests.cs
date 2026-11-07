@@ -56,4 +56,44 @@ public sealed class WorldContentLoadTests
         Assert.True(await Task.Run(() => SpinWait.SpinUntil(() => load.IsCompleted, TimeSpan.FromSeconds(5)), TestContext.Current.CancellationToken));
         Assert.Throws<InvalidDataException>(load.Complete);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DisposalReleasesOnlyUnclaimedResults(bool claimed)
+    {
+        TrackedContent content = new();
+        WorldContentLoad<TrackedContent> load = new(_ => content);
+        try
+        {
+            Assert.True(await Task.Run(() => SpinWait.SpinUntil(() => load.IsCompleted, TimeSpan.FromSeconds(5)),
+                TestContext.Current.CancellationToken));
+            if (claimed)
+            {
+                Assert.Same(content, load.Complete());
+            }
+
+            await load.DisposeAsync();
+            Assert.Equal(claimed ? 0 : 1, content.DisposeCalls);
+            Assert.Throws<ObjectDisposedException>(load.Complete);
+        }
+        finally
+        {
+            await load.DisposeAsync();
+            if (claimed)
+            {
+                content.Dispose();
+            }
+        }
+    }
+
+    private sealed class TrackedContent : IDisposable
+    {
+        public int DisposeCalls
+        {
+            get; private set;
+        }
+
+        public void Dispose() => DisposeCalls++;
+    }
 }

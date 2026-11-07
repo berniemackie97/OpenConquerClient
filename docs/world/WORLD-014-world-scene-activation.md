@@ -134,3 +134,24 @@ A local Apple M4 OpenGL probe with the curated 5517 content verified that
 creating the HUD from the result made no game-content opens. The chrome
 and vitals framebuffer hash matched the synchronous baseline. This probe
 isolates startup preparation from full frame pacing.
+
+### HUD fonts
+
+The HUD worker discovers the host font catalog once and prepares three
+FreeType faces for cooldown text, status hints and magic hints. The context
+thread takes those faces when it creates the text atlases. Font selection,
+fallback order, pixel heights, antialiasing and code page carry forward.
+Each face is transferred once. A canceled or partially attached HUD
+releases the faces it still owns. Context recreation reuses static HUD
+content and prepares fresh faces on the worker.
+
+The worker completes before the context uses its faces. The existing
+library lease keeps each mapped face alive and serializes creation and
+destruction on the library, following the
+[FreeType face contract](https://freetype.org/freetype2/docs/reference/ft2-face_creation.html).
+
+A local Apple M4 OpenGL probe compared the configured cooldown, status
+and magic text rendered through synchronous and prepared faces. All
+six framebuffer comparisons matched. Repeat attachment of the entire HUD
+took 0.76–0.90 ms after preparation. This probe isolates HUD attachment
+from full world frame pacing.

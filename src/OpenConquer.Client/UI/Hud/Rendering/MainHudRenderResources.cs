@@ -9,6 +9,7 @@ using OpenConquer.Client.UI.Hud.StatusHints.Equipment;
 using OpenConquer.Client.UI.Hud.StatusHints.Magic;
 using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Rendering.OpenGL;
+using OpenConquer.Rendering.OpenGL.Text;
 using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.UI.Hud.Rendering;
@@ -73,11 +74,15 @@ internal sealed class MainHudRenderResources : IDisposable
     }
 
     public MainHudRenderResources(OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize,
-        MainHudContent content, Func<uint> readTickCount)
+        MainHudPreparation preparation, Func<uint> readTickCount)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
-        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(preparation);
         ArgumentNullException.ThrowIfNull(readTickCount);
+
+        MainHudContent content = preparation.Content;
+        OpenGLTextContext AttachFont(int index) => OpenGLTextContext.AttachPrepared(graphicsDevice, preparation.Fonts,
+            index, content.CodePageConfiguration.EffectiveCodePage);
 
         try
         {
@@ -89,11 +94,14 @@ internal sealed class MainHudRenderResources : IDisposable
             CheckControls = _ownership.Track(new MainHudCheckControlRenderer(graphicsDevice, content.CheckControlAssets, logicalRenderSize));
             SelectedSkill = _ownership.Track(new MainHudSelectedSkillRenderer(graphicsDevice, content.SelectedSkillAssets, logicalRenderSize));
             SelectedSkillCooldown = _ownership.Track(new MainHudSelectedSkillCooldownRenderer(graphicsDevice,
-                content.CooldownTextConfiguration, content.FontSettingsConfiguration, content.CodePageConfiguration, logicalRenderSize));
+                content.CooldownTextConfiguration, content.FontSettingsConfiguration, content.CodePageConfiguration, logicalRenderSize,
+                () => AttachFont(MainHudPreparation.CooldownFont)));
             StatusHints = _ownership.Track(new MainHudStatusHintRenderer(graphicsDevice, content.StatusHintAssets,
-                content.FontSettingsConfiguration, content.FontSizeConfiguration, content.CodePageConfiguration, logicalRenderSize));
+                content.FontSettingsConfiguration, content.FontSizeConfiguration, content.CodePageConfiguration, logicalRenderSize,
+                () => AttachFont(MainHudPreparation.StatusFont)));
             MagicHint = _ownership.Track(new MainHudMagicHintRenderer(graphicsDevice, StatusHints, content.MagicHintContent,
-                content.StatusHintAssets.Strings, content.FontSettingsConfiguration, content.CodePageConfiguration, logicalRenderSize));
+                content.StatusHintAssets.Strings, content.FontSettingsConfiguration, content.CodePageConfiguration, logicalRenderSize,
+                () => AttachFont(MainHudPreparation.MagicFont)));
             EquipmentHint = new MainHudEquipmentHintRenderer(StatusHints, content.MagicHintContent.KeyedStrings,
                 content.FontSizeConfiguration, logicalRenderSize, content.StatusHintAssets.Strings.UsesArabicLayout);
         }
