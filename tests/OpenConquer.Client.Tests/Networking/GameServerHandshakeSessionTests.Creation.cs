@@ -79,7 +79,8 @@ public sealed partial class GameServerHandshakeSessionTests
         Task gamePeer = CreationPeerAsync(games, nativeShortFrames
             ? CreationScript.AcceptAndEnterWorldWithNativeShortFrames
             : CreationScript.AcceptAndEnterWorld, token,
-            world: new WorldEntryOptions(ClientStateAppliedMap: bit38Map, PackedAppearance: packedAppearance, Scrambled: scrambled));
+            world: new WorldEntryOptions(ClientStateAppliedMap: bit38Map, PackedAppearance: packedAppearance, Scrambled: scrambled,
+                ExpectHeartbeat: true));
 
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
@@ -121,6 +122,10 @@ public sealed partial class GameServerHandshakeSessionTests
             Assert.Equal((character.EntityId, (byte)6, 0x01020304u, 0x05060708u),
                 (confirmed.EntityId, confirmed.DirectionIndex, confirmed.MovementTick, confirmed.MapState));
         }
+
+        // The heartbeat and latency report share the world write lane (CHero_TickHeartbeatAndPeriodicSessionSync 0x661ADD).
+        await game.SendWorldLatencyTickAsync(character.EntityId, 0x0000ABCD, token);
+        await game.SendWorldLatencyReportAsync(0x0337D30A, 42, 0x01020304, token);
 
         using CancellationTokenSource stopWorldRead = new();
         Task pending = game.ReadWorldFrameAsync(stopWorldRead.Token);
@@ -323,7 +328,7 @@ public sealed partial class GameServerHandshakeSessionTests
         CreationPeerAsync(listener, enterWorld ? CreationScript.AcceptAndEnterWorld : CreationScript.NewRoleOnly, token, coordinator: true);
 
     private sealed record WorldEntryOptions(bool NativeShortFrames = false, bool ClientStateAppliedMap = false,
-        uint PackedAppearance = 0, bool Scrambled = false);
+        uint PackedAppearance = 0, bool Scrambled = false, bool ExpectHeartbeat = false);
 
     private static async Task CreationPeerAsync(TcpListener listener, CreationScript script, CancellationToken token,
         bool coordinator = false, WorldEntryOptions? world = null)
@@ -391,6 +396,17 @@ public sealed partial class GameServerHandshakeSessionTests
                     Assert.Equal((0x11223344u, (byte)6, 0x01020304u, 0x05060708u),
                         (request.EntityId, request.DirectionIndex, request.MovementTick, request.MapState));
                     await peer.WritePacketsAsync(token, walk);
+                }
+
+                if (world.ExpectHeartbeat)
+                {
+                    byte[] heartbeat = await peer.ReadPacketAsync(88, token);
+                    Assert.Equal((88, 1009, 0x11223344u, 27, 0x0000ABCDu ^ 0x11223344u),
+                        (BinaryPrimitives.ReadUInt16LittleEndian(heartbeat), BinaryPrimitives.ReadUInt16LittleEndian(heartbeat.AsSpan(2)),
+                            BinaryPrimitives.ReadUInt32LittleEndian(heartbeat.AsSpan(4)), BinaryPrimitives.ReadUInt16LittleEndian(heartbeat.AsSpan(12)),
+                            BinaryPrimitives.ReadUInt32LittleEndian(heartbeat.AsSpan(16))));
+                    Assert.Equal("14000D04000000000AD337032A00000004030201",
+                        Convert.ToHexString(await peer.ReadPacketAsync(20, token)));
                 }
                 else if (script == CreationScript.StallWorldEntry)
                 {
@@ -517,9 +533,16 @@ public sealed partial class GameServerHandshakeSessionTests
             Assert.Equal((expected, expectedEntity, parameter, (ushort)0, (ushort)0),
                 (action.Action, action.EntityId, action.ParameterPair, action.X, action.Y));
 
-            // CMsgAction__Create stamps timeGetTime (0x6FE99C); BuildType10010 (408) and the 251 report do not.
-            bool stamped = expected is not (GameWorldAction10010.ClientStateApplied or GameWorldAction10010.ReportSilentInfo);
-            Assert.Equal(stamped, action.Timestamp != 0);
+            // CMsgAction__Create stamps timeGetTime (0x6FE99C); BuildType10010 (408) writes nothing there, and the 251
+            // report carries the silent-data version: 1 with no ini/SlientVersion.ini (0x6BB3AC).
+            if (expected == GameWorldAction10010.ReportSilentInfo)
+            {
+                Assert.Equal(1u, action.Timestamp);
+            }
+            else
+            {
+                Assert.Equal(expected != GameWorldAction10010.ClientStateApplied, action.Timestamp != 0);
+            }
         }
     }
 

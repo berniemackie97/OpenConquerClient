@@ -35,6 +35,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     private TaskCompletionSource? _operationsDrained;
     private Task? _disposeTask;
     private int _activeOperations;
+    private uint _localAddress;
     private bool _worldWriteActive;
     private int _phase; // 0: handshake complete, 1: sending, 2: bootstrap ready, 3: bootstrap read, 4: terminal, 5: world ready, 6: world read
     private int _loginControlState; // 0: unclaimed, 1: reading, 2: resolved, 3: raw-read bypassed
@@ -280,19 +281,59 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     internal Task<GameSecuredInboundFrame?> ReadWorldFrameAsync(CancellationToken cancellationToken = default) =>
         ReadFrameCoreAsync(null, SecuredRead.World, cancellationToken);
 
-    internal async Task SendWorldWalkAsync(uint entityId, byte directionIndex,
+    internal Task SendWorldWalkAsync(uint entityId, byte directionIndex,
         uint movementTick, uint mapState, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         ArgumentOutOfRangeException.ThrowIfZero(entityId);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(directionIndex, (byte)7);
+        byte[] packet = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(packet, entityId, directionIndex, movementTick, mapState);
+        return SendWorldPacketAsync(packet, "GameServer world walk write timed out.", cancellationToken);
+    }
 
+    /// <summary>Sends the 1009 subtype-27 heartbeat (<see cref="GameLatencyTick1009"/>).</summary>
+    internal Task SendWorldLatencyTickAsync(uint heroId, uint milliseconds, CancellationToken cancellationToken = default)
+    {
+        byte[] packet = new byte[GameItem1009.FixedLength];
+        GameLatencyTick1009.Write(packet, heroId, milliseconds);
+        return SendWorldPacketAsync(packet, "GameServer world heartbeat write timed out.", cancellationToken);
+    }
+
+    /// <summary>Sends the 1037 latency report (<see cref="GameLatencyReport1037"/>).</summary>
+    internal Task SendWorldLatencyReportAsync(uint localAddress, uint latency, uint milliseconds,
+        CancellationToken cancellationToken = default)
+    {
+        byte[] packet = new byte[GameLatencyReport1037.PacketLength];
+        GameLatencyReport1037.Write(packet, localAddress, latency, milliseconds);
+        return SendWorldPacketAsync(packet, "GameServer world latency report write timed out.", cancellationToken);
+    }
+
+    /// <summary>
+    /// The local IPv4 address (raw in_addr dword) the native client resolves when it connects to the account server
+    /// (<c>sub_66df97</c>, called at 0x4AF266) and reports in 1037. Zero when it could not be resolved.
+    /// </summary>
+    internal uint LocalAddress
+    {
+        get => Volatile.Read(ref _localAddress);
+        set => Volatile.Write(ref _localAddress, value);
+    }
+
+    /// <summary>The silent-info values the 251 world-entry report carries.</summary>
+    internal GameSilentInfoReport SilentInfo
+    {
+        get;
+        set;
+    } = GameSilentInfoReport.WithoutFiles;
+
+    private async Task SendWorldPacketAsync(byte[] packet, string timeoutMessage, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_lifetimeGate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_phase is not (5 or 6) || _worldWriteActive)
             {
-                throw new InvalidOperationException("World walk writes require an admitted session and an idle outbound lane.");
+                throw new InvalidOperationException("World writes require an admitted session and an idle outbound lane.");
             }
 
             _worldWriteActive = true;
@@ -300,12 +341,10 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
 
         bool completed = false;
-        byte[] packet = new byte[GameWalk10005.PacketLength];
         try
         {
-            GameWalk10005.WriteOrdinary(packet, entityId, directionIndex, movementTick, mapState);
-            await WriteSecuredPacketAsync(packet, TimeSpan.FromSeconds(10),
-                "GameServer world walk write timed out.", cancellationToken).ConfigureAwait(false);
+            await WriteSecuredPacketAsync(packet, TimeSpan.FromSeconds(10), timeoutMessage, cancellationToken)
+                .ConfigureAwait(false);
             completed = true;
         }
         catch

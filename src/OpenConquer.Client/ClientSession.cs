@@ -5,6 +5,7 @@ using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Client.UI.Role;
 using OpenConquer.Client.World;
 using OpenConquer.Content;
+using OpenConquer.Networking.Game;
 using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Platform.Geometry;
@@ -48,7 +49,10 @@ internal sealed class ClientSession : IDisposable
         _login = createLogin(() => State == ClientState.Login);
         _roles = new ClientRoleCreation(content, _login.PlaySound, requestExit,
             () => _world is null, () => _world is { HasScene: true }, AcceptRoleWorld, ReturnFromRole, createRoleScreen);
-        _createWorld = createWorld ?? ((game, entry, closing) => new ClientWorld(game, entry, content, size, closing));
+        // Native hero construction stamps hero+0x2F74 at client start (0x655BAD); the 1037 report window starts there.
+        uint clientStartedAt = GameClientClock.Milliseconds(TimeProvider.System);
+        _createWorld = createWorld ?? ((game, entry, closing) =>
+            new ClientWorld(game, entry, content, size, closing, clientStartedAt));
     }
 
     private IClientWorld ActiveWorld => _world ?? throw new InvalidOperationException("World state has no admitted owner.");

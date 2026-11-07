@@ -20,6 +20,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private static readonly TimeSpan s_timeout = TimeSpan.FromSeconds(5);
     private readonly string _contentRoot;
     private readonly TimeProvider _clock;
+    private readonly LocalAddressResolver _localAddress;
+    private readonly Lazy<GameSilentInfoReport> _silentInfo;
     private Task<AttemptResult>? _pending;
     private CancellationTokenSource? _cancellation;
     private GameServerHandshakeSession? _acceptedGame;
@@ -34,11 +36,15 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private LoginAttemptFeedback _feedback = new(LoginAttemptStatus.Idle);
     private bool _disposed;
 
-    internal LoginAttemptCoordinator(string contentRoot, TimeProvider? clock = null)
+    internal LoginAttemptCoordinator(string contentRoot, TimeProvider? clock = null,
+        LocalAddressResolver? localAddress = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRoot);
         _contentRoot = contentRoot;
         _clock = clock ?? TimeProvider.System;
+        _localAddress = localAddress ?? new LocalAddressResolver();
+        // Native CSilentInfo reads its files once when constructed at client start (0x6BB310).
+        _silentInfo = new Lazy<GameSilentInfoReport>(() => SilentInfoFiles.Read(contentRoot));
     }
 
     internal LoginAttemptFeedback Feedback => Volatile.Read(ref _feedback);
@@ -271,6 +277,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+            uint localAddress = await _localAddress.RefreshAsync(cancellationToken).ConfigureAwait(false);
             await using LoginAccountExchangeResult account =
                 await LoginSignedAccountExchange.AuthenticateAsync(catalog, selection,
                     name, password, LoginAccountTimeouts.Default, _clock, cancellationToken)
@@ -297,6 +304,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
             {
                 game = await GameServerHandshakeSession.OpenAsync(account,
                     GameServerHandshakeTimeouts.Default, cancellationToken).ConfigureAwait(false);
+                game.LocalAddress = localAddress;
+                game.SilentInfo = _silentInfo.Value;
 
                 // The verified English dataset emits the little-endian 'En' tag.
                 await game.SendLoginProofAsync(0x6E45, ReadOnlyMemory<byte>.Empty,

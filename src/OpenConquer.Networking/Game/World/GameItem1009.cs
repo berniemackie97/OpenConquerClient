@@ -10,6 +10,7 @@ namespace OpenConquer.Networking.Game.World;
 internal readonly ref struct GameItem1009
 {
     internal const ushort PacketType = 1009;
+    internal const int FixedLength = 88;
     internal const int ListOffset = 84;
     internal const int SnapshotItemCount = 13;
 
@@ -23,6 +24,7 @@ internal readonly ref struct GameItem1009
     internal const ushort EquipItem = 5;
     internal const ushort UnequipItem = 6;
     internal const ushort UpdateDurability = 17;
+    internal const ushort LatencyTick = 27;
     internal const ushort EquipmentSnapshot = 46;
 
     private const int SnapshotOffset = 0x20;
@@ -40,6 +42,9 @@ internal readonly ref struct GameItem1009
     internal uint ParameterB => _message.ReadUInt32(8);
 
     internal ushort Subtype => _message.ReadUInt16(12);
+
+    /// <summary>+16; subtype 27 carries the server's time reference here (latency = now - +16).</summary>
+    internal uint ParameterC => _message.ReadUInt32(16);
 
     /// <summary>The unsigned list count at +20.</summary>
     internal uint DeclaredListCount => _message.ReadUInt32(CountOffset);

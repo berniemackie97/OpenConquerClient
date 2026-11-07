@@ -423,6 +423,23 @@ public sealed class WorldInboundStateTests
         Assert.Equal(55u, state.HeroAttributes.CurrentLife);
     }
 
+    // CMsgItem__Process subtype 27: hero+0x2CF4 = timeGetTime - +16; the frame changes no equipment.
+    [Fact]
+    public void LatencyTickSetsTheHeartbeatLatencyFromTheClientClock()
+    {
+        WorldInboundState state = new(new GameWorldEntrySnapshot(new GameCharacterInfo1006 { EntityId = HeroId },
+            1002, 1010, 0, 1, 61, 101, [], 3), WorldHeroItemStatsTests.Catalog(), () => 5_000);
+        byte[] tick = new byte[88];
+        BinaryPrimitives.WriteUInt16LittleEndian(tick, 88);
+        BinaryPrimitives.WriteUInt16LittleEndian(tick.AsSpan(2), 1009);
+        BinaryPrimitives.WriteUInt16LittleEndian(tick.AsSpan(12), 27);
+        BinaryPrimitives.WriteUInt32LittleEndian(tick.AsSpan(16), 4_250);
+
+        Assert.False(state.Apply(tick));
+        Assert.Equal(750u, state.Heartbeat.Latency);
+        Assert.Equal(0u, state.EquipmentRevision);
+    }
+
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
         ushort transformLookSourceId = 0, int hydrationEnteredAt = 0) =>
         new(new GameWorldEntrySnapshot(

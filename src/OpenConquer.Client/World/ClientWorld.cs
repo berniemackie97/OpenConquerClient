@@ -3,6 +3,7 @@ using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Content;
 using OpenConquer.Content.Items;
 using OpenConquer.Content.Progression;
+using OpenConquer.Networking.Game;
 using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Platform.Geometry;
@@ -28,7 +29,9 @@ internal sealed class ClientWorld : IClientWorld
 
     private Func<ValueTask>? _closeSession;
     private GameWorldEntrySnapshot? _entry;
+    private readonly TimeProvider _clock;
     private WorldFrameIngress? _ingress;
+    private WorldFrameEgress? _egress;
     private WorldInboundState? _inbound;
     private LevelExperienceTable? _levelExperience;
     private WorldMapLoad? _load;
@@ -45,12 +48,19 @@ internal sealed class ClientWorld : IClientWorld
     private WorldCloseReason _closeReason;
     private bool _closeObserved;
 
-    /// <summary>Starts the map load for an admitted world. <c>onClosing</c> runs once, synchronously, when the world starts closing.</summary>
+    /// <summary>
+    /// Starts the map load for an admitted world. <c>onClosing</c> runs once, synchronously, when the world starts
+    /// closing. <c>clientStartedAt</c> is the client millisecond counter at client start (native hero construction).
+    /// </summary>
     public ClientWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot entry, IClientContentSource content,
-        LogicalRenderSize logicalRenderSize, Action onClosing)
+        LogicalRenderSize logicalRenderSize, Action onClosing, uint clientStartedAt = 0, TimeProvider? clock = null)
         : this(entry, content, logicalRenderSize, onClosing,
             (game ?? throw new ArgumentNullException(nameof(game))).DisposeAsync,
-            () => new WorldFrameIngress(game), () => new WorldMapLoad(content, entry))
+            () => new WorldFrameIngress(game), () => new WorldMapLoad(content, entry),
+            () => new WorldFrameEgress(
+                (now, token) => game.SendWorldLatencyTickAsync(entry.Character.EntityId, now, token),
+                (address, latency, now, token) => game.SendWorldLatencyReportAsync(address, latency, now, token)),
+            clock, clientStartedAt)
     {
     }
 
@@ -59,7 +69,8 @@ internal sealed class ClientWorld : IClientWorld
     /// admitted session.
     /// </summary>
     internal ClientWorld(GameWorldEntrySnapshot entry, IClientContentSource content, LogicalRenderSize logicalRenderSize,
-        Action onClosing, Func<ValueTask> closeSession, Func<WorldFrameIngress> createIngress, Func<WorldMapLoad> createLoad)
+        Action onClosing, Func<ValueTask> closeSession, Func<WorldFrameIngress> createIngress, Func<WorldMapLoad> createLoad,
+        Func<WorldFrameEgress>? createEgress = null, TimeProvider? clock = null, uint clientStartedAt = 0)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(content);
@@ -69,6 +80,7 @@ internal sealed class ClientWorld : IClientWorld
         ArgumentNullException.ThrowIfNull(createLoad);
 
         _content = content;
+        _clock = clock ?? TimeProvider.System;
         _logicalRenderSize = logicalRenderSize;
         _onClosing = onClosing;
         _drawRole = DrawRole;
@@ -91,7 +103,8 @@ internal sealed class ClientWorld : IClientWorld
 
         try
         {
-            _inbound = new WorldInboundState(entry, itemStats);
+            _inbound = new WorldInboundState(entry, itemStats, () => GameClientClock.Milliseconds(_clock),
+                clientStartedAt);
         }
         catch (InvalidDataException exception)
         {
@@ -101,6 +114,7 @@ internal sealed class ClientWorld : IClientWorld
         }
 
         _ingress = createIngress();
+        _egress = createEgress?.Invoke();
         _load = createLoad();
     }
 
@@ -126,8 +140,12 @@ internal sealed class ClientWorld : IClientWorld
         try
         {
             ingress.Drain(_applyFrame);
+            if (_egress is { } egress && _inbound is { } state)
+            {
+                egress.Pump(state.Heartbeat, GameClientClock.Milliseconds(_clock));
+            }
         }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or
+        catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or
             System.Net.Sockets.SocketException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine($"OpenConquer: world connection closed ({exception.Message}).");
@@ -368,8 +386,10 @@ internal sealed class ClientWorld : IClientWorld
         _texturesReady = false;
         Func<ValueTask>? closeSession = _closeSession;
         WorldFrameIngress? ingress = _ingress;
+        WorldFrameEgress? egress = _egress;
         _closeSession = null;
         _ingress = null;
+        _egress = null;
         _inbound = null;
         _levelExperience = null;
         _entry = null;
@@ -381,7 +401,7 @@ internal sealed class ClientWorld : IClientWorld
         finally
         {
             // Network ownership must not be lost when releasing graphics fails.
-            _closing = closeSession is null ? Task.CompletedTask : CloseSessionAsync(closeSession, ingress);
+            _closing = closeSession is null ? Task.CompletedTask : CloseSessionAsync(closeSession, ingress, egress);
         }
     }
 
@@ -415,9 +435,16 @@ internal sealed class ClientWorld : IClientWorld
         _load = null;
         cleanup.Run(() => load?.Dispose());
         WorldFrameIngress? ingress = _ingress;
+        WorldFrameEgress? egress = _egress;
         _ingress = null;
+        _egress = null;
         _inbound = null;
         _levelExperience = null;
+        if (egress is not null)
+        {
+            await cleanup.RunAsync(egress.DisposeAsync).ConfigureAwait(false);
+        }
+
         if (ingress is not null)
         {
             await cleanup.RunAsync(ingress.DisposeAsync).ConfigureAwait(false);
@@ -432,13 +459,24 @@ internal sealed class ClientWorld : IClientWorld
         cleanup.ThrowIfFailed();
     }
 
-    private static async Task CloseSessionAsync(Func<ValueTask> closeSession, WorldFrameIngress? ingress)
+    private static async Task CloseSessionAsync(Func<ValueTask> closeSession, WorldFrameIngress? ingress,
+        WorldFrameEgress? egress)
     {
         try
         {
-            if (ingress is not null)
+            try
             {
-                await ingress.DisposeAsync().ConfigureAwait(false);
+                if (egress is not null)
+                {
+                    await egress.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                if (ingress is not null)
+                {
+                    await ingress.DisposeAsync().ConfigureAwait(false);
+                }
             }
         }
         finally
