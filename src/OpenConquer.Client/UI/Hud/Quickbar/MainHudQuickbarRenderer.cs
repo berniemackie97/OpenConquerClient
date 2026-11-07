@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Runtime.ExceptionServices;
-using OpenConquer.Content.Ani;
 using OpenConquer.Content.Images;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.OpenGL.Resources;
@@ -33,8 +32,11 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 {
     private const int QuantitySize = 16;
     private const int QuantityStride = 8;
+    private const int MaximumSignedDecimalLength = 11;
+    private const int ImageUploadsPerDraw = 4;
 
     private readonly MainHudQuickbarAssets _assets;
+    private readonly MainHudQuickbarImageLoader? _images;
     private readonly MainHudQuickbarLayout _layout;
     private readonly OpenGLGraphicsDevice _graphicsDevice;
     private readonly IMainHudQuickbarItemIconKeyResolver? _itemIconKeyResolver;
@@ -46,9 +48,12 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
     private readonly Dictionary<string, OpenGLTexture2D?> _fixedTextures = new(StringComparer.Ordinal);
     private readonly List<OpenGLTexture2D> _fixedOwnedTextures = [];
     private readonly SlotTextureCache[] _slotTextures = CreateSlotTextureCaches();
+    private readonly OpenGLTexture2D?[] _numberTextures = new OpenGLTexture2D?[MaximumSignedDecimalLength];
+    private int _remainingImageUploads;
+    private bool _canUploadGlow;
     private bool _disposed;
 
-    public MainHudQuickbarRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudQuickbarAssets assets, LogicalRenderSize logicalRenderSize, IMainHudQuickbarItemIconKeyResolver? itemIconKeyResolver = null, IMainHudQuickbarCooldownSource? cooldownSource = null, IMainHudQuickbarCooldownTextRenderer? cooldownTextRenderer = null, IMainHudQuickbarGlowSectionResolver? glowSectionResolver = null, Func<bool>? useAlternateSwapIcon = null, Func<uint>? readTickCount = null)
+    public MainHudQuickbarRenderer(OpenGLGraphicsDevice graphicsDevice, MainHudQuickbarAssets assets, LogicalRenderSize logicalRenderSize, IMainHudQuickbarItemIconKeyResolver? itemIconKeyResolver = null, IMainHudQuickbarCooldownSource? cooldownSource = null, IMainHudQuickbarCooldownTextRenderer? cooldownTextRenderer = null, IMainHudQuickbarGlowSectionResolver? glowSectionResolver = null, Func<bool>? useAlternateSwapIcon = null, Func<uint>? readTickCount = null, MainHudQuickbarImageLoader? images = null)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(assets);
@@ -60,6 +65,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
         _graphicsDevice = graphicsDevice;
         _assets = assets;
+        _images = images;
         _layout = MainHudQuickbarLayout.Create(logicalRenderSize);
         _itemIconKeyResolver = itemIconKeyResolver;
         _cooldownSource = cooldownSource;
@@ -75,6 +81,9 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(state);
 
+        _images?.BeginFrame();
+        _remainingImageUploads = ImageUploadsPerDraw;
+        _canUploadGlow = true;
         for (int slotIndex = 0; slotIndex < MainHudQuickbarDefinition.SlotCount; slotIndex++)
         {
             MainHudQuickbarSlotBounds bounds = _layout.GetSlotBounds(slotIndex);
@@ -116,6 +125,8 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
                 _cooldownTextRenderer!.Draw(renderer, seconds.ToString(CultureInfo.InvariantCulture), bounds.X, bounds.Y);
             }
         }
+
+        _images?.EndFrame();
     }
 
     public void Dispose()
@@ -147,6 +158,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
         _fixedTextures.Clear();
         _fixedOwnedTextures.Clear();
+        Array.Clear(_numberTextures);
         _disposed = true;
         firstFailure?.Throw();
     }
@@ -167,7 +179,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
                 OpenGLTexture2D? item = cache.GetContent(
                     $"item:{iconKey}",
-                    () => CreateTexture($"item:{iconKey}", () => _assets.GetItemFrame(iconKey), exactWidth: 64, exactHeight: 64));
+                    () => CreateTexture($"item:{iconKey}", new QuickbarImageRequest(QuickbarImageKind.Item, IconKey: iconKey), exactWidth: 64, exactHeight: 64));
 
                 if (item is null)
                 {
@@ -178,7 +190,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
                 return true;
 
             case (byte)MainHudQuickbarContentKind.Action:
-                DrawNaturalDynamic(renderer, cache, $"control:ButtonA{slot.ContentId}", () => _assets.GetControlFrame0($"ButtonA{slot.ContentId}"), bounds.X + 3, bounds.Y + 5, 64, 64);
+                DrawNaturalDynamic(renderer, cache, $"control:ButtonA{slot.ContentId}", new QuickbarImageRequest(QuickbarImageKind.Control, $"ButtonA{slot.ContentId}"), bounds.X + 3, bounds.Y + 5, 64, 64);
                 return false;
 
             case (byte)MainHudQuickbarContentKind.Magic:
@@ -186,7 +198,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
                 string section = slot.ContentKind == (byte)MainHudQuickbarContentKind.Magic ? $"MagicSkillType{slot.ContentId}" : $"XpSkillType{slot.ContentId}";
                 OpenGLTexture2D? magic = cache.GetContent(
                     $"magic:{section}",
-                    () => CreateTexture($"magic:{section}", () => _assets.GetMagicFrame0(section), minimumWidth: 50, minimumHeight: 50));
+                    () => CreateTexture($"magic:{section}", new QuickbarImageRequest(QuickbarImageKind.Magic, section), minimumWidth: 50, minimumHeight: 50));
 
                 if (magic is not null)
                 {
@@ -197,12 +209,12 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
                 return false;
 
             case (byte)MainHudQuickbarContentKind.Dance:
-                DrawNaturalDynamic(renderer, cache, $"control:Action_Dance{slot.ContentId}Btn", () => _assets.GetControlFrame0($"Action_Dance{slot.ContentId}Btn"), bounds.X + 3, bounds.Y + 5, 64, 64);
+                DrawNaturalDynamic(renderer, cache, $"control:Action_Dance{slot.ContentId}Btn", new QuickbarImageRequest(QuickbarImageKind.Control, $"Action_Dance{slot.ContentId}Btn"), bounds.X + 3, bounds.Y + 5, 64, 64);
                 return false;
 
             case (byte)MainHudQuickbarContentKind.WeaponSwap:
                 string swapSection = _useAlternateSwapIcon() ? "Swapuse_SwapmainbBtn" : "Swapuse_UsemainbBtn";
-                DrawNaturalDynamic(renderer, cache, $"control:{swapSection}", () => _assets.GetControlFrame0(swapSection), bounds.X + 3, bounds.Y + 5, 64, 64);
+                DrawNaturalDynamic(renderer, cache, $"control:{swapSection}", new QuickbarImageRequest(QuickbarImageKind.Control, swapSection), bounds.X + 3, bounds.Y + 5, 64, 64);
                 return false;
 
             default:
@@ -264,20 +276,30 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
     private void DrawQuantity(OpenGLRenderer renderer, MainHudQuickbarSlotBounds bounds, uint rawQuantity)
     {
         string text = unchecked((int)rawQuantity).ToString(CultureInfo.InvariantCulture);
-        int x = bounds.X + 2;
-
+        int count = 0;
         foreach (char character in text)
         {
             int digit = character - '0';
             string section = $"Main3_Num{digit}Pic";
-            OpenGLTexture2D? texture = GetFixedTexture($"control:{section}", () => _assets.GetControlFrame0(section), exactWidth: 16, exactHeight: 16);
+            TextureLookup<OpenGLTexture2D> result = GetFixedTexture($"control:{section}",
+                new QuickbarImageRequest(QuickbarImageKind.Control, section), exactWidth: 16, exactHeight: 16);
+            if (!result.IsResolved)
+            {
+                return;
+            }
 
-            if (texture is null)
+            if (result.Texture is not { } texture)
             {
                 break;
             }
 
-            renderer.DrawSprite(texture, x, bounds.Y + 2, QuantitySize, QuantitySize);
+            _numberTextures[count++] = texture;
+        }
+
+        int x = bounds.X + 2;
+        for (int index = 0; index < count; index++)
+        {
+            renderer.DrawSprite(_numberTextures[index]!, x, bounds.Y + 2, QuantitySize, QuantitySize);
             x += QuantityStride;
         }
     }
@@ -292,33 +314,48 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         }
 
         string text = addLevel.ToString(CultureInfo.InvariantCulture);
-        int x = bounds.X + MainHudQuickbarDefinition.CellWidth - 11;
-
+        int count = 0;
         for (int index = text.Length - 1; index >= 0; index--)
         {
             string section = $"Equip_Num{text[index]}";
-            OpenGLTexture2D? digit = GetFixedTexture($"control:{section}", () => _assets.GetControlFrame0(section), exactWidth: 16, exactHeight: 16);
+            TextureLookup<OpenGLTexture2D> result = GetFixedTexture($"control:{section}",
+                new QuickbarImageRequest(QuickbarImageKind.Control, section), exactWidth: 16, exactHeight: 16);
+            if (!result.IsResolved)
+            {
+                return;
+            }
 
-            if (digit is null)
+            if (result.Texture is not { } digit)
             {
                 break;
             }
 
-            renderer.DrawSprite(digit, x, bounds.Y);
+            _numberTextures[count++] = digit;
+        }
+
+        TextureLookup<OpenGLTexture2D> plus = GetFixedTexture("control:Equip_AddPic",
+            new QuickbarImageRequest(QuickbarImageKind.Control, "Equip_AddPic"), exactWidth: 16, exactHeight: 16);
+        if (!plus.IsResolved)
+        {
+            return;
+        }
+
+        int x = bounds.X + MainHudQuickbarDefinition.CellWidth - 11;
+        for (int index = 0; index < count; index++)
+        {
+            renderer.DrawSprite(_numberTextures[index]!, x, bounds.Y);
             x -= 9;
         }
 
-        OpenGLTexture2D? plus = GetFixedTexture("control:Equip_AddPic", () => _assets.GetControlFrame0("Equip_AddPic"), exactWidth: 16, exactHeight: 16);
-
-        if (plus is not null)
+        if (plus.Texture is { } texture)
         {
-            renderer.DrawSprite(plus, x, bounds.Y);
+            renderer.DrawSprite(texture, x, bounds.Y);
         }
     }
 
     private void DrawCover(OpenGLRenderer renderer, MainHudQuickbarSlotBounds bounds)
     {
-        OpenGLTexture2D? texture = GetFixedTexture("control:Compose_CoverPic", _assets.GetCoverFrame, exactWidth: 64, exactHeight: 64);
+        OpenGLTexture2D? texture = GetFixedTexture("control:Compose_CoverPic", new QuickbarImageRequest(QuickbarImageKind.Cover), exactWidth: 64, exactHeight: 64).Texture;
 
         if (texture is not null)
         {
@@ -326,9 +363,9 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         }
     }
 
-    private void DrawNaturalDynamic(OpenGLRenderer renderer, SlotTextureCache cache, string key, Func<RgbaImage?> load, int x, int y, int width, int height)
+    private void DrawNaturalDynamic(OpenGLRenderer renderer, SlotTextureCache cache, string key, QuickbarImageRequest request, int x, int y, int width, int height)
     {
-        OpenGLTexture2D? texture = cache.GetContent(key, () => CreateTexture(key, load, exactWidth: width, exactHeight: height));
+        OpenGLTexture2D? texture = cache.GetContent(key, () => CreateTexture(key, request, exactWidth: width, exactHeight: height));
 
         if (texture is not null)
         {
@@ -336,15 +373,20 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         }
     }
 
-    private OpenGLTexture2D[]? CreateGlowTextures(string section)
+    private TextureLookup<OpenGLTexture2D[]> CreateGlowTextures(string section)
     {
-        AniFrameSet? frames = _assets.GetEffectFrames(section);
-
-        if (frames is null || frames.FrameCount == 0)
+        QuickbarImageRequest request = new(QuickbarImageKind.Glow, section);
+        if (!TryGetArtwork(request, _canUploadGlow, out QuickbarArtwork artwork))
         {
-            return null;
+            return default;
         }
 
+        if (artwork.Glow is not { FrameCount: > 0 } frames)
+        {
+            return new TextureLookup<OpenGLTexture2D[]>(true, null);
+        }
+
+        _canUploadGlow = false;
         OpenGLTexture2D[] textures = new OpenGLTexture2D[frames.FrameCount];
         int createdCount = 0;
 
@@ -361,7 +403,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
                 createdCount++;
             }
 
-            return textures;
+            return new TextureLookup<OpenGLTexture2D[]>(true, textures);
         }
         catch
         {
@@ -381,36 +423,55 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         }
     }
 
-    private OpenGLTexture2D? GetFixedTexture(string key, Func<RgbaImage?> load, int? exactWidth = null, int? exactHeight = null, int? minimumWidth = null, int? minimumHeight = null)
+    private TextureLookup<OpenGLTexture2D> GetFixedTexture(string key, QuickbarImageRequest request, int? exactWidth = null, int? exactHeight = null, int? minimumWidth = null, int? minimumHeight = null)
     {
         if (_fixedTextures.TryGetValue(key, out OpenGLTexture2D? cached))
         {
-            return cached;
+            return new TextureLookup<OpenGLTexture2D>(true, cached);
         }
 
-        OpenGLTexture2D? texture = CreateTexture(key, load, exactWidth, exactHeight, minimumWidth, minimumHeight);
+        TextureLookup<OpenGLTexture2D> result = CreateTexture(key, request, exactWidth, exactHeight, minimumWidth, minimumHeight);
+        if (!result.IsResolved)
+        {
+            return default;
+        }
 
-        _fixedTextures.Add(key, texture);
-
-        if (texture is not null)
+        _fixedTextures.Add(key, result.Texture);
+        if (result.Texture is { } texture)
         {
             _fixedOwnedTextures.Add(texture);
         }
 
-        return texture;
+        return result;
     }
 
-    private OpenGLTexture2D? CreateTexture(string key, Func<RgbaImage?> load, int? exactWidth = null, int? exactHeight = null, int? minimumWidth = null, int? minimumHeight = null)
+    private TextureLookup<OpenGLTexture2D> CreateTexture(string key, QuickbarImageRequest request, int? exactWidth = null,
+        int? exactHeight = null, int? minimumWidth = null, int? minimumHeight = null)
     {
-        RgbaImage? image = load();
-
-        if (image is null)
+        if (!TryGetArtwork(request, _remainingImageUploads > 0, out QuickbarArtwork artwork))
         {
-            return null;
+            return default;
+        }
+
+        if (artwork.Image is not { } image)
+        {
+            return new TextureLookup<OpenGLTexture2D>(true, null);
         }
 
         ValidateImage(key, image, exactWidth, exactHeight, minimumWidth, minimumHeight);
-        return _graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span);
+        _remainingImageUploads--;
+        return new TextureLookup<OpenGLTexture2D>(true, _graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span));
+    }
+
+    private bool TryGetArtwork(QuickbarImageRequest request, bool canUpload, out QuickbarArtwork artwork)
+    {
+        if (_images is { } images)
+        {
+            return images.TryGet(request, canUpload, out artwork);
+        }
+
+        artwork = MainHudQuickbarImageLoader.ReadAssets(_assets, request);
+        return true;
     }
 
     private static void ValidateImage(string key, RgbaImage image, int? exactWidth, int? exactHeight, int? minimumWidth, int? minimumHeight)
@@ -438,6 +499,8 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         return caches;
     }
 
+    private readonly record struct TextureLookup<T>(bool IsResolved, T? Texture) where T : class;
+
     private sealed class SlotTextureCache : IDisposable
     {
         private string? _contentKey;
@@ -448,7 +511,7 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
         private bool _glowResolved;
         private bool _disposed;
 
-        public OpenGLTexture2D? GetContent(string key, Func<OpenGLTexture2D?> load)
+        public OpenGLTexture2D? GetContent(string key, Func<TextureLookup<OpenGLTexture2D>> load)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             ArgumentException.ThrowIfNullOrEmpty(key);
@@ -461,16 +524,14 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
             ClearContent();
 
-            OpenGLTexture2D? texture = load();
-
+            TextureLookup<OpenGLTexture2D> result = load();
             _contentKey = key;
-            _contentTexture = texture;
-            _contentResolved = true;
-
-            return texture;
+            _contentTexture = result.Texture;
+            _contentResolved = result.IsResolved;
+            return result.Texture;
         }
 
-        public OpenGLTexture2D[]? GetGlow(string section, Func<OpenGLTexture2D[]?> load)
+        public OpenGLTexture2D[]? GetGlow(string section, Func<TextureLookup<OpenGLTexture2D[]>> load)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             ArgumentException.ThrowIfNullOrEmpty(section);
@@ -483,13 +544,11 @@ internal sealed class MainHudQuickbarRenderer : IDisposable
 
             ClearGlow();
 
-            OpenGLTexture2D[]? textures = load();
-
+            TextureLookup<OpenGLTexture2D[]> result = load();
             _glowSection = section;
-            _glowTextures = textures;
-            _glowResolved = true;
-
-            return textures;
+            _glowTextures = result.Texture;
+            _glowResolved = result.IsResolved;
+            return result.Texture;
         }
 
         public void ClearContent()

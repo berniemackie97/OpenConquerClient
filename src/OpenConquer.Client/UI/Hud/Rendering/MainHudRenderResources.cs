@@ -74,11 +74,13 @@ internal sealed class MainHudRenderResources : IDisposable
     }
 
     public MainHudRenderResources(OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize,
-        MainHudPreparation preparation, MainHudSelectedSkillImageLoader selectedSkillImages, Func<uint> readTickCount)
+        MainHudPreparation preparation, MainHudSelectedSkillImageLoader selectedSkillImages,
+        MainHudQuickbarImageLoader quickbarImages, Func<uint> readTickCount)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(preparation);
         ArgumentNullException.ThrowIfNull(selectedSkillImages);
+        ArgumentNullException.ThrowIfNull(quickbarImages);
         ArgumentNullException.ThrowIfNull(readTickCount);
 
         MainHudContent content = preparation.Content;
@@ -90,7 +92,8 @@ internal sealed class MainHudRenderResources : IDisposable
             Chrome = _ownership.Track(new MainHudChromeRenderer(graphicsDevice, content.ChromeAssets, logicalRenderSize));
             Vitals = _ownership.Track(new MainHudVitalsRenderer(graphicsDevice, content.VitalsAssets, logicalRenderSize));
             SkillExperience = _ownership.Track(new MainHudSkillExperienceRenderer(graphicsDevice, content.SkillAssets, logicalRenderSize));
-            Quickbar = _ownership.Track(new MainHudQuickbarRenderer(graphicsDevice, content.QuickbarAssets, logicalRenderSize, readTickCount: readTickCount));
+            Quickbar = _ownership.Track(new MainHudQuickbarRenderer(graphicsDevice, content.QuickbarAssets, logicalRenderSize,
+                readTickCount: readTickCount, images: quickbarImages));
             ActionButtons = _ownership.Track(new MainHudActionButtonStripRenderer(graphicsDevice, content.ActionButtonAssets, logicalRenderSize));
             CheckControls = _ownership.Track(new MainHudCheckControlRenderer(graphicsDevice, content.CheckControlAssets, logicalRenderSize));
             SelectedSkill = _ownership.Track(new MainHudSelectedSkillRenderer(graphicsDevice, content.SelectedSkillAssets, logicalRenderSize, selectedSkillImages));
