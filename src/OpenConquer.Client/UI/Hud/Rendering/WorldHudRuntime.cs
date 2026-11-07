@@ -39,7 +39,7 @@ internal sealed class WorldHudRuntime : IDisposable
     private readonly MainHudRenderResources _resources;
     private bool _disposed;
 
-    public WorldHudRuntime(MainHudPreparation preparation, OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize, IMainHudMagicHintSource? magicHintSource)
+    public WorldHudRuntime(MainHudPreparation preparation, MainHudSelectedSkillImageLoader selectedSkillImages, OpenGLGraphicsDevice graphicsDevice, LogicalRenderSize logicalRenderSize, IMainHudMagicHintSource? magicHintSource)
     {
         ArgumentNullException.ThrowIfNull(preparation);
         ArgumentNullException.ThrowIfNull(graphicsDevice);
@@ -66,7 +66,7 @@ internal sealed class WorldHudRuntime : IDisposable
 
         _input = new MainHudInputCoordinator(actionInput, quickbarInput, checkInput, statusHintInput, _statusHintState);
 
-        _resources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, preparation, s_readTickCount);
+        _resources = new MainHudRenderResources(graphicsDevice, logicalRenderSize, preparation, selectedSkillImages, s_readTickCount);
     }
 
     public void HandlePointerMoved(bool mapped, int x, int y)
@@ -92,6 +92,15 @@ internal sealed class WorldHudRuntime : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         _vitalsState.SetSnapshot(vitals);
         _skillState.SetSnapshot(new MainHudSkillExperienceSnapshot(skillGauge, experience, experienceMaximum));
+    }
+
+    internal void PrepareFrame()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_chromeAssets.HasDialogPanels)
+        {
+            _resources.SelectedSkill.Prepare(_selectedSkillState);
+        }
     }
 
     public void Draw(OpenGLRenderer renderer, DesktopWindow window)

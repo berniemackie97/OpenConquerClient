@@ -1,4 +1,5 @@
 using OpenConquer.Client.UI.Hud.Rendering;
+using OpenConquer.Client.UI.Hud.SelectedSkill;
 using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Content;
 using OpenConquer.Content.Progression;
@@ -46,6 +47,7 @@ internal sealed class ClientWorld : IClientWorld
     private WorldContentLoad<MainHudPreparation>? _hudLoad;
     private MainHudContent? _hudContent;
     private MainHudPreparation? _hudPreparation;
+    private MainHudSelectedSkillImageLoader? _selectedSkillImages;
     private WorldHudRuntime? _hud;
     private OpenGLRenderer? _renderer;
     private LogicalRenderSize _rendererSize;
@@ -252,6 +254,7 @@ internal sealed class ClientWorld : IClientWorld
         try
         {
             PrepareHudGraphics(device);
+            _hud?.PrepareFrame();
             if (!_texturesReady)
             {
                 _texturesReady = PrepareMapTextures(device, GetRenderer(window, device, fallback));
@@ -297,6 +300,7 @@ internal sealed class ClientWorld : IClientWorld
         try
         {
             PrepareHudGraphics(device);
+            _hud?.PrepareFrame();
             _ = PrepareMapTextures(device, renderer);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
@@ -317,7 +321,8 @@ internal sealed class ClientWorld : IClientWorld
             _hudPreparation = null;
             using (preparation)
             {
-                _hud = new WorldHudRuntime(preparation, device, _logicalRenderSize, magicHintSource: null);
+                _selectedSkillImages ??= new MainHudSelectedSkillImageLoader(preparation.Content.SelectedSkillAssets);
+                _hud = new WorldHudRuntime(preparation, _selectedSkillImages, device, _logicalRenderSize, magicHintSource: null);
             }
         }
         else
@@ -440,6 +445,9 @@ internal sealed class ClientWorld : IClientWorld
         WorldMapImageLoader? mapImageLoader = _mapImageLoader;
         _mapImageLoader = null;
         mapImageLoader?.Cancel();
+        MainHudSelectedSkillImageLoader? selectedSkillImages = _selectedSkillImages;
+        _selectedSkillImages = null;
+        selectedSkillImages?.Cancel();
         _texturesReady = false;
         Func<ValueTask>? closeSession = _closeSession;
         WorldFrameIngress? ingress = _ingress;
@@ -464,7 +472,7 @@ internal sealed class ClientWorld : IClientWorld
         finally
         {
             // Network ownership must not be lost when releasing graphics fails.
-            _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader);
+            _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages);
         }
     }
 
@@ -500,6 +508,9 @@ internal sealed class ClientWorld : IClientWorld
         WorldMapImageLoader? mapImageLoader = _mapImageLoader;
         _mapImageLoader = null;
         mapImageLoader?.Cancel();
+        MainHudSelectedSkillImageLoader? selectedSkillImages = _selectedSkillImages;
+        _selectedSkillImages = null;
+        selectedSkillImages?.Cancel();
         WorldContentLoad<WorldEntryCatalogs>? catalogLoad = _catalogLoad;
         _catalogLoad = null;
         catalogLoad?.Cancel();
@@ -520,7 +531,7 @@ internal sealed class ClientWorld : IClientWorld
         _hudPreparation = null;
         Func<ValueTask>? closeSession = _closeSession;
         _closeSession = null;
-        await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader)))
+        await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages)))
             .ConfigureAwait(false);
 
         if (catalogLoad is not null)
@@ -545,7 +556,7 @@ internal sealed class ClientWorld : IClientWorld
     }
 
     private static async Task CloseWorldAsync(Func<ValueTask>? closeSession, WorldFrameIngress? ingress,
-        WorldFrameEgress? egress, WorldRoleLoad? roleLoad, WorldMapImageLoader? mapImageLoader)
+        WorldFrameEgress? egress, WorldRoleLoad? roleLoad, WorldMapImageLoader? mapImageLoader, MainHudSelectedSkillImageLoader? selectedSkillImages)
     {
         ClientShutdown cleanup = new();
         if (egress is not null)
@@ -571,6 +582,11 @@ internal sealed class ClientWorld : IClientWorld
         if (mapImageLoader is not null)
         {
             await cleanup.RunAsync(mapImageLoader.DisposeAsync).ConfigureAwait(false);
+        }
+
+        if (selectedSkillImages is not null)
+        {
+            await cleanup.RunAsync(selectedSkillImages.DisposeAsync).ConfigureAwait(false);
         }
 
         cleanup.ThrowIfFailed();
