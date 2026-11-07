@@ -713,10 +713,15 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
     /// <summary>Sends one fixed world-entry 10010 action after typed character information is accepted.</summary>
     internal Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair,
+        TimeSpan timeout, CancellationToken cancellationToken = default) =>
+        SendWorldActionAsync(action, entityId, parameterPair, 0, timeout, cancellationToken);
+
+    /// <summary>Sends one world-entry 10010 action carrying a client timestamp at +16.</summary>
+    internal Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair, uint timestamp,
         TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         byte[] packet = new byte[GameWorldAction10010.PacketLength];
-        GameWorldAction10010.Write(packet, action, entityId, parameterPair);
+        GameWorldAction10010.Write(packet, action, entityId, parameterPair, timestamp);
         return SendWorldEntryPacketAsync(packet, timeout, cancellationToken);
     }
 

@@ -29,6 +29,9 @@ internal readonly record struct GameWorldAction10010(
     internal const ushort GetWeaponSkills = 0x4D;
     internal const ushort GetMagic = 0x4E;
     internal const ushort GetSyndicate = 0x61;
+
+    /// <summary>PK mode; main-dialog init sends mode 3 after the 76 request (0x4BDD30).</summary>
+    internal const ushort SetPkMode = 0x60;
     internal const ushort PositionCorrection = 108;
     internal const ushort GetStatistics = 0x84;
     internal const ushort ReportSilentInfo = 0xFB;

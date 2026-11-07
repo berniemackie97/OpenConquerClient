@@ -11,8 +11,9 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     private readonly HashSet<uint> _unhandledAttributes = [];
 
     /// <summary>
-    /// Seeds the hero from the admission snapshot, then replays the hydration item frames in arrival order, so a
-    /// subtype-46 snapshot clamps against the hero life that preceded it. Other hydration frames are not consumed.
+    /// Seeds the hero from the admission snapshot, then replays every hydration frame through this handler in arrival
+    /// order, as native processes each message when it arrives. Frames that arrived before the EnterMap reply apply
+    /// before its position does. A subtype-46 snapshot therefore clamps against the hero life that preceded it.
     /// </summary>
     internal WorldInboundState(GameWorldEntrySnapshot world, ItemStatCatalog itemStats)
     {
@@ -20,16 +21,22 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         _heroId = world.Character.EntityId;
         Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character), itemStats, world.MapFlags,
             world.Character.TransformLookSourceId != 0);
-        HydrationItems hydration = new(Hero);
-        foreach (byte[] packet in world.HydrationPackets)
+        Weather = (world.WeatherKind, 0, 0, 0);
+        int enteredAt = Math.Clamp(world.HydrationEnteredAt, 0, world.HydrationPackets.Count);
+        for (int index = 0; index < world.HydrationPackets.Count; index++)
         {
-            GameWorldPacketDispatcher.Dispatch(packet, hydration);
+            if (index == enteredAt)
+            {
+                ApplyEntryPosition(world);
+            }
+
+            GameWorldPacketDispatcher.Dispatch(world.HydrationPackets[index], this);
         }
 
-        X = world.X;
-        Y = world.Y;
-        DirectionIndex = world.DirectionIndex;
-        Weather = (world.WeatherKind, 0, 0, 0);
+        if (enteredAt == world.HydrationPackets.Count)
+        {
+            ApplyEntryPosition(world);
+        }
     }
 
     internal WorldHeroModel Hero
@@ -163,29 +170,10 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         }
     }
 
-    /// <summary>Consumes only hydration item frames, as world entry delivers them before ingress starts.</summary>
-    private sealed class HydrationItems(WorldHeroModel hero) : IGameWorldPacketHandler
+    private void ApplyEntryPosition(GameWorldEntrySnapshot world)
     {
-        public bool HandleItemRecord(GameItemRecord1008 record)
-        {
-            hero.ApplyItemRecord(record);
-            return false;
-        }
-
-        public bool HandleItem(GameItem1009 item)
-        {
-            hero.ApplyItem(item);
-            return false;
-        }
-
-        public bool HandleWalk(GameWalk10005 walk) => false;
-
-        public bool HandleAction(GameWorldAction10010 action) => false;
-
-        public bool HandleAttributes(GameUserAttrib10017 attributes) => false;
-
-        public bool HandleWeather(GameWeather1016 weather) => false;
-
-        public bool HandleUnknown(ushort packetType) => false;
+        X = world.X;
+        Y = world.Y;
+        DirectionIndex = world.DirectionIndex;
     }
 }

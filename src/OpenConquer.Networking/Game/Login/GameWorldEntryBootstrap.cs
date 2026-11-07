@@ -5,8 +5,10 @@ using OpenConquer.Networking.Game.World;
 namespace OpenConquer.Networking.Game.Login;
 
 /// <summary>
-/// Completes the existing-character world-entry request ladder on the authenticated socket.
-/// Initial map and hydration frames are owned, bounded copies for the world-state consumer.
+/// Drives the existing-character world-entry request ladder on the authenticated socket the way the 5517 client does:
+/// each server acknowledgement triggers the next request, and nothing else gates order. Frames that are not the ladder,
+/// map, weather or a hero acknowledgement are kept, in arrival order and within a bounded budget, for the world-state
+/// consumer. Evidence: 20_notes Network/bootstrap-tolerance-cp24d.md.
 /// </summary>
 internal static class GameWorldEntryBootstrap
 {
@@ -16,8 +18,12 @@ internal static class GameWorldEntryBootstrap
     private const int MaximumHydrationBytes = 4 * 1024 * 1024;
     private const ulong ClientStateAppliedMapFlag = 1UL << 38;
 
+    // Main-dialog init sends PK mode 3 (sub_66066a(hero, 3, 1), 0x4BDD30).
+    private const uint InitialPkMode = 3;
+
     internal static async Task<GameWorldEntrySnapshot> RunAsync(GameServerHandshakeSession session,
-        GameCharacterInfo1006 character, Action? onMapEntered = null, TimeSpan? completionTimeout = null, CancellationToken cancellationToken = default)
+        GameCharacterInfo1006 character, Action? onMapEntered = null, TimeSpan? completionTimeout = null,
+        TimeProvider? clock = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(character);
@@ -32,136 +38,134 @@ internal static class GameWorldEntryBootstrap
             throw new ArgumentOutOfRangeException(nameof(completionTimeout));
         }
 
+        clock ??= TimeProvider.System;
         using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(duration);
         CancellationToken operation = deadline.Token;
+        uint hero = character.EntityId;
         try
         {
             List<byte[]> hydration = [];
             int byteCount = 0;
-            await session.SendWorldActionAsync(GameWorldAction10010.EnterMap, character.EntityId, 0,
-                s_timeout, operation).ConfigureAwait(false);
+            GameMapInfo1110? map = null;
+            ulong mapFlags = 0;
+            uint weatherKind = 0;
+            GameWorldAction10010? entered = null;
+            int enteredAt = 0;
+            bool statisticsRequested = false;
+
+            // CMsgUserInfo__Process sends 74 (0x764873), then 1151 subtype 2 for body digit 2 (0x7648DB).
+            await SendActionAsync(GameWorldAction10010.EnterMap, hero).ConfigureAwait(false);
             if (GameFlowerRankRequest1151.IsSentAfterEnterMap(character.PackedAppearance))
             {
                 await session.SendWorldEntryFlowerRankAsync(s_timeout, operation).ConfigureAwait(false);
             }
 
-            uint mapId;
-            uint mapDataId;
-            ulong flags;
-            uint weatherKind;
-            ushort x;
-            ushort y;
-            byte directionIndex;
-
-            using (GameSecuredInboundFrame map = await ReadRequiredAsync(session, operation).ConfigureAwait(false))
+            while (!statisticsRequested || entered is null || map is null)
             {
-                if (!GameMapInfo1110.TryRead(map.Packet.Span, out GameMapInfo1110 info))
+                using GameSecuredInboundFrame frame = await ReadRequiredAsync(session, operation).ConfigureAwait(false);
+                ReadOnlySpan<byte> packet = frame.Packet.Span;
+                if (GameMapInfo1110.TryRead(packet, out GameMapInfo1110 info))
                 {
-                    throw new InvalidDataException("World entry expected the 1110 map information packet.");
+                    // CMsgMapInfo1110__Process sends 408 when map-flag bit38 changes (0x732CFD/0x732D4C); the native
+                    // flags start at zero (CGameMap ctor 0x61B875).
+                    bool changed = ((mapFlags ^ info.MapFlags) & ClientStateAppliedMapFlag) != 0;
+                    (map, mapFlags) = (info, info.MapFlags);
+                    if (changed)
+                    {
+                        await session.SendWorldActionAsync(GameWorldAction10010.ClientStateApplied, 0, 0, s_timeout,
+                            operation).ConfigureAwait(false);
+                    }
+
+                    continue;
                 }
 
-                mapId = info.MapId;
-                mapDataId = info.MapDataId;
-                flags = info.MapFlags;
-                if (mapId == 0 || mapDataId == 0)
+                if (GameWeather1016.TryRead(packet, out GameWeather1016 weather))
                 {
-                    throw new InvalidDataException("World entry supplied an invalid map identity.");
+                    // CMsgWeatherUpdate__ValidateAndNormalize 0x7606CD: an unsupported value is a silent no-op.
+                    weatherKind = weather.HasSupportedValues ? weather.Kind : weatherKind;
+                    continue;
                 }
+
+                if (GameWorldAction10010.TryRead(packet, out GameWorldAction10010 action) &&
+                    await TryAnswerAsync(action).ConfigureAwait(false))
+                {
+                    continue;
+                }
+
+                byteCount = checked(byteCount + frame.PacketLength);
+                if (hydration.Count >= MaximumHydrationFrames || byteCount > MaximumHydrationBytes)
+                {
+                    throw new InvalidDataException("World entry exceeded its bounded hydration budget.");
+                }
+
+                hydration.Add(frame.Packet.ToArray());
             }
 
-            // CMsgMapInfo1110__Process sends action 408 only when map-flag bit38 changes (0x732CFD/0x732D4C). The
-            // native map flags start at zero (CGameMap ctor 0x61B875), so first entry sends it only for a bit38 map.
-            if ((flags & ClientStateAppliedMapFlag) != 0)
-            {
-                await session.SendWorldActionAsync(GameWorldAction10010.ClientStateApplied, 0, 0,
-                    s_timeout, operation).ConfigureAwait(false);
-            }
-
-            using (GameSecuredInboundFrame weather = await ReadRequiredAsync(session, operation).ConfigureAwait(false))
-            {
-                if (!GameWeather1016.TryRead(weather.Packet.Span, out GameWeather1016 info))
-                {
-                    throw new InvalidDataException("World entry expected the 1016 weather packet.");
-                }
-
-                weatherKind = info.Kind;
-                if (weatherKind is < 1 or > 11 or 6)
-                {
-                    throw new InvalidDataException("World entry received an unsupported weather kind.");
-                }
-            }
-
-            using (GameSecuredInboundFrame entered = await ReadRequiredAsync(session, operation).ConfigureAwait(false))
-            {
-                if (!GameWorldAction10010.TryRead(entered.Packet.Span, out GameWorldAction10010 action) ||
-                    action.Action != GameWorldAction10010.EnterMap || action.EntityId != character.EntityId ||
-                    action.ParameterPair != mapDataId)
-                {
-                    throw new InvalidDataException("World entry received a mismatched EnterMap acknowledgement.");
-                }
-
-                (x, y) = (action.X, action.Y);
-                directionIndex = (byte)(action.Direction % 8);
-            }
-
-            operation.ThrowIfCancellationRequested();
-            onMapEntered?.Invoke();
-
-            // Native map creation for the 74 reply closes the booth, which always sends action 114 for the hero before
-            // the 75 request (CGameMap_CreateFromDataId 0x61DB1E -> CBoothManager_Close 0x70AC3D).
-            await session.SendWorldActionAsync(GameWorldAction10010.BoothClose, character.EntityId, 0,
-                s_timeout, operation).ConfigureAwait(false);
-
-            await ExchangeAsync(GameWorldAction10010.GetItems, character.EntityId, [1008, 1009]).ConfigureAwait(false);
-            await ExchangeAsync(GameWorldAction10010.GetFriends, character.EntityId, [1019]).ConfigureAwait(false);
-            await ExchangeAsync(GameWorldAction10010.GetWeaponSkills, character.EntityId, [1025]).ConfigureAwait(false);
-            await ExchangeAsync(GameWorldAction10010.GetMagic, character.EntityId, [1103, 1104]).ConfigureAwait(false);
-            await ExchangeAsync(GameWorldAction10010.GetSyndicate, character.EntityId, [1106]).ConfigureAwait(false);
-            await ExchangeAsync(GameWorldAction10010.ReportSilentInfo, 0, []).ConfigureAwait(false);
-
-            // This last request has no acknowledgement. Server admission follows it.
-            await session.SendWorldActionAsync(GameWorldAction10010.GetStatistics, character.EntityId, 0,
-                s_timeout, operation).ConfigureAwait(false);
             operation.ThrowIfCancellationRequested();
             session.ActivateWorld();
-            return new GameWorldEntrySnapshot(character, mapId, mapDataId, flags, weatherKind, x, y,
-                hydration, directionIndex);
+            GameWorldAction10010 position = entered.Value;
+            return new GameWorldEntrySnapshot(character, map.Value.MapId, position.ParameterPair, mapFlags, weatherKind,
+                position.X, position.Y, hydration, (byte)(position.Direction % 8), enteredAt);
 
-            async Task ExchangeAsync(ushort expectedAction, uint entityId, ushort[] acceptedPayloads)
+            // CMsgAction__Process reads only the entity and the action of an acknowledgement (common entity gate
+            // 0x6FF15D..0x6FF18A; parameters, coordinates and timestamp are ignored) and answers every accepted one.
+            // Only the hero resolves before world entry. Returns false for an action this ladder does not consume.
+            async Task<bool> TryAnswerAsync(GameWorldAction10010 action)
             {
-                await session.SendWorldActionAsync(expectedAction, entityId, 0, s_timeout, operation)
-                    .ConfigureAwait(false);
-
-                while (true)
+                switch (action.Action)
                 {
-                    using GameSecuredInboundFrame frame = await ReadRequiredAsync(session, operation).ConfigureAwait(false);
-                    if (frame.PacketType == GameWorldAction10010.PacketType)
-                    {
-                        if (!GameWorldAction10010.TryRead(frame.Packet.Span, out GameWorldAction10010 action) ||
-                            action.Action != expectedAction || action.EntityId != character.EntityId ||
-                            action.ParameterPair != 0)
+                    case GameWorldAction10010.EnterMap:
+                        // Entity overwritten with the hero (0x6FEE14); the map comes from +8 (0x6FF478). Map creation
+                        // closes the booth (114, 0x61DB1E -> 0x70AC3D), then 75 is sent (0x6FF540).
+                        bool first = entered is null;
+                        entered = action;
+                        enteredAt = hydration.Count;
+                        if (first)
                         {
-                            throw new InvalidDataException($"World entry received a mismatched acknowledgement for action {expectedAction}.");
+                            operation.ThrowIfCancellationRequested();
+                            onMapEntered?.Invoke();
                         }
 
-                        break;
-                    }
-
-                    if (!acceptedPayloads.AsSpan().Contains(frame.PacketType))
-                    {
-                        throw new InvalidDataException($"World entry action {expectedAction} received an unexpected packet {frame.PacketType}.");
-                    }
-
-                    byteCount = checked(byteCount + frame.PacketLength);
-                    if (hydration.Count >= MaximumHydrationFrames || byteCount > MaximumHydrationBytes)
-                    {
-                        throw new InvalidDataException("World entry exceeded its bounded hydration budget.");
-                    }
-
-                    hydration.Add(frame.Packet.ToArray());
+                        await SendActionAsync(GameWorldAction10010.BoothClose, hero).ConfigureAwait(false);
+                        await SendActionAsync(GameWorldAction10010.GetItems, hero).ConfigureAwait(false);
+                        return true;
+                    case GameWorldAction10010.GetItems when action.EntityId == hero:
+                        // 76 (0x6FF3F4), then main msg 0x401 -> PK mode 3 (0x6FF3CD, 0x4BDD30).
+                        await SendActionAsync(GameWorldAction10010.GetFriends, hero).ConfigureAwait(false);
+                        await SendActionAsync(GameWorldAction10010.SetPkMode, hero, InitialPkMode).ConfigureAwait(false);
+                        return true;
+                    case GameWorldAction10010.GetFriends when action.EntityId == hero:
+                        await SendActionAsync(GameWorldAction10010.GetWeaponSkills, hero).ConfigureAwait(false);
+                        return true;
+                    case GameWorldAction10010.GetWeaponSkills when action.EntityId == hero:
+                        await SendActionAsync(GameWorldAction10010.GetMagic, hero).ConfigureAwait(false);
+                        return true;
+                    case GameWorldAction10010.GetMagic when action.EntityId == hero:
+                        await SendActionAsync(GameWorldAction10010.GetSyndicate, hero).ConfigureAwait(false);
+                        return true;
+                    case GameWorldAction10010.GetSyndicate when action.EntityId == hero:
+                        // BuildSilentInfoReport251 (0x6FF607): entity 0; checksum/version are not yet modelled.
+                        await session.SendWorldActionAsync(GameWorldAction10010.ReportSilentInfo, 0, 0, s_timeout,
+                            operation).ConfigureAwait(false);
+                        return true;
+                    case GameWorldAction10010.ReportSilentInfo when action.EntityId == hero:
+                        await SendActionAsync(GameWorldAction10010.GetStatistics, hero).ConfigureAwait(false);
+                        statisticsRequested = true;
+                        return true;
+                    case GameWorldAction10010.GetItems or GameWorldAction10010.GetFriends or
+                        GameWorldAction10010.GetWeaponSkills or GameWorldAction10010.GetMagic or
+                        GameWorldAction10010.GetSyndicate or GameWorldAction10010.ReportSilentInfo:
+                        // Unresolved entity: native exits silently (0x700974).
+                        return true;
+                    default:
+                        return false;
                 }
             }
+
+            // CMsgAction__Create (0x6FE95F) stamps every request with timeGetTime at +16 (0x6FE99C).
+            Task SendActionAsync(ushort action, uint entityId, uint parameter = 0) =>
+                session.SendWorldActionAsync(action, entityId, parameter, Milliseconds(clock), s_timeout, operation);
         }
         catch (OperationCanceledException) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -169,12 +173,16 @@ internal static class GameWorldEntryBootstrap
         }
     }
 
+    private static uint Milliseconds(TimeProvider clock) =>
+        unchecked((uint)(long)clock.GetElapsedTime(0, clock.GetTimestamp()).TotalMilliseconds);
+
     private static async Task<GameSecuredInboundFrame> ReadRequiredAsync(GameServerHandshakeSession session,
         CancellationToken cancellationToken) =>
         await session.ReadFrameAsync(s_timeout, cancellationToken).ConfigureAwait(false)
         ?? throw new EndOfStreamException("GameServer closed during world entry.");
 }
 
+/// <summary>World-entry result. <c>HydrationEnteredAt</c> counts the hydration frames that arrived before the last EnterMap reply.</summary>
 internal sealed record GameWorldEntrySnapshot(GameCharacterInfo1006 Character, uint MapId, uint MapDataId,
     ulong MapFlags, uint WeatherKind, ushort X, ushort Y, IReadOnlyList<byte[]> HydrationPackets,
-    byte DirectionIndex);
+    byte DirectionIndex, int HydrationEnteredAt = 0);

@@ -409,8 +409,22 @@ public sealed class WorldInboundStateTests
         Assert.Equal(77u, state.HeroAttributes.CurrentLife);
     }
 
+    // Native processes each world-entry frame when it arrives: a correction before the EnterMap reply is replaced by
+    // the reply's position, one after it moves the hero (CP2.4d2b, 20_notes Network/bootstrap-tolerance-cp24d.md).
+    [Theory]
+    [InlineData(1, 61, 101)]
+    [InlineData(0, 70, 80)]
+    public void HydrationFramesApplyInArrivalOrderAroundTheEntryPosition(int enteredAt, int x, int y)
+    {
+        WorldInboundState state = CreateState(hydration: [Correction(HeroId, 70, 80), Attributes(HeroId, (0, 55, 0))],
+            hydrationEnteredAt: enteredAt);
+
+        Assert.Equal(((ushort)x, (ushort)y, (byte)3), (state.X, state.Y, state.DirectionIndex));
+        Assert.Equal(55u, state.HeroAttributes.CurrentLife);
+    }
+
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
-        ushort transformLookSourceId = 0) =>
+        ushort transformLookSourceId = 0, int hydrationEnteredAt = 0) =>
         new(new GameWorldEntrySnapshot(
             new GameCharacterInfo1006
             {
@@ -426,7 +440,7 @@ public sealed class WorldInboundStateTests
                 Experience = 12345,
                 TransformLookSourceId = transformLookSourceId,
             },
-            1002, 1010, 0, 1, 61, 101, hydration ?? [], 3), WorldHeroItemStatsTests.Catalog());
+            1002, 1010, 0, 1, 61, 101, hydration ?? [], 3, hydrationEnteredAt), WorldHeroItemStatsTests.Catalog());
 
     private static byte[] Attributes(uint entityId, params (uint Id, ulong Low, ulong High)[] entries)
     {
