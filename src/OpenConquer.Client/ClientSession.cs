@@ -120,7 +120,7 @@ internal sealed class ClientSession : IDisposable
         }
         _roles.Update(elapsed);
         _world?.DrainIngress();
-        _world?.CompleteLoad(device);
+        _world?.CompleteLoad();
         if (_world is { IsClosed: true })
         {
             _world = null;

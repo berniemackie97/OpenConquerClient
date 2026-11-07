@@ -29,6 +29,6 @@ public sealed class WorldRoleFrameClockTests
     [InlineData(1002u, 2_000_100UL)]
     public void InitialBodyKeyUsesBodySourceRatherThanPackedAppearance(uint appearance, ulong expected)
     {
-        Assert.Equal(expected, WorldRoleRenderer.InitialBodyMotionKey(appearance));
+        Assert.Equal(expected, WorldRoleAssets.InitialBodyMotionKey(appearance));
     }
 }

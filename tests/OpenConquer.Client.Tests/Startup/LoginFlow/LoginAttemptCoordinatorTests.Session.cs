@@ -467,7 +467,7 @@ internal sealed class TestClientWorld(Action closing, Func<ValueTask> close, Lis
     public void DrainIngress()
     {
     }
-    public void CompleteLoad(OpenGLGraphicsDevice? device)
+    public void CompleteLoad()
     {
     }
     public void RefreshAppearance(OpenGLGraphicsDevice? device)
