@@ -1,7 +1,6 @@
 using OpenConquer.Client.UI.Hud.Rendering;
 using OpenConquer.Client.UI.Hud.Vitals;
 using OpenConquer.Content;
-using OpenConquer.Content.Items;
 using OpenConquer.Content.Progression;
 using OpenConquer.Networking.Game;
 using OpenConquer.Networking.Game.Handshake;
@@ -30,11 +29,13 @@ internal sealed class ClientWorld : IClientWorld
     private Func<ValueTask>? _closeSession;
     private GameWorldEntrySnapshot? _entry;
     private readonly TimeProvider _clock;
+    private readonly uint _clientStartedAt;
     private WorldFrameIngress? _ingress;
     private WorldFrameEgress? _egress;
     private WorldInboundState? _inbound;
     private LevelExperienceTable? _levelExperience;
-    private WorldMapLoad? _load;
+    private WorldContentLoad<WorldEntryCatalogs>? _catalogLoad;
+    private WorldContentLoad<WorldMapScene>? _mapLoad;
     private WorldMapScene? _scene;
     private WorldRoleLoad? _roleLoad;
     private WorldRoleRenderer? _role;
@@ -49,14 +50,15 @@ internal sealed class ClientWorld : IClientWorld
     private bool _closeObserved;
 
     /// <summary>
-    /// Starts the map load for an admitted world. <c>onClosing</c> runs once, synchronously, when the world starts
+    /// Starts content preparation for an admitted world. <c>onClosing</c> runs once, synchronously, when the world starts
     /// closing. <c>clientStartedAt</c> is the client millisecond counter at client start (native hero construction).
     /// </summary>
     public ClientWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot entry, IClientContentSource content,
         LogicalRenderSize logicalRenderSize, Action onClosing, uint clientStartedAt = 0, TimeProvider? clock = null)
         : this(entry, content, logicalRenderSize, onClosing,
             (game ?? throw new ArgumentNullException(nameof(game))).DisposeAsync,
-            () => new WorldFrameIngress(game), () => new WorldMapLoad(content, entry),
+            () => new WorldFrameIngress(game), () => new WorldContentLoad<WorldMapScene>(
+                token => WorldEntryContent.LoadMap(content, entry, token)),
             () => new WorldFrameEgress(
                 (now, token) => game.SendWorldLatencyTickAsync(entry.Character.EntityId, now, token),
                 (address, latency, now, token) => game.SendWorldLatencyReportAsync(address, latency, now, token)),
@@ -65,11 +67,10 @@ internal sealed class ClientWorld : IClientWorld
     }
 
     /// <summary>
-    /// Builds a world from its parts. The ingress and map load are created only after the entry hydrates, as for an
-    /// admitted session.
+    /// Builds a world from its parts. Ingress can prefetch while content loads. Hydration applies before live frames.
     /// </summary>
     internal ClientWorld(GameWorldEntrySnapshot entry, IClientContentSource content, LogicalRenderSize logicalRenderSize,
-        Action onClosing, Func<ValueTask> closeSession, Func<WorldFrameIngress> createIngress, Func<WorldMapLoad> createLoad,
+        Action onClosing, Func<ValueTask> closeSession, Func<WorldFrameIngress> createIngress, Func<WorldContentLoad<WorldMapScene>> createMapLoad,
         Func<WorldFrameEgress>? createEgress = null, TimeProvider? clock = null, uint clientStartedAt = 0)
     {
         ArgumentNullException.ThrowIfNull(entry);
@@ -77,10 +78,11 @@ internal sealed class ClientWorld : IClientWorld
         ArgumentNullException.ThrowIfNull(onClosing);
         ArgumentNullException.ThrowIfNull(closeSession);
         ArgumentNullException.ThrowIfNull(createIngress);
-        ArgumentNullException.ThrowIfNull(createLoad);
+        ArgumentNullException.ThrowIfNull(createMapLoad);
 
         _content = content;
         _clock = clock ?? TimeProvider.System;
+        _clientStartedAt = clientStartedAt;
         _logicalRenderSize = logicalRenderSize;
         _onClosing = onClosing;
         _drawRole = DrawRole;
@@ -88,34 +90,10 @@ internal sealed class ClientWorld : IClientWorld
         _closeSession = closeSession;
         _entry = entry;
 
-        // Item stats feed the hero's equipment snapshot rules, so they load before any hydration or ingress frame.
-        ItemStatCatalog itemStats;
-        try
-        {
-            itemStats = ItemStatCatalog.Load(content);
-        }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
-        {
-            Console.Error.WriteLine($"OpenConquer: world item tables are unavailable ({exception.Message}).");
-            BeginClose(WorldCloseReason.ContentUnavailable);
-            return;
-        }
-
-        try
-        {
-            _inbound = new WorldInboundState(entry, itemStats, () => GameClientClock.Milliseconds(_clock),
-                clientStartedAt);
-        }
-        catch (InvalidDataException exception)
-        {
-            Console.Error.WriteLine($"OpenConquer: world equipment hydration is invalid ({exception.Message}).");
-            BeginClose(WorldCloseReason.ContentUnavailable);
-            return;
-        }
-
         _ingress = createIngress();
         _egress = createEgress?.Invoke();
-        _load = createLoad();
+        _mapLoad = createMapLoad();
+        _catalogLoad = new WorldContentLoad<WorldEntryCatalogs>(token => WorldEntryContent.LoadCatalogs(content, token));
         uint appearance = entry.Character.PackedAppearance;
         _roleLoad = new WorldRoleLoad((sources, token) => WorldRoleAssets.Load(content, appearance, sources, token));
     }
@@ -129,8 +107,8 @@ internal sealed class ClientWorld : IClientWorld
     /// <summary>The scene, its first textures and the initial appearance are ready to draw.</summary>
     public bool IsPresentable => IsActive && _scene is not null && _texturesReady && _roleSources.HasValue;
 
-    /// <summary>The session and appearance worker have closed and the canceled map load has been reaped.</summary>
-    public bool IsClosed => _closeObserved && _load is null;
+    /// <summary>The session and workers have closed and their results have been observed.</summary>
+    public bool IsClosed => _closeObserved && _mapLoad is null && _catalogLoad is null;
 
     public void DrainIngress()
     {
@@ -141,11 +119,14 @@ internal sealed class ClientWorld : IClientWorld
 
         try
         {
-            ingress.Drain(_applyFrame);
-            if (_egress is { } egress && _inbound is { } state)
+            if (_inbound is not { } state)
             {
-                egress.Pump(state.Heartbeat, GameClientClock.Milliseconds(_clock));
+                ingress.ObserveConnectionFailure();
+                return;
             }
+
+            ingress.Drain(_applyFrame);
+            _egress?.Pump(state.Heartbeat, GameClientClock.Milliseconds(_clock));
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or
             System.Net.Sockets.SocketException or UnauthorizedAccessException)
@@ -155,42 +136,49 @@ internal sealed class ClientWorld : IClientWorld
         }
     }
 
-    /// <summary>
-    /// Takes a finished map load. A load canceled by closing is observed here too, so no background task outlives the
-    /// world.
-    /// </summary>
+    /// <summary>Applies completed content work or observes a canceled job after the world has started closing.</summary>
     public void CompleteLoad()
     {
-        if (_load is not { IsCompleted: true } completed)
-        {
-            return;
-        }
-
-        _load = null;
         try
         {
-            WorldMapScene scene = completed.Complete();
-            if (IsActive)
+            if (_catalogLoad is { IsCompleted: true } catalogLoad)
             {
-                _scene = scene;
-                _levelExperience = LevelExperienceTable.Load(_content);
-                if (_inbound is { } inbound)
+                _catalogLoad = null;
+                WorldEntryCatalogs catalogs = catalogLoad.Complete();
+                if (IsActive && _entry is { } entry)
+                {
+                    _inbound = new WorldInboundState(entry, catalogs.Items, () => GameClientClock.Milliseconds(_clock),
+                        _clientStartedAt);
+                    _levelExperience = catalogs.Experience;
+                }
+            }
+
+            if ((_catalogLoad is null || !IsActive) && _mapLoad is { IsCompleted: true } mapLoad)
+            {
+                _mapLoad = null;
+                WorldMapScene scene = mapLoad.Complete();
+                if (IsActive && _inbound is { } inbound)
                 {
                     ApplyCamera(scene, inbound);
+                    _scene = scene;
                 }
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (!IsActive)
         {
-            BeginClose(WorldCloseReason.ContentUnavailable);
+            // The owner canceled its content jobs during close.
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            Console.Error.WriteLine($"OpenConquer: unable to load map {_entry?.MapDataId} ({exception.Message}).");
-            BeginClose(WorldCloseReason.ContentUnavailable);
+            if (IsActive)
+            {
+                Console.Error.WriteLine("OpenConquer: required world entry content is unavailable.");
+                BeginClose(WorldCloseReason.ContentUnavailable);
+            }
         }
         catch
         {
+            // Release world ownership before propagating an unexpected preparation failure.
             BeginClose(WorldCloseReason.ContentUnavailable);
             throw;
         }
@@ -373,7 +361,7 @@ internal sealed class ClientWorld : IClientWorld
     }
 
     /// <summary>
-    /// Starts closing: drops the scene and its graphics, cancels the map load and closes the session in the background.
+    /// Starts closing: drops the scene and its graphics, cancels preparation and closes the session in the background.
     /// </summary>
     public void BeginClose(WorldCloseReason reason)
     {
@@ -384,7 +372,8 @@ internal sealed class ClientWorld : IClientWorld
 
         _onClosing();
         _closeReason = reason;
-        _load?.Cancel();
+        _catalogLoad?.Cancel();
+        _mapLoad?.Cancel();
         WorldRoleLoad? roleLoad = _roleLoad;
         _roleLoad = null;
         roleLoad?.Cancel();
@@ -439,9 +428,12 @@ internal sealed class ClientWorld : IClientWorld
         WorldRoleLoad? roleLoad = _roleLoad;
         _roleLoad = null;
         roleLoad?.Cancel();
-        WorldMapLoad? load = _load;
-        _load = null;
-        cleanup.Run(() => load?.Dispose());
+        WorldContentLoad<WorldEntryCatalogs>? catalogLoad = _catalogLoad;
+        _catalogLoad = null;
+        catalogLoad?.Cancel();
+        WorldContentLoad<WorldMapScene>? mapLoad = _mapLoad;
+        _mapLoad = null;
+        mapLoad?.Cancel();
         WorldFrameIngress? ingress = _ingress;
         WorldFrameEgress? egress = _egress;
         _ingress = null;
@@ -452,6 +444,16 @@ internal sealed class ClientWorld : IClientWorld
         _closeSession = null;
         await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad)))
             .ConfigureAwait(false);
+
+        if (catalogLoad is not null)
+        {
+            await cleanup.RunAsync(catalogLoad.DisposeAsync).ConfigureAwait(false);
+        }
+
+        if (mapLoad is not null)
+        {
+            await cleanup.RunAsync(mapLoad.DisposeAsync).ConfigureAwait(false);
+        }
 
         _entry = null;
         _scene = null;
