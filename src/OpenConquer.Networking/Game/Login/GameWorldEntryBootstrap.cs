@@ -52,6 +52,7 @@ internal static class GameWorldEntryBootstrap
             uint weatherKind = 0;
             GameWorldAction10010? entered = null;
             int enteredAt = 0;
+            uint heartbeatStartedAt = 0;
             bool statisticsRequested = false;
 
             // CMsgUserInfo__Process sends 74 (0x764873), then 1151 subtype 2 for body digit 2 (0x7648DB).
@@ -106,7 +107,8 @@ internal static class GameWorldEntryBootstrap
             session.ActivateWorld();
             GameWorldAction10010 position = entered.Value;
             return new GameWorldEntrySnapshot(character, map.Value.MapId, position.ParameterPair, mapFlags, weatherKind,
-                position.X, position.Y, hydration, (byte)(position.Direction % 8), enteredAt);
+                position.X, position.Y, hydration, (byte)(position.Direction % 8), enteredAt, heartbeatStartedAt,
+                session.LocalAddress);
 
             // CMsgAction__Process reads only the entity and the action of an acknowledgement (common entity gate
             // 0x6FF15D..0x6FF18A; parameters, coordinates and timestamp are ignored) and answers every accepted one.
@@ -129,6 +131,9 @@ internal static class GameWorldEntryBootstrap
 
                         await SendActionAsync(GameWorldAction10010.BoothClose, hero).ConfigureAwait(false);
                         await SendActionAsync(GameWorldAction10010.GetItems, hero).ConfigureAwait(false);
+
+                        // The heartbeat timer starts at 10000 ms after 75 is sent (0x6FF57A..0x6FF587).
+                        heartbeatStartedAt = GameClientClock.Milliseconds(clock);
                         return true;
                     case GameWorldAction10010.GetItems when action.EntityId == hero:
                         // 76 (0x6FF3F4), then main msg 0x401 -> PK mode 3 (0x6FF3CD, 0x4BDD30).
@@ -145,9 +150,10 @@ internal static class GameWorldEntryBootstrap
                         await SendActionAsync(GameWorldAction10010.GetSyndicate, hero).ConfigureAwait(false);
                         return true;
                     case GameWorldAction10010.GetSyndicate when action.EntityId == hero:
-                        // BuildSilentInfoReport251 (0x6FF607): entity 0; checksum/version are not yet modelled.
-                        await session.SendWorldActionAsync(GameWorldAction10010.ReportSilentInfo, 0, 0, s_timeout,
-                            operation).ConfigureAwait(false);
+                        // BuildSilentInfoReport251 (0x6FF607): entity 0, +8 checksum, +16 version.
+                        GameSilentInfoReport silent = session.SilentInfo;
+                        await session.SendWorldActionAsync(GameWorldAction10010.ReportSilentInfo, 0, silent.Checksum,
+                            silent.Version, s_timeout, operation).ConfigureAwait(false);
                         return true;
                     case GameWorldAction10010.ReportSilentInfo when action.EntityId == hero:
                         await SendActionAsync(GameWorldAction10010.GetStatistics, hero).ConfigureAwait(false);
@@ -165,7 +171,7 @@ internal static class GameWorldEntryBootstrap
 
             // CMsgAction__Create (0x6FE95F) stamps every request with timeGetTime at +16 (0x6FE99C).
             Task SendActionAsync(ushort action, uint entityId, uint parameter = 0) =>
-                session.SendWorldActionAsync(action, entityId, parameter, Milliseconds(clock), s_timeout, operation);
+                session.SendWorldActionAsync(action, entityId, parameter, GameClientClock.Milliseconds(clock), s_timeout, operation);
         }
         catch (OperationCanceledException) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -173,16 +179,17 @@ internal static class GameWorldEntryBootstrap
         }
     }
 
-    private static uint Milliseconds(TimeProvider clock) =>
-        unchecked((uint)(long)clock.GetElapsedTime(0, clock.GetTimestamp()).TotalMilliseconds);
-
     private static async Task<GameSecuredInboundFrame> ReadRequiredAsync(GameServerHandshakeSession session,
         CancellationToken cancellationToken) =>
         await session.ReadFrameAsync(s_timeout, cancellationToken).ConfigureAwait(false)
         ?? throw new EndOfStreamException("GameServer closed during world entry.");
 }
 
-/// <summary>World-entry result. <c>HydrationEnteredAt</c> counts the hydration frames that arrived before the last EnterMap reply.</summary>
+/// <summary>
+/// World-entry result. <c>HydrationEnteredAt</c> counts the hydration frames that arrived before the last EnterMap
+/// reply. <c>HeartbeatStartedAt</c> is the client millisecond counter when the heartbeat timer started, and
+/// <c>LocalAddress</c> the IPv4 address resolved at account connect (0 when unknown).
+/// </summary>
 internal sealed record GameWorldEntrySnapshot(GameCharacterInfo1006 Character, uint MapId, uint MapDataId,
     ulong MapFlags, uint WeatherKind, ushort X, ushort Y, IReadOnlyList<byte[]> HydrationPackets,
-    byte DirectionIndex, int HydrationEnteredAt = 0);
+    byte DirectionIndex, int HydrationEnteredAt = 0, uint HeartbeatStartedAt = 0, uint LocalAddress = 0);

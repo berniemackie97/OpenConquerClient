@@ -168,7 +168,40 @@ else orders the ladder. The bootstrap now does the same:
   that arrived before the 74 reply apply before its position.
 
 The world still needs a 1110 before activation; that is this client's
-requirement, not a native one. Not yet modelled: the 10-second 1009/27
-heartbeat started by the 74 reply (0x6FF580), the 30-minute 1037 latency
-report, and the 251 checksum and version.
+requirement, not a native one.
+
+## Heartbeat, latency report and silent-info report — CP2.4d2b
+
+- **Heartbeat.** The 74 reply starts a 10-second timer (0x6FF57A..0x6FF587).
+  Each frame, `CHero_TickHeartbeatAndPeriodicSessionSync` (0x661ADD) checks
+  it with `CTimerMS_ToNextTime` (0x6B9D8B): the timer is active while its
+  start is nonzero, times out when the millisecond counter reaches start +
+  10000 (unsigned against the wrapped sum, 0x6B9CAA) and restarts from the
+  check time, so a late check does not catch up. On each timeout the client
+  sends 1009 subtype 27: 88 bytes, +4 hero, +16 counter XOR hero
+  (`CMsgTick__Build_SubType` 0x6EAC51). `WorldHeartbeat` holds this rule and
+  `WorldFrameEgress` writes it on the session's single outbound lane; a due
+  timer waits while an earlier write is still in flight, and a failed write
+  closes the world as a lost connection.
+- **Latency.** A server 1009 subtype 27 sets the latency to counter − its
+  +16, as `CMsgItem__Process` does for `hero+0x2CF4`.
+- **1037 report.** On a heartbeat at least 30 minutes after the client
+  started (hero construction, 0x655BAD) or after the last report window, the
+  client adds a 1037: 20 bytes, +8 local IPv4, +12 latency, +16 counter
+  (0x743FED). The window restarts either way, and no 1037 is sent while the
+  address is 0. The address is resolved like native `sub_66df97` when the
+  account server is contacted: the host name's last IPv4 address, as its raw
+  in_addr dword; a failed lookup keeps the previous value. This sends the
+  machine's LAN address to the server, as the native client does (product
+  decision 2026-11-07).
+- **251 report.** +8 is the checksum of `ini/Slient.dat` (native spelling)
+  under the client content root: `r = ((r << 8) | b) ^ T[r >> 24]` with the
+  reflected CRC-32 table (0x6BB1E2, table 0x9432D8). +16 is `atoi` of the
+  first 128 bytes of `ini/SlientVersion.ini`. A file that cannot be opened
+  keeps native's default, checksum 0 and version 1, which is also what the
+  clean install produces (empty `Slient.dat`, no version file).
+
+The millisecond counter is the client clock (`GameClientClock`) from the
+injected `TimeProvider`; native uses `timeGetTime`. Evidence:
+`20_notes/Network/bootstrap-tolerance-cp24d.md` (d2b slice 2).
 

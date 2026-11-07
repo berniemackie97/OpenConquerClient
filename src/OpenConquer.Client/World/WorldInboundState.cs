@@ -7,6 +7,7 @@ namespace OpenConquer.Client.World;
 internal sealed class WorldInboundState : IGameWorldPacketHandler
 {
     private readonly uint _heroId;
+    private readonly Func<uint> _clock;
     private readonly HashSet<uint> _unhandled = [];
     private readonly HashSet<uint> _unhandledAttributes = [];
 
@@ -15,10 +16,13 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     /// order, as native processes each message when it arrives. Frames that arrived before the EnterMap reply apply
     /// before its position does. A subtype-46 snapshot therefore clamps against the hero life that preceded it.
     /// </summary>
-    internal WorldInboundState(GameWorldEntrySnapshot world, ItemStatCatalog itemStats)
+    internal WorldInboundState(GameWorldEntrySnapshot world, ItemStatCatalog itemStats, Func<uint>? clock = null,
+        uint clientStartedAt = 0)
     {
         ArgumentNullException.ThrowIfNull(world);
         _heroId = world.Character.EntityId;
+        _clock = clock ?? (static () => 0);
+        Heartbeat = new WorldHeartbeat(world.HeartbeatStartedAt, clientStartedAt, world.LocalAddress);
         Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character), itemStats, world.MapFlags,
             world.Character.TransformLookSourceId != 0);
         Weather = (world.WeatherKind, 0, 0, 0);
@@ -40,6 +44,11 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     }
 
     internal WorldHeroModel Hero
+    {
+        get;
+    }
+
+    internal WorldHeartbeat Heartbeat
     {
         get;
     }
@@ -115,6 +124,13 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
     bool IGameWorldPacketHandler.HandleItem(GameItem1009 item)
     {
+        // CMsgItem__Process subtype 27: hero+0x2CF4 = timeGetTime - +16.
+        if (item.Subtype == GameItem1009.LatencyTick)
+        {
+            Heartbeat.ObserveLatencyTick(_clock(), item.ParameterC);
+            return false;
+        }
+
         Hero.ApplyItem(item);
         return false;
     }
