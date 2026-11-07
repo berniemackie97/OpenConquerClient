@@ -1,7 +1,6 @@
 using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
-using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.World;
 
@@ -28,10 +27,10 @@ internal interface IClientWorld : IAsyncDisposable
     void DrainIngress();
     void CompleteLoad();
     void RefreshAppearance(OpenGLGraphicsDevice? graphicsDevice);
-    void PrepareFirstTextures(WorldMapTextureRenderer? textures, DesktopWindow window, OpenGLGraphicsDevice? graphicsDevice, OpenGLRenderer fallback);
+    void PrepareFirstTextures(DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback);
     OpenGLRenderer GetRenderer(DesktopWindow window, OpenGLGraphicsDevice? graphicsDevice, OpenGLRenderer fallback);
-    void PrepareFrame(WorldMapTextureRenderer? textures, OpenGLRenderer renderer);
-    void DrawFrame(WorldMapTextureRenderer? textures, OpenGLRenderer renderer, DesktopWindow window);
+    void PrepareFrame(OpenGLGraphicsDevice device, OpenGLRenderer renderer);
+    void DrawFrame(OpenGLRenderer renderer, DesktopWindow window);
     void HandlePointerMoved(PixelPoint point);
     void HandlePointerPressed(PixelPoint point);
     void HandlePointerReleased(PixelPoint point);

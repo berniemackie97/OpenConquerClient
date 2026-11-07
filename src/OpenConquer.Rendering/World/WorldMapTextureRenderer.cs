@@ -10,7 +10,8 @@ namespace OpenConquer.Rendering.World;
 
 public sealed class WorldMapTextureRenderer : IDisposable
 {
-    private readonly IClientContentSource _source;
+    private readonly IClientContentSource? _source;
+    private readonly WorldMapImageLoader? _stream;
     private readonly OpenGLGraphicsDevice _device;
     private readonly Dictionary<string, OpenGLTexture2D> _textures = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
@@ -28,6 +29,24 @@ public sealed class WorldMapTextureRenderer : IDisposable
         _source = source ?? throw new ArgumentNullException(nameof(source));
         _device = device ?? throw new ArgumentNullException(nameof(device));
     }
+
+    /// <summary>Creates a context-owned texture cache fed by a separately owned map image loader.</summary>
+    public static WorldMapTextureRenderer CreateStreaming(WorldMapImageLoader images, OpenGLGraphicsDevice device) =>
+        new(images, device);
+
+    private WorldMapTextureRenderer(WorldMapImageLoader stream, OpenGLGraphicsDevice device)
+    {
+        _stream = stream ?? throw new ArgumentNullException(nameof(stream));
+        _device = device ?? throw new ArgumentNullException(nameof(device));
+        _maximumTextures = int.MaxValue;
+        _maximumPixelBytes = long.MaxValue;
+    }
+
+    internal bool IsStreaming => _stream is not null;
+
+    internal void BeginPreparation() => _stream?.BeginPreparation();
+
+    internal void EndPreparation() => _stream?.EndPreparation();
 
     internal bool Prepare(IReadOnlyList<WorldPuzzleTile> tiles, ref int remaining)
     {
@@ -112,13 +131,26 @@ public sealed class WorldMapTextureRenderer : IDisposable
             return true;
         }
 
-        if (remaining == 0)
+        RgbaImage? frame;
+        if (_stream is { } stream)
         {
-            return false;
+            frame = stream.RequestImage(path, animation, frameIndex, remaining > 0);
+            if (frame is null)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (remaining == 0)
+            {
+                return false;
+            }
+
+            IClientContentSource source = _source ?? throw new InvalidOperationException("Map content source is unavailable.");
+            frame = AniFrameLoader.LoadWrappedFrame(source, animation, (uint)frameIndex, ContentLookupMode.LooseThenPackage);
         }
 
-        RgbaImage frame = AniFrameLoader.LoadWrappedFrame(_source, animation,
-            (uint)frameIndex, ContentLookupMode.LooseThenPackage);
         if (_textures.Count >= _maximumTextures || frame.Pixels.Length > _maximumPixelBytes - _pixelBytes)
         {
             throw new InvalidDataException("The map preview exceeds its resident texture count or pixel-byte budget.");

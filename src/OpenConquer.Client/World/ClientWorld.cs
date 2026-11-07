@@ -20,6 +20,7 @@ namespace OpenConquer.Client.World;
 /// </summary>
 internal sealed class ClientWorld : IClientWorld
 {
+    private const int MapTextureUploadsPerFrame = 4;
     private readonly IClientContentSource _content;
     private readonly LogicalRenderSize _logicalRenderSize;
     private readonly Action<OpenGLRenderer> _drawRole;
@@ -37,6 +38,8 @@ internal sealed class ClientWorld : IClientWorld
     private WorldContentLoad<WorldEntryCatalogs>? _catalogLoad;
     private WorldContentLoad<WorldMapScene>? _mapLoad;
     private WorldMapScene? _scene;
+    private WorldMapImageLoader? _mapImageLoader;
+    private WorldMapTextureRenderer? _mapTextures;
     private WorldRoleLoad? _roleLoad;
     private WorldRoleRenderer? _role;
     private WorldRoleSources? _roleSources;
@@ -220,26 +223,21 @@ internal sealed class ClientWorld : IClientWorld
         }
     }
 
-    /// <summary>Prepares the first world textures one at a time until the scene can be shown.</summary>
-    public void PrepareFirstTextures(WorldMapTextureRenderer? textures, DesktopWindow window, OpenGLGraphicsDevice? graphicsDevice,
-        OpenGLRenderer fallback)
+    /// <summary>Prepares the first complete map view while the login overlay is still visible.</summary>
+    public void PrepareFirstTextures(DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback)
     {
-        if (_scene is not { } scene || _texturesReady)
+        if (_scene is null || _texturesReady)
         {
             return;
         }
 
         try
         {
-            OpenGLRenderer renderer = GetRenderer(window, graphicsDevice, fallback);
-            _texturesReady = scene.Prepare(textures ?? throw new InvalidOperationException("World textures are unavailable."),
-                renderer.Viewport.LogicalWidth, renderer.Viewport.LogicalHeight,
-                unchecked((uint)Environment.TickCount), textureBudget: 1);
+            _texturesReady = PrepareMapTextures(device, GetRenderer(window, device, fallback));
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            Console.Error.WriteLine($"OpenConquer: world artwork is unavailable ({exception.Message}).");
-            BeginClose(WorldCloseReason.ContentUnavailable);
+            CloseForMapArtworkFailure();
         }
     }
 
@@ -285,22 +283,45 @@ internal sealed class ClientWorld : IClientWorld
         return next;
     }
 
-    public void PrepareFrame(WorldMapTextureRenderer? textures, OpenGLRenderer renderer)
+    public void PrepareFrame(OpenGLGraphicsDevice device, OpenGLRenderer renderer)
     {
-        ArgumentNullException.ThrowIfNull(renderer);
-        _scene?.Prepare(textures ?? throw new InvalidOperationException("World textures are unavailable."),
-            renderer.Viewport.LogicalWidth, renderer.Viewport.LogicalHeight,
-            unchecked((uint)Environment.TickCount));
+        try
+        {
+            _ = PrepareMapTextures(device, renderer);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            CloseForMapArtworkFailure();
+        }
     }
 
-    public void DrawFrame(WorldMapTextureRenderer? textures, OpenGLRenderer renderer, DesktopWindow window)
+    private bool PrepareMapTextures(OpenGLGraphicsDevice device, OpenGLRenderer renderer)
     {
         if (_scene is not { } scene)
+        {
+            return false;
+        }
+
+        _mapImageLoader ??= new WorldMapImageLoader(_content);
+        _mapTextures ??= WorldMapTextureRenderer.CreateStreaming(_mapImageLoader, device);
+        return scene.Prepare(_mapTextures, renderer.Viewport.LogicalWidth, renderer.Viewport.LogicalHeight,
+            unchecked((uint)Environment.TickCount), textureBudget: MapTextureUploadsPerFrame);
+    }
+
+    private void CloseForMapArtworkFailure()
+    {
+        Console.Error.WriteLine("OpenConquer: world map artwork is unavailable.");
+        BeginClose(WorldCloseReason.ContentUnavailable);
+    }
+
+    public void DrawFrame(OpenGLRenderer renderer, DesktopWindow window)
+    {
+        if (_scene is not { } scene || _mapTextures is not { } textures)
         {
             return;
         }
 
-        scene.Draw(textures!, renderer, _role is null ? null : _drawRole);
+        scene.Draw(textures, renderer, _role is null ? null : _drawRole);
         if (_hud is { } hud && _inbound is { } state && _levelExperience is { } experienceTable &&
             _entry is { Character.TransformLookSourceId: 0 })
         {
@@ -349,6 +370,9 @@ internal sealed class ClientWorld : IClientWorld
         WorldHudRuntime? hud = _hud;
         WorldRoleRenderer? role = _role;
         OpenGLRenderer? renderer = _renderer;
+        WorldMapTextureRenderer? mapTextures = _mapTextures;
+        _mapTextures = null;
+        _texturesReady = false;
         _hud = null;
         _role = null;
         _roleSources = null;
@@ -356,6 +380,7 @@ internal sealed class ClientWorld : IClientWorld
         ClientShutdown cleanup = new();
         cleanup.Run(() => hud?.Dispose());
         cleanup.Run(() => role?.Dispose());
+        cleanup.Run(() => mapTextures?.Dispose());
         cleanup.Run(() => renderer?.Dispose());
         cleanup.ThrowIfFailed();
     }
@@ -377,6 +402,9 @@ internal sealed class ClientWorld : IClientWorld
         WorldRoleLoad? roleLoad = _roleLoad;
         _roleLoad = null;
         roleLoad?.Cancel();
+        WorldMapImageLoader? mapImageLoader = _mapImageLoader;
+        _mapImageLoader = null;
+        mapImageLoader?.Cancel();
         _texturesReady = false;
         Func<ValueTask>? closeSession = _closeSession;
         WorldFrameIngress? ingress = _ingress;
@@ -395,7 +423,7 @@ internal sealed class ClientWorld : IClientWorld
         finally
         {
             // Network ownership must not be lost when releasing graphics fails.
-            _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad);
+            _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader);
         }
     }
 
@@ -428,6 +456,9 @@ internal sealed class ClientWorld : IClientWorld
         WorldRoleLoad? roleLoad = _roleLoad;
         _roleLoad = null;
         roleLoad?.Cancel();
+        WorldMapImageLoader? mapImageLoader = _mapImageLoader;
+        _mapImageLoader = null;
+        mapImageLoader?.Cancel();
         WorldContentLoad<WorldEntryCatalogs>? catalogLoad = _catalogLoad;
         _catalogLoad = null;
         catalogLoad?.Cancel();
@@ -442,7 +473,7 @@ internal sealed class ClientWorld : IClientWorld
         _levelExperience = null;
         Func<ValueTask>? closeSession = _closeSession;
         _closeSession = null;
-        await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad)))
+        await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader)))
             .ConfigureAwait(false);
 
         if (catalogLoad is not null)
@@ -461,7 +492,7 @@ internal sealed class ClientWorld : IClientWorld
     }
 
     private static async Task CloseWorldAsync(Func<ValueTask>? closeSession, WorldFrameIngress? ingress,
-        WorldFrameEgress? egress, WorldRoleLoad? roleLoad)
+        WorldFrameEgress? egress, WorldRoleLoad? roleLoad, WorldMapImageLoader? mapImageLoader)
     {
         ClientShutdown cleanup = new();
         if (egress is not null)
@@ -482,6 +513,11 @@ internal sealed class ClientWorld : IClientWorld
         if (roleLoad is not null)
         {
             await cleanup.RunAsync(roleLoad.DisposeAsync).ConfigureAwait(false);
+        }
+
+        if (mapImageLoader is not null)
+        {
+            await cleanup.RunAsync(mapImageLoader.DisposeAsync).ConfigureAwait(false);
         }
 
         cleanup.ThrowIfFailed();

@@ -28,12 +28,13 @@ public sealed class WorldMapScene
     private int _heroTileX;
     private int _heroTileY;
     private byte _heroDirection;
-    private int _roleDrawIndex;
     private int _zoomPercent = 100;
     private readonly uint _startMilliseconds;
     private readonly LogicalRenderSize _backdropExtent;
-    private IReadOnlyList<WorldMapLayer> _layers = [];
-    private WorldPuzzleProjection _projection;
+    private MapFrame _frame = new([], default, -1, 0, 0, 0);
+    private WorldMapTextureRenderer? _presentedTextures;
+    private MapFrame? _pendingFrame;
+    private ViewKey _pendingView;
 
     internal WorldMapScene(GameMapContent map, GameMapPuzzleResources puzzles,
         IReadOnlyList<GameMapTerrainScenePlacement> terrain,
@@ -73,9 +74,17 @@ public sealed class WorldMapScene
     public LogicalRenderSize BackdropExtent => _backdropExtent;
     public GameMapContent Map => _map;
 
-    public (Matrix4x4 Main, Matrix4x4 Shadow) HeroMatrices =>
-        WorldRoleCameraMatrices.Create(_map, _puzzles, _projection,
-            _heroX, _heroY, rotationDegrees: (-1 - _heroDirection) * 45f, scale: 0.75f);
+    public (Matrix4x4 Main, Matrix4x4 Shadow) HeroMatrices
+    {
+        get
+        {
+            (int x, int y, byte direction) = _presentedTextures is null
+                ? (_heroX, _heroY, _heroDirection)
+                : (_frame.HeroX, _frame.HeroY, _frame.HeroDirection);
+            return WorldRoleCameraMatrices.Create(_map, _puzzles, _frame.Projection,
+                x, y, rotationDegrees: (-1 - direction) * 45f, scale: 0.75f);
+        }
+    }
 
     public void SetCameraTile(int tileX, int tileY)
     {
@@ -133,15 +142,21 @@ public sealed class WorldMapScene
 
     internal IReadOnlyList<WorldMapLayer> BuildFrame(int screenWidth, int screenHeight, uint nowMilliseconds)
     {
-        _projection = WorldCameraProjection.FromHeroWorldPosition(_map, _puzzles,
+        _frame = BuildCandidate(screenWidth, screenHeight, nowMilliseconds);
+        return _frame.Layers;
+    }
+
+    private MapFrame BuildCandidate(int screenWidth, int screenHeight, uint nowMilliseconds)
+    {
+        WorldPuzzleProjection projection = WorldCameraProjection.FromHeroWorldPosition(_map, _puzzles,
             _heroX, _heroY, screenWidth, screenHeight, zoomPercent: _zoomPercent);
 
         IReadOnlyList<WorldPuzzleTile> ground = WorldPuzzleDrawList.Ground(
-            _map, _puzzles, _projection, _groundClock.FrameForRender(nowMilliseconds));
+            _map, _puzzles, projection, _groundClock.FrameForRender(nowMilliseconds));
         IReadOnlyList<WorldScenerySprite> scenery = WorldSceneryDrawList.BuildWithRole(
             _map, _terrain, _sceneryIndex, _sceneryFrameExtents,
-            _projection, nowMilliseconds, _startMilliseconds,
-            _heroTileX, _heroTileY, out _roleDrawIndex);
+            projection, nowMilliseconds, _startMilliseconds,
+            _heroTileX, _heroTileY, out int roleDrawIndex);
 
         List<WorldMapLayer> layers =
         [
@@ -164,24 +179,28 @@ public sealed class WorldMapScene
 
                 uint frame = _overlayClocks[puzzle].FrameForRender(nowMilliseconds);
                 puzzleTiles.AddRange(WorldPuzzleDrawList.PositionedPuzzle(
-                    _map, _puzzles, _projection, record, puzzle, frame));
+                    _map, _puzzles, projection, record, puzzle, frame));
             }
 
             layers.Insert(Math.Clamp(record.InsertIndex, 0, layers.Count), new(Puzzle: puzzleTiles));
         }
 
-        _layers = layers;
-        return layers;
+        return new MapFrame(layers, projection, roleDrawIndex, _heroX, _heroY, _heroDirection);
     }
 
     public bool Prepare(WorldMapTextureRenderer textures, int screenWidth, int screenHeight, uint nowMilliseconds,
         int textureBudget = int.MaxValue)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(textureBudget);
-        BuildFrame(screenWidth, screenHeight, nowMilliseconds);
+        ViewKey view = new(screenWidth, screenHeight, _zoomPercent, _heroTileX, _heroTileY, _heroDirection);
+        // Keep animation requests stable while the current viewport catches up.
+        MapFrame candidate = textures.IsStreaming && _pendingFrame is { } pending && view == _pendingView
+            ? pending
+            : BuildCandidate(screenWidth, screenHeight, nowMilliseconds);
+        textures.BeginPreparation();
         int remaining = textureBudget;
         bool complete = true;
-        foreach (WorldMapLayer layer in _layers)
+        foreach (WorldMapLayer layer in candidate.Layers)
         {
             if (layer.Puzzle is { } puzzle && !textures.Prepare(puzzle, ref remaining))
             {
@@ -206,13 +225,32 @@ public sealed class WorldMapScene
             }
         }
 
+        textures.EndPreparation();
+        if (complete || !textures.IsStreaming)
+        {
+            _frame = candidate;
+            _presentedTextures = textures.IsStreaming ? textures : null;
+            _pendingFrame = null;
+        }
+        else
+        {
+            _pendingFrame = candidate;
+            _pendingView = view;
+            if (!ReferenceEquals(_presentedTextures, textures))
+            {
+                // A replacement context cannot draw a frame that used another renderer's texture cache.
+                _frame = new MapFrame([], default, -1, 0, 0, 0);
+                _presentedTextures = null;
+            }
+        }
+
         return complete;
     }
 
     public void Draw(WorldMapTextureRenderer textures, OpenGLRenderer renderer,
         Action<OpenGLRenderer>? drawRole = null)
     {
-        foreach (WorldMapLayer layer in _layers)
+        foreach (WorldMapLayer layer in _frame.Layers)
         {
             if (layer.Puzzle is { } puzzle)
             {
@@ -221,17 +259,22 @@ public sealed class WorldMapScene
 
             if (layer.Scenery is { } scenery)
             {
-                if (_roleDrawIndex < 0)
+                if (_frame.RoleDrawIndex < 0)
                 {
-                    textures.Draw(renderer, scenery, _projection, SpriteColor.White, 0, scenery.Count);
+                    textures.Draw(renderer, scenery, _frame.Projection, SpriteColor.White, 0, scenery.Count);
                     continue;
                 }
 
-                textures.Draw(renderer, scenery, _projection, SpriteColor.White, 0, _roleDrawIndex);
+                textures.Draw(renderer, scenery, _frame.Projection, SpriteColor.White, 0, _frame.RoleDrawIndex);
                 drawRole?.Invoke(renderer);
-                textures.Draw(renderer, scenery, _projection, SpriteColor.White,
-                    _roleDrawIndex, scenery.Count - _roleDrawIndex);
+                textures.Draw(renderer, scenery, _frame.Projection, SpriteColor.White,
+                    _frame.RoleDrawIndex, scenery.Count - _frame.RoleDrawIndex);
             }
         }
     }
+
+    private readonly record struct ViewKey(int Width, int Height, int Zoom, int TileX, int TileY, byte Direction);
+
+    private readonly record struct MapFrame(IReadOnlyList<WorldMapLayer> Layers, WorldPuzzleProjection Projection,
+        int RoleDrawIndex, int HeroX, int HeroY, byte HeroDirection);
 }

@@ -12,7 +12,6 @@ using OpenConquer.Platform.Geometry;
 using OpenConquer.Platform.Windowing.Desktop;
 using OpenConquer.Rendering.OpenGL;
 using OpenConquer.Rendering.Presentation;
-using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client;
 
@@ -22,10 +21,8 @@ internal sealed class ClientSession : IDisposable
     private readonly ClientLogin _login;
     private readonly ClientRoleCreation _roles;
     private readonly Action _closeWindow;
-    private readonly IClientContentSource _content;
     private readonly Func<GameServerHandshakeSession, GameWorldEntrySnapshot, Action, IClientWorld> _createWorld;
     private IClientWorld? _world;
-    private WorldMapTextureRenderer? _worldTextures;
     private Task? _failedHandoff;
 
     public ClientSession(string contentRoot, IClientContentSource content, LogicalRenderSize size,
@@ -44,7 +41,6 @@ internal sealed class ClientSession : IDisposable
         ArgumentNullException.ThrowIfNull(requestExit);
         ArgumentNullException.ThrowIfNull(closeWindow);
         ArgumentNullException.ThrowIfNull(createLogin);
-        _content = content;
         _closeWindow = closeWindow;
         _login = createLogin(() => State == ClientState.Login);
         _roles = new ClientRoleCreation(content, _login.PlaySound, requestExit,
@@ -64,7 +60,6 @@ internal sealed class ClientSession : IDisposable
     {
         _login.CreateGraphics(device, graphics);
         _roles.CreateGraphics(device, graphics);
-        _worldTextures = graphics.Track(new WorldMapTextureRenderer(_content, device));
         _roles.BindCaret();
         _login.BindCaret();
     }
@@ -73,7 +68,6 @@ internal sealed class ClientSession : IDisposable
     {
         _roles.ReleaseGraphicsBinding();
         _login.ReleaseGraphicsBinding();
-        _worldTextures = null;
     }
 
     public void ReleaseGraphics()
@@ -148,7 +142,12 @@ internal sealed class ClientSession : IDisposable
         TimeSpan elapsed = double.IsFinite(elapsedSeconds) && elapsedSeconds > 0
             ? TimeSpan.FromSeconds(elapsedSeconds) : TimeSpan.Zero;
         Update(elapsed, device);
-        _world?.PrepareFirstTextures(_worldTextures, window, device, fallback);
+        bool alreadyPresentingWorld = State == ClientState.World;
+        if (!alreadyPresentingWorld)
+        {
+            _world?.PrepareFirstTextures(window, device, fallback);
+        }
+
         UpdatePresentation(elapsed);
         if (State != ClientState.World)
         {
@@ -156,14 +155,24 @@ internal sealed class ClientSession : IDisposable
         }
         IClientWorld? visible = State == ClientState.World ? _world : null;
         OpenGLRenderer renderer = visible?.GetRenderer(window, device, fallback) ?? fallback;
-        visible?.PrepareFrame(_worldTextures, renderer);
+        if (alreadyPresentingWorld && visible is not null)
+        {
+            visible.PrepareFrame(device, renderer);
+            if (!visible.IsActive)
+            {
+                // A content failure can close the world and release its render target during preparation.
+                visible = null;
+                renderer = fallback;
+            }
+        }
+
         renderer.BeginFrame();
         ExceptionDispatchInfo? firstFailure = null;
         try
         {
             if (visible is not null)
             {
-                visible.DrawFrame(_worldTextures, renderer, window);
+                visible.DrawFrame(renderer, window);
             }
             else if (State == ClientState.RoleCreation)
             {
