@@ -1,3 +1,4 @@
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.Startup.Catalog;
 using OpenConquer.Client.UI.Login.Selection;
 
@@ -10,22 +11,27 @@ namespace OpenConquer.Client.UI.Login;
 internal sealed class LoginCatalogBinding : IDisposable
 {
     private readonly LoginCatalogRefresh? _refresh;
+    private readonly ClientDiagnostics _diagnostics;
     private SignedLoginCatalog? _presented;
     private bool _startupSelectionApplied;
     private bool _unavailableReported;
 
-    internal LoginCatalogBinding(LoginCatalogRefresh? refresh) => _refresh = refresh;
+    internal LoginCatalogBinding(LoginCatalogRefresh? refresh, ClientDiagnostics? diagnostics = null)
+    {
+        _refresh = refresh;
+        _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
+    }
 
     /// <summary>Binds to the catalog authority embedded at build time, if there is one.</summary>
-    public static LoginCatalogBinding ForEmbeddedAuthority(TimeProvider clock)
+    public static LoginCatalogBinding ForEmbeddedAuthority(TimeProvider clock, ClientDiagnostics diagnostics)
     {
         if (LoginCatalogAuthority.LoadEmbedded() is not { } authority)
         {
-            Console.Error.WriteLine("OpenConquer: realm catalog authority is not configured; no servers are available.");
-            return new LoginCatalogBinding(refresh: null);
+            diagnostics.CatalogUnconfigured();
+            return new LoginCatalogBinding(refresh: null, diagnostics);
         }
 
-        return new LoginCatalogBinding(new LoginCatalogRefresh(token => FetchAsync(authority, clock, token)));
+        return new LoginCatalogBinding(new LoginCatalogRefresh(token => FetchAsync(authority, clock, token)), diagnostics);
     }
 
     /// <summary>Returns only the currently presented, still-valid signed authority.</summary>
@@ -62,7 +68,7 @@ internal sealed class LoginCatalogBinding : IDisposable
 
         if (_refresh.LastAttemptFailed && !_unavailableReported)
         {
-            Console.Error.WriteLine("OpenConquer: authenticated realm discovery is unavailable or rejected.");
+            _diagnostics.CatalogUnavailable();
         }
 
         _unavailableReported = _refresh.LastAttemptFailed;

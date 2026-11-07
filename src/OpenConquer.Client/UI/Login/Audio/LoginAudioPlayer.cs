@@ -1,3 +1,4 @@
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Content.Login;
 using Silk.NET.OpenAL;
 
@@ -86,7 +87,7 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
         }
     }
 
-    public static LoginAudioPlayer? TryCreate()
+    public static LoginAudioPlayer? TryCreate(ClientDiagnostics diagnostics)
     {
         try
         {
@@ -95,7 +96,7 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
         catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException or
             BadImageFormatException or InvalidOperationException or TypeInitializationException)
         {
-            Console.Error.WriteLine($"OpenConquer: startup audio unavailable ({exception.GetType().Name}); continuing silently.");
+            diagnostics.AudioUnavailable(ClientFailure.Classify(exception));
             return null;
         }
     }

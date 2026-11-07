@@ -1,3 +1,4 @@
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Content;
 using OpenConquer.Content.Mesh;
 
@@ -13,7 +14,7 @@ internal sealed record WorldRoleAssets(
         (packedAppearance % 1000UL) * 1_000_000UL + 100UL;
 
     internal static WorldRoleAssets Load(IClientContentSource source, C3RoleCatalog catalog, uint packedAppearance,
-        WorldRoleSources sources, CancellationToken token)
+        WorldRoleSources sources, ClientDiagnostics diagnostics, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         if (!catalog.TryResolve("body", sources.BodyModelId, out IReadOnlyList<C3ResolvedPart> bodies) || bodies.Count != 1)
@@ -40,20 +41,20 @@ internal sealed record WorldRoleAssets(
             }
             else
             {
-                Console.Error.WriteLine($"OpenConquer: character headwear model {sources.ArmetModelId} is not present in the C3 catalog.");
+                diagnostics.WorldRoleModelMissing(sources.ArmetModelId, equipmentSlot: 1);
             }
         }
 
         (WorldRolePartAssets[] right, C3Motion? rightAttachment) = LoadWeapon(
-            source, catalog, body, "r_weapon", "v_r_weapon", sources.RightWeaponModelId, token);
+            source, catalog, body, "r_weapon", "v_r_weapon", sources.RightWeaponModelId, 4, diagnostics, token);
         (WorldRolePartAssets[] left, C3Motion? leftAttachment) = LoadWeapon(
-            source, catalog, body, "l_weapon", "v_l_weapon", sources.LeftWeaponModelId, token);
+            source, catalog, body, "l_weapon", "v_l_weapon", sources.LeftWeaponModelId, 5, diagnostics, token);
         return new WorldRoleAssets(body, armet, attachment, right, rightAttachment, left, leftAttachment);
     }
 
     private static (WorldRolePartAssets[] Parts, C3Motion? Attachment) LoadWeapon(
         IClientContentSource source, C3RoleCatalog catalog, WorldRolePartAssets body, string name, string track,
-        uint modelId, CancellationToken token)
+        uint modelId, int equipmentSlot, ClientDiagnostics diagnostics, CancellationToken token)
     {
         if (modelId == 0)
         {
@@ -63,7 +64,7 @@ internal sealed record WorldRoleAssets(
         token.ThrowIfCancellationRequested();
         if (!catalog.TryResolve(name, modelId, out IReadOnlyList<C3ResolvedPart> sources))
         {
-            Console.Error.WriteLine($"OpenConquer: character {name} model {modelId} is not present in the C3 catalog.");
+            diagnostics.WorldRoleModelMissing(modelId, equipmentSlot);
             return ([], null);
         }
 

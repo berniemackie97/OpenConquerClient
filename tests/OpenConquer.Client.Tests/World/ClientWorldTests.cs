@@ -1,6 +1,9 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Logging;
+using OpenConquer.Client.Diagnostics;
+using OpenConquer.Client.Tests.Diagnostics;
 using OpenConquer.Client.World;
 using OpenConquer.Content;
 using OpenConquer.Content.Items;
@@ -32,6 +35,28 @@ public sealed class ClientWorldTests
         Assert.Equal(WorldCloseReason.ConnectionLost, reason);
         Assert.False(world.TryObserveClose(out _));
         Assert.Equal(1, harness.SessionCloseCalls);
+    }
+
+    [Fact]
+    public async Task IngressFailureReportsOnlyTheNumericCodeAndStillCloses()
+    {
+        const string PrivateDetail = "/private/synthetic-account/ticket-secret";
+        RecordingClientLogger logger = new();
+        Harness harness = new(endOfStream: false, ingressFailure: new IOException(PrivateDetail));
+        await using ClientWorld world = harness.Create(diagnostics: new ClientDiagnostics(logger));
+
+        world.DrainIngress(frameMilliseconds: 0);
+
+        WorldCloseReason reason = default;
+        await WaitUntilAsync(() => world.TryObserveClose(out reason));
+        Assert.Equal(WorldCloseReason.ConnectionLost, reason);
+        Assert.Equal(1, harness.SessionCloseCalls);
+        RecordingClientLogger.RecordedEvent logged = Assert.Single(logger.Events);
+        Assert.Equal((2300, LogLevel.Warning), (logged.Id, logged.Level));
+        Assert.Null(logged.Exception);
+        Assert.DoesNotContain(PrivateDetail, logged.Message, StringComparison.Ordinal);
+        KeyValuePair<string, object?> failure = Assert.Single(logged.Fields, field => field.Key == "FailureCode");
+        Assert.Equal((int)ClientFailureCode.Io, failure.Value);
     }
 
     [Fact]
@@ -251,7 +276,7 @@ public sealed class ClientWorldTests
         }
     }
 
-    private sealed class Harness(bool endOfStream, bool failLoad = false, bool failSession = false)
+    private sealed class Harness(bool endOfStream, bool failLoad = false, bool failSession = false, Exception? ingressFailure = null)
     {
         public int ClosingCalls
         {
@@ -274,8 +299,8 @@ public sealed class ClientWorldTests
             get; private set;
         }
 
-        public ClientWorld Create(IClientContentSource? content = null) => new(Entry(), content ?? new CatalogContentSource(), new LogicalRenderSize(1024, 768),
-            () => ClosingCalls++, CloseSessionAsync, CreateIngress, CreateLoad);
+        public ClientWorld Create(IClientContentSource? content = null, ClientDiagnostics? diagnostics = null) => new(Entry(), content ?? new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+            () => ClosingCalls++, CloseSessionAsync, CreateIngress, CreateLoad, diagnostics: diagnostics);
 
         private ValueTask CloseSessionAsync()
         {
@@ -284,9 +309,17 @@ public sealed class ClientWorldTests
             return failSession ? ValueTask.FromException(new IOException("Session cleanup failed.")) : ValueTask.CompletedTask;
         }
 
-        private WorldFrameIngress CreateIngress() => endOfStream
-            ? new WorldFrameIngress(_ => Task.FromResult<GameSecuredInboundFrame?>(null))
-            : new WorldFrameIngress(WaitForeverAsync);
+        private WorldFrameIngress CreateIngress()
+        {
+            if (ingressFailure is not null)
+            {
+                return new WorldFrameIngress(_ => Task.FromException<GameSecuredInboundFrame?>(ingressFailure));
+            }
+
+            return endOfStream
+                ? new WorldFrameIngress(_ => Task.FromResult<GameSecuredInboundFrame?>(null))
+                : new WorldFrameIngress(WaitForeverAsync);
+        }
 
         private WorldContentLoad<WorldMapScene> CreateLoad()
         {

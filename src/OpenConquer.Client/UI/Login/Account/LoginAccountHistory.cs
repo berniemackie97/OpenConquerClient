@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.UI.Login.Credentials;
 
 namespace OpenConquer.Client.UI.Login.Account;
@@ -16,15 +17,18 @@ internal sealed class LoginAccountHistory
     public IReadOnlyList<string> Accounts => _names;
     public bool Writable => _writable;
 
-    internal LoginAccountHistory(string directory)
+    private readonly ClientDiagnostics _diagnostics;
+
+    internal LoginAccountHistory(string directory, ClientDiagnostics? diagnostics = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _directory = Path.GetFullPath(directory);
         _path = Path.Combine(_directory, "login-accounts.json");
         Load();
     }
 
-    public static LoginAccountHistory ForCurrentUser()
+    public static LoginAccountHistory ForCurrentUser(ClientDiagnostics diagnostics)
     {
         try
         {
@@ -34,17 +38,18 @@ internal sealed class LoginAccountHistory
                 throw new InvalidOperationException("A user-local application data directory is required.");
             }
 
-            return new LoginAccountHistory(Path.Combine(root, "OpenConquer", "Client"));
+            return new LoginAccountHistory(Path.Combine(root, "OpenConquer", "Client"), diagnostics);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
         {
-            Console.Error.WriteLine("OpenConquer: user-local account history unavailable; continuing without persistence.");
-            return new LoginAccountHistory();
+            diagnostics.HistoryUnavailable(ClientFailure.Classify(exception));
+            return new LoginAccountHistory(diagnostics);
         }
     }
 
-    private LoginAccountHistory()
+    private LoginAccountHistory(ClientDiagnostics diagnostics)
     {
+        _diagnostics = diagnostics;
         _directory = _path = string.Empty;
         _writable = false;
     }
@@ -165,7 +170,7 @@ internal sealed class LoginAccountHistory
         {
             _names.Clear();
             _writable = false;
-            Console.Error.WriteLine("OpenConquer: local account history could not be validated; updates disabled.");
+            _diagnostics.HistoryRejected(ClientFailure.Classify(exception));
         }
     }
 
@@ -227,7 +232,7 @@ internal sealed class LoginAccountHistory
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
         {
             _writable = false;
-            Console.Error.WriteLine("OpenConquer: local account history could not be saved; updates disabled.");
+            _diagnostics.HistorySaveFailed(ClientFailure.Classify(exception));
             return false;
         }
         finally

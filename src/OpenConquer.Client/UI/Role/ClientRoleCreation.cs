@@ -1,4 +1,5 @@
 using System.Numerics;
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.UI.Flash;
 using OpenConquer.Client.UI.Login.Status;
 using OpenConquer.Content;
@@ -29,6 +30,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
     private readonly FlashRasterCache _rasters = new();
     private readonly Func<GameServerHandshakeSession, string, IRoleCreationScreen> _createScreen;
     private readonly TimeProvider _clock;
+    private readonly ClientDiagnostics _diagnostics;
     private SelectCharacterIni? _ini;
     private RoleCreationText? _text;
     private FontGlyphInk? _glyphInk;
@@ -41,7 +43,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
     public ClientRoleCreation(IClientContentSource content, Action<LoginAudioCue> playSound, Action requestExit,
         Func<bool> canAdmitWorld, Func<bool> hasWorldScene,
         Action<GameServerHandshakeSession, GameWorldEntrySnapshot> admitWorld, Action<bool> returnToLogin,
-        Func<GameServerHandshakeSession, string, IRoleCreationScreen>? createScreen = null, TimeProvider? clock = null)
+        Func<GameServerHandshakeSession, string, IRoleCreationScreen>? createScreen = null, TimeProvider? clock = null, ClientDiagnostics? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(playSound);
@@ -58,6 +60,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
         _admitWorld = admitWorld;
         _returnToLogin = returnToLogin;
         _clock = clock ?? TimeProvider.System;
+        _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _createScreen = createScreen ?? CreateScreen;
     }
 
@@ -97,7 +100,7 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
         catch (Exception exception) when (exception is FileNotFoundException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
             // Preserve the content-failure classification while the unclaimed session closes.
-            Console.Error.WriteLine($"OpenConquer: retail role content is unavailable ({exception.Message}).");
+            _diagnostics.RoleContentUnavailable(ClientFailure.Classify(exception));
             _closing = closeUnclaimedSession().AsTask();
             return false;
         }

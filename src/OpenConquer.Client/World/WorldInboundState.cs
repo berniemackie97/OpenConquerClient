@@ -1,3 +1,4 @@
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Content.Items;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Networking.Game.World;
@@ -6,6 +7,8 @@ namespace OpenConquer.Client.World;
 
 internal sealed class WorldInboundState : IGameWorldPacketHandler
 {
+    private const int MaximumPacketDiagnostics = 64;
+    private readonly ClientDiagnostics _diagnostics;
     private readonly uint _heroId;
     private readonly Func<uint> _clock;
     private readonly HashSet<uint> _unhandled = [];
@@ -17,10 +20,11 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     /// before its position does. A subtype-46 snapshot therefore clamps against the hero life that preceded it.
     /// </summary>
     internal WorldInboundState(GameWorldEntrySnapshot world, ItemStatCatalog itemStats, Func<uint>? clock = null,
-        uint clientStartedAt = 0)
+        uint clientStartedAt = 0, ClientDiagnostics? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         _heroId = world.Character.EntityId;
+        _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _clock = clock ?? (static () => 0);
         Heartbeat = new WorldHeartbeat(world.HeartbeatStartedAt, clientStartedAt, world.LocalAddress);
         Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character), itemStats, world.MapFlags,
@@ -150,7 +154,7 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
                 uint diagnosticKey = entry.AttributeId is <= 54 or 128 ? entry.AttributeId : uint.MaxValue;
                 if (_unhandledAttributes.Add(diagnosticKey))
                 {
-                    Console.Error.WriteLine($"OpenConquer: world hero attribute {entry.AttributeId} is not implemented.");
+                    _diagnostics.UnhandledWorldAttribute(diagnosticKey);
                 }
             }
         }
@@ -178,11 +182,15 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
     private void ReportUnhandled(ushort type, ushort action)
     {
-        if (_unhandled.Add(((uint)type << 16) | action))
+        if (_unhandled.Count >= MaximumPacketDiagnostics || !_unhandled.Add(((uint)type << 16) | action))
         {
-            Console.Error.WriteLine(action == 0
-                ? $"OpenConquer: world packet {type} is not implemented."
-                : $"OpenConquer: world action {type}/{action} is not implemented.");
+            return;
+        }
+
+        _diagnostics.UnhandledWorldPacket(type, action);
+        if (_unhandled.Count == MaximumPacketDiagnostics)
+        {
+            _diagnostics.WorldPacketLimitReached(MaximumPacketDiagnostics);
         }
     }
 

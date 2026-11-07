@@ -1,3 +1,4 @@
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.Startup;
 using OpenConquer.Client.UI;
 using OpenConquer.Content;
@@ -21,6 +22,7 @@ internal sealed class ClientApplication : IDisposable
     private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
     private readonly string _contentRootPath;
     private readonly TimeProvider _clock;
+    private readonly ClientDiagnostics _diagnostics;
     private readonly PresentationPolicy _presentationPolicy;
     private readonly DesktopWindowMode _windowMode;
     private readonly PixelSize _windowSize;
@@ -40,7 +42,7 @@ internal sealed class ClientApplication : IDisposable
         Disposed,
     }
 
-    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null, TimeProvider? clock = null)
+    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null, TimeProvider? clock = null, ClientDiagnostics? diagnostics = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
 
@@ -51,6 +53,7 @@ internal sealed class ClientApplication : IDisposable
 
         _contentRootPath = contentRootPath;
         _clock = clock ?? TimeProvider.System;
+        _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _presentationPolicy = presentationPolicy;
         _windowMode = windowMode;
 
@@ -75,9 +78,9 @@ internal sealed class ClientApplication : IDisposable
         ReportPackageRegistrationWarnings(contentSource);
 
         StartupLogo startupLogo = StartupLogo.Load(contentSource, GameClientClock.TimestampMilliseconds(_clock, _clock.GetTimestamp()));
-        if (startupLogo.UnavailableReason is { } unavailableReason)
+        if (startupLogo.UnavailableReason is not null)
         {
-            Console.Error.WriteLine($"OpenConquer: startup logo unavailable; {unavailableReason}");
+            _diagnostics.StartupLogoUnavailable();
         }
 
         DesktopWindow window = StartupWindowSequence.CreateMainAfterStartup(new OpenGLStartupSplash(startupLogo),
@@ -129,7 +132,7 @@ internal sealed class ClientApplication : IDisposable
     {
         GameSetupConfiguration gameSetup = GameSetupConfiguration.Load(contentSource);
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
-        _session = new ClientSession(_contentRootPath, contentSource, _logicalRenderSize, () => _window?.RequestClose(), () => _window?.Dispose(), _clock);
+        _session = new ClientSession(_contentRootPath, contentSource, _logicalRenderSize, () => _window?.RequestClose(), () => _window?.Dispose(), _clock, _diagnostics);
         IReadOnlyList<RgbaImage> cursorFrames = LoginCursorArtwork.Load();
         _cursor = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
             cursorFrames[0].Height, LoginCursorArtwork.HotspotX, LoginCursorArtwork.HotspotY, LoginCursorArtwork.FrameDuration);
@@ -230,13 +233,15 @@ internal sealed class ClientApplication : IDisposable
     private void OnTextEntered(char character) => _session?.TextEntered(character);
     private void OnFocusChanged(bool focused) => _session?.SetFocused(focused);
 
-    private static void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
+    private void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
     {
-        foreach (WdfPackageRegistration registration in contentSource.PackageRegistrations)
+        IReadOnlyList<WdfPackageRegistration> registrations = contentSource.PackageRegistrations;
+        for (int index = 0; index < registrations.Count; index++)
         {
+            WdfPackageRegistration registration = registrations[index];
             if (registration.Outcome is WdfPackageRegistrationOutcome.DuplicatePrefix or WdfPackageRegistrationOutcome.ArchiveUnavailable)
             {
-                Console.Error.WriteLine($"OpenConquer: declared package '{registration.DeclaredName}' (prefix '{registration.Prefix}') resolved as {registration.Outcome}.");
+                _diagnostics.PackageSkipped(index + 1, (int)registration.Outcome);
             }
         }
     }

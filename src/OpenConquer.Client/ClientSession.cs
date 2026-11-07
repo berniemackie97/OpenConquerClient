@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.UI;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Status;
@@ -28,16 +29,16 @@ internal sealed class ClientSession : IDisposable
     private uint _frameMilliseconds;
 
     public ClientSession(string contentRoot, IClientContentSource content, LogicalRenderSize size,
-        Action requestExit, Action closeWindow, TimeProvider clock)
+        Action requestExit, Action closeWindow, TimeProvider clock, ClientDiagnostics diagnostics)
         : this(content, size, requestExit, closeWindow,
-            canLogin => ClientLogin.Create(contentRoot, content, size, canLogin, requestExit, clock), clock: clock)
+            canLogin => ClientLogin.Create(contentRoot, content, size, canLogin, requestExit, clock, diagnostics), clock: clock, diagnostics: diagnostics)
     {
     }
 
     internal ClientSession(IClientContentSource content, LogicalRenderSize size, Action requestExit, Action closeWindow,
         Func<Func<bool>, ClientLogin> createLogin,
         Func<GameServerHandshakeSession, string, IRoleCreationScreen>? createRoleScreen = null,
-        Func<GameServerHandshakeSession, GameWorldEntrySnapshot, Action, IClientWorld>? createWorld = null, TimeProvider? clock = null)
+        Func<GameServerHandshakeSession, GameWorldEntrySnapshot, Action, IClientWorld>? createWorld = null, TimeProvider? clock = null, ClientDiagnostics? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(requestExit);
@@ -48,11 +49,11 @@ internal sealed class ClientSession : IDisposable
         _frameClock = new ClientFrameClock(time);
         _login = createLogin(() => State == ClientState.Login);
         _roles = new ClientRoleCreation(content, _login.PlaySound, requestExit,
-            () => _world is null, () => _world is { HasScene: true }, AcceptRoleWorld, ReturnFromRole, createRoleScreen, time);
+            () => _world is null, () => _world is { HasScene: true }, AcceptRoleWorld, ReturnFromRole, createRoleScreen, time, diagnostics);
         // Native hero construction stamps hero+0x2F74 at client start (0x655BAD); the 1037 report window starts there.
         uint clientStartedAt = GameClientClock.Milliseconds(time);
         _createWorld = createWorld ?? ((game, entry, closing) =>
-            new ClientWorld(game, entry, content, size, closing, clientStartedAt, _frameMilliseconds, time));
+            new ClientWorld(game, entry, content, size, closing, clientStartedAt, _frameMilliseconds, time, diagnostics));
     }
 
     private IClientWorld ActiveWorld => _world ?? throw new InvalidOperationException("World state has no admitted owner.");

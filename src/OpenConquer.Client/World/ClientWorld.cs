@@ -1,3 +1,4 @@
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.UI.Hud.Quickbar;
 using OpenConquer.Client.UI.Hud.Rendering;
 using OpenConquer.Client.UI.Hud.SelectedSkill;
@@ -31,6 +32,7 @@ internal sealed class ClientWorld : IClientWorld
     private Func<ValueTask>? _closeSession;
     private GameWorldEntrySnapshot? _entry;
     private readonly TimeProvider _clock;
+    private readonly ClientDiagnostics _diagnostics;
     private uint _frameMilliseconds;
     private readonly uint _clientStartedAt;
     private WorldFrameIngress? _ingress;
@@ -64,7 +66,7 @@ internal sealed class ClientWorld : IClientWorld
     /// closing. <c>clientStartedAt</c> is the client millisecond counter at client start (native hero construction).
     /// </summary>
     public ClientWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot entry, IClientContentSource content,
-        LogicalRenderSize logicalRenderSize, Action onClosing, uint clientStartedAt, uint mapStartedAt, TimeProvider clock)
+        LogicalRenderSize logicalRenderSize, Action onClosing, uint clientStartedAt, uint mapStartedAt, TimeProvider clock, ClientDiagnostics? diagnostics = null)
         : this(entry, content, logicalRenderSize, onClosing,
             (game ?? throw new ArgumentNullException(nameof(game))).DisposeAsync,
             () => new WorldFrameIngress(game), () => new WorldContentLoad<WorldMapScene>(
@@ -72,7 +74,7 @@ internal sealed class ClientWorld : IClientWorld
             () => new WorldFrameEgress(
                 (now, token) => game.SendWorldLatencyTickAsync(entry.Character.EntityId, now, token),
                 (address, latency, now, token) => game.SendWorldLatencyReportAsync(address, latency, now, token)),
-            clock, clientStartedAt)
+            clock, clientStartedAt, diagnostics)
     {
     }
 
@@ -81,7 +83,7 @@ internal sealed class ClientWorld : IClientWorld
     /// </summary>
     internal ClientWorld(GameWorldEntrySnapshot entry, IClientContentSource content, LogicalRenderSize logicalRenderSize,
         Action onClosing, Func<ValueTask> closeSession, Func<WorldFrameIngress> createIngress, Func<WorldContentLoad<WorldMapScene>> createMapLoad,
-        Func<WorldFrameEgress>? createEgress = null, TimeProvider? clock = null, uint clientStartedAt = 0)
+        Func<WorldFrameEgress>? createEgress = null, TimeProvider? clock = null, uint clientStartedAt = 0, ClientDiagnostics? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(content);
@@ -92,6 +94,7 @@ internal sealed class ClientWorld : IClientWorld
 
         _content = content;
         _clock = clock ?? TimeProvider.System;
+        _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _clientStartedAt = clientStartedAt;
         _logicalRenderSize = logicalRenderSize;
         _onClosing = onClosing;
@@ -104,7 +107,7 @@ internal sealed class ClientWorld : IClientWorld
         _egress = createEgress?.Invoke();
         _mapLoad = createMapLoad();
         _catalogLoad = new WorldContentLoad<WorldEntryCatalogs>(token => WorldEntryContent.LoadCatalogs(content, token));
-        _roleLoad = new WorldRoleLoad(content, entry.Character.PackedAppearance);
+        _roleLoad = new WorldRoleLoad(content, entry.Character.PackedAppearance, _diagnostics);
     }
 
     /// <summary>True until the world starts closing.</summary>
@@ -141,7 +144,7 @@ internal sealed class ClientWorld : IClientWorld
         catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or
             System.Net.Sockets.SocketException or UnauthorizedAccessException)
         {
-            Console.Error.WriteLine($"OpenConquer: world connection closed ({exception.Message}).");
+            _diagnostics.WorldConnectionClosed(ClientFailure.Classify(exception));
             BeginClose(WorldCloseReason.ConnectionLost);
         }
     }
@@ -158,7 +161,7 @@ internal sealed class ClientWorld : IClientWorld
                 if (IsActive && _entry is { } entry)
                 {
                     _inbound = new WorldInboundState(entry, catalogs.Items, () => _frameMilliseconds,
-                        _clientStartedAt);
+                        _clientStartedAt, _diagnostics);
                     _levelExperience = catalogs.Experience;
                 }
             }
@@ -197,7 +200,7 @@ internal sealed class ClientWorld : IClientWorld
         {
             if (IsActive)
             {
-                Console.Error.WriteLine("OpenConquer: required world entry content is unavailable.");
+                _diagnostics.WorldEntryContentUnavailable(ClientFailure.Classify(exception));
                 BeginClose(WorldCloseReason.ContentUnavailable);
             }
         }
@@ -234,13 +237,13 @@ internal sealed class ClientWorld : IClientWorld
             previous?.Dispose();
             if (next is null && previous is null)
             {
-                Console.Error.WriteLine("OpenConquer: character mesh resources are missing from the installed content set.");
+                _diagnostics.WorldRoleMissing();
             }
         }
         catch (Exception exception) when (WorldRoleLoad.IsContentFailure(exception))
         {
             // A failure preparing the current appearance means required world content is unavailable.
-            Console.Error.WriteLine("OpenConquer: world character artwork is unavailable.");
+            _diagnostics.WorldRoleUnavailable(ClientFailure.Classify(exception));
             BeginClose(WorldCloseReason.ContentUnavailable);
         }
     }
@@ -264,7 +267,7 @@ internal sealed class ClientWorld : IClientWorld
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            CloseForPresentationContentFailure();
+            CloseForPresentationContentFailure(exception);
         }
     }
 
@@ -307,7 +310,7 @@ internal sealed class ClientWorld : IClientWorld
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            CloseForPresentationContentFailure();
+            CloseForPresentationContentFailure(exception);
         }
     }
 
@@ -351,9 +354,9 @@ internal sealed class ClientWorld : IClientWorld
             _frameMilliseconds, textureBudget: MapTextureUploadsPerFrame);
     }
 
-    private void CloseForPresentationContentFailure()
+    private void CloseForPresentationContentFailure(Exception exception)
     {
-        Console.Error.WriteLine("OpenConquer: world presentation content is unavailable.");
+        _diagnostics.WorldPresentationUnavailable(ClientFailure.Classify(exception));
         BeginClose(WorldCloseReason.ContentUnavailable);
     }
 

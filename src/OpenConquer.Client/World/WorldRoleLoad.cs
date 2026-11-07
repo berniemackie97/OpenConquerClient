@@ -1,3 +1,4 @@
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Content;
 using OpenConquer.Content.Mesh;
 
@@ -13,13 +14,13 @@ internal sealed class WorldRoleLoad(Func<WorldRoleSources, CancellationToken, Wo
     private Task<WorldRoleAssets?>? _pending;
     private WorldRoleSources _requested;
 
-    internal WorldRoleLoad(IClientContentSource source, uint packedAppearance)
-        : this(CreateAssetReader(source, packedAppearance))
+    internal WorldRoleLoad(IClientContentSource source, uint packedAppearance, ClientDiagnostics diagnostics)
+        : this(CreateAssetReader(source, packedAppearance, diagnostics))
     {
     }
 
     private static Func<WorldRoleSources, CancellationToken, WorldRoleAssets?> CreateAssetReader(
-        IClientContentSource source, uint packedAppearance)
+        IClientContentSource source, uint packedAppearance, ClientDiagnostics diagnostics)
     {
         ArgumentNullException.ThrowIfNull(source);
         C3RoleCatalog? catalog = null;
@@ -38,7 +39,7 @@ internal sealed class WorldRoleLoad(Func<WorldRoleSources, CancellationToken, Wo
                 catalog = C3RoleCatalog.Load(source);
             }
 
-            return WorldRoleAssets.Load(source, catalog, packedAppearance, sources, token);
+            return WorldRoleAssets.Load(source, catalog, packedAppearance, sources, diagnostics, token);
         };
     }
 

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.Startup.Catalog;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Selection;
@@ -20,6 +21,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private static readonly TimeSpan s_timeout = TimeSpan.FromSeconds(5);
     private readonly string _contentRoot;
     private readonly TimeProvider _clock;
+    private readonly ClientDiagnostics _diagnostics;
     private readonly LocalAddressResolver _localAddress;
     private readonly Lazy<GameSilentInfoReport> _silentInfo;
     private Task<AttemptResult>? _pending;
@@ -37,11 +39,12 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private bool _disposed;
 
     internal LoginAttemptCoordinator(string contentRoot, TimeProvider? clock = null,
-        LocalAddressResolver? localAddress = null)
+        LocalAddressResolver? localAddress = null, ClientDiagnostics? diagnostics = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRoot);
         _contentRoot = contentRoot;
         _clock = clock ?? TimeProvider.System;
+        _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _localAddress = localAddress ?? new LocalAddressResolver();
         // Native CSilentInfo reads its files once when constructed at client start (0x6BB310).
         _silentInfo = new Lazy<GameSilentInfoReport>(() => SilentInfoFiles.Read(contentRoot));
@@ -372,7 +375,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
     }
 
-    private static async Task DisposeRevokedAsync(GameServerHandshakeSession game)
+    private async Task DisposeRevokedAsync(GameServerHandshakeSession game)
     {
         try
         {
@@ -380,7 +383,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
         catch (Exception failure)
         {
-            Console.Error.WriteLine($"OpenConquer: revoked GameServer session disposal failed ({failure.GetType().Name}).");
+            _diagnostics.RevokedSessionCleanupFailed(ClientFailure.Classify(failure));
         }
     }
 

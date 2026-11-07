@@ -1,3 +1,4 @@
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.Startup.LoginFlow;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
@@ -18,6 +19,7 @@ internal sealed class ClientLogin : IDisposable
     private readonly LoginErrorMessages _errors;
     private readonly Func<bool> _canLogin;
     private readonly TimeProvider _clock;
+    private readonly ClientDiagnostics _diagnostics;
     private LoginCatalogBinding? _catalog;
     private LoginAudioPlayer? _audio;
     private LoginScreenRenderer? _renderer;
@@ -26,7 +28,7 @@ internal sealed class ClientLogin : IDisposable
 
     internal ClientLogin(IClientContentSource content, LoginScreen screen, LoginAttemptCoordinator attempts,
         LoginRegistrationCoordinator registration, LoginErrorMessages errors, LoginLoadingScreen? loading,
-        Func<bool> canLogin, TimeProvider? clock = null, LoginCatalogBinding? catalog = null)
+        Func<bool> canLogin, TimeProvider? clock = null, LoginCatalogBinding? catalog = null, ClientDiagnostics? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(screen);
@@ -42,6 +44,7 @@ internal sealed class ClientLogin : IDisposable
         Loading = loading;
         _canLogin = canLogin;
         _clock = clock ?? TimeProvider.System;
+        _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _catalog = catalog;
         Screen.LoginRequested += OnLoginRequested;
         Screen.PendingLoginCancelled += ResetLoading;
@@ -69,7 +72,7 @@ internal sealed class ClientLogin : IDisposable
     public bool CanPresentWorld => Loading is not { Visible: true } || Loading.CanEnterWorld;
 
     public static ClientLogin Create(string contentRoot, IClientContentSource content, LogicalRenderSize size,
-        Func<bool> canLogin, Action requestExit, TimeProvider clock)
+        Func<bool> canLogin, Action requestExit, TimeProvider clock, ClientDiagnostics diagnostics)
     {
         LoginScreen? screen = null;
         LoginAttemptCoordinator? attempts = null;
@@ -77,14 +80,14 @@ internal sealed class ClientLogin : IDisposable
         ClientLogin? owner = null;
         try
         {
-            screen = new LoginScreen(LoginStageLayout.Create(size), LoginAccountHistory.ForCurrentUser(),
-                ClientVersionLabel.Load(content), cue => owner?.PlaySound(cue));
+            screen = new LoginScreen(LoginStageLayout.Create(size), LoginAccountHistory.ForCurrentUser(diagnostics),
+                ClientVersionLabel.Load(content), cue => owner?.PlaySound(cue), diagnostics);
             screen.ExitRequested += requestExit;
-            attempts = new LoginAttemptCoordinator(contentRoot, clock);
+            attempts = new LoginAttemptCoordinator(contentRoot, clock, diagnostics: diagnostics);
             LoginErrorMessages errors = LoginErrorMessages.Load(content, LoginErrorEncoding.ForCurrentHost());
             LoginLoadingScreen? loading = LoginLoadingScreen.LoadIfPresent(content);
             registration = new LoginRegistrationCoordinator(clock);
-            owner = new ClientLogin(content, screen, attempts, registration, errors, loading, canLogin, clock);
+            owner = new ClientLogin(content, screen, attempts, registration, errors, loading, canLogin, clock, diagnostics: diagnostics);
             return owner;
         }
         catch
@@ -105,8 +108,8 @@ internal sealed class ClientLogin : IDisposable
         {
             throw new InvalidOperationException("Login services have already started.");
         }
-        _catalog = LoginCatalogBinding.ForEmbeddedAuthority(_clock);
-        _audio = LoginAudioPlayer.TryCreate();
+        _catalog = LoginCatalogBinding.ForEmbeddedAuthority(_clock, _diagnostics);
+        _audio = LoginAudioPlayer.TryCreate(_diagnostics);
     }
 
     public void Update()
