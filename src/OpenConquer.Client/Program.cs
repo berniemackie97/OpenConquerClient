@@ -1,25 +1,47 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.Startup;
 
 namespace OpenConquer.Client;
 
 internal static class Program
 {
+    private const int ClientFailureExitCode = 1;
     private const int InvalidStartupArgumentsExitCode = 2;
 
     private static int Main(string[] args)
     {
-        if (!ClientStartupOptions.TryParse(args, out ClientStartupOptions? options, out string? errorMessage))
+        using ILoggerFactory factory = LoggerFactory.Create(static builder => builder.AddConsole(static options =>
         {
-            Console.Error.WriteLine($"OpenConquer: {errorMessage}");
-            Console.Error.WriteLine($"Usage: OpenConquer.Client [--content-root <path>] [--window-size <WIDTHxHEIGHT>] [--window-mode <{ClientStartupOptions.WindowModeNames}>] [--presentation <{ClientStartupOptions.PresentationPolicyNames}>]");
+            options.FormatterName = ConsoleFormatterNames.Json;
+            options.LogToStandardErrorThreshold = LogLevel.Trace;
+            options.QueueFullMode = ConsoleLoggerQueueFullMode.DropWrite;
+            options.MaxQueueLength = 256;
+        }));
+        ClientDiagnostics diagnostics = new(factory.CreateLogger("OpenConquer.Client"));
+        try
+        {
+            if (!ClientStartupOptions.TryParse(args, out ClientStartupOptions? options, out ClientStartupArgumentCode errorCode))
+            {
+                diagnostics.StartupArgumentsRejected((int)errorCode);
+                return InvalidStartupArgumentsExitCode;
+            }
 
-            return InvalidStartupArgumentsExitCode;
+            return RunClient(options, diagnostics);
         }
+        catch (Exception failure)
+        {
+            diagnostics.ClientStopped(ClientFailure.Classify(failure));
+            return ClientFailureExitCode;
+        }
+    }
 
-        ClientApplication application = new(options.ContentRootPath, options.PresentationPolicy, options.WindowMode, options.WindowSize);
-
+    private static int RunClient(ClientStartupOptions options, ClientDiagnostics diagnostics)
+    {
+        ClientApplication application = new(options.ContentRootPath, options.PresentationPolicy,
+            options.WindowMode, options.WindowSize, diagnostics: diagnostics);
         int exitCode;
-
         try
         {
             exitCode = application.Run();
@@ -30,16 +52,15 @@ internal static class Program
             {
                 application.Dispose();
             }
-            catch
+            catch (Exception cleanup)
             {
-                // Preserve the application failure that initiated cleanup.
+                diagnostics.ClientCleanupFailed(ClientFailure.Classify(cleanup));
             }
 
             throw;
         }
 
         application.Dispose();
-
         return exitCode;
     }
 }

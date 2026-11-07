@@ -1,4 +1,6 @@
 using System.Buffers.Binary;
+using OpenConquer.Client.Diagnostics;
+using OpenConquer.Client.Tests.Diagnostics;
 using OpenConquer.Client.World;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Networking.Game.World;
@@ -440,8 +442,48 @@ public sealed class WorldInboundStateTests
         Assert.Equal(0u, state.EquipmentRevision);
     }
 
+    [Fact]
+    public void UnhandledPacketDiagnosticsAreBoundedAndDoNotReadPayload()
+    {
+        RecordingClientLogger logger = new();
+        WorldInboundState state = CreateState(diagnostics: new ClientDiagnostics(logger));
+        byte[] packet = new byte[16];
+        BinaryPrimitives.WriteUInt16LittleEndian(packet, (ushort)packet.Length);
+        "PRIVATE-DATA"u8.CopyTo(packet.AsSpan(4));
+
+        for (ushort type = 20_000; type < 20_100; type++)
+        {
+            BinaryPrimitives.WriteUInt16LittleEndian(packet.AsSpan(2), type);
+            Assert.False(state.Apply(packet));
+            Assert.False(state.Apply(packet));
+        }
+
+        Assert.Equal(65, logger.Events.Count);
+        Assert.All(logger.Events[..64], logged =>
+        {
+            Assert.Equal(2306, logged.Id);
+            Assert.Null(logged.Exception);
+            Assert.DoesNotContain("PRIVATE-DATA", logged.Message, StringComparison.Ordinal);
+        });
+        Assert.Equal((ushort)20_000, Assert.Single(logger.Events[0].Fields, field => field.Key == "PacketType").Value);
+        Assert.Equal(2308, logger.Events[^1].Id);
+    }
+
+    [Fact]
+    public void UnknownAttributeIdsShareOneSafeDiagnosticCode()
+    {
+        RecordingClientLogger logger = new();
+        WorldInboundState state = CreateState(diagnostics: new ClientDiagnostics(logger));
+
+        Assert.False(state.Apply(Attributes(HeroId, (0xDEADBEEF, ulong.MaxValue, 0), (0xDABCFEED, 0, ulong.MaxValue))));
+
+        RecordingClientLogger.RecordedEvent logged = Assert.Single(logger.Events);
+        Assert.Equal(2307, logged.Id);
+        Assert.Equal(uint.MaxValue, Assert.Single(logged.Fields, field => field.Key == "AttributeCode").Value);
+    }
+
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
-        ushort transformLookSourceId = 0, int hydrationEnteredAt = 0) =>
+        ushort transformLookSourceId = 0, int hydrationEnteredAt = 0, ClientDiagnostics? diagnostics = null) =>
         new(new GameWorldEntrySnapshot(
             new GameCharacterInfo1006
             {
@@ -457,7 +499,7 @@ public sealed class WorldInboundStateTests
                 Experience = 12345,
                 TransformLookSourceId = transformLookSourceId,
             },
-            1002, 1010, 0, 1, 61, 101, hydration ?? [], 3, hydrationEnteredAt), WorldHeroItemStatsTests.Catalog());
+            1002, 1010, 0, 1, 61, 101, hydration ?? [], 3, hydrationEnteredAt), WorldHeroItemStatsTests.Catalog(), diagnostics: diagnostics);
 
     private static byte[] Attributes(uint entityId, params (uint Id, ulong Low, ulong High)[] entries)
     {

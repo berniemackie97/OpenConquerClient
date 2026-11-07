@@ -1,3 +1,4 @@
+using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.Startup.Catalog;
 using OpenConquer.Client.UI.Login.Account;
 using OpenConquer.Client.UI.Login.Audio;
@@ -20,14 +21,16 @@ namespace OpenConquer.Client.UI.Login;
 /// </summary>
 internal sealed class LoginScreen : IDisposable
 {
+    private readonly ClientDiagnostics _diagnostics;
     private readonly Action<LoginAudioCue> _playSound;
     private readonly LoginAudioFeedback _sounds;
     private bool _disposed;
     private LoginAttemptFeedback? _feedback;
     private LoginRegistrationFeedback? _registrationFeedback;
 
-    public LoginScreen(LoginStageLayout layout, LoginAccountHistory history, string versionLabel, Action<LoginAudioCue> playSound)
+    public LoginScreen(LoginStageLayout layout, LoginAccountHistory history, string versionLabel, Action<LoginAudioCue> playSound, ClientDiagnostics? diagnostics = null)
     {
+        _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         Layout = layout ?? throw new ArgumentNullException(nameof(layout));
         ArgumentNullException.ThrowIfNull(history);
         VersionLabel = versionLabel ?? throw new ArgumentNullException(nameof(versionLabel));
@@ -683,7 +686,7 @@ internal sealed class LoginScreen : IDisposable
         }
     }
 
-    private static bool TryHandleClipboard(ILoginTextEditor editor, DesktopKeyEvent key, Func<string?> readClipboard,
+    private bool TryHandleClipboard(ILoginTextEditor editor, DesktopKeyEvent key, Func<string?> readClipboard,
         Action<string> writeClipboard)
     {
         bool shortcut = (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) != 0 &&
@@ -709,9 +712,9 @@ internal sealed class LoginScreen : IDisposable
                 }
             }
         }
-        catch (NotSupportedException exception)
+        catch (NotSupportedException)
         {
-            Console.Error.WriteLine($"OpenConquer: desktop clipboard unavailable ({exception.GetType().Name}).");
+            _diagnostics.ClipboardUnavailable();
         }
 
         return true;

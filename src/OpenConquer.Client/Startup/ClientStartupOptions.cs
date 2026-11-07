@@ -6,6 +6,24 @@ using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.Startup;
 
+internal enum ClientStartupArgumentCode
+{
+    None = 0,
+    UnknownArgument = 1,
+    DuplicateContentRoot = 2,
+    MissingContentRoot = 3,
+    InvalidContentRoot = 4,
+    DuplicatePresentation = 5,
+    MissingPresentation = 6,
+    InvalidPresentation = 7,
+    DuplicateWindowMode = 8,
+    MissingWindowMode = 9,
+    InvalidWindowMode = 10,
+    DuplicateWindowSize = 11,
+    MissingWindowSize = 12,
+    InvalidWindowSize = 13,
+}
+
 internal sealed class ClientStartupOptions
 {
     private const string ContentRootOptionName = "--content-root";
@@ -61,20 +79,16 @@ internal sealed class ClientStartupOptions
         get;
     }
 
-    public static string PresentationPolicyNames => string.Join('|', s_presentationOptions.Select(entry => entry.Name));
-
-    public static string WindowModeNames => string.Join('|', s_windowModeOptions.Select(entry => entry.Name));
-
-    public static bool TryParse(string[] args, [NotNullWhen(true)] out ClientStartupOptions? options, [NotNullWhen(false)] out string? errorMessage)
+    public static bool TryParse(string[] args, [NotNullWhen(true)] out ClientStartupOptions? options, out ClientStartupArgumentCode errorCode)
     {
         ArgumentNullException.ThrowIfNull(args);
 
         string packagedContentRoot = Path.Combine(AppContext.BaseDirectory, "content", "retail-5517", "payload");
 
-        return TryParse(args, packagedContentRoot, Environment.CurrentDirectory, out options, out errorMessage);
+        return TryParse(args, packagedContentRoot, Environment.CurrentDirectory, out options, out errorCode);
     }
 
-    internal static bool TryParse(IReadOnlyList<string> args, string defaultContentRootPath, string workingDirectoryPath, [NotNullWhen(true)] out ClientStartupOptions? options, [NotNullWhen(false)] out string? errorMessage)
+    internal static bool TryParse(IReadOnlyList<string> args, string defaultContentRootPath, string workingDirectoryPath, [NotNullWhen(true)] out ClientStartupOptions? options, out ClientStartupArgumentCode errorCode)
     {
         ArgumentNullException.ThrowIfNull(args);
 
@@ -103,17 +117,17 @@ internal sealed class ClientStartupOptions
                     {
                         if (contentRootSpecified)
                         {
-                            return Fail($"Startup option '{ContentRootOptionName}' may only be specified once.", out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.DuplicateContentRoot, out options, out errorCode);
                         }
 
-                        if (!TryReadOptionValue(args, ref index, ContentRootOptionName, "a path value", out string? configuredPath, out errorMessage))
+                        if (!TryReadOptionValue(args, ref index, out string? configuredPath))
                         {
-                            return Fail(errorMessage, out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.MissingContentRoot, out options, out errorCode);
                         }
 
                         if (!TryResolveConfiguredPath(configuredPath, normalizedWorkingDirectoryPath, out string? resolvedContentRootPath))
                         {
-                            return Fail($"Startup option '{ContentRootOptionName}' contains an invalid path.", out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.InvalidContentRoot, out options, out errorCode);
                         }
 
                         contentRootPath = resolvedContentRootPath;
@@ -126,17 +140,17 @@ internal sealed class ClientStartupOptions
                     {
                         if (presentationSpecified)
                         {
-                            return Fail($"Startup option '{PresentationOptionName}' may only be specified once.", out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.DuplicatePresentation, out options, out errorCode);
                         }
 
-                        if (!TryReadOptionValue(args, ref index, PresentationOptionName, $"one of {PresentationPolicyNames}", out string? configuredPolicy, out errorMessage))
+                        if (!TryReadOptionValue(args, ref index, out string? configuredPolicy))
                         {
-                            return Fail(errorMessage, out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.MissingPresentation, out options, out errorCode);
                         }
 
                         if (!TryParsePresentationPolicy(configuredPolicy, out presentationPolicy))
                         {
-                            return Fail($"Startup option '{PresentationOptionName}' value '{configuredPolicy}' is not recognized. Expected one of {PresentationPolicyNames}.", out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.InvalidPresentation, out options, out errorCode);
                         }
 
                         presentationSpecified = true;
@@ -148,17 +162,17 @@ internal sealed class ClientStartupOptions
                     {
                         if (windowModeSpecified)
                         {
-                            return Fail($"Startup option '{WindowModeOptionName}' may only be specified once.", out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.DuplicateWindowMode, out options, out errorCode);
                         }
 
-                        if (!TryReadOptionValue(args, ref index, WindowModeOptionName, $"one of {WindowModeNames}", out string? configuredMode, out errorMessage))
+                        if (!TryReadOptionValue(args, ref index, out string? configuredMode))
                         {
-                            return Fail(errorMessage, out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.MissingWindowMode, out options, out errorCode);
                         }
 
                         if (!TryParseWindowMode(configuredMode, out windowMode))
                         {
-                            return Fail($"Startup option '{WindowModeOptionName}' value '{configuredMode}' is not recognized. Expected one of {WindowModeNames}.", out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.InvalidWindowMode, out options, out errorCode);
                         }
 
                         windowModeSpecified = true;
@@ -170,17 +184,17 @@ internal sealed class ClientStartupOptions
                     {
                         if (windowSizeSpecified)
                         {
-                            return Fail($"Startup option '{WindowSizeOptionName}' may only be specified once.", out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.DuplicateWindowSize, out options, out errorCode);
                         }
 
-                        if (!TryReadOptionValue(args, ref index, WindowSizeOptionName, "a WIDTHxHEIGHT value", out string? configuredSize, out errorMessage))
+                        if (!TryReadOptionValue(args, ref index, out string? configuredSize))
                         {
-                            return Fail(errorMessage, out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.MissingWindowSize, out options, out errorCode);
                         }
 
                         if (!TryParseWindowSize(configuredSize, out windowSize))
                         {
-                            return Fail($"Startup option '{WindowSizeOptionName}' value '{configuredSize}' is not a supported WIDTHxHEIGHT value.", out options, out errorMessage);
+                            return Fail(ClientStartupArgumentCode.InvalidWindowSize, out options, out errorCode);
                         }
 
                         windowSizeSpecified = true;
@@ -189,41 +203,33 @@ internal sealed class ClientStartupOptions
                     }
 
                 default:
-                    return Fail($"Unknown startup argument '{argument}'.", out options, out errorMessage);
+                    return Fail(ClientStartupArgumentCode.UnknownArgument, out options, out errorCode);
             }
         }
 
         options = new ClientStartupOptions(contentRootPath, presentationPolicy, windowMode, windowSize);
-        errorMessage = null;
+        errorCode = ClientStartupArgumentCode.None;
 
         return true;
     }
 
-    private static bool TryReadOptionValue(IReadOnlyList<string> args, ref int index, string optionName, string expectation, [NotNullWhen(true)] out string? value, out string? errorMessage)
+    private static bool TryReadOptionValue(IReadOnlyList<string> args, ref int index, [NotNullWhen(true)] out string? value)
     {
         if (index + 1 >= args.Count)
         {
             value = null;
-            errorMessage = $"Startup option '{optionName}' requires {expectation}.";
-
             return false;
         }
 
         string candidate = args[index + 1];
-
         if (string.IsNullOrWhiteSpace(candidate) || candidate.StartsWith("--", StringComparison.Ordinal))
         {
             value = null;
-            errorMessage = $"Startup option '{optionName}' requires {expectation}.";
-
             return false;
         }
 
         index++;
-
         value = candidate;
-        errorMessage = null;
-
         return true;
     }
 
@@ -328,10 +334,10 @@ internal sealed class ClientStartupOptions
         }
     }
 
-    private static bool Fail(string? errorMessage, out ClientStartupOptions? options, out string? parsedErrorMessage)
+    private static bool Fail(ClientStartupArgumentCode error, out ClientStartupOptions? options, out ClientStartupArgumentCode errorCode)
     {
         options = null;
-        parsedErrorMessage = errorMessage;
+        errorCode = error;
 
         return false;
     }

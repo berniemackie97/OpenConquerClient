@@ -18,12 +18,12 @@ public sealed class ClientStartupOptionsTests
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.True(parsed);
         Assert.NotNull(options);
-        Assert.Null(errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.None, errorCode);
         Assert.Equal(
             Path.TrimEndingDirectorySeparator(defaultContentRootPath),
             options.ContentRootPath
@@ -45,12 +45,12 @@ public sealed class ClientStartupOptionsTests
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.True(parsed);
         Assert.NotNull(options);
-        Assert.Null(errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.None, errorCode);
         Assert.Equal(
             Path.TrimEndingDirectorySeparator(configuredContentRootPath),
             options.ContentRootPath
@@ -68,12 +68,12 @@ public sealed class ClientStartupOptionsTests
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.True(parsed);
         Assert.NotNull(options);
-        Assert.Null(errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.None, errorCode);
         Assert.Equal(Path.Combine(workingDirectoryPath, "custom-content"), options.ContentRootPath);
     }
 
@@ -88,12 +88,12 @@ public sealed class ClientStartupOptionsTests
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.Equal("Startup option '--content-root' may only be specified once.", errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.DuplicateContentRoot, errorCode);
     }
 
     [Fact]
@@ -107,12 +107,12 @@ public sealed class ClientStartupOptionsTests
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.Equal("Startup option '--content-root' requires a path value.", errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.MissingContentRoot, errorCode);
     }
 
     [Fact]
@@ -126,12 +126,12 @@ public sealed class ClientStartupOptionsTests
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.Equal("Startup option '--content-root' requires a path value.", errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.MissingContentRoot, errorCode);
     }
 
     [Fact]
@@ -145,12 +145,12 @@ public sealed class ClientStartupOptionsTests
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.Equal("Startup option '--content-root' requires a path value.", errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.MissingContentRoot, errorCode);
     }
 
     [Fact]
@@ -164,12 +164,12 @@ public sealed class ClientStartupOptionsTests
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.Equal("Unknown startup argument '--unknown'.", errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.UnknownArgument, errorCode);
     }
 
     [Fact]
@@ -183,12 +183,12 @@ public sealed class ClientStartupOptionsTests
             defaultContentRootPath,
             workingDirectoryPath,
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.Equal("Unknown startup argument 'custom-content'.", errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.UnknownArgument, errorCode);
     }
 
     [Fact]
@@ -231,12 +231,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.True(parsed);
         Assert.NotNull(options);
-        Assert.Null(errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.None, errorCode);
         Assert.Equal(PresentationPolicy.Fit, options.PresentationPolicy);
     }
 
@@ -253,12 +253,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.True(parsed);
         Assert.NotNull(options);
-        Assert.Null(errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.None, errorCode);
         Assert.Equal(expected, options.WindowMode);
     }
 
@@ -270,15 +270,13 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
-        Assert.Contains("resizable", errorMessage, StringComparison.Ordinal);
-        Assert.Contains("fixed", errorMessage, StringComparison.Ordinal);
-        Assert.Contains("fullscreen", errorMessage, StringComparison.Ordinal);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
+        Assert.Equal(ClientStartupArgumentCode.InvalidWindowMode, errorCode);
     }
 
     [Fact]
@@ -289,12 +287,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
     }
 
     [Fact]
@@ -305,12 +303,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
     }
 
     [Fact]
@@ -321,12 +319,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
     }
 
     [Theory]
@@ -339,12 +337,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.True(parsed);
         Assert.NotNull(options);
-        Assert.Null(errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.None, errorCode);
         Assert.Equal(expectedWidth, options.WindowSize.Width);
         Assert.Equal(expectedHeight, options.WindowSize.Height);
     }
@@ -365,12 +363,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
     }
 
     [Fact]
@@ -381,12 +379,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
     }
 
     [Fact]
@@ -397,12 +395,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
     }
 
     [Theory]
@@ -418,12 +416,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.True(parsed);
         Assert.NotNull(options);
-        Assert.Null(errorMessage);
+        Assert.Equal(ClientStartupArgumentCode.None, errorCode);
         Assert.Equal(expected, options.PresentationPolicy);
     }
 
@@ -435,17 +433,15 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
 
         // The message must name the accepted values, or the only way to discover them is the source.
-        Assert.Contains("fit", errorMessage, StringComparison.Ordinal);
-        Assert.Contains("integer", errorMessage, StringComparison.Ordinal);
-        Assert.Contains("stretch", errorMessage, StringComparison.Ordinal);
+        Assert.Equal(ClientStartupArgumentCode.InvalidPresentation, errorCode);
     }
 
     [Fact]
@@ -456,12 +452,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
     }
 
     [Fact]
@@ -473,12 +469,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
     }
 
     [Fact]
@@ -489,12 +485,12 @@ public sealed class ClientStartupOptionsTests
             CreateAbsolutePath("default-content"),
             CreateAbsolutePath("working-directory"),
             out ClientStartupOptions? options,
-            out string? errorMessage
+            out ClientStartupArgumentCode errorCode
         );
 
         Assert.False(parsed);
         Assert.Null(options);
-        Assert.NotNull(errorMessage);
+        Assert.NotEqual(ClientStartupArgumentCode.None, errorCode);
     }
 
     [Fact]
@@ -513,29 +509,17 @@ public sealed class ClientStartupOptionsTests
                 CreateAbsolutePath("default-content"),
                 CreateAbsolutePath("working-directory"),
                 out ClientStartupOptions? options,
-                out string? errorMessage
+                out ClientStartupArgumentCode errorCode
             );
 
             Assert.True(parsed);
             Assert.NotNull(options);
-            Assert.Null(errorMessage);
+            Assert.Equal(ClientStartupArgumentCode.None, errorCode);
             Assert.Equal(Path.TrimEndingDirectorySeparator(contentRoot), options.ContentRootPath);
             Assert.Equal(PresentationPolicy.IntegerScale, options.PresentationPolicy);
             Assert.Equal(DesktopWindowMode.Fixed, options.WindowMode);
             Assert.Equal(new PixelSize(1280, 720), options.WindowSize);
         }
-    }
-
-    [Fact]
-    public void PresentationPolicyNames_ListsEveryAcceptedValue()
-    {
-        Assert.Equal("fit|integer|stretch", ClientStartupOptions.PresentationPolicyNames);
-    }
-
-    [Fact]
-    public void WindowModeNames_ListsEveryAcceptedValue()
-    {
-        Assert.Equal("resizable|fixed|fullscreen", ClientStartupOptions.WindowModeNames);
     }
 
     private static string CreateAbsolutePath(string leafName)
