@@ -25,10 +25,9 @@ texture cache remains alive. The depth attachment still requires 16-bit precisio
 The render target is constrained by the device's reported renderbuffer and texture
 size limits before resource allocation.
 
-CPU map and scene content is loaded on a cancellable worker. Texture decoding and
-incremental uploads happen on the graphics thread before `OpenGLRenderer.BeginFrame`.
-The texture cache is tracked by the graphics-context owner; decoded map and
-scene state survive context recreation. After admission, login
+CPU map and scene content loads on a cancellable worker. The admitted world
+also owns image preparation and the context's texture cache, described below.
+Decoded map and scene state survive context recreation. After admission, login
 and role input are no longer dispatched to their inactive screens.
 
 ## Remaining work
