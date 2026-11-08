@@ -12,6 +12,17 @@ public sealed class LoginCatalogRefreshTests
     private static readonly DateTimeOffset s_now = new(2026, 10, 11, 20, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public void UnexpectedFetchFaultIsObservedInsteadOfBecomingUnavailable()
+    {
+        InvalidOperationException failure = new("Invalid fetch state.");
+        using LoginCatalogRefresh refresh = new(_ => Task.FromException<SignedLoginCatalog?>(failure));
+
+        Assert.False(refresh.Advance(DateTimeOffset.UnixEpoch));
+        Assert.Same(failure, Assert.Throws<InvalidOperationException>(() => refresh.Advance(DateTimeOffset.UnixEpoch)));
+        Assert.Null(refresh.Current);
+    }
+
+    [Fact]
     public void FirstAcquisitionStartsAsynchronouslyAndAcceptsNewerSignedSnapshot()
     {
         SignedLoginCatalog first = Catalog(7, "2026-10-11T20:20:00Z");

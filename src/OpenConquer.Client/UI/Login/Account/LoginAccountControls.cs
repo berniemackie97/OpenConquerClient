@@ -24,7 +24,10 @@ internal enum LoginAccountPressKind
     CancelPressed,
 }
 
-internal readonly record struct LoginAccountPress(LoginAccountPressKind Kind, string? Account = null);
+internal readonly record struct LoginAccountPress(LoginAccountPressKind Kind, string? Account = null)
+{
+    public override string ToString() => $"{nameof(LoginAccountPress)} {{ Kind = {Kind} }}";
+}
 
 internal enum LoginAccountRelease
 {

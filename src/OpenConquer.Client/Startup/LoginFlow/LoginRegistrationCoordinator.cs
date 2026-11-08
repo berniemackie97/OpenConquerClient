@@ -23,7 +23,7 @@ internal sealed class LoginRegistrationCoordinator : IAsyncDisposable
     private LoginServerSelection? _selection;
     private long _revision;
     private LoginRegistrationFeedback _feedback = new(LoginRegistrationStatus.Closed);
-    private bool _disposed;
+    private Task? _disposeTask;
 
     internal LoginRegistrationCoordinator(TimeProvider? clock = null)
     {
@@ -36,7 +36,7 @@ internal sealed class LoginRegistrationCoordinator : IAsyncDisposable
     /// <summary>Sign Up was clicked. The dialog opens only for a realm a login could use.</summary>
     internal void Open(LoginServerSelection selection, SignedLoginCatalog? catalog)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         ArgumentNullException.ThrowIfNull(selection);
         if (Status is LoginRegistrationStatus.Editing or LoginRegistrationStatus.Submitting)
         {
@@ -51,7 +51,7 @@ internal sealed class LoginRegistrationCoordinator : IAsyncDisposable
     /// <summary>Cancel before submission. A request already sent cannot be withdrawn.</summary>
     internal void Close()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (Status == LoginRegistrationStatus.Editing)
         {
             _feedback = new LoginRegistrationFeedback(LoginRegistrationStatus.Closed);
@@ -64,7 +64,7 @@ internal sealed class LoginRegistrationCoordinator : IAsyncDisposable
     /// </summary>
     internal bool TrySubmit(LoginRegistrationForm form, LoginServerSelection selection, SignedLoginCatalog? catalog)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         ArgumentNullException.ThrowIfNull(form);
         ArgumentNullException.ThrowIfNull(selection);
         if (Status != LoginRegistrationStatus.Editing)
@@ -109,7 +109,7 @@ internal sealed class LoginRegistrationCoordinator : IAsyncDisposable
 
     internal void Update(SignedLoginCatalog? current)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (_pending is not { } pending)
         {
             return;
@@ -137,23 +137,26 @@ internal sealed class LoginRegistrationCoordinator : IAsyncDisposable
         _feedback = result;
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+
+    private async Task DisposeCoreAsync()
     {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        _cancellation?.Cancel();
-        if (_pending is { } pending)
-        {
-            _ = await pending.ConfigureAwait(false);
-        }
-
-        _cancellation?.Dispose();
+        CancellationTokenSource? cancellation = _cancellation;
+        Task<LoginRegistrationFeedback>? pending = _pending;
         _cancellation = null;
         _pending = null;
+        _catalog = null;
+        _selection = null;
+        if (cancellation is not null)
+        {
+            await ClientShutdown.CancelAndDrainAsync(cancellation, async () =>
+            {
+                if (pending is not null)
+                {
+                    _ = await pending.ConfigureAwait(false);
+                }
+            }).ConfigureAwait(false);
+        }
     }
 
     /// <summary>The same realm checks a login makes before it connects.</summary>

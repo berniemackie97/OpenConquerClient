@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using OpenConquer.Client.UI.Flash;
 using OpenConquer.Networking.Game.Handshake;
@@ -19,7 +20,8 @@ internal interface IRoleCreationScreen : IAsyncDisposable
     {
         get;
     }
-    bool TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? world);
+    bool TryTakeAdmittedWorld([NotNullWhen(true)] out GameServerHandshakeSession? game,
+        [NotNullWhen(true)] out GameWorldEntrySnapshot? world);
     void Tick(TimeSpan elapsed);
     void PointerMoved(Vector2 position);
     void PointerPressed(bool extendSelection);

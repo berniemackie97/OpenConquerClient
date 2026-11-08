@@ -10,7 +10,7 @@ internal sealed class WorldFrameIngress : IAsyncDisposable
     private readonly Func<CancellationToken, Task<GameSecuredInboundFrame?>> _receive;
     private readonly CancellationTokenSource _stopping = new();
     private Task<GameSecuredInboundFrame?>? _pending;
-    private bool _disposed;
+    private Task? _disposeTask;
 
     internal WorldFrameIngress(GameServerHandshakeSession session) : this(session.ReadWorldFrameAsync)
     {
@@ -25,7 +25,7 @@ internal sealed class WorldFrameIngress : IAsyncDisposable
     /// <summary>Observe EOF or a failed receive while the world is preparing. Retain any prefetched frame.</summary>
     internal void ObserveConnectionFailure()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (_pending is { IsCompleted: true } completed &&
             (!completed.IsCompletedSuccessfully || completed.GetAwaiter().GetResult() is null))
         {
@@ -37,7 +37,7 @@ internal sealed class WorldFrameIngress : IAsyncDisposable
 
     internal int Drain(Action<ReadOnlyMemory<byte>> apply)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         int processed = 0;
 
         while (processed < MaximumFramesPerTick && _pending is { IsCompleted: true } completed)
@@ -56,29 +56,19 @@ internal sealed class WorldFrameIngress : IAsyncDisposable
         completed.GetAwaiter().GetResult() ??
         throw new EndOfStreamException("GameServer closed the admitted world session.");
 
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
+    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
 
-        _disposed = true;
-        await _stopping.CancelAsync().ConfigureAwait(false);
-        try
+    private async Task DisposeCoreAsync()
+    {
+        Task<GameSecuredInboundFrame?>? pending = _pending;
+        _pending = null;
+        await ClientShutdown.CancelAndDrainAsync(_stopping, async () =>
         {
-            if (_pending is { } pending)
+            if (pending is not null)
             {
                 using GameSecuredInboundFrame? frame = await pending.ConfigureAwait(false);
             }
-        }
-        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
-        {
-        }
-        finally
-        {
-            _pending = null;
-            _stopping.Dispose();
-        }
+        }).ConfigureAwait(false);
     }
+
 }

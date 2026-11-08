@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using OpenConquer.Content;
 using OpenConquer.Content.Images;
 using OpenConquer.Content.Mesh;
@@ -13,8 +14,8 @@ internal sealed class WorldRolePartAssets(
     internal IReadOnlyList<(C3PhyMesh Mesh, C3Motion Motion)> Meshes { get; } = meshes;
     internal uint FrameCount { get; } = frameCount;
 
-    internal bool TryGetAttachment(string name, out C3Motion motion) =>
-        attachments.TryGetValue(name, out motion!);
+    internal bool TryGetAttachment(string name, [NotNullWhen(true)] out C3Motion? motion) =>
+        attachments.TryGetValue(name, out motion);
 
     internal static WorldRolePartAssets Load(IClientContentSource source, C3RoleCatalog catalog,
         C3ResolvedPart part, CancellationToken token, string? actionMotionPath = null)

@@ -93,7 +93,7 @@ internal sealed class ClientSession : IDisposable
         if (State == ClientState.Login && _login.Attempts.TryTakeAdmittedWorld(
                 out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? entry))
         {
-            AcceptWorld(game!, entry!);
+            AcceptWorld(game, entry);
         }
         _roles.ObserveClose();
         if (_world is { } world && world.TryObserveClose(out WorldCloseReason reason))
@@ -112,7 +112,7 @@ internal sealed class ClientSession : IDisposable
             _login.Attempts.TryTakeAcceptedGame(out GameServerHandshakeSession? accepted, out string account))
         {
             State = ClientState.RoleCreation;
-            if (!_roles.TryOpen(accepted!, account))
+            if (!_roles.TryOpen(accepted, account))
             {
                 _login.Attempts.FailAcceptedGame();
                 State = ClientState.ReturningToLogin;
@@ -199,8 +199,12 @@ internal sealed class ClientSession : IDisposable
         }
         catch (Exception failure)
         {
-            // Preserve an earlier drawing failure when frame completion also fails.
-            firstFailure ??= ExceptionDispatchInfo.Capture(failure);
+            if (firstFailure is not null)
+            {
+                throw new AggregateException("Drawing and frame completion both failed.", firstFailure.SourceException, failure);
+            }
+
+            throw;
         }
         firstFailure?.Throw();
     }

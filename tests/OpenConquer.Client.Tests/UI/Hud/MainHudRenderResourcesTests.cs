@@ -61,10 +61,10 @@ public sealed class MainHudRenderResourcesTests
         ownership.Track(new RecordingResource("StatusHints", events));
         ownership.Track(new RecordingResource("MagicHint", events, expected));
 
-        InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(ownership.Dispose);
+        AggregateException thrown = Assert.Throws<AggregateException>(ownership.Dispose);
 
-        Assert.Same(expected, thrown);
-        Assert.Contains(nameof(RecordingResource.Dispose), thrown.StackTrace);
+        Assert.Equal([expected, secondary], thrown.InnerExceptions);
+        Assert.All(thrown.InnerExceptions, failure => Assert.Contains(nameof(RecordingResource.Dispose), failure.StackTrace));
         Assert.Equal(
         [
             "MagicHint",

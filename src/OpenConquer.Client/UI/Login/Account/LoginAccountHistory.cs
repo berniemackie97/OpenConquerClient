@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.UI.Login.Credentials;
@@ -91,7 +92,7 @@ internal sealed class LoginAccountHistory
         return Commit(next);
     }
 
-    internal static bool IsValidName(string? name)
+    internal static bool IsValidName([NotNullWhen(true)] string? name)
     {
         if (string.IsNullOrEmpty(name) || name.Length > LoginCredentialInput.MaximumAccountLength)
         {
@@ -158,12 +159,12 @@ internal sealed class LoginAccountHistory
             foreach (JsonElement element in accounts.EnumerateArray())
             {
                 string? name = element.ValueKind == JsonValueKind.String ? element.GetString() : null;
-                if (!IsValidName(name) || !unique.Add(name!))
+                if (!IsValidName(name) || !unique.Add(name))
                 {
                     throw new InvalidDataException("Invalid account history entry.");
                 }
 
-                _names.Add(name!);
+                _names.Add(name);
             }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or ArgumentException)

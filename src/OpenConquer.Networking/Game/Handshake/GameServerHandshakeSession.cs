@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using OpenConquer.Networking.Authentication;
 using OpenConquer.Networking.Game.Cryptography;
@@ -1161,8 +1162,17 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
     private async Task DisposeCoreAsync(Task operationsDrained)
     {
-        _client.Dispose();
-        await _lifetimeCancellation.CancelAsync().ConfigureAwait(false);
+        List<Exception> failures = [];
+        DisposePart(_client.Dispose);
+        try
+        {
+            await _lifetimeCancellation.CancelAsync().ConfigureAwait(false);
+        }
+        catch (Exception failure)
+        {
+            failures.Add(failure);
+        }
+
         await operationsDrained.ConfigureAwait(false);
         lock (_lifetimeGate)
         {
@@ -1170,10 +1180,32 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
             _account = null;
         }
 
-        _decoder.Dispose();
-        _encoder.Dispose();
-        _cipher.Dispose();
-        _lifetimeCancellation.Dispose();
+        DisposePart(_decoder.Dispose);
+        DisposePart(_encoder.Dispose);
+        DisposePart(_cipher.Dispose);
+        DisposePart(_lifetimeCancellation.Dispose);
+
+        if (failures.Count == 1)
+        {
+            ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        }
+
+        if (failures.Count > 1)
+        {
+            throw new AggregateException("GameServer session cleanup failed.", failures).Flatten();
+        }
+
+        void DisposePart(Action dispose)
+        {
+            try
+            {
+                dispose();
+            }
+            catch (Exception failure)
+            {
+                failures.Add(failure);
+            }
+        }
     }
 
     private enum SecuredRead

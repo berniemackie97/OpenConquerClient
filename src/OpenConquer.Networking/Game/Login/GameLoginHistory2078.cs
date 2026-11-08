@@ -11,6 +11,8 @@ namespace OpenConquer.Networking.Game.Login;
 internal sealed record GameLoginHistory2078(
     uint LastLoginTimestamp, byte LocationWarningFlag, ReadOnlyMemory<byte> LastLoginLocationBytes)
 {
+    public override string ToString() => nameof(GameLoginHistory2078);
+
     private const int FirstLocationByteOffset = 9;
     private const ushort PacketType = 2078;
 

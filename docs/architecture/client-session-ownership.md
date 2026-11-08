@@ -40,8 +40,8 @@ The frame order remains catalog/attempt/registration collection, handoffs, close
 observation, role update, world ingress/load/appearance, feedback, first textures,
 loading progression and drawing. World presentation still waits for the authored
 loading completion (frame 99) when loading media exists; missing optional loading
-media retains the existing direct presentation path. Login timing uses an injected
-`TimeProvider`; the remaining game/render clock work stays in CP2.6.
+media retains the existing direct presentation path. Client timing uses the shared provider described in
+[world scene activation](../world/WORLD-014-world-scene-activation.md).
 
 ## Shutdown and failure behavior
 
@@ -93,3 +93,26 @@ remain unchanged.
 Gameplay-model extraction, packet parsing, remaining clocks/logging and broad doc
 refresh retain their later checkpoints. CI continues to condition private-asset
 gates on retail content availability.
+
+## Failure and lifetime audit — CP2.8
+
+The world publishes its closing task before calling its close
+notification. Graphics release stays on the owner thread. Network
+and worker teardown runs after that release, even if notification or
+cancellation failed. Repeated shutdown joins the same close. Ingress,
+egress, role and login owners observe pending tasks even when a stop
+callback faults. The GameServer session closes the socket, drains active
+operations and releases crypto resources before reporting teardown
+failures.
+
+Role screens become active after binding succeeds. A failed candidate
+is detached and disposed. A pending return wins over a simultaneous
+admission result, so canceled role creation cannot strand an admitted
+world. Application shutdown retains its context-thread release order.
+
+The diagnostic representations of account and admission objects omit
+authentication and player data. The 1055 response and exchange result
+already used redacted representations. The audit extends that guarantee
+to the world snapshot, character info, login prelude/history and role
+outcome. See [client diagnostics](client-diagnostics.md) for process log
+fields and failure codes.

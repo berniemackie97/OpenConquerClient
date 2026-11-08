@@ -6,4 +6,7 @@ namespace OpenConquer.Networking.Game.Login;
 /// </summary>
 internal sealed record GameExistingCharacterPrelude(
     GameLoginHistory2078 LoginHistory,
-    GameServerState2079 ServerState);
+    GameServerState2079 ServerState)
+{
+    public override string ToString() => nameof(GameExistingCharacterPrelude);
+}

@@ -37,15 +37,11 @@ internal sealed class WorldRolePart : IDisposable
 
             return new WorldRolePart(texture, meshes, assets.FrameCount);
         }
-        catch
+        catch (Exception failure)
         {
-            // An upload can fail after creating some of this part's resources.
-            foreach (WorldRoleMesh mesh in meshes)
-            {
-                mesh.Dispose();
-            }
-
-            texture.Dispose();
+            ClientShutdown cleanup = new(failure);
+            Release(meshes, texture, cleanup);
+            cleanup.ThrowIfFailed();
             throw;
         }
     }
@@ -68,11 +64,18 @@ internal sealed class WorldRolePart : IDisposable
 
     public void Dispose()
     {
-        foreach (WorldRoleMesh mesh in _meshes)
+        ClientShutdown cleanup = new();
+        Release(_meshes, _texture, cleanup);
+        cleanup.ThrowIfFailed();
+    }
+
+    private static void Release(List<WorldRoleMesh> meshes, OpenGLTexture2D texture, ClientShutdown cleanup)
+    {
+        foreach (WorldRoleMesh mesh in meshes)
         {
-            mesh.Dispose();
+            cleanup.Run(mesh.Dispose);
         }
 
-        _texture.Dispose();
+        cleanup.Run(texture.Dispose);
     }
 }
