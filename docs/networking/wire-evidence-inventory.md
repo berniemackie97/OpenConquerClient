@@ -84,6 +84,41 @@ Client tests decode the pinned bytes; server tests must emit those bytes
 independently. This test can reveal cross-repository drift but does not
 satisfy a single live-capture requirement.
 
+## Second shared fixture: action 10010
+
+The checked-in `10010-action.static-derived.json` uses the 38-byte,
+all-field sentinel recorded in the same `20_notes` evidence set as the weather
+fixture. The client verifies the 11 decoded fields, and the server verifies
+that its packet serializer writes exactly the pinned bytes. The test also
+checks the exact frame size and identifier; the fixture's hash is
+`4b56d70dcb3e59d3ed0a1aa316c2d56603e6eb0dd0acb2dfe426ff0cf7d30a03`.
+
+Action 108 is used only to exercise every byte in this layout. The
+nonzero sentinel fields do not represent an admissible position-correction
+message and do not change the server's input validation. This is
+static-derived test evidence, not a running-client packet capture.
+
+## Confirmed packet-writing boundaries
+
+The client's `LoginAccountSession` writes account requests 1060 and 0xF001,
+then post-authentication reports 1100 and account-phase 1052. Its
+`GameServerHandshakeSession` writes game-phase 1052, character-creation 1001,
+walking 10005, latency 1009/1037, action 10010 and flower-rank 1151
+through typed packet writers. `GameWorldEntryBootstrap` sequences action
+requests through that same game session; `WorldFrameEgress` delegates
+heartbeat/report writes rather than defining another packet layout.
+
+The server's `LoginFrameWriter` serializes account `IPacket` values through
+`WireFrameEncoder`; `GameSecuredFrameWriter` serializes game `IPacket`
+values through `GameWireFrameEncoder`, then adds the secured envelope.
+Bootstrap and world factories select packet instances rather than
+adding another framing format.
+
+This identifies the central outbound paths. It does not close the
+full-site audit: all packet-producing callers, packet variants and
+non-typed data paths need a separate source review before a complete
+runtime capture checklist can be frozen.
+
 ## Capture and completion gates
 
 A running-client capture requires user-controlled Windows VM tooling and
