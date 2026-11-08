@@ -163,7 +163,7 @@ internal sealed class ClientWorld : IClientWorld
                 if (IsActive && _entry is { } entry)
                 {
                     _inbound = new WorldInboundState(entry, catalogs.Items, () => _frameMilliseconds,
-                        _clientStartedAt, _diagnostics, _egress?.QueuePositionCorrection);
+                        _clientStartedAt, _diagnostics, _egress is { } egress ? egress.QueuePositionCorrection : null);
                     _levelExperience = catalogs.Experience;
                 }
             }
