@@ -20,7 +20,7 @@ public sealed class ContentSetImporterTests
         ContentManifest manifest = ContentSetImporter.Import(source.RootPath, destination);
         string[] expectedPaths = ExpectedImportedPaths();
 
-        Assert.Equal(114, expectedPaths.Length);
+        Assert.Equal(115, expectedPaths.Length);
         Assert.Equal(expectedPaths, manifest.Entries.Select(static entry => entry.SourcePath));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "data.wdf", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(manifest.Entries, static entry => string.Equals(entry.SourcePath, "Server.dat", StringComparison.OrdinalIgnoreCase));
@@ -458,6 +458,7 @@ public sealed class ContentSetImporterTests
             "ini/GameMap.dat",
             "ini/ItemAdd.ini",
             "ini/LevExp.dat",
+            "ini/Questinfo.ini",
             "ini/itemtype.dat",
             "ini/GameSetUp.ini",
             "ini/selectCharacter.ini",
