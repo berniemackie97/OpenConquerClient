@@ -160,3 +160,16 @@ negative header/signature/sequence cases and independently run each
 repository's CI. `0xF001` and `0xF002` require project-defined vectors
 instead. The absence of a qualifying capture is a blocker, not a reason to
 fabricate one. Acceptance and project-board status remain open on #248.
+
+## Frozen test corpus manifest
+
+The test-only `tests/Fixtures/WireGolden/manifest.json` pins the canonical
+client source revision `e13bf5724975ec825e64a3609719afedd9b6af41`,
+the SHA-256 of each included fixture file, and an explicit list of every
+registered case. Both test suites require the same manifest SHA-256
+`7aff1dcdf544b126fe121610dedcd588eae26fa1e32503bc3b6bc0ab3d843be5`,
+verify every listed file and reject unlisted fixture JSON files. The corpus
+has exactly two static-derived cases; it contains no running-client capture.
+A corpus revision requires coordinated review of the source evidence,
+fixture bytes, manifest and pinned hash in both repositories. No runtime
+package or build-time cross-repository dependency is introduced.
