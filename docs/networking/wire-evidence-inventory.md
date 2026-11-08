@@ -200,3 +200,21 @@ establish captured wire evidence. [Issue #306](https://github.com/berniemackie97
 tracks content ownership, ordering, secure-session integration and the
 required original-client test evidence. [CP3.2 #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
 and its shared live-capture corpus remain open.
+
+## Action 108 to 146 correction acknowledgement
+
+[Correction probe #304](https://github.com/berniemackie97/OpenConquerClient/issues/304)
+observed three original-client 10010/146 outgoing replies for changed, same-tile and
+repeated hero-targeted 108 corrections, and no reply for two foreign-entity inputs.
+The recorded reply has the corrected tile pair at +8/+10, a fresh client tick
+at +16, action 146 at +20, the current facing at +22, zero at +24/+26,
+the active map ID at +28 and `0xFFFFFFFF` at +32.
+
+`GameWorldAction10010.WriteCorrectionReply` constructs this 38-byte message from
+the current hero state. `WorldInboundState` signals every applied hero 108,
+including equal-position and repeat cases; `WorldFrameEgress` bounds and
+serializes replies on the existing secured world write lane before subsequent
+heartbeat writes. Packet construction and local scheduling tests are not
+substitutes for the complete [CP3.2 corpus #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
+or a real-device session smoke. [Implementation #263](https://github.com/berniemackie97/OpenConquerClient/issues/263)
+tracks remaining acceptance.
