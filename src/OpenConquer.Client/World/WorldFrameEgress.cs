@@ -7,9 +7,9 @@ namespace OpenConquer.Client.World;
 /// </summary>
 internal sealed class WorldFrameEgress : IAsyncDisposable
 {
-    private readonly Func<uint, CancellationToken, Task> _sendLatencyTick;
     internal const int MaximumQueuedCorrections = 4096;
 
+    private readonly Func<uint, CancellationToken, Task> _sendLatencyTick;
     private readonly Func<uint, uint, uint, CancellationToken, Task> _sendLatencyReport;
     private readonly Func<WorldCorrectionReply, uint, CancellationToken, Task> _sendCorrection;
     private readonly Queue<WorldCorrectionReply> _corrections = new();
