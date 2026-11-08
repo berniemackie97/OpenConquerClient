@@ -59,6 +59,9 @@ coordinated fixture review on protocol changes.
   cipher state independently before accepting either change. Each CI job validates
   its checked-in corpus; cross-repository equality must be reviewed against the
   pinned manifest without relying on network access during a build.
+- A wire-incompatible change also requires a reviewed mixed-version compatibility,
+  deployment-order and rollback plan. Passing isolated CI does not authorize
+  deploying one side against an incompatible peer.
 - Only reopen the production-sharing decision for a demonstrated maintenance
   or correctness problem that the common corpus cannot control. Do not add
   a compatibility assembly or protocol abstraction preemptively.
