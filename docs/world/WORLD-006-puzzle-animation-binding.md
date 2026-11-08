@@ -4,3 +4,36 @@
 
 The `.pul` puzzle grid, empty sentinel, `Puzzle%d` lookup and frame selection are documented in `20_notes/Rendering/05_dmap_positioned_overlay_system.md` and `Game_Map/world_render_contract_5517.md`. The PUX terrain-cache path does not establish puzzle drawing. Cache reuse and missing-section handling are application decisions.
 
+The DMap reader selects map-data ID 1010; WORLD-005 loads its ground and
+positioned-overlay PUZZLE bitmaps. This slice completes the next content
+lookup: each non-empty ushort tile index selects the `Puzzle<N>` section
+in the ANI index named by that bitmap's `TextureIndexPath`.
+The existing `AniIndexFile` parser remains the source of truth for ANI
+section hashing, frame ordering, and frame-count limits.
+
+`GameMapPuzzleResources.Load` resolves each distinct puzzle bitmap and ANI
+index once per loaded map. It binds each distinct, referenced tile index to
+the corresponding `AniIndexSection` once, then exposes its original
+ordered `FramePaths` to the future scene renderer. The 0xFFFF empty-tile
+sentinel is never resolved. An unavailable ANI file or missing/empty
+referenced section fails map loading rather than silently dropping artwork.
+Duplicate puzzle paths and shared ANI files do not trigger extra loads.
+
+The `ani/newbie.ani` fixture (6,860 bytes, SHA-256
+`458d1714f455576df74c866bdd5027b1fc79d227bf6134353374bba2876c79c3`)
+contains 96 sections (`Puzzle0` through `Puzzle95`), each with one DDS
+frame reference.
+The ground `newbie.pul` references 58 distinct non-empty tile indices;
+the positioned backdrop `newbiebg.pul` references 36. Every referenced
+section exists in this ANI index. Regression tests restore ANI bytes from a
+compressed fixture and use the committed DMap and puzzle files. Invalid ANI
+references are tested by mutating the fixture.
+
+The `Puzzle{puzzleIdx}` query names are part of the encoded ANI section contract.
+
+**Boundary at WORLD-006:** This binds authored ANI frame paths but does not itself
+load DDS bytes or create GPU sprites. WORLD-007 added DXT1 decoding, and
+WORLD-008 added operator-only puzzle-frame validation. Neither change activates
+a world renderer, expands the shipped content closure or changes world admission.
+The runtime path remains disabled until its scene and asset dependencies
+are imported, verified and owned by the scene lifecycle.
