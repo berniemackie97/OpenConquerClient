@@ -88,6 +88,7 @@ jobs:
           fi
 
       - name: Verify content set
+        id: content_set
         if: steps.retail.outputs.available == 'true'
         run: >-
           dotnet run
@@ -101,6 +102,7 @@ jobs:
           --map-data-id 1010
 
       - name: Compile map asset deterministically
+        id: map_compile
         if: steps.retail.outputs.available == 'true'
         shell: bash
         run: |
@@ -130,6 +132,7 @@ jobs:
           --output "${{ runner.temp }}/openconquer-client"
 
       - name: Verify published client content
+        id: published_content
         if: steps.retail.outputs.available == 'true'
         run: >-
           dotnet run
@@ -198,6 +201,7 @@ jobs:
           test -s "$trust_file"
 
       - name: Create CI release manifest
+        id: release_manifest
         if: steps.retail.outputs.available == 'true'
         shell: bash
         run: |
@@ -222,6 +226,7 @@ jobs:
           test -s "$release_root/openconquer.release.json"
 
       - name: Sign and package CI release catalog
+        id: release_package
         if: steps.retail.outputs.available == 'true'
         shell: bash
         run: |
@@ -388,6 +393,7 @@ jobs:
           fi
 
       - name: Verify managed product composition
+        id: managed_composition
         if: steps.retail.outputs.available == 'true'
         shell: bash
         run: |
@@ -507,6 +513,68 @@ jobs:
           done
 
           echo "Verified FreeType publish notices; signed-release and installation coverage requires local retail content."
+
+
+      - name: Report content-dependent coverage
+        if: always()
+        shell: bash
+        env:
+          CONTENT_PRESENT: ${{ steps.retail.outputs.available }}
+          CONTENT_SET: ${{ steps.content_set.outcome }}
+          MAP_COMPILE: ${{ steps.map_compile.outcome }}
+          PUBLISHED_CONTENT: ${{ steps.published_content.outcome }}
+          RELEASE_MANIFEST: ${{ steps.release_manifest.outcome }}
+          RELEASE_PACKAGE: ${{ steps.release_package.outcome }}
+          MANAGED_COMPOSITION: ${{ steps.managed_composition.outcome }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$CONTENT_PRESENT" != 'true' && "$CONTENT_PRESENT" != 'false' ]]; then
+            echo '::error::Content detection did not report availability.'
+            exit 1
+          fi
+
+          gate_names=(
+            'Content set verification'
+            'Deterministic map compilation'
+            'Published client content verification'
+            'Signed release manifest preparation'
+            'Release catalog and package verification'
+            'Managed installation composition'
+          )
+          gate_results=(
+            "$CONTENT_SET"
+            "$MAP_COMPILE"
+            "$PUBLISHED_CONTENT"
+            "$RELEASE_MANIFEST"
+            "$RELEASE_PACKAGE"
+            "$MANAGED_COMPOSITION"
+          )
+
+          {
+            printf '### Content-dependent CI coverage\n\n'
+            printf 'Private client content present: **%s**\n\n' "$CONTENT_PRESENT"
+            printf '| Gate | Outcome |\n| --- | --- |\n'
+            for index in "${!gate_names[@]}"; do
+              printf '| %s | %s |\n' "${gate_names[index]}" "${gate_results[index]}"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for result in "${gate_results[@]}"; do
+            case "$result" in
+              success|failure|cancelled|skipped) ;;
+              *)
+                echo "::error::Unexpected content-gate outcome: $result"
+                exit 1
+                ;;
+            esac
+
+            if [[ "$CONTENT_PRESENT" == 'true' && "$result" == 'skipped' ]] ||
+               [[ "$CONTENT_PRESENT" == 'false' && "$result" != 'skipped' ]]; then
+              echo "::error::Content-gate execution does not match source availability."
+              exit 1
+            fi
+          done
 
   cross-platform:
     name: ${{ matrix.name }}
