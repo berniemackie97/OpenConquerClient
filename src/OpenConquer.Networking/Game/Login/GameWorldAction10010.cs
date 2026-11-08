@@ -33,6 +33,7 @@ internal readonly record struct GameWorldAction10010(
     /// <summary>PK mode; main-dialog init sends mode 3 after the 76 request (0x4BDD30).</summary>
     internal const ushort SetPkMode = 0x60;
     internal const ushort PositionCorrection = 108;
+    internal const ushort CorrectionReply = 146;
     internal const ushort GetStatistics = 0x84;
     internal const ushort ReportSilentInfo = 0xFB;
     internal const ushort ClientStateApplied = 0x198;
@@ -54,6 +55,18 @@ internal readonly record struct GameWorldAction10010(
         BinaryPrimitives.WriteUInt32LittleEndian(destination[8..], parameterPair);
         BinaryPrimitives.WriteUInt32LittleEndian(destination[16..], timestamp);
         BinaryPrimitives.WriteUInt16LittleEndian(destination[20..], action);
+    }
+
+    internal static void WriteCorrectionReply(Span<byte> destination, uint heroId, ushort x, ushort y,
+        byte direction, uint mapId, uint timestamp)
+    {
+        ArgumentOutOfRangeException.ThrowIfZero(heroId);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(direction, (byte)7);
+
+        Write(destination, CorrectionReply, heroId, ((uint)y << 16) | x, timestamp);
+        BinaryPrimitives.WriteUInt16LittleEndian(destination[22..], direction);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination[28..], mapId);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination[32..], uint.MaxValue);
     }
 
     /// <summary>

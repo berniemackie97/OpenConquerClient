@@ -65,8 +65,15 @@ Action 108 targeting a non-hero is ignored. For the hero it reads X/Y at
 packet +24/+26 and leaves facing unchanged; other action fields are ignored
 (`CMsgAction__Process`, `0x6FFCBF..0x6FFCF3`). These are not generic reserved
 fields. The static-disassembly-derived all-fields sentinel frame now exercises
-the actual hero tile behavior. Native additionally sends reply 146 at
-`0x6FFD80`; that missing outbound feature is tracked in issue #263.
+the actual hero tile behavior. The admitted client now queues a 38-byte
+action-146 acknowledgement on the single secured world write lane for each
+applied hero correction, including same-tile and repeated 108s. Foreign
+targets are ignored. The reply uses the corrected tile, current hero facing,
+map ID and a fresh client millisecond tick; a bounded FIFO coordinates
+corrections with periodic heartbeats. The original-client probe is recorded
+in [#304](https://github.com/berniemackie97/OpenConquerClient/issues/304),
+while [#263](https://github.com/berniemackie97/OpenConquerClient/issues/263)
+retains the real-device integration and owner merge gates.
 
 Weather inputs native rejects are ignored without changing prior weather or
 stopping subsequent packets. The gate is signed kind 1..11 except 6,

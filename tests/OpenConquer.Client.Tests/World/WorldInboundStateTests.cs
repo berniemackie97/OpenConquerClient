@@ -33,6 +33,54 @@ public sealed class WorldInboundStateTests
         Assert.Equal((byte)3, state.DirectionIndex);
     }
 
+    [Fact]
+    public void AppliedCorrectionsAlwaysSignalAReplyIncludingSameTileAndRepeats()
+    {
+        List<WorldCorrectionReply> replies = [];
+        WorldInboundState state = CreateState(onCorrection: replies.Add);
+
+        Assert.False(state.Apply(Correction(HeroId + 1, 99, 99)));
+        Assert.False(state.Apply(Correction(HeroId, 61, 101)));
+        Assert.True(state.Apply(Correction(HeroId, 62, 102)));
+        Assert.False(state.Apply(Correction(HeroId, 62, 102)));
+        Assert.False(state.Apply(Correction(HeroId + 1, 70, 80)));
+
+        Assert.Equal(
+        [
+            new WorldCorrectionReply(61, 101, 3),
+            new WorldCorrectionReply(62, 102, 3),
+            new WorldCorrectionReply(62, 102, 3),
+        ], replies);
+        Assert.Equal((62, 102), (state.X, state.Y));
+    }
+
+    [Fact]
+    public void CorrectionReplyUsesCurrentFacingAfterAnAcceptedWalk()
+    {
+        List<WorldCorrectionReply> replies = [];
+        WorldInboundState state = CreateState(onCorrection: replies.Add);
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, HeroId, directionIndex: 6, movementTick: 100, mapState: 0);
+
+        Assert.True(state.Apply(walk));
+        Assert.True(state.Apply(Correction(HeroId, 63, 104)));
+
+        Assert.Equal(new WorldCorrectionReply(63, 104, 6), Assert.Single(replies));
+    }
+
+    [Fact]
+    public void HydrationCorrectionsSignalBeforeLivePackets()
+    {
+        List<WorldCorrectionReply> replies = [];
+        WorldInboundState state = CreateState(hydration: [Correction(HeroId, 61, 101)],
+            onCorrection: replies.Add);
+
+        Assert.Equal(new WorldCorrectionReply(61, 101, 3), Assert.Single(replies));
+        Assert.True(state.Apply(Correction(HeroId, 62, 102)));
+        Assert.Equal(2, replies.Count);
+        Assert.Equal(new WorldCorrectionReply(62, 102, 3), replies[1]);
+    }
+
     [Theory]
     [InlineData(0, 61, 102)]
     [InlineData(1, 60, 102)]
@@ -481,7 +529,8 @@ public sealed class WorldInboundStateTests
     }
 
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
-        ushort transformLookSourceId = 0, int hydrationEnteredAt = 0, ClientDiagnostics? diagnostics = null) =>
+        ushort transformLookSourceId = 0, int hydrationEnteredAt = 0, ClientDiagnostics? diagnostics = null,
+        Action<WorldCorrectionReply>? onCorrection = null) =>
         new(new GameWorldEntrySnapshot(
             new GameCharacterInfo1006
             {
@@ -497,7 +546,8 @@ public sealed class WorldInboundStateTests
                 Experience = 12345,
                 TransformLookSourceId = transformLookSourceId,
             },
-            1002, 1010, 0, 1, 61, 101, hydration ?? [], 3, hydrationEnteredAt), WorldHeroItemStatsTests.Catalog(), diagnostics: diagnostics);
+            1002, 1010, 0, 1, 61, 101, hydration ?? [], 3, hydrationEnteredAt), WorldHeroItemStatsTests.Catalog(),
+            diagnostics: diagnostics, onCorrection: onCorrection);
 
     private static byte[] Attributes(uint entityId, params (uint Id, ulong Low, ulong High)[] entries)
     {
