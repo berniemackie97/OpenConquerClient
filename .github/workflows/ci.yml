@@ -77,7 +77,7 @@ jobs:
             --verify-cross-uid
 
       - name: Detect local retail content
-        id: retail
+        id: content_availability
         shell: bash
         run: |
           if [[ -f content/retail-5517/manifest.json ]]; then
@@ -89,7 +89,7 @@ jobs:
 
       - name: Verify content set
         id: content_set
-        if: steps.retail.outputs.available == 'true'
+        if: steps.content_availability.outputs.available == 'true'
         run: >-
           dotnet run
           --project tools/OpenConquer.Content.Tool
@@ -103,7 +103,7 @@ jobs:
 
       - name: Compile map asset deterministically
         id: map_compile
-        if: steps.retail.outputs.available == 'true'
+        if: steps.content_availability.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -133,7 +133,7 @@ jobs:
 
       - name: Verify published client content
         id: published_content
-        if: steps.retail.outputs.available == 'true'
+        if: steps.content_availability.outputs.available == 'true'
         run: >-
           dotnet run
           --project tools/OpenConquer.Content.Tool
@@ -202,7 +202,7 @@ jobs:
 
       - name: Create CI release manifest
         id: release_manifest
-        if: steps.retail.outputs.available == 'true'
+        if: steps.content_availability.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -227,7 +227,7 @@ jobs:
 
       - name: Sign and package CI release catalog
         id: release_package
-        if: steps.retail.outputs.available == 'true'
+        if: steps.content_availability.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -394,7 +394,7 @@ jobs:
 
       - name: Verify managed product composition
         id: managed_composition
-        if: steps.retail.outputs.available == 'true'
+        if: steps.content_availability.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -471,13 +471,13 @@ jobs:
 
           test -n "$native_package_root"
           test -d "$native_package_root"
-          if [[ "${{ steps.retail.outputs.available }}" == 'true' ]]; then
+          if [[ "${{ steps.content_availability.outputs.available }}" == 'true' ]]; then
             test -f "$manifest"
             test -f "$package"
           fi
 
           generation=''
-          if [[ "${{ steps.retail.outputs.available }}" == 'true' ]]; then
+          if [[ "${{ steps.content_availability.outputs.available }}" == 'true' ]]; then
             active_release="$(jq -er '.activeRelease' "$managed/openconquer.installation.json")"
             generation="$managed/releases/$active_release"
             test -d "$generation/client"
@@ -495,7 +495,7 @@ jobs:
 
             cmp "$native_package_root/$relative_path" "$published"
 
-            if [[ "${{ steps.retail.outputs.available }}" != 'true' ]]; then
+            if [[ "${{ steps.content_availability.outputs.available }}" != 'true' ]]; then
               continue
             fi
 
@@ -519,7 +519,7 @@ jobs:
         if: always()
         shell: bash
         env:
-          CONTENT_PRESENT: ${{ steps.retail.outputs.available }}
+          CONTENT_PRESENT: ${{ steps.content_availability.outputs.available }}
           CONTENT_SET: ${{ steps.content_set.outcome }}
           MAP_COMPILE: ${{ steps.map_compile.outcome }}
           PUBLISHED_CONTENT: ${{ steps.published_content.outcome }}
