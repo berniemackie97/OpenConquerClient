@@ -2,12 +2,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
-using Avalonia.Threading;
 using OpenConquer.Launcher.Play;
 
 namespace OpenConquer.Launcher.Tests.Play;
 
-public sealed class PlayScreenInputTests(PlayScreenHeadlessFixture fixture) : IClassFixture<PlayScreenHeadlessFixture>
+[Collection(nameof(LauncherHeadlessUi))]
+public sealed class PlayScreenInputTests(LauncherHeadlessFixture fixture)
 {
     [Fact]
     public Task PressAndReleaseOnAStartButton_ClicksIt() => TestOnScreen((window, _, clicks, _) =>
@@ -88,22 +88,4 @@ public sealed class PlayScreenInputTests(PlayScreenHeadlessFixture fixture) : IC
             window.Close();
         }
     }, TestContext.Current.CancellationToken);
-}
-
-public sealed class PlayScreenHeadlessFixture : IAsyncDisposable
-{
-    // Keep the dispatcher alive while prior windows' callbacks drain. Each test owns a fresh window.
-    private readonly HeadlessUnitTestSession _session =
-        HeadlessUnitTestSession.StartNew(typeof(PlayScreenHeadlessFixture), AvaloniaTestIsolationLevel.PerAssembly);
-
-    public static AppBuilder BuildAvaloniaApp()
-    {
-        // AppBuilder invokes this on the session thread, before the headless compositor is created.
-        Dispatcher.UIThread.VerifyAccess();
-        return AppBuilder.Configure<Application>().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = true });
-    }
-
-    internal Task Dispatch(Action test, CancellationToken token) => _session.Dispatch(test, token);
-
-    public ValueTask DisposeAsync() => _session.DisposeAsync();
 }

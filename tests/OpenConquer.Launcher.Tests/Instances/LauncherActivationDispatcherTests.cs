@@ -2,6 +2,7 @@ using OpenConquer.Launcher.Instances;
 
 namespace OpenConquer.Launcher.Tests.Instances;
 
+[Collection(nameof(LauncherHeadlessUi))]
 public sealed class LauncherActivationDispatcherTests
 {
     [Fact]
