@@ -61,7 +61,7 @@ are not unique across account/game stages or message variants.
 | Game | 1106 | Not yet a typed client reader | Syndicate attributes | Missing |
 | Game | 1110 | Map information | Map information | Missing |
 | Game | 1115 | Not yet a typed client reader | Kickout | Missing |
-| Game | 1134 | Mission catalog (world entry) | Mission catalog | Missing |
+| Game | 1134 | Mission catalog frame serializer (not yet emitted) | Mission catalog | Missing; codec tests are specification-based only |
 | Game | 1151 | Flower-rank request | Not a dedicated packet codec | Missing |
 | Game | 2078 | Login history | Login history | Missing |
 | Game | 2079 | Server state | Server state | Missing |
@@ -184,3 +184,19 @@ serialize F001 and parse all F002 results; server tests independently decode
 F001 and serialize all F002 results. Each frame has its own SHA-256, and the
 manifest pins the fixture-file SHA-256. This is specification-based evidence
 and cannot satisfy the running-client capture requirement for other messages.
+
+## Mission catalog 1134/3 serializer boundary
+
+`GameMissionCatalog1134` writes one 1134 subtype-3 frame, with a 12-byte
+record for each positive, strictly ascending ID, a maximum of 80 records,
+and zeros for the other record fields. It validates the destination and
+all IDs before modifying the buffer. The independent client tests exercise
+the packet header, record positions, 1/64/80-record bounds and rejection
+paths.
+
+This is an isolated serializer, **not a login emission path**. It does not
+load `ini/Questinfo.ini`, identify the original-client send trigger, or
+establish captured wire evidence. [Issue #306](https://github.com/berniemackie97/OpenConquerClient/issues/306)
+tracks content ownership, ordering, secure-session integration and the
+required original-client test evidence. [CP3.2 #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
+and its shared live-capture corpus remain open.
