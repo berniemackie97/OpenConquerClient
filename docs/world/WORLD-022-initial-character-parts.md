@@ -2,32 +2,13 @@
 
 ## Evidence and scope
 
-`Conquer.exe:0x764276` consumes the 1006 appearance and hair fields. See `20_notes/Entity_System/role_visual_construction.md` for decomposition and order. GraphicData worker execution and frame-thread finalization are at `GraphicData.dll:0x10009E40/0x10003A32/0x10003F1C`, recorded in `Rendering/hero-appearance-worker-cp25.md`. Managed replacement preparation preserves the current renderer until the selected assets can be installed.
-
-The authenticated character-info snapshot supplies the body appearance source
-and hair composite. At first world entry, the renderer resolves the base body
-and, when the linked hair selector is active, the corresponding `armet` part.
-The linked source identifier is constructed from the body source, the hair
-composite's low three digits, and the recorded `0x1D0D8` hair family offset.
-The part catalog resolves mesh and texture identifiers to their actual C3
-resources. The `armet` part follows the body's `v_armet` motion attachment,
-with bone zero sampled from the same initial idle frame as the body.
-
-World-entry item snapshots (1008 subtype 1) describe tracked equipment, while
-the active-equipment snapshot (1009 subtype 46) selects the item IDs to apply.
-A tracked item alone does not activate its visual. The initial primary armor
-and headwear sources use the equipped item type's low six digits, normalized
-to tens and combined with the body appearance source. Headwear replaces the
-linked hair source in the primary `armet` slot. Missing active-equipment IDs
-are rejected rather than mapped to unrelated items.
-
-The first world view still does not implement the full role-part system:
-additional body and headwear variant layers, garment overrides, mounts,
-head attachment records, texture/material overrides and action-driven motion
-transitions remain outstanding.
-The runtime continues to require the authorized C3 archive and role-part
-indexes in its content set. Source package declarations can report omitted
-archives even when the selected resource closure is installed.
+Character information supplies appearance and hair fields. Part decomposition
+and ordering are documented in `20_notes/Entity_System/role_visual_construction.md`
+and `Rendering/11_3d_role_part_loaders.md`. The worker/finalization claim in
+the later section still requires a retained, independently inspectable trace;
+the supplied research archive does not contain the previously cited worker
+note. Application preparation preserves presentation until the chosen assets
+are installed.
 
 ## Appearance preparation during world play
 

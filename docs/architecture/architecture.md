@@ -1,8 +1,8 @@
 # Client Architecture
 
-OpenConquer Client is a cross-platform reconstruction of the Conquer Online 5517 client.
+OpenConquer Client is a cross-platform implementation of the Conquer Online 5517 client.
 
-It keeps the retail client's behavior where compatibility matters, and replaces the original
+It preserves verified player-visible and wire behavior where compatibility matters, and replaces the earlier
 implementation with testable .NET components that have clear responsibilities.
 
 This document describes the product and subsystem architecture. Detailed compatibility research
@@ -35,7 +35,7 @@ format.
 | --- | --- |
 | `OpenConquer.Launcher` | Desktop launcher, managed installation and release verification, local maintenance primitives, display preferences and verified client start |
 | `OpenConquer.Client` | Game composition root, authenticated session and world lifetime, local hero state, login/role/HUD input and presentation coordination |
-| `OpenConquer.Platform` | Native desktop window, OpenGL context, framebuffer, input devices and host frame loop |
+| `OpenConquer.Platform` | Desktop window, OpenGL context, framebuffer, input devices and host frame loop |
 | `OpenConquer.Rendering` | OpenGL resources, sprite and mesh drawing, text and font resources, logical presentation, and reusable world projection/rendering |
 | `OpenConquer.Content` | Client content sources, legacy format readers, asset decoding and world resource preparation |
 | `OpenConquer.Networking` | Account and GameServer sessions, packet codecs, legacy crypto, world bootstrap and typed world dispatch |
@@ -85,7 +85,7 @@ The launcher currently owns:
 - release selection from an authenticated catalog, and package download within size limits
 - application state and cancellation
 - non-secret display preferences and the settings dialog
-- the retail play screen, start-mode records, and client start
+- the verified play screen, start-mode records, and client start
 
 `LauncherApplication` owns installation evaluation and its state. `MainWindow` owns startup
 presentation, play, settings and the shared shutdown task. It drains pending work before close.
@@ -148,7 +148,7 @@ graphics thread prepares CPU content there. The context thread owns GPU upload, 
 
 The local hero model applies supported server state and advances gauge followers. Rendering
 receives the prepared geometry, assets and draw inputs. The HUD under
-`OpenConquer.Client/UI/Hud` owns retail layout and control behavior. Platform supplies physical
+`OpenConquer.Client/UI/Hud` owns verified layout and control behavior. Platform supplies physical
 pointer coordinates, and Rendering's presentation transform maps them to the logical viewport.
 Content owns ANI and image decoding. The client uses the supported attributes and equipment in
 the HUD and role presentation. Most action controls still stop at a client-level activation.
@@ -292,7 +292,7 @@ ladder. The client handles the supported live packets through bounded world ingr
 socket state separate from presentation.
 
 Launcher release trust establishes installed product integrity. Signed realm-directory trust
-establishes selection authority. Neither turns the retail credential stream into authenticated
+establishes selection authority. Neither turns the legacy credential stream into authenticated
 remote transport. OpenConquer registration uses the project's `0xF001` / `0xF002` extension.
 See [login networking](../networking/README.md), [registration](../networking/FLOW-001B-account-registration.md)
 and [world ingress](../world/WORLD-023-authenticated-world-ingress.md).
@@ -362,7 +362,7 @@ the private retail manifest is available. See [CI coverage](../development.md#ci
 
 When adding code:
 
-1. match retail behavior wherever research has confirmed it matters for compatibility;
+1. preserve verified behavior wherever interoperability depends on it;
 2. keep desktop/window/input mechanisms behind Platform;
 3. keep graphics, rendering resources, and rendering-facing text behavior behind Rendering;
 4. keep content-format and configuration parsing behavior behind Content;
@@ -373,7 +373,7 @@ When adding code:
    dependency;
 9. do not create shared/common utility projects without a concrete ownership need;
 10. do not introduce speculative abstractions for future features;
-11. make native and managed resource ownership and lifetime clear in the code;
+11. make host and application resource ownership and lifetime clear in the code;
 12. when platform APIs can provide the information, use the host's resource systems instead of
     guessing the filesystem layout;
 13. treat tests and documentation as part of every finished change.
