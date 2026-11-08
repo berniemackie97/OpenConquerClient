@@ -24,3 +24,16 @@ is configured by this change. Source-only CI retains build, unit-test, synthetic
 and redistribution-notice checks. Real asset map, release-package and installation gates require
 private asset provisioning and are explicitly reported as unrun when the set is absent.
 Previously published assets remain in Git history; this change does not rewrite it.
+
+## CI content-gate coverage
+
+The Linux Quality job publishes a per-check coverage table in its job summary.
+When private game content is absent, content verification, deterministic map
+compilation, published-content checks, release preparation, signed packaging
+and managed installation composition are explicitly reported as `skipped`.
+The source-only build, tests, renderer checks and launcher checks still run.
+
+When private content is present, all six gated checks must execute. An
+unexpectedly skipped check fails the coverage step rather than producing a
+green result with incomplete private-content validation. The report does not
+provision private assets or turn unexecuted checks into test coverage.
