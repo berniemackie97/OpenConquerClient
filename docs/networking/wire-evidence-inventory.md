@@ -61,7 +61,7 @@ are not unique across account/game stages or message variants.
 | Game | 1106 | Not yet a typed client reader | Syndicate attributes | Missing |
 | Game | 1110 | Map information | Map information | Missing |
 | Game | 1115 | Not yet a typed client reader | Kickout | Missing |
-| Game | 1134 | Mission catalog frame serializer (not yet emitted) | Mission catalog | Missing; codec tests are specification-based only |
+| Game | 1134 | Content-backed admission mission catalog 1134/3 | Mission catalog | Three independently captured original-client frames; connected-world smoke pending |
 | Game | 1151 | Flower-rank request | Not a dedicated packet codec | Missing |
 | Game | 2078 | Login history | Login history | Missing |
 | Game | 2079 | Server state | Server state | Missing |
@@ -185,21 +185,40 @@ F001 and serialize all F002 results. Each frame has its own SHA-256, and the
 manifest pins the fixture-file SHA-256. This is specification-based evidence
 and cannot satisfy the running-client capture requirement for other messages.
 
-## Mission catalog 1134/3 serializer boundary
+## Mission catalog 1134/3 admission
 
-`GameMissionCatalog1134` writes one 1134 subtype-3 frame, with a 12-byte
-record for each positive, strictly ascending ID, a maximum of 80 records,
-and zeros for the other record fields. It validates the destination and
-all IDs before modifying the buffer. The independent client tests exercise
-the packet header, record positions, 1/64/80-record bounds and rejection
-paths.
+`MissionCatalog.Load` reads `ini/Questinfo.ini` from loose installed
+content, validates the declared numbered sections, requires positive IDs,
+deduplicates and sorts them, and enforces a file-size, row and 240-distinct-ID
+limit before sending. Invalid or absent installed data is a local admission
+failure. The separate executable investigation documented omission for an
+empty catalog; this application deliberately requires a valid catalog.
 
-This is an isolated serializer, **not a login emission path**. It does not
-load `ini/Questinfo.ini`, identify the original-client send trigger, or
-establish captured wire evidence. [Issue #306](https://github.com/berniemackie97/OpenConquerClient/issues/306)
-tracks content ownership, ordering, secure-session integration and the
-required original-client test evidence. [CP3.2 #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
-and its shared live-capture corpus remain open.
+After an accepted login-channel 2101 result, the session owns one immutable
+ID snapshot. `GameServerHandshakeSession.SendMissionCatalogAsync` encodes up
+to 80 IDs in each 1134/3 packet, retaining a single secured writer and its
+directional cipher state across the contiguous burst. The initial
+existing-character route sends before outbound world-entry action 74.
+Creation retains that same snapshot through the repeated login proof and
+sends after the subsequent accepted 2101. The server accepts this observed
+early ordering. Failed or cancelled writes terminate the session.
+
+The 2026-11-08 original-client capture in
+`20_notes/Network/evidence/cp32-world-entry-2026-11-08` contains the
+following independently observed logical frames, taken after decryption and
+trailer validation:
+
+| Sequence | Records | Bytes | SHA-256 |
+| --- | ---: | ---: | --- |
+| 13 | 80 | 968 | `45d3167ae09ed03bc9f4d41790a3fdbe4587469b596e5f442ce686521b717001` |
+| 14 | 80 | 968 | `3b9c6170ceed1f07d9bde4c8bd74de175709d698c5fb3edbb451850190f66b80` |
+| 15 | 64 | 776 | `49cd8b7c3c96dc92dde25c837a7f1002f58c5c1ac05e23dcdf69b41a9eb24a49` |
+
+These hashes apply to one selected source-asset sample (224 distinct IDs),
+not to arbitrary installed content. [Issue #306](https://github.com/berniemackie97/OpenConquerClient/issues/306)
+retains managed client/server integration and on-device admission acceptance.
+The wider [CP3.2 corpus #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
+remains incomplete.
 
 ## Action 108 to 146 correction acknowledgement
 
