@@ -51,7 +51,8 @@ through a sudden power loss. Preferences contain no secrets and no release trust
 
 The dialog owns a draft and one I/O session. Closing the dialog cancels pending I/O and waits for it
 to drain before the session's lifetime is disposed. The shutdown task is published before any close
-callback can reenter it. Save, Cancel, Escape, and the window's close button close only the settings
+callback can reenter it. Late results cannot refresh controls. Only cancellation from the
+settings session is treated as normal close. Save, Cancel, Escape, and the window's close button close only the settings
 dialog. Quitting the application drains the settings through the main window before the launcher
 closes, including when the dialog is open.
 

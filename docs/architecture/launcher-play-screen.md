@@ -70,6 +70,19 @@ is not usable or the client cannot start, the hint popup shows the reason, and C
 same mode. A start pressed while the launcher's first installation check is still running waits for
 that check.
 
+Closing the window or quitting the application shares one shutdown task. The launcher cancels its
+preference work and waits for startup, play, the installation check, local activation and the display
+settings dialog to drain. A preference operation that completes after shutdown begins cannot update
+the play screen or start the client. If the verified client has already started, it owns its own
+lifetime and the launcher closes after the handoff. Mode counters still record the attempt before the
+handoff, so a write that already completed remains saved.
+
+Synchronous Avalonia handlers observe their asynchronous operations through one guarded boundary.
+Unexpected operation and cleanup failures are retained through window close and go to the desktop
+host's redacted diagnostic and exit-code path. Cancellation from the owning lifetime is normal.
+External HTTPS links are handed to the OS shell. The launcher observes shell request faults while
+the window is active, and shutdown does not wait for the external application.
+
 Only a managed installation can start the client. When the launcher project runs on its own (from
 an IDE or `dotnet run`), it has no managed installation and reports "Installation incomplete". Run
 the local managed product instead (`docs/development.md`, Local Managed Product).

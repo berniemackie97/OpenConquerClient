@@ -79,9 +79,12 @@ internal sealed class PlayScreen : Canvas, IDisposable
             AddButton(PlayButton.Return);
             HideHint();
         }
-        catch
+        catch (Exception failure)
         {
-            Dispose();
+            LauncherFailures cleanup = new();
+            cleanup.Add(failure);
+            cleanup.Run(Dispose);
+            cleanup.ThrowIfFailed();
             throw;
         }
 
@@ -166,12 +169,14 @@ internal sealed class PlayScreen : Canvas, IDisposable
 
     public void Dispose()
     {
+        LauncherFailures cleanup = new();
         foreach (IDisposable owned in _owned)
         {
-            owned.Dispose();
+            cleanup.Run(owned.Dispose);
         }
 
         _owned.Clear();
+        cleanup.ThrowIfFailed();
     }
 
     /// <summary>

@@ -8,16 +8,19 @@ namespace OpenConquer.Launcher;
 internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
 {
     private readonly DisplaySettingsSession _session;
+    private readonly Action<Exception> _onFailure;
     private SettingsReadResult? _loaded;
     private Task? _stop;
+    private Task? _operation;
     private bool _busy;
     private bool _resetInvalid;
     private bool _closing;
     private bool _closeAccepted;
 
-    public DisplaySettingsWindow(DisplaySettingsStore store)
+    public DisplaySettingsWindow(IDisplaySettingsStore store, Action<Exception> onFailure)
     {
         _session = new DisplaySettingsSession(store);
+        _onFailure = onFailure;
         InitializeComponent();
         Opened += OnOpened;
         Closing += OnClosing;
@@ -40,18 +43,15 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
         return true;
     }
 
-    private async void OnOpened(object? sender, EventArgs args)
-    {
-        if (!_closing)
-        {
-            await BeginLoad();
-        }
-    }
-    private async void OnReload(object? sender, RoutedEventArgs args)
+    private void OnOpened(object? sender, EventArgs args) => StartLoad();
+
+    private void OnReload(object? sender, RoutedEventArgs args) => StartLoad();
+
+    private void StartLoad()
     {
         if (!_busy && !_closing)
         {
-            await BeginLoad();
+            LauncherUiEvent.Run(() => _operation = BeginLoad(), _onFailure);
         }
     }
 
@@ -66,14 +66,21 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
 
     private async Task LoadAsync()
     {
+        await Task.Yield();
+        if (_closing)
+        {
+            return;
+        }
+
         try
         {
-            _loaded = await _session.LoadAsync();
+            SettingsReadResult loadedResult = await _session.LoadAsync();
             if (_closing)
             {
                 return;
             }
 
+            _loaded = loadedResult;
             if (_loaded is SettingsReadResult.Loaded loaded)
             {
                 Populate(loaded.Preferences);
@@ -84,8 +91,18 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
                 Status.Text = Describe(rejected.Issue);
             }
         }
-        catch (OperationCanceledException) when (_closing) { }
-        finally { _busy = false; RefreshControls(); }
+        catch (OperationCanceledException failure) when (_session.IsStoppingCancellation(failure))
+        {
+            // Closing this settings session canceled the operation.
+        }
+        finally
+        {
+            _busy = false;
+            if (!_closing)
+            {
+                RefreshControls();
+            }
+        }
     }
 
     private void Populate(DisplayPreferences preferences)
@@ -121,27 +138,35 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
         RefreshControls();
     }
 
-    private async void OnSave(object? sender, RoutedEventArgs args)
+    private void OnSave(object? sender, RoutedEventArgs args) => LauncherUiEvent.Run(BeginSave, _onFailure);
+
+    private Task BeginSave()
     {
         if (_busy || _closing || !CanEdit)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         if (!TryGetPreferences(out DisplayPreferences? preferences) || preferences is null)
         {
             Status.Text = "Enter positive whole-pixel dimensions, up to 16384 per side and 33,177,600 total pixels.";
             WidthInput.Focus();
-            return;
+            return Task.CompletedTask;
         }
         _busy = true;
         Status.Text = "Saving display settings…";
         RefreshControls();
-        await SaveAsync(preferences);
+        return _operation = SaveAsync(preferences);
     }
 
     private async Task SaveAsync(DisplayPreferences preferences)
     {
+        await Task.Yield();
+        if (_closing)
+        {
+            return;
+        }
+
         string? revision = _loaded switch
         {
             SettingsReadResult.Loaded loaded => loaded.Revision,
@@ -169,8 +194,18 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
                 _loaded = new SettingsReadResult.Rejected(failure.Value);
             }
         }
-        catch (OperationCanceledException) when (_closing) { }
-        finally { _busy = false; RefreshControls(); }
+        catch (OperationCanceledException failure) when (_session.IsStoppingCancellation(failure))
+        {
+            // Closing this settings session canceled the operation.
+        }
+        finally
+        {
+            _busy = false;
+            if (!_closing)
+            {
+                RefreshControls();
+            }
+        }
     }
 
     private bool IsDraftValid(out int width, out int height)
@@ -234,43 +269,27 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
         ReloadButton.IsEnabled = !_busy && !_closing;
     }
 
-    public Task StopAsync()
-    {
-        if (_stop is not null)
-        {
-            return _stop;
-        }
-
-        // Publish before Close can synchronously resume the owner's ShowDialog continuation.
-        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        _stop = completion.Task;
-        _closing = true;
-        RefreshControls();
-        _ = StopCoreAsync(completion);
-        return _stop;
-    }
+    public Task StopAsync() => _stop ??= StopCoreAsync();
 
     public ValueTask DisposeAsync() => new(StopAsync());
 
-    private async Task StopCoreAsync(TaskCompletionSource completion)
+    private async Task StopCoreAsync()
     {
-        try
-        {
-            try
-            {
-                await _session.StopAsync();
-            }
-            finally
-            {
-                _closeAccepted = true;
-                Close();
-            }
-            completion.SetResult();
-        }
-        catch (Exception exception) { completion.SetException(exception); }
+        _closing = true;
+        // Publish the stop task before Close can resume the owner's ShowDialog continuation.
+        await Task.Yield();
+
+        LauncherFailures cleanup = new();
+        cleanup.Run(RefreshControls);
+        await Task.WhenAll(
+            cleanup.RunAsync(_session.StopAsync),
+            cleanup.RunAsync(() => _operation ?? Task.CompletedTask));
+        _closeAccepted = true;
+        cleanup.Run(Close);
+        cleanup.ThrowIfFailed();
     }
 
-    private async void OnClosing(object? sender, WindowClosingEventArgs args)
+    private void OnClosing(object? sender, WindowClosingEventArgs args)
     {
         if (_closeAccepted)
         {
@@ -278,7 +297,7 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
         }
 
         args.Cancel = true;
-        await StopAsync();
+        LauncherUiEvent.Run(StopAsync, _onFailure);
     }
 
     private static string Describe(SettingsIssue issue) => issue switch

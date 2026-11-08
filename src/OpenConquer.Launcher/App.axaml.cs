@@ -11,15 +11,17 @@ internal sealed partial class App : Application
 {
     private readonly LauncherActivationServer? _activation;
     private readonly LauncherInstanceAdmission _admission;
+    private readonly Action<Exception> _reportFailure = LauncherUiEvent.RethrowOnDispatcher;
 
     public App()
     {
     }
 
-    internal App(LauncherActivationServer? activation, LauncherInstanceAdmission admission)
+    internal App(LauncherActivationServer? activation, LauncherInstanceAdmission admission, Action<Exception>? reportFailure = null)
     {
         _activation = activation;
         _admission = admission;
+        _reportFailure = reportFailure ?? LauncherUiEvent.RethrowOnDispatcher;
     }
 
     public override void Initialize()
@@ -39,7 +41,7 @@ internal sealed partial class App : Application
             {
                 TrustedReleaseKeys trustedReleaseKeys = TrustedReleaseKeys.LoadEmbedded(Assembly.GetExecutingAssembly());
                 LauncherApplication application = new(new ManagedInstallationResolver(AppContext.BaseDirectory, trustedReleaseKeys));
-                desktop.MainWindow = new MainWindow(application, _activation);
+                desktop.MainWindow = new MainWindow(application, _activation, _reportFailure);
                 desktop.ShutdownRequested += OnShutdownRequested;
             }
         }
@@ -47,12 +49,12 @@ internal sealed partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static async void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs args)
+    private static void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs args)
     {
         if (sender is IClassicDesktopStyleApplicationLifetime { MainWindow: MainWindow window } && !window.IsShutdownComplete)
         {
             args.Cancel = true;
-            await window.RequestShutdownAsync();
+            _ = window.RequestShutdownAsync();
         }
     }
 }

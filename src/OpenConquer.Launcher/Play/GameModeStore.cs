@@ -6,12 +6,18 @@ namespace OpenConquer.Launcher.Play;
 /// <summary>The last start mode and the per-mode counters: the launcher's <c>ini/GameSetup.ini [GameMode]</c>.</summary>
 internal readonly record struct GameModeRecord(GameModeUsage Usage, GameMode LastMode);
 
+internal interface IGameModeStore
+{
+    Task<GameModeRecord> LoadAsync(CancellationToken cancellationToken);
+    Task<bool> RecordStartAsync(GameMode mode, CancellationToken cancellationToken);
+}
+
 /// <summary>
 /// <c>play.json</c> beside the display preferences. Like the retail counters it carries no authority: a missing
 /// or damaged file reads as unused and is replaced on the next start; a newer schema is read as unused and never
 /// overwritten.
 /// </summary>
-internal sealed class GameModeStore
+internal sealed class GameModeStore : IGameModeStore
 {
     internal const int MaximumLength = 1024;
     private const string FileName = "play.json";

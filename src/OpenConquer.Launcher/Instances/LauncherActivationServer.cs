@@ -81,24 +81,29 @@ internal sealed class LauncherActivationServer : IAsyncDisposable
     private async Task DrainAsync(Task cancellation, Task listener)
     {
         Task drain = Task.WhenAll(cancellation, listener);
+        Exception? failure = null;
         try
         {
             await drain.ConfigureAwait(false);
         }
-        catch
+        catch (Exception exception)
         {
-            if (drain.Exception is not null)
+            failure = drain.Exception ?? exception;
+        }
+
+        LauncherFailures cleanup = new();
+        cleanup.Run(_pipe.Dispose);
+        cleanup.Run(_lifetime.Dispose);
+        if (failure is not null)
+        {
+            if (cleanup.Failure is { } cleanupFailure)
             {
-                ExceptionDispatchInfo.Capture(drain.Exception).Throw();
+                throw new AggregateException(failure, cleanupFailure);
             }
 
-            throw;
+            ExceptionDispatchInfo.Throw(failure);
         }
-        finally
-        {
-            _pipe.Dispose();
-            _lifetime.Dispose();
-        }
+        cleanup.ThrowIfFailed();
     }
 
     private async Task ListenAsync(Func<CancellationToken, Task<bool>> activate, CancellationToken lifetime)

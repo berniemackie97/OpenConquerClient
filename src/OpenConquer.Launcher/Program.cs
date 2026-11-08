@@ -48,7 +48,7 @@ internal static class Program
         using LauncherDiagnostics diagnostics = LauncherDiagnostics.Create();
         using LauncherHostExceptionObserver exceptionObserver = new(diagnostics);
         LauncherActivationServer? activation = null;
-        Exception? failure = null;
+        LauncherFailures failures = new();
         LauncherExceptionDomain failureDomain = LauncherExceptionDomain.TopLevel;
         int exitCode = FatalHostFailureExitCode;
         try
@@ -57,27 +57,26 @@ internal static class Program
 
             exceptionObserver.Start();
             diagnostics.RecordHostStarted();
-            exitCode = BuildRuntimeAvaloniaApp(exceptionObserver, activation)
+            exitCode = BuildRuntimeAvaloniaApp(exceptionObserver, activation, failure =>
+            {
+                failures.Add(failure);
+                failureDomain = LauncherExceptionDomain.UiDispatcher;
+                LauncherUiEvent.RethrowOnDispatcher(failure);
+            })
                 .StartWithClassicDesktopLifetime(args, ShutdownMode.OnMainWindowClose);
         }
         catch (Exception exception)
         {
-            failure = exception;
+            failures.Add(exception);
             failureDomain = exceptionObserver.ClassifyTopLevelException(exception);
         }
         finally
         {
-            try
-            {
-                activation?.StopAsync().GetAwaiter().GetResult();
-            }
-            catch (Exception exception)
-            {
-                failure = failure is null ? exception : new AggregateException(failure, exception);
-            }
+            // The UI loop has exited. The listener and its cancellation drain without a UI context.
+            failures.Run(() => activation?.StopAsync().GetAwaiter().GetResult());
         }
 
-        if (failure is not null)
+        if (failures.Failure is { } failure)
         {
             diagnostics.RecordException(failureDomain, isTerminating: true, failure);
             return FatalHostFailureExitCode;
@@ -96,11 +95,11 @@ internal static class Program
     }
 
     private static AppBuilder BuildRuntimeAvaloniaApp(LauncherHostExceptionObserver exceptionObserver,
-        LauncherActivationServer activation)
+        LauncherActivationServer activation, Action<Exception> reportFailure)
     {
         ArgumentNullException.ThrowIfNull(exceptionObserver);
 
-        return AppBuilder.Configure(() => new App(activation, LauncherInstanceAdmission.Primary)).UsePlatformDetect()
+        return AppBuilder.Configure(() => new App(activation, LauncherInstanceAdmission.Primary, reportFailure)).UsePlatformDetect()
             .AfterSetup(_ => exceptionObserver.AttachUiDispatcher(Dispatcher.UIThread));
     }
 }
