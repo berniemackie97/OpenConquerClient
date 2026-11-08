@@ -1,16 +1,18 @@
 # Client compatibility evidence index
 
-This index maps the client citation backlog from CP0.3 to the affected documents.
-Anchors refer to clean retail 5517 binaries, original assets and verified captures.
-Addresses use the named binary's preferred image base. `20_notes` paths refer to
-the separate native research workspace. Historical server material and screenshots
-from other client versions can orient research. Source behavior needs retail evidence.
+This index maps the CP0.3 client citation backlog to the affected documents.
+The linked sections identify directly observed behavior, application-specific
+choices and proof that remains outstanding. `20_notes` is a separate research
+workspace; the cited note paths are not files in this repository. Earlier
+client versions and screenshots may orient research but do not establish
+the 5517 behavior described here.
 
-The linked evidence sections identify which claims the cited source supports.
-Application design ownership, security policies, input bounds, async scheduling and OpenGL
-resource handling are product decisions. Historical slice notes describe what was
-available when the slice landed. The [architecture overview](../architecture/architecture.md)
-and [capabilities](../../README.md#current-capabilities) describe the current tree.
+The application owns its security policy, resource limits, asynchronous
+scheduling and OpenGL lifetime. Historical slice documents describe their
+implementation at that point in the project; the
+[architecture overview](../architecture/architecture.md) and
+[current capabilities](../../README.md#current-capabilities) describe the
+present boundaries.
 
 | Document | Evidence scope |
 | --- | --- |
@@ -23,7 +25,7 @@ and [capabilities](../../README.md#current-capabilities) describe the current tr
 | [STARTUP-001E](../startup/STARTUP-001E.md#evidence-and-scope) | Source assets and earlier implementation |
 | [STARTUP-001F](../startup/STARTUP-001F.md#evidence-and-scope) | Selected identity and earlier implementation |
 | [STARTUP-001H](../startup/STARTUP-001H.md#evidence-and-scope) | Application design |
-| [STARTUP-001M](../startup/STARTUP-001M.md#evidence-and-scope) | Application design and historical |
+| [STARTUP-001M](../startup/STARTUP-001M.md#evidence-and-scope) | Application decisions; earlier stage |
 | [STARTUP-001P](../startup/STARTUP-001P.md#evidence-and-scope) | Source assets and earlier implementation |
 | [STARTUP-001T](../startup/STARTUP-001T.md#evidence-and-scope) | Source assets and earlier implementation |
 | [STARTUP-001X](../startup/STARTUP-001X.md#evidence-and-scope) | Source assets and earlier implementation |
@@ -37,17 +39,17 @@ and [capabilities](../../README.md#current-capabilities) describe the current tr
 | [WORLD-009-puzzle-layer-drawing](../world/WORLD-009-puzzle-layer-drawing.md#evidence-and-scope) | Draw behavior and earlier implementation |
 | [WORLD-010-scenery-ani-binding](../world/WORLD-010-scenery-ani-binding.md#evidence-and-scope) | Binding and validation |
 | [WORLD-011-camera-and-puzzle-frames](../world/WORLD-011-camera-and-puzzle-frames.md#evidence-and-scope) | Projection and earlier implementation |
-| [WORLD-012-terrain-scene-resources](../world/WORLD-012-terrain-scene-resources.md#evidence-and-scope) | Source format and managed validation |
-| [WORLD-013-terrain-scene-drawing](../world/WORLD-013-terrain-scene-drawing.md#evidence-and-scope) | Source draw and managed timing scope |
+| [WORLD-012-terrain-scene-resources](../world/WORLD-012-terrain-scene-resources.md#evidence-and-scope) | Format and validation |
+| [WORLD-013-terrain-scene-drawing](../world/WORLD-013-terrain-scene-drawing.md#evidence-and-scope) | Draw and timing boundaries |
 | [WORLD-014-world-scene-activation](../world/WORLD-014-world-scene-activation.md#evidence-and-scope) | Frame gate and world lifetime |
 | [WORLD-015-role-geometry](../world/WORLD-015-role-geometry.md#evidence-and-scope) | Mesh container and validation bounds |
-| [WORLD-016-phy-geometry](../world/WORLD-016-phy-geometry.md#evidence-and-scope) | Source geometry and managed reader |
+| [WORLD-016-phy-geometry](../world/WORLD-016-phy-geometry.md#evidence-and-scope) | Geometry and application reader |
 | [WORLD-017-c3-motion](../world/WORLD-017-c3-motion.md#evidence-and-scope) | Motion formats and validation bounds |
 | [WORLD-018-phy-deformation](../world/WORLD-018-phy-deformation.md#evidence-and-scope) | Deformation and buffer ownership |
 | [WORLD-019-indexed-mesh-submission](../world/WORLD-019-indexed-mesh-submission.md#evidence-and-scope) | Mesh submission and OpenGL |
 | [WORLD-020-character-mesh-world-depth](../world/WORLD-020-character-mesh-world-depth.md#evidence-and-scope) | Camera/depth; scoped role equivalence |
 | [WORLD-021-local-role-playback-and-world-presentation](../world/WORLD-021-local-role-playback-and-world-presentation.md#evidence-and-scope) | Resource evidence and playback |
-| [WORLD-022-initial-character-parts](../world/WORLD-022-initial-character-parts.md#evidence-and-scope) | Visual and worker evidence |
+| [WORLD-022-initial-character-parts](../world/WORLD-022-initial-character-parts.md#evidence-and-scope) | Appearance evidence; worker trace outstanding |
 | [WORLD-023-authenticated-world-ingress](../world/WORLD-023-authenticated-world-ingress.md#evidence-and-scope) | Wire behavior and session lifetime |
 | [WORLD-024-ground-walk-transport](../world/WORLD-024-ground-walk-transport.md#evidence-and-scope) | Movement wire and transport |
 | [WORLD-025-first-world-hero-attributes](../world/WORLD-025-first-world-hero-attributes.md#evidence-and-scope) | Hero field semantics |
