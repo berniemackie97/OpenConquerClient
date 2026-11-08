@@ -1,6 +1,6 @@
 using OpenConquer.Content.Quests;
 
-namespace OpenConquer.Content.Tests.Quests;
+namespace OpenConquer.Content.Tests;
 
 public sealed class MissionCatalogTests
 {

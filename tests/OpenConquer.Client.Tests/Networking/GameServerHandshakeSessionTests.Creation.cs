@@ -456,6 +456,8 @@ public sealed partial class GameServerHandshakeSessionTests
         await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
             Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
             character[..^8]);
+        Assert.Equal(Convert.FromHexString("20006E0403000200580200000000000000000000590200000000000000000000"),
+            await peer.ReadPacketAsync(32, token));
         await WorldEntryPeerAsync(peer, new WorldEntryOptions(), token);
         Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
     }

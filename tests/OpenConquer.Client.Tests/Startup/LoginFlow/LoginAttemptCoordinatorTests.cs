@@ -20,6 +20,14 @@ public sealed partial class LoginAttemptCoordinatorTests : IDisposable
 {
     private readonly string _folder = Directory.CreateTempSubdirectory("oc-login-flow-").FullName;
 
+    public LoginAttemptCoordinatorTests()
+    {
+        string ini = Path.Combine(_folder, "ini");
+        Directory.CreateDirectory(ini);
+        File.WriteAllText(Path.Combine(ini, "Questinfo.ini"),
+            "[TotalMission]\nTotalMission=2\n[1]\nMissionId=600\n[2]\nMissionId=601\n");
+    }
+
     [Fact]
     public async Task EmptyAccountIsRejectedBeforeRealmAndRetryValidation()
     {
