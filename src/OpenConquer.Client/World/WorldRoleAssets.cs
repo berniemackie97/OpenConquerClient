@@ -68,7 +68,7 @@ internal sealed record WorldRoleAssets(
             return ([], null);
         }
 
-        if (sources.Count == 0 || !body.TryGetAttachment(track, out C3Motion attachment))
+        if (sources.Count == 0 || !body.TryGetAttachment(track, out C3Motion? attachment))
         {
             throw new InvalidDataException($"The character {name} has an unsupported attachment layout.");
         }

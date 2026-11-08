@@ -1,5 +1,3 @@
-using System.Runtime.ExceptionServices;
-
 namespace OpenConquer.Client.UI;
 
 /// <summary>
@@ -57,21 +55,13 @@ internal sealed class ResourceOwnership : IDisposable
         }
 
         _disposed = true;
-        ExceptionDispatchInfo? firstFailure = null;
-
+        ClientShutdown cleanup = new();
         for (int index = _resources.Count - 1; index >= 0; index--)
         {
-            try
-            {
-                _resources[index].Dispose();
-            }
-            catch (Exception exception)
-            {
-                firstFailure ??= ExceptionDispatchInfo.Capture(exception);
-            }
+            cleanup.Run(_resources[index].Dispose);
         }
 
         _resources.Clear();
-        firstFailure?.Throw();
+        cleanup.ThrowIfFailed();
     }
 }

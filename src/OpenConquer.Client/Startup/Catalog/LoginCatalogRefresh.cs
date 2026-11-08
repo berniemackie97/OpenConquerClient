@@ -18,7 +18,7 @@ internal sealed class LoginCatalogRefresh : IDisposable
     private DateTimeOffset _lastObservedAt = DateTimeOffset.MinValue;
     private long _highestAcceptedSequence;
     private bool _clockRolledBack;
-    private bool _disposed;
+    private Task? _stopTask;
 
     public SignedLoginCatalog? Current
     {
@@ -38,7 +38,7 @@ internal sealed class LoginCatalogRefresh : IDisposable
     /// <summary>Runs on the render thread. Returns true only when <see cref="Current"/> changes.</summary>
     public bool Advance(DateTimeOffset now)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_stopTask is not null, this);
 
         if (_cancellation.IsCancellationRequested)
         {
@@ -72,7 +72,7 @@ internal sealed class LoginCatalogRefresh : IDisposable
             {
                 incoming = completed.GetAwaiter().GetResult();
             }
-            catch (Exception)
+            catch (Exception failure) when (IsAcquisitionFailure(failure))
             {
                 // Acquisition errors are unavailable catalog data, not UI or process failures.
             }
@@ -104,7 +104,7 @@ internal sealed class LoginCatalogRefresh : IDisposable
             {
                 _pending = _fetch(_cancellation.Token) ?? throw new InvalidOperationException("The catalog fetch returned no task.");
             }
-            catch (Exception)
+            catch (Exception failure) when (IsAcquisitionFailure(failure))
             {
                 LastAttemptFailed = true;
                 _nextAttemptAt = now + s_retryInterval;
@@ -116,41 +116,37 @@ internal sealed class LoginCatalogRefresh : IDisposable
 
     public void Cancel()
     {
-        if (!_disposed && !_cancellation.IsCancellationRequested)
+        if (_stopTask is null && !_cancellation.IsCancellationRequested)
         {
             _cancellation.Cancel();
         }
     }
 
-    public async Task StopAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
+    public Task StopAsync() => _stopTask ??= StopCoreAsync();
 
-        _disposed = true;
-        _cancellation.Cancel();
+    private async Task StopCoreAsync()
+    {
         Task<SignedLoginCatalog?>? pending = _pending;
         _pending = null;
         Current = null;
-
-        try
+        await ClientShutdown.CancelAndDrainAsync(_cancellation, async () =>
         {
-            if (pending is not null)
+            try
             {
-                await pending.ConfigureAwait(false);
+                if (pending is not null)
+                {
+                    await pending.ConfigureAwait(false);
+                }
             }
-        }
-        catch (Exception)
-        {
-            // Shutdown observes and drains acquisition failures after cancellation.
-        }
-        finally
-        {
-            _cancellation.Dispose();
-        }
+            catch (Exception failure) when (IsAcquisitionFailure(failure))
+            {
+                // A transport failure cannot install a catalog during shutdown.
+            }
+        }).ConfigureAwait(false);
     }
+
+    private static bool IsAcquisitionFailure(Exception failure) =>
+        failure is HttpRequestException or IOException or InvalidDataException or TimeoutException or OperationCanceledException;
 
     public void Dispose() => StopAsync().GetAwaiter().GetResult();
 

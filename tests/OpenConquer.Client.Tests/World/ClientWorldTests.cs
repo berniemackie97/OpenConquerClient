@@ -60,6 +60,33 @@ public sealed class ClientWorldTests
     }
 
     [Fact]
+    public async Task ReentrantCloseAndThrowingNotificationStillCloseAndAggregate()
+    {
+        Harness harness = new(endOfStream: false, failSession: true);
+        InvalidOperationException notification = new("World close notification failed.");
+        ClientWorld? world = null;
+        world = harness.Create(onClosing: () =>
+        {
+            ClientWorld closing = Assert.IsType<ClientWorld>(world);
+            Assert.False(closing.IsActive);
+            closing.BeginClose(WorldCloseReason.ContentUnavailable);
+            throw notification;
+        });
+
+        world.BeginClose(WorldCloseReason.ConnectionLost);
+        Task first = world.DisposeAsync().AsTask();
+        Assert.Same(first, world.DisposeAsync().AsTask());
+
+        AggregateException failures = await Assert.ThrowsAsync<AggregateException>(
+            () => first.WaitAsync(s_timeout, TestContext.Current.CancellationToken));
+        Assert.Equal(2, failures.InnerExceptions.Count);
+        Assert.Contains(notification, failures.InnerExceptions);
+        Assert.Contains(failures.InnerExceptions, failure => failure is IOException { Message: "Session cleanup failed." });
+        Assert.Equal(1, harness.ClosingCalls);
+        Assert.Equal(1, harness.SessionCloseCalls);
+    }
+
+    [Fact]
     public async Task CanceledMapLoad_KeepsTheWorldUntilTheLoadIsReaped()
     {
         Harness harness = new(endOfStream: true);
@@ -299,8 +326,13 @@ public sealed class ClientWorldTests
             get; private set;
         }
 
-        public ClientWorld Create(IClientContentSource? content = null, ClientDiagnostics? diagnostics = null) => new(Entry(), content ?? new CatalogContentSource(), new LogicalRenderSize(1024, 768),
-            () => ClosingCalls++, CloseSessionAsync, CreateIngress, CreateLoad, diagnostics: diagnostics);
+        public ClientWorld Create(IClientContentSource? content = null, ClientDiagnostics? diagnostics = null, Action? onClosing = null) =>
+            new(Entry(), content ?? new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+                () =>
+                {
+                    ClosingCalls++;
+                    onClosing?.Invoke();
+                }, CloseSessionAsync, CreateIngress, CreateLoad, diagnostics: diagnostics);
 
         private ValueTask CloseSessionAsync()
         {

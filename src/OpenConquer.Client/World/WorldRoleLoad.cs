@@ -12,6 +12,7 @@ internal sealed class WorldRoleLoad(Func<WorldRoleSources, CancellationToken, Wo
 {
     private readonly CancellationTokenSource _stop = new();
     private Task<WorldRoleAssets?>? _pending;
+    private Task? _disposeTask;
     private WorldRoleSources _requested;
 
     internal WorldRoleLoad(IClientContentSource source, uint packedAppearance, ClientDiagnostics diagnostics)
@@ -45,6 +46,7 @@ internal sealed class WorldRoleLoad(Func<WorldRoleSources, CancellationToken, Wo
 
     internal bool TryPrepare(WorldRoleSources desired, WorldRoleSources? installed, out WorldRoleAssets? assets)
     {
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         assets = null;
         if (_pending is { IsCompleted: true } completed)
         {
@@ -75,31 +77,34 @@ internal sealed class WorldRoleLoad(Func<WorldRoleSources, CancellationToken, Wo
         return false;
     }
 
-    internal void Cancel() => _stop.Cancel();
-
-    public async ValueTask DisposeAsync()
+    internal void Cancel()
     {
-        Cancel();
-        try
+        if (_disposeTask is null)
         {
-            if (_pending is { } pending)
+            _stop.Cancel();
+        }
+    }
+
+    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+
+    private async Task DisposeCoreAsync()
+    {
+        Task<WorldRoleAssets?>? pending = _pending;
+        _pending = null;
+        await ClientShutdown.CancelAndDrainAsync(_stop, async () =>
+        {
+            try
             {
-                await pending.ConfigureAwait(false);
+                if (pending is not null)
+                {
+                    await pending.ConfigureAwait(false);
+                }
             }
-        }
-        catch (OperationCanceledException) when (_stop.IsCancellationRequested)
-        {
-            // World shutdown cancels preparation between content operations.
-        }
-        catch (Exception exception) when (IsContentFailure(exception))
-        {
-            // The closing world will never install this appearance.
-        }
-        finally
-        {
-            _pending = null;
-            _stop.Dispose();
-        }
+            catch (Exception exception) when (IsContentFailure(exception))
+            {
+                // A closing world will never install this appearance.
+            }
+        }).ConfigureAwait(false);
     }
 
     internal static bool IsContentFailure(Exception exception) =>

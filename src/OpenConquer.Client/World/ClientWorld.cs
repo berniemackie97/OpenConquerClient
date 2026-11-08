@@ -441,23 +441,15 @@ internal sealed class ClientWorld : IClientWorld
             return;
         }
 
-        _onClosing();
         _closeReason = reason;
-        _catalogLoad?.Cancel();
-        _mapLoad?.Cancel();
-        _hudLoad?.Cancel();
         WorldRoleLoad? roleLoad = _roleLoad;
         _roleLoad = null;
-        roleLoad?.Cancel();
         WorldMapImageLoader? mapImageLoader = _mapImageLoader;
         _mapImageLoader = null;
-        mapImageLoader?.Cancel();
         MainHudSelectedSkillImageLoader? selectedSkillImages = _selectedSkillImages;
         _selectedSkillImages = null;
-        selectedSkillImages?.Cancel();
         MainHudQuickbarImageLoader? quickbarImages = _quickbarImages;
         _quickbarImages = null;
-        quickbarImages?.Cancel();
         _texturesReady = false;
         Func<ValueTask>? closeSession = _closeSession;
         WorldFrameIngress? ingress = _ingress;
@@ -472,17 +464,27 @@ internal sealed class ClientWorld : IClientWorld
         _hudPreparation = null;
         _entry = null;
         _scene = null;
+        ClientShutdown cleanup = new();
+        TaskCompletionSource graphicsReleased = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Publish the close task before invoking callbacks. The network owners wait for context cleanup.
+        _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages,
+            quickbarImages, cleanup, graphicsReleased.Task);
         try
         {
-            ClientShutdown cleanup = new();
+            cleanup.Run(_onClosing);
+            cleanup.Run(() => _catalogLoad?.Cancel());
+            cleanup.Run(() => _mapLoad?.Cancel());
+            cleanup.Run(() => _hudLoad?.Cancel());
+            cleanup.Run(() => roleLoad?.Cancel());
+            cleanup.Run(() => mapImageLoader?.Cancel());
+            cleanup.Run(() => selectedSkillImages?.Cancel());
+            cleanup.Run(() => quickbarImages?.Cancel());
             cleanup.Run(ReleaseGraphics);
             cleanup.Run(() => hudPreparation?.Dispose());
-            cleanup.ThrowIfFailed();
         }
         finally
         {
-            // Network ownership must not be lost when releasing graphics fails.
-            _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages, quickbarImages);
+            graphicsReleased.SetResult();
         }
     }
 
@@ -514,25 +516,25 @@ internal sealed class ClientWorld : IClientWorld
         }
         WorldRoleLoad? roleLoad = _roleLoad;
         _roleLoad = null;
-        roleLoad?.Cancel();
+        cleanup.Run(() => roleLoad?.Cancel());
         WorldMapImageLoader? mapImageLoader = _mapImageLoader;
         _mapImageLoader = null;
-        mapImageLoader?.Cancel();
+        cleanup.Run(() => mapImageLoader?.Cancel());
         MainHudSelectedSkillImageLoader? selectedSkillImages = _selectedSkillImages;
         _selectedSkillImages = null;
-        selectedSkillImages?.Cancel();
+        cleanup.Run(() => selectedSkillImages?.Cancel());
         MainHudQuickbarImageLoader? quickbarImages = _quickbarImages;
         _quickbarImages = null;
-        quickbarImages?.Cancel();
+        cleanup.Run(() => quickbarImages?.Cancel());
         WorldContentLoad<WorldEntryCatalogs>? catalogLoad = _catalogLoad;
         _catalogLoad = null;
-        catalogLoad?.Cancel();
+        cleanup.Run(() => catalogLoad?.Cancel());
         WorldContentLoad<WorldMapScene>? mapLoad = _mapLoad;
         _mapLoad = null;
-        mapLoad?.Cancel();
+        cleanup.Run(() => mapLoad?.Cancel());
         WorldContentLoad<MainHudPreparation>? hudLoad = _hudLoad;
         _hudLoad = null;
-        hudLoad?.Cancel();
+        cleanup.Run(() => hudLoad?.Cancel());
         WorldFrameIngress? ingress = _ingress;
         WorldFrameEgress? egress = _egress;
         _ingress = null;
@@ -570,9 +572,15 @@ internal sealed class ClientWorld : IClientWorld
 
     private static async Task CloseWorldAsync(Func<ValueTask>? closeSession, WorldFrameIngress? ingress,
         WorldFrameEgress? egress, WorldRoleLoad? roleLoad, WorldMapImageLoader? mapImageLoader,
-        MainHudSelectedSkillImageLoader? selectedSkillImages, MainHudQuickbarImageLoader? quickbarImages)
+        MainHudSelectedSkillImageLoader? selectedSkillImages, MainHudQuickbarImageLoader? quickbarImages,
+        ClientShutdown? cleanup = null, Task? graphicsReleased = null)
     {
-        ClientShutdown cleanup = new();
+        if (graphicsReleased is not null)
+        {
+            await graphicsReleased.ConfigureAwait(false);
+        }
+
+        cleanup ??= new ClientShutdown();
         if (egress is not null)
         {
             await cleanup.RunAsync(egress.DisposeAsync).ConfigureAwait(false);

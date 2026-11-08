@@ -85,30 +85,44 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
             throw new InvalidOperationException("Role creation is active, closing or disposed.");
         }
 
+        _returnRequested = false;
+        IRoleCreationScreen? screen = null;
         try
         {
-            _screen = createScreen() ?? throw new InvalidOperationException("The role screen factory returned no screen.");
+            screen = createScreen() ?? throw new InvalidOperationException("The role screen factory returned no screen.");
             if (_presentation is { } presentation)
             {
-                _screen.Stage.TextCaretAt = presentation.LocateCaret;
+                screen.Stage.TextCaretAt = presentation.LocateCaret;
             }
 
-            _screen.ReturnRequested += OnReturnRequested;
-            _screen.ExitRequested += _requestExit;
+            screen.ReturnRequested += OnReturnRequested;
+            screen.ExitRequested += _requestExit;
+            _screen = screen;
             return true;
         }
-        catch (Exception exception) when (exception is FileNotFoundException or InvalidDataException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            // Preserve the content-failure classification while the unclaimed session closes.
+            _closing = screen is null ? CloseUnclaimedAsync(closeUnclaimedSession) : CloseScreenAsync(screen);
             _diagnostics.RoleContentUnavailable(ClientFailure.Classify(exception));
-            _closing = closeUnclaimedSession().AsTask();
             return false;
         }
         catch
         {
-            // Start session cleanup before propagating an unexpected construction failure.
-            _closing = closeUnclaimedSession().AsTask();
+            // Observe cleanup separately so a synchronous close failure cannot replace the original failure.
+            _closing = screen is null ? CloseUnclaimedAsync(closeUnclaimedSession) : CloseScreenAsync(screen);
             throw;
+        }
+    }
+
+    private static Task CloseUnclaimedAsync(Func<ValueTask> close)
+    {
+        try
+        {
+            return close().AsTask();
+        }
+        catch (Exception failure)
+        {
+            return Task.FromException(failure);
         }
     }
 
@@ -129,20 +143,21 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
         }
 
         activeRole.Tick(elapsed);
-        if (_canAdmitWorld() && activeRole.TryTakeAdmittedWorld(
-                out GameServerHandshakeSession? createdGame, out GameWorldEntrySnapshot? createdWorld))
-        {
-            _admitWorld(createdGame!, createdWorld!);
-            _screen = null;
-            _closing = activeRole.DisposeAsync().AsTask();
-        }
-
         if (_returnRequested && !_hasWorldScene())
         {
             _returnRequested = false;
             _screen = null;
-            _returnToLogin(activeRole.ConnectionLost);
-            _closing = activeRole.DisposeAsync().AsTask();
+            _closing = CloseScreenAsync(activeRole, () => _returnToLogin(activeRole.ConnectionLost));
+            return;
+        }
+
+        if (_canAdmitWorld() && activeRole.TryTakeAdmittedWorld(
+                out GameServerHandshakeSession? createdGame, out GameWorldEntrySnapshot? createdWorld))
+        {
+            _admitWorld(createdGame, createdWorld);
+            _screen = null;
+            _returnRequested = false;
+            _closing = CloseScreenAsync(activeRole);
         }
     }
 
@@ -215,28 +230,39 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
 
     private async Task DisposeCoreAsync()
     {
-        try
+        ClientShutdown cleanup = new();
+        IRoleCreationScreen? screen = _screen;
+        Task? closing = _closing;
+        _screen = null;
+        _closing = null;
+        _returnRequested = false;
+
+        if (screen is not null)
         {
-            if (_screen is { } screen)
-            {
-                await screen.DisposeAsync().ConfigureAwait(false);
-            }
+            await cleanup.RunAsync(() => new ValueTask(CloseScreenAsync(screen))).ConfigureAwait(false);
         }
-        finally
+
+        if (closing is not null)
         {
-            _screen = null;
-            try
-            {
-                if (_closing is { } closing)
-                {
-                    await closing.ConfigureAwait(false);
-                }
-            }
-            finally
-            {
-                _closing = null;
-            }
+            await cleanup.RunAsync(() => new ValueTask(closing)).ConfigureAwait(false);
         }
+
+        cleanup.ThrowIfFailed();
+    }
+
+    private async Task CloseScreenAsync(IRoleCreationScreen screen, Action? notify = null)
+    {
+        ClientShutdown cleanup = new();
+        cleanup.Run(() => screen.ReturnRequested -= OnReturnRequested);
+        cleanup.Run(() => screen.ExitRequested -= _requestExit);
+        cleanup.Run(() => screen.Stage.TextCaretAt = null);
+        if (notify is not null)
+        {
+            cleanup.Run(notify);
+        }
+
+        await cleanup.RunAsync(screen.DisposeAsync).ConfigureAwait(false);
+        cleanup.ThrowIfFailed();
     }
 
     private RoleCreationScreen CreateScreen(GameServerHandshakeSession game, string accountName)

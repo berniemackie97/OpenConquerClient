@@ -6,17 +6,12 @@ using OpenConquer.Launcher.Play;
 
 namespace OpenConquer.Launcher.Tests.Play;
 
-public sealed class PlayScreenInputTests
+[Collection(nameof(LauncherHeadlessUi))]
+public sealed class PlayScreenInputTests(LauncherHeadlessFixture fixture)
 {
-    private static readonly Lazy<HeadlessUnitTestSession> s_session = new(() => HeadlessUnitTestSession.StartNew(typeof(PlayScreenInputTests)));
-
-    public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<Application>().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = true });
-
     [Fact]
-    public Task PressAndReleaseOnAStartButton_ClicksIt() => s_session.Value.Dispatch(() =>
+    public Task PressAndReleaseOnAStartButton_ClicksIt() => TestOnScreen((window, _, clicks, _) =>
     {
-        (Window window, PlayScreen screen, List<PlayButton> clicks) = Show();
         Point high = PlayLayout.High + new Point(105, 40);
 
         window.MouseMove(high);
@@ -24,13 +19,11 @@ public sealed class PlayScreenInputTests
         window.MouseUp(high, MouseButton.Left);
 
         Assert.Equal([PlayButton.High], clicks);
-        Close(window, screen);
-    }, TestContext.Current.CancellationToken);
+    });
 
     [Fact]
-    public Task ReleaseAwayFromTheButton_DoesNotClick() => s_session.Value.Dispatch(() =>
+    public Task ReleaseAwayFromTheButton_DoesNotClick() => TestOnScreen((window, _, clicks, _) =>
     {
-        (Window window, PlayScreen screen, List<PlayButton> clicks) = Show();
         Point standard = PlayLayout.Standard + new Point(105, 45);
 
         window.MouseDown(standard, MouseButton.Left);
@@ -38,13 +31,11 @@ public sealed class PlayScreenInputTests
         window.MouseUp(new Point(300, 300), MouseButton.Left);
 
         Assert.Empty(clicks);
-        Close(window, screen);
-    }, TestContext.Current.CancellationToken);
+    });
 
     [Fact]
-    public Task TransparentPixelsOfAButton_AreNotPartOfIt() => s_session.Value.Dispatch(() =>
+    public Task TransparentPixelsOfAButton_AreNotPartOfIt() => TestOnScreen((window, _, clicks, _) =>
     {
-        (Window window, PlayScreen screen, List<PlayButton> clicks) = Show();
         // The top-left corner of High's 210x80 art is the transparent colour key.
         Point corner = PlayLayout.High + new Point(1, 1);
 
@@ -52,13 +43,11 @@ public sealed class PlayScreenInputTests
         window.MouseUp(corner, MouseButton.Left);
 
         Assert.Empty(clicks);
-        Close(window, screen);
-    }, TestContext.Current.CancellationToken);
+    });
 
     [Fact]
-    public Task Buttons_ShowTheDialogCursor() => s_session.Value.Dispatch(() =>
+    public Task Buttons_ShowTheDialogCursor() => TestOnScreen((window, screen, _, _) =>
     {
-        (Window window, PlayScreen screen, _) = Show();
         using PlayCursor cursor = new(window);
         Point high = PlayLayout.High + new Point(105, 40);
 
@@ -66,26 +55,21 @@ public sealed class PlayScreenInputTests
 
         Assert.NotNull(window.Cursor);
         Assert.All(screen.Children.OfType<PlaySkinButton>(), button => Assert.Same(window.Cursor, button.Cursor));
-        Close(window, screen);
-    }, TestContext.Current.CancellationToken);
+    });
 
     [Fact]
-    public Task Hint_HidesTheWebPanelUntilItCloses() => s_session.Value.Dispatch(() =>
+    public Task Hint_HidesTheWebPanelUntilItCloses() => TestOnScreen((_, screen, _, webPanel) =>
     {
-        Border webPanel = new();
-        (Window window, PlayScreen screen, _) = Show(webPanel);
-
         screen.ShowHint(PlayText.LowConfirmation, PlayButton.Continue, PlayButton.Return);
         Assert.False(webPanel.IsVisible);
-
         screen.HideHint();
         Assert.True(webPanel.IsVisible);
-        Close(window, screen);
-    }, TestContext.Current.CancellationToken);
+    });
 
-    private static (Window Window, PlayScreen Screen, List<PlayButton> Clicks) Show(Control? webPanel = null)
+    private Task TestOnScreen(Action<Window, PlayScreen, List<PlayButton>, Border> test) => fixture.Dispatch(() =>
     {
-        PlayScreen screen = new(webPanel ?? new Border());
+        Border webPanel = new();
+        using PlayScreen screen = new(webPanel);
         List<PlayButton> clicks = [];
         screen.ButtonClicked += (_, button) => clicks.Add(button);
         Window window = new()
@@ -94,13 +78,14 @@ public sealed class PlayScreenInputTests
             Height = 600,
             Content = screen
         };
-        window.Show();
-        return (window, screen, clicks);
-    }
-
-    private static void Close(Window window, PlayScreen screen)
-    {
-        window.Close();
-        screen.Dispose();
-    }
+        try
+        {
+            window.Show();
+            test(window, screen, clicks, webPanel);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }, TestContext.Current.CancellationToken);
 }

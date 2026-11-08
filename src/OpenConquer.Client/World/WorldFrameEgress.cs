@@ -11,7 +11,7 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
     private readonly Func<uint, uint, uint, CancellationToken, Task> _sendLatencyReport;
     private readonly CancellationTokenSource _stopping = new();
     private Task? _pending;
-    private bool _disposed;
+    private Task? _disposeTask;
 
     internal WorldFrameEgress(Func<uint, CancellationToken, Task> sendLatencyTick,
         Func<uint, uint, uint, CancellationToken, Task> sendLatencyReport)
@@ -23,7 +23,7 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
     internal void Pump(WorldHeartbeat heartbeat, uint now)
     {
         ArgumentNullException.ThrowIfNull(heartbeat);
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (_pending is { IsCompleted: true } completed)
         {
             _pending = null;
@@ -42,30 +42,19 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
         }
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
+    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
 
-        _disposed = true;
-        await _stopping.CancelAsync().ConfigureAwait(false);
-        try
+    private async Task DisposeCoreAsync()
+    {
+        Task? pending = _pending;
+        _pending = null;
+        await ClientShutdown.CancelAndDrainAsync(_stopping, async () =>
         {
-            if (_pending is { } pending)
+            if (pending is not null)
             {
                 await pending.ConfigureAwait(false);
             }
-        }
-        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
-        {
-        }
-        finally
-        {
-            _pending = null;
-            _stopping.Dispose();
-        }
+        }).ConfigureAwait(false);
     }
 
     private async Task SendAsync(WorldHeartbeatSend send, uint localAddress, uint latency, uint now,

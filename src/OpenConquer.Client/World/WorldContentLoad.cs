@@ -7,7 +7,8 @@ internal sealed class WorldContentLoad<T> : IAsyncDisposable
 {
     private readonly CancellationTokenSource _cancellation = new();
     private readonly Task<T> _task;
-    private bool _disposed;
+    private bool _claimed;
+    private Task? _disposeTask;
 
     internal WorldContentLoad(Func<CancellationToken, T> load)
     {
@@ -18,13 +19,13 @@ internal sealed class WorldContentLoad<T> : IAsyncDisposable
 
     internal T Complete()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_claimed || _disposeTask is not null, this);
         if (!_task.IsCompleted)
         {
             throw new InvalidOperationException("World content preparation has not completed.");
         }
 
-        _disposed = true;
+        _claimed = true;
         try
         {
             return _task.GetAwaiter().GetResult();
@@ -37,42 +38,23 @@ internal sealed class WorldContentLoad<T> : IAsyncDisposable
 
     internal void Cancel()
     {
-        if (!_disposed)
+        if (!_claimed && _disposeTask is null)
         {
             _cancellation.Cancel();
         }
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync() => _claimed ? ValueTask.CompletedTask : new(_disposeTask ??= DisposeCoreAsync());
+
+    private async Task DisposeCoreAsync()
     {
-        if (_disposed)
+        await ClientShutdown.CancelAndDrainAsync(_cancellation, async () =>
         {
-            return;
-        }
-
-        _disposed = true;
-        try
-        {
-            _cancellation.Cancel();
-            T result;
-            try
-            {
-                result = await _task.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (_cancellation.IsCancellationRequested)
-            {
-                // Disposal owns cancellation of this job.
-                return;
-            }
-
+            T result = await _task.ConfigureAwait(false);
             if (result is IDisposable unclaimed)
             {
                 unclaimed.Dispose();
             }
-        }
-        finally
-        {
-            _cancellation.Dispose();
-        }
+        }).ConfigureAwait(false);
     }
 }

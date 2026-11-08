@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Login;
 
@@ -21,7 +22,10 @@ internal enum RoleCreationOutcomeKind
 }
 
 internal sealed record RoleCreationOutcome(RoleCreationOutcomeKind Kind, string? Refusal = null,
-    GameWorldEntrySnapshot? World = null, Exception? Failure = null);
+    GameWorldEntrySnapshot? World = null, Exception? Failure = null)
+{
+    public override string ToString() => $"{nameof(RoleCreationOutcome)} {{ Kind = {Kind} }}";
+}
 
 /// <summary>
 /// Owns the authenticated GameServer session behind the create-role screen and runs one exchange at a time on it:
@@ -38,7 +42,7 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
     private readonly ConcurrentQueue<string> _loadingMessages = new();
     private Task<RoleCreationOutcome>? _pending;
     private bool _gameTransferred;
-    private bool _disposed;
+    private Task? _disposeTask;
 
     public bool IsBusy => _pending is not null;
 
@@ -51,7 +55,7 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
     /// <summary>Sends the cancel, or aborts the request in flight; either way the session ends.</summary>
     public void Cancel()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (_pending is null)
         {
             Start(SendCancelAsync);
@@ -74,11 +78,11 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         return false;
     }
 
-    public bool TryTakeOutcome(out RoleCreationOutcome outcome)
+    public bool TryTakeOutcome([NotNullWhen(true)] out RoleCreationOutcome? outcome)
     {
         if (_pending is not { IsCompleted: true } completed)
         {
-            outcome = null!;
+            outcome = null;
             return false;
         }
 
@@ -97,7 +101,7 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
     /// <summary>Hands the session to the world after an admitted outcome; this exchange no longer disposes it.</summary>
     public GameServerHandshakeSession TransferGame()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (_gameTransferred || _pending is not null)
         {
             throw new InvalidOperationException("The GameServer session cannot be transferred now.");
@@ -107,42 +111,32 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         return _game;
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+
+    private async Task DisposeCoreAsync()
     {
-        if (_disposed)
+        ClientShutdown cleanup = new();
+        Task<RoleCreationOutcome>? pending = _pending;
+        _pending = null;
+        await cleanup.RunAsync(() => ClientShutdown.CancelAndDrainAsync(_stopping, async () =>
         {
-            return;
+            if (pending is not null)
+            {
+                _ = await pending.ConfigureAwait(false);
+            }
+        })).ConfigureAwait(false);
+
+        if (!_gameTransferred)
+        {
+            await cleanup.RunAsync(_game.DisposeAsync).ConfigureAwait(false);
         }
 
-        _disposed = true;
-        await _stopping.CancelAsync().ConfigureAwait(false);
-        try
-        {
-            if (_pending is { } pending)
-            {
-                // The session is closing; whatever ended the exchange no longer matters.
-                await ((Task)pending).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
-            }
-        }
-        finally
-        {
-            try
-            {
-                if (!_gameTransferred)
-                {
-                    await _game.DisposeAsync().ConfigureAwait(false);
-                }
-            }
-            finally
-            {
-                _stopping.Dispose();
-            }
-        }
+        cleanup.ThrowIfFailed();
     }
 
     private void Start(Func<Task<RoleCreationOutcome>> exchange)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (_pending is not null || _gameTransferred || _stopping.IsCancellationRequested)
         {
             throw new InvalidOperationException("A create-role exchange is already running or the session has ended.");

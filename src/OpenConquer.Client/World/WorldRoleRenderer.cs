@@ -47,13 +47,11 @@ internal sealed class WorldRoleRenderer : IDisposable
             return new WorldRoleRenderer(body, armet, assets.ArmetAttachment,
                 rightWeapon, assets.RightWeaponAttachment, leftWeapon, assets.LeftWeaponAttachment);
         }
-        catch
+        catch (Exception failure)
         {
-            // Release every part uploaded before an incomplete appearance can reach the frame.
-            DisposeParts(leftWeapon);
-            DisposeParts(rightWeapon);
-            armet?.Dispose();
-            body?.Dispose();
+            ClientShutdown cleanup = new(failure);
+            ReleaseParts(leftWeapon, rightWeapon, armet, body, cleanup);
+            cleanup.ThrowIfFailed();
             throw;
         }
     }
@@ -70,15 +68,20 @@ internal sealed class WorldRoleRenderer : IDisposable
 
             return [.. parts];
         }
-        catch
+        catch (Exception failure)
         {
-            // The caller owns the array only after all parts are created.
-            foreach (WorldRolePart part in parts)
-            {
-                part.Dispose();
-            }
-
+            ClientShutdown cleanup = new(failure);
+            DisposeParts(parts, cleanup);
+            cleanup.ThrowIfFailed();
             throw;
+        }
+    }
+
+    private static void DisposeParts(IReadOnlyList<WorldRolePart> parts, ClientShutdown cleanup)
+    {
+        foreach (WorldRolePart part in parts)
+        {
+            cleanup.Run(part.Dispose);
         }
     }
 
@@ -123,19 +126,19 @@ internal sealed class WorldRoleRenderer : IDisposable
         }
     }
 
-    private static void DisposeParts(WorldRolePart[] parts)
-    {
-        foreach (WorldRolePart part in parts)
-        {
-            part.Dispose();
-        }
-    }
-
     public void Dispose()
     {
-        DisposeParts(_leftWeapon);
-        DisposeParts(_rightWeapon);
-        _armet?.Dispose();
-        _body.Dispose();
+        ClientShutdown cleanup = new();
+        ReleaseParts(_leftWeapon, _rightWeapon, _armet, _body, cleanup);
+        cleanup.ThrowIfFailed();
+    }
+
+    private static void ReleaseParts(WorldRolePart[] left, WorldRolePart[] right, WorldRolePart? armet,
+        WorldRolePart? body, ClientShutdown cleanup)
+    {
+        DisposeParts(left, cleanup);
+        DisposeParts(right, cleanup);
+        cleanup.Run(() => armet?.Dispose());
+        cleanup.Run(() => body?.Dispose());
     }
 }

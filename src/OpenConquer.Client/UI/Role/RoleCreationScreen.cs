@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -75,7 +76,8 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
         get; private set;
     }
 
-    public bool TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? world)
+    public bool TryTakeAdmittedWorld([NotNullWhen(true)] out GameServerHandshakeSession? game,
+        [NotNullWhen(true)] out GameWorldEntrySnapshot? world)
     {
         if (_disposed || _worldTransferred || _exchange.IsBusy || WorldEntry is not { } admitted)
         {
@@ -116,7 +118,7 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
             }
         }
 
-        if (_exchange.TryTakeOutcome(out RoleCreationOutcome outcome))
+        if (_exchange.TryTakeOutcome(out RoleCreationOutcome? outcome))
         {
             Apply(outcome);
         }

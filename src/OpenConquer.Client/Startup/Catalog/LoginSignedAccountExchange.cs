@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Networking.Authentication;
@@ -31,7 +32,7 @@ internal static class LoginSignedAccountExchange
 
         // The 5517 cipher doesn't authenticate anything, so real passwords must not go to a remote server.
         // Loopback is still allowed so the exchange can be tested against a local peer.
-        if (!catalog!.TryGetAccountEndpoint(region!, server!, out LoginAccountEndpoint? endpoint) ||
+        if (!catalog.TryGetAccountEndpoint(region, server, out LoginAccountEndpoint? endpoint) ||
             endpoint is null || endpoint.Host != "127.0.0.1")
         {
             throw new InvalidOperationException("AccountServer credential exchange is restricted to IPv4 loopback.");
@@ -42,7 +43,7 @@ internal static class LoginSignedAccountExchange
 
         try
         {
-            byte[] protocolName = Encoding.ASCII.GetBytes(server!.ProtocolServerName);
+            byte[] protocolName = Encoding.ASCII.GetBytes(server.ProtocolServerName);
             LoginAccountResponse1055 response = await session.AuthenticateAsync(
                 accountName, password, protocolName,
                 () => IsAuthorized(catalog, selection, region, server, revision, clock),
@@ -56,9 +57,9 @@ internal static class LoginSignedAccountExchange
 
             return LoginAccountExchangeResult.Success(response, session);
         }
-        catch
+        catch (Exception failure)
         {
-            await session.DisposeAsync().ConfigureAwait(false);
+            await DisposeAfterFailureAsync(session, failure).ConfigureAwait(false);
             throw;
         }
     }
@@ -86,7 +87,7 @@ internal static class LoginSignedAccountExchange
             throw new InvalidOperationException("No current authenticated AccountServer selection is available.");
         }
 
-        if (!catalog!.TryGetAccountEndpoint(region!, server!, out LoginAccountEndpoint? endpoint) ||
+        if (!catalog.TryGetAccountEndpoint(region, server, out LoginAccountEndpoint? endpoint) ||
             endpoint is null || endpoint.Host != "127.0.0.1")
         {
             throw new InvalidOperationException("AccountServer credential exchange is restricted to IPv4 loopback.");
@@ -95,20 +96,32 @@ internal static class LoginSignedAccountExchange
         LoginAccountSession session = await LoginSignedAccountSession.OpenAsync(
             catalog, selection, clock.GetUtcNow(), timeouts, cancellationToken).ConfigureAwait(false);
 
+        AccountRegistrationResult result;
         try
         {
-            return await session.RegisterAsync(accountName, password,
+            result = await session.RegisterAsync(accountName, password,
                 () => IsAuthorized(catalog, selection, region, server, revision, clock),
                 timeouts.Response, cancellationToken).ConfigureAwait(false);
         }
-        finally
+        catch (Exception failure)
         {
-            await session.DisposeAsync().ConfigureAwait(false);
+            await DisposeAfterFailureAsync(session, failure).ConfigureAwait(false);
+            throw;
         }
+
+        await session.DisposeAsync().ConfigureAwait(false);
+        return result;
     }
 
-    private static bool IsAuthorized(SignedLoginCatalog? catalog, LoginServerSelection selection,
-        LoginRegion? region, LoginServer? server, long revision, TimeProvider clock)
+    private static async ValueTask DisposeAfterFailureAsync(LoginAccountSession session, Exception failure)
+    {
+        ClientShutdown cleanup = new(failure);
+        await cleanup.RunAsync(session.DisposeAsync).ConfigureAwait(false);
+        cleanup.ThrowIfFailed();
+    }
+
+    private static bool IsAuthorized([NotNullWhen(true)] SignedLoginCatalog? catalog, LoginServerSelection selection,
+        [NotNullWhen(true)] LoginRegion? region, [NotNullWhen(true)] LoginServer? server, long revision, TimeProvider clock)
     {
         return catalog is not null && catalog.IsCurrent(clock.GetUtcNow()) &&
             ReferenceEquals(selection.Catalog, catalog.View) &&

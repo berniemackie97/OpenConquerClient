@@ -11,6 +11,8 @@ namespace OpenConquer.Networking.Game.Login;
 /// </summary>
 internal sealed record GameCharacterInfo1006
 {
+    public override string ToString() => nameof(GameCharacterInfo1006);
+
     internal const ushort PacketType = 1006;
     private const int StringCountOffset = 110;
     private const int MaximumStringLength = 15;

@@ -72,6 +72,38 @@ public sealed class WorldFrameIngressTests
     }
 
     [Fact]
+    public async Task FailingStopCallbackStillDrainsTheReadAndRetainsBothFaults()
+    {
+        InvalidOperationException stopFailure = new("Stop callback failed.");
+        IOException readFailure = new("Read failed.");
+        TaskCompletionSource<GameSecuredInboundFrame?> read = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationTokenRegistration registration = default;
+        WorldFrameIngress ingress = new(token =>
+        {
+            registration = token.Register(() => throw stopFailure);
+            return read.Task;
+        });
+
+        try
+        {
+            Task first = ingress.DisposeAsync().AsTask();
+            Assert.Same(first, ingress.DisposeAsync().AsTask());
+            Assert.False(first.IsCompleted);
+            read.SetException(readFailure);
+
+            AggregateException failures = await Assert.ThrowsAsync<AggregateException>(
+                () => first.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            Assert.Equal(2, failures.InnerExceptions.Count);
+            Assert.Contains(stopFailure, failures.InnerExceptions);
+            Assert.Contains(readFailure, failures.InnerExceptions);
+        }
+        finally
+        {
+            registration.Dispose();
+        }
+    }
+
+    [Fact]
     public async Task CompletedEndOfStreamEndsTheWorldSession()
     {
         await using WorldFrameIngress ingress = new(

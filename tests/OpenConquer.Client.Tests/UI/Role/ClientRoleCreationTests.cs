@@ -42,6 +42,31 @@ public sealed class ClientRoleCreationTests
     }
 
     [Fact]
+    public async Task FailedEventBindingClosesTheCandidateAndDetachesLateCallbacks()
+    {
+        Harness harness = new();
+        await using ClientRoleCreation owner = harness.Create();
+        TestRoleCreationScreen candidate = new()
+        {
+            ExitBindingFailure = new IOException("Binding failed.")
+        };
+
+        Assert.False(owner.TryOpen(() => candidate, () => throw new InvalidOperationException("Screen owns the session.")));
+        Assert.False(owner.IsActive);
+        Assert.Equal(1, candidate.DisposeCalls);
+        owner.ObserveClose();
+        Assert.True(owner.TryOpen(() => harness.Screen, () => throw new InvalidOperationException()));
+
+        candidate.RequestReturn();
+        candidate.RequestExit();
+        owner.Update(TimeSpan.Zero);
+
+        Assert.True(owner.IsActive);
+        Assert.DoesNotContain("exit", harness.Calls);
+        Assert.DoesNotContain("return:False", harness.Calls);
+    }
+
+    [Fact]
     public async Task UnexpectedInitializationFailure_PropagatesAndShutdownWaitsForUnclaimedSessionClose()
     {
         Harness harness = new();
@@ -77,7 +102,7 @@ public sealed class ClientRoleCreationTests
         harness.Screen.RequestReturn();
         owner.Update(TimeSpan.FromMilliseconds(25));
 
-        Assert.Equal(["tick", "take", $"return:{connectionLost}", "dispose"], harness.Calls);
+        Assert.Equal(["tick", $"return:{connectionLost}", "dispose"], harness.Calls);
         Assert.False(owner.IsActive);
         Assert.True(owner.IsClosing);
         Assert.False(owner.CanOpen);
@@ -86,7 +111,17 @@ public sealed class ClientRoleCreationTests
 
         closed.SetResult();
         await closeCompletion;
-        owner.ObserveClose();
+        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(5));
+        while (owner.IsClosing)
+        {
+            owner.ObserveClose();
+            if (owner.IsClosing)
+            {
+                await Task.Delay(1, deadline.Token);
+            }
+        }
+
         Assert.True(owner.CanOpen);
         Assert.True(owner.TryOpen(() => new TestRoleCreationScreen(), () => throw new InvalidOperationException()));
     }
@@ -241,7 +276,24 @@ internal sealed class TestRoleCreationScreen(List<string>? calls = null) : IRole
     private FlashStage? _stage;
     private bool _transferred;
     public event Action? ReturnRequested;
-    public event Action? ExitRequested;
+    private Action? _exitRequested;
+    public Exception? ExitBindingFailure
+    {
+        get; set;
+    }
+    public event Action? ExitRequested
+    {
+        add
+        {
+            if (ExitBindingFailure is { } failure)
+            {
+                throw failure;
+            }
+
+            _exitRequested += value;
+        }
+        remove => _exitRequested -= value;
+    }
     public FlashStage Stage => _stage ??= new FlashStage(RoleMovies.LoadRole(), new FlashScriptTable(), new FlashRasterCache());
     public bool ConnectionLost
     {
@@ -263,7 +315,8 @@ internal sealed class TestRoleCreationScreen(List<string>? calls = null) : IRole
     public List<Vector2> Pointers { get; } = [];
     public List<bool> Presses { get; } = [];
 
-    public bool TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? world)
+    public bool TryTakeAdmittedWorld([NotNullWhen(true)] out GameServerHandshakeSession? game,
+        [NotNullWhen(true)] out GameWorldEntrySnapshot? world)
     {
         calls?.Add("take");
         game = AdmittedSession;
@@ -284,7 +337,7 @@ internal sealed class TestRoleCreationScreen(List<string>? calls = null) : IRole
     public void TextEntered(char character) => calls?.Add($"text:{character}");
     public void KeyPressed(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard) => throw new NotSupportedException();
     public void RequestReturn() => ReturnRequested?.Invoke();
-    public void RequestExit() => ExitRequested?.Invoke();
+    public void RequestExit() => _exitRequested?.Invoke();
 
     public ValueTask DisposeAsync()
     {

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -36,7 +37,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private long _lastAttemptTimestamp;
     private bool _hasAttempted;
     private LoginAttemptFeedback _feedback = new(LoginAttemptStatus.Idle);
-    private bool _disposed;
+    private Task? _disposeTask;
 
     internal LoginAttemptCoordinator(string contentRoot, TimeProvider? clock = null,
         LocalAddressResolver? localAddress = null, ClientDiagnostics? diagnostics = null)
@@ -55,14 +56,14 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 
     internal bool TryStart(LoginScreen screen, SignedLoginCatalog? catalog)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         ArgumentNullException.ThrowIfNull(screen);
         if (_pending is not null || _revocation is { IsCompleted: false })
         {
             return false;
         }
 
-        _revocation = null;
+        ObserveRevocation();
         screen.Credentials.Synchronize();
         // Flash rejects empty fields before emitting CMD_ENTERGAME and consuming its retry guard.
         if (screen.Credentials.AccountLength == 0 || screen.Credentials.PasswordLength == 0)
@@ -117,7 +118,8 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 
     internal void Update(SignedLoginCatalog? current)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
+        ObserveRevocation();
         if (_pending is not { } pending)
         {
             return;
@@ -167,9 +169,9 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
     }
 
-    internal bool TryTakeAcceptedGame(out GameServerHandshakeSession? game, out string accountName)
+    internal bool TryTakeAcceptedGame([NotNullWhen(true)] out GameServerHandshakeSession? game, out string accountName)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (Status != LoginAttemptStatus.CharacterCreation || _acceptedGame is null)
         {
             game = null;
@@ -184,9 +186,10 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         return true;
     }
 
-    internal bool TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? world)
+    internal bool TryTakeAdmittedWorld([NotNullWhen(true)] out GameServerHandshakeSession? game,
+        [NotNullWhen(true)] out GameWorldEntrySnapshot? world)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (Status != LoginAttemptStatus.CharacterReceived || _acceptedGame is null || _acceptedWorld is null)
         {
             game = null;
@@ -204,7 +207,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 
     internal void CompleteRoleReturn(bool connectionLost)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         _acceptedAccountName = string.Empty;
         Publish(connectionLost ? LoginAttemptStatus.Unavailable : LoginAttemptStatus.Idle,
             connectionLost ? LoginFailure.Resource(10249) : null);
@@ -212,59 +215,72 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 
     internal void FailWorldContent()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         _acceptedAccountName = string.Empty;
         Publish(LoginAttemptStatus.Unavailable, LoginFailure.WorldContent());
     }
 
     internal void FailWorldConnection()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         _acceptedAccountName = string.Empty;
         Publish(LoginAttemptStatus.Unavailable, LoginFailure.Resource(10249));
     }
 
     internal void FailAcceptedGame()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         _acceptedAccountName = string.Empty;
         Publish(LoginAttemptStatus.Unavailable, LoginFailure.Resource(100116));
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+
+    private async Task DisposeCoreAsync()
     {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        _acceptedAccountName = string.Empty;
-        _acceptedWorld = null;
-        _cancellation?.Cancel();
-        if (_pending is { } pending)
-        {
-            AttemptResult result = await pending.ConfigureAwait(false);
-            if (result.Game is { } game)
-            {
-                await game.DisposeAsync().ConfigureAwait(false);
-            }
-        }
-
-        _cancellation?.Dispose();
+        ClientShutdown cleanup = new();
+        CancellationTokenSource? cancellation = _cancellation;
+        Task<AttemptResult>? pending = _pending;
+        Task? revocation = _revocation;
+        GameServerHandshakeSession? accepted = _acceptedGame;
         _cancellation = null;
         _pending = null;
-        if (_revocation is { } revocation)
+        _revocation = null;
+        _acceptedGame = null;
+        _acceptedAccountName = string.Empty;
+        _acceptedWorld = null;
+        _catalog = null;
+        _selection = null;
+
+        if (cancellation is not null)
         {
-            await revocation.ConfigureAwait(false);
-            _revocation = null;
+            await cleanup.RunAsync(() => new ValueTask(cancellation.CancelAsync())).ConfigureAwait(false);
         }
 
-        if (_acceptedGame is { } accepted)
+        if (pending is not null)
         {
-            _acceptedGame = null;
-            await accepted.DisposeAsync().ConfigureAwait(false);
+            await cleanup.RunAsync(async () =>
+            {
+                AttemptResult result = await pending.ConfigureAwait(false);
+                if (result.Game is { } game)
+                {
+                    await game.DisposeAsync().ConfigureAwait(false);
+                }
+            }).ConfigureAwait(false);
         }
+
+        cleanup.Run(() => cancellation?.Dispose());
+        if (revocation is not null)
+        {
+            await cleanup.RunAsync(() => new ValueTask(revocation)).ConfigureAwait(false);
+        }
+
+        if (accepted is not null)
+        {
+            await cleanup.RunAsync(accepted.DisposeAsync).ConfigureAwait(false);
+        }
+
+        cleanup.ThrowIfFailed();
     }
 
     private async Task<AttemptResult> RunAsync(SignedLoginCatalog catalog,
@@ -375,6 +391,15 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
     }
 
+    private void ObserveRevocation()
+    {
+        if (_revocation is { IsCompleted: true } completed)
+        {
+            _revocation = null;
+            completed.GetAwaiter().GetResult();
+        }
+    }
+
     private async Task DisposeRevokedAsync(GameServerHandshakeSession game)
     {
         try
@@ -384,6 +409,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         catch (Exception failure)
         {
             _diagnostics.RevokedSessionCleanupFailed(ClientFailure.Classify(failure));
+            throw;
         }
     }
 
