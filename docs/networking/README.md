@@ -11,6 +11,8 @@ For the current state of the client, see the [README](../../README.md) and the
 
 The [wire-contract ownership decision](wire-contract-ownership.md) covers cross-repository
 protocol changes and their independent acceptance gates.
+The [wire evidence inventory](wire-evidence-inventory.md) tracks captured and missing
+packet evidence separately from synthetic contract tests.
 
 | Note | Topic |
 | --- | --- |
