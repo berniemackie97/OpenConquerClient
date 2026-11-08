@@ -8,7 +8,7 @@ namespace OpenConquer.Client.World;
 internal sealed class WorldFrameEgress : IAsyncDisposable
 {
     private readonly Func<uint, CancellationToken, Task> _sendLatencyTick;
-    private const int MaximumQueuedCorrections = 256;
+    internal const int MaximumQueuedCorrections = 4096;
 
     private readonly Func<uint, uint, uint, CancellationToken, Task> _sendLatencyReport;
     private readonly Func<WorldCorrectionReply, uint, CancellationToken, Task> _sendCorrection;
@@ -16,6 +16,7 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
     private readonly CancellationTokenSource _stopping = new();
     private Task? _pending;
     private Task? _disposeTask;
+    private bool _checkHeartbeatBeforeNextCorrection;
 
     internal WorldFrameEgress(Func<uint, CancellationToken, Task> sendLatencyTick,
         Func<uint, uint, uint, CancellationToken, Task> sendLatencyReport,
@@ -52,16 +53,21 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
             return;
         }
 
-        if (_corrections.TryDequeue(out WorldCorrectionReply correction))
+        if (_checkHeartbeatBeforeNextCorrection || _corrections.Count == 0)
         {
-            _pending = _sendCorrection(correction, now, _stopping.Token);
-            return;
+            _checkHeartbeatBeforeNextCorrection = false;
+            WorldHeartbeatSend send = heartbeat.Tick(now);
+            if (send != WorldHeartbeatSend.None)
+            {
+                _pending = SendAsync(send, heartbeat.LocalAddress, heartbeat.Latency, now, _stopping.Token);
+                return;
+            }
         }
 
-        WorldHeartbeatSend send = heartbeat.Tick(now);
-        if (send != WorldHeartbeatSend.None)
+        if (_corrections.TryDequeue(out WorldCorrectionReply correction))
         {
-            _pending = SendAsync(send, heartbeat.LocalAddress, heartbeat.Latency, now, _stopping.Token);
+            _checkHeartbeatBeforeNextCorrection = true;
+            _pending = _sendCorrection(correction, now, _stopping.Token);
         }
     }
 

@@ -212,9 +212,10 @@ the active map ID at +28 and `0xFFFFFFFF` at +32.
 
 `GameWorldAction10010.WriteCorrectionReply` constructs this 38-byte message from
 the current hero state. `WorldInboundState` signals every applied hero 108,
-including equal-position and repeat cases; `WorldFrameEgress` bounds and
-serializes replies on the existing secured world write lane before subsequent
-heartbeat writes. Packet construction and local scheduling tests are not
+including equal-position and repeat cases; `WorldFrameEgress` bounds the queue to the world-entry hydration frame
+maximum (4096) and serializes replies on the existing secured world write
+lane. It checks periodic heartbeat deadlines between consecutive correction
+writes so sustained correction traffic cannot starve the heartbeat. Packet construction and local scheduling tests are not
 substitutes for the complete [CP3.2 corpus #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
 or a real-device session smoke. [Implementation #263](https://github.com/berniemackie97/OpenConquerClient/issues/263)
 tracks remaining acceptance.
