@@ -25,27 +25,40 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     private readonly LauncherApplication _application;
     private readonly LauncherActivationServer? _activation;
-    private readonly DisplaySettingsStore _settings = DisplaySettingsStore.ForCurrentUser();
-    private readonly GameModeStore _gameModes = GameModeStore.ForCurrentUser();
+    private readonly IDisplaySettingsStore _settings;
+    private readonly IGameModeStore _gameModes;
+    private readonly Action<ManagedInstallation, DisplayPreferences> _startClient;
+    private readonly Action<Exception> _reportFailure;
+    private readonly LauncherFailures _failures = new();
+    private readonly CancellationTokenSource _lifetime = new();
     private readonly PlayScreen _screen;
     private PlayCursor? _cursor;
     private DisplaySettingsWindow? _settingsWindow;
     private GameModeUsage _usage;
     private HintPurpose _hintPurpose;
     private GameMode? _retryMode;
-    private bool _starting;
-    private bool _closing;
+    private Task? _opening;
+    private Task<bool>? _starting;
+    private Task? _dialog;
+    private Task? _shutdown;
     private bool _closeAccepted;
+    private bool _disposed;
 
-    public MainWindow(LauncherApplication application, LauncherActivationServer? activation = null)
+    public MainWindow(LauncherApplication application, LauncherActivationServer? activation, Action<Exception> reportFailure,
+        PlayScreen? screen = null, IDisplaySettingsStore? settings = null, IGameModeStore? gameModes = null,
+        Action<ManagedInstallation, DisplayPreferences>? startClient = null)
     {
-        ArgumentNullException.ThrowIfNull(application);
         _application = application;
         _activation = activation;
+        _reportFailure = reportFailure;
+        _settings = settings ?? DisplaySettingsStore.ForCurrentUser();
+        _gameModes = gameModes ?? GameModeStore.ForCurrentUser();
+        _startClient = startClient ?? ClientProcessLauncher.Start;
         InitializeComponent();
         Title = LauncherText.WindowTitle;
 
-        _screen = new PlayScreen(new PlayWebPanel(LauncherHomePage.FromAssembly(Assembly.GetExecutingAssembly())));
+        _screen = screen ?? new PlayScreen(new PlayWebPanel(LauncherHomePage.FromAssembly(Assembly.GetExecutingAssembly()),
+            () => !IsClosing, OnOperationFailed));
         _screen.ButtonClicked += OnPlayButtonClicked;
         _screen.BackgroundPressed += OnBackgroundPressed;
         _screen.ContextMenu = CreateContextMenu();
@@ -53,38 +66,59 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         Opened += OnOpened;
         Closing += OnClosing;
-        Closed += (_, _) => Dispose();
+        Closed += (_, _) => _failures.Run(Dispose);
         Render(_application.State);
     }
 
     internal bool IsShutdownComplete => _closeAccepted;
 
+    private bool IsClosing => _shutdown is not null;
+
     public void Dispose()
     {
-        _cursor?.Dispose();
-        _cursor = null;
-        _screen.Dispose();
-    }
-
-    internal async Task RequestShutdownAsync()
-    {
-        if (_closing)
+        if (_disposed)
         {
             return;
         }
 
-        _closing = true;
-        Task stopping = Task.WhenAll(_application.StopAsync(), _activation?.StopAsync() ?? Task.CompletedTask, _settingsWindow?.StopAsync() ?? Task.CompletedTask);
-        _screen.SetStartEnabled(false);
-        try
+        _disposed = true;
+        LauncherFailures cleanup = new();
+        cleanup.Run(() => _cursor?.Dispose());
+        _cursor = null;
+        cleanup.Run(_screen.Dispose);
+        cleanup.ThrowIfFailed();
+    }
+
+    internal Task RequestShutdownAsync() => _shutdown ??= StopAsync();
+
+    private async Task StopAsync()
+    {
+        // Publish the shared shutdown task before cancellation or Close can reenter the window.
+        await Task.Yield();
+        _failures.Run(() => _screen.SetStartEnabled(false));
+        await Task.WhenAll(
+            _failures.RunAsync(_lifetime.CancelAsync),
+            _failures.RunAsync(_application.StopAsync),
+            _failures.RunAsync(() => _activation?.StopAsync() ?? Task.CompletedTask),
+            _failures.RunAsync(StopDisplaySettingsAsync),
+            _failures.RunAsync(() => _opening ?? Task.CompletedTask),
+            _failures.RunAsync(() => _starting ?? Task.CompletedTask));
+        _failures.Run(_lifetime.Dispose);
+        _closeAccepted = true;
+        _failures.Run(Close);
+        _failures.Run(Dispose);
+
+        // The desktop loop can already be stopping. Hand failures directly to its host.
+        if (_failures.Failure is { } failure)
         {
-            await stopping;
+            _reportFailure(failure);
         }
-        finally
-        {
-            _closeAccepted = true;
-            Close();
-        }
+    }
+
+    private void OnOperationFailed(Exception failure)
+    {
+        _failures.Add(failure);
+        _ = RequestShutdownAsync();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -105,9 +139,13 @@ internal sealed partial class MainWindow : Window, IDisposable
         }
     }
 
-    private async void OnOpened(object? sender, EventArgs eventArgs)
+    private void OnOpened(object? sender, EventArgs eventArgs) =>
+        LauncherUiEvent.Run(() => _opening ??= OpenAsync(), OnOperationFailed);
+
+    private async Task OpenAsync()
     {
-        if (_closing)
+        await Task.Yield();
+        if (IsClosing)
         {
             return;
         }
@@ -118,13 +156,25 @@ internal sealed partial class MainWindow : Window, IDisposable
 
         if (_activation is not null)
         {
-            ObserveActivationAsync(_activation.RunAsync(ActivateAsync));
+            LauncherUiEvent.Run(() => _activation.RunAsync(ActivateAsync), OnOperationFailed);
         }
 
         Task evaluation = _application.StartAsync();
-        _usage = (await _gameModes.LoadAsync(CancellationToken.None)).Usage;
-        _screen.ShowUsage(_usage);
-        await RenderEvaluationAsync(evaluation);
+        CancellationToken token = _lifetime.Token;
+        try
+        {
+            GameModeRecord modes = await _gameModes.LoadAsync(token);
+            if (!IsClosing)
+            {
+                _usage = modes.Usage;
+                _screen.ShowUsage(_usage);
+                await RenderEvaluationAsync(evaluation);
+            }
+        }
+        catch (OperationCanceledException failure) when (token.IsCancellationRequested && failure.CancellationToken == token)
+        {
+            // The window closed before its preferences were ready.
+        }
     }
 
     /// <summary><c>CenterWindow</c> centred the 900x650 dialog on the work area; its art is the top-left 800x600.</summary>
@@ -142,18 +192,11 @@ internal sealed partial class MainWindow : Window, IDisposable
             area.Y + (int)((area.Height - PlayLayout.CenteredDialog.Height * scale) / 2));
     }
 
-    private static async void ObserveActivationAsync(Task listener)
-    {
-        // Started by Opened on the UI dispatcher: unexpected listener failures reach the existing
-        // fatal host boundary immediately, rather than waiting until process shutdown to surface.
-        await listener;
-    }
-
     private Task<bool> ActivateAsync(CancellationToken cancellationToken)
     {
         return LauncherActivationDispatcher.InvokeAsync(() =>
         {
-            if (_closing)
+            if (IsClosing)
             {
                 return false;
             }
@@ -183,8 +226,16 @@ internal sealed partial class MainWindow : Window, IDisposable
         }
     }
 
-    private async void OnPlayButtonClicked(object? sender, PlayButton button)
+    private void OnPlayButtonClicked(object? sender, PlayButton button) =>
+        LauncherUiEvent.Run(() => HandlePlayButtonAsync(button), OnOperationFailed);
+
+    private async Task HandlePlayButtonAsync(PlayButton button)
     {
+        if (IsClosing)
+        {
+            return;
+        }
+
         switch (button)
         {
             case PlayButton.High:
@@ -234,13 +285,31 @@ internal sealed partial class MainWindow : Window, IDisposable
 
     private async Task StartAsync(GameMode mode)
     {
-        if (_starting || _closing)
+        if (IsClosing || _starting is { IsCompleted: false })
         {
             return;
         }
 
-        _starting = true;
+        Task<bool> starting = TryStartAsync(mode);
+        _starting = starting;
+        if (await starting)
+        {
+            // The launch operation has finished. Shutdown can safely join it.
+            await RequestShutdownAsync();
+        }
+    }
+
+    private async Task<bool> TryStartAsync(GameMode mode)
+    {
+        await Task.Yield();
+        if (IsClosing)
+        {
+            return false;
+        }
+
         _screen.SetStartEnabled(false);
+        CancellationToken token = _lifetime.Token;
+        bool started = false;
         try
         {
             // A start during the first check waits for it; afterwards every start checks again.
@@ -249,60 +318,71 @@ internal sealed partial class MainWindow : Window, IDisposable
                 ? _application.VerifyInstallationAsync()
                 : Task.CompletedTask;
             await RenderEvaluationAsync(verification);
-            if (_closing)
+            if (IsClosing)
             {
-                return;
+                return false;
             }
 
             switch (_application.State)
             {
                 case LauncherState.InstallationResolved resolved:
-                    await LaunchAsync(resolved.Installation, mode);
-                    break;
+                    started = await LaunchAsync(resolved.Installation, mode, token);
+                    return started;
                 case LauncherState.InstallationUnavailable unavailable:
                     ShowProblem(LauncherText.For(unavailable), mode);
                     break;
                 case LauncherState.Faulted faulted:
                     ShowProblem(LauncherText.For(faulted), retryMode: null);
                     break;
-                default:
-                    break;
             }
+        }
+        catch (OperationCanceledException failure) when (token.IsCancellationRequested && failure.CancellationToken == token)
+        {
+            // The launcher closed while preparing the handover.
         }
         finally
         {
-            _starting = false;
-            if (!_closing)
+            if (!started && !IsClosing)
             {
                 _screen.SetStartEnabled(true);
             }
         }
+
+        return false;
     }
 
-    private async Task LaunchAsync(ManagedInstallation installation, GameMode mode)
+    private async Task<bool> LaunchAsync(ManagedInstallation installation, GameMode mode, CancellationToken token)
     {
         // The counters carry no authority: like WritePrivateProfileStringA, a failed write never blocks the start.
-        await _gameModes.RecordStartAsync(mode, CancellationToken.None);
-        DisplayPreferences preferences = await _settings.LoadAsync(CancellationToken.None) is SettingsReadResult.Loaded loaded
+        await _gameModes.RecordStartAsync(mode, token);
+        if (IsClosing)
+        {
+            return false;
+        }
+
+        DisplayPreferences preferences = await _settings.LoadAsync(token) is SettingsReadResult.Loaded loaded
             ? loaded.Preferences
             : DisplayPreferences.Default;
+        if (IsClosing)
+        {
+            return false;
+        }
 
         try
         {
-            ClientProcessLauncher.Start(installation, preferences);
+            _startClient(installation, preferences);
+            return true;
         }
         catch (Win32Exception)
         {
             ShowProblem(LauncherText.ClientStartFailed, mode);
-            return;
+            return false;
         }
         catch (InvalidOperationException)
         {
             ShowProblem(LauncherText.ClientStartFailed, mode);
-            return;
+            return false;
         }
-
-        await RequestShutdownAsync();
     }
 
     private void ShowProblem((string Title, string Detail) text, GameMode? retryMode)
@@ -335,26 +415,48 @@ internal sealed partial class MainWindow : Window, IDisposable
         return new ContextMenu { ItemsSource = new[] { settings, exit } };
     }
 
-    private async void OnDisplaySettings(object? sender, EventArgs eventArgs)
+    private void OnDisplaySettings(object? sender, EventArgs eventArgs)
     {
-        if (_closing || _settingsWindow is not null)
+        if (!IsClosing && _dialog is not { IsCompleted: false })
+        {
+            LauncherUiEvent.Run(() => _dialog = ShowDisplaySettingsAsync(), OnOperationFailed);
+        }
+    }
+
+    private async Task ShowDisplaySettingsAsync()
+    {
+        await Task.Yield();
+        if (IsClosing)
         {
             return;
         }
 
-        DisplaySettingsWindow window = new(_settings);
+        DisplaySettingsWindow window = new(_settings, OnOperationFailed);
         _settingsWindow = window;
+        LauncherFailures cleanup = new();
         try
         {
-            await window.ShowDialog(this);
+            await cleanup.RunAsync(() => window.ShowDialog(this));
+            await cleanup.RunAsync(window.StopAsync);
         }
         finally
         {
-            try
-            {
-                await window.StopAsync();
-            }
-            finally { _settingsWindow = null; }
+            _settingsWindow = null;
+        }
+        cleanup.ThrowIfFailed();
+    }
+
+    private async Task StopDisplaySettingsAsync()
+    {
+        if (_settingsWindow is { } window)
+        {
+            // If the platform close fails, the modal task may never resume. Its I/O is already drained.
+            await window.StopAsync();
+        }
+
+        if (_dialog is { } dialog)
+        {
+            await dialog;
         }
     }
 
@@ -365,18 +467,18 @@ internal sealed partial class MainWindow : Window, IDisposable
         {
             await evaluation;
         }
-        catch (OperationCanceledException) when (_closing)
+        catch (OperationCanceledException) when (IsClosing && evaluation.IsCanceled)
         {
             return;
         }
 
-        if (!_closing)
+        if (!IsClosing)
         {
             Render(_application.State);
         }
     }
 
-    private async void OnClosing(object? sender, WindowClosingEventArgs eventArgs)
+    private void OnClosing(object? sender, WindowClosingEventArgs eventArgs)
     {
         if (_closeAccepted)
         {
@@ -384,7 +486,7 @@ internal sealed partial class MainWindow : Window, IDisposable
         }
 
         eventArgs.Cancel = true;
-        await RequestShutdownAsync();
+        _ = RequestShutdownAsync();
     }
 
     private void Render(LauncherState state)

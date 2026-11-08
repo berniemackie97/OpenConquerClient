@@ -19,24 +19,47 @@ internal sealed class PlayCursor : IDisposable
     {
         _target = target ?? throw new ArgumentNullException(nameof(target));
         _frames = new Cursor[PlayArtwork.CursorFrames.Length];
-        for (int index = 0; index < _frames.Length; index++)
+        DispatcherTimer? timer = null;
+        try
         {
-            using PlayBitmap bitmap = PlayBitmap.Load(PlayArtwork.CursorFrames[index]);
-            _frames[index] = new Cursor(bitmap.Bitmap, new PixelPoint(0, 0));
-        }
+            for (int index = 0; index < _frames.Length; index++)
+            {
+                using PlayBitmap bitmap = PlayBitmap.Load(PlayArtwork.CursorFrames[index]);
+                _frames[index] = new Cursor(bitmap.Bitmap, new PixelPoint(0, 0));
+            }
 
-        _timer = new DispatcherTimer(PlayArtwork.CursorFrameDuration, DispatcherPriority.Input, (_, _) => Advance());
-        _target.Cursor = _frames[0];
-        _timer.Start();
+            timer = new DispatcherTimer(PlayArtwork.CursorFrameDuration, DispatcherPriority.Input, (_, _) => Advance());
+            _target.Cursor = _frames[0];
+            timer.Start();
+            _timer = timer;
+        }
+        catch (Exception failure)
+        {
+            LauncherFailures cleanup = new();
+            cleanup.Add(failure);
+            Release(timer, cleanup);
+            cleanup.ThrowIfFailed();
+            throw;
+        }
     }
 
     public void Dispose()
     {
-        _timer.Stop();
-        _target.Cursor = null;
-        foreach (Cursor frame in _frames)
+        LauncherFailures cleanup = new();
+        Release(_timer, cleanup);
+        cleanup.ThrowIfFailed();
+    }
+
+    private void Release(DispatcherTimer? timer, LauncherFailures cleanup)
+    {
+        cleanup.Run(() => timer?.Stop());
+        cleanup.Run(() => _target.Cursor = null);
+        foreach (Cursor? frame in _frames)
         {
-            frame.Dispose();
+            if (frame is not null)
+            {
+                cleanup.Run(frame.Dispose);
+            }
         }
     }
 

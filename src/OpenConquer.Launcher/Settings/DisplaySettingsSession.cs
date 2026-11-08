@@ -9,6 +9,7 @@ internal sealed class DisplaySettingsSession : IAsyncDisposable
     private readonly IDisplaySettingsStore _store;
     private readonly object _gate = new();
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly CancellationToken _token;
     private Task _operation = Task.CompletedTask;
     private Task? _shutdown;
 
@@ -16,6 +17,7 @@ internal sealed class DisplaySettingsSession : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(store);
         _store = store;
+        _token = _lifetime.Token;
     }
 
     public Task<SettingsReadResult> LoadAsync()
@@ -27,6 +29,9 @@ internal sealed class DisplaySettingsSession : IAsyncDisposable
     {
         return Start(token => _store.SaveAsync(preferences, revision, resetInvalid, token));
     }
+
+    internal bool IsStoppingCancellation(OperationCanceledException failure) =>
+        _token.IsCancellationRequested && failure.CancellationToken == _token;
 
     private Task<T> Start<T>(Func<CancellationToken, Task<T>> start)
     {
@@ -42,7 +47,7 @@ internal sealed class DisplaySettingsSession : IAsyncDisposable
                 throw new InvalidOperationException("A settings operation is already running.");
             }
 
-            Task<T> operation = start(_lifetime.Token);
+            Task<T> operation = start(_token);
             _operation = operation;
             return operation;
         }
@@ -71,7 +76,6 @@ internal sealed class DisplaySettingsSession : IAsyncDisposable
 
     private async Task DrainAsync(Task operation, TaskCompletionSource completion)
     {
-        CancellationToken token = _lifetime.Token;
         Exception? failure = null;
         try
         {
@@ -84,7 +88,10 @@ internal sealed class DisplaySettingsSession : IAsyncDisposable
             {
                 await operation.ConfigureAwait(false);
             }
-            catch (OperationCanceledException exception) when (token.IsCancellationRequested && exception.CancellationToken == token) { }
+            catch (OperationCanceledException exception) when (IsStoppingCancellation(exception))
+            {
+                // The settings session canceled its own operation.
+            }
             catch (Exception exception) { failure = failure is null ? exception : new AggregateException(failure, exception); }
         }
         finally { _lifetime.Dispose(); }

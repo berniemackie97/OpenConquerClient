@@ -13,10 +13,14 @@ internal sealed class PlayWebPanel : Border
 {
     private readonly LauncherHomePage _homePage;
     private readonly NativeWebView _view;
+    private readonly Func<bool> _canOpenExternally;
+    private readonly Action<Exception> _onFailure;
 
-    public PlayWebPanel(LauncherHomePage homePage)
+    public PlayWebPanel(LauncherHomePage homePage, Func<bool> canOpenExternally, Action<Exception> onFailure)
     {
         _homePage = homePage ?? throw new ArgumentNullException(nameof(homePage));
+        _canOpenExternally = canOpenExternally;
+        _onFailure = onFailure;
         ClipToBounds = true;
         _view = new NativeWebView();
         _view.EnvironmentRequested += OnEnvironmentRequested;
@@ -71,9 +75,16 @@ internal sealed class PlayWebPanel : Border
 
     private void OpenExternally(Uri target)
     {
-        if (LauncherHomePage.OpensExternally(target) && TopLevel.GetTopLevel(this) is { } topLevel)
+        if (_canOpenExternally() && LauncherHomePage.OpensExternally(target) && TopLevel.GetTopLevel(this) is { } topLevel)
         {
-            _ = topLevel.Launcher.LaunchUriAsync(target);
+            // Once handed to the desktop shell, the request is independent of this window.
+            LauncherUiEvent.Run(() => topLevel.Launcher.LaunchUriAsync(target), failure =>
+            {
+                if (_canOpenExternally())
+                {
+                    _onFailure(failure);
+                }
+            });
         }
     }
 }

@@ -23,5 +23,11 @@ public sealed class LauncherHeadlessFixture : IAsyncDisposable
 
     internal Task Dispatch(Action test, CancellationToken token) => _session.Dispatch(test, token);
 
+    internal Task Dispatch(Func<Task> test, CancellationToken token) => _session.Dispatch(async () =>
+    {
+        await test();
+        return true;
+    }, token);
+
     public ValueTask DisposeAsync() => _session.DisposeAsync();
 }
