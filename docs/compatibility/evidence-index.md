@@ -77,3 +77,22 @@ present boundaries.
   1–15 ASCII realm policy are distinct. Credential exchanges remain signed local IPv4
   loopback. [Packet 1060](../startup/STARTUP-001L.md),
   [login flow](../networking/FLOW-001A-live-login-bootstrap.md).
+
+## Research-note discrepancies and current authority
+
+The `20_notes` research archive is maintained outside this repository. These
+entries resolve its older statements against its own later recorded checks;
+they do not change packet code or claim new executable observations.
+When consulting older notes, use the narrower claims below.
+
+| Source note | Earlier statement | Current interpretation | Status |
+| --- | --- | --- | --- |
+| `Network/00_protocol_overview.md`, dispatch table and CP0.1 class-proof section | Packet 1009 appears as `CMsgItem ✓TU`, but the associated assert-path row names `Msg1008`. The rename history uses `CMsgItem` for 1009. | The Process routine is associated with packet **1009**, while its assert file is **`Msg1008.cpp`**. A file-path match establishes the source file, not an independently verified C++ class declaration. `CMsgItem` remains the applied analysis label; do not promote it to a separately proven class name or confuse it with packet 1008. | Packet/Process association and TU path verified in the research registry; class declaration unverified |
+| `Server/tq-server-binaries-2008.md`, opening summary versus CP0.2 era section | The opening calls the 15.10 binary set a `≤5095`-era source. | The inspected build has an October 21, 2008 compiler date and a `CQServer-15.10-1021` source-root marker. The exact game-build era is **unknown**; neither `≤5095` nor `~518x` is established. This server set cannot override observations of the target client. | Calendar/build metadata verified; game-build-era classification unresolved |
+| `Rendering/hero-model-cp22.md`, earlier CP2.2 residual against later CP2.3b resolution | Historical text describes deferred snapshot clamps and a postponed slot-order audit even after the note marks CP2.3b resolved. | The signed life clamp now occurs synchronously in subtype-46 handling, as accepted in [CP2.3 #239](https://github.com/berniemackie97/OpenConquerClient/issues/239) and merged [PR #260](https://github.com/berniemackie97/OpenConquerClient/pull/260). Packet field layout, equipment-slot mapping and handler operation order are different claims; a verified slot map does not establish displaced-item ownership. | Clamp and mapping slices accepted; [two-handed displacement #262](https://github.com/berniemackie97/OpenConquerClient/issues/262) and [tracked-item ownership #264](https://github.com/berniemackie97/OpenConquerClient/issues/264) remain open |
+
+This record does **not** amend the external archive or its analysis database.
+The original note text should be corrected in that workspace at its next
+controlled revision. Until then, use this record when a stale heading,
+class label or implementation-era statement conflicts with a later verified
+section. See [tracking task #257](https://github.com/berniemackie97/OpenConquerClient/issues/257).
