@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Security.Cryptography;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Networking.Game.World;
 
@@ -8,7 +9,7 @@ namespace OpenConquer.Client.Tests.Networking;
 public sealed class GameHeartbeatPacketTests
 {
     [Fact]
-    public void LatencyTick_MatchesCMsgTickBuildSubType()
+    public void LatencyTick_TransmitsUnmodifiedTimerAndZeroesUnusedFields()
     {
         byte[] packet = new byte[88];
         GameLatencyTick1009.Write(packet, heroId: 0x11223344, milliseconds: 0x0000ABCD);
@@ -18,8 +19,18 @@ public sealed class GameHeartbeatPacketTests
         BinaryPrimitives.WriteUInt16LittleEndian(expected.AsSpan(2), 1009);
         BinaryPrimitives.WriteUInt32LittleEndian(expected.AsSpan(4), 0x11223344);
         BinaryPrimitives.WriteUInt16LittleEndian(expected.AsSpan(12), 27);
-        BinaryPrimitives.WriteUInt32LittleEndian(expected.AsSpan(16), 0x0000ABCDu ^ 0x11223344u);
-        Assert.Equal(Convert.ToHexString(expected), Convert.ToHexString(packet));
+        BinaryPrimitives.WriteUInt32LittleEndian(expected.AsSpan(16), 0x0000ABCDu);
+        Assert.Equal(expected, packet);
+    }
+
+    [Fact]
+    public void LatencyTick_MatchesRecordedFrame40Digest()
+    {
+        byte[] packet = new byte[GameItem1009.FixedLength];
+        GameLatencyTick1009.Write(packet, heroId: 1_000_000, milliseconds: 68_952_244);
+
+        Assert.Equal("AA2D5B328C0F90B9B80EEA69F1E648EE33653FC9092FF633D72E4C9E05D4C922",
+            Convert.ToHexString(SHA256.HashData(packet)));
     }
 
     [Fact]

@@ -2,10 +2,7 @@ using System.Buffers.Binary;
 
 namespace OpenConquer.Networking.Game.World;
 
-/// <summary>
-/// Client heartbeat, 1009 subtype 27, as <c>CMsgTick__Build_SubType</c> 0x6EAC51 writes it: size 88, +4 hero id, +8 0,
-/// +12 subtype 27, +16 the client millisecond counter XOR the hero id (0x6EACB4).
-/// </summary>
+/// <summary>Client heartbeat 1009/27: 88 bytes, hero ID at +4, subtype at +12, transmitted millisecond timer at +16.</summary>
 internal static class GameLatencyTick1009
 {
     internal const ushort Subtype = 27;
@@ -22,6 +19,6 @@ internal static class GameLatencyTick1009
         BinaryPrimitives.WriteUInt16LittleEndian(destination[2..], GameItem1009.PacketType);
         BinaryPrimitives.WriteUInt32LittleEndian(destination[4..], heroId);
         BinaryPrimitives.WriteUInt16LittleEndian(destination[12..], Subtype);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination[16..], milliseconds ^ heroId);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination[16..], milliseconds);
     }
 }

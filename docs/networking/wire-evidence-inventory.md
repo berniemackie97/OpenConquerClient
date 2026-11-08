@@ -73,6 +73,29 @@ subtypes are emitted by the application rather than exposed as separate
 `OpenConquer.Networking` types. These remain subject to the call-site
 inventory gate.
 
+## Verified heartbeat 1009/27 send bytes
+
+Original-client capture 1, frame 40, in
+`20_notes/Network/evidence/cp32-world-entry-2026-11-08/capture.json`,
+records an 88-byte outgoing heartbeat with SHA-256
+`aa2d5b328c0f90b9b80eea69f1e648ee33653fc9092ff633d72e4c9e05d4c922`.
+Its hero ID is 1,000,000 and its transmitted millisecond timer is 68,952,244.
+Reconstructing the header, fields and zeroed remainder reproduces that digest.
+The reconstructed bytes are verified against the reported capture hash, but
+were not copied directly from the capture file into this repository.
+
+The packet writer now transmits the unmodified timer at +16. The earlier
+message builder computes an XOR intermediate, but the original send path
+replaces that field with the current timer before queuing transmission.
+An unchanged echo therefore carries the original timer; the client
+computes elapsed time with unsigned subtraction, including counter wrap.
+The server's existing byte-preserving echo needs no implementation change.
+
+This single observed message does not establish capture coverage for
+other 1009 subtypes or every CP3.2 packet variant. [Bug #299](https://github.com/berniemackie97/OpenConquerClient/issues/299)
+tracks the fix; [CP3.2 #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
+retains the corpus and remaining capture acceptance.
+
 ## First shared fixture: weather 1016
 
 Both repositories check in the identical test-only

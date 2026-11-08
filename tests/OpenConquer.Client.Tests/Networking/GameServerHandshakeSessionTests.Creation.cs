@@ -424,7 +424,7 @@ public sealed partial class GameServerHandshakeSessionTests
                 if (world.ExpectHeartbeat)
                 {
                     byte[] heartbeat = await peer.ReadPacketAsync(88, token);
-                    Assert.Equal((88, 1009, 0x11223344u, 27, 0x0000ABCDu ^ 0x11223344u),
+                    Assert.Equal((88, 1009, 0x11223344u, 27, 0x0000ABCDu),
                         (BinaryPrimitives.ReadUInt16LittleEndian(heartbeat), BinaryPrimitives.ReadUInt16LittleEndian(heartbeat.AsSpan(2)),
                             BinaryPrimitives.ReadUInt32LittleEndian(heartbeat.AsSpan(4)), BinaryPrimitives.ReadUInt16LittleEndian(heartbeat.AsSpan(12)),
                             BinaryPrimitives.ReadUInt32LittleEndian(heartbeat.AsSpan(16))));
