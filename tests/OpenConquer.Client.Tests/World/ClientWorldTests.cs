@@ -228,6 +228,74 @@ public sealed class ClientWorldTests
     }
 
     [Fact]
+    public async Task HydrationAndLiveHeroCorrectionsShareTheOutboundLaneInOrder()
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 61, 101, 100, 1000);
+        GameWorldEntrySnapshot entry = Entry() with
+        {
+            HydrationPackets = [Correction(61, 101), Correction(61, 101)],
+        };
+        List<(WorldCorrectionReply Reply, uint Tick)> sent = [];
+        int receives = 0;
+        Task<GameSecuredInboundFrame?> Receive(CancellationToken stopping)
+        {
+            receives++;
+            if (receives > 3)
+            {
+                return WaitForDisconnectAsync(stopping);
+            }
+
+            byte[] packet = receives switch
+            {
+                1 => Correction(63, 103),
+                2 => Correction(62, 102),
+                _ => Correction(62, 102),
+            };
+            if (receives == 1)
+            {
+                BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(4), entry.Character.EntityId + 1);
+            }
+
+            byte[] rented = ArrayPool<byte>.Shared.Rent(packet.Length);
+            packet.CopyTo(rented, 0);
+            return Task.FromResult<GameSecuredInboundFrame?>(new GameSecuredInboundFrame(rented, packet.Length));
+        }
+
+        await using ClientWorld world = new(entry, new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+            static () => { }, static () => ValueTask.CompletedTask,
+            () => new WorldFrameIngress(Receive), () => new WorldContentLoad<WorldMapScene>(_ => scene),
+            () => new WorldFrameEgress(
+                (_, _) => Task.CompletedTask,
+                (_, _, _, _) => Task.CompletedTask,
+                (reply, tick, _) =>
+                {
+                    sent.Add((reply, tick));
+                    return Task.CompletedTask;
+                }));
+
+        await WaitUntilAsync(() =>
+        {
+            world.CompleteLoad();
+            return world.HasScene;
+        });
+
+        world.DrainIngress(500);
+        world.DrainIngress(501);
+        world.DrainIngress(502);
+        world.DrainIngress(503);
+
+        Assert.Equal(
+        [
+            (new WorldCorrectionReply(61, 101, 3), 500u),
+            (new WorldCorrectionReply(61, 101, 3), 501u),
+            (new WorldCorrectionReply(62, 102, 3), 502u),
+            (new WorldCorrectionReply(62, 102, 3), 503u),
+        ], sent);
+        Assert.Equal(4, sent.Count);
+    }
+
+    [Fact]
     public async Task MissingExperienceTable_ClosesWithContentFailure()
     {
         Harness harness = new(endOfStream: false);
