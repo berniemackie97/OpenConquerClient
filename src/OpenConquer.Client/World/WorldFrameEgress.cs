@@ -32,7 +32,7 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
         ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
         if (_corrections.Count == MaximumQueuedCorrections)
         {
-            throw new InvalidDataException("World correction reply queue exceeded its bounded capacity.");
+            throw new WorldCorrectionQueueFullException();
         }
 
         _corrections.Enqueue(correction);
@@ -99,3 +99,10 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
 }
 
 internal readonly record struct WorldCorrectionReply(ushort X, ushort Y, byte DirectionIndex);
+
+internal sealed class WorldCorrectionQueueFullException : IOException
+{
+    internal WorldCorrectionQueueFullException() : base("World correction reply queue exceeded its bounded capacity.")
+    {
+    }
+}

@@ -198,6 +198,14 @@ internal sealed class ClientWorld : IClientWorld
         {
             // The owner canceled its content jobs during close.
         }
+        catch (WorldCorrectionQueueFullException exception)
+        {
+            if (IsActive)
+            {
+                _diagnostics.WorldConnectionClosed(ClientFailure.Classify(exception));
+                BeginClose(WorldCloseReason.ConnectionLost);
+            }
+        }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
             if (IsActive)

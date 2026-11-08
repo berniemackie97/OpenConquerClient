@@ -296,6 +296,35 @@ public sealed class ClientWorldTests
     }
 
     [Fact]
+    public async Task HydrationReplyOverflowIsClassifiedAsConnectionLoss()
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 61, 101, 100, 1000);
+        byte[][] excessCorrections = Enumerable.Range(0, WorldFrameEgress.MaximumQueuedCorrections + 1)
+            .Select(_ => Correction(61, 101)).ToArray();
+        GameWorldEntrySnapshot entry = Entry() with { HydrationPackets = excessCorrections };
+
+        await using ClientWorld world = new(entry, new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+            static () => { }, static () => ValueTask.CompletedTask,
+            () => new WorldFrameIngress(WaitForDisconnectAsync),
+            () => new WorldContentLoad<WorldMapScene>(_ => scene),
+            () => new WorldFrameEgress(
+                (_, _) => Task.CompletedTask,
+                (_, _, _, _) => Task.CompletedTask,
+                (_, _, _) => Task.CompletedTask));
+
+        await WaitUntilAsync(() =>
+        {
+            world.CompleteLoad();
+            return !world.IsActive;
+        });
+
+        WorldCloseReason reason = default;
+        await WaitUntilAsync(() => world.TryObserveClose(out reason));
+        Assert.Equal(WorldCloseReason.ConnectionLost, reason);
+    }
+
+    [Fact]
     public async Task MissingExperienceTable_ClosesWithContentFailure()
     {
         Harness harness = new(endOfStream: false);
