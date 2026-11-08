@@ -2,24 +2,7 @@
 
 ## Evidence and scope
 
-The hero render entry is `Conquer.exe:0x65E472`, role render is `0x64F5F7`, and world camera setup reaches `graphic.dll:0x1000F0C0` via `0x61E73D`. Scenery insertion at `0x635AE6` supplies depth order. See `20_notes/Rendering/06_hero_render_pipeline.md` and the signed-tile evidence below. Arbitrary native offsets, motion arcs and complete depth parity remain open.
-
-The authenticated character-info snapshot supplies the appearance composite.
-The body source is the appearance composite modulo 1000; its model key is the
-body source multiplied by 1,000,000. The content resolver loads the role-part
-configuration and model descriptors from the existing encrypted C3 database,
-then resolves the mesh and texture IDs through the source's 3D resource indexes.
-Repeated resource IDs replace previous values in the recorded order.
-
-The 3D content source preserves the two original lookup modes: databases come
-from the loose resource directory; C3 and DDS resources use packaged lookup.
-The content importer includes the database, package declaration, C3 package
-and any source-supplied loose object/texture indexes. The embedded archive
-indexes can omit model and texture IDs present in the source's loose files,
-so importing them is necessary to preserve content resolution.
-Older curated sets without
-these resources retain their existing map-only display; missing 3D character
-resources are reported rather than substituted with an unrelated model.
+Character drawing, camera setup and scenery insertion are documented in `20_notes/Rendering/06_hero_render_pipeline.md` and the signed-tile evidence below. Arbitrary mesh offsets, motion arcs and complete scene-depth equivalence remain unverified.
 
 ## Draw sequencing
 

@@ -2,17 +2,7 @@
 
 ## Evidence and scope
 
-`C3_CORE_DLL.dll:0x1000CC90` enters the CPU indexed draw. Vertex layout and native render states are recorded in `20_notes/Rendering/c3_core_dll/05_phy.md` §§Output GPU vertex and render state pipeline. The OpenGL depth remap, VAO and state cleanup are managed. The synthetic framebuffer probe covers the submitted state and is separate from retail role conformance.
-
-The rendering backend accepts skinned vertex bytes in a single specified 36-byte
-layout: position float3 at byte 0, normal float3 at 12, packed ARGB at 24,
-and UV float2 at 28. Triangle indices remain 16-bit, are validated at mesh
-creation, and are uploaded once. Vertex buffers are allocated once and updated
-through the caller's existing output span as each animation frame is sampled.
-
-The GPU mesh owns its VAO, dynamic vertex buffer and immutable triangle-index
-buffer. The existing OpenGL render target provides a 16-bit depth attachment.
-The renderer uses that target within its normal BeginFrame/EndFrame lifetime.
+Indexed mesh submission, vertex layout and draw states are documented in `20_notes/Rendering/c3_core_dll/05_phy.md` (GPU output). OpenGL depth conversion, VAO lifetime and state cleanup are application decisions. The synthetic framebuffer test does not establish appearance equivalence for arbitrary character scenes.
 
 ## Draw state
 
