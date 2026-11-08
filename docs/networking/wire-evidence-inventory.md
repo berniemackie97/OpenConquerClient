@@ -91,8 +91,13 @@ An unchanged echo therefore carries the original timer; the client
 computes elapsed time with unsigned subtraction, including counter wrap.
 The server's existing byte-preserving echo needs no implementation change.
 
-This single observed message does not establish capture coverage for
-other 1009 subtypes or every CP3.2 packet variant. [Bug #299](https://github.com/berniemackie97/OpenConquerClient/issues/299)
+The independently observed 88-byte frame is retained in
+`tests/Fixtures/WireGolden/1009-27-heartbeat.observed.json`. The client
+verifies the encoder output against those exact logical bytes; the server
+independently parses and re-encodes the mirrored frame. The capture source,
+direction, collection boundary and executable digest are pinned with its
+contents. This single observed message does not establish capture coverage
+for other 1009 subtypes or every CP3.2 packet variant. [Bug #299](https://github.com/berniemackie97/OpenConquerClient/issues/299)
 tracks the fix; [CP3.2 #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
 retains the corpus and remaining capture acceptance.
 
@@ -167,9 +172,11 @@ The test-only `tests/Fixtures/WireGolden/manifest.json` pins the canonical
 client source revision `e13bf5724975ec825e64a3609719afedd9b6af41`,
 the SHA-256 of each included fixture file, and an explicit list of every
 registered case. Both test suites require the same manifest SHA-256
-`0f07a8940e848680316bfcce433b4d994c51110ea7c3774d47698e34412517a7`,
+`6acc4c6b0b0f342d03e207ad26f085a78d06546d596066a757065adb8cede5ab`,
 verify every listed file and reject unlisted fixture JSON files. The corpus
-has two static-derived cases and one project-defined registration case; it contains no running-client capture.
+contains two static-derived cases, two independently observed client-message
+cases (1009/27 and 1134/3), and one project-defined registration case.
+These observations cover only their documented variants and directions.
 A corpus revision requires coordinated review of the source evidence,
 fixture bytes, manifest and pinned hash in both repositories. No runtime
 package or build-time cross-repository dependency is introduced.
