@@ -292,6 +292,14 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         return SendWorldPacketAsync(packet, "GameServer world walk write timed out.", cancellationToken);
     }
 
+    internal Task SendWorldCorrectionReplyAsync(uint heroId, ushort x, ushort y, byte direction,
+        uint mapId, uint timestamp, CancellationToken cancellationToken = default)
+    {
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.WriteCorrectionReply(packet, heroId, x, y, direction, mapId, timestamp);
+        return SendWorldPacketAsync(packet, "GameServer correction reply write timed out.", cancellationToken);
+    }
+
     /// <summary>Sends the 1009 subtype-27 heartbeat (<see cref="GameLatencyTick1009"/>).</summary>
     internal Task SendWorldLatencyTickAsync(uint heroId, uint milliseconds, CancellationToken cancellationToken = default)
     {

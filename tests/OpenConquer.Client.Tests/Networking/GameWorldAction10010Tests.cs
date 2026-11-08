@@ -28,6 +28,35 @@ public sealed class GameWorldAction10010Tests
         Assert.Equal(new GameWorldAction10010(entityId, 0x12345678, 0, 123, action, 0, 0, 0, 0, 0, 0), read);
     }
 
+    [Fact]
+    public void WriteCorrectionReply_UsesCurrentHeroCoordinatesAndFacing()
+    {
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.WriteCorrectionReply(packet, 0x11223344, 0x1234, 0x5678, direction: 3,
+            mapId: 1002, timestamp: 0x55667788);
+
+        Assert.Equal(Convert.FromHexString(
+            "26001a27443322113412785600000000887766559200030000000000ea030000ffffffff0000"), packet);
+        Assert.True(GameWorldAction10010.TryRead(packet, out GameWorldAction10010 parsed));
+        Assert.Equal(new GameWorldAction10010(0x11223344, 0x56781234, 0, 0x55667788,
+            GameWorldAction10010.CorrectionReply, 3, 0, 0, 1002, uint.MaxValue, 0), parsed);
+    }
+
+    [Fact]
+    public void WriteCorrectionReply_ValidatesBeforeTouchingDestination()
+    {
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        packet.AsSpan().Fill(0xAF);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            GameWorldAction10010.WriteCorrectionReply(packet, 0, 1, 2, 3, 1002, 5));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            GameWorldAction10010.WriteCorrectionReply(packet, 1, 1, 2, 8, 1002, 5));
+        Assert.Throws<ArgumentException>(() =>
+            GameWorldAction10010.WriteCorrectionReply(packet.AsSpan(1), 1, 1, 2, 3, 1002, 5));
+        Assert.All(packet, b => Assert.Equal((byte)0xAF, b));
+    }
+
     [Theory]
     [InlineData(0, 0)]
     [InlineData(2, 1)]

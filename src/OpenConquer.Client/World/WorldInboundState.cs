@@ -11,6 +11,7 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     private readonly ClientDiagnostics _diagnostics;
     private readonly uint _heroId;
     private readonly Func<uint> _clock;
+    private readonly Action<WorldCorrectionReply>? _onCorrection;
     private readonly HashSet<uint> _unhandled = [];
     private readonly HashSet<uint> _unhandledAttributes = [];
 
@@ -20,12 +21,14 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     /// before its position does. A subtype-46 snapshot therefore clamps against the hero life that preceded it.
     /// </summary>
     internal WorldInboundState(GameWorldEntrySnapshot world, ItemStatCatalog itemStats, Func<uint>? clock = null,
-        uint clientStartedAt = 0, ClientDiagnostics? diagnostics = null)
+        uint clientStartedAt = 0, ClientDiagnostics? diagnostics = null,
+        Action<WorldCorrectionReply>? onCorrection = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         _heroId = world.Character.EntityId;
         _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _clock = clock ?? (static () => 0);
+        _onCorrection = onCorrection;
         Heartbeat = new WorldHeartbeat(world.HeartbeatStartedAt, clientStartedAt, world.LocalAddress);
         Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character), itemStats, world.MapFlags,
             world.Character.TransformLookSourceId != 0);
@@ -117,6 +120,7 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
         bool changed = X != action.X || Y != action.Y;
         (X, Y) = (action.X, action.Y);
+        _onCorrection?.Invoke(new WorldCorrectionReply(action.X, action.Y, DirectionIndex));
         return changed;
     }
 

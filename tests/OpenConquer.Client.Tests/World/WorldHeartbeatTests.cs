@@ -77,7 +77,8 @@ public sealed class WorldHeartbeatTests
             {
                 sent.Add($"report {address:X8} {latency} {now}");
                 return Task.CompletedTask;
-            });
+            },
+            (_, _, _) => Task.CompletedTask);
         WorldHeartbeat heartbeat = new(tickStartedAt: 1, clientStartedAt: 0, localAddress: 0x0100007F);
 
         egress.Pump(heartbeat, 1_800_001);

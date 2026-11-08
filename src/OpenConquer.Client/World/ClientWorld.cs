@@ -73,7 +73,9 @@ internal sealed class ClientWorld : IClientWorld
                 token => WorldEntryContent.LoadMap(content, entry, mapStartedAt, token)),
             () => new WorldFrameEgress(
                 (now, token) => game.SendWorldLatencyTickAsync(entry.Character.EntityId, now, token),
-                (address, latency, now, token) => game.SendWorldLatencyReportAsync(address, latency, now, token)),
+                (address, latency, now, token) => game.SendWorldLatencyReportAsync(address, latency, now, token),
+                (correction, now, token) => game.SendWorldCorrectionReplyAsync(entry.Character.EntityId,
+                    correction.X, correction.Y, correction.DirectionIndex, entry.MapId, now, token)),
             clock, clientStartedAt, diagnostics)
     {
     }
@@ -161,7 +163,7 @@ internal sealed class ClientWorld : IClientWorld
                 if (IsActive && _entry is { } entry)
                 {
                     _inbound = new WorldInboundState(entry, catalogs.Items, () => _frameMilliseconds,
-                        _clientStartedAt, _diagnostics);
+                        _clientStartedAt, _diagnostics, _egress is { } egress ? egress.QueuePositionCorrection : null);
                     _levelExperience = catalogs.Experience;
                 }
             }
@@ -195,6 +197,14 @@ internal sealed class ClientWorld : IClientWorld
         catch (OperationCanceledException) when (!IsActive)
         {
             // The owner canceled its content jobs during close.
+        }
+        catch (WorldCorrectionQueueFullException exception)
+        {
+            if (IsActive)
+            {
+                _diagnostics.WorldConnectionClosed(ClientFailure.Classify(exception));
+                BeginClose(WorldCloseReason.ConnectionLost);
+            }
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {

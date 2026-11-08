@@ -7,17 +7,35 @@ namespace OpenConquer.Client.World;
 /// </summary>
 internal sealed class WorldFrameEgress : IAsyncDisposable
 {
+    internal const int MaximumQueuedCorrections = 4096;
+
     private readonly Func<uint, CancellationToken, Task> _sendLatencyTick;
     private readonly Func<uint, uint, uint, CancellationToken, Task> _sendLatencyReport;
+    private readonly Func<WorldCorrectionReply, uint, CancellationToken, Task> _sendCorrection;
+    private readonly Queue<WorldCorrectionReply> _corrections = new();
     private readonly CancellationTokenSource _stopping = new();
     private Task? _pending;
     private Task? _disposeTask;
+    private bool _checkHeartbeatBeforeNextCorrection;
 
     internal WorldFrameEgress(Func<uint, CancellationToken, Task> sendLatencyTick,
-        Func<uint, uint, uint, CancellationToken, Task> sendLatencyReport)
+        Func<uint, uint, uint, CancellationToken, Task> sendLatencyReport,
+        Func<WorldCorrectionReply, uint, CancellationToken, Task> sendCorrection)
     {
         _sendLatencyTick = sendLatencyTick ?? throw new ArgumentNullException(nameof(sendLatencyTick));
         _sendLatencyReport = sendLatencyReport ?? throw new ArgumentNullException(nameof(sendLatencyReport));
+        _sendCorrection = sendCorrection ?? throw new ArgumentNullException(nameof(sendCorrection));
+    }
+
+    internal void QueuePositionCorrection(WorldCorrectionReply correction)
+    {
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
+        if (_corrections.Count == MaximumQueuedCorrections)
+        {
+            throw new WorldCorrectionQueueFullException();
+        }
+
+        _corrections.Enqueue(correction);
     }
 
     internal void Pump(WorldHeartbeat heartbeat, uint now)
@@ -35,10 +53,21 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
             return;
         }
 
-        WorldHeartbeatSend send = heartbeat.Tick(now);
-        if (send != WorldHeartbeatSend.None)
+        if (_checkHeartbeatBeforeNextCorrection || _corrections.Count == 0)
         {
-            _pending = SendAsync(send, heartbeat.LocalAddress, heartbeat.Latency, now, _stopping.Token);
+            _checkHeartbeatBeforeNextCorrection = false;
+            WorldHeartbeatSend send = heartbeat.Tick(now);
+            if (send != WorldHeartbeatSend.None)
+            {
+                _pending = SendAsync(send, heartbeat.LocalAddress, heartbeat.Latency, now, _stopping.Token);
+                return;
+            }
+        }
+
+        if (_corrections.TryDequeue(out WorldCorrectionReply correction))
+        {
+            _checkHeartbeatBeforeNextCorrection = true;
+            _pending = _sendCorrection(correction, now, _stopping.Token);
         }
     }
 
@@ -48,6 +77,7 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
     {
         Task? pending = _pending;
         _pending = null;
+        _corrections.Clear();
         await ClientShutdown.CancelAndDrainAsync(_stopping, async () =>
         {
             if (pending is not null)
@@ -65,5 +95,14 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
         {
             await _sendLatencyReport(localAddress, latency, now, cancellationToken).ConfigureAwait(false);
         }
+    }
+}
+
+internal readonly record struct WorldCorrectionReply(ushort X, ushort Y, byte DirectionIndex);
+
+internal sealed class WorldCorrectionQueueFullException : IOException
+{
+    internal WorldCorrectionQueueFullException() : base("World correction reply queue exceeded its bounded capacity.")
+    {
     }
 }
