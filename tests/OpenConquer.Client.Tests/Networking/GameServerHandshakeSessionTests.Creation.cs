@@ -85,7 +85,7 @@ public sealed partial class GameServerHandshakeSessionTests
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await using GameServerHandshakeSession game = await OpenCreationAsync(account, token);
-        game.SetMissionCatalog([600, 601]);
+        game.SetMissionCatalog(new[] { 600, 601 });
 
         await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
         Assert.Equal(GameCharacterCreationKind.Created,
