@@ -9,6 +9,9 @@ its change, and later notes build on earlier ones. Notes that name server types,
 For the current state of the client, see the [README](../../README.md) and the
 [architecture overview](../architecture/architecture.md).
 
+The [wire-contract ownership decision](wire-contract-ownership.md) covers cross-repository
+protocol changes and their independent acceptance gates.
+
 | Note | Topic |
 | --- | --- |
 | [AUTH-001A](AUTH-001A-account-wire-codecs.md) | AccountServer wire codecs |
