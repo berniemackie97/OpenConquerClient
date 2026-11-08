@@ -22,7 +22,7 @@ toward the live-capture acceptance requirement.
 The supplied `20_notes` snapshot contains
 `Network/evidence/typed-world-dispatch-2026-11-06/wire-layout-golden.json`.
 It explicitly marks its 10010, 1016 and 10017 sentinel frames as
-static-derived, with `nativeRuntimeObserved: false`. The additional
+static-derived, explicitly recording that no running-client observation occurred. The additional
 packet-dispatch, off-map and credential evidence examined here does not
 establish a complete corpus of runtime packet captures. No case in this
 initial inventory is claimed as a qualifying live capture.
