@@ -2,12 +2,7 @@
 
 ## Evidence and scope
 
-Type-1 placement at `Conquer.exe:0x63F58E` leads to the `.scene` reader `0x63F24D`. Anchor addition uses `0x63F4D3` and footprint cell attachment uses `0x6355C3`. The draw at `0x64450F` uses map color and clamps zero interval. See `20_notes/Game_Map/world_render_contract_5517.md` §4. The managed reader and validation are distinct from footprint simulation.
-
-A map's type-1 scenery placements each reference a `.scene` file. The file lists terrain objects: animated
-sprites with a footprint of map cells. This change parses those files, resolves each object's animation section,
-and validates a map's terrain scenes from the content tool. It does not draw them, attach their footprints to the
-cell grid, or order them for drawing.
+Scene placement, anchors, footprint-cell attachment, ANI lookup, tint and interval handling are documented in `20_notes/Game_Map/world_render_contract_5517.md` (terrain scenery). The application reader and validation do not establish footprint simulation.
 
 ## `.scene` format
 

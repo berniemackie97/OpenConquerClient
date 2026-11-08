@@ -2,12 +2,7 @@
 
 ## Evidence and scope
 
-The shared puzzle draw at `Conquer.exe:0x63A04B` uses the fixed 800×600 tile range. The positioned child at `0x64B848` centers and delegates to it. The component insertion at `0x61DF93` and authored parallax values establish layer order and placement. See `20_notes/Rendering/05_dmap_positioned_overlay_system.md`. The separate draw lists below describe the historical slice; current residency and timing are in [WORLD-014](WORLD-014-world-scene-activation.md).
-
-The first map-puzzle drawing path uses the loaded `GameMapContent` and
-`GameMapPuzzleResources` as its only scene inputs. It produces separate
-ground and positioned-puzzle draw lists so the owning world scene can insert
-scenery, actors, and animated overlays at their encoded component slots.
+Puzzle drawing, positioned-child placement and component insertion order are documented in `20_notes/Rendering/05_dmap_positioned_overlay_system.md`. The draw lists below describe the earlier slice; current residency and timing are documented in [WORLD-014](WORLD-014-world-scene-activation.md).
 
 ## Drawing contract
 
