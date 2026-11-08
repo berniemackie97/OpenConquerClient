@@ -17,7 +17,18 @@ STARTUP-001L adds a serializer for that plaintext envelope and nothing more. The
 | `164` | 96 | Zero bytes filling the rest of the 128-byte credential field |
 | `260` | 16 | Caller-supplied protocol server name bytes, zero padded |
 
-`StandardAccountRequest1060.Write` requires a destination of exactly 276 bytes, a nonempty account of at most 128 bytes, a nonempty protocol name of at most 16 bytes and an encrypted credential block of exactly 32 bytes. The account and protocol name may not contain NUL or ASCII control bytes. Bytes at or above `0x80` are kept as they are, so that a later ANSI encoding policy for 5517 names can use them. The serializer takes bytes rather than Unicode strings because the 5517 field lengths are byte lengths. It never applies UTF-8 or CP936 encoding implicitly, and it never truncates or replaces characters. An account of 128 bytes or a protocol name of 16 bytes fills its field with no NUL terminator, which matches the documented fixed-width copy in the 5517 client.
+The retail creator checks for a non-null server-name pointer and rejects `strlen > 16`
+(`Conquer.exe:0x749222..0x749233`). Its `strncpy` at `0x749266..0x749271` writes 16 bytes
+at offset 260. A short name is NUL-padded and a 16-byte name has no NUL within the field.
+The creator checks length and does not impose a character alphabet.
+
+`StandardAccountRequest1060.Write` requires a 276-byte destination, a nonempty account of
+at most 128 bytes and a 32-byte encrypted credential block. OpenConquer uses the existing
+AccountServer realm policy of 1–15 ASCII characters from `[A-Za-z0-9_()-]`. The writer and
+signed catalog share that validation. The 16-byte field includes at least one NUL for every
+managed realm name. Account bytes still reject NUL and ASCII controls and preserve high
+ANSI bytes. The writer preserves case and never truncates, transcodes or substitutes
+name bytes.
 
 If validation fails, the destination is left untouched. Once validation passes, the inputs are copied to fixed-size stack buffers before the destination is cleared, so the output is the same even when an input overlaps the destination. The temporary 32-byte copy of the ciphertext is zeroed before the method returns. On the normal path, serialization makes no managed allocations, does no network I/O and has no other side effects. The finished frame belongs to the caller and contains sensitive binary data. **Whatever code later sends the frame must erase it once it is no longer needed.**
 

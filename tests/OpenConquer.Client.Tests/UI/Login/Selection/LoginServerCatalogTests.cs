@@ -49,9 +49,9 @@ public sealed class LoginServerCatalogTests
 
     [Theory]
     [InlineData("A")]
-    [InlineData("ABCDEFGHIJKLMNO")]
+    [InlineData("Az09_()-BcDeFgH")]
     [InlineData("Fire(World)-01")]
-    public void Server_AcceptsExactNativeRealmIdentities(string name)
+    public void Server_AcceptsExactOpenConquerRealmIdentities(string name)
     {
         Assert.Equal(name, new LoginServer("realm", "Display", name).ProtocolServerName);
     }

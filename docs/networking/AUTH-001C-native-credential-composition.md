@@ -106,9 +106,14 @@ OEM account setup, mobile and bound-account variants, and any new login UI visua
 
 ## Realm protocol name
 
-The signed catalog consumer and the publishing tool both enforce the AccountServer
-rule for `ProtocolServerName`: 1 to 15 ASCII characters from `[A-Za-z0-9_()-]`. The
-packet 1060 field is 16 bytes and padded with NUL. Protocol names are never
-truncated, normalized or substituted. Display labels may use Unicode and are kept
-separate from the protocol name. Regression tests cover acceptance by the publisher,
-rejection in the signed catalog, and names of the maximum length.
+The managed 1060 writer, signed catalog reader and publishing tool enforce the
+OpenConquer AccountServer rule for `ProtocolServerName`. It is 1 to 15 ASCII
+characters from `[A-Za-z0-9_()-]`. Protocol names keep their case and are never
+truncated, normalized or substituted. Display labels may use Unicode and are
+separate from the protocol identity.
+
+The native writer accepts 16 bytes and copies a fixed 16-byte field
+(`Conquer.exe:0x74922F..0x749233`, `0x749266..0x749271`). It writes no NUL for a
+full-width string and imposes no alphabet check at this boundary. The managed
+policy always leaves a NUL in the field. Tests cover the maximum managed name,
+exact padding, and rejection of full-width or prohibited input before mutation.

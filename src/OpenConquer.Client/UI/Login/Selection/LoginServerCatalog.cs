@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
 using OpenConquer.Content.Login;
+using OpenConquer.Networking.Authentication;
 
 namespace OpenConquer.Client.UI.Login.Selection;
 
@@ -30,7 +31,8 @@ internal sealed class LoginServer
     {
         Id = LoginCatalogText.ValidateId(id, nameof(id));
         DisplayName = LoginCatalogText.ValidateDisplayName(displayName, nameof(displayName));
-        ProtocolServerName = LoginCatalogText.ValidateProtocolServerName(protocolServerName, nameof(protocolServerName));
+        RealmProtocolName.Validate(protocolServerName, nameof(protocolServerName));
+        ProtocolServerName = protocolServerName;
         IconId = iconId is null or "none" ? null : LoginServerIconArtwork.ValidateId(iconId);
     }
 }
@@ -133,9 +135,6 @@ internal sealed class LoginServerCatalog
 
 internal static class LoginCatalogText
 {
-    // Matches the AccountServer's ProtocolServerName and the NUL-terminated 1060 field.
-    internal const int MaximumProtocolServerNameLength = 15;
-
     public static string ValidateId(string value, string parameterName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value, parameterName);
@@ -160,28 +159,6 @@ internal static class LoginCatalogText
     }
 
     public static string ValidateDisplayName(string value, string parameterName) => ValidateName(value, parameterName, maxLength: 48);
-
-    public static string ValidateProtocolServerName(string value, string parameterName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value, parameterName);
-
-        if (value.Length > MaximumProtocolServerNameLength)
-        {
-            throw new ArgumentException("Native protocol server names must contain 1 to 15 ASCII bytes.", parameterName);
-        }
-
-        foreach (char character in value)
-        {
-            if (character is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_' or '(' or ')' or '-')
-            {
-                continue;
-            }
-
-            throw new ArgumentException("Native protocol server names allow only ASCII letters, digits, underscore, parentheses and hyphen.", parameterName);
-        }
-
-        return value;
-    }
 
     public static string ValidateName(string value, string parameterName, int maxLength)
     {
