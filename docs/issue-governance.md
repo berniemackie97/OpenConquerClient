@@ -36,6 +36,68 @@ known release gate. Forms do not set custom Projects fields automatically
 and no default priority is inferred from the issue class. Parent/child issue
 relationships and cross-repository blockers must remain visible in GitHub.
 
+## Project #4 execution model
+
+The [Client Project #4](https://github.com/users/berniemackie97/projects/4) is one
+portfolio, not a separate backlog for every view. Issues own requirements and
+acceptance; Projects fields describe scheduling and execution. A release label
+helps repository searches, while the project Stage and repository milestone
+must be reconciled whenever the release target changes.
+
+- **Stage (R1–R5):** the release horizon, independent of daily progress.
+- **Status:** the current workflow state, independent of release or priority.
+- **Priority (P0–P3):** scheduling urgency based on impact, prerequisites and
+  risk, not an automatic rank assigned to all future features.
+- **Workstream:** the component or delivery area accountable for the outcome.
+- **Milestone:** the repository release gate. A parent epic cannot be completed
+  in an earlier release than a required child without explicitly reducing the
+  parent's accepted scope.
+
+Use the existing **Delivery Board** as the execution Kanban. Maintain the
+smallest meaningful status vocabulary available in the project:
+
+| Status | Entry and exit rule |
+| --- | --- |
+| Backlog | Known work, not selected for execution; includes intentionally deferred items. |
+| Ready | Evidence, dependencies, ownership and acceptance are sufficient to start. |
+| In Progress | Implementation or bounded investigation is actively underway. |
+| Blocked | A named prerequisite prevents progress; link the blocker and required next action. |
+| In Review | The change is available for review; identify the active PR. |
+| Verification | Code may be merged, but required independent, device, content or integration acceptance remains. |
+| Done | The work item's own exit criteria are met and evidence is linked. |
+
+If existing Status options differ, reconcile them by meaning before changing
+field choices. Do not silently rename populated statuses or copy open issues
+into Done to tidy the board. A `workflow:parked` label means intentionally
+deferred, not an actively blocked task; it belongs outside the Ready and
+In Progress queues.
+
+Reuse existing saved views for distinct decisions: a compact ready/refinement
+table, the current delivery Kanban, a blocked-work view, defect/verification
+triage, and an epic/release portfolio. Do not create another backlog when a
+filtered view of the same items suffices.
+
+### Delivery maintenance
+
+At the start of each slice, confirm current issue and PR state, prerequisite
+readiness and the acceptance gate. During execution, link the branch or PR and
+move Status through review and verification as appropriate. After merge,
+reconcile the issue, parent progress, milestone and project fields against
+actual evidence. Partial PRs must not close an epic or feature whose acceptance
+remains open.
+
+Keep WIP bounded by available engineering capacity. Plan iterations only
+when there is a real cadence and enough observed throughput to support an
+honest commitment; otherwise use continuous-flow Kanban. Use point estimates
+only after calibrating against completed work. Do not invent dates, capacity
+or percentage-complete figures for distant roadmap stages.
+
+The current owner-level Project #4 view, item and field reconciliation is
+tracked in [#312](https://github.com/berniemackie97/OpenConquerClient/issues/312).
+Repository-level issue edits do not verify user-owned Projects field values.
+Read back project configuration and representative cards before claiming
+board synchronization.
+
 ## Engineering transition
 
 Before implementation, audit current code and source evidence. Record what was
