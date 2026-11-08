@@ -302,7 +302,10 @@ public sealed class ClientWorldTests
         WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 61, 101, 100, 1000);
         byte[][] excessCorrections = Enumerable.Range(0, WorldFrameEgress.MaximumQueuedCorrections + 1)
             .Select(_ => Correction(61, 101)).ToArray();
-        GameWorldEntrySnapshot entry = Entry() with { HydrationPackets = excessCorrections };
+        GameWorldEntrySnapshot entry = Entry() with
+        {
+            HydrationPackets = excessCorrections,
+        };
 
         await using ClientWorld world = new(entry, new CatalogContentSource(), new LogicalRenderSize(1024, 768),
             static () => { }, static () => ValueTask.CompletedTask,
