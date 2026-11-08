@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json;
 using OpenConquer.Client.UI.Login.Selection;
+using OpenConquer.Networking.Authentication;
 
 namespace OpenConquer.Client.Startup.Catalog;
 
@@ -122,7 +123,7 @@ internal sealed class SignedLoginCatalog
                     }
                     string serverId = LoginCatalogJson.RequiredString(serverElement, "id", 64);
                     string displayName = LoginCatalogJson.RequiredString(serverElement, "name", 48);
-                    string protocolName = LoginCatalogJson.RequiredString(serverElement, "protocolServerName", LoginCatalogText.MaximumProtocolServerNameLength);
+                    string protocolName = LoginCatalogJson.RequiredString(serverElement, "protocolServerName", RealmProtocolName.MaximumLength);
                     string accountHost = LoginCatalogJson.RequiredString(serverElement, "accountHost", 253);
                     int accountPort = LoginCatalogJson.RequiredInteger(serverElement, "accountPort");
                     string? iconId = schemaVersion == 2 ? LoginCatalogJson.RequiredString(serverElement, "iconId", 8) : null;

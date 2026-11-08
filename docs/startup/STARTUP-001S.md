@@ -31,7 +31,10 @@ Keep the editable definition outside the publication directory, for example as `
 
 `login.example.org` is a placeholder. Replace it with an account-server host that you control. Do not copy the host from an archived `Server.dat` row. `iconId` is either `none` or one of the packaged IDs from `g01s01` to `g09s05` listed in STARTUP-001R (group 2 has 13 entries, group 9 has 5). Region and server IDs use ASCII `[A-Za-z0-9_.-]` and are case-sensitive. Names must be valid Unicode scalar strings. The signature covers all endpoints, protocol names and icon IDs.
 
-For the standard type-1060 framing that the client supports today, the publisher limits `protocolServerName` to 15 ASCII bytes. That leaves room for the C string terminator in the 16-byte field. The schema-2 reader accepts more than this. The publisher's limit can be relaxed once the retail client's encoding of the field is confirmed.
+The publisher, signed reader and managed type-1060 writer enforce the OpenConquer AccountServer
+realm rule of 1–15 ASCII characters from `[A-Za-z0-9_()-]`. The packet field is 16 bytes.
+The managed policy leaves room for a NUL terminator. Retail's writer accepts a full 16-byte
+field without a terminator (`Conquer.exe:0x74922F..0x749233`, `0x749266..0x749271`).
 
 Every object field is required, and duplicate or unknown fields are rejected. Input and output are each limited to 128 KiB. A directory can hold at most 64 regions, 128 servers per region and 1024 servers in total. Duplicate region IDs, duplicate server IDs within a region and repeated protocol server names are rejected. Timestamps must be UTC with whole seconds. The tool requires `expires > now` and `issued <= now + 5 minutes`, and a directory is valid for at most 24 hours.
 

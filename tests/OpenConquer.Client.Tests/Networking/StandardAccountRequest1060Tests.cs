@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Text;
 using OpenConquer.Networking.Authentication;
 
 namespace OpenConquer.Client.Tests.Networking;
@@ -24,18 +25,39 @@ public sealed class StandardAccountRequest1060Tests
     }
 
     [Fact]
-    public void Write_PreservesFullWidthWireFieldsAndHighAnsiBytes()
+    public void Write_PreservesFullWidthAccountAndTerminatesMaximumRealmName()
     {
-        byte[] account = Enumerable.Repeat((byte)'A', 128).ToArray();
-        byte[] server = Enumerable.Repeat((byte)0x81, 16).ToArray();
+        byte[] account = Enumerable.Repeat((byte)0x81, 128).ToArray();
         byte[] encrypted = Enumerable.Repeat((byte)0xE5, 32).ToArray();
-        byte[] output = new byte[276];
+        byte[] output = Enumerable.Repeat((byte)0xA5, 276).ToArray();
 
-        StandardAccountRequest1060.Write(output, account, encrypted, server);
+        StandardAccountRequest1060.Write(output, account, encrypted, "Az09_()-BcDeFgH"u8);
 
         Assert.Equal(account, output.AsSpan(4, 128).ToArray());
         Assert.Equal(encrypted, output.AsSpan(132, 32).ToArray());
-        Assert.Equal(server, output.AsSpan(260, 16).ToArray());
+        Assert.Equal("Az09_()-BcDeFgH\0"u8.ToArray(), output[260..276]);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Az09_()-BcDeFgHI")]
+    [InlineData("A B")]
+    [InlineData("A.B")]
+    [InlineData("A/B")]
+    [InlineData("A\0B")]
+    [InlineData("A\tB")]
+    [InlineData("A\u007FB")]
+    [InlineData("A\u0081B")]
+    public void Write_RejectsNamesOutsideTheOpenConquerRealmContract(string name)
+    {
+        byte[] output = Enumerable.Repeat((byte)0xA5, 276).ToArray();
+        byte[] server = Encoding.Latin1.GetBytes(name);
+
+        ArgumentException error = Assert.Throws<ArgumentException>(() =>
+            StandardAccountRequest1060.Write(output, "Alice"u8, new byte[32], server));
+
+        Assert.Equal("protocolServerName", error.ParamName);
+        Assert.All(output, value => Assert.Equal((byte)0xA5, value));
     }
 
     [Fact]

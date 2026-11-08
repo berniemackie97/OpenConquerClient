@@ -17,6 +17,7 @@ internal static class StandardAccountRequest1060
     internal const int CredentialFieldLength = 128;
     internal const int StandardEncryptedCredentialLength = 32;
     internal const int ServerOffset = 260;
+    // Conquer.exe:0x749266..0x749271 copies 16 bytes. OpenConquer realm names leave the last byte as NUL.
     internal const int ServerFieldLength = 16;
 
     /// <summary>
@@ -30,8 +31,8 @@ internal static class StandardAccountRequest1060
             throw new ArgumentException($"A type-1060 packet requires exactly {PacketLength} destination bytes.", nameof(destination));
         }
 
-        ValidateName(accountName, AccountFieldLength, nameof(accountName));
-        ValidateName(protocolServerName, ServerFieldLength, nameof(protocolServerName));
+        ValidateAccountName(accountName);
+        RealmProtocolName.Validate(protocolServerName, nameof(protocolServerName));
 
         if (encryptedCredentialBlock.Length != StandardEncryptedCredentialLength)
         {
@@ -63,18 +64,18 @@ internal static class StandardAccountRequest1060
         }
     }
 
-    private static void ValidateName(ReadOnlySpan<byte> value, int maximumLength, string parameterName)
+    private static void ValidateAccountName(ReadOnlySpan<byte> accountName)
     {
-        if (value.IsEmpty || value.Length > maximumLength)
+        if (accountName.IsEmpty || accountName.Length > AccountFieldLength)
         {
-            throw new ArgumentException($"Name must contain between 1 and {maximumLength} bytes.", parameterName);
+            throw new ArgumentException($"Name must contain between 1 and {AccountFieldLength} bytes.", nameof(accountName));
         }
 
-        foreach (byte character in value)
+        foreach (byte character in accountName)
         {
             if (character is < 0x20 or 0x7F)
             {
-                throw new ArgumentException("A wire name cannot contain NUL or ASCII control bytes.", parameterName);
+                throw new ArgumentException("A wire name cannot contain NUL or ASCII control bytes.", nameof(accountName));
             }
         }
     }

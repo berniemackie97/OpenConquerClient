@@ -87,7 +87,7 @@ internal static class RealmCatalogDefinition
                         }
                         if (protocol.Any(static c => c is not (>= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_' or '(' or ')' or '-')))
                         {
-                            throw new InvalidDataException("Native protocol server names allow only ASCII letters, digits, underscore, parentheses and hyphen.");
+                            throw new InvalidDataException("A realm protocol name may contain only ASCII letters, digits, underscore, parentheses and hyphen.");
                         }
                         if (host != host.Trim() || host.Any(static c => c > 127 || char.IsWhiteSpace(c)) ||
                             Uri.CheckHostName(host) is not (UriHostNameType.Dns or UriHostNameType.IPv4) || port is < 1 or > 65535 || !KnownIcon(icon))
