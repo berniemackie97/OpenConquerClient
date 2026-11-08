@@ -4,6 +4,11 @@
 
 Scene placement, anchors, footprint-cell attachment, ANI lookup, tint and interval handling are documented in `20_notes/Game_Map/world_render_contract_5517.md` (terrain scenery). The application reader and validation do not establish footprint simulation.
 
+A map's type-1 scenery placements each reference a `.scene` file. The file lists terrain objects: animated
+sprites with a footprint of map cells. This change parses those files, resolves each object's animation section,
+and validates a map's terrain scenes from the content tool. It does not draw them, attach their footprints to the
+cell grid, or order them for drawing.
+
 ## `.scene` format
 
 All integers are little-endian 32-bit. Strings are fixed-length, NUL-terminated Latin-1 fields.

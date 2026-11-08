@@ -4,6 +4,36 @@
 
 World-entry gating and component tick/draw dispatch are recorded in `20_notes/Architecture/09_frame_loop_architecture.md` and `Game_Map/world_render_contract_5517.md`. Bootstrap tolerance is separately documented in `Network/bootstrap-tolerance-cp24d.md`. Admission, background loading and GPU teardown use application-owned lifetimes.
 
+The world-entry snapshot supplies the map-data ID and the hero's initial tile position.
+After admission, the client loads the matching map, its puzzle resources, and its terrain
+scene resources from the configured content root. The role-creation screen transfers its
+connection to the application and closes without disposing the transferred game session.
+
+The world scene projects the hero tile through the existing camera and draws positioned
+puzzle records, the ground puzzle, and active scenery in component order. Terrain objects
+and map-scene animated sprites share the depth-insertion pass.
+Each puzzle bitmap advances its own frame clock using
+`ini/info.ini` `[PuzzleBmp] FrameIntervalMilliSec`, defaulting to 1000 milliseconds.
+Terrain objects use their authored frame intervals.
+
+The login and character-creation stages retain their fixed 4:3 presentation. The
+world follows the host aspect ratio until its authored ground and background
+puzzles or the current OpenGL device limit further expansion. For exceptionally
+wide windows, the logical height contracts with the width so scene geometry keeps
+its proportions and available puzzle tiles cover the frame. Camera projection,
+puzzle visibility and terrain coordinates use the same resulting viewport.
+
+Framebuffers resize the existing presentation immediately. Only a change to
+logical world dimensions recreates its render target; the graphics-context-owned
+texture cache remains alive. The depth attachment still requires 16-bit precision.
+The render target is constrained by the device's reported renderbuffer and texture
+size limits before resource allocation.
+
+CPU map and scene content loads on a cancellable worker. The admitted world
+also owns image preparation and the context's texture cache, described below.
+Decoded map and scene state survive context recreation. After admission, login
+and role input are no longer dispatched to their inactive screens.
+
 ## Remaining work
 
 The default distributed content set is limited to startup and UI requirements. The
