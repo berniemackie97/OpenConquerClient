@@ -87,12 +87,11 @@ When consulting older notes, use the narrower claims below.
 
 | Source note | Earlier statement | Current interpretation | Status |
 | --- | --- | --- | --- |
-| `Network/00_protocol_overview.md`, dispatch table and CP0.1 class-proof section | Packet 1009 appears as `CMsgItem ✓TU`, but the associated assert-path row names `Msg1008`. The rename history uses `CMsgItem` for 1009. | The Process routine is associated with packet **1009**, while its assert file is **`Msg1008.cpp`**. A file-path match establishes the source file, not an independently verified C++ class declaration. `CMsgItem` remains the applied analysis label; do not promote it to a separately proven class name or confuse it with packet 1008. | Packet/Process association and TU path verified in the research registry; class declaration unverified |
+| `Network/00_protocol_overview.md`, dispatch table and CP0.1 class-proof section | An earlier transcription assigned `Msg1008` to the packet 1009 assertion path; the rename list used `CMsgItem` for packet 1009. | The executable's packet **1009** Process path references **`MsgItem.cpp`**. The old `Msg1008` path was a transcription error, not evidence of the packet 1009 class. Packet 1008 has a separate handler. `CMsgItem` remains the applied analysis label, not an independently verified C++ class declaration. | Packet/Process association and source-file string rechecked against executable and dispatch registry; class declaration unverified |
 | `Server/tq-server-binaries-2008.md`, opening summary versus CP0.2 era section | The opening calls the 15.10 binary set a `≤5095`-era source. | The inspected build has an October 21, 2008 compiler date and a `CQServer-15.10-1021` source-root marker. The exact game-build era is **unknown**; neither `≤5095` nor `~518x` is established. This server set cannot override observations of the target client. | Calendar/build metadata verified; game-build-era classification unresolved |
 | `Rendering/hero-model-cp22.md`, earlier CP2.2 residual against later CP2.3b resolution | Historical text describes deferred snapshot clamps and a postponed slot-order audit even after the note marks CP2.3b resolved. | The signed life clamp now occurs synchronously in subtype-46 handling, as accepted in [CP2.3 #239](https://github.com/berniemackie97/OpenConquerClient/issues/239) and merged [PR #260](https://github.com/berniemackie97/OpenConquerClient/pull/260). Packet field layout, equipment-slot mapping and handler operation order are different claims; a verified slot map does not establish displaced-item ownership. | Clamp and mapping slices accepted; [two-handed displacement #262](https://github.com/berniemackie97/OpenConquerClient/issues/262) and [tracked-item ownership #264](https://github.com/berniemackie97/OpenConquerClient/issues/264) remain open |
 
-This record does **not** amend the external archive or its analysis database.
-The original note text should be corrected in that workspace at its next
-controlled revision. Until then, use this record when a stale heading,
-class label or implementation-era statement conflicts with a later verified
-section. See [tracking task #257](https://github.com/berniemackie97/OpenConquerClient/issues/257).
+The separate research notes and analysis annotations have been corrected
+in their controlled workspace, as recorded in [task #257](https://github.com/berniemackie97/OpenConquerClient/issues/257).
+This versioned index records the same distinctions without changing those
+external files or claiming an independently verified C++ class declaration.

@@ -68,8 +68,11 @@ frame behavior. Content loading and draw timing are unchanged by this extraction
 Native 1009 subtype 46 compares current life and effective maximum as signed
 int32, without a nonnegative-maximum guard (`0x6EC49A/0x6EC49C`). An actual clamp
 sets both current life and the HP follower to maximum (`0x6EC4B8/0x6EC4C7`);
-equal/below cases do not reset the follower, and mana is unaffected. The model now
-matches these rules at its existing deferred consumption boundary.
+equal/below cases do not reset the follower, and mana is unaffected.
+
+At CP2.2, the model matched these rules at a deferred consumption boundary.
+That timing is historical; CP2.3 moved the clamp into synchronous subtype-46
+handling, as described below.
 
 ## Snapshot clamp order — CP2.3
 
