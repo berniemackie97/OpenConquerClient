@@ -181,6 +181,7 @@ tools/
 | Area | Document |
 | --- | --- |
 | Development | [`docs/development.md`](docs/development.md) |
+| Issue delivery | [`docs/issue-governance.md`](docs/issue-governance.md) |
 | Architecture | [`docs/architecture/architecture.md`](docs/architecture/architecture.md) |
 | Managed installation | [`docs/architecture/launcher-managed-installation.md`](docs/architecture/launcher-managed-installation.md) |
 | Graphics compatibility | [`docs/compatibility/native-graphics.md`](docs/compatibility/native-graphics.md) |
