@@ -1,5 +1,9 @@
 # Retail 5517 Graphics Compatibility
 
+## Evidence and scope
+
+Logical display modes and device setup are documented in `20_notes/Rendering/graphic_dll/08_screen_dimensions_and_internal_resolution.md`. Image decoding is recorded in `Rendering/c3_core_dll/06_image_decoders.md`; HUD drawing and control state in `20_notes/Rendering/17_main_hud_action_strip_native_contract.md` through `21_main_hud_magic_status_hint_native_contract.md`. These support presentation and input, not unimplemented control effects. OpenGL resource ownership and desktop scaling are application decisions.
+
 This document describes the Conquer Online 5517 graphics behavior that OpenConquer Client
 reproduces. Reverse-engineering addresses, replays of the original client code, and decompilation
 notes are kept elsewhere.

@@ -1,5 +1,9 @@
 # STARTUP-001M: Region and server page buttons
 
+## Evidence and scope
+
+Region and server interaction handlers are recorded in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. They do not prove the arrow geometry or pointer-capture policy in this slice. See [STARTUP-001Z](STARTUP-001Z.md).
+
 ## Scope
 
 Builds on the STARTUP-001K credential entry and adds mouse paging to the login screen. The STARTUP-001L packet serializer stays unused. Nothing here touches cryptography, account networking, registration, world transition or login submission.

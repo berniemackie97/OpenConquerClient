@@ -1,5 +1,9 @@
 # WORLD-010: Scenery ANI resource binding
 
+## Evidence and scope
+
+Scenery loading and ANI selection are documented in `20_notes/Game_Map/world_render_contract_5517.md` and `Rendering/07_ani_frame_animation_runtime.md`. ANI path/section lookup is separate from tile depth. Empty fixtures and dependency bounds are application validation rules.
+
 The scenery binder resolves type-4 DMap records to animation index sections and
 validates referenced frames. This stage does not determine visual positions,
 animation clocks, draw order, visibility, or live scene activation.

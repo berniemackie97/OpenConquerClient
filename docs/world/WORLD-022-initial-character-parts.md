@@ -1,5 +1,15 @@
 # WORLD-022: Initial local-character part assembly
 
+## Evidence and scope
+
+Character information supplies appearance and hair fields. Part decomposition
+and ordering are documented in `20_notes/Entity_System/role_visual_construction.md`
+and `Rendering/11_3d_role_part_loaders.md`. The worker/finalization claim in
+the later section still requires a retained, independently inspectable trace;
+the supplied research archive does not contain the previously cited worker
+note. Application preparation preserves presentation until the chosen assets
+are installed.
+
 The authenticated character-info snapshot supplies the body appearance source
 and hair composite. At first world entry, the renderer resolves the base body
 and, when the linked hair selector is active, the corresponding `armet` part.

@@ -1,5 +1,9 @@
 # Retail 5517 Content Inventory
 
+## Evidence and scope
+
+Counts and hashes refer to the inspected corpus. Startup consumers are documented in `20_notes/Architecture/05_startup_data_files_and_native_replacement.md`, display modes in `Rendering/graphic_dll/08_screen_dimensions_and_internal_resolution.md`. Inventory grouping does not establish runtime consumers or loose-file/package precedence. The importer and manifest define the runtime closure.
+
 This document records the first survey of the content shipped with the retail Windows client that
 OpenConquer Client is reconstructed from. It lists what the retail client contains. Being listed
 here does not mean a file belongs in the OpenConquer runtime.

@@ -47,7 +47,8 @@ git diff --check
 ```
 
 A pull request can be merged only after it passes the repository's required CI, cross-platform
-build, and dependency-review checks.
+build, and dependency-review checks. Record private-asset and interactive checks as executed,
+skipped or unverified; passing hosted CI does not establish those separate acceptance gates.
 
 ## Code
 
@@ -73,7 +74,6 @@ The current production projects are:
 ```text
 OpenConquer.Client
 OpenConquer.Content
-OpenConquer.Gameplay
 OpenConquer.Launcher
 OpenConquer.Networking
 OpenConquer.Platform

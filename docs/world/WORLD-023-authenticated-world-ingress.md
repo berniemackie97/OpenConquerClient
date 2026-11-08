@@ -1,5 +1,9 @@
 # WORLD-023: Authenticated world ingress
 
+## Evidence and scope
+
+Packet identities and dispatch are documented in `20_notes/Network/00_protocol_overview.md`, `typed-world-dispatch-cp23.md` and the CP2.4 ingress notes. Bootstrap, tolerance and off-map behavior have separate traces. Queue bounds, cancellation and diagnostics are application decisions; unsupported handlers remain out of scope.
+
 World entry completes its ordered request/acknowledgement exchange before
 the client switches the secured connection into world-receive mode. The
 authenticated socket and cipher remain owned by the existing session; no

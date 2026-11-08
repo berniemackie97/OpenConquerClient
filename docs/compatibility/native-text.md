@@ -1,5 +1,9 @@
 # 5517 Text Compatibility
 
+## Evidence and scope
+
+Font creation, code pages, byte-oriented layout, missing glyphs and embedded icons are documented in `20_notes/Rendering/graphic_dll/04_fonts_and_text.md`. That evidence does not establish Unicode shaping or consistent system-font rasterization across desktop hosts. FreeType, font discovery and glyph-atlas ownership are application decisions.
+
 This document describes how OpenConquer reproduces the text handling of the Conquer Online 5517
 client: text configuration files, encoded-text rules, font resolution, glyph rasterization, caching,
 atlas storage, layout, render styles, OpenGL resource ownership and GPU drawing.

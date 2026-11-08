@@ -1,5 +1,9 @@
 # WORLD-014: Authenticated map presentation
 
+## Evidence and scope
+
+World-entry gating and component tick/draw dispatch are recorded in `20_notes/Architecture/09_frame_loop_architecture.md` and `Game_Map/world_render_contract_5517.md`. Bootstrap tolerance is separately documented in `Network/bootstrap-tolerance-cp24d.md`. Admission, background loading and GPU teardown use application-owned lifetimes.
+
 The world-entry snapshot supplies the map-data ID and the hero's initial tile position.
 After admission, the client loads the matching map, its puzzle resources, and its terrain
 scene resources from the configured content root. The role-creation screen transfers its

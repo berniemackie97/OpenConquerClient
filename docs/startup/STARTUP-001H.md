@@ -1,5 +1,9 @@
 # STARTUP-001H: Unicode text layout
 
+## Evidence and scope
+
+Byte-oriented text behavior is documented in `20_notes/Rendering/graphic_dll/04_fonts_and_text.md`. It does not establish Unicode shaping, bidirectional layout or font fallback. The authenticated-directory label layout below is application behavior.
+
 ## Scope
 
 The authenticated realm catalog from STARTUP-001G holds display strings, not CP936 or other retail-encoded byte sequences. Text for the new login interface must not be converted to legacy bytes, because that conversion can make distinct names identical and silently replace characters it cannot represent.

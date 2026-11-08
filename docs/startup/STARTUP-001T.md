@@ -1,5 +1,9 @@
 # STARTUP-001T: Original 5517 selection artwork
 
+## Evidence and scope
+
+The SWF symbols and hashes identify source artwork. The authored server-selection stage is in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. Screenshot measurements and unresolved timing below are historical. The 5631 screenshot is orientation only; see [STARTUP-001Z](STARTUP-001Z.md).
+
 Draws the selected region and server with the original bitmaps from the clean 5517 `data/main/start.dat`, for selections made in the signed realm directory. These replace the gold outlines that the client used to draw in code around selected slots. Keyboard-focus borders stay, as a separate accessibility state. Catalog and endpoint handling, the protocol, the cursor, audio, footer commands and account login are unchanged.
 
 ## Source assets

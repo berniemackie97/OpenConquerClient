@@ -1,5 +1,9 @@
 # WORLD-013: Terrain scene sprite drawing
 
+## Evidence and scope
+
+Terrain ANI selection, elapsed intervals, tint, projection, scale and depth insertion are documented in `20_notes/Game_Map/world_render_contract_5517.md` (terrain drawing). The application clock and clip bounds are scoped choices. Arbitrary scene visibility, child ordering and exact timing remain unverified.
+
 `WorldTerrainSceneDrawList` projects the existing type-1 terrain objects into drawable animated sprites.
 It uses map-tile anchors plus object offsets, the camera's viewport-center zoom, and
 each object's frame interval. Elapsed animation time is relative to scene loading;

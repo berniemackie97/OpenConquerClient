@@ -1,5 +1,9 @@
 # WORLD-015: C3 mesh container
 
+## Evidence and scope
+
+Mesh container creation, PHY count constraints and chunk dispatch are documented in `20_notes/Rendering/graphic_dll/12_meshcreate_and_c3dobjx.md`. Effect-container counts do not expand the role-mesh contract.
+
 Role graphics use C3 containers with a 16-byte header followed by sections. Each section
 has a four-byte identifier, a 32-bit little-endian payload length, and that number of
 payload bytes. PHY identifiers use the byte sequence `PHY` followed by one variant byte:

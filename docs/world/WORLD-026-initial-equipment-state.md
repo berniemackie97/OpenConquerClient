@@ -1,5 +1,9 @@
 # WORLD-026: Initial equipment state
 
+## Evidence and scope
+
+Item identity, packet 1008 and packet 1009 equipment behavior are documented in `20_notes/Network/MsgItem1008-domain-contract-5517.md` and `inbound-tolerance-cp24.md`. The supported identity store does not establish all inventory mutations or two-handed displacement handling.
+
 The authenticated world-entry hydration contains 1008 item rows and 1009
 equipment snapshots. A subtype-1 item row with a tracked placement establishes
 the item identity and mutable durability, addition level and enchantment inputs.

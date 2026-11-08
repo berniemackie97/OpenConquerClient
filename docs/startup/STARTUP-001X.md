@@ -1,5 +1,9 @@
 # STARTUP-001X: Original 5517 cursor and login sounds
 
+## Evidence and scope
+
+The `data/Cursor/Normal.ani` frames and `ini/flashLogin.ini` cues identify source assets. Login commands and audio observations are documented in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. OpenAL and cursor adaptation are application decisions. The disabled Enter behavior below is historical; current login is in [STARTUP-001Z](STARTUP-001Z.md) and [FLOW-001A](../networking/FLOW-001A-live-login-bootstrap.md).
+
 Adds the retail 5517 animated cursor and the login screen's music and sound effects. The selected server and region artwork, the account panel at Y=620, signed realm trust, the policy that keeps 1060 login disabled, the pointer-capture protections and the 1024x768 and 800x600 display mapping are unchanged. No networking is added, and Enter stays disabled.
 
 ## Sources

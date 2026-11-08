@@ -1,5 +1,9 @@
 # WORLD-028: First-world experience band
 
+## Evidence and scope
+
+The `ini/LevExp.dat` level table, seed and level-band lookup are documented in `20_notes/Entity_System/chero_class.md` and `Rendering/13_hud_progress_gauges.md`. Missing or zero ranges are handled by the application HUD. Loading completes before world hydration.
+
 The experience band uses the current character level and experience from the
 authenticated character snapshot and subsequent 10017 attribute updates.
 Its maximum comes from `ini/LevExp.dat`, not from current experience or a

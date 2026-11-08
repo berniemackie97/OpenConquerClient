@@ -1,5 +1,9 @@
 # STARTUP-001F: Region/server selection model and input
 
+## Evidence and scope
+
+Region selection, row calculation and realm identity copying are documented in `20_notes/Network/5517-server-selection-and-realm-handoff.md`. Signed-catalog limits, keyboard handling and invalidated selections are application policies. See [STARTUP-001V](STARTUP-001V.md) for renewal retention and [STARTUP-001Z](STARTUP-001Z.md) for current presentation.
+
 ## Catalog
 
 Production startup does not use retail `Server.dat` or its decoded metadata as the realm catalog. No endpoints, login transport, routing fallbacks, registration packets or made-up production realms are added. Selection uses the existing 2x8 region and 3x4 server chrome and keeps all artwork coordinates, including `AccountPanel.Y = 637`.

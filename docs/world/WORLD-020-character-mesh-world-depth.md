@@ -1,5 +1,9 @@
 # WORLD-020: Character mesh composition and world-depth placement
 
+## Evidence and scope
+
+Character drawing, camera setup and scenery insertion are documented in `20_notes/Rendering/06_hero_render_pipeline.md` and the signed-tile evidence below. Arbitrary mesh offsets, motion arcs and complete scene-depth equivalence remain unverified.
+
 The authenticated character-info snapshot supplies the appearance composite.
 The body source is the appearance composite modulo 1000; its model key is the
 body source multiplied by 1,000,000. The content resolver loads the role-part

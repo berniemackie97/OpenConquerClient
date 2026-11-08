@@ -1,5 +1,9 @@
 # WORLD-001: DMap cell-grid input
 
+## Evidence and scope
+
+Header fields, puzzle path, grid dimensions, cells and row checksums are documented in `20_notes/Game_Map/map1999_icecrypt_archive_native.md`. The archived-map inventory and 4,194,304-cell cap are application validation bounds.
+
 The map-data ID is resolved through `ini/GameMap.dat`. Catalog entries reference
 `.7z` archives; their **decompressed** payload begins with
 two header words, a fixed `0x104`-byte puzzle path, grid dimensions, and

@@ -1,5 +1,9 @@
 # WORLD-016: PHY geometry decoding
 
+## Evidence and scope
+
+PHY parse branches, vertex strides, split layout and post-parse transforms are documented in `20_notes/Rendering/c3_core_dll/05_phy.md`. The SimpleObj test sample is independent of the application reader.
+
 A C3 mesh section contains a length-prefixed part name, section flags, two serialized
 vertex counts, a vertex stream, two triangle counts, 16-bit indices, an opaque byte
 region, bounds, a 4×4 object transform, frame count, three key streams, and

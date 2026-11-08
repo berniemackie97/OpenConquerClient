@@ -1,5 +1,9 @@
 # WORLD-021: Local-role idle playback and world presentation
 
+## Evidence and scope
+
+The authored motion index identifies the initial idle clip. Action interval and transition behavior are documented in `20_notes/Rendering/roleview_dll/07_action_playback_transition_state.md` and `13_role_compute_frame_interval.md`. The initial 66 ms application clock does not establish arbitrary action selection or transition timing.
+
 The default first-world-frame role action is idle (100); alternate idle
 actions remain dependent on the command-state selection. The body source is the
 authenticated appearance composite modulo 1000. The first-world-frame idle

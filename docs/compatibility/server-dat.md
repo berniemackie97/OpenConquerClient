@@ -1,5 +1,9 @@
 # Retail 5517 Server.dat Compatibility Record
 
+## Evidence and scope
+
+Startup decoding, cryptographic material and source hashes are documented in `20_notes/Crypto/02_server_dat_rsa_public_key_5517.md` and `Architecture/05_startup_data_files_and_native_replacement.md`. Account endpoint lookup, realm identity, packet 1060 and game handoff are separately documented in `20_notes/Network/5517-server-selection-and-realm-handoff.md`. The signed directory is the runtime trust authority; this decoder remains offline tooling.
+
 ## Status
 
 Offline tooling only. The OpenConquer client does not use `Server.dat` at runtime.

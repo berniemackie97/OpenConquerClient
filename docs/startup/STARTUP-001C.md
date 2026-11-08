@@ -1,5 +1,9 @@
 # STARTUP-001C: Pre-world login backdrop
 
+## Evidence and scope
+
+The `data/main/start.dat` bitmap symbols and hashes below identify source artwork. The authored display list is documented in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. Composition below is historical; current ownership is in [session ownership](../architecture/client-session-ownership.md) and [STARTUP-001Z](STARTUP-001Z.md).
+
 ## Pre-world state
 
 After the retail startup logo plays once, the client enters a pre-world state. Until the server has authorized a session, the client does not load HUD content, create HUD GPU resources, forward HUD input or allow world entry. No world-entry API, packet or account-creation protocol is guessed at here.

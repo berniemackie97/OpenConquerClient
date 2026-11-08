@@ -1,5 +1,9 @@
 # STARTUP-001P: Retail account panel field alignment
 
+## Evidence and scope
+
+The account-panel artwork, action records and credential input are documented in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. Pixel calibration below applies to the earlier slice; [STARTUP-001Z](STARTUP-001Z.md) describes the current stage.
+
 ## Source and purpose
 
 The clean 5517 `data/main/start.dat` contains a 508x98 account panel image (`DefineBitsJPEG3` symbol 327). The embedded `account-panel.rgba.br` already holds that retail image, including the gold-framed Account and Password captions and the blue and dark input interiors. The earlier reconstruction drew extra captions and rectangular outlines over the bitmap. Its hit rectangles started at `(122,12)` and `(122,44)` relative to the panel, away from the painted fields. Those overlays made the screen look less like the original and put live text outside the input artwork.

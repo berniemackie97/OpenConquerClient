@@ -1,5 +1,9 @@
 # WORLD-011: Camera projection and puzzle frames
 
+## Evidence and scope
+
+Tile projection, ground origin, upper-before-lower clamping and viewport division are documented in `20_notes/Game_Map/world_render_contract_5517.md` (camera and puzzle drawing). This earlier slice does not establish input-driven movement or exact timing across arbitrary maps.
+
 The Newbie Village camera contract operates on interpolated hero world-pixel coordinates. It does not infer
 camera position from the last network tile. `WorldCameraProjection.ProjectTile` converts a tile coordinate
 to world pixels independently. This slice does not activate the world scene.
