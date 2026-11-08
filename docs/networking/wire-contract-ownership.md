@@ -41,8 +41,9 @@ coordinated fixture review on protocol changes.
   establish wire expectations. Neither an implementation nor agreement between the
   two repositories is a substitute for source evidence. Research references belong
   in the evidence ledger; unsafe captured secrets must never enter test fixtures.
-- The client owns serialization, read tolerances, signed realm selection and client
-  socket/session lifecycle in `OpenConquer.Networking`. The server owns its
+- `OpenConquer.Client` owns signed realm selection and game-process coordination.
+  `OpenConquer.Networking` owns wire serialization, read tolerances and account/game
+  connection state. The server owns its
   parsing, authorization, session acceptance and transport boundaries in
   `OpenConquer.Protocol`, `OpenConquer.Transport` and its host projects.
 - CP3.2 will establish a small reviewed corpus under
