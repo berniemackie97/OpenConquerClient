@@ -4,6 +4,16 @@
 
 Indexed mesh submission, vertex layout and draw states are documented in `20_notes/Rendering/c3_core_dll/05_phy.md` (GPU output). OpenGL depth conversion, VAO lifetime and state cleanup are application decisions. The synthetic framebuffer test does not establish appearance equivalence for arbitrary character scenes.
 
+The rendering backend accepts skinned vertex bytes in a single specified 36-byte
+layout: position float3 at byte 0, normal float3 at 12, packed ARGB at 24,
+and UV float2 at 28. Triangle indices remain 16-bit, are validated at mesh
+creation, and are uploaded once. Vertex buffers are allocated once and updated
+through the caller's existing output span as each animation frame is sampled.
+
+The GPU mesh owns its VAO, dynamic vertex buffer and immutable triangle-index
+buffer. The existing OpenGL render target provides a 16-bit depth attachment.
+The renderer uses that target within its normal BeginFrame/EndFrame lifetime.
+
 ## Draw state
 
 - Triangle list and unsigned 16-bit indices

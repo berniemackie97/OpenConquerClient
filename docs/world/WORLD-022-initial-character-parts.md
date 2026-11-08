@@ -10,6 +10,31 @@ the supplied research archive does not contain the previously cited worker
 note. Application preparation preserves presentation until the chosen assets
 are installed.
 
+The authenticated character-info snapshot supplies the body appearance source
+and hair composite. At first world entry, the renderer resolves the base body
+and, when the linked hair selector is active, the corresponding `armet` part.
+The linked source identifier is constructed from the body source, the hair
+composite's low three digits, and the recorded `0x1D0D8` hair family offset.
+The part catalog resolves mesh and texture identifiers to their actual C3
+resources. The `armet` part follows the body's `v_armet` motion attachment,
+with bone zero sampled from the same initial idle frame as the body.
+
+World-entry item snapshots (1008 subtype 1) describe tracked equipment, while
+the active-equipment snapshot (1009 subtype 46) selects the item IDs to apply.
+A tracked item alone does not activate its visual. The initial primary armor
+and headwear sources use the equipped item type's low six digits, normalized
+to tens and combined with the body appearance source. Headwear replaces the
+linked hair source in the primary `armet` slot. Missing active-equipment IDs
+are rejected rather than mapped to unrelated items.
+
+The first world view still does not implement the full role-part system:
+additional body and headwear variant layers, garment overrides, mounts,
+head attachment records, texture/material overrides and action-driven motion
+transitions remain outstanding.
+The runtime continues to require the authorized C3 archive and role-part
+indexes in its content set. Source package declarations can report omitted
+archives even when the selected resource closure is installed.
+
 ## Appearance preparation during world play
 
 The admitted world requests a decoded appearance from a worker. It keeps the
