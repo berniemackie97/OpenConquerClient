@@ -97,7 +97,7 @@ public sealed class WorldFrameEgressTests
             egress.QueuePositionCorrection(new WorldCorrectionReply((ushort)i, 1, 0));
         }
 
-        Assert.Throws<InvalidDataException>(() =>
+        Assert.Throws<WorldCorrectionQueueFullException>(() =>
             egress.QueuePositionCorrection(new WorldCorrectionReply(5000, 1, 0)));
 
         WorldHeartbeat heartbeat = new(0, 0, 0);
