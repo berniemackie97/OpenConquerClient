@@ -1,5 +1,27 @@
 # Retail 5517 Graphics Compatibility
 
+## Evidence and scope
+
+- Logical modes come from `Conquer.exe:0x5D7C51`. Device setup and reset in
+  `graphic.dll:0x100131E0/0x100134A0` provide the render-target reference.
+  The resizable host, presentation scaling and OpenGL resource lifetime are managed design.
+- Image decode entry points are `C3_CORE_DLL.dll:0x1001D362` (TGA) and
+  `0x1001E075` (DDS). Sprite geometry and subrect submission are traced from
+  `graphic.dll:0x10012190`. See `20_notes/Rendering/graphic_dll/` and
+  `Rendering/c3_core_dll/06_image_decoders.md`.
+- The main HUD draw starts at `Conquer.exe:0x4BC1F8`. Its chrome lookup is
+  `0x4BC3C6`, gauge draws are `0x4BC455/0x4BC48F/0x4BC4C2/0x4BC517`,
+  and Progress42 initializes at `0x4BB981`. These anchors cover authored
+  layout and submission. Effective life and mana use the separate
+  [hero-state evidence](../world/WORLD-027-first-world-vitals.md).
+- Control binding and initialization use `0x4BB6B8/0x4BB869`. Check
+  state is stored at `0x58B53D/0x58B543`, quickbar initializes at
+  `0x4BB8A9`, and the selected-image and cooldown paths are
+  `0x5A1F8A/0x4BE7FB`. The per-control traces and original resource
+  provenance are in `20_notes/Rendering/17_main_hud_action_strip_native_contract.md`
+  through `21_main_hud_magic_status_hint_native_contract.md`.
+  Control rendering and input evidence do not establish complete gameplay effects.
+
 This document describes the Conquer Online 5517 graphics behavior that OpenConquer Client
 reproduces. Reverse-engineering addresses, replays of the original client code, and decompilation
 notes are kept elsewhere.

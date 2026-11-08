@@ -1,5 +1,9 @@
 # WORLD-022: Initial local-character part assembly
 
+## Evidence and scope
+
+`Conquer.exe:0x764276` consumes the 1006 appearance and hair fields. See `20_notes/Entity_System/role_visual_construction.md` for decomposition and order. GraphicData worker execution and frame-thread finalization are at `GraphicData.dll:0x10009E40/0x10003A32/0x10003F1C`, recorded in `Rendering/hero-appearance-worker-cp25.md`. Managed replacement preparation preserves the current renderer until the selected assets can be installed.
+
 The authenticated character-info snapshot supplies the body appearance source
 and hair composite. At first world entry, the renderer resolves the base body
 and, when the linked hair selector is active, the corresponding `armet` part.

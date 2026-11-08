@@ -1,5 +1,9 @@
 # WORLD-020: Character mesh composition and world-depth placement
 
+## Evidence and scope
+
+The hero render entry is `Conquer.exe:0x65E472`, role render is `0x64F5F7`, and world camera setup reaches `graphic.dll:0x1000F0C0` via `0x61E73D`. Scenery insertion at `0x635AE6` supplies depth order. See `20_notes/Rendering/06_hero_render_pipeline.md` and the signed-tile evidence below. Arbitrary native offsets, motion arcs and complete depth parity remain open.
+
 The authenticated character-info snapshot supplies the appearance composite.
 The body source is the appearance composite modulo 1000; its model key is the
 body source multiplied by 1,000,000. The content resolver loads the role-part

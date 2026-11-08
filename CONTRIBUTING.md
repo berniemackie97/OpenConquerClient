@@ -73,7 +73,6 @@ The current production projects are:
 ```text
 OpenConquer.Client
 OpenConquer.Content
-OpenConquer.Gameplay
 OpenConquer.Launcher
 OpenConquer.Networking
 OpenConquer.Platform

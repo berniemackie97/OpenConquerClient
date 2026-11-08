@@ -1,5 +1,9 @@
 # WORLD-025: First-world hero attribute state
 
+## Evidence and scope
+
+`Conquer.exe:0x764276` applies the 1006 snapshot, and `0x757374` dispatches 10017 attributes. The count loop anchor is `0x758B92`. See `20_notes/Network/MsgUserInfo1006-semantic-closure-2026-09-17.md`, `11_else_branch_packets.md` and `Rendering/hero-model-cp22.md` for verified writes and unresolved identifiers. The managed hero owns these supported values before HUD projection.
+
 The authenticated character-information message initializes the local hero
 before the map-entry request sequence. Its current life, current mana,
 experience, profession, level, and attributes are direct values, not

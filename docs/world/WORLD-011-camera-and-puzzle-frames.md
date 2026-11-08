@@ -1,5 +1,9 @@
 # WORLD-011: Camera projection and puzzle frames
 
+## Evidence and scope
+
+Tile projection at `Conquer.exe:0x61D850`, ground base at `0x61E375`, and clamp at `0x61E281..0x61E2F8` establish coordinates and upper-before-lower clamping. The viewport divisor is computed at `0x61EDC3`. Puzzle draw at `0x63A04B` supplies the post-draw clock. See `20_notes/Game_Map/world_render_contract_5517.md` §§1, 5. This camera slice predates live map activation and input-driven motion.
+
 The Newbie Village camera contract operates on interpolated hero world-pixel coordinates. It does not infer
 camera position from the last network tile. `WorldCameraProjection.ProjectTile` converts a tile coordinate
 to world pixels independently. This slice does not activate the world scene.

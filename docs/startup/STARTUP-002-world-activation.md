@@ -1,5 +1,9 @@
 # STARTUP-002: World activation and frame presentation
 
+## Evidence and scope
+
+World enable is set by startup command `0x483` at `Conquer.exe:0x5CAA2D` and checked at `0x5DCFBA`. Map tick and draw dispatch are at `0x5DD0CC/0x5DD0D9`. The current bootstrap evidence is `20_notes/Network/bootstrap-tolerance-cp24d.md`; the older orchestration note documents the frame gate. The managed loading-stage gate and resource lifetime do not imply an identical tick scheduler or native bootstrap order check.
+
 The main client frame loop runs at a 25 ms cadence, but its world stages
 remain disabled until the login/role-creation branch has completed. Login
 progress callbacks are visual state, not permission to enter the world.

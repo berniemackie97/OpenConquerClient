@@ -1,5 +1,9 @@
 # WORLD-023: Authenticated world ingress
 
+## Evidence and scope
+
+Native handler identities are established by the dispatch registry and raw captures in `20_notes/Network/00_protocol_overview.md`, `typed-world-dispatch-cp23.md` and the CP2.4 notes. Entry, live packet tolerance and off-map behavior cite separate branches below. Queue limits, cancellation and diagnostics are managed boundaries. Unsupported handlers and product restrictions remain explicit.
+
 World entry completes its ordered request/acknowledgement exchange before
 the client switches the secured connection into world-receive mode. The
 authenticated socket and cipher remain owned by the existing session; no

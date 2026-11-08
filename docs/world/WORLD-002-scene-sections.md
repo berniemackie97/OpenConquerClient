@@ -1,5 +1,9 @@
 # WORLD-002: Decoded DMap scenery and positioned overlays
 
+## Evidence and scope
+
+Native exit, scenery and positioned-record dispatch use `Conquer.exe:0x61DEF4/0x61DF0A/0x61DF48`. The 1999 archive stores an extra DWORD in type 4. Native ignores the header words and misreads those records using its fixed stride. The managed parser preserves the authored layout and rejects unsupported types. See `20_notes/Game_Map/map1999_icecrypt_archive_native.md` and `Rendering/05_dmap_positioned_overlay_system.md`.
+
 The decoded DMap contains four blocks in order: cell grid, exit-marker
 triplets, scenery records, and positioned overlay records. This change reads the **post-grid sections**
 at `GameMapCellGrid.BytesConsumed` without changing the renderer or networking.

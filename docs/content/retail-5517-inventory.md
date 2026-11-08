@@ -1,5 +1,18 @@
 # Retail 5517 Content Inventory
 
+## Evidence and scope
+
+File counts and hashes describe the inspected corpus. Consumers are separate
+evidence. `Conquer.exe:0x5AFAFC` is the retail Server.dat guard, `0x4AFE37`
+reads the account endpoint by role, and `0x5D7C51` applies the logical screen
+mode. The original config and startup path evidence is in
+`20_notes/Architecture/05_startup_data_files_and_native_replacement.md` and
+`Rendering/graphic_dll/08_screen_dimensions_and_internal_resolution.md`.
+Inventory labels such as economy, effects and role definitions group files
+for research. They do not establish a current runtime consumer or precedence
+between loose files and packages. The import decision for each required path
+is recorded in the content plan and manifest.
+
 This document records the first survey of the content shipped with the retail Windows client that
 OpenConquer Client is reconstructed from. It lists what the retail client contains. Being listed
 here does not mean a file belongs in the OpenConquer runtime.

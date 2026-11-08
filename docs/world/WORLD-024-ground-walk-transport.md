@@ -1,5 +1,9 @@
 # WORLD-024: Ground-walk request and acknowledgement transport
 
+## Evidence and scope
+
+Native ordinary direction tables at `Conquer.exe:0x86C608/0x86C628` feed the command path at `0x7350B3/0x736315`. The receive handler is `0x7405E7`; correction 108 reads the tile at `0x6FFCBF..0x6FFCF3`. See `20_notes/Network/15_msgwalk_10005_direction_index_order.md` and `inbound-tolerance-cp24.md`. The local write lane is managed; it does not provide input-driven movement.
+
 The admitted GameServer connection has one secured inbound reader and one
 outbound writer. Both use the same socket and independently negotiated
 directional cipher states. The world-write lane accepts one in-flight write;

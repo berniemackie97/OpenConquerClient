@@ -1,5 +1,9 @@
 # WORLD-026: Initial equipment state
 
+## Evidence and scope
+
+Native 1008 processing is at `Conquer.exe:0x762AC3` (translation-unit name unresolved). 1009 is `CMsgItem__Process` at `0x6EAEB6`, including equip and unequip at `0x6EB31C/0x6EB118`. See `20_notes/Network/MsgItem1008-domain-contract-5517.md` and `inbound-tolerance-cp24.md`. Unimplemented mutations and the parked two-handed displacement stay separate from the supported identity store.
+
 The authenticated world-entry hydration contains 1008 item rows and 1009
 equipment snapshots. A subtype-1 item row with a tracked placement establishes
 the item identity and mutable durability, addition level and enchantment inputs.

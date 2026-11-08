@@ -1,5 +1,9 @@
 # WORLD-016: PHY geometry decoding
 
+## Evidence and scope
+
+`C3_CORE_DLL.dll:0x1000A300` loads the PHY variants and performs post-parse transform and normal preparation. The branch matrix, vertex strides, split layout and normalized fields are in `20_notes/Rendering/c3_core_dll/05_phy.md` §§Verified file parse order, post-parse processing and vertex payload. The SimpleObj fixture is independent of the managed loader.
+
 A C3 mesh section contains a length-prefixed part name, section flags, two serialized
 vertex counts, a vertex stream, two triangle counts, 16-bit indices, an opaque byte
 region, bounds, a 4×4 object transform, frame count, three key streams, and

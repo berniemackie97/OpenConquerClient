@@ -1,5 +1,9 @@
 # WORLD-021: Local-role idle playback and world presentation
 
+## Evidence and scope
+
+The authored motion index anchors the initial body idle clip. The native action interval calculation at `Conquer.exe:0x64DE26..0x64DE82` and RoleView transition evidence in `20_notes/Rendering/roleview_dll/07_action_playback_transition_state.md` and `13_role_compute_frame_interval.md` show a broader action path. The initial 66 ms managed clock does not establish arbitrary action lookup, pacing or transitions.
+
 The default first-world-frame role action is idle (100); alternate idle
 actions remain dependent on the command-state selection. The body source is the
 authenticated appearance composite modulo 1000. The first-world-frame idle

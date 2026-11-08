@@ -1,5 +1,9 @@
 # WORLD-004: Map-data-ID-driven content loading
 
+## Evidence and scope
+
+The 1110 handler at `Conquer.exe:0x732B10` applies world map ID and map-data ID separately, with the latter stored through `0x61F2B6`. The create path looks up the data ID at `0x61DA29`. The companion field's rendering meaning stays unassigned. See `20_notes/Game_Map/cgamemap_class.md`. Live integration follows in [WORLD-014](WORLD-014-world-scene-activation.md).
+
 The server sends distinct world map and map-data identities in packet
 1110. The map-data ID selects the terrain record from `ini/GameMap.dat`; archive
 paths must not be inferred from the world-map ID.

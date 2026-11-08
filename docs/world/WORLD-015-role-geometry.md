@@ -1,5 +1,9 @@
 # WORLD-015: C3 mesh container
 
+## Evidence and scope
+
+`graphic.dll:0x10004960` creates the C3DObjX mesh. Its load loop caps the loaded PHY count at `0x10003907`, dispatches the four variants and skips non-PHY chunks at `0x100039D6`. See `20_notes/Rendering/graphic_dll/12_meshcreate_and_c3dobjx.md`. Effect-container counts do not expand the role mesh contract.
+
 Role graphics use C3 containers with a 16-byte header followed by sections. Each section
 has a four-byte identifier, a 32-bit little-endian payload length, and that number of
 payload bytes. PHY identifiers use the byte sequence `PHY` followed by one variant byte:

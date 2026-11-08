@@ -1,5 +1,9 @@
 # WORLD-014: Authenticated map presentation
 
+## Evidence and scope
+
+Native startup command `0x483` enables the frame at `Conquer.exe:0x5CAA2D`; the guard is `0x5DCFBA`. Component tick and draw dispatch are `0x61D415/0x61D1F5`. See `20_notes/Architecture/09_frame_loop_architecture.md`, `Game_Map/world_render_contract_5517.md` and the corrected bootstrap evidence in `Network/bootstrap-tolerance-cp24d.md`. Managed admission, background preparation, texture residency and GPU teardown have separate owners and bounds.
+
 The world-entry snapshot supplies the map-data ID and the hero's initial tile position.
 After admission, the client loads the matching map, its puzzle resources, and its terrain
 scene resources from the configured content root. The role-creation screen transfers its

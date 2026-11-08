@@ -1,5 +1,9 @@
 # WORLD-003: Seven-zip DMap extraction
 
+## Evidence and scope
+
+The map-data lookup at `Conquer.exe:0x61DA29` feeds the path loader. Extension-based reader selection at `0x61DC9E` reaches the 7z backend constructor at `0x771323`. The archived 1999 member and loose companion differ. See `20_notes/Game_Map/map1999_icecrypt_archive_native.md`. The limits and in-memory extraction below are managed safeguards.
+
 The catalog selects the archive using the **map-data ID**, not the world-map ID.
 The loader validates the six-byte 7z signature, extracts the DMap into memory,
 and passes its decoded bytes to the map parser.

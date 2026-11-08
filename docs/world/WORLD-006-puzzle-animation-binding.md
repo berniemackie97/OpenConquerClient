@@ -1,5 +1,9 @@
 # WORLD-006: Bind puzzle tile indices to ANI frames
 
+## Evidence and scope
+
+The `.pul` path uses `Conquer.exe:0x63A603` to load the PUZZLE index grid. The draw at `0x63A04B` skips `0xFFFF` and queries `Puzzle%d` before frame selection. See `20_notes/Rendering/05_dmap_positioned_overlay_system.md` and `Game_Map/world_render_contract_5517.md` §5. The separate PUX terrain-cache path does not establish this behavior. Per-map reuse and missing-section failure are managed choices.
+
 The DMap reader selects map-data ID 1010; WORLD-005 loads its ground and
 positioned-overlay PUZZLE bitmaps. This slice completes the next content
 lookup: each non-empty ushort tile index selects the `Puzzle<N>` section

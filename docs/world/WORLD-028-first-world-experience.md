@@ -1,5 +1,9 @@
 # WORLD-028: First-world experience band
 
+## Evidence and scope
+
+`Conquer.exe:0x65FFE4` loads `ini/LevExp.dat` with seed `0x4D2`; the level band consumes the key-zero player table, indexed by level minus one. See `20_notes/Entity_System/chero_class.md` and `Rendering/13_hud_progress_gauges.md`. A missing or zero range is handled by the managed HUD. The worker prepares this data before world hydration.
+
 The experience band uses the current character level and experience from the
 authenticated character snapshot and subsequent 10017 attribute updates.
 Its maximum comes from `ini/LevExp.dat`, not from current experience or a

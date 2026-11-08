@@ -1,5 +1,9 @@
 # STARTUP-001P: Retail account panel field alignment
 
+## Evidence and scope
+
+Retail bitmap symbol 327 and the account-panel action record at `start.dat` payload offset `0x8B19F` establish the artwork and panel owner. The native account and password input call sites are `Conquer.exe:0x4ADC0B/0x4ADE26`, documented in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. Pixel calibration below is historical. See [STARTUP-001Z](STARTUP-001Z.md) for the current authored stage.
+
 ## Source and purpose
 
 The clean 5517 `data/main/start.dat` contains a 508x98 account panel image (`DefineBitsJPEG3` symbol 327). The embedded `account-panel.rgba.br` already holds that retail image, including the gold-framed Account and Password captions and the blue and dark input interiors. The earlier reconstruction drew extra captions and rectangular outlines over the bitmap. Its hit rectangles started at `(122,12)` and `(122,44)` relative to the panel, away from the painted fields. Those overlays made the screen look less like the original and put live text outside the input artwork.

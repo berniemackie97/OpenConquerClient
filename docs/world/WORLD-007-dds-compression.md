@@ -1,5 +1,9 @@
 # WORLD-007: Newbie Village DDS compression support
 
+## Evidence and scope
+
+The DDS decoder at `C3_CORE_DLL.dll:0x1001E075` handles DXT1 and DXT3 among other formats. See `20_notes/Rendering/c3_core_dll/06_image_decoders.md`. The Newbie Village DDS header and WDF membership counts below are corpus observations. The managed output and its validation are scoped to the formats exercised by the decoder and fixture.
+
 The `ani/newbie.ani` fixture references 96 unique DDS frame
 paths. All 96 resolve through the existing `data.wdf` package, not as
 loose source files. The referenced DDS headers declare:

@@ -1,5 +1,9 @@
 # WORLD-018: PHY vertex deformation
 
+## Evidence and scope
+
+`C3_CORE_DLL.dll:0x1000BAE0` calculates CPU-skinned vertices. The two weighted terms and matrix sum are at `0x1000C1E1..0x1000C467`, with source and output strides at `0x1000C593/0x1000C586`. See `20_notes/Rendering/c3_core_dll/05_phy.md` and `13_motion_sampling_and_blend.md`. The caller owns the managed buffers.
+
 The mesh decoder retains the normalized vertex fields used by the runtime
 vertex calculation:
 

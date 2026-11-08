@@ -1,5 +1,9 @@
 # WORLD-013: Terrain scene sprite drawing
 
+## Evidence and scope
+
+The terrain draw at `Conquer.exe:0x64450F` resolves ANI, uses construction-time elapsed intervals and map tint, projects the anchor plus offsets and scales around the viewport center. Depth insertion is `0x635AE6`. See `20_notes/Game_Map/world_render_contract_5517.md` §§3–5. The managed scene-load clock and texture-bounds clip are scoped to this renderer. They do not prove all visibility, adopted-child ordering or per-object timing parity.
+
 `WorldTerrainSceneDrawList` projects the existing type-1 terrain objects into drawable animated sprites.
 It uses map-tile anchors plus object offsets, the camera's viewport-center zoom, and
 each object's frame interval. Elapsed animation time is relative to scene loading;

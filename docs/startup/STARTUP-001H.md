@@ -1,5 +1,9 @@
 # STARTUP-001H: Unicode text layout
 
+## Evidence and scope
+
+Unicode label layout is a managed path for the authenticated directory. The unchanged native encoded-text reference is `graphic.dll:0x10015710/0x10015980`, documented in `20_notes/Rendering/graphic_dll/04_fonts_and_text.md`. It supplies no evidence for Unicode shaping, bidi or font fallback. The scope and tests below describe the historical layout addition.
+
 ## Scope
 
 The authenticated realm catalog from STARTUP-001G holds display strings, not CP936 or other retail-encoded byte sequences. Text for the new login interface must not be converted to legacy bytes, because that conversion can make distinct names identical and silently replace characters it cannot represent.

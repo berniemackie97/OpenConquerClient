@@ -1,5 +1,9 @@
 # WORLD-010: Scenery ANI resource binding
 
+## Evidence and scope
+
+Type-4 scenery is read by the native scenery loader at `Conquer.exe:0x635808`. The visible ANI branch activates through `0x645625`; it keeps ANI path and section separate from tile/depth inputs. See `20_notes/Game_Map/world_render_contract_5517.md` §§2–3 and `Rendering/07_ani_frame_animation_runtime.md`. The blank-fixture allowance and bounded dependency validation are managed rules.
+
 The scenery binder resolves type-4 DMap records to animation index sections and
 validates referenced frames. This stage does not determine visual positions,
 animation clocks, draw order, visibility, or live scene activation.

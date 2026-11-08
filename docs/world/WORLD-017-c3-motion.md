@@ -1,5 +1,9 @@
 # WORLD-017: C3 motion decoding and matrix sampling
 
+## Evidence and scope
+
+`C3_CORE_DLL.dll:0x100092F0` parses the MOTI tags and implicit matrices, and `0x10009A20` samples keyed bone matrices. See `20_notes/Rendering/c3_core_dll/12_motion_load_formats.md` and `13_motion_sampling_and_blend.md` for the trailing seek, interpolation and secondary blend. Frame-major storage and bounded allocation are managed choices.
+
 A `MOTI` section stores a bone count, frame count and a matrix-key encoding.
 The reader uses the existing C3 section boundaries and accepts four layouts:
 

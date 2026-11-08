@@ -31,48 +31,22 @@ format.
 
 ## Projects
 
-```text
-OpenConquer.Launcher
-OpenConquer.Client
-OpenConquer.Platform
-OpenConquer.Gameplay
-OpenConquer.Rendering
-OpenConquer.Content
-OpenConquer.Networking
-```
-
-What each project owns:
-
 | Project | Responsibility |
 | --- | --- |
-| `OpenConquer.Launcher` | launcher process, UI, diagnostics, installation/readiness state, display preferences, the trusted installed-release transaction, and future release acquisition and controlled client launch |
-| `OpenConquer.Client` | game-runtime composition root, game-process lifetime, and client-specific UI and runtime behavior |
-| `OpenConquer.Platform` | desktop window, native graphics-context lifetime, framebuffer state, frame loop, pacing, and desktop input |
-| `OpenConquer.Gameplay` | game state and gameplay behavior |
-| `OpenConquer.Rendering` | OpenGL integration, logical rendering, presentation, GPU resources, rendering-facing text behavior, host font-resource discovery, and glyph rasterization |
-| `OpenConquer.Content` | runtime client filesystem, legacy formats, decoding, loading, WDF/content lookup |
-| `OpenConquer.Networking` | 5517-compatible game transport and protocol behavior, once implemented |
+| `OpenConquer.Launcher` | Desktop launcher, managed installation and release verification, local maintenance primitives, display preferences and verified client start |
+| `OpenConquer.Client` | Game composition root, authenticated session and world lifetime, local hero state, login/role/HUD input and presentation coordination |
+| `OpenConquer.Platform` | Native desktop window, OpenGL context, framebuffer, input devices and host frame loop |
+| `OpenConquer.Rendering` | OpenGL resources, sprite and mesh drawing, text and font resources, logical presentation, and reusable world projection/rendering |
+| `OpenConquer.Content` | Client content sources, legacy format readers, asset decoding and world resource preparation |
+| `OpenConquer.Networking` | Account and GameServer sessions, packet codecs, legacy crypto, world bootstrap and typed world dispatch |
+| `OpenConquer.Content.Tool` | Offline import, content closure verification and map compilation, using Content |
+| `OpenConquer.Product.Tool` | Local product composition and release/catalog tooling |
 
-The game runtime dependencies point in one direction:
-
-```text
-OpenConquer.Client
-├── OpenConquer.Platform
-├── OpenConquer.Gameplay
-├── OpenConquer.Rendering
-├── OpenConquer.Content
-└── OpenConquer.Networking
-```
-
-Subsystem projects do not depend on each other unless an actual ownership need calls for it.
-
-Platform and Rendering, for example, are siblings. Platform owns the native desktop integration.
-Rendering owns graphics behavior, GPU resources, and rendering resources such as font discovery and
-rasterization.
-
-Using operating-system font APIs does not make Rendering depend on Platform. Those APIs belong to
-the Rendering text subsystem because they find resources that rendering consumes directly. They do
-not manage the desktop host.
+Client references Platform, Rendering, Content and Networking. Rendering references Content for
+decoded assets and shared format representations. Platform and Networking have independent
+responsibilities. The launcher publishes independently and starts the verified client executable
+as a separate process. See the [solution](../../OpenConquer.Client.slnx) and the
+[architecture tests](../../tests/OpenConquer.Launcher.Tests/LauncherArchitectureTests.cs).
 
 ## Launcher
 
@@ -113,7 +87,8 @@ The launcher currently owns:
 - non-secret display preferences and the settings dialog
 - the retail play screen, start-mode records, and client start
 
-`MainWindow` only adapts state for display. Product state belongs to `LauncherApplication`.
+`LauncherApplication` owns installation evaluation and its state. `MainWindow` owns startup
+presentation, play, settings and the shared shutdown task. It drains pending work before close.
 
 After an expected installation failure, the check can be retried against the same package root.
 Checks run off the UI thread and never overlap. Shutdown runs a single drain operation that all
@@ -126,11 +101,10 @@ Display preferences are stored and edited as described in
 [launcher display settings](launcher-settings.md). The view owns the unsaved draft, and the
 settings session owns I/O cancellation and draining.
 
-The release acquisition code is not connected to any service yet, and no stand-in service is
-provided. Production release-origin configuration and publishing, the player-facing update and
-repair flow, launcher self-update, and controlled client startup are not implemented. Account login,
-realm selection, and all game-session networking belong to Client and Networking, not to the
-launcher.
+The local managed product can start its authenticated client. Acquisition and transaction code
+has test and tool entry points. Production release-origin configuration, the player-facing update
+and repair flow, and launcher self-update remain open. Client and Networking own account login,
+realm selection and the game session.
 
 ### Privileges
 
@@ -166,57 +140,18 @@ The host delegates application phases to `ClientSession`, which composes `Client
 for CP2.1 transitions and shutdown, and [role-creation ownership](client-role-ownership.md)
 for the role component's input and resource boundaries.
 
-At a high level:
+`ClientSession` advances the application phases and frame clock. `ClientLogin` owns the signed
+realm, credential and login presentation flow. `ClientRoleCreation` manages the admitted
+character-creation branch. `ClientWorld` owns the admitted session, ingress, heartbeat egress,
+content preparation, local hero state and presentation lifetime. Work that can run off the
+graphics thread prepares CPU content there. The context thread owns GPU upload, draw and release.
 
-```text
-content/configuration
-        │
-        ▼
-OpenConquer.Client
-        │
-        ├── Platform
-        ├── Rendering
-        ├── Gameplay
-        ├── Content
-        └── Networking
-```
-
-The client wires the subsystems together and controls their lifecycle. Each subsystem owns its own
-mechanisms.
-
-Runtime behavior that is specific to the client and coordinates several subsystems stays in
-`OpenConquer.Client`. The main HUD is an example. HUD layout, state, availability, and interaction
-rules live under `OpenConquer.Client/UI/Hud`. Content owns ANI and image decoding, and Rendering
-owns the generic texture, sprite, primitive, and presentation code used to draw the HUD.
-
-The main HUD is currently built from:
-
-```text
-Progress45 background
-Progress40 life
-Progress41 mana
-Progress46 stamina
-Progress47 extended stamina
-Dialog4 panels
-Progress42 skill / experience
-10-button action strip
-four main-HUD CMyCheck controls
-```
-
-The action strip lives in Client because it coordinates retail control state, logical hit testing,
-pointer capture, ANI-backed assets, timing, and rendering.
-
-The neighboring `CMyCheck` controls also live in Client. Client owns their retail control IDs, final
-logical geometry, availability, two-state model, the state change that happens as soon as the left
-button goes down, ANI-backed assets, and draw order. Their 32x32 artwork is drawn independently of
-their 22x22 logical hit rectangles.
-
-Platform reports pointer input in physical coordinates. Client converts it to logical coordinates
-through Rendering's presentation transform, then passes it to the HUD input state.
-
-An activated control is reported as a client-level identifier until the feature that owns the
-action is implemented. Client does not guess gameplay, dialog, or network effects from the ANI
-artwork.
+The local hero model applies supported server state and advances gauge followers. Rendering
+receives the prepared geometry, assets and draw inputs. The HUD under
+`OpenConquer.Client/UI/Hud` owns retail layout and control behavior. Platform supplies physical
+pointer coordinates, and Rendering's presentation transform maps them to the logical viewport.
+Content owns ANI and image decoding. The client uses the supported attributes and equipment in
+the HUD and role presentation. Most action controls still stop at a client-level activation.
 
 ### Platform and Rendering
 
@@ -306,40 +241,10 @@ Text compatibility details are in
 `OpenConquer.Content` owns runtime content access and the legacy file formats. Format support is
 based on documented research into the retail files.
 
-Current runtime consumers cover:
-
-```text
-screen-mode configuration
-startup logos
-
-Progress45 HUD background
-Dialog4 HUD panels
-
-Progress40 life
-Progress41 mana
-Progress42 skill
-Progress46 stamina
-Progress47 extended stamina
-
-10-button main-HUD action strip
-Mission button frames
-Organise button frames
-four PK button skins
-
-four main-HUD CMyCheck controls
-eight check-control frames
-
-10-slot quickbar, action, magic, item-icon and glow families
-selected-skill image, cover and cooldown text
-category-8 status hints, Dialog21 backdrop, StrRes.ini and binary hotspot regions
-category-9 Magic hints, retail magic metadata/effects and configured localization
-```
-
-The experience bar is drawn with solid rectangles, so it needs no retail image.
-
-`content/retail-5517/manifest.json` is the source of truth for the full list of paths in the
-closure. Consumer groups and import policy are described in
-[`../content/retail-5517-content-plan.md`](../content/retail-5517-content-plan.md).
+Runtime consumers include the startup and login stage, role creation, authenticated terrain and
+local-role presentation, and the HUD. The manifest records the imported payload, including map,
+C3, ANI and image dependencies. The content plan documents how consumer requirements select
+those files. See [runtime content](../content/retail-5517-content-plan.md).
 
 `ClientContentClosure` defines the content that production code depends on.
 
@@ -378,38 +283,19 @@ See [`../content/retail-5517-content-plan.md`](../content/retail-5517-content-pl
 content policy and [`../compatibility/server-dat.md`](../compatibility/server-dat.md) for the
 `Server.dat` compatibility record.
 
-## Native-Parity Networking Direction
+## Networking and authority
 
-The client keeps the original 5517 network behavior wherever protocol compatibility is required.
+A current publisher-signed realm selection supplies the account endpoint and 1060 realm identity.
+The credential exchange is limited to literal IPv4 loopback. The AccountServer supplies the
+GameServer handoff. Networking owns the DH/CAST5 session, world admission and verified bootstrap
+ladder. The client handles the supported live packets through bounded world ingress and keeps
+socket state separate from presentation.
 
-The planned product flow is:
-
-```text
-OpenConquer.Launcher
-    ├── installation/readiness and trusted release integrity
-    ├── update/repair and recovery
-    ├── pre-launch display preferences
-    └── controlled, verified and authorized client startup
-            ↓
-OpenConquer.Client + OpenConquer.Networking
-    ├── realm discovery/selection and login UI
-    ├── AccountServer / MsgAccount / MsgConnectEx
-    ├── native credential transformations and compatibility crypto
-    └── GameServer / MsgConnect / character flow / gameplay
-```
-
-Launcher authorization confirms where the installed product came from. It does not authenticate the
-game account.
-
-The launcher must not depend on game-protocol packet types. Account registration and recovery need
-a real account service that owns the accounts. No temporary desktop protocol is planned.
-
-Packet layout, credential transformations, cryptography, result meanings, and the login-to-game
-handoff follow research on the retail and deobfuscated binaries. OAuth/OIDC cannot replace the 5517
-protocol.
-
-The capability table in the README tracks what is implemented. This flow defines which product owns
-each step.
+Launcher release trust establishes installed product integrity. Signed realm-directory trust
+establishes selection authority. Neither turns the retail credential stream into authenticated
+remote transport. OpenConquer registration uses the project's `0xF001` / `0xF002` extension.
+See [login networking](../networking/README.md), [registration](../networking/FLOW-001B-account-registration.md)
+and [world ingress](../world/WORLD-023-authenticated-world-ingress.md).
 
 ## Installed Product
 
@@ -469,7 +355,8 @@ The composed product must:
 - contain the client publish in the selected versioned release generation
 - be resolvable by the real launcher installation resolver
 
-CI checks all of these.
+Linux CI checks publish isolation. It checks the full client payload and composed product when
+the private retail manifest is available. See [CI coverage](../development.md#ci).
 
 ## Architectural Rules
 

@@ -1,5 +1,9 @@
 # STARTUP-001D: Login chrome and account-panel alignment
 
+## Evidence and scope
+
+The `start.dat` symbols and decoded hashes below are the asset anchors. The authored topDragon and account-panel transforms are recorded in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. The reconstructed positions below describe this historical slice. [STARTUP-001Z](STARTUP-001Z.md) supersedes the placement and resource ownership.
+
 ## Scope
 
 Draws the retail background, header, footer, account panel and top dragon as separate layers. This fixes the vertical misalignment of the first, single composited backdrop. No server data, UI interaction, Flash runtime, authentication or game-world access is added.

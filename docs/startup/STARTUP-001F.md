@@ -1,5 +1,9 @@
 # STARTUP-001F: Region/server selection model and input
 
+## Evidence and scope
+
+Retail selection uses dialog indices at `+0x190/+0x194`, computes the row at `Conquer.exe:0x4AEEF0`, and copies ServerName at `0x4AEF7C`. See `20_notes/Network/5517-server-selection-and-realm-handoff.md`. The signed-catalog limits, keyboard navigation and selection invalidation below were managed choices in this slice. [STARTUP-001V](STARTUP-001V.md) adds renewal retention and [STARTUP-001Z](STARTUP-001Z.md) replaces the earlier view.
+
 ## Catalog
 
 Production startup does not use retail `Server.dat` or its decoded metadata as the realm catalog. No endpoints, login transport, routing fallbacks, registration packets or made-up production realms are added. Selection uses the existing 2x8 region and 3x4 server chrome and keeps all artwork coordinates, including `AccountPanel.Y = 637`.
