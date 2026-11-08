@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 
 namespace OpenConquer.Networking.Game.Login;
 
@@ -11,19 +12,26 @@ internal static class GameMissionCatalog1134
     private const int HeaderLength = 8;
     private const int RecordLength = 12;
 
-    internal static int GetPacketLength(int missionCount)
+    internal static int GetPacketLength(int missionCount) => GetPacketLength(missionCount, nameof(missionCount));
+
+    private static int GetPacketLength(int missionCount, string parameterName)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(missionCount, 1);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(missionCount, MaximumMissionsPerFrame);
+        ArgumentOutOfRangeException.ThrowIfLessThan(missionCount, 1, parameterName);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(missionCount, MaximumMissionsPerFrame, parameterName);
         return HeaderLength + missionCount * RecordLength;
     }
 
     internal static void Write(Span<byte> destination, ReadOnlySpan<int> missionIds)
     {
-        int length = GetPacketLength(missionIds.Length);
+        int length = GetPacketLength(missionIds.Length, nameof(missionIds));
         if (destination.Length != length)
         {
             throw new ArgumentException("The mission catalog frame length does not match its record count.", nameof(destination));
+        }
+
+        if (MemoryMarshal.AsBytes(missionIds).Overlaps(destination))
+        {
+            throw new ArgumentException("Mission IDs cannot overlap destination storage.", nameof(missionIds));
         }
 
         int previousId = 0;

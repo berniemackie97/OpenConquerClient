@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Client.Tests.Networking;
@@ -45,9 +46,12 @@ public sealed class GameMissionCatalog1134Tests
     {
         byte[] destination = Enumerable.Repeat((byte)0xA5, 20).ToArray();
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => GameMissionCatalog1134.Write(destination, []));
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        ArgumentOutOfRangeException empty = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            GameMissionCatalog1134.Write(destination, []));
+        ArgumentOutOfRangeException oversized = Assert.Throws<ArgumentOutOfRangeException>(() =>
             GameMissionCatalog1134.Write(destination, Enumerable.Range(1, 81).ToArray()));
+        Assert.Equal("missionIds", empty.ParamName);
+        Assert.Equal("missionIds", oversized.ParamName);
         Assert.All(destination, value => Assert.Equal((byte)0xA5, value));
     }
 
@@ -62,6 +66,21 @@ public sealed class GameMissionCatalog1134Tests
 
         Assert.Throws<ArgumentException>(() => GameMissionCatalog1134.Write(destination, missionIds));
         Assert.All(destination, value => Assert.Equal((byte)0xA5, value));
+    }
+
+    [Fact]
+    public void Write_RejectsOverlappingInputWithoutWriting()
+    {
+        byte[] destination = Enumerable.Repeat((byte)0xA5, 32).ToArray();
+        BinaryPrimitives.WriteInt32LittleEndian(destination, 600);
+        BinaryPrimitives.WriteInt32LittleEndian(destination.AsSpan(4), 601);
+        byte[] original = destination.ToArray();
+
+        ArgumentException failure = Assert.Throws<ArgumentException>(() =>
+            GameMissionCatalog1134.Write(destination, MemoryMarshal.Cast<byte, int>(destination.AsSpan(0, 8))));
+
+        Assert.Equal("missionIds", failure.ParamName);
+        Assert.Equal(original, destination);
     }
 
     [Theory]
