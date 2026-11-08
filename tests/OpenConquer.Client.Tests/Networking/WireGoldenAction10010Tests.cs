@@ -8,7 +8,7 @@ public sealed class WireGoldenAction10010Tests
     public void StaticDerivedActionFrame_PreservesEveryField()
     {
         byte[] frame = WireGoldenFixture.ReadFrame(
-            "10010-action.static-derived.json", GameWorldAction10010.PacketType, "4b56d70dcb3e59d3ed0a1aa316c2d56603e6eb0dd0acb2dfe426ff0cf7d30a03");
+            "10010-action.static-derived.json", "action-all-fields-sentinel", GameWorldAction10010.PacketType, "4b56d70dcb3e59d3ed0a1aa316c2d56603e6eb0dd0acb2dfe426ff0cf7d30a03");
 
         Assert.True(GameWorldAction10010.TryRead(frame, out GameWorldAction10010 action));
         Assert.Equal(new GameWorldAction10010(
