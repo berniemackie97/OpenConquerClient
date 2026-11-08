@@ -2,7 +2,7 @@
 
 ## Evidence and scope
 
-The original `data/main/start.dat` bitmap symbols and hashes below establish the source artwork. See `20_notes/Architecture/11_login_ui_assets_and_interactions.md` for the authored display list. The backdrop composition and pre-world ownership below describe this historical slice. [STARTUP-001Z](STARTUP-001Z.md) records the later stage, and [session ownership](../architecture/client-session-ownership.md) describes the current runtime.
+The `data/main/start.dat` bitmap symbols and hashes below identify source artwork. The authored display list is documented in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. Composition below is historical; current ownership is in [session ownership](../architecture/client-session-ownership.md) and [STARTUP-001Z](STARTUP-001Z.md).
 
 ## Pre-world state
 

@@ -2,7 +2,7 @@
 
 ## Evidence and scope
 
-Retail bitmap symbol 327 and the account-panel action record at `start.dat` payload offset `0x8B19F` establish the artwork and panel owner. The native account and password input call sites are `Conquer.exe:0x4ADC0B/0x4ADE26`, documented in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. Pixel calibration below is historical. See [STARTUP-001Z](STARTUP-001Z.md) for the current authored stage.
+The account-panel artwork, action records and credential input are documented in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. Pixel calibration below applies to the earlier slice; [STARTUP-001Z](STARTUP-001Z.md) describes the current stage.
 
 ## Source and purpose
 

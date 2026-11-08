@@ -2,7 +2,7 @@
 
 ## Evidence and scope
 
-Retail selection uses dialog indices at `+0x190/+0x194`, computes the row at `Conquer.exe:0x4AEEF0`, and copies ServerName at `0x4AEF7C`. See `20_notes/Network/5517-server-selection-and-realm-handoff.md`. The signed-catalog limits, keyboard navigation and selection invalidation below were managed choices in this slice. [STARTUP-001V](STARTUP-001V.md) adds renewal retention and [STARTUP-001Z](STARTUP-001Z.md) replaces the earlier view.
+Region selection, row calculation and realm identity copying are documented in `20_notes/Network/5517-server-selection-and-realm-handoff.md`. Signed-catalog limits, keyboard handling and invalidated selections are application policies. See [STARTUP-001V](STARTUP-001V.md) for renewal retention and [STARTUP-001Z](STARTUP-001Z.md) for current presentation.
 
 ## Catalog
 

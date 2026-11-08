@@ -2,7 +2,7 @@
 
 ## Evidence and scope
 
-Unicode label layout is a managed path for the authenticated directory. The unchanged native encoded-text reference is `graphic.dll:0x10015710/0x10015980`, documented in `20_notes/Rendering/graphic_dll/04_fonts_and_text.md`. It supplies no evidence for Unicode shaping, bidi or font fallback. The scope and tests below describe the historical layout addition.
+Byte-oriented text behavior is documented in `20_notes/Rendering/graphic_dll/04_fonts_and_text.md`. It does not establish Unicode shaping, bidirectional layout or font fallback. The authenticated-directory label layout below is application behavior.
 
 ## Scope
 

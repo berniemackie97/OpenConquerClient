@@ -2,7 +2,7 @@
 
 ## Evidence and scope
 
-This slice's arrow geometry and capture policy were managed. The retail region/server Flash handlers are recorded in `20_notes/Architecture/11_login_ui_assets_and_interactions.md` at `start.dat` payload offsets `0x79357/0x6DBB8`. Those handlers do not establish equivalence for the reconstructed arrows. [STARTUP-001Z](STARTUP-001Z.md) records the later authored stage.
+Region and server interaction handlers are recorded in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. They do not prove the arrow geometry or pointer-capture policy in this slice. See [STARTUP-001Z](STARTUP-001Z.md).
 
 ## Scope
 

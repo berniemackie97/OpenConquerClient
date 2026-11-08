@@ -2,17 +2,7 @@
 
 ## Evidence and scope
 
-The retail startup guard is `Conquer.exe:0x5AFAFC`, with key construction at
-`0x765232` and encrypted-block loading at `0x764E8B`. Key bytes, type-1 RSA
-blocks and decoded resource hashes are recorded in
-`20_notes/Crypto/02_server_dat_rsa_public_key_5517.md` and
-`Architecture/05_startup_data_files_and_native_replacement.md`.
-The role-2 account endpoint lookup at `0x4AFE37` and the selected identity
-copy at `0x4AEF7C` have separate destinations. The 1060 write at `0x749271`
-uses the identity, while 1055 supplies the GameServer address. See
-`20_notes/Network/5517-server-selection-and-realm-handoff.md`.
-OpenConquer uses the signed catalog for runtime trust and keeps the retail
-decoder as offline tooling.
+Startup decoding, cryptographic material and source hashes are documented in `20_notes/Crypto/02_server_dat_rsa_public_key_5517.md` and `Architecture/05_startup_data_files_and_native_replacement.md`. Account endpoint lookup, realm identity, packet 1060 and game handoff are separately documented in `20_notes/Network/5517-server-selection-and-realm-handoff.md`. The signed directory is the runtime trust authority; this decoder remains offline tooling.
 
 ## Status
 

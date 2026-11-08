@@ -2,7 +2,7 @@
 
 ## Evidence and scope
 
-The `Group1.swf` bitmap symbols and hashes below establish the skins. `20_notes/Architecture/11_login_ui_assets_and_interactions.md` locates the server and region interaction handlers in `start.dat` sprite 180 at payload offset `0x6DBB8` and sprite 259 at `0x79357`. The empty grids and reference placements describe this historical slice. The current stage is in [STARTUP-001Z](STARTUP-001Z.md).
+The `Group1.swf` symbols and hashes identify source skins. Region and server interaction records are in `20_notes/Architecture/11_login_ui_assets_and_interactions.md`. The grids below are historical; [STARTUP-001Z](STARTUP-001Z.md) describes the current stage.
 
 ## Scope
 

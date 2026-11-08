@@ -2,25 +2,7 @@
 
 ## Evidence and scope
 
-- Native font creation and code-page writes are anchored at
-  `graphic.dll:0x10014C50/0x10014F3B` and the shared code-page field
-  `C3_CORE_DLL.dll:0x100B01D8`.
-- The byte-oriented draw and extent paths are `graphic.dll:0x10015710/0x10015980`
-  through `0x100178E0/0x10017160`. The DBCS, missing-glyph fallback,
-  `#NN` icon and text draw details are in
-  `20_notes/Rendering/graphic_dll/04_fonts_and_text.md`.
-  The floating-text consumer at `Conquer.exe:0x620D2A` selects the GUI face,
-  normal height and antialias state.
-- FreeType, system font discovery, Unicode labels, glyph-atlas ownership and
-  OpenGL batching are managed. Matching legacy byte layout and blending does
-  not establish identical glyph coverage or rasterization on every host.
-
-This document describes how OpenConquer reproduces the text handling of the Conquer Online 5517
-client: text configuration files, encoded-text rules, font resolution, glyph rasterization, caching,
-atlas storage, layout, render styles, OpenGL resource ownership and GPU drawing.
-
-Addresses in the retail binaries, decompilation traces, caller lists and open reverse-engineering
-questions are kept in the native analysis notes rather than here.
+Font creation, code pages, byte-oriented layout, missing glyphs and embedded icons are documented in `20_notes/Rendering/graphic_dll/04_fonts_and_text.md`. That evidence does not establish Unicode shaping or consistent system-font rasterization across desktop hosts. FreeType, font discovery and glyph-atlas ownership are application decisions.
 
 ## Startup Configuration
 
