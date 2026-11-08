@@ -29,6 +29,8 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     private LoginAccountExchangeResult? _account;
     private readonly uint _sessionToken;
     private byte[]? _repeatedProof;
+    private int[]? _missionIds;
+    private bool _missionCatalogSent;
     private readonly GameSecuredFrameEncoder _encoder;
     private readonly GameSecuredFrameDecoder _decoder;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -759,6 +761,83 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
     }
 
+    internal void SetMissionCatalog(ReadOnlyMemory<int> ids)
+    {
+        if (ids.IsEmpty || ids.Length > GameMissionCatalog1134.MaximumMissionsPerFrame * 3)
+        {
+            throw new InvalidDataException("The mission catalog contains an unsupported number of IDs.");
+        }
+
+        int previous = 0;
+        foreach (int id in ids.Span)
+        {
+            if (id <= previous)
+            {
+                throw new InvalidDataException("Mission catalog IDs must be positive and ascending.");
+            }
+
+            previous = id;
+        }
+
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2 || _loginControlState != 2 || _missionIds is not null)
+            {
+                throw new InvalidOperationException("The mission catalog can only be assigned once after login control.");
+            }
+
+            _missionIds = ids.ToArray();
+        }
+    }
+
+    internal async Task SendMissionCatalogAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        ValidateTimeout(timeout);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        int[] ids;
+        lock (_lifetimeGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_phase != 2 || _loginControlState != 2 || !_existingCharacterRoute ||
+                _missionCatalogSent || _missionIds is null)
+            {
+                throw new InvalidOperationException("Mission catalog emission requires accepted character login control.");
+            }
+
+            ids = _missionIds;
+            _missionCatalogSent = true;
+            _phase = 1;
+            _activeOperations++;
+        }
+
+        bool completed = false;
+        try
+        {
+            for (int offset = 0; offset < ids.Length; offset += GameMissionCatalog1134.MaximumMissionsPerFrame)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int count = Math.Min(GameMissionCatalog1134.MaximumMissionsPerFrame, ids.Length - offset);
+                byte[] frame = new byte[GameMissionCatalog1134.GetPacketLength(count)];
+                GameMissionCatalog1134.Write(frame, ids.AsSpan(offset, count));
+                await WriteSecuredPacketAsync(frame, timeout, "GameServer mission catalog write timed out.",
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            completed = true;
+        }
+        catch
+        {
+            TerminateLoginControlSession();
+            throw;
+        }
+        finally
+        {
+            ExitOperation(completed);
+        }
+    }
+
     /// <summary>Sends one fixed world-entry 10010 action after typed character information is accepted.</summary>
     internal Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair,
         TimeSpan timeout, CancellationToken cancellationToken = default) =>
@@ -1186,6 +1265,7 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         {
             ClearRepeatedProofUnderLock();
             _account = null;
+            _missionIds = null;
         }
 
         DisposePart(_decoder.Dispose);

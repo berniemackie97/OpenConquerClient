@@ -7,6 +7,8 @@ using OpenConquer.Client.Startup.Catalog;
 using OpenConquer.Client.UI.Login;
 using OpenConquer.Client.UI.Login.Selection;
 using OpenConquer.Client.UI.Login.Status;
+using OpenConquer.Content;
+using OpenConquer.Content.Quests;
 using OpenConquer.Networking.Authentication;
 using OpenConquer.Networking.Game.Handshake;
 using OpenConquer.Networking.Game.Login;
@@ -21,6 +23,7 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
 {
     private static readonly TimeSpan s_timeout = TimeSpan.FromSeconds(5);
     private readonly string _contentRoot;
+    private readonly IClientContentSource _content;
     private readonly TimeProvider _clock;
     private readonly ClientDiagnostics _diagnostics;
     private readonly LocalAddressResolver _localAddress;
@@ -40,10 +43,12 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
     private Task? _disposeTask;
 
     internal LoginAttemptCoordinator(string contentRoot, TimeProvider? clock = null,
-        LocalAddressResolver? localAddress = null, ClientDiagnostics? diagnostics = null)
+        LocalAddressResolver? localAddress = null, ClientDiagnostics? diagnostics = null,
+        IClientContentSource? content = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRoot);
         _contentRoot = contentRoot;
+        _content = content ?? new ClientContentRoot(contentRoot);
         _clock = clock ?? TimeProvider.System;
         _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _localAddress = localAddress ?? new LocalAddressResolver();
@@ -338,12 +343,15 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
                     return new(LoginAttemptStatus.GameRefused, null, LoginFailure.Game(control.RefusalBytes.Span));
                 }
 
+                MissionCatalog missions = MissionCatalog.Load(_content);
+                game.SetMissionCatalog(missions.MissionIds);
                 if (control.Kind == GameLoginControlKind.CharacterCreation)
                 {
                     transferred = true;
                     return new(LoginAttemptStatus.CharacterCreation, game);
                 }
 
+                await game.SendMissionCatalogAsync(s_timeout, cancellationToken).ConfigureAwait(false);
                 Publish(LoginAttemptStatus.InitializingWorld);
                 _ = await game.ReadExistingCharacterPreludeAsync(s_timeout, cancellationToken)
                     .ConfigureAwait(false);

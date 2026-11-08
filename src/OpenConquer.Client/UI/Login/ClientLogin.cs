@@ -83,7 +83,7 @@ internal sealed class ClientLogin : IDisposable
             screen = new LoginScreen(LoginStageLayout.Create(size), LoginAccountHistory.ForCurrentUser(diagnostics),
                 ClientVersionLabel.Load(content), cue => owner?.PlaySound(cue), diagnostics);
             screen.ExitRequested += requestExit;
-            attempts = new LoginAttemptCoordinator(contentRoot, clock, diagnostics: diagnostics);
+            attempts = new LoginAttemptCoordinator(contentRoot, clock, diagnostics: diagnostics, content: content);
             LoginErrorMessages errors = LoginErrorMessages.Load(content, LoginErrorEncoding.ForCurrentHost());
             LoginLoadingScreen? loading = LoginLoadingScreen.LoadIfPresent(content);
             registration = new LoginRegistrationCoordinator(clock);
