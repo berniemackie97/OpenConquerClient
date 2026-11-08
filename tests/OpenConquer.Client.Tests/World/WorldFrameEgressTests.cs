@@ -27,11 +27,17 @@ public sealed class WorldFrameEgressTests
         egress.QueuePositionCorrection(new WorldCorrectionReply(11, 22, 3));
         egress.QueuePositionCorrection(new WorldCorrectionReply(11, 22, 3));
         egress.QueuePositionCorrection(new WorldCorrectionReply(12, 23, 5));
-        egress.Pump(heartbeat, 10_001);
-        egress.Pump(heartbeat, 10_002);
-        Assert.Equal(["correction 11 22 3 10001"], writes);
+        try
+        {
+            egress.Pump(heartbeat, 10_001);
+            egress.Pump(heartbeat, 10_002);
+            Assert.Equal(["correction 11 22 3 10001"], writes);
+        }
+        finally
+        {
+            firstCorrection.TrySetResult();
+        }
 
-        firstCorrection.SetResult();
         egress.Pump(heartbeat, 10_003);
         egress.Pump(heartbeat, 10_004);
         egress.Pump(heartbeat, 10_005);
