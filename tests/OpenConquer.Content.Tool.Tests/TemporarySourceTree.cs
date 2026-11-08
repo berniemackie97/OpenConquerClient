@@ -78,6 +78,7 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteBytes("ini/LevExp.dat", CreateSyntheticLevelExperience());
         WriteText("ini/ItemAdd.ini", "120020 9 239 0 0 23 0 0 0 0\r\n");
         WriteText("ini/GameSetUp.ini", "[ScreenMode]\nScreenModeRecord=2\n");
+        WriteText("ini/Questinfo.ini", "[TotalMission]\nTotalMission=2\n[1]\nMissionId=600\n[2]\nMissionId=601\n");
         WriteText("ini/info.ini", $"[DlgLogo]\nBgFormat={backgroundFormat}\n");
         WriteText("ini/StrRes.ini", "0=ERROR\n10070=Walk/Run\n10071=Chat On/Off\n10072=Map On/Off\n10073=Shift Screen: Off\n10074=Shift Screen: On\n10370=View Equipment\n10426=English\n");
         WriteBytes("ini/MagicType.dat", CreateSyntheticMagicType());

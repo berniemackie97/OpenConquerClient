@@ -80,11 +80,14 @@ public sealed partial class GameServerHandshakeSessionTests
             ? CreationScript.AcceptAndEnterWorldWithNativeShortFrames
             : CreationScript.AcceptAndEnterWorld, token,
             world: new WorldEntryOptions(ClientStateAppliedMap: bit38Map, PackedAppearance: packedAppearance, Scrambled: scrambled,
-                ExpectHeartbeat: true, ClientTimestamp: 0x100));
+                ExpectHeartbeat: true, ClientTimestamp: 0x100, ExpectMissionCatalog: true));
 
         await using LoginAccountExchangeResult account = await AuthenticatedAccountAsync(accounts, Port(games), token);
         await accountPeer.WaitAsync(TimeSpan.FromSeconds(5), token);
         await using GameServerHandshakeSession game = await OpenCreationAsync(account, token);
+        int[] missionIds = [600, 601];
+        game.SetMissionCatalog(missionIds);
+        missionIds[0] = 999;
 
         await game.SendCharacterCreationAsync("Hero"u8.ToArray(), 1003, 10, TimeSpan.FromSeconds(5), token);
         Assert.Equal(GameCharacterCreationKind.Created,
@@ -92,6 +95,9 @@ public sealed partial class GameServerHandshakeSessionTests
         await game.SendRepeatedLoginProofAsync(TimeSpan.FromSeconds(5), token);
         Assert.Equal(GameLoginControlKind.ExistingCharacter,
             (await game.ReadLoginControlAsync(TimeSpan.FromSeconds(5), token)).Kind);
+        await game.SendMissionCatalogAsync(TimeSpan.FromSeconds(5), token);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            game.SendMissionCatalogAsync(TimeSpan.FromSeconds(5), token));
         _ = await game.ReadExistingCharacterPreludeAsync(TimeSpan.FromSeconds(5), token);
         GameCharacterInfo1006 character = await game.ReadCharacterInfoAsync(TimeSpan.FromSeconds(5), token);
 
@@ -351,7 +357,7 @@ public sealed partial class GameServerHandshakeSessionTests
         CreationPeerAsync(listener, enterWorld ? CreationScript.AcceptAndEnterWorld : CreationScript.NewRoleOnly, token, coordinator: true);
 
     private sealed record WorldEntryOptions(bool NativeShortFrames = false, bool ClientStateAppliedMap = false,
-        uint PackedAppearance = 0, bool Scrambled = false, bool ExpectHeartbeat = false, uint? ClientTimestamp = null);
+        uint PackedAppearance = 0, bool Scrambled = false, bool ExpectHeartbeat = false, uint? ClientTimestamp = null, bool ExpectMissionCatalog = false);
 
     private static async Task CreationPeerAsync(TcpListener listener, CreationScript script, CancellationToken token,
         bool coordinator = false, WorldEntryOptions? world = null, TaskCompletionSource? worldEntryRequested = null)
@@ -407,6 +413,11 @@ public sealed partial class GameServerHandshakeSessionTests
                 await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
                     Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
                     characterWire[..^8]);
+                if (world.ExpectMissionCatalog)
+                {
+                    await RequireMissionCatalogAsync(peer, token);
+                }
+
                 if (script is CreationScript.AcceptAndEnterWorld or CreationScript.AcceptAndEnterWorldWithNativeShortFrames)
                 {
                     await WorldEntryPeerAsync(peer, world with
@@ -456,9 +467,14 @@ public sealed partial class GameServerHandshakeSessionTests
         await peer.WritePacketsAsync(token, Talk(GameControlTalk1004.LoginChannel, "ANSWER_OK"),
             Convert.FromHexString("0A001E08000000000000"), Convert.FromHexString("08001F0801000000"),
             character[..^8]);
+        await RequireMissionCatalogAsync(peer, token);
         await WorldEntryPeerAsync(peer, new WorldEntryOptions(), token);
         Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
     }
+
+    private static async Task RequireMissionCatalogAsync(SecuredTestPeer peer, CancellationToken token) =>
+        Assert.Equal(Convert.FromHexString("20006E0403000200580200000000000000000000590200000000000000000000"),
+            await peer.ReadPacketAsync(32, token));
 
     private static async Task WorldEntryPeerAsync(SecuredTestPeer peer, WorldEntryOptions options, CancellationToken token)
     {

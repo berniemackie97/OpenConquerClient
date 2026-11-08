@@ -1,5 +1,7 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text.Json;
 using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Client.Tests.Networking;
@@ -14,6 +16,46 @@ public sealed class GameMissionCatalog1134Tests
 
         Assert.Equal("20006E0403000200580200000000000000000000590200000000000000000000",
             Convert.ToHexString(destination));
+    }
+
+    [Fact]
+    public void Write_MatchesThreeObservedAdmissionFrames()
+    {
+        using JsonDocument fixture = JsonDocument.Parse(File.ReadAllBytes(
+            Path.Combine(AppContext.BaseDirectory, "WireGolden", "1134-mission-catalog.observed.json")));
+        JsonElement.ArrayEnumerator frames = fixture.RootElement.GetProperty("frames").EnumerateArray();
+        int previous = 0;
+        int total = 0;
+        int sequence = 13;
+
+        foreach (JsonElement frame in frames)
+        {
+            Assert.Equal(sequence++, frame.GetProperty("sequence").GetInt32());
+            byte[] observed = Convert.FromBase64String(frame.GetProperty("base64").GetString()!);
+            Assert.Equal(frame.GetProperty("sha256").GetString()!.ToUpperInvariant(),
+                Convert.ToHexString(SHA256.HashData(observed)));
+
+            int count = frame.GetProperty("count").GetInt32();
+            Assert.Equal(GameMissionCatalog1134.GetPacketLength(count), observed.Length);
+            int[] ids = new int[count];
+            for (int index = 0; index < count; index++)
+            {
+                ReadOnlySpan<byte> record = observed.AsSpan(8 + index * 12, 12);
+                int id = BinaryPrimitives.ReadInt32LittleEndian(record);
+                Assert.True(id > previous);
+                Assert.True(record[4..].IndexOfAnyExcept((byte)0) < 0);
+                ids[index] = id;
+                previous = id;
+            }
+
+            byte[] written = new byte[observed.Length];
+            GameMissionCatalog1134.Write(written, ids);
+            Assert.Equal(observed, written);
+            total += count;
+        }
+
+        Assert.Equal(16, sequence);
+        Assert.Equal(224, total);
     }
 
     [Theory]

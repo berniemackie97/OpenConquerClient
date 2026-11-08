@@ -166,6 +166,7 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
             throw new InvalidDataException("The GameServer did not admit the created character.");
         }
 
+        await _game.SendMissionCatalogAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         _loadingMessages.Enqueue("LOADING_TRACE|" + _text.Initializing);
         _ = await _game.ReadExistingCharacterPreludeAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         GameCharacterInfo1006 character = await _game.ReadCharacterInfoAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
