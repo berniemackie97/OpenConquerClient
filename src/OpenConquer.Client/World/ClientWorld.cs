@@ -1,3 +1,4 @@
+using System.Numerics;
 using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.UI.Hud.Quickbar;
 using OpenConquer.Client.UI.Hud.Rendering;
@@ -26,6 +27,7 @@ internal sealed class ClientWorld : IClientWorld
     private readonly IClientContentSource _content;
     private readonly LogicalRenderSize _logicalRenderSize;
     private readonly Action<OpenGLRenderer> _drawRole;
+    private readonly Action<OpenGLRenderer, uint, Matrix4x4, Matrix4x4> _drawRemoteRole;
     private readonly Action<ReadOnlyMemory<byte>> _applyFrame;
     private readonly Action _onClosing;
 
@@ -46,6 +48,7 @@ internal sealed class ClientWorld : IClientWorld
     private WorldMapImageLoader? _mapImageLoader;
     private WorldMapTextureRenderer? _mapTextures;
     private WorldRoleLoad? _roleLoad;
+    private WorldRemoteRolePresentation? _remoteRolePresentation;
     private WorldRoleRenderer? _role;
     private WorldRoleSources? _roleSources;
     private WorldContentLoad<MainHudPreparation>? _hudLoad;
@@ -105,6 +108,7 @@ internal sealed class ClientWorld : IClientWorld
         _logicalRenderSize = logicalRenderSize;
         _onClosing = onClosing;
         _drawRole = DrawRole;
+        _drawRemoteRole = DrawRemoteRole;
         _applyFrame = ApplyFrame;
         _closeSession = closeSession;
         _entry = entry;
@@ -113,7 +117,9 @@ internal sealed class ClientWorld : IClientWorld
         _egress = createEgress?.Invoke();
         _mapLoad = createMapLoad();
         _catalogLoad = new WorldContentLoad<WorldEntryCatalogs>(token => WorldEntryContent.LoadCatalogs(content, token));
-        _roleLoad = new WorldRoleLoad(content, entry.Character.PackedAppearance, _diagnostics);
+        WorldRoleAssetReader reader = new(content, _diagnostics);
+        _roleLoad = new WorldRoleLoad(reader, entry.Character.PackedAppearance);
+        _remoteRolePresentation = new WorldRemoteRolePresentation(reader, _diagnostics);
     }
 
     /// <summary>True until the world starts closing.</summary>
@@ -240,6 +246,12 @@ internal sealed class ClientWorld : IClientWorld
             entry.Character.PackedAppearance, entry.Character.HairComposite, state.Equipment);
         try
         {
+            _remoteRolePresentation?.Synchronize(state.RemoteRoles, state.X, state.Y);
+            if (graphicsDevice is { } activeDevice)
+            {
+                _remoteRolePresentation?.Prepare(activeDevice);
+            }
+
             if (!load.TryPrepare(sources, _roleSources, out WorldRoleAssets? assets))
             {
                 return;
@@ -365,6 +377,12 @@ internal sealed class ClientWorld : IClientWorld
             return false;
         }
 
+        if (_inbound is { } state)
+        {
+            scene.SetRemoteRoles(state.RemoteRoles.Revision, state.RemoteRoles.All.Select(static player =>
+                new WorldSceneRole(player.EntityId, player.X, player.Y, player.Direction)));
+        }
+
         _mapImageLoader ??= new WorldMapImageLoader(_content);
         _mapTextures ??= WorldMapTextureRenderer.CreateStreaming(_mapImageLoader, device);
         return scene.Prepare(_mapTextures, renderer.Viewport.LogicalWidth, renderer.Viewport.LogicalHeight,
@@ -384,7 +402,7 @@ internal sealed class ClientWorld : IClientWorld
             return;
         }
 
-        scene.Draw(textures, renderer, _role is null ? null : _drawRole);
+        scene.Draw(textures, renderer, _role is null ? null : _drawRole, _drawRemoteRole);
         if (_hud is { } hud && _inbound is { } state && _levelExperience is { } experienceTable &&
             _entry is { Character.TransformLookSourceId: 0 })
         {
@@ -443,6 +461,7 @@ internal sealed class ClientWorld : IClientWorld
         ClientShutdown cleanup = new();
         cleanup.Run(() => hud?.Dispose());
         cleanup.Run(() => role?.Dispose());
+        cleanup.Run(() => _remoteRolePresentation?.ReleaseGraphics());
         cleanup.Run(() => mapTextures?.Dispose());
         cleanup.Run(() => renderer?.Dispose());
         cleanup.ThrowIfFailed();
@@ -461,6 +480,7 @@ internal sealed class ClientWorld : IClientWorld
         _closeReason = reason;
         WorldRoleLoad? roleLoad = _roleLoad;
         _roleLoad = null;
+        WorldRemoteRolePresentation? remoteRolePresentation = _remoteRolePresentation;
         WorldMapImageLoader? mapImageLoader = _mapImageLoader;
         _mapImageLoader = null;
         MainHudSelectedSkillImageLoader? selectedSkillImages = _selectedSkillImages;
@@ -484,8 +504,8 @@ internal sealed class ClientWorld : IClientWorld
         ClientShutdown cleanup = new();
         TaskCompletionSource graphicsReleased = new(TaskCreationOptions.RunContinuationsAsynchronously);
         // Publish the close task before invoking callbacks. The network owners wait for context cleanup.
-        _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages,
-            quickbarImages, cleanup, graphicsReleased.Task);
+        _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, remoteRolePresentation,
+            mapImageLoader, selectedSkillImages, quickbarImages, cleanup, graphicsReleased.Task);
         try
         {
             cleanup.Run(_onClosing);
@@ -493,6 +513,7 @@ internal sealed class ClientWorld : IClientWorld
             cleanup.Run(() => _mapLoad?.Cancel());
             cleanup.Run(() => _hudLoad?.Cancel());
             cleanup.Run(() => roleLoad?.Cancel());
+            cleanup.Run(() => remoteRolePresentation?.Cancel());
             cleanup.Run(() => mapImageLoader?.Cancel());
             cleanup.Run(() => selectedSkillImages?.Cancel());
             cleanup.Run(() => quickbarImages?.Cancel());
@@ -534,6 +555,8 @@ internal sealed class ClientWorld : IClientWorld
         WorldRoleLoad? roleLoad = _roleLoad;
         _roleLoad = null;
         cleanup.Run(() => roleLoad?.Cancel());
+        WorldRemoteRolePresentation? remoteRolePresentation = _remoteRolePresentation;
+        cleanup.Run(() => remoteRolePresentation?.Cancel());
         WorldMapImageLoader? mapImageLoader = _mapImageLoader;
         _mapImageLoader = null;
         cleanup.Run(() => mapImageLoader?.Cancel());
@@ -563,7 +586,8 @@ internal sealed class ClientWorld : IClientWorld
         _hudPreparation = null;
         Func<ValueTask>? closeSession = _closeSession;
         _closeSession = null;
-        await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, mapImageLoader, selectedSkillImages, quickbarImages)))
+        await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, remoteRolePresentation,
+            mapImageLoader, selectedSkillImages, quickbarImages)))
             .ConfigureAwait(false);
 
         if (catalogLoad is not null)
@@ -588,7 +612,8 @@ internal sealed class ClientWorld : IClientWorld
     }
 
     private static async Task CloseWorldAsync(Func<ValueTask>? closeSession, WorldFrameIngress? ingress,
-        WorldFrameEgress? egress, WorldRoleLoad? roleLoad, WorldMapImageLoader? mapImageLoader,
+        WorldFrameEgress? egress, WorldRoleLoad? roleLoad,
+        WorldRemoteRolePresentation? remoteRolePresentation, WorldMapImageLoader? mapImageLoader,
         MainHudSelectedSkillImageLoader? selectedSkillImages, MainHudQuickbarImageLoader? quickbarImages,
         ClientShutdown? cleanup = null, Task? graphicsReleased = null)
     {
@@ -616,6 +641,11 @@ internal sealed class ClientWorld : IClientWorld
         if (roleLoad is not null)
         {
             await cleanup.RunAsync(roleLoad.DisposeAsync).ConfigureAwait(false);
+        }
+
+        if (remoteRolePresentation is not null)
+        {
+            await cleanup.RunAsync(remoteRolePresentation.DisposeAsync).ConfigureAwait(false);
         }
 
         if (mapImageLoader is not null)
@@ -651,6 +681,9 @@ internal sealed class ClientWorld : IClientWorld
         scene.SetCameraTile(state.X, state.Y);
         scene.SetHeroDirection(state.DirectionIndex);
     }
+
+    private void DrawRemoteRole(OpenGLRenderer renderer, uint entityId, Matrix4x4 main, Matrix4x4 shadow) =>
+        _remoteRolePresentation?.Draw(renderer, entityId, main, shadow, _frameMilliseconds);
 
     private void DrawRole(OpenGLRenderer renderer)
     {
