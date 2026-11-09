@@ -76,6 +76,25 @@ internal sealed class WorldRemoteRoles
         return true;
     }
 
+    internal bool ApplyGroundJump(uint entityId, ushort targetX, ushort targetY)
+    {
+        if (!_roles.TryGetValue(entityId, out RemoteRole? role))
+        {
+            return false;
+        }
+
+        role.Playback.Stop();
+        GamePlayerSpawn10014 player = role.Player;
+        if (player.X != targetX || player.Y != targetY)
+        {
+            role.Player = player with { X = targetX, Y = targetY };
+            _snapshot = null;
+            Revision = unchecked(Revision + 1);
+        }
+
+        return true;
+    }
+
     internal bool Remove(uint entityId)
     {
         if (!_roles.Remove(entityId))
