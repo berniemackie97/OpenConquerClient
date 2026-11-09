@@ -127,3 +127,27 @@ Movement cadence, supported role state gating, local movement input, content-
 backed animation and same-map original-client/two-client comparison remain
 separate acceptance work in
 [#250](https://github.com/berniemackie97/OpenConquerClient/issues/250).
+
+## Peer ground-walk playback
+
+Accepted ordinary 10005 relays start a per-identity ground-walk clip after updating
+the authoritative remote tile. Consecutive relays alternate actions 110 and 111,
+resetting that identity's playback start time. The body motion resource key uses
+the body-family source and selected action; prepared action tracks reuse the
+installed geometry and texture rather than creating another graphics object
+per action or per peer. Body attachment tracks follow the selected action.
+
+Ground clips advance at the recorded 25-millisecond base frame interval and
+return to the initial idle clip after their recorded frame count is consumed.
+Missing ground action resources leave the role on the existing idle presentation.
+Selector 9 still updates the committed tile using its 24-direction displacement,
+but stops ground-gait playback; its distinct action family is not synthesized.
+Role removal, replacement, culling and world close discard playback state with
+the same owned identity. Unsigned tick arithmetic handles millisecond rollover.
+
+This does not interpolate positions between committed tiles, implement local
+ground-movement input or complete command-state and status-speed-dependent
+motion selection. The initial 25-millisecond ground interval does not cover
+mounted motion or speed modifiers. Actual content-backed two-client gait,
+action transitions, density and original-client comparisons remain acceptance
+requirements under [#250](https://github.com/berniemackie97/OpenConquerClient/issues/250).
