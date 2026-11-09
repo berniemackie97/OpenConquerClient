@@ -130,18 +130,21 @@ separate acceptance work in
 
 ## Peer ground-walk playback
 
-Accepted ordinary 10005 relays start a per-identity ground-walk clip after updating
-the authoritative remote tile. Consecutive relays alternate actions 110 and 111,
-resetting that identity's playback start time. The body motion resource key uses
-the body-family source and selected action; prepared action tracks reuse the
-installed geometry and texture rather than creating another graphics object
-per action or per peer. Body attachment tracks follow the selected action.
+Incoming 10005 selector 0 enters the ground-walk action pair 110/111;
+selector 1 selects the separate running pair 120/121. Each accepted relay
+updates the committed remote tile, then selects that actor's next action
+according to the recorded walk/run pose rules. The two pair members
+alternate as subsequent movements are processed. The body motion key uses
+the body-family source and selected action. All four clips use the existing
+shared geometry, textures, and attachment tracks.
 
-Ground clips advance at the recorded 25-millisecond base frame interval and
-return to the initial idle clip after their recorded frame count is consumed.
-Missing ground action resources leave the role on the existing idle presentation.
-Selector 9 still updates the committed tile using its 24-direction displacement,
-but stops ground-gait playback; its distinct action family is not synthesized.
+These ground actions have a recorded 25-millisecond base frame interval.
+A missing action clip or an exhausted frame sequence falls back to the
+initial idle presentation. Selector 9 retains its 24-direction displacement
+and stops ground gait; it does not synthesize mounted animation. Other
+selector values retain the decoded eight-way tile displacement, but do not
+start an action family whose contract is unverified. Selector comparisons
+use the complete 32-bit value, not the low byte.
 Role removal, replacement, culling and world close discard playback state with
 the same owned identity. Unsigned tick arithmetic handles millisecond rollover.
 
@@ -151,3 +154,12 @@ motion selection. The initial 25-millisecond ground interval does not cover
 mounted motion or speed modifiers. Actual content-backed two-client gait,
 action transitions, density and original-client comparisons remain acceptance
 requirements under [#250](https://github.com/berniemackie97/OpenConquerClient/issues/250).
+
+
+The run-action distinction is based on the movement command mapping recorded
+in `20_notes/Server/movement-eligibility-5517.md` and the action pairs and
+frame interval in `20_notes/Rendering/roleview_dll/07_action_playback_transition_state.md`
+and `13_role_compute_frame_interval.md`. This is frame selection for
+received movement, not local input, position interpolation, a full actor
+command-state machine, or server cadence enforcement. The outstanding
+verification remains tracked in #250.
