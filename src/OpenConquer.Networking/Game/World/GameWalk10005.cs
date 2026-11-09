@@ -12,12 +12,9 @@ internal readonly record struct GameWalk10005(
     internal const uint RunSelector = 1;
     internal const uint MountedSelector = 9;
 
-    internal byte DirectionIndex => (byte)((byte)PackedDirection % (Selector == MountedSelector ? 24 : 8));
+    internal bool IsMounted => (byte)Selector == MountedSelector;
+    internal byte DirectionIndex => (byte)((byte)PackedDirection % (IsMounted ? 24 : 8));
 
-    /// <summary>
-    /// Reads the fields from the native message buffer. Parse has no size or entity rule; an entity that is not the hero
-    /// goes to the role lookup or a 0x66 query in <c>CMsgEntityAction__Process</c> 0x7405E7, so 0 is a valid input.
-    /// </summary>
     internal static GameWalk10005 Read(GameMessageBuffer message) => new(
         message.ReadUInt32(4),
         message.ReadUInt32(8),
@@ -33,7 +30,7 @@ internal readonly record struct GameWalk10005(
     internal (int X, int Y) GetDelta()
     {
         byte index = DirectionIndex;
-        if (Selector == MountedSelector)
+        if (IsMounted)
         {
             return (s_twoTileDeltaX[index], s_twoTileDeltaY[index]);
         }
