@@ -1,14 +1,15 @@
 using OpenConquer.Client.World;
+using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.Tests.World;
 
 public sealed class WorldRolePlaybackTests
 {
     [Fact]
-    public void WalkSelectsActionAndAdvancesAtTheRecordedGroundFrameInterval()
+    public void WalkingSelectsTheGroundPairAndAdvancesAtTheRecordedInterval()
     {
         WorldRolePlayback playback = new();
-        playback.BeginWalk(1000);
+        playback.BeginMove(GameWalk10005.WalkSelector, 1000);
 
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
         Assert.True(playback.TryGetFrame(1000, 3, out int first));
@@ -24,52 +25,88 @@ public sealed class WorldRolePlaybackTests
     }
 
     [Fact]
-    public void ConsecutiveWalksAlternateActionsAndRestartTheirFrameClock()
+    public void ConsecutiveWalksAlternateTheirPairAndRestartTheFrameClock()
     {
         WorldRolePlayback playback = new();
-        playback.BeginWalk(1000);
+        playback.BeginMove(GameWalk10005.WalkSelector, 1000);
         Assert.True(playback.TryGetFrame(1050, 8, out int previous));
         Assert.Equal(2, previous);
 
-        playback.BeginWalk(1060);
+        playback.BeginMove(GameWalk10005.WalkSelector, 1060);
         Assert.Equal(WorldRolePlayback.GroundWalkSecond, playback.Action);
         Assert.True(playback.TryGetFrame(1060, 8, out int current));
         Assert.Equal(0, current);
-        playback.BeginWalk(1070);
+
+        playback.BeginMove(GameWalk10005.WalkSelector, 1070);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
     }
 
     [Fact]
-    public void ExpiredOrAbsentMotionReturnsToIdleAndResetsAlternation()
+    public void RunningSelectsAndAlternatesTheSeparateStridePair()
     {
         WorldRolePlayback playback = new();
-        playback.BeginWalk(200);
+        playback.BeginMove(GameWalk10005.RunSelector, 1000);
+        Assert.Equal(WorldRolePlayback.GroundRunFirst, playback.Action);
+        Assert.True(playback.TryGetFrame(1025, 4, out int frame));
+        Assert.Equal(1, frame);
+
+        playback.BeginMove(GameWalk10005.RunSelector, 1030);
+        Assert.Equal(WorldRolePlayback.GroundRunSecond, playback.Action);
+        Assert.True(playback.TryGetFrame(1030, 4, out frame));
+        Assert.Equal(0, frame);
+
+        playback.BeginMove(GameWalk10005.RunSelector, 1040);
+        Assert.Equal(WorldRolePlayback.GroundRunFirst, playback.Action);
+    }
+
+    [Fact]
+    public void SwitchingFromFirstRunStrideSelectsTheSecondWalkStride()
+    {
+        WorldRolePlayback playback = new();
+        playback.BeginMove(GameWalk10005.RunSelector, 1000);
+        playback.BeginMove(GameWalk10005.WalkSelector, 1010);
+        Assert.Equal(WorldRolePlayback.GroundWalkSecond, playback.Action);
+
+        playback.BeginMove(GameWalk10005.RunSelector, 1020);
+        Assert.Equal(WorldRolePlayback.GroundRunFirst, playback.Action);
+    }
+
+    [Fact]
+    public void ExpiredOrMissingMotionReturnsToIdle()
+    {
+        WorldRolePlayback playback = new();
+        playback.BeginMove(GameWalk10005.WalkSelector, 200);
         Assert.False(playback.TryGetFrame(201, 0, out _));
         Assert.Equal(0, playback.Action);
 
-        playback.BeginWalk(300);
-        Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
+        playback.BeginMove(GameWalk10005.RunSelector, 300);
+        Assert.Equal(WorldRolePlayback.GroundRunFirst, playback.Action);
         Assert.False(playback.TryGetFrame(325, 1, out _));
-        playback.BeginWalk(400);
+
+        playback.BeginMove(GameWalk10005.WalkSelector, 400);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
     }
 
-    [Fact]
-    public void MountedMovementClearsGroundPlayback()
+    [Theory]
+    [InlineData(GameWalk10005.MountedSelector)]
+    [InlineData(0x0000_0100u)]
+    [InlineData(0x0000_0101u)]
+    [InlineData(2u)]
+    public void UnsupportedSelectorsStopGroundPlayback(uint selector)
     {
         WorldRolePlayback playback = new();
-        playback.BeginWalk(1000);
-        playback.Stop();
+        playback.BeginMove(GameWalk10005.WalkSelector, 1000);
+        playback.BeginMove(selector, 1001);
 
         Assert.Equal(0, playback.Action);
-        Assert.False(playback.TryGetFrame(1001, 4, out _));
+        Assert.False(playback.TryGetFrame(1002, 4, out _));
     }
 
     [Fact]
-    public void SampleTimeHandlesUnsignedCounterRollo()
+    public void SampleTimeHandlesUnsignedCounterRollover()
     {
         WorldRolePlayback playback = new();
-        playback.BeginWalk(uint.MaxValue - 9);
+        playback.BeginMove(GameWalk10005.WalkSelector, uint.MaxValue - 9);
         Assert.True(playback.TryGetFrame(15, 3, out int frame));
         Assert.Equal(1, frame);
         Assert.False(playback.TryGetFrame(65, 3, out _));
