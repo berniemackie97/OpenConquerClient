@@ -27,12 +27,12 @@ public sealed partial class WorldInboundStateTests
             Sample sample = samples[index];
             Assert.Equal((ushort)GameWorldAction10010.GroundJump, sample.Subtype);
             Assert.True(state.Apply(sample.Frame));
-            Assert.Equal(targets[index], (state.X, state.Y));
+            Assert.Equal(((int)targets[index].X, (int)targets[index].Y), (state.X, state.Y));
             Assert.Equal((byte)3, state.DirectionIndex);
         }
 
         Assert.False(state.Apply(samples[^1].Frame));
-        Assert.Equal(targets[^1], (state.X, state.Y));
+        Assert.Equal(((int)targets[^1].X, (int)targets[^1].Y), (state.X, state.Y));
     }
 
     [Fact]
