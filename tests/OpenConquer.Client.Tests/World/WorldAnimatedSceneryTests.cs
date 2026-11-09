@@ -71,7 +71,7 @@ public sealed class WorldAnimatedSceneryTests
         order.Insert(inFront);
         order.Insert(behind);
 
-        Assert.Equal([behind, animated, inFront], order.ToDrawList());
+        Assert.Equal([behind, animated, inFront], order.ToDrawListWithRoles(out _));
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public sealed class WorldAnimatedSceneryTests
         WorldSceneryDepthOrder order = new();
         order.Insert(earlier);
         order.Insert(later);
-        Assert.Equal([earlier, later], order.ToDrawList());
+        Assert.Equal([earlier, later], order.ToDrawListWithRoles(out _));
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public sealed class WorldAnimatedSceneryTests
         order.Insert(peer);
         order.Insert(child);
 
-        Assert.Equal([terrain, child, peer], order.ToDrawList());
+        Assert.Equal([terrain, child, peer], order.ToDrawListWithRoles(out _));
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public sealed class WorldAnimatedSceneryTests
         order.Insert(middle);
         order.Insert(left);
 
-        Assert.Equal([terrain, left, middle, right], order.ToDrawList());
+        Assert.Equal([terrain, left, middle, right], order.ToDrawListWithRoles(out _));
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class WorldAnimatedSceneryTests
         order.Insert(outside);
         order.Insert(inside);
 
-        Assert.Equal([outside, terrain, inside], order.ToDrawList());
+        Assert.Equal([outside, terrain, inside], order.ToDrawListWithRoles(out _));
     }
 
     [Fact]
@@ -152,7 +152,7 @@ public sealed class WorldAnimatedSceneryTests
         order.Insert(child);
         order.Insert(terrain, terrain: true);
 
-        Assert.Equal([child, terrain], order.ToDrawList());
+        Assert.Equal([child, terrain], order.ToDrawListWithRoles(out _));
     }
 
     [Fact]
@@ -169,6 +169,6 @@ public sealed class WorldAnimatedSceneryTests
         order.Insert(first);
         order.Insert(second);
 
-        Assert.Equal([terrain, first, second], order.ToDrawList());
+        Assert.Equal([terrain, first, second], order.ToDrawListWithRoles(out _));
     }
 }

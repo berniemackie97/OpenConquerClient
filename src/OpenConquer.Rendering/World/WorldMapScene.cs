@@ -31,7 +31,9 @@ public sealed class WorldMapScene
     private int _zoomPercent = 100;
     private readonly uint _startMilliseconds;
     private readonly LogicalRenderSize _backdropExtent;
-    private MapFrame _frame = new([], default, -1, 0, 0, 0);
+    private MapFrame _frame = new([], default, [], 0, 0, 0);
+    private WorldSceneRole[] _remoteRoles = [];
+    private int _remoteRoleRevision = int.MinValue;
     private WorldMapTextureRenderer? _presentedTextures;
     private MapFrame? _pendingFrame;
     private ViewKey _pendingView;
@@ -73,6 +75,7 @@ public sealed class WorldMapScene
 
     public LogicalRenderSize BackdropExtent => _backdropExtent;
     public GameMapContent Map => _map;
+    internal IReadOnlyList<WorldRoleDrawSlot> CommittedRoleOrder => _frame.RoleSlots;
 
     public (Matrix4x4 Main, Matrix4x4 Shadow) HeroMatrices
     {
@@ -84,6 +87,24 @@ public sealed class WorldMapScene
             return WorldRoleCameraMatrices.Create(_map, _puzzles, _frame.Projection,
                 x, y, rotationDegrees: (-1 - direction) * 45f, scale: 0.75f);
         }
+    }
+
+    public void SetRemoteRoles(int revision, IEnumerable<WorldSceneRole> roles)
+    {
+        if (_remoteRoleRevision == revision)
+        {
+            return;
+        }
+
+        _remoteRoles = roles.ToArray();
+        _remoteRoleRevision = revision;
+    }
+
+    internal (Matrix4x4 Main, Matrix4x4 Shadow) RoleMatrices(WorldSceneRole role)
+    {
+        (int x, int y) = WorldCameraProjection.ProjectTile(_map, role.TileX, role.TileY);
+        return WorldRoleCameraMatrices.Create(_map, _puzzles, _frame.Projection,
+            x, y, (-1 - role.Direction) * 45f, 0.75f);
     }
 
     public void SetCameraTile(int tileX, int tileY)
@@ -153,10 +174,11 @@ public sealed class WorldMapScene
 
         IReadOnlyList<WorldPuzzleTile> ground = WorldPuzzleDrawList.Ground(
             _map, _puzzles, projection, _groundClock.FrameForRender(nowMilliseconds));
-        IReadOnlyList<WorldScenerySprite> scenery = WorldSceneryDrawList.BuildWithRole(
+        IReadOnlyList<WorldScenerySprite> scenery = WorldSceneryDrawList.BuildWithRoles(
             _map, _terrain, _sceneryIndex, _sceneryFrameExtents,
             projection, nowMilliseconds, _startMilliseconds,
-            _heroTileX, _heroTileY, out int roleDrawIndex);
+            new WorldSceneRole(0, _heroTileX, _heroTileY, _heroDirection), _remoteRoles,
+            out IReadOnlyList<WorldRoleDrawSlot> roleSlots);
 
         List<WorldMapLayer> layers =
         [
@@ -185,14 +207,15 @@ public sealed class WorldMapScene
             layers.Insert(Math.Clamp(record.InsertIndex, 0, layers.Count), new(Puzzle: puzzleTiles));
         }
 
-        return new MapFrame(layers, projection, roleDrawIndex, _heroX, _heroY, _heroDirection);
+        return new MapFrame(layers, projection, roleSlots, _heroX, _heroY, _heroDirection);
     }
 
     public bool Prepare(WorldMapTextureRenderer textures, int screenWidth, int screenHeight, uint nowMilliseconds,
         int textureBudget = int.MaxValue)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(textureBudget);
-        ViewKey view = new(screenWidth, screenHeight, _zoomPercent, _heroTileX, _heroTileY, _heroDirection);
+        ViewKey view = new(screenWidth, screenHeight, _zoomPercent, _heroTileX, _heroTileY,
+            _heroDirection, _remoteRoleRevision);
         // Keep animation requests stable while the current viewport catches up.
         MapFrame candidate = textures.IsStreaming && _pendingFrame is { } pending && view == _pendingView
             ? pending
@@ -238,7 +261,7 @@ public sealed class WorldMapScene
             if (!ReferenceEquals(_presentedTextures, textures))
             {
                 // A replacement context cannot draw a frame that used another renderer's texture cache.
-                _frame = new MapFrame([], default, -1, 0, 0, 0);
+                _frame = new MapFrame([], default, [], 0, 0, 0);
                 _presentedTextures = null;
             }
         }
@@ -248,7 +271,8 @@ public sealed class WorldMapScene
     }
 
     public void Draw(WorldMapTextureRenderer textures, OpenGLRenderer renderer,
-        Action<OpenGLRenderer>? drawRole = null)
+        Action<OpenGLRenderer>? drawRole = null,
+        Action<OpenGLRenderer, uint, Matrix4x4, Matrix4x4>? drawRemoteRole = null)
     {
         foreach (WorldMapLayer layer in _frame.Layers)
         {
@@ -257,24 +281,38 @@ public sealed class WorldMapScene
                 textures.Draw(renderer, puzzle, SpriteColor.White);
             }
 
-            if (layer.Scenery is { } scenery)
+            if (layer.Scenery is not { } scenery)
             {
-                if (_frame.RoleDrawIndex < 0)
+                continue;
+            }
+
+            int drawn = 0;
+            foreach (WorldRoleDrawSlot slot in _frame.RoleSlots)
+            {
+                textures.Draw(renderer, scenery, _frame.Projection, SpriteColor.White,
+                    drawn, slot.SpriteIndex - drawn);
+                drawn = slot.SpriteIndex;
+                if (slot.Role.EntityId == 0)
                 {
-                    textures.Draw(renderer, scenery, _frame.Projection, SpriteColor.White, 0, scenery.Count);
+                    drawRole?.Invoke(renderer);
                     continue;
                 }
 
-                textures.Draw(renderer, scenery, _frame.Projection, SpriteColor.White, 0, _frame.RoleDrawIndex);
-                drawRole?.Invoke(renderer);
-                textures.Draw(renderer, scenery, _frame.Projection, SpriteColor.White,
-                    _frame.RoleDrawIndex, scenery.Count - _frame.RoleDrawIndex);
+                if (drawRemoteRole is not null)
+                {
+                    (Matrix4x4 main, Matrix4x4 shadow) = RoleMatrices(slot.Role);
+                    drawRemoteRole(renderer, slot.Role.EntityId, main, shadow);
+                }
             }
+
+            textures.Draw(renderer, scenery, _frame.Projection, SpriteColor.White,
+                drawn, scenery.Count - drawn);
         }
     }
 
-    private readonly record struct ViewKey(int Width, int Height, int Zoom, int TileX, int TileY, byte Direction);
+    private readonly record struct ViewKey(int Width, int Height, int Zoom, int TileX, int TileY,
+        byte Direction, int RemoteRolesRevision);
 
     private readonly record struct MapFrame(IReadOnlyList<WorldMapLayer> Layers, WorldPuzzleProjection Projection,
-        int RoleDrawIndex, int HeroX, int HeroY, byte HeroDirection);
+        IReadOnlyList<WorldRoleDrawSlot> RoleSlots, int HeroX, int HeroY, byte HeroDirection);
 }

@@ -81,6 +81,25 @@ public sealed class WorldSceneryDrawListTests
     }
 
     [Fact]
+    public void SceneryAndMultipleRolesUseOneDepthOrder()
+    {
+        using WorldMapFixture fixture = new();
+        WorldPuzzleProjection projection = new(5000, 5000, 0, 0, 0, 0, 256, 256);
+        WorldSceneRole hero = new(0, 69, 69, 0);
+        WorldSceneRole peer = new(1_000_001, 71, 71, 4);
+        IReadOnlyList<WorldScenerySprite> sprites = WorldSceneryDrawList.BuildWithRoles(
+            fixture.Map,
+            [Placement(Animation(1), 70, 70, 0, 0, 100)],
+            new WorldSceneryIndex(fixture.Map, []),
+            new Dictionary<GameMapSceneryRecord, (int Width, int Height)>(),
+            projection, 1000, 1000, hero, [peer], out IReadOnlyList<WorldRoleDrawSlot> slots);
+
+        Assert.Single(sprites);
+        Assert.Equal([(0, hero), (1, peer)],
+            slots.Select(static slot => (slot.SpriteIndex, slot.Role)));
+    }
+
+    [Fact]
     public void DistantTerrainObject_DoesNotTickSolelyBecauseItsSpriteOffsetIsVisible()
     {
         using WorldMapFixture fixture = new();

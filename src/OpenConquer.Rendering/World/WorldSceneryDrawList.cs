@@ -10,23 +10,33 @@ internal static class WorldSceneryDrawList
         IReadOnlyDictionary<GameMapSceneryRecord, (int Width, int Height)> frameExtents,
         WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds) =>
         BuildCore(map, terrain, scenery, frameExtents, projection, nowMilliseconds,
-            sceneStartMilliseconds, null, out _);
+            sceneStartMilliseconds, [], out _);
 
-    internal static IReadOnlyList<WorldScenerySprite> BuildWithRole(GameMapContent map,
+    internal static IReadOnlyList<WorldScenerySprite> BuildWithRoles(GameMapContent map,
         IReadOnlyList<GameMapTerrainScenePlacement> terrain,
         WorldSceneryIndex scenery,
         IReadOnlyDictionary<GameMapSceneryRecord, (int Width, int Height)> frameExtents,
         WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds,
-        int tileX, int tileY, out int roleIndex) =>
-        BuildCore(map, terrain, scenery, frameExtents, projection, nowMilliseconds,
-            sceneStartMilliseconds, (tileX, tileY), out roleIndex);
+        WorldSceneRole hero, IReadOnlyList<WorldSceneRole> peers,
+        out IReadOnlyList<WorldRoleDrawSlot> roleSlots)
+    {
+        WorldSceneRole[] roles = new WorldSceneRole[peers.Count + 1];
+        roles[0] = hero;
+        for (int i = 0; i < peers.Count; i++)
+        {
+            roles[i + 1] = peers[i];
+        }
+
+        return BuildCore(map, terrain, scenery, frameExtents, projection, nowMilliseconds,
+            sceneStartMilliseconds, roles, out roleSlots);
+    }
 
     private static IReadOnlyList<WorldScenerySprite> BuildCore(GameMapContent map,
         IReadOnlyList<GameMapTerrainScenePlacement> terrain,
         WorldSceneryIndex scenery,
         IReadOnlyDictionary<GameMapSceneryRecord, (int Width, int Height)> frameExtents,
         WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds,
-        (int X, int Y)? roleTile, out int roleIndex)
+        IReadOnlyList<WorldSceneRole> roles, out IReadOnlyList<WorldRoleDrawSlot> roleSlots)
     {
         WorldSceneryDepthOrder order = new();
         foreach (GameMapSceneryAniBinding binding in scenery.Collect(projection))
@@ -60,13 +70,15 @@ internal static class WorldSceneryDrawList
             }
         }
 
-        // Ordinary roles register only within the screen margin of 2 tiles (0x67274A..0x672772), even off-grid.
-        if (roleTile is { } tile && WorldCameraProjection.IsTileWithinScreenBounds(map, projection, tile.X, tile.Y, 2))
+        foreach (WorldSceneRole role in roles)
         {
-            order.InsertRole(tile.X, tile.Y);
+            if (WorldCameraProjection.IsTileWithinScreenBounds(map, projection, role.TileX, role.TileY, 2))
+            {
+                order.InsertRole(role);
+            }
         }
 
-        return order.ToDrawList(out roleIndex);
+        return order.ToDrawListWithRoles(out roleSlots);
     }
 
     private static void AppendAnimated(GameMapContent map, GameMapSceneryAniBinding binding,

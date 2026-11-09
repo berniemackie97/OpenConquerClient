@@ -68,3 +68,37 @@ ownership, scene depth insertion, pointer/picking state if used, and actual
 two-client and original-client comparison. The current fixtures are
 server-writer contract cases, not observed original-server output. Full CP3.2
 verification remains a release acceptance gate.
+
+## Nearby character presentation and graphics ownership
+
+The authenticated 10014 roster is the source of identity, tile position, facing
+and equipment for nearby peers. Roster revisions invalidate the committed
+world role order. Both the hero and visible peers enter the existing scenery
+depth sorter as 1×1 role footprints, then draw at their assigned insertion
+positions using the same map projection, C3 mesh renderer and shadow transform.
+No second map renderer or independent depth algorithm exists.
+
+`WorldRoleSources` resolves equipped models for both local and remote
+characters. The world's asset reader serializes catalog and source access
+across the hero and one remote preparation worker. Remote models are keyed by
+body family and resolved equipment sources; identical appearances share a
+single installed graphics renderer while retaining separate identities and
+tile transforms. Model selection is deterministic by distance then entity ID
+and caps the number of simultaneously prepared distinct appearances at 64.
+That is a graphics resource policy, not a protocol or gameplay limit.
+The 4096-entry remote identity registry remains authoritative even when
+density exceeds the graphics preparation budget.
+
+Role departure, replacement and the 18-tile visibility boundary update both
+the scene order and the set of retained model resources. Outdated CPU loads
+are canceled, the single active preparation is drained at shutdown, and
+installed GL resources are released on the graphics owner thread. Context
+recreation rebuilds the installed renderer set; ordinary window resizing
+only updates scene projection and does not duplicate model ownership.
+
+This slice does not establish independently captured source-server 10014
+frames, original-client render timing, visual correctness, movement animation,
+or two-client interoperability. Those remain acceptance requirements of
+[#249](https://github.com/berniemackie97/OpenConquerClient/issues/249);
+R1 [#248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
+continues to gate release acceptance.

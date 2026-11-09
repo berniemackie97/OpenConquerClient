@@ -7,8 +7,7 @@ internal sealed class WorldSceneryDepthOrder
     internal void Insert(WorldScenerySprite sprite, bool terrain = false) =>
         Insert(new Entry(sprite, terrain));
 
-    internal void InsertRole(int tileX, int tileY) =>
-        Insert(new Entry(tileX, tileY));
+    internal void InsertRole(WorldSceneRole role) => Insert(new Entry(role));
 
     private void Insert(Entry incoming)
     {
@@ -70,12 +69,10 @@ internal sealed class WorldSceneryDepthOrder
         _active.Insert(position, incoming);
     }
 
-    internal IReadOnlyList<WorldScenerySprite> ToDrawList() => ToDrawList(out _);
-
-    internal IReadOnlyList<WorldScenerySprite> ToDrawList(out int roleIndex)
+    internal IReadOnlyList<WorldScenerySprite> ToDrawListWithRoles(out IReadOnlyList<WorldRoleDrawSlot> roles)
     {
         List<WorldScenerySprite> sprites = new(_active.Count);
-        int resolvedRoleIndex = -1;
+        List<WorldRoleDrawSlot> markers = [];
         foreach (Entry entry in _active)
         {
             Append(entry);
@@ -88,14 +85,14 @@ internal sealed class WorldSceneryDepthOrder
             }
         }
 
-        roleIndex = resolvedRoleIndex;
+        roles = markers;
         return sprites;
 
         void Append(Entry entry)
         {
-            if (entry.IsRole)
+            if (entry.Role is { } role)
             {
-                resolvedRoleIndex = sprites.Count;
+                markers.Add(new WorldRoleDrawSlot(sprites.Count, role));
             }
             else
             {
@@ -182,16 +179,16 @@ internal sealed class WorldSceneryDepthOrder
             Width = sprite.FootprintWidth;
             Height = sprite.FootprintHeight;
             Terrain = terrain;
-            IsRole = false;
+            Role = null;
         }
 
-        internal Entry(int tileX, int tileY)
+        internal Entry(WorldSceneRole role)
         {
-            TileX = tileX;
-            TileY = tileY;
+            Role = role;
+            TileX = role.TileX;
+            TileY = role.TileY;
             Width = 1;
             Height = 1;
-            IsRole = true;
         }
 
         internal readonly WorldScenerySprite? Sprite;
@@ -200,7 +197,7 @@ internal sealed class WorldSceneryDepthOrder
         internal readonly int Width;
         internal readonly int Height;
         internal readonly bool Terrain;
-        internal readonly bool IsRole;
+        internal readonly WorldSceneRole? Role;
         internal List<Entry>? Children;
     }
 }
