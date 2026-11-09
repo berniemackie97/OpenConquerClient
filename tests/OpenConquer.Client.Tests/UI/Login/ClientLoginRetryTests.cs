@@ -78,11 +78,11 @@ public sealed class ClientLoginRetryTests : IDisposable
     [InlineData(LoginAttemptStatus.Timeout)]
     [InlineData(LoginAttemptStatus.Unavailable)]
     [InlineData(LoginAttemptStatus.Cancelled)]
-    public void TerminalOutcomeStillResetsLoadingWithoutPendingCommand(LoginAttemptStatus status)
+    public void TerminalOutcomeStillResetsLoadingWithoutPendingCommand(int status)
     {
         LoginLoadingScreen loading = CreateLoading();
         loading.Start();
-        loading.Update(status, false, TimeSpan.FromMilliseconds(34));
+        loading.Update((LoginAttemptStatus)status, false, TimeSpan.FromMilliseconds(34));
 
         Assert.False(loading.Visible);
         Assert.Equal(1, loading.Sequence.Frame);
