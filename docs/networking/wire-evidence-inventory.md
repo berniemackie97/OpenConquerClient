@@ -174,12 +174,12 @@ The test-only `tests/Fixtures/WireGolden/manifest.json` pins the canonical
 client source revision `e13bf5724975ec825e64a3609719afedd9b6af41`,
 the SHA-256 of each included fixture file, and an explicit list of every
 registered case. Both test suites require the same manifest SHA-256
-`ad0080adb7730c1235afa411cd25dc84eeb2f47c1630d43d1cf4bf7b89a373a1`,
-verify every listed file and reject unlisted fixture JSON files. The corpus contains two static-derived cases, seven observed client-message groups
+`60ca8ca1abe38bece22d57a7f329de60952efc3139008940919029f48c392361`,
+verify every listed file and reject unlisted fixture JSON files. The corpus contains two static-derived cases, eight observed client-message groups
 (1009/27, 1134/3, 10005 selectors 0/1, 10010 admission actions, 10010/146,
-1151/2 and 10010/145), and one project-defined registration case. The five
-later groups pin eighteen individual frames from separately retained
-running-client captures.
+1151/2, 10010/145 and 10010 replay responses), and one project-defined
+registration case. Six later groups pin 32 individual frames from separately
+retained running-client captures.
 These observations cover only their documented variants and directions.
 A corpus revision requires coordinated review of the source evidence,
 fixture bytes, manifest and pinned hash in both repositories. No runtime
@@ -288,3 +288,20 @@ The client has no active post-death /145 producer, so these tests do **not**
 complete ghost transition gameplay. The original-client jump action 137 and
 trade-quit 1056 observations in the same capture have withheld payload bytes,
 not qualifying packet vectors. No synthetic replacement is included.
+
+## Captured replay response windows
+
+The exact 14 client-emitted 10010 frames in
+`10010-world-replay.observed.json` cover capture 1 response records
+112, 114–115, 117, 119, 121, 123 and 133, 135–136, 138, 140, 142, 144
+in `20_notes/Network/evidence/cp32-world-entry-2026-11-08/capture.json`.
+The source capture file SHA-256 is
+`177e7e97fb434090a1716905f6c2fe2ca0752aa61d313a3daaf757e748c6cd0f`.
+Each window emits actions 76, 96, 77, 78, 97, 251 and 132 in that order;
+action 251 carries the session's version value rather than the frame clock.
+
+The triggering 10010/75 frames at records 111 and 132 are controlled-peer
+inputs, including one deliberately shortened stimulus, and are not classified
+as original-client output. The managed client and independent server tests
+verify exact source bytes and wire fields. These checks do not establish
+original-server behavior or real connected-client interoperability.
