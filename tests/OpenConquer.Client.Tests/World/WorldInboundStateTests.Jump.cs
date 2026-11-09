@@ -9,7 +9,7 @@ namespace OpenConquer.Client.Tests.World;
 public sealed partial class WorldInboundStateTests
 {
     [Fact]
-    public void CapturedGroundJumpAcknowledgementsSetTheHeroTargetWithoutChangingFacing()
+    public void ObservedClientJumpRequestsExerciseHeroReceiveTarget()
     {
         Sample[] samples = Read("10010-ground-jump.observed.json",
             GameWorldAction10010.PacketType, ConditionalEvidence);
@@ -36,7 +36,7 @@ public sealed partial class WorldInboundStateTests
     }
 
     [Fact]
-    public void CapturedGroundJumpRelaysUpdateKnownPeerAndCancelPreviousGait()
+    public void ObservedClientJumpRequestReplayedForKnownPeerCancelsGait()
     {
         Sample sample = Read("10010-ground-jump.observed.json",
             GameWorldAction10010.PacketType, ConditionalEvidence)[0];
@@ -56,7 +56,7 @@ public sealed partial class WorldInboundStateTests
         Assert.Equal(((ushort)62, (ushort)110), (peer!.X, peer.Y));
         Assert.Equal("Peer", System.Text.Encoding.ASCII.GetString(peer.NameBytes.Span));
         Assert.Equal(1003u, peer.PackedAppearance);
-        Assert.Equal((byte)3, peer.Direction);
+        Assert.Equal((byte)6, peer.Direction);
         Assert.Same(playback, state.RemoteRoles.GetPlayback(1_000_000));
         Assert.Equal(0, playback.Action);
         Assert.Equal(previousRevision + 1, state.RemoteRoles.Revision);
