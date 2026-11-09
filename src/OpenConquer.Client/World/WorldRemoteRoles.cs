@@ -7,6 +7,7 @@ internal sealed class WorldRemoteRoles
     internal const int MaximumTrackedRoles = 4096;
     private const int VisibilityRadius = 18;
     private readonly Dictionary<uint, RemoteRole> _roles = [];
+    private GamePlayerSpawn10014[]? _snapshot;
 
     internal int Count => _roles.Count;
     internal int Revision
@@ -14,7 +15,8 @@ internal sealed class WorldRemoteRoles
         get;
         private set;
     }
-    internal IEnumerable<GamePlayerSpawn10014> All => _roles.Values.Select(static role => role.Player);
+    internal IReadOnlyCollection<GamePlayerSpawn10014> All =>
+        _snapshot ??= [.. _roles.Values.Select(static role => role.Player)];
 
     internal bool Contains(uint entityId) => _roles.ContainsKey(entityId);
 
@@ -41,6 +43,7 @@ internal sealed class WorldRemoteRoles
         }
 
         _roles[player.EntityId] = new RemoteRole(player);
+        _snapshot = null;
         Revision = unchecked(Revision + 1);
     }
 
@@ -66,7 +69,16 @@ internal sealed class WorldRemoteRoles
             Y = (ushort)y,
             Direction = (byte)(walk.DirectionIndex % 8)
         };
-        role.Playback.BeginWalk(nowMilliseconds);
+        if (walk.Selector == GameWalk10005.MountedSelector)
+        {
+            role.Playback.Stop();
+        }
+        else
+        {
+            role.Playback.BeginWalk(nowMilliseconds);
+        }
+
+        _snapshot = null;
         Revision = unchecked(Revision + 1);
         return true;
     }
@@ -78,6 +90,7 @@ internal sealed class WorldRemoteRoles
             return false;
         }
 
+        _snapshot = null;
         Revision = unchecked(Revision + 1);
         return true;
     }
