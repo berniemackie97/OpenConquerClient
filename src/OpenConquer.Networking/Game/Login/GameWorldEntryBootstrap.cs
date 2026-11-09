@@ -145,13 +145,13 @@ internal static class GameWorldEntryBootstrap
                         }
 
                         if (GameWorldActionResponses.TryForAcknowledgement(action.Action, hero,
-                            session.SilentInfo, out GameWorldActionResponse first,
-                            out GameWorldActionResponse second))
+                            session.SilentInfo, out GameWorldActionResponse primaryResponse,
+                            out GameWorldActionResponse additionalResponse))
                         {
-                            await SendResponseAsync(first).ConfigureAwait(false);
-                            if (second.Action != 0)
+                            await SendResponseAsync(primaryResponse).ConfigureAwait(false);
+                            if (additionalResponse.Action != 0)
                             {
-                                await SendResponseAsync(second).ConfigureAwait(false);
+                                await SendResponseAsync(additionalResponse).ConfigureAwait(false);
                             }
 
                             if (action.Action == GameWorldAction10010.ReportSilentInfo)
