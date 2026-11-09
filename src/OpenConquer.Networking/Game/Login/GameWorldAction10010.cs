@@ -34,6 +34,8 @@ internal readonly record struct GameWorldAction10010(
     internal const ushort SetPkMode = 0x60;
     internal const ushort PositionCorrection = 108;
     internal const ushort CorrectionReply = 146;
+    internal const ushort QueryPlayer = 102;
+    internal const ushort RemoveEntity = 135;
     internal const ushort GetStatistics = 0x84;
     internal const ushort ReportSilentInfo = 0xFB;
     internal const ushort ClientStateApplied = 0x198;
