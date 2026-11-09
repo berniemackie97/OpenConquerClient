@@ -174,11 +174,12 @@ The test-only `tests/Fixtures/WireGolden/manifest.json` pins the canonical
 client source revision `e13bf5724975ec825e64a3609719afedd9b6af41`,
 the SHA-256 of each included fixture file, and an explicit list of every
 registered case. Both test suites require the same manifest SHA-256
-`837443eb01539d872cc388b83eba097399b4ae8bdb3ea6d750fb9c0cfc9a1be2`,
-verify every listed file and reject unlisted fixture JSON files. The corpus contains two static-derived cases, five observed client-message groups
-(1009/27, 1134/3, 10005 selectors 0/1, 10010 admission actions, and 10010/146),
-and one project-defined registration case. The three added groups pin fifteen
-individual frames from separately retained running-client captures.
+`ad0080adb7730c1235afa411cd25dc84eeb2f47c1630d43d1cf4bf7b89a373a1`,
+verify every listed file and reject unlisted fixture JSON files. The corpus contains two static-derived cases, seven observed client-message groups
+(1009/27, 1134/3, 10005 selectors 0/1, 10010 admission actions, 10010/146,
+1151/2 and 10010/145), and one project-defined registration case. The five
+later groups pin eighteen individual frames from separately retained
+running-client captures.
 These observations cover only their documented variants and directions.
 A corpus revision requires coordinated review of the source evidence,
 fixture bytes, manifest and pinned hash in both repositories. No runtime
@@ -268,3 +269,22 @@ caller. Do not use these read-side tests as proof that CP4 movement sending
 is implemented. The server tests decode and byte-preserving serialization,
 not an original-server emission. No runtime traffic or live session is
 established by these isolated fixture checks.
+
+## Captured conditional world-entry and ghost-transition requests
+
+The independently observed `1151-flower-rank.observed.json` records both
+80-byte subtype-2 requests from the original client, in capture 1 record 21
+and capture 2 record 20. `GameFlowerRankRequest1151.Write` reproduces both
+exact frames when its already-implemented body-digit condition is met. The
+companion server deliberately ignores this unsupported request while waiting
+for its authenticated admission action ladder; it does not need a competing
+1151 codec for that behavior.
+
+The `10010-ghost-transition.observed.json` fixture pins capture 2 record 45,
+a 38-byte 10010/145 message with its original timestamp and entity ID. The
+client generic action parser retains its fields; the server's
+`GameGhostTransitionRequest` validates the incoming subtype and identity.
+The client has no active post-death /145 producer, so these tests do **not**
+complete ghost transition gameplay. The original-client jump action 137 and
+trade-quit 1056 observations in the same capture have withheld payload bytes,
+not qualifying packet vectors. No synthetic replacement is included.

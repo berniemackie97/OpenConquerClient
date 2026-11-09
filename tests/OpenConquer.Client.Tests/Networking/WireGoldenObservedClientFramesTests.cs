@@ -98,6 +98,43 @@ public sealed class WireGoldenObservedClientFramesTests
         }
     }
 
+    [Fact]
+    public void FlowerRankEntryRequests_MatchCapturedFrames()
+    {
+        Sample[] samples = Read("1151-flower-rank.observed.json", GameFlowerRankRequest1151.PacketType, EntryEvidence);
+        Assert.Equal(2, samples.Length);
+        Assert.Equal((1, 21), (samples[0].Capture, samples[0].Sequence));
+        Assert.Equal((2, 20), (samples[1].Capture, samples[1].Sequence));
+
+        foreach (Sample sample in samples)
+        {
+            Assert.Equal((ushort)GameFlowerRankRequest1151.EnterMapSubtype, sample.Subtype);
+            byte[] encoded = new byte[GameFlowerRankRequest1151.PacketLength];
+            GameFlowerRankRequest1151.Write(encoded, GameFlowerRankRequest1151.EnterMapSubtype);
+            Assert.Equal(sample.Frame, encoded);
+        }
+    }
+
+    [Fact]
+    public void GhostTransitionAction_ParsesCapturedClientRequest()
+    {
+        Sample sample = Assert.Single(Read("10010-ghost-transition.observed.json",
+            GameWorldAction10010.PacketType, EntryEvidence));
+        Assert.Equal((2, 45), (sample.Capture, sample.Sequence));
+        Assert.True(GameWorldAction10010.TryRead(sample.Frame, out GameWorldAction10010 action));
+        Assert.Equal((ushort)145, action.Action);
+        Assert.Equal(1_000_000u, action.EntityId);
+        Assert.Equal(0u, action.ParameterPair);
+        Assert.Equal(0u, action.ActionParameter);
+        Assert.Equal(0u, action.Data1);
+        Assert.Equal(0u, action.Data2);
+        Assert.Equal((ushort)0, action.Direction);
+        Assert.Equal((byte)0, action.Flag);
+        byte[] encoded = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(encoded, action.Action, action.EntityId, action.ParameterPair, action.Timestamp);
+        Assert.Equal(sample.Frame, encoded);
+    }
+
     private static Sample[] Read(string fileName, ushort packetId, string evidence)
     {
         using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(
@@ -122,9 +159,12 @@ public sealed class WireGoldenObservedClientFramesTests
             Assert.Equal(frame.Length, BinaryPrimitives.ReadUInt16LittleEndian(frame));
             Assert.Equal(packetId, BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(2)));
             ushort subtype = row.GetProperty("subtype").GetUInt16();
-            uint decodedSubtype = packetId == GameWalk10005.PacketType
-                ? BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(12))
-                : BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(20));
+            uint decodedSubtype = packetId switch
+            {
+                GameWalk10005.PacketType => BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(12)),
+                GameFlowerRankRequest1151.PacketType => frame[4],
+                _ => BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(20))
+            };
             Assert.Equal((uint)subtype, decodedSubtype);
             return new Sample(row.GetProperty("capture").GetInt32(),
                 row.GetProperty("sequence").GetInt32(), subtype, frame);
