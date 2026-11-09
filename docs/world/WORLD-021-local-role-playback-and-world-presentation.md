@@ -145,6 +145,7 @@ and stops ground gait; it does not synthesize mounted animation. Other
 selector values retain the decoded eight-way tile displacement, but do not
 start an action family whose contract is unverified. Selector comparisons
 use the complete 32-bit value, not the low byte.
+
 Role removal, replacement, culling and world close discard playback state with
 the same owned identity. Unsigned tick arithmetic handles millisecond rollover.
 
@@ -154,7 +155,6 @@ motion selection. The initial 25-millisecond ground interval does not cover
 mounted motion or speed modifiers. Actual content-backed two-client gait,
 action transitions, density and original-client comparisons remain acceptance
 requirements under [#250](https://github.com/berniemackie97/OpenConquerClient/issues/250).
-
 
 The run-action distinction is based on the movement command mapping recorded
 in `20_notes/Server/movement-eligibility-5517.md` and the action pairs and
