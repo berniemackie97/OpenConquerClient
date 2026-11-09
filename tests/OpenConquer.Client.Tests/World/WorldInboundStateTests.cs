@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Security.Cryptography;
 using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.Tests.Diagnostics;
 using OpenConquer.Client.World;
@@ -528,13 +529,59 @@ public sealed class WorldInboundStateTests
         Assert.Equal(uint.MaxValue, Assert.Single(logged.Fields, field => field.Key == "AttributeCode").Value);
     }
 
+    [Fact]
+    public void PostAdmissionReplayAcceptsTheCapturedShortAndFullAcknowledgements()
+    {
+        const string shortened = "16001a2740420f000000000000000000000000004b00";
+        const string full = "26001a2740420f000000000000000000000000004b0000000000000000000000000000000000";
+        List<GameWorldActionResponse> responses = [];
+        WorldInboundState state = CreateState(heroId: 1_000_000, onActionReply: responses.Add);
+
+        byte[] shortFrame = Convert.FromHexString(shortened);
+        byte[] fullFrame = Convert.FromHexString(full);
+        Assert.Equal("50d6db12b5bcb38a85f9ef2bd85098ea0ce8ee4c8a1de0d19c227e3cedd0e6e5",
+            Convert.ToHexString(SHA256.HashData(shortFrame)).ToLowerInvariant());
+        Assert.Equal("9a98c14971f085666153b9c059105cb97e3446f19b0c07435a1c5d79f411b0e8",
+            Convert.ToHexString(SHA256.HashData(fullFrame)).ToLowerInvariant());
+
+        Assert.False(state.Apply(shortFrame));
+        Assert.False(state.Apply(fullFrame));
+
+        Assert.Equal(
+        [
+            new GameWorldActionResponse(GameWorldAction10010.GetFriends, 1_000_000, 0),
+            new GameWorldActionResponse(GameWorldAction10010.SetPkMode, 1_000_000, 3),
+            new GameWorldActionResponse(GameWorldAction10010.GetFriends, 1_000_000, 0),
+            new GameWorldActionResponse(GameWorldAction10010.SetPkMode, 1_000_000, 3),
+        ], responses);
+    }
+
+    [Fact]
+    public void PostAdmissionReplayRejectsForeignAndMalformedAcknowledgements()
+    {
+        List<GameWorldActionResponse> responses = [];
+        WorldInboundState state = CreateState(onActionReply: responses.Add);
+        byte[] foreign = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(foreign, GameWorldAction10010.GetItems, HeroId + 1);
+        byte[] malformed = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(malformed, GameWorldAction10010.GetItems, HeroId);
+        BinaryPrimitives.WriteUInt16LittleEndian(malformed, 37);
+
+        Assert.False(state.Apply(foreign));
+        Assert.False(state.Apply(malformed));
+        Assert.Empty(responses);
+        Assert.Equal((61, 101), (state.X, state.Y));
+    }
+
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
         ushort transformLookSourceId = 0, int hydrationEnteredAt = 0, ClientDiagnostics? diagnostics = null,
-        Action<WorldCorrectionReply>? onCorrection = null) =>
+        Action<WorldCorrectionReply>? onCorrection = null,
+        Action<GameWorldActionResponse>? onActionReply = null,
+        GameSilentInfoReport? silentInfo = null, uint heroId = HeroId) =>
         new(new GameWorldEntrySnapshot(
             new GameCharacterInfo1006
             {
-                EntityId = HeroId,
+                EntityId = heroId,
                 Strength = 5,
                 Agility = 6,
                 Vitality = 7,
@@ -547,7 +594,8 @@ public sealed class WorldInboundStateTests
                 TransformLookSourceId = transformLookSourceId,
             },
             1002, 1010, 0, 1, 61, 101, hydration ?? [], 3, hydrationEnteredAt), WorldHeroItemStatsTests.Catalog(),
-            diagnostics: diagnostics, onCorrection: onCorrection);
+            diagnostics: diagnostics, onCorrection: onCorrection, onActionReply: onActionReply,
+            silentInfo: silentInfo);
 
     private static byte[] Attributes(uint entityId, params (uint Id, ulong Low, ulong High)[] entries)
     {
