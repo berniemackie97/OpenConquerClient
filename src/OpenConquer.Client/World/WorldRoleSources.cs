@@ -7,25 +7,29 @@ internal readonly record struct WorldRoleSources(
     private const uint LinkedHairFamily = 0x1D0D8;
 
     internal static WorldRoleSources Resolve(uint packedAppearance, ushort hairComposite,
-        WorldHeroEquipment equipment)
+        WorldHeroEquipment equipment) =>
+        Resolve(packedAppearance, hairComposite, equipment.GetActiveItem(1)?.TypeId ?? 0,
+            equipment.GetActiveItem(3)?.TypeId ?? 0, equipment.GetActiveItem(4)?.TypeId ?? 0,
+            equipment.GetActiveItem(5)?.TypeId ?? 0);
+
+    internal static WorldRoleSources Resolve(uint packedAppearance, ushort hairComposite,
+        uint headwearType, uint armorType, uint rightHandType, uint leftHandType)
     {
         uint bodyModel = packedAppearance % 1000 * ModelFamilyScale;
         uint hairStyle = (uint)hairComposite % 1000;
         uint armetModel = hairStyle % 100 == 0 ? 0 : bodyModel + LinkedHairFamily + hairStyle;
 
-        if (equipment.GetActiveItem(1) is { } headwear)
+        if (headwearType != 0)
         {
-            armetModel = bodyModel + NormalizeItemSource(headwear.TypeId);
+            armetModel = bodyModel + NormalizeItemSource(headwearType);
         }
 
-        if (equipment.GetActiveItem(3) is { } armor)
+        if (armorType != 0)
         {
-            bodyModel += NormalizeItemSource(armor.TypeId);
+            bodyModel += NormalizeItemSource(armorType);
         }
 
-        uint rightSource = equipment.GetActiveItem(4)?.TypeId ?? 0;
-        uint leftSource = equipment.GetActiveItem(5)?.TypeId ?? 0;
-        (uint rightWeapon, uint leftWeapon) = ResolveWeapons(rightSource, leftSource);
+        (uint rightWeapon, uint leftWeapon) = ResolveWeapons(rightHandType, leftHandType);
 
         return new WorldRoleSources(bodyModel, armetModel, rightWeapon, leftWeapon);
     }
