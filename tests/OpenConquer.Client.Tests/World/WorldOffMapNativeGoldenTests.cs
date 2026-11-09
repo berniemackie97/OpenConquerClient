@@ -49,9 +49,10 @@ public sealed class WorldOffMapNativeGoldenTests
                     sprite.GetProperty("terrain").GetBoolean());
             }
 
-            order.InsertRole(Int(row, "x"), Int(row, "y"));
-            _ = order.ToDrawList(out int index);
-            Assert.True(index == Int(row, "index"), row.GetProperty("name").GetString());
+            order.InsertRole(new WorldSceneRole(0, Int(row, "x"), Int(row, "y"), 0));
+            _ = order.ToDrawListWithRoles(out IReadOnlyList<WorldRoleDrawSlot> roles);
+            Assert.True(Assert.Single(roles).SpriteIndex == Int(row, "index"),
+                row.GetProperty("name").GetString());
         }
     }
 
@@ -62,18 +63,19 @@ public sealed class WorldOffMapNativeGoldenTests
     {
         using WorldMapFixture map = new();
         WorldPuzzleProjection projection = new(800, 600, 0, 0, 2304, 960, 256, 256);
-        IReadOnlyList<WorldScenerySprite> sprites = WorldSceneryDrawList.BuildWithRole(map.Map, [],
+        IReadOnlyList<WorldScenerySprite> sprites = WorldSceneryDrawList.BuildWithRoles(map.Map, [],
             new WorldSceneryIndex(map.Map, map.Scenery),
             new Dictionary<OpenConquer.Content.Map.GameMapSceneryRecord, (int Width, int Height)>(),
-            projection, 1000, 1000, tileX, tileY, out int index);
+            projection, 1000, 1000, new WorldSceneRole(0, tileX, tileY, 0), [],
+            out IReadOnlyList<WorldRoleDrawSlot> roles);
 
         if (visible)
         {
-            Assert.InRange(index, 0, sprites.Count);
+            Assert.InRange(Assert.Single(roles).SpriteIndex, 0, sprites.Count);
         }
         else
         {
-            Assert.Equal(-1, index);
+            Assert.Empty(roles);
         }
     }
 

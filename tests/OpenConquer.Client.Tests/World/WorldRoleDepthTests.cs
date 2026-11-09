@@ -12,9 +12,11 @@ public sealed class WorldRoleDepthTests
         WorldSceneryDepthOrder order = new();
         order.Insert(Sprite(80, 80));
         order.Insert(Sprite(70, 70));
-        order.InsertRole(75, 75);
+        order.InsertRole(new WorldSceneRole(0, 75, 75, 0));
 
-        IReadOnlyList<WorldScenerySprite> drawn = order.ToDrawList(out int heroIndex);
+        IReadOnlyList<WorldScenerySprite> drawn = order.ToDrawListWithRoles(
+            out IReadOnlyList<WorldRoleDrawSlot> roles);
+        int heroIndex = Assert.Single(roles).SpriteIndex;
 
         Assert.Equal(1, heroIndex);
         Assert.Equal([(70, 70), (80, 80)], drawn.Select(s => (s.TileX, s.TileY)));
@@ -25,9 +27,11 @@ public sealed class WorldRoleDepthTests
     {
         WorldSceneryDepthOrder order = new();
         order.Insert(Sprite(80, 80), terrain: true);
-        order.InsertRole(80, 80);
+        order.InsertRole(new WorldSceneRole(0, 80, 80, 0));
 
-        IReadOnlyList<WorldScenerySprite> drawn = order.ToDrawList(out int heroIndex);
+        IReadOnlyList<WorldScenerySprite> drawn = order.ToDrawListWithRoles(
+            out IReadOnlyList<WorldRoleDrawSlot> roles);
+        int heroIndex = Assert.Single(roles).SpriteIndex;
 
         Assert.Equal(1, heroIndex);
         Assert.Single(drawn);
@@ -38,10 +42,10 @@ public sealed class WorldRoleDepthTests
     {
         WorldSceneryDepthOrder order = new();
         order.Insert(Sprite(80, 80), terrain: true);
-        order.InsertRole(79, 79);
+        order.InsertRole(new WorldSceneRole(0, 79, 79, 0));
 
-        _ = order.ToDrawList(out int heroIndex);
-        Assert.Equal(0, heroIndex);
+        _ = order.ToDrawListWithRoles(out IReadOnlyList<WorldRoleDrawSlot> roles);
+        Assert.Equal(0, Assert.Single(roles).SpriteIndex);
     }
 
     private static WorldScenerySprite Sprite(int x, int y)
