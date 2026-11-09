@@ -87,19 +87,29 @@ public sealed class WorldRolePlaybackTests
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
     }
 
-    [Theory]
-    [InlineData(GameWalk10005.MountedSelector)]
-    [InlineData(0x0000_0100u)]
-    [InlineData(0x0000_0101u)]
-    [InlineData(2u)]
-    public void UnsupportedSelectorsStopGroundPlayback(uint selector)
+    [Fact]
+    public void ExactMountedSelectorStopsGroundPlayback()
     {
         WorldRolePlayback playback = new();
         playback.BeginMove(GameWalk10005.WalkSelector, 1000);
-        playback.BeginMove(selector, 1001);
+        playback.BeginMove(GameWalk10005.MountedSelector, 1001);
 
         Assert.Equal(0, playback.Action);
         Assert.False(playback.TryGetFrame(1002, 4, out _));
+    }
+
+    [Theory]
+    [InlineData(0x0000_0100u, (ushort)110)]
+    [InlineData(0x0000_0101u, (ushort)120)]
+    [InlineData(0x0000_0109u, (ushort)110)]
+    [InlineData(2u, (ushort)110)]
+    [InlineData(0xFFFF_FF01u, (ushort)120)]
+    public void UnmountedSelectorUsesItsLowByteToChooseTheMoveFamily(uint selector, ushort action)
+    {
+        WorldRolePlayback playback = new();
+        playback.BeginMove(selector, 1000);
+
+        Assert.Equal(action, playback.Action);
     }
 
     [Fact]
