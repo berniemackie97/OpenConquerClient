@@ -50,7 +50,7 @@ internal readonly record struct GameWalk10005(
     }
 
     internal static void WriteOrdinary(Span<byte> packet, uint entityId,
-        byte directionIndex, uint movementTick, uint mapState)
+        byte packedDirection, uint movementTick, uint mapState, byte selector = 0)
     {
         if (packet.Length != PacketLength)
         {
@@ -58,13 +58,14 @@ internal readonly record struct GameWalk10005(
         }
 
         ArgumentOutOfRangeException.ThrowIfZero(entityId);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(directionIndex, (byte)7);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(selector, (byte)RunSelector);
 
         packet.Clear();
         BinaryPrimitives.WriteUInt16LittleEndian(packet, PacketLength);
         BinaryPrimitives.WriteUInt16LittleEndian(packet[2..], PacketType);
-        BinaryPrimitives.WriteUInt32LittleEndian(packet[4..], directionIndex);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet[4..], packedDirection);
         BinaryPrimitives.WriteUInt32LittleEndian(packet[8..], entityId);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet[12..], selector);
         BinaryPrimitives.WriteUInt32LittleEndian(packet[16..], movementTick);
         BinaryPrimitives.WriteUInt32LittleEndian(packet[20..], mapState);
     }
