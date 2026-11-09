@@ -65,6 +65,34 @@ public sealed class WorldMapSceneTests
     }
 
     [Fact]
+    public void PeerMarkersUseTheCommittedSceneFrameAndItsCamera()
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
+        WorldSceneRole nearby = new(1_000_001, 61, 108, 5);
+        WorldSceneRole farther = new(1_000_002, 62, 109, 2);
+        scene.SetRemoteRoles(1, [nearby, farther, new WorldSceneRole(1_000_003, 200, 200, 3)]);
+        scene.BuildFrame(800, 600, 1000);
+
+        Assert.Equal([0u, nearby.EntityId, farther.EntityId],
+            scene.CommittedRoleOrder.Select(static slot => slot.Role.EntityId));
+
+        (int centerX, int centerY) = WorldCameraProjection.ProjectTile(fixture.Map, 60, 108);
+        WorldPuzzleProjection projection = WorldCameraProjection.FromHeroWorldPosition(
+            fixture.Map, fixture.Puzzles, centerX, centerY, 800, 600);
+        (int peerX, int peerY) = WorldCameraProjection.ProjectTile(fixture.Map, nearby.TileX, nearby.TileY);
+        (Matrix4x4 Main, Matrix4x4 Shadow) expected = WorldRoleCameraMatrices.Create(
+            fixture.Map, fixture.Puzzles, projection, peerX, peerY,
+            (-1 - nearby.Direction) * 45f, 0.75f);
+        Assert.Equal(expected, scene.RoleMatrices(nearby));
+
+        scene.SetRemoteRoles(2, [farther]);
+        scene.BuildFrame(800, 600, 1100);
+        Assert.Equal([0u, farther.EntityId],
+            scene.CommittedRoleOrder.Select(static slot => slot.Role.EntityId));
+    }
+
+    [Fact]
     public void InvalidHeroDirectionDoesNotReplaceTheCurrentFacing()
     {
         using WorldMapFixture fixture = new();
