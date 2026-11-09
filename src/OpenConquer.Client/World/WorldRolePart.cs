@@ -10,7 +10,10 @@ internal sealed class WorldRolePart : IDisposable
 {
     private readonly OpenGLTexture2D _texture;
     private readonly List<WorldRoleMesh> _meshes;
-    internal WorldRoleActionTracks Actions { get; }
+    internal WorldRoleActionTracks Actions
+    {
+        get;
+    }
 
     private WorldRolePart(OpenGLTexture2D texture, List<WorldRoleMesh> meshes, WorldRoleActionTracks actions)
     {
