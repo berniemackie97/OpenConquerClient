@@ -107,9 +107,9 @@ continues to gate release acceptance.
 
 World packet 10005 is applied in arrival order by the admitted world owner.
 The authenticated hero retains its established echo behavior. A known peer
-uses the same decoded direction and complete selector; selector 9 uses the
-24-entry two-tile displacement table, while other selectors use the eight-way
-table. The lower direction byte selects the displacement and the presented
+uses the same decoded direction and complete selector; selectors whose
+low byte is 9 use the 24-entry two-tile displacement table, while all others
+use the eight-way table. The lower direction byte selects the displacement and the presented
 facing is reduced to eight directions. The upper packed-direction bits remain
 unmodified by parsing.
 
@@ -132,8 +132,8 @@ separate acceptance work in
 
 Incoming 10005 selector 0 enters the ground-walk action pair 110/111;
 selector 1 selects the separate running pair 120/121. The low selector
-byte controls the unmounted walk/run command; the complete selector
-dword equal to 9 alone selects mounted movement. Each accepted relay
+byte controls the unmounted walk/run command; a selector with low byte 9
+selects mounted movement regardless of its upper bytes. Each accepted relay
 updates the committed remote tile, then selects that actor's next action
 according to the recorded walk/run pose rules. The two pair members
 alternate as subsequent movements are processed. The body motion key uses
@@ -142,12 +142,12 @@ shared geometry, textures, and attachment tracks.
 
 These ground actions have a recorded 25-millisecond base frame interval.
 A missing action clip or an exhausted frame sequence falls back to the
-initial idle presentation. Selector 9 retains its 24-direction displacement
-and stops ground gait; it does not synthesize mounted animation. Every other
-selector uses eight-way displacement; its low byte equal to 1 selects running
-and all other low-byte values select walking. A selector such as 0x00000109
-therefore uses walk displacement and animation, while 0x00000101 selects
-run. This follows the documented command-selection arithmetic, not a
+initial idle presentation. A selector with low byte 9 retains its
+24-direction displacement and stops ground gait; it does not synthesize
+mounted animation. Other selectors use eight-way displacement: low byte 1
+selects running and all other low-byte values select walking. For example,
+0x00000109 uses 24-direction movement without ground gait, while
+0x00000101 selects running. This follows the documented command-selection arithmetic, not a
 validation or normalization of the selector field.
 
 Role removal, replacement, culling and world close discard playback state with
@@ -160,8 +160,8 @@ mounted motion or speed modifiers. Actual content-backed two-client gait,
 action transitions, density and original-client comparisons remain acceptance
 requirements under [#250](https://github.com/berniemackie97/OpenConquerClient/issues/250).
 
-The full-width mounted selector and low-byte walk/run command distinction
-are recorded in the retained walk command-preparation audit in `Archive.zip`;
+The low-byte movement discriminator is recorded in
+`20_notes/Network/15_msgwalk_10005_direction_index_order.md`;
 the action pairs and frame interval are recorded in
 `20_notes/Rendering/roleview_dll/07_action_playback_transition_state.md`
 and `13_role_compute_frame_interval.md`. This is frame selection for
