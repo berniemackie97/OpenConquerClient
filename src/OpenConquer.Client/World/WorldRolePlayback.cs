@@ -17,6 +17,8 @@ internal sealed class WorldRolePlayback
         _startedAt = nowMilliseconds;
     }
 
+    internal void Stop() => _action = 0;
+
     internal bool TryGetFrame(uint nowMilliseconds, uint frameCount, out int frame)
     {
         frame = 0;
