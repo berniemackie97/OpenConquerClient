@@ -87,7 +87,11 @@ internal sealed class WorldRemoteRoles
         GamePlayerSpawn10014 player = role.Player;
         if (player.X != targetX || player.Y != targetY)
         {
-            role.Player = player with { X = targetX, Y = targetY };
+            role.Player = player with
+            {
+                X = targetX,
+                Y = targetY
+            };
             _snapshot = null;
             Revision = unchecked(Revision + 1);
         }
