@@ -246,27 +246,28 @@ internal sealed class ClientWorld : IClientWorld
             entry.Character.PackedAppearance, entry.Character.HairComposite, state.Equipment);
         try
         {
-            _remoteRolePresentation?.Synchronize(state.RemoteRoles, state.X, state.Y);
-            if (graphicsDevice is { } activeDevice)
+            if (load.TryPrepare(sources, _roleSources, out WorldRoleAssets? assets))
             {
-                _remoteRolePresentation?.Prepare(activeDevice);
+                OpenGLGraphicsDevice device = graphicsDevice ??
+                    throw new InvalidOperationException("World graphics device is unavailable.");
+                WorldRoleRenderer? next = assets is null ? null : WorldRoleRenderer.Create(device, assets);
+                WorldRoleRenderer? previous = _role;
+                _role = next;
+                _roleSources = sources;
+                previous?.Dispose();
+                if (next is null && previous is null)
+                {
+                    _diagnostics.WorldRoleMissing();
+                }
             }
 
-            if (!load.TryPrepare(sources, _roleSources, out WorldRoleAssets? assets))
+            if (_roleSources.HasValue && _remoteRolePresentation is { } remote)
             {
-                return;
-            }
-
-            OpenGLGraphicsDevice device = graphicsDevice ??
-                throw new InvalidOperationException("World graphics device is unavailable.");
-            WorldRoleRenderer? next = assets is null ? null : WorldRoleRenderer.Create(device, assets);
-            WorldRoleRenderer? previous = _role;
-            _role = next;
-            _roleSources = sources;
-            previous?.Dispose();
-            if (next is null && previous is null)
-            {
-                _diagnostics.WorldRoleMissing();
+                remote.Synchronize(state.RemoteRoles, state.X, state.Y);
+                if (graphicsDevice is { } device)
+                {
+                    remote.Prepare(device);
+                }
             }
         }
         catch (Exception exception) when (WorldRoleLoad.IsContentFailure(exception))
