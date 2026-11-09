@@ -1,9 +1,86 @@
 using OpenConquer.Client.World;
+using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Client.Tests.World;
 
 public sealed class WorldFrameEgressTests
 {
+    [Fact]
+    public async Task ReplayedActionsAndCorrectionsPreserveOneSendOrder()
+    {
+        List<string> writes = [];
+        TaskCompletionSource first = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        WorldFrameEgress egress = new(
+            (_, _) => Task.CompletedTask,
+            (_, _, _, _) => Task.CompletedTask,
+            (correction, now, _) =>
+            {
+                writes.Add($"correction {correction.X} {now}");
+                return Task.CompletedTask;
+            },
+            (reply, now, _) =>
+            {
+                writes.Add($"action {reply.Action} {now}");
+                return reply.Action == GameWorldAction10010.GetFriends ? first.Task : Task.CompletedTask;
+            });
+        await using (egress)
+        {
+            egress.QueueWorldActionResponse(new GameWorldActionResponse(GameWorldAction10010.GetFriends, 1, 0));
+            egress.QueuePositionCorrection(new WorldCorrectionReply(61, 109, 0));
+            egress.QueueWorldActionResponse(new GameWorldActionResponse(GameWorldAction10010.SetPkMode, 1, 3));
+            WorldHeartbeat heartbeat = new(0, 0, 0);
+
+            try
+            {
+                egress.Pump(heartbeat, 100);
+                egress.Pump(heartbeat, 101);
+                Assert.Equal(["action 76 100"], writes);
+            }
+            finally
+            {
+                first.TrySetResult();
+            }
+
+            egress.Pump(heartbeat, 102);
+            egress.Pump(heartbeat, 103);
+            Assert.Equal(["action 76 100", "correction 61 102", "action 96 103"], writes);
+        }
+    }
+
+    [Fact]
+    public async Task WorldRepliesShareTheSameBoundedCapacity()
+    {
+        await using WorldFrameEgress egress = new(
+            (_, _) => Task.CompletedTask,
+            (_, _, _, _) => Task.CompletedTask,
+            (_, _, _) => Task.CompletedTask,
+            (_, _, _) => Task.CompletedTask);
+        for (int index = 0; index < WorldFrameEgress.MaximumQueuedResponses - 1; index++)
+        {
+            egress.QueuePositionCorrection(new WorldCorrectionReply((ushort)index, 109, 0));
+        }
+
+        egress.QueueWorldActionResponse(new GameWorldActionResponse(GameWorldAction10010.GetFriends, 1, 0));
+        Assert.Throws<WorldResponseQueueFullException>(() =>
+            egress.QueueWorldActionResponse(new GameWorldActionResponse(GameWorldAction10010.SetPkMode, 1, 3)));
+    }
+
+    [Fact]
+    public async Task ReplayWriteFailureIsPropagatedByTheOwnerPump()
+    {
+        IOException failure = new("connection lost");
+        await using WorldFrameEgress egress = new(
+            (_, _) => Task.CompletedTask,
+            (_, _, _, _) => Task.CompletedTask,
+            (_, _, _) => Task.CompletedTask,
+            (_, _, _) => Task.FromException(failure));
+        egress.QueueWorldActionResponse(new GameWorldActionResponse(GameWorldAction10010.GetFriends, 1, 0));
+        egress.Pump(new WorldHeartbeat(0, 0, 0), 100);
+
+        Assert.Same(failure, Assert.Throws<IOException>(() =>
+            egress.Pump(new WorldHeartbeat(0, 0, 0), 101)));
+    }
+
     [Fact]
     public async Task CorrectionsRetainReplyOrderWhileWriteIsActive()
     {
