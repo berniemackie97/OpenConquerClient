@@ -9,7 +9,10 @@ public sealed partial class WorldInboundStateTests
     [Fact]
     public void OriginCorrectionCullsOutOfRangePeersAndTheirPlayback()
     {
-        WorldInboundState state = CreateState(heroId: 1_000_000);
+        List<GameWorldActionResponse> queries = [];
+        List<WorldCorrectionReply> corrections = [];
+        WorldInboundState state = CreateState(heroId: 1_000_000,
+            onCorrection: corrections.Add, onActionReply: queries.Add);
         Assert.False(state.Apply(WorldSpawnPacketFixture.Create(1_000_001, x: 18, y: 18)));
         Assert.False(state.Apply(WorldSpawnPacketFixture.Create(1_000_002, x: 19, y: 1)));
         Assert.False(state.Apply(WorldSpawnPacketFixture.Create(1_000_003, x: 0, y: 19)));
@@ -35,12 +38,15 @@ public sealed partial class WorldInboundStateTests
 
         state.CullRemoteRoles();
         Assert.Equal(unchecked(revision + 2), state.RemoteRoles.Revision);
+        Assert.Empty(queries);
+        Assert.Equal([new WorldCorrectionReply(0, 0, 3)], corrections);
     }
 
     [Fact]
     public void NegativeHeroTilesRetainOnlyPeersWithinTheVisibilityWindow()
     {
-        WorldInboundState state = CreateState(heroId: 1_000_000);
+        List<GameWorldActionResponse> queries = [];
+        WorldInboundState state = CreateState(heroId: 1_000_000, onActionReply: queries.Add);
         Assert.False(state.Apply(WorldSpawnPacketFixture.Create(1_000_001, x: 17, y: 17)));
         Assert.False(state.Apply(WorldSpawnPacketFixture.Create(1_000_002, x: 18, y: 0)));
         Assert.False(state.Apply(WorldSpawnPacketFixture.Create(1_000_003, x: 0, y: 18)));
@@ -61,6 +67,7 @@ public sealed partial class WorldInboundStateTests
         Assert.True(state.RemoteRoles.Contains(1_000_001));
         Assert.False(state.RemoteRoles.Contains(1_000_002));
         Assert.False(state.RemoteRoles.Contains(1_000_003));
+        Assert.Empty(queries);
     }
 
     [Fact]
