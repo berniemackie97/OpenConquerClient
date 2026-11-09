@@ -161,7 +161,7 @@ action transitions, density and original-client comparisons remain acceptance
 requirements under [#250](https://github.com/berniemackie97/OpenConquerClient/issues/250).
 
 The full-width mounted selector and low-byte walk/run command distinction
-are recorded in `Archive/docs/NATIVE_WALK_AND_JUMP_COMMAND_PREPARATION_5517.md`;
+are recorded in the retained walk command-preparation audit in `Archive.zip`;
 the action pairs and frame interval are recorded in
 `20_notes/Rendering/roleview_dll/07_action_playback_transition_state.md`
 and `13_role_compute_frame_interval.md`. This is frame selection for
