@@ -21,9 +21,11 @@ The initial application boundary handles position correction (10010 action
 is present, including corrections received during map loading. Weather
 state is retained but no visual weather component is claimed. Other packet types are diagnosed once per type/action, up to 64 distinct pairs per world. Local attribute 10017, ground-walk acknowledgement 10005, local item
 create/update 1008 and equipment remove/equip/unequip/durability/snapshot
-1009 are consumed in the authenticated world. Remote entity spawn/movement,
-other item mutation variants, combat and world transfers remain unimplemented. Movement input must preserve the existing serialized
-secured-write lane and single-reader contract.
+1009 are consumed in the authenticated world. Other item mutation variants, combat and world transfers remain unimplemented.
+Remote spawn, movement and removal update a bounded peer registry; admitted
+frame draining applies those changes to the map scene independently of graphics
+preparation. Movement input must preserve the existing serialized secured-write
+lane and single-reader contract.
 
 The EnterMap acknowledgement seeds the local hero's eight-way direction
 from its packed direction field, independently of the tile coordinates.
@@ -32,8 +34,7 @@ The scene's character transform uses `(-1 - directionIndex) * 45` degrees;
 remote walk packets do not update the authenticated hero. World position
 corrections update the tile without replacing the current facing. Initial
 facing and accepted updates are retained while the map is being prepared,
-then applied before the first world draw. This does not implement outbound
-movement requests, motion transitions or remote character presentation.
+then applied before the first world draw. This does not implement outbound movement requests or local input selection.
 
 The ingress task is canceled and observed before its session is released
 on world exit or application shutdown. Bootstrap timeout policies do not
@@ -98,7 +99,7 @@ World state keeps signed int32 tile coordinates. Ordinary walk acknowledgements
 add the native DWORD direction deltas with wrapping arithmetic (`0x7406DB/6DD`),
 including negative tiles and values above 65535. Correction X/Y remain unsigned
 wire words; a later correction replaces the signed model coordinates normally.
-Remote/mounted walking remains unsupported, and facing behavior is unchanged.
+Remote-role walking is tracked separately, and hero facing behavior is unchanged.
 
 Neither ClientWorld nor WorldMapScene rejects a hero solely for leaving the loaded
 cell grid. The actual hero anchor remains unclamped; the camera retains its existing
