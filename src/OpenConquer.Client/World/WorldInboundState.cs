@@ -143,7 +143,6 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         }
 
         (int dx, int dy) = walk.GetDelta();
-        // Native DWORD ADD at 0x7406DB/0x7406DD wraps; the protected tile setter never narrows to ushort.
         (X, Y) = (unchecked(X + dx), unchecked(Y + dy));
         DirectionIndex = walk.DirectionIndex;
         return true;
