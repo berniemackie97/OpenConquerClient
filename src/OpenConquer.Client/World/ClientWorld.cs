@@ -152,6 +152,10 @@ internal sealed class ClientWorld : IClientWorld
 
             ingress.Drain(_applyFrame);
             state.CullRemoteRoles();
+            if (_scene is { } scene)
+            {
+                SynchronizeSceneRoles(scene, state);
+            }
             _egress?.Pump(state.Heartbeat, _frameMilliseconds);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or
@@ -188,6 +192,7 @@ internal sealed class ClientWorld : IClientWorld
                 if (IsActive && _inbound is { } inbound)
                 {
                     ApplyCamera(scene, inbound);
+                    SynchronizeSceneRoles(scene, inbound);
                     _scene = scene;
                 }
             }
@@ -372,8 +377,6 @@ internal sealed class ClientWorld : IClientWorld
 
         if (_inbound is { } state)
         {
-            scene.SetRemoteRoles(state.RemoteRoles.Revision, state.RemoteRoles.All.Select(static player =>
-                new WorldSceneRole(player.EntityId, player.X, player.Y, player.Direction)));
             if (_roleSources.HasValue && _remoteRolePresentation is { } remote)
             {
                 remote.Synchronize(state.RemoteRoles, state.X, state.Y);
@@ -672,6 +675,10 @@ internal sealed class ClientWorld : IClientWorld
             ApplyCamera(scene, state);
         }
     }
+
+    private static void SynchronizeSceneRoles(WorldMapScene scene, WorldInboundState state) =>
+        scene.SetRemoteRoles(state.RemoteRoles.Revision, state.RemoteRoles.All.Select(static player =>
+            new WorldSceneRole(player.EntityId, player.X, player.Y, player.Direction)));
 
     private static void ApplyCamera(WorldMapScene scene, WorldInboundState state)
     {

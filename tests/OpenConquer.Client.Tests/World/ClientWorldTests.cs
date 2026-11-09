@@ -228,6 +228,106 @@ public sealed class ClientWorldTests
     }
 
     [Fact]
+    public async Task AdmittedManagedPeerFramesUpdateSceneWithoutGraphicsPreparation()
+    {
+        byte[][] packets = ManagedPeerFrames.Load();
+        TaskCompletionSource<GameSecuredInboundFrame?>[] deliveries =
+        [
+            .. packets.Select(_ => new TaskCompletionSource<GameSecuredInboundFrame?>(
+                TaskCreationOptions.RunContinuationsAsynchronously))
+        ];
+        int nextRead = 0;
+        Task<GameSecuredInboundFrame?> Receive(CancellationToken stopping) =>
+            nextRead < deliveries.Length ? deliveries[nextRead++].Task : WaitForDisconnectAsync(stopping);
+
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
+        GameWorldEntrySnapshot entry = Entry() with
+        {
+            Character = new GameCharacterInfo1006 { EntityId = 1_000_000, Level = 1, CurrentProfession = 10 },
+            X = 60,
+            Y = 108
+        };
+        await using ClientWorld world = new(entry, new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+            static () => { }, static () => ValueTask.CompletedTask,
+            () => new WorldFrameIngress(Receive),
+            () => new WorldContentLoad<WorldMapScene>(_ => scene));
+
+        await WaitUntilAsync(() =>
+        {
+            world.CompleteLoad();
+            return world.HasScene;
+        });
+
+        Assert.Empty(scene.CommittedRoleOrder);
+        (int X, int Y)[] expectedPositions = [(60, 108), (61, 108), (60, 108)];
+        for (int index = 0; index < packets.Length; index++)
+        {
+            byte[] packet = packets[index];
+            byte[] rented = ArrayPool<byte>.Shared.Rent(packet.Length);
+            packet.CopyTo(rented, 0);
+            deliveries[index].SetResult(new GameSecuredInboundFrame(rented, packet.Length));
+
+            uint now = (uint)(1000 + index * 34);
+            world.DrainIngress(now);
+            scene.BuildFrame(800, 600, now);
+
+            if (index == 3)
+            {
+                Assert.DoesNotContain(scene.CommittedRoleOrder,
+                    static slot => slot.Role.EntityId == 1_000_001);
+            }
+            else
+            {
+                WorldSceneRole peer = Assert.Single(scene.CommittedRoleOrder,
+                    static slot => slot.Role.EntityId == 1_000_001).Role;
+                Assert.Equal(expectedPositions[index], (peer.TileX, peer.TileY));
+                if (index > 0)
+                {
+                    Assert.Equal(index == 1 ? (byte)6 : (byte)2, peer.Direction);
+                }
+            }
+
+            Assert.True(world.IsActive);
+        }
+
+        world.DrainIngress(1200);
+        scene.BuildFrame(800, 600, 1200);
+        Assert.DoesNotContain(scene.CommittedRoleOrder, static slot => slot.Role.EntityId == 1_000_001);
+        Assert.Equal(4, nextRead);
+    }
+
+    [Fact]
+    public async Task HydratedPeerIsPublishedWhenTheMapSceneBecomesAvailable()
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
+        GameWorldEntrySnapshot entry = Entry() with
+        {
+            Character = new GameCharacterInfo1006 { EntityId = 1_000_000, Level = 1, CurrentProfession = 10 },
+            X = 60,
+            Y = 108,
+            HydrationPackets = [ManagedPeerFrames.Load()[0]]
+        };
+        await using ClientWorld world = new(entry, new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+            static () => { }, static () => ValueTask.CompletedTask,
+            () => new WorldFrameIngress(WaitForDisconnectAsync),
+            () => new WorldContentLoad<WorldMapScene>(_ => scene));
+
+        await WaitUntilAsync(() =>
+        {
+            world.CompleteLoad();
+            return world.HasScene;
+        });
+        scene.BuildFrame(800, 600, 1000);
+
+        WorldSceneRole peer = Assert.Single(scene.CommittedRoleOrder,
+            static slot => slot.Role.EntityId == 1_000_001).Role;
+        Assert.Equal((60, 108), (peer.TileX, peer.TileY));
+        Assert.True(world.IsActive);
+    }
+
+    [Fact]
     public async Task ActiveWorldRoutesReplayedAcknowledgementsThroughTheOutboundLane()
     {
         using WorldMapFixture fixture = new();
