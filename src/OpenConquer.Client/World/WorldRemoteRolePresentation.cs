@@ -26,6 +26,7 @@ internal sealed class WorldRemoteRolePresentation(
     private Dictionary<uint, WorldRoleAppearance> _roles = [];
     private List<WorldRoleAppearance> _priority = [];
     private Task<WorldRoleAssets?>? _pending;
+    private CancellationTokenSource? _pendingStop;
     private WorldRoleAppearance _pendingKey;
     private Task? _disposeTask;
     private int _revision = int.MinValue;
@@ -90,6 +91,10 @@ internal sealed class WorldRemoteRolePresentation(
         _roles = identities;
         _priority = priority;
         _failures.RemoveWhere(key => !chosen.Contains(key));
+        if (_pending is not null && !chosen.Contains(_pendingKey))
+        {
+            _pendingStop?.Cancel();
+        }
 
         ClientShutdown cleanup = new();
         foreach ((WorldRoleAppearance key, WorldRoleRenderer renderer) in _renderers.ToArray())
@@ -104,6 +109,7 @@ internal sealed class WorldRemoteRolePresentation(
         }
 
         cleanup.ThrowIfFailed();
+        StartNext();
     }
 
     internal void Prepare(OpenGLGraphicsDevice device)
@@ -130,6 +136,9 @@ internal sealed class WorldRemoteRolePresentation(
                     }
                 }
             }
+            catch (OperationCanceledException) when (_pendingStop?.IsCancellationRequested == true)
+            {
+            }
             catch (Exception exception) when (WorldRoleLoad.IsContentFailure(exception))
             {
                 if (wanted)
@@ -138,9 +147,19 @@ internal sealed class WorldRemoteRolePresentation(
                     diagnostics.WorldRoleUnavailable(ClientFailure.Classify(exception));
                 }
             }
+            finally
+            {
+                _pendingStop?.Dispose();
+                _pendingStop = null;
+            }
         }
 
-        if (_pending is not null)
+        StartNext();
+    }
+
+    private void StartNext()
+    {
+        if (_pending is not null || _stop.IsCancellationRequested)
         {
             return;
         }
@@ -153,7 +172,8 @@ internal sealed class WorldRemoteRolePresentation(
             }
 
             _pendingKey = appearance;
-            CancellationToken token = _stop.Token;
+            _pendingStop = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
+            CancellationToken token = _pendingStop.Token;
             _pending = Task.Run(() => prepare(appearance, token), token);
             break;
         }
@@ -196,23 +216,31 @@ internal sealed class WorldRemoteRolePresentation(
     {
         Task<WorldRoleAssets?>? pending = _pending;
         _pending = null;
-        await ClientShutdown.CancelAndDrainAsync(_stop, async () =>
+        try
         {
-            if (pending is null)
+            await ClientShutdown.CancelAndDrainAsync(_stop, async () =>
             {
-                return;
-            }
+                if (pending is null)
+                {
+                    return;
+                }
 
-            try
-            {
-                await pending.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (_stop.IsCancellationRequested)
-            {
-            }
-            catch (Exception exception) when (WorldRoleLoad.IsContentFailure(exception))
-            {
-            }
-        }).ConfigureAwait(false);
+                try
+                {
+                    await pending.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (_stop.IsCancellationRequested)
+                {
+                }
+                catch (Exception exception) when (WorldRoleLoad.IsContentFailure(exception))
+                {
+                }
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            _pendingStop?.Dispose();
+            _pendingStop = null;
+        }
     }
 }
