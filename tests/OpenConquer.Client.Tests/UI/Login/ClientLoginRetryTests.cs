@@ -72,12 +72,12 @@ public sealed class ClientLoginRetryTests : IDisposable
     }
 
     [Theory]
-    [InlineData(LoginAttemptStatus.AccountRefused)]
-    [InlineData(LoginAttemptStatus.GameRefused)]
-    [InlineData(LoginAttemptStatus.CharacterCreation)]
-    [InlineData(LoginAttemptStatus.Timeout)]
-    [InlineData(LoginAttemptStatus.Unavailable)]
-    [InlineData(LoginAttemptStatus.Cancelled)]
+    [InlineData((int)LoginAttemptStatus.AccountRefused)]
+    [InlineData((int)LoginAttemptStatus.GameRefused)]
+    [InlineData((int)LoginAttemptStatus.CharacterCreation)]
+    [InlineData((int)LoginAttemptStatus.Timeout)]
+    [InlineData((int)LoginAttemptStatus.Unavailable)]
+    [InlineData((int)LoginAttemptStatus.Cancelled)]
     public void TerminalOutcomeStillResetsLoadingWithoutPendingCommand(int status)
     {
         LoginLoadingScreen loading = CreateLoading();
