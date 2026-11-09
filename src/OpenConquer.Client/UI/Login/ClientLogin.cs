@@ -136,8 +136,12 @@ internal sealed class ClientLogin : IDisposable
         Screen.ApplyRegistrationFeedback(Registration.Feedback, _errors);
     }
 
-    public void UpdateLoading(bool worldActive, bool worldPresentable, TimeSpan elapsed) =>
-        Loading?.Update(worldActive ? LoginAttemptStatus.CharacterReceived : Attempts.Status, worldPresentable, elapsed);
+    public void UpdateLoading(bool worldActive, bool worldPresentable, TimeSpan elapsed)
+    {
+        LoginAttemptStatus? status = worldActive ? LoginAttemptStatus.CharacterReceived :
+            Screen.AwaitingLoginCommand ? null : Attempts.Status;
+        Loading?.Update(status, worldPresentable, elapsed);
+    }
 
     public void StartLoading() => Loading?.Start();
     public void ResetLoading() => Loading?.Reset();
