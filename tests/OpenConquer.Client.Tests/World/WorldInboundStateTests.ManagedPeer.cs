@@ -34,5 +34,4 @@ public sealed partial class WorldInboundStateTests
         Assert.Equal(0, state.RemoteRoles.Count);
         Assert.Equal((60, 108, (byte)3), (state.X, state.Y, state.DirectionIndex));
     }
-
 }
