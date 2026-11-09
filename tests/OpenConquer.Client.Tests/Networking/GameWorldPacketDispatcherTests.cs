@@ -74,6 +74,46 @@ public sealed class GameWorldPacketDispatcherTests
             handler.Calls);
     }
 
+    [Fact]
+    public void Dispatch_DecodesOwnedPlayerSpawnFields()
+    {
+        RecordingHandler handler = new();
+        byte[] frame = WorldSpawnPacketFixture.Create(1_000_001, name: "Peer");
+        Assert.True(GameWorldPacketDispatcher.Dispatch(frame, handler));
+
+        GamePlayerSpawn10014 player = Assert.IsType<GamePlayerSpawn10014>(handler.LastPlayer);
+        Assert.Equal(1_000_001u, player.EntityId);
+        Assert.Equal(1003u, player.PackedAppearance);
+        Assert.Equal((ushort)810, player.HairComposite);
+        Assert.Equal(((ushort)62, (ushort)101, (byte)3), (player.X, player.Y, player.Direction));
+        Assert.Equal(250u, player.Life);
+        Assert.Equal((ushort)120, player.Level);
+        Assert.Equal((111000u, 130000u, 420000u, 410000u),
+            (player.HeadwearItemType, player.ArmorItemType, player.LeftHandItemType,
+                player.RightHandItemType));
+        Assert.Equal((0x1234UL, 0x5678UL), (player.StatusMaskLow, player.StatusMaskHigh));
+        frame[220] = (byte)'X';
+        Assert.Equal("Peer", System.Text.Encoding.ASCII.GetString(player.NameBytes.Span));
+    }
+
+    [Fact]
+    public void Dispatch_SkipsMalformedPlayerSpawnWithoutInvokingHandler()
+    {
+        RecordingHandler handler = new();
+        byte[] truncated = WorldSpawnPacketFixture.Create(1_000_001);
+        Array.Resize(ref truncated, truncated.Length - 1);
+        BinaryPrimitives.WriteUInt16LittleEndian(truncated, checked((ushort)truncated.Length));
+        byte[] missingName = WorldSpawnPacketFixture.Create(1_000_001);
+        missingName[219] = 0;
+        byte[] invalidDirection = WorldSpawnPacketFixture.Create(1_000_001);
+        invalidDirection[90] = 8;
+
+        Assert.False(GameWorldPacketDispatcher.Dispatch(truncated, handler));
+        Assert.False(GameWorldPacketDispatcher.Dispatch(missingName, handler));
+        Assert.False(GameWorldPacketDispatcher.Dispatch(invalidDirection, handler));
+        Assert.Empty(handler.Calls);
+    }
+
     private static byte[] Header(int length, ushort type)
     {
         byte[] packet = new byte[length];
@@ -85,6 +125,17 @@ public sealed class GameWorldPacketDispatcherTests
     private sealed class RecordingHandler : IGameWorldPacketHandler
     {
         public List<string> Calls { get; } = [];
+        public GamePlayerSpawn10014? LastPlayer
+        {
+            get;
+            private set;
+        }
+
+        public bool HandlePlayerSpawn(GamePlayerSpawn10014 player)
+        {
+            LastPlayer = player;
+            return Record($"spawn {player.EntityId}");
+        }
 
         public bool HandleWalk(GameWalk10005 walk) => Record($"walk {walk.EntityId:x}");
 

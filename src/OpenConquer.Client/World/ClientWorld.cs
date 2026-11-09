@@ -145,6 +145,7 @@ internal sealed class ClientWorld : IClientWorld
             }
 
             ingress.Drain(_applyFrame);
+            state.CullRemoteRoles();
             _egress?.Pump(state.Heartbeat, _frameMilliseconds);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or

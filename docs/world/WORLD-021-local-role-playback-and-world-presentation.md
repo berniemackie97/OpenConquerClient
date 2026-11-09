@@ -50,3 +50,21 @@ and lifecycle ownership: muting login music is not equivalent to implementing
 the map-sound subsystem. The installed content package must include the C3
 database, motion resources and mesh resources before the animated role can
 appear; framebuffer tests alone cannot verify the live map appearance.
+
+## Remote role receive ownership
+
+The authenticated world ingress now decodes the server's 10014 player-spawn
+message into owned name bytes and appearance/equipment fields, and retains
+one bounded remote role record per entity ID. Repeated spawns replace the
+same identity; 10010/135 removes it. The map's 18-tile visibility radius
+removes peers outside the local hero's square on each world tick. An unknown
+10005 player identity sends one 10010/102 lookup through the existing capped
+outbound lane, resetting the request after a spawn or removal. Other actors
+cannot change the authenticated hero's position.
+
+This is the receive/state portion of [CP4.1](https://github.com/berniemackie97/OpenConquerClient/issues/249),
+not complete peer presentation. Rendering still needs validated C3 resource
+ownership, scene depth insertion, pointer/picking state if used, and actual
+two-client and original-client comparison. The current fixtures are
+server-writer contract cases, not observed original-server output. Full CP3.2
+verification remains a release acceptance gate.

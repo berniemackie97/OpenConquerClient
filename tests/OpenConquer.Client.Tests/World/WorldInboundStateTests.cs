@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.Tests.Diagnostics;
+using OpenConquer.Client.Tests.Networking;
 using OpenConquer.Client.World;
 using OpenConquer.Networking.Game.Login;
 using OpenConquer.Networking.Game.World;
@@ -571,6 +572,116 @@ public sealed class WorldInboundStateTests
         Assert.False(state.Apply(malformed));
         Assert.Empty(responses);
         Assert.Equal((61, 101), (state.X, state.Y));
+    }
+
+    [Fact]
+    public void PeerSpawnReplacementAndExplicitRemovalOwnOneRemoteIdentity()
+    {
+        WorldInboundState state = CreateState(heroId: 1_000_000);
+        uint peer = 1_000_001;
+        Assert.False(state.Apply(WorldSpawnPacketFixture.Create(1_000_000)));
+        Assert.Empty(state.RemoteRoles.All);
+
+        Assert.False(state.Apply(WorldSpawnPacketFixture.Create(peer, 62, 101, name: "First")));
+        Assert.Equal(1, state.RemoteRoles.Count);
+        Assert.True(state.RemoteRoles.TryGet(peer, out GamePlayerSpawn10014? first));
+        Assert.Equal("First", System.Text.Encoding.ASCII.GetString(first!.NameBytes.Span));
+
+        Assert.False(state.Apply(WorldSpawnPacketFixture.Create(peer, 63, 102, name: "Second")));
+        Assert.Equal(1, state.RemoteRoles.Count);
+        Assert.True(state.RemoteRoles.TryGet(peer, out GamePlayerSpawn10014? replaced));
+        Assert.Equal(((ushort)63, (ushort)102), (replaced!.X, replaced.Y));
+        Assert.Equal("Second", System.Text.Encoding.ASCII.GetString(replaced.NameBytes.Span));
+
+        byte[] remove = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(remove, GameWorldAction10010.RemoveEntity, peer);
+        Assert.False(state.Apply(remove));
+        Assert.Equal(0, state.RemoteRoles.Count);
+        Assert.False(state.Apply(remove));
+        Assert.Equal((61, 101), (state.X, state.Y));
+    }
+
+    [Fact]
+    public void PeerVisibilityIsCulledAtTheSupportedTileBoundary()
+    {
+        WorldInboundState state = CreateState(heroId: 1_000_000);
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_001, x: 79, y: 119));
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_002, x: 80, y: 101));
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_003, x: 61, y: 120));
+        state.CullRemoteRoles();
+
+        Assert.Equal(1, state.RemoteRoles.Count);
+        Assert.True(state.RemoteRoles.Contains(1_000_001));
+    }
+
+    [Fact]
+    public void UnknownPeerWalkRequestsOneAuthoritativeSpawnUntilResolved()
+    {
+        List<GameWorldActionResponse> requests = [];
+        WorldInboundState state = CreateState(heroId: 1_000_000, onActionReply: requests.Add);
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, 1_000_001, directionIndex: 6, movementTick: 123, mapState: 1010);
+
+        Assert.False(state.Apply(walk));
+        Assert.False(state.Apply(walk));
+        Assert.Equal([new GameWorldActionResponse(GameWorldAction10010.QueryPlayer, 1_000_000, 1_000_001)],
+            requests);
+
+        Assert.False(state.Apply(WorldSpawnPacketFixture.Create(1_000_001)));
+        Assert.False(state.Apply(walk));
+        Assert.Single(requests);
+
+        byte[] removal = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(removal, GameWorldAction10010.RemoveEntity, 1_000_001);
+        state.Apply(removal);
+        Assert.False(state.Apply(walk));
+        Assert.Equal(2, requests.Count);
+        Assert.All(requests, request => Assert.Equal(GameWorldAction10010.QueryPlayer, request.Action));
+        Assert.Equal((61, 101), (state.X, state.Y));
+    }
+
+    [Fact]
+    public void HydrationAppliesPeerSpawnAndRemovalBeforeWorldActivation()
+    {
+        byte[] remove = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(remove, GameWorldAction10010.RemoveEntity, 1_000_001);
+        WorldInboundState state = CreateState(heroId: 1_000_000, hydration:
+        [
+            WorldSpawnPacketFixture.Create(1_000_001),
+            WorldSpawnPacketFixture.Create(1_000_002),
+            remove
+        ]);
+
+        Assert.Equal(1, state.RemoteRoles.Count);
+        Assert.True(state.RemoteRoles.Contains(1_000_002));
+    }
+
+    [Fact]
+    public void PeerRegistryRefusesToGrowPastItsOperationalCapacity()
+    {
+        WorldRemoteRoles roles = new();
+        GamePlayerSpawn10014 player = new(1_000_000, new byte[] { (byte)'P' }, 1003, 810,
+            62, 101, 3, 100, 250, 120, 111000, 130000, 420000, 410000, 0, 0);
+        for (int index = 0; index < WorldRemoteRoles.MaximumTrackedRoles; index++)
+        {
+            roles.Upsert(player with
+            {
+                EntityId = 1_000_000u + (uint)index
+            });
+        }
+
+        Assert.Equal(WorldRemoteRoles.MaximumTrackedRoles, roles.Count);
+        roles.Upsert(player);
+        Assert.Throws<InvalidDataException>(() => roles.Upsert(player with
+        {
+            EntityId = 1_000_000u + WorldRemoteRoles.MaximumTrackedRoles
+        }));
+        roles.Remove(1_000_000);
+        roles.Upsert(player with
+        {
+            EntityId = 1_000_000u + WorldRemoteRoles.MaximumTrackedRoles
+        });
+        Assert.Equal(WorldRemoteRoles.MaximumTrackedRoles, roles.Count);
     }
 
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,

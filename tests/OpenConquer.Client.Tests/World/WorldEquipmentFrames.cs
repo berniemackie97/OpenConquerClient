@@ -40,6 +40,8 @@ internal static class WorldEquipmentFrames
 
         public bool HandleWalk(GameWalk10005 walk) => false;
 
+        public bool HandlePlayerSpawn(GamePlayerSpawn10014 player) => false;
+
         public bool HandleAction(GameWorldAction10010 action) => false;
 
         public bool HandleAttributes(GameUserAttrib10017 attributes) => false;
