@@ -174,10 +174,11 @@ The test-only `tests/Fixtures/WireGolden/manifest.json` pins the canonical
 client source revision `e13bf5724975ec825e64a3609719afedd9b6af41`,
 the SHA-256 of each included fixture file, and an explicit list of every
 registered case. Both test suites require the same manifest SHA-256
-`6acc4c6b0b0f342d03e207ad26f085a78d06546d596066a757065adb8cede5ab`,
-verify every listed file and reject unlisted fixture JSON files. The corpus
-contains two static-derived cases, two independently observed client-message
-cases (1009/27 and 1134/3), and one project-defined registration case.
+`837443eb01539d872cc388b83eba097399b4ae8bdb3ea6d750fb9c0cfc9a1be2`,
+verify every listed file and reject unlisted fixture JSON files. The corpus contains two static-derived cases, five observed client-message groups
+(1009/27, 1134/3, 10005 selectors 0/1, 10010 admission actions, and 10010/146),
+and one project-defined registration case. The three added groups pin fifteen
+individual frames from separately retained running-client captures.
 These observations cover only their documented variants and directions.
 A corpus revision requires coordinated review of the source evidence,
 fixture bytes, manifest and pinned hash in both repositories. No runtime
@@ -247,3 +248,23 @@ writes so sustained correction traffic cannot starve the heartbeat. Packet const
 substitutes for the complete [CP3.2 corpus #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
 or a real-device session smoke. [Implementation #263](https://github.com/berniemackie97/OpenConquerClient/issues/263)
 tracks remaining acceptance.
+
+## Captured movement and world-action vectors
+
+The test-only corpus includes the exact fifteen client-emitted logical frames from
+`20_notes/Network/evidence/cp32-world-entry-2026-11-08/capture.json` and
+`20_notes/Network/evidence/cp32-correction-2026-11-08/capture.json`:
+`10005-walk.observed.json` (selector 1 and 0),
+`10010-world-entry.observed.json` (ten ordered actions including 96 and 251),
+and `10010-correction.observed.json` (same-tile, changed-tile and repeated
+146 replies). Every sample pins its originating record, full bytes and SHA-256;
+the fixture identifies the original executable, direction and decryption boundary.
+
+The client tests its current action and reply serializers against the observed
+frames and its walk reader against both captured packed directions. The walk
+writer only accepts a normalized direction; it does not reproduce the
+additional packed-direction bits in these records and has no active gameplay
+caller. Do not use these read-side tests as proof that CP4 movement sending
+is implemented. The server tests decode and byte-preserving serialization,
+not an original-server emission. No runtime traffic or live session is
+established by these isolated fixture checks.
