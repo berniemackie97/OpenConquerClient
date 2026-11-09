@@ -294,6 +294,19 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         return SendWorldPacketAsync(packet, "GameServer world walk write timed out.", cancellationToken);
     }
 
+    internal Task SendWorldActionResponseAsync(GameWorldActionResponse response, uint now,
+        CancellationToken cancellationToken = default) =>
+        SendWorldPacketAsync(CreateWorldActionPacket(response.Action, response.EntityId,
+            response.ParameterPair, response.TimestampOverride ?? now),
+            "GameServer admitted world action write timed out.", cancellationToken);
+
+    private static byte[] CreateWorldActionPacket(ushort action, uint entityId, uint parameterPair, uint timestamp)
+    {
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(packet, action, entityId, parameterPair, timestamp);
+        return packet;
+    }
+
     internal Task SendWorldCorrectionReplyAsync(uint heroId, ushort x, ushort y, byte direction,
         uint mapId, uint timestamp, CancellationToken cancellationToken = default)
     {
@@ -847,9 +860,8 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     internal Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair, uint timestamp,
         TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        byte[] packet = new byte[GameWorldAction10010.PacketLength];
-        GameWorldAction10010.Write(packet, action, entityId, parameterPair, timestamp);
-        return SendWorldEntryPacketAsync(packet, timeout, cancellationToken);
+        return SendWorldEntryPacketAsync(CreateWorldActionPacket(action, entityId, parameterPair, timestamp),
+            timeout, cancellationToken);
     }
 
     /// <summary>Sends the 1151 request native emits right after EnterMap for body digit 2.</summary>

@@ -1,3 +1,5 @@
+using OpenConquer.Networking.Game.Login;
+
 namespace OpenConquer.Client.World;
 
 /// <summary>
@@ -7,35 +9,51 @@ namespace OpenConquer.Client.World;
 /// </summary>
 internal sealed class WorldFrameEgress : IAsyncDisposable
 {
-    internal const int MaximumQueuedCorrections = 4096;
+    internal const int MaximumQueuedResponses = 4096;
 
     private readonly Func<uint, CancellationToken, Task> _sendLatencyTick;
     private readonly Func<uint, uint, uint, CancellationToken, Task> _sendLatencyReport;
     private readonly Func<WorldCorrectionReply, uint, CancellationToken, Task> _sendCorrection;
-    private readonly Queue<WorldCorrectionReply> _corrections = new();
+    private readonly Func<GameWorldActionResponse, uint, CancellationToken, Task>? _sendActionReply;
+    private readonly Queue<WorldOutboundReply> _responses = new();
     private readonly CancellationTokenSource _stopping = new();
     private Task? _pending;
     private Task? _disposeTask;
-    private bool _checkHeartbeatBeforeNextCorrection;
+    private bool _checkHeartbeatBeforeNextReply;
 
     internal WorldFrameEgress(Func<uint, CancellationToken, Task> sendLatencyTick,
         Func<uint, uint, uint, CancellationToken, Task> sendLatencyReport,
-        Func<WorldCorrectionReply, uint, CancellationToken, Task> sendCorrection)
+        Func<WorldCorrectionReply, uint, CancellationToken, Task> sendCorrection,
+        Func<GameWorldActionResponse, uint, CancellationToken, Task>? sendActionReply = null)
     {
         _sendLatencyTick = sendLatencyTick ?? throw new ArgumentNullException(nameof(sendLatencyTick));
         _sendLatencyReport = sendLatencyReport ?? throw new ArgumentNullException(nameof(sendLatencyReport));
         _sendCorrection = sendCorrection ?? throw new ArgumentNullException(nameof(sendCorrection));
+        _sendActionReply = sendActionReply;
     }
 
-    internal void QueuePositionCorrection(WorldCorrectionReply correction)
+    internal void QueuePositionCorrection(WorldCorrectionReply correction) =>
+        Enqueue(new WorldOutboundReply(correction, default));
+
+    internal void QueueWorldActionResponse(GameWorldActionResponse response)
     {
-        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
-        if (_corrections.Count == MaximumQueuedCorrections)
+        if (_sendActionReply is null)
         {
-            throw new WorldCorrectionQueueFullException();
+            throw new InvalidOperationException("The world action writer is not configured.");
         }
 
-        _corrections.Enqueue(correction);
+        Enqueue(new WorldOutboundReply(null, response));
+    }
+
+    private void Enqueue(WorldOutboundReply reply)
+    {
+        ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
+        if (_responses.Count == MaximumQueuedResponses)
+        {
+            throw new WorldResponseQueueFullException();
+        }
+
+        _responses.Enqueue(reply);
     }
 
     internal void Pump(WorldHeartbeat heartbeat, uint now)
@@ -53,9 +71,9 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
             return;
         }
 
-        if (_checkHeartbeatBeforeNextCorrection || _corrections.Count == 0)
+        if (_checkHeartbeatBeforeNextReply || _responses.Count == 0)
         {
-            _checkHeartbeatBeforeNextCorrection = false;
+            _checkHeartbeatBeforeNextReply = false;
             WorldHeartbeatSend send = heartbeat.Tick(now);
             if (send != WorldHeartbeatSend.None)
             {
@@ -64,10 +82,12 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
             }
         }
 
-        if (_corrections.TryDequeue(out WorldCorrectionReply correction))
+        if (_responses.TryDequeue(out WorldOutboundReply reply))
         {
-            _checkHeartbeatBeforeNextCorrection = true;
-            _pending = _sendCorrection(correction, now, _stopping.Token);
+            _checkHeartbeatBeforeNextReply = true;
+            _pending = reply.Correction is { } correction
+                ? _sendCorrection(correction, now, _stopping.Token)
+                : _sendActionReply!(reply.ActionResponse, now, _stopping.Token);
         }
     }
 
@@ -77,7 +97,7 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
     {
         Task? pending = _pending;
         _pending = null;
-        _corrections.Clear();
+        _responses.Clear();
         await ClientShutdown.CancelAndDrainAsync(_stopping, async () =>
         {
             if (pending is not null)
@@ -100,9 +120,12 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
 
 internal readonly record struct WorldCorrectionReply(ushort X, ushort Y, byte DirectionIndex);
 
-internal sealed class WorldCorrectionQueueFullException : IOException
+internal readonly record struct WorldOutboundReply(WorldCorrectionReply? Correction,
+    GameWorldActionResponse ActionResponse);
+
+internal sealed class WorldResponseQueueFullException : IOException
 {
-    internal WorldCorrectionQueueFullException() : base("World correction reply queue exceeded its bounded capacity.")
+    internal WorldResponseQueueFullException() : base("World outbound reply queue exceeded its bounded capacity.")
     {
     }
 }

@@ -12,6 +12,8 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     private readonly uint _heroId;
     private readonly Func<uint> _clock;
     private readonly Action<WorldCorrectionReply>? _onCorrection;
+    private readonly Action<GameWorldActionResponse>? _onActionReply;
+    private readonly GameSilentInfoReport _silentInfo;
     private readonly HashSet<uint> _unhandled = [];
     private readonly HashSet<uint> _unhandledAttributes = [];
 
@@ -22,13 +24,17 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     /// </summary>
     internal WorldInboundState(GameWorldEntrySnapshot world, ItemStatCatalog itemStats, Func<uint>? clock = null,
         uint clientStartedAt = 0, ClientDiagnostics? diagnostics = null,
-        Action<WorldCorrectionReply>? onCorrection = null)
+        Action<WorldCorrectionReply>? onCorrection = null,
+        Action<GameWorldActionResponse>? onActionReply = null,
+        GameSilentInfoReport? silentInfo = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         _heroId = world.Character.EntityId;
         _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
         _clock = clock ?? (static () => 0);
         _onCorrection = onCorrection;
+        _onActionReply = onActionReply;
+        _silentInfo = silentInfo ?? GameSilentInfoReport.WithoutFiles;
         Heartbeat = new WorldHeartbeat(world.HeartbeatStartedAt, clientStartedAt, world.LocalAddress);
         Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character), itemStats, world.MapFlags,
             world.Character.TransformLookSourceId != 0);
@@ -108,6 +114,19 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     {
         if (action.Action != GameWorldAction10010.PositionCorrection)
         {
+            if (action.EntityId == _heroId &&
+                GameWorldActionResponses.TryForAcknowledgement(action.Action, _heroId, _silentInfo,
+                    out GameWorldActionResponse first, out GameWorldActionResponse second))
+            {
+                _onActionReply?.Invoke(first);
+                if (second.Action != 0)
+                {
+                    _onActionReply?.Invoke(second);
+                }
+
+                return false;
+            }
+
             ReportUnhandled(GameWorldAction10010.PacketType, action.Action);
             return false;
         }

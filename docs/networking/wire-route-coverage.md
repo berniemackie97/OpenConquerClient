@@ -86,3 +86,31 @@ validates the captured client request. They do not establish any source-client
 implementation of post-death /145 emission or original-server status output.
 The 10010/137 jump and 1056 trade-quit payloads were withheld from the
 research capture; their recorded presence is metadata, not a golden vector.
+
+## Post-admission acknowledgement replay
+
+[Protocol bug #321](https://github.com/berniemackie97/OpenConquerClient/issues/321)
+covers the authenticated world reader after its admission bootstrap has completed.
+The archived world-entry session recorded two separate 10010/75 stimuli after
+world activation: capture 1 record 111 was a deliberately shortened, properly
+framed 22-byte peer request and record 132 was a complete 38-byte peer request.
+The resulting emitted 76, 96, 77, 78, 97, 251 and 132 actions are original-client
+observations at records 112–123 and 133–144 respectively. Later heartbeats
+continued. The deliberately modified peer frame is not a captured original-client
+emission, nor does this establish an original-server replay contract.
+
+The admitted world now uses the same acknowledgement-to-response mapping as
+initial bootstrap, with its session's silent-info checksum/version. The
+world-state handler accepts both framed lengths via the existing bounded,
+zero-filled dispatcher, checks the authenticated hero ID, then queues responses
+on the single capped outbound lane alongside correction replies and heartbeats.
+It does not restart admission or attach another reader. Failed writes propagate
+to the existing connection-loss owner; shutdown drains the active writer.
+
+The source-capture assertions and deterministic world/send-lane tests cover
+truncated and full 75 replies, response order, foreign actor rejection,
+invalid header rejection, queue limits and send failures. These are managed
+regressions, not a new live connected-device acceptance. CP3.2 still requires
+missing original-client packet variants and independently established
+original-server output where required; connected-client gates #263 and #306
+remain separate.

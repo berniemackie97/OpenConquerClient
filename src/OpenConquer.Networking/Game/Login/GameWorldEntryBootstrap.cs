@@ -136,34 +136,30 @@ internal static class GameWorldEntryBootstrap
                         // The heartbeat timer starts at 10000 ms after 75 is sent (0x6FF57A..0x6FF587).
                         heartbeatStartedAt = GameClientClock.Milliseconds(clock);
                         return true;
-                    case GameWorldAction10010.GetItems when action.EntityId == hero:
-                        // 76 (0x6FF3F4), then main msg 0x401 -> PK mode 3 (0x6FF3CD, 0x4BDD30).
-                        await SendActionAsync(GameWorldAction10010.GetFriends, hero).ConfigureAwait(false);
-                        await SendActionAsync(GameWorldAction10010.SetPkMode, hero, InitialPkMode).ConfigureAwait(false);
-                        return true;
-                    case GameWorldAction10010.GetFriends when action.EntityId == hero:
-                        await SendActionAsync(GameWorldAction10010.GetWeaponSkills, hero).ConfigureAwait(false);
-                        return true;
-                    case GameWorldAction10010.GetWeaponSkills when action.EntityId == hero:
-                        await SendActionAsync(GameWorldAction10010.GetMagic, hero).ConfigureAwait(false);
-                        return true;
-                    case GameWorldAction10010.GetMagic when action.EntityId == hero:
-                        await SendActionAsync(GameWorldAction10010.GetSyndicate, hero).ConfigureAwait(false);
-                        return true;
-                    case GameWorldAction10010.GetSyndicate when action.EntityId == hero:
-                        // BuildSilentInfoReport251 (0x6FF607): entity 0, +8 checksum, +16 version.
-                        GameSilentInfoReport silent = session.SilentInfo;
-                        await session.SendWorldActionAsync(GameWorldAction10010.ReportSilentInfo, 0, silent.Checksum,
-                            silent.Version, s_timeout, operation).ConfigureAwait(false);
-                        return true;
-                    case GameWorldAction10010.ReportSilentInfo when action.EntityId == hero:
-                        await SendActionAsync(GameWorldAction10010.GetStatistics, hero).ConfigureAwait(false);
-                        statisticsRequested = true;
-                        return true;
                     case GameWorldAction10010.GetItems or GameWorldAction10010.GetFriends or
                         GameWorldAction10010.GetWeaponSkills or GameWorldAction10010.GetMagic or
                         GameWorldAction10010.GetSyndicate or GameWorldAction10010.ReportSilentInfo:
-                        // Unresolved entity: native exits silently (0x700974).
+                        if (action.EntityId != hero)
+                        {
+                            return true;
+                        }
+
+                        if (GameWorldActionResponses.TryForAcknowledgement(action.Action, hero,
+                            session.SilentInfo, out GameWorldActionResponse primaryResponse,
+                            out GameWorldActionResponse additionalResponse))
+                        {
+                            await SendResponseAsync(primaryResponse).ConfigureAwait(false);
+                            if (additionalResponse.Action != 0)
+                            {
+                                await SendResponseAsync(additionalResponse).ConfigureAwait(false);
+                            }
+
+                            if (action.Action == GameWorldAction10010.ReportSilentInfo)
+                            {
+                                statisticsRequested = true;
+                            }
+                        }
+
                         return true;
                     default:
                         return false;
@@ -173,6 +169,10 @@ internal static class GameWorldEntryBootstrap
             // CMsgAction__Create (0x6FE95F) stamps every request with timeGetTime at +16 (0x6FE99C).
             Task SendActionAsync(ushort action, uint entityId, uint parameter = 0) =>
                 session.SendWorldActionAsync(action, entityId, parameter, GameClientClock.Milliseconds(clock), s_timeout, operation);
+
+            Task SendResponseAsync(GameWorldActionResponse reply) =>
+                session.SendWorldActionAsync(reply.Action, reply.EntityId, reply.ParameterPair,
+                    reply.TimestampOverride ?? GameClientClock.Milliseconds(clock), s_timeout, operation);
         }
         catch (OperationCanceledException exception) when (operation.IsCancellationRequested)
         {

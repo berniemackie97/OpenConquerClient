@@ -228,6 +228,69 @@ public sealed class ClientWorldTests
     }
 
     [Fact]
+    public async Task ActiveWorldRoutesReplayedAcknowledgementsThroughTheOutboundLane()
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 61, 101, 100, 1000);
+        GameWorldEntrySnapshot entry = Entry();
+        byte[] full = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(full, GameWorldAction10010.GetItems, entry.Character.EntityId);
+        byte[] shortFrame = full[..22];
+        BinaryPrimitives.WriteUInt16LittleEndian(shortFrame, checked((ushort)shortFrame.Length));
+        byte[] next = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(next, GameWorldAction10010.GetFriends, entry.Character.EntityId);
+        List<(GameWorldActionResponse Reply, uint Now)> sent = [];
+        int reads = 0;
+
+        Task<GameSecuredInboundFrame?> Receive(CancellationToken stopping)
+        {
+            byte[]? message = ++reads switch
+            {
+                1 => shortFrame,
+                2 => next,
+                _ => null
+            };
+            if (message is null)
+            {
+                return WaitForDisconnectAsync(stopping);
+            }
+
+            byte[] rented = ArrayPool<byte>.Shared.Rent(message.Length);
+            message.CopyTo(rented, 0);
+            return Task.FromResult<GameSecuredInboundFrame?>(new GameSecuredInboundFrame(rented, message.Length));
+        }
+
+        await using ClientWorld world = new(entry, new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+            static () => { }, static () => ValueTask.CompletedTask,
+            () => new WorldFrameIngress(Receive), () => new WorldContentLoad<WorldMapScene>(_ => scene),
+            () => new WorldFrameEgress(
+                (_, _) => Task.CompletedTask,
+                (_, _, _, _) => Task.CompletedTask,
+                (_, _, _) => Task.CompletedTask,
+                (reply, now, _) =>
+                {
+                    sent.Add((reply, now));
+                    return Task.CompletedTask;
+                }));
+
+        await WaitUntilAsync(() =>
+        {
+            world.CompleteLoad();
+            return world.HasScene;
+        });
+        world.DrainIngress(500);
+        world.DrainIngress(501);
+        world.DrainIngress(502);
+
+        Assert.Equal(
+        [
+            (new GameWorldActionResponse(GameWorldAction10010.GetFriends, entry.Character.EntityId, 0), 500u),
+            (new GameWorldActionResponse(GameWorldAction10010.SetPkMode, entry.Character.EntityId, 3), 501u),
+            (new GameWorldActionResponse(GameWorldAction10010.GetWeaponSkills, entry.Character.EntityId, 0), 502u)
+        ], sent);
+    }
+
+    [Fact]
     public async Task HydrationAndLiveHeroCorrectionsShareTheOutboundLaneInOrder()
     {
         using WorldMapFixture fixture = new();
@@ -300,7 +363,7 @@ public sealed class ClientWorldTests
     {
         using WorldMapFixture fixture = new();
         WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 61, 101, 100, 1000);
-        byte[][] excessCorrections = Enumerable.Range(0, WorldFrameEgress.MaximumQueuedCorrections + 1)
+        byte[][] excessCorrections = Enumerable.Range(0, WorldFrameEgress.MaximumQueuedResponses + 1)
             .Select(_ => Correction(61, 101)).ToArray();
         GameWorldEntrySnapshot entry = Entry() with
         {
