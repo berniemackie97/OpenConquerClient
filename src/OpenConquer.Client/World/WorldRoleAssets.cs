@@ -28,7 +28,11 @@ internal sealed record WorldRoleAssets(
         string? motionPath = catalog.TryResolveMotionPath("body", InitialBodyMotionKey(packedAppearance),
             out string resolvedMotion) ? resolvedMotion : null;
         Dictionary<ushort, string> groundMotions = [];
-        foreach (ushort action in new[] { WorldRolePlayback.GroundWalkFirst, WorldRolePlayback.GroundWalkSecond })
+        foreach (ushort action in new[]
+        {
+            WorldRolePlayback.GroundWalkFirst, WorldRolePlayback.GroundWalkSecond,
+            WorldRolePlayback.GroundRunFirst, WorldRolePlayback.GroundRunSecond
+        })
         {
             if (catalog.TryResolveMotionPath("body", BodyMotionKey(packedAppearance, action),
                 out string path))
