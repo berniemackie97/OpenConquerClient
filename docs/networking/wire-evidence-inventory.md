@@ -77,31 +77,24 @@ inventory gate.
 
 ## Verified heartbeat 1009/27 send bytes
 
-Original-client capture 1, frame 40, in
-`20_notes/Network/evidence/cp32-world-entry-2026-11-08/capture.json`,
-records an 88-byte outgoing heartbeat with SHA-256
-`aa2d5b328c0f90b9b80eea69f1e648ee33653fc9092ff633d72e4c9e05d4c922`.
-Its hero ID is 1,000,000 and its transmitted millisecond timer is 68,952,244.
-Reconstructing the header, fields and zeroed remainder reproduces that digest.
-The reconstructed bytes are verified against the reported capture hash, but
-were not copied directly from the capture file into this repository.
+The source-client world-entry capture includes 30 complete 88-byte
+1009/27 frames: 24 from capture 1 and six from capture 2. Each frame
+is retained in the existing `1009-27-heartbeat.observed.json` fixture,
+with its capture sequence, exact logical bytes and SHA-256. The source
+executable, direction and decryption boundary are pinned with the fixture.
 
-The packet writer now transmits the unmodified timer at +16. The earlier
-message builder computes an XOR intermediate, but the original send path
-replaces that field with the current timer before queuing transmission.
-An unchanged echo therefore carries the original timer; the client
-computes elapsed time with unsigned subtraction, including counter wrap.
-The server's existing byte-preserving echo needs no implementation change.
+The client writer transmits the unmodified millisecond timer at +16.
+The earlier message builder computes an XOR intermediate, but the
+send path replaces that field with the current timer before transmission.
+Client tests write all thirty captured frames through the production
+encoder. Server tests independently parse all thirty and verify
+byte-preserving echoes; those managed echoes do not constitute
+original-server output.
 
-The independently observed 88-byte frame is retained in
-`tests/Fixtures/WireGolden/1009-27-heartbeat.observed.json`. The client
-verifies the encoder output against those exact logical bytes; the server
-independently parses and re-encodes the mirrored frame. The capture source,
-direction, collection boundary and executable digest are pinned with its
-contents. This single observed message does not establish capture coverage
-for other 1009 subtypes or every CP3.2 packet variant. [Bug #299](https://github.com/berniemackie97/OpenConquerClient/issues/299)
-tracks the fix; [CP3.2 #248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
-retains the corpus and remaining capture acceptance.
+These captures cover the observed 1009/27 send family, not equipment
+or other 1009 subtypes. [Bug #299](https://github.com/berniemackie97/OpenConquerClient/issues/299)
+tracks the accepted timer fix. [#248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
+retains the missing packet-variant and original-server-output gates.
 
 ## First shared fixture: weather 1016
 
@@ -252,23 +245,28 @@ tracks remaining acceptance.
 
 ## Captured movement and world-action vectors
 
-The test-only corpus includes the exact fifteen client-emitted logical frames from
-`20_notes/Network/evidence/cp32-world-entry-2026-11-08/capture.json` and
-`20_notes/Network/evidence/cp32-correction-2026-11-08/capture.json`:
-`10005-walk.observed.json` (selector 1 and 0),
-`10010-world-entry.observed.json` (ten ordered actions including 96 and 251),
-and `10010-correction.observed.json` (same-tile, changed-tile and repeated
-146 replies). Every sample pins its originating record, full bytes and SHA-256;
-the fixture identifies the original executable, direction and decryption boundary.
+The shared `10005-walk.observed.json` fixture now includes all 23
+disclosed original-client 10005 frames in the retained existing-character
+sessions: twelve selector-1 frames in capture 1 and eleven selector-0
+frames in capture 2. The complete packet field and SHA-256 for each
+record come from
+`20_notes/Network/evidence/cp32-world-entry-2026-11-08/capture.json`.
+Client tests verify the full packed direction, selector, identity, map
+and movement clock through the existing reader. Server tests independently
+parse and byte-preservingly serialize all 23. Original-client movement
+emission and independently recorded server traffic remain distinct.
 
-The client tests its current action and reply serializers against the observed
-frames and its walk reader against both captured packed directions. The walk
-writer only accepts a normalized direction; it does not reproduce the
-additional packed-direction bits in these records and has no active gameplay
-caller. Do not use these read-side tests as proof that CP4 movement sending
-is implemented. The server tests decode and byte-preserving serialization,
-not an original-server emission. No runtime traffic or live session is
-established by these isolated fixture checks.
+The action fixtures retain the same ten source-client entry actions in
+`10010-world-entry.observed.json` and three independently captured
+correction replies in `10010-correction.observed.json`. Each has its
+own ordered record references and frame digests.
+
+The client walk writer only accepts a normalized direction, does not
+reproduce the extra packed-direction bits observed in these frames,
+and has no active world input caller. Completing its packet evidence
+does not implement local movement or validate playback on connected
+clients. The server's byte-preserving output is a managed serializer
+check, not an original-server emission.
 
 ## Captured conditional world-entry and ghost-transition requests
 
