@@ -70,6 +70,11 @@ public sealed partial class WorldInboundStateTests
                 Assert.Equal(selector.GetUInt32(), BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(12)));
             }
 
+            if (record.TryGetProperty("action", out JsonElement action))
+            {
+                Assert.Equal(action.GetUInt32(), BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(20)));
+            }
+
             frames[i] = frame;
         }
 
