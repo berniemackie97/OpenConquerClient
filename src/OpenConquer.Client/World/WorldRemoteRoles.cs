@@ -69,14 +69,7 @@ internal sealed class WorldRemoteRoles
             Y = (ushort)y,
             Direction = (byte)(walk.DirectionIndex % 8)
         };
-        if (walk.Selector == GameWalk10005.MountedSelector)
-        {
-            role.Playback.Stop();
-        }
-        else
-        {
-            role.Playback.BeginWalk(nowMilliseconds);
-        }
+        role.Playback.BeginMove(walk.Selector, nowMilliseconds);
 
         _snapshot = null;
         Revision = unchecked(Revision + 1);
