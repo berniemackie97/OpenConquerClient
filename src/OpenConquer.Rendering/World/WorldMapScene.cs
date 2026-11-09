@@ -75,6 +75,7 @@ public sealed class WorldMapScene
 
     public LogicalRenderSize BackdropExtent => _backdropExtent;
     public GameMapContent Map => _map;
+    internal IReadOnlyList<WorldRoleDrawSlot> CommittedRoleOrder => _frame.RoleSlots;
 
     public (Matrix4x4 Main, Matrix4x4 Shadow) HeroMatrices
     {
@@ -97,6 +98,13 @@ public sealed class WorldMapScene
 
         _remoteRoles = roles.ToArray();
         _remoteRoleRevision = revision;
+    }
+
+    internal (Matrix4x4 Main, Matrix4x4 Shadow) RoleMatrices(WorldSceneRole role)
+    {
+        (int x, int y) = WorldCameraProjection.ProjectTile(_map, role.TileX, role.TileY);
+        return WorldRoleCameraMatrices.Create(_map, _puzzles, _frame.Projection,
+            x, y, (-1 - role.Direction) * 45f, 0.75f);
     }
 
     public void SetCameraTile(int tileX, int tileY)
@@ -292,11 +300,7 @@ public sealed class WorldMapScene
 
                 if (drawRemoteRole is not null)
                 {
-                    (int x, int y) = WorldCameraProjection.ProjectTile(_map,
-                        slot.Role.TileX, slot.Role.TileY);
-                    (Matrix4x4 main, Matrix4x4 shadow) = WorldRoleCameraMatrices.Create(
-                        _map, _puzzles, _frame.Projection, x, y,
-                        (-1 - slot.Role.Direction) * 45f, 0.75f);
+                    (Matrix4x4 main, Matrix4x4 shadow) = RoleMatrices(slot.Role);
                     drawRemoteRole(renderer, slot.Role.EntityId, main, shadow);
                 }
             }
