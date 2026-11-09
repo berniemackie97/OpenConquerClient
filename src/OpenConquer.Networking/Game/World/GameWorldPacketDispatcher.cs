@@ -8,6 +8,8 @@ internal interface IGameWorldPacketHandler
 {
     bool HandleWalk(GameWalk10005 walk);
 
+    bool HandlePlayerSpawn(GamePlayerSpawn10014 player);
+
     bool HandleAction(GameWorldAction10010 action);
 
     bool HandleItemRecord(GameItemRecord1008 record);
@@ -44,6 +46,8 @@ internal static class GameWorldPacketDispatcher
         return message.Type switch
         {
             GameWalk10005.PacketType => handler.HandleWalk(GameWalk10005.Read(message)),
+            GamePlayerSpawn10014.PacketType => GamePlayerSpawn10014.TryRead(message, out GamePlayerSpawn10014? player)
+                && handler.HandlePlayerSpawn(player),
             GameWorldAction10010.PacketType => handler.HandleAction(GameWorldAction10010.Read(message)),
             GameItemRecord1008.PacketType => handler.HandleItemRecord(GameItemRecord1008.Read(message)),
             GameItem1009.PacketType => handler.HandleItem(GameItem1009.Read(message)),
