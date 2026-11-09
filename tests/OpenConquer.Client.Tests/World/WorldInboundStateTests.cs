@@ -652,7 +652,7 @@ public sealed class WorldInboundStateTests
         Assert.False(state.Apply(walk));
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out moved));
         Assert.Equal(((ushort)64, (ushort)104, (byte)7), (moved!.X, moved.Y, moved.Direction));
-        Assert.Equal(0, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
+        Assert.Equal(WorldRolePlayback.GroundWalkFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
     }
 
     [Fact]
@@ -680,7 +680,7 @@ public sealed class WorldInboundStateTests
     }
 
     [Fact]
-    public void RunSelectorWithUpperBitsKeepsEightWayMovementWithoutRunningAnimation()
+    public void RunSelectorWithUpperBitsKeepsEightWayMovementAndRunningAnimation()
     {
         WorldInboundState state = CreateState(heroId: 1_000_000);
         state.Apply(WorldSpawnPacketFixture.Create(1_000_001, 62, 101));
@@ -691,7 +691,7 @@ public sealed class WorldInboundStateTests
         Assert.False(state.Apply(walk));
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? moved));
         Assert.Equal(((ushort)63, (ushort)101, (byte)6), (moved!.X, moved.Y, moved.Direction));
-        Assert.Equal(0, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
+        Assert.Equal(WorldRolePlayback.GroundRunFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
     }
 
     [Fact]
