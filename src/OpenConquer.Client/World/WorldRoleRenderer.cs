@@ -85,7 +85,7 @@ internal sealed class WorldRoleRenderer : IDisposable
         }
     }
 
-    internal uint GetActionFrameCount(ushort action) => _body.GetActionFrameCount(action);
+    internal uint GetActionFrameCount(ushort action) => _body.Actions.GetFrameCount(action);
 
     internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, uint nowMilliseconds)
     {
@@ -120,7 +120,7 @@ internal sealed class WorldRoleRenderer : IDisposable
     }
 
     private C3Motion? ResolveAttachment(string name, ushort action, C3Motion? fallback) =>
-        _body.TryGetActionAttachment(name, action, out C3Motion? motion) ? motion : fallback;
+        _body.Actions.TryGetAttachment(name, action, out C3Motion? motion) ? motion : fallback;
 
     private static void DrawWeapon(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow,
         int frame, WorldRolePart[] parts, C3Motion? attachment)
