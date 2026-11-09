@@ -74,25 +74,36 @@ public sealed class WorldRemoteRolePresentationTests
     [Fact]
     public async Task DisposingAppearanceOwnerCancelsAndDrainsTheSinglePendingRead()
     {
-        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        TaskCompletionSource canceled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<CancellationToken> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
         WorldRemoteRoles roles = new();
         roles.Upsert(Player(1_000_001, 1002));
         WorldRemoteRolePresentation presentation = new(
             (_, token) =>
             {
-                using CancellationTokenRegistration registration = token.Register(() => canceled.TrySetResult());
-                started.SetResult();
-                token.WaitHandle.WaitOne();
-                token.ThrowIfCancellationRequested();
-                return null;
+                try
+                {
+                    started.TrySetResult(token);
+                    token.WaitHandle.WaitOne();
+                    token.ThrowIfCancellationRequested();
+                    return null;
+                }
+                finally
+                {
+                    completed.TrySetResult();
+                }
             },
             ClientDiagnostics.Silent);
 
         presentation.Synchronize(roles, 61, 101);
-        await started.Task.WaitAsync(s_timeout, TestContext.Current.CancellationToken);
+        CancellationToken active = await started.Task.WaitAsync(s_timeout, TestContext.Current.CancellationToken);
+        Assert.False(active.IsCancellationRequested);
+        Assert.False(completed.Task.IsCompleted);
+
         await presentation.DisposeAsync();
-        await canceled.Task.WaitAsync(s_timeout, TestContext.Current.CancellationToken);
+
+        Assert.True(active.IsCancellationRequested);
+        Assert.True(completed.Task.IsCompleted);
         await presentation.DisposeAsync();
     }
 
