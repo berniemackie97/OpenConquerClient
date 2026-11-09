@@ -2,15 +2,17 @@
 
 [Issue #248](https://github.com/berniemackie97/OpenConquerClient/issues/248) |
 [Ownership decision](wire-contract-ownership.md)
+[Route coverage](wire-route-coverage.md) | [Route task #316](https://github.com/berniemackie97/OpenConquerClient/issues/316)
 
 ## Scope and evidence grades
 
 This is the first-pass inventory of named packet codecs in `OpenConquer.Networking`
 and `OpenConquer.Protocol` at the start of CP3.2. It includes client-only
 and server-only implemented messages; a missing implementation on one side
-does not mean the message is unsupported by the original protocol. Code that
-constructs frames directly outside the named packet types still needs an
-additional call-site audit before the inventory can be considered exhaustive.
+does not mean the message is unsupported by the original protocol. Active conditional send paths, manual action routing and world ingress fan-out
+are reconciled against both repositories in the [route coverage matrix](wire-route-coverage.md),
+with a separate evidence grade for each supported variant. The complete running-client
+capture corpus remains outstanding.
 
 **Live capture** means original 5517 executable output or input observed
 during a controlled running-client session, with exact direction, framing,
