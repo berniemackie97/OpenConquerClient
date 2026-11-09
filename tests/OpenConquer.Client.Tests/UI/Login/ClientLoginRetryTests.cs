@@ -131,10 +131,11 @@ public sealed class ClientLoginRetryTests : IDisposable
     private static LoginLoadingScreen CreateLoading()
     {
         List<object[]> events = [];
+        int[] matrix = [1, 0, 0, 1, 0, 0];
         for (int frame = 18; frame <= 100; frame++)
         {
-            events.Add([frame, new { depth = 4, m = new[] { 1, 0, 0, 1, 0, 0 } }]);
-            events.Add([frame, new { depth = 9, m = new[] { 1, 0, 0, 1, 0, 0 } }]);
+            events.Add([frame, new { depth = 4, m = matrix }]);
+            events.Add([frame, new { depth = 9, m = matrix }]);
         }
 
         byte[] timeline = JsonSerializer.SerializeToUtf8Bytes(new Dictionary<string, object>
