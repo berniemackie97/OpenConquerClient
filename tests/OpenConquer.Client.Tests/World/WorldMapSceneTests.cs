@@ -65,6 +65,29 @@ public sealed class WorldMapSceneTests
     }
 
     [Fact]
+    public void MovingPeerRebuildsTheCommittedDepthOrderWithNewTileAndFacing()
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
+        WorldSceneRole initial = new(1_000_001, 61, 108, 3);
+        scene.SetRemoteRoles(1, [initial]);
+        scene.BuildFrame(800, 600, 1000);
+
+        WorldSceneRole first = Assert.Single(scene.CommittedRoleOrder,
+            static slot => slot.Role.EntityId == 1_000_001).Role;
+        Assert.Equal(initial, first);
+        WorldSceneRole moved = new(1_000_001, 62, 108, 6);
+        scene.SetRemoteRoles(2, [moved]);
+        scene.BuildFrame(800, 600, 1034);
+
+        WorldSceneRole current = Assert.Single(scene.CommittedRoleOrder,
+            static slot => slot.Role.EntityId == 1_000_001).Role;
+        Assert.Equal(moved, current);
+        Assert.NotEqual(scene.RoleMatrices(first), scene.RoleMatrices(current));
+        Assert.Equal(1, scene.CommittedRoleOrder.Count(static slot => slot.Role.EntityId == 1_000_001));
+    }
+
+    [Fact]
     public void PeerMarkersUseTheCommittedSceneFrameAndItsCamera()
     {
         using WorldMapFixture fixture = new();
