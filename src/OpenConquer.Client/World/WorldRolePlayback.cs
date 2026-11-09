@@ -15,6 +15,8 @@ internal sealed class WorldRolePlayback
 
     internal ushort Action => _action;
 
+    internal void Stop() => _action = 0;
+
     internal void BeginMove(uint selector, uint nowMilliseconds)
     {
         if ((byte)selector == GameWalk10005.MountedSelector)
