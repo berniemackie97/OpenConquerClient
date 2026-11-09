@@ -651,8 +651,14 @@ public sealed class WorldInboundStateTests
         BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), 0x0000_0109);
         Assert.False(state.Apply(walk));
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out moved));
-        Assert.Equal(((ushort)64, (ushort)104, (byte)7), (moved!.X, moved.Y, moved.Direction));
-        Assert.Equal(WorldRolePlayback.GroundWalkFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
+        Assert.Equal(((ushort)64, (ushort)105, (byte)7), (moved!.X, moved.Y, moved.Direction));
+        Assert.Equal(0, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
+
+        BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), 0x0000_0101);
+        Assert.False(state.Apply(walk));
+        Assert.True(state.RemoteRoles.TryGet(1_000_001, out moved));
+        Assert.Equal(((ushort)65, (ushort)106, (byte)7), (moved!.X, moved.Y, moved.Direction));
+        Assert.Equal(WorldRolePlayback.GroundRunFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
     }
 
     [Fact]
