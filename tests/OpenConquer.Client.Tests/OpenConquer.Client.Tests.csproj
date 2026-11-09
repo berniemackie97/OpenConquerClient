@@ -63,6 +63,8 @@
           Link="WireGolden/F001-F002-registration.project-defined.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../Fixtures/WireGolden/manifest.json"
           Link="WireGolden/manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../Fixtures/ManagedWorld/peer-movement.observed.json"
+          Link="ManagedWorld/peer-movement.observed.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

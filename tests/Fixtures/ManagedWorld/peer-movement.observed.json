@@ -1,0 +1,49 @@
+[
+  {
+    "step": "managed-ocs-peer-spawn",
+    "direction": "server-to-client",
+    "provenance": "managed-ocs",
+    "capturePoint": "OCC after CAST5-CFB decryption and TQServer validation",
+    "length": 233,
+    "hex": "e9001e27fb2a000041420f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005d000000c6023c006c000064000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a000a000a000000000000040a41756469744d6f766572000000",
+    "sha256": "ef5bfa3a00944e2eddfbbedeb634d2aa69ee7ff3d231945951b8ee1771e11549",
+    "sequence": 1,
+    "packetId": 10014
+  },
+  {
+    "step": "managed-ocs-committed-walk",
+    "direction": "server-to-client",
+    "provenance": "managed-ocs",
+    "capturePoint": "OCC after CAST5-CFB decryption and TQServer validation",
+    "length": 24,
+    "hex": "180015270600000041420f0000000000e8030000f2030000",
+    "sha256": "e33d0806eae396d9176a7b230dee479cc66a43ca4f3a32444ea699d582fc729f",
+    "sequence": 2,
+    "packetId": 10005,
+    "selector": 0
+  },
+  {
+    "step": "managed-ocs-committed-run",
+    "direction": "server-to-client",
+    "provenance": "managed-ocs",
+    "capturePoint": "OCC after CAST5-CFB decryption and TQServer validation",
+    "length": 24,
+    "hex": "180015270200000041420f000100000040060000f2030000",
+    "sha256": "abc5fdd55a2c704687cde883c14fe97fdedb4b2b7cdc571545590b6562a7655c",
+    "sequence": 3,
+    "packetId": 10005,
+    "selector": 1
+  },
+  {
+    "step": "managed-ocs-peer-removal",
+    "direction": "server-to-client",
+    "provenance": "managed-ocs",
+    "capturePoint": "OCC after CAST5-CFB decryption and TQServer validation",
+    "length": 38,
+    "hex": "26001a2741420f0000000000000000004d41fb03870000000000000000000000000000000000",
+    "sha256": "cc9d3aed9506a46c883c2ea8f18d6784f8bb96375b4c631d6ec6a7ee59b1867f",
+    "sequence": 4,
+    "packetId": 10010,
+    "action": 135
+  }
+]

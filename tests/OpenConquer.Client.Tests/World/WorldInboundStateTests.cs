@@ -9,7 +9,7 @@ using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.Tests.World;
 
-public sealed class WorldInboundStateTests
+public sealed partial class WorldInboundStateTests
 {
     private const uint HeroId = 0x11223344;
 
@@ -101,6 +101,36 @@ public sealed class WorldInboundStateTests
         Assert.True(state.Apply(packet));
         Assert.Equal(((int)x, (int)y), (state.X, state.Y));
         Assert.Equal(direction, state.DirectionIndex);
+    }
+
+    [Theory]
+    [InlineData(9u)]
+    [InlineData(0x0000_0109u)]
+    [InlineData(0xFFFF_FF09u)]
+    public void HeroMountedSelectorAliasesDoNotAdvanceTheAuthoritativeTile(uint selector)
+    {
+        WorldInboundState state = CreateState();
+        byte[] packet = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(packet, HeroId, 0x17, movementTick: 100, mapState: 1010);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(12), selector);
+
+        GameWalk10005 decoded = GameWalk10005.Read(GameMessages.Load(packet));
+        Assert.Equal(selector, decoded.Selector);
+        Assert.True(decoded.IsMounted);
+        Assert.False(state.Apply(packet));
+        Assert.Equal((61, 101, (byte)3), (state.X, state.Y, state.DirectionIndex));
+
+        GameWalk10005.WriteOrdinary(packet, HeroId, 0xF6, movementTick: 101, mapState: 1010,
+            selector: (byte)GameWalk10005.RunSelector);
+        Assert.True(state.Apply(packet));
+        Assert.Equal((62, 101, (byte)6), (state.X, state.Y, state.DirectionIndex));
+
+        GameWalk10005.WriteOrdinary(packet, HeroId, 2, movementTick: 102, mapState: 1010);
+        Assert.True(state.Apply(packet));
+        Assert.Equal((61, 101, (byte)2), (state.X, state.Y, state.DirectionIndex));
+
+        Assert.True(state.Apply(Correction(HeroId, 61, 102)));
+        Assert.Equal((61, 102, (byte)2), (state.X, state.Y, state.DirectionIndex));
     }
 
     [Fact]

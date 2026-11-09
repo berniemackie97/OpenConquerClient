@@ -166,5 +166,26 @@ the action pairs and frame interval are recorded in
 `20_notes/Rendering/roleview_dll/07_action_playback_transition_state.md`
 and `13_role_compute_frame_interval.md`. This is frame selection for
 received movement, not local input, position interpolation, a full actor
-command-state machine, or server cadence enforcement. The outstanding
-verification remains tracked in #250.
+command-state machine, or server cadence enforcement. The outstanding verification remains tracked in #250.
+
+## Connected peer capture regression
+
+The managed server-origin packet sequence in
+`20_notes/Network/evidence/cp42-managed-peer-2026-11-09/managed-ocs.json`
+contains a 10014 peer admission, 10005 walking and running relays, and a
+10010/135 departure. The same unmodified logical frames are retained as
+a separately classified test fixture, with the original file and all
+packet hashes pinned. The production world dispatcher reproduces the
+peer tile and action changes, removes its owned playback on departure,
+and leaves the observer's authenticated position unchanged.
+
+The retained GPU replay on map 1010 records frame changes for both movement
+actions and cleanup to the initial empty framebuffer. These results establish
+managed-server integration and controlled GPU playback, not an interactive
+comparison with the historical client. The authenticated hero's 10005
+receive path also uses the packet's existing low-byte mounted discriminator;
+it does not treat an upper-byte mounted alias as an ordinary acknowledgement.
+Mounted movement remains unauthorized without riding state.
+
+The live original-client visual and busy-state/pose comparisons, local
+movement input, and original-server output evidence remain separate gates.

@@ -340,3 +340,22 @@ managed re-encoded jump acknowledgements are not observed original-server
 emissions. These cases do not establish all implemented packet variants,
 original-server output, or the protected-content CI gate. Those remain
 acceptance requirements of [#248](https://github.com/berniemackie97/OpenConquerClient/issues/248).
+
+## Connected managed peer traffic
+
+`20_notes/Network/evidence/cp42-managed-peer-2026-11-09/managed-ocs.json`
+records four logical server-to-client frames from two connected managed
+sessions: a 233-byte 10014 spawn, two 24-byte 10005 walking/running frames,
+and a 38-byte 10010/135 removal. The original JSON SHA-256 is
+`ce20afe2bcbbb0e7219567754d856e23e4cd3e68c2fd954481db20054889697b`.
+It is copied without changing its bytes to
+`tests/Fixtures/ManagedWorld/peer-movement.observed.json` and validated
+through the existing world dispatcher, not the original-client golden
+manifest. Each record's provenance is `managed-ocs` and each frame's
+SHA-256 is checked before replay.
+
+A separate controlled graphics replay demonstrates changed movement frames
+and cleared peer resources on departure. The connected sessions were headless,
+so the evidence cannot establish interactive appearance and pose equivalence.
+The emitting server was our own implementation; it is not independently
+observed original-server traffic for [#248](https://github.com/berniemackie97/OpenConquerClient/issues/248).
