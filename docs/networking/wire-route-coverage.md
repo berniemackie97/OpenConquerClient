@@ -114,3 +114,15 @@ regressions, not a new live connected-device acceptance. CP3.2 still requires
 missing original-client packet variants and independently established
 original-server output where required; connected-client gates #263 and #306
 remain separate.
+
+## Pinned replay-response emission windows
+
+The original client's post-admission replies to controlled-peer action 75 are
+now a shared observed-output fixture, `10010-world-replay.observed.json`.
+Capture 1 emitted seven action frames after each of the shortened and full
+peer stimuli (records 111 and 132 respectively). The fixture pins 14 exact
+client-to-server responses, their record numbers and independent hashes.
+Client and server verify byte-level round trips, and client tests compare
+the two response sequences against the shared admission/world mapping.
+The 22-byte stimulus remains classified as derived, while the 38-byte
+stimulus is controlled-peer input; neither is original-server output.

@@ -62,6 +62,88 @@ public sealed class WireGoldenObservedClientFramesTests
     }
 
     [Fact]
+    public void ReplayedWorldEntryActions_MatchCapturedFramesAndResponseOrder()
+    {
+        Sample[] samples = Read("10010-world-replay.observed.json",
+            GameWorldAction10010.PacketType, EntryEvidence);
+        int[] records = [112, 114, 115, 117, 119, 121, 123, 133, 135, 136, 138, 140, 142, 144];
+        ushort[] actions =
+        [
+            GameWorldAction10010.GetFriends, GameWorldAction10010.SetPkMode,
+            GameWorldAction10010.GetWeaponSkills, GameWorldAction10010.GetMagic,
+            GameWorldAction10010.GetSyndicate, GameWorldAction10010.ReportSilentInfo,
+            GameWorldAction10010.GetStatistics
+        ];
+        ushort[] acknowledgements =
+        [
+            GameWorldAction10010.GetItems, GameWorldAction10010.GetFriends,
+            GameWorldAction10010.GetWeaponSkills, GameWorldAction10010.GetMagic,
+            GameWorldAction10010.GetSyndicate, GameWorldAction10010.ReportSilentInfo
+        ];
+        Assert.Equal(records.Length, samples.Length);
+
+        uint previousTick = 0;
+        for (int index = 0; index < samples.Length; index++)
+        {
+            Sample sample = samples[index];
+            ushort expectedAction = actions[index % actions.Length];
+            Assert.Equal((1, records[index]), (sample.Capture, sample.Sequence));
+            Assert.Equal(expectedAction, sample.Subtype);
+            Assert.True(GameWorldAction10010.TryRead(sample.Frame, out GameWorldAction10010 action));
+            Assert.Equal(expectedAction, action.Action);
+            Assert.Equal(expectedAction == GameWorldAction10010.ReportSilentInfo ? 0u : 1_000_000u,
+                action.EntityId);
+            Assert.Equal(expectedAction == GameWorldAction10010.SetPkMode ? 3u : 0u, action.ParameterPair);
+            Assert.Equal(0u, action.ActionParameter);
+            Assert.Equal((ushort)0, action.Direction);
+            Assert.Equal((ushort)0, action.X);
+            Assert.Equal((ushort)0, action.Y);
+            Assert.Equal(0u, action.Data1);
+            Assert.Equal(0u, action.Data2);
+            Assert.Equal((byte)0, action.Flag);
+            Assert.Equal((byte)0, sample.Frame[37]);
+
+            if (expectedAction == GameWorldAction10010.ReportSilentInfo)
+            {
+                Assert.Equal(1u, action.Timestamp);
+            }
+            else
+            {
+                Assert.True(action.Timestamp > previousTick);
+                previousTick = action.Timestamp;
+            }
+
+            byte[] encoded = new byte[GameWorldAction10010.PacketLength];
+            GameWorldAction10010.Write(encoded, action.Action, action.EntityId,
+                action.ParameterPair, action.Timestamp);
+            Assert.Equal(sample.Frame, encoded);
+        }
+
+        for (int window = 0; window < 2; window++)
+        {
+            List<GameWorldActionResponse> responses = [];
+            foreach (ushort acknowledgement in acknowledgements)
+            {
+                Assert.True(GameWorldActionResponses.TryForAcknowledgement(acknowledgement, 1_000_000,
+                    GameSilentInfoReport.WithoutFiles, out GameWorldActionResponse first,
+                    out GameWorldActionResponse second));
+                responses.Add(first);
+                if (second.Action != 0)
+                {
+                    responses.Add(second);
+                }
+            }
+
+            Assert.Equal(actions, responses.Select(static reply => reply.Action));
+            Assert.Equal(1u, responses[5].TimestampOverride);
+            for (int index = 0; index < actions.Length; index++)
+            {
+                Assert.Equal(samples[window * actions.Length + index].Subtype, responses[index].Action);
+            }
+        }
+    }
+
+    [Fact]
     public void CorrectionReplyFrames_MatchTheSecuredReplyWriter()
     {
         Sample[] samples = Read("10010-correction.observed.json", GameWorldAction10010.PacketType, CorrectionEvidence);
