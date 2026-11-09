@@ -1,3 +1,4 @@
+using OpenConquer.Client.Tests.Networking;
 using OpenConquer.Client.World;
 using OpenConquer.Networking.Game.World;
 
