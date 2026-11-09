@@ -9,7 +9,11 @@ internal sealed class WorldRemoteRoles
     private readonly Dictionary<uint, GamePlayerSpawn10014> _roles = [];
 
     internal int Count => _roles.Count;
-    internal int Revision { get; private set; }
+    internal int Revision
+    {
+        get;
+        private set;
+    }
     internal IReadOnlyCollection<GamePlayerSpawn10014> All => _roles.Values;
 
     internal bool Contains(uint entityId) => _roles.ContainsKey(entityId);

@@ -48,7 +48,7 @@ internal sealed class ClientWorld : IClientWorld
     private WorldMapImageLoader? _mapImageLoader;
     private WorldMapTextureRenderer? _mapTextures;
     private WorldRoleLoad? _roleLoad;
-    private WorldRemoteRolePresentation? _remoteRolePresentation;
+    private readonly WorldRemoteRolePresentation? _remoteRolePresentation;
     private WorldRoleRenderer? _role;
     private WorldRoleSources? _roleSources;
     private WorldContentLoad<MainHudPreparation>? _hudLoad;

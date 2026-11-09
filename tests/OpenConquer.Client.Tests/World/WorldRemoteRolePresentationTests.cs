@@ -109,7 +109,10 @@ public sealed class WorldRemoteRolePresentationTests
         Assert.Equal(2u, appearance.BodyFamily);
         Assert.Equal(new WorldRoleSources(2_130_000, 2_119_335, 0, 420030),
             appearance.Sources);
-        Assert.Equal(appearance, WorldRoleAppearance.From(player with { EntityId = 1_000_002 }));
+        Assert.Equal(appearance, WorldRoleAppearance.From(player with
+        {
+            EntityId = 1_000_002
+        }));
     }
 
     private static GamePlayerSpawn10014 Player(uint id, uint appearance) =>

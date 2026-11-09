@@ -89,7 +89,7 @@ public sealed class WorldMapScene
         }
     }
 
-    internal void SetRemoteRoles(int revision, IEnumerable<WorldSceneRole> roles)
+    public void SetRemoteRoles(int revision, IEnumerable<WorldSceneRole> roles)
     {
         if (_remoteRoleRevision == revision)
         {
