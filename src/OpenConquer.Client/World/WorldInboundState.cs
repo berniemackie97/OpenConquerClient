@@ -118,8 +118,14 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     {
         if (walk.EntityId != _heroId)
         {
-            if (walk.EntityId >= 1_000_000 && !RemoteRoles.Contains(walk.EntityId) &&
-                _onActionReply is not null && _requestedPeers.Count < WorldRemoteRoles.MaximumTrackedRoles &&
+            if (RemoteRoles.Contains(walk.EntityId))
+            {
+                RemoteRoles.ApplyWalk(walk);
+                return false;
+            }
+
+            if (walk.EntityId >= 1_000_000 && _onActionReply is not null &&
+                _requestedPeers.Count < WorldRemoteRoles.MaximumTrackedRoles &&
                 _requestedPeers.Add(walk.EntityId))
             {
                 _onActionReply(new GameWorldActionResponse(GameWorldAction10010.QueryPlayer,
@@ -136,7 +142,7 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
             return false;
         }
 
-        (int dx, int dy) = walk.GetOrdinaryDelta();
+        (int dx, int dy) = walk.GetDelta();
         // Native DWORD ADD at 0x7406DB/0x7406DD wraps; the protected tile setter never narrows to ushort.
         (X, Y) = (unchecked(X + dx), unchecked(Y + dy));
         DirectionIndex = walk.DirectionIndex;
