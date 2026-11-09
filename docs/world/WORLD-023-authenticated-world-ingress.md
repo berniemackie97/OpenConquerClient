@@ -36,6 +36,25 @@ corrections update the tile without replacing the current facing. Initial
 facing and accepted updates are retained while the map is being prepared,
 then applied before the first world draw. This does not implement outbound movement requests or local input selection.
 
+## Ground-jump acknowledgements — CP4.3a
+
+World action 10010/137 with flag 0 carries the absolute destination in the
+low/high words of parameter +8; +24/+26 identify the request origin.
+An action addressed to the authenticated hero updates its authoritative tile
+without replacing facing. A known foreign player moves to the destination
+in the bounded remote-role registry, retaining appearance, identity and
+facing; the scene revision updates before graphics preparation. Existing
+ground-walk playback is stopped rather than drawn at the landing tile.
+An unknown eligible player triggers the existing deduplicated 10010/102
+identity query.
+
+The twelve hash-checked `10010-ground-jump.observed.json` frames are
+recorded **client-to-server** requests. They test the receive path only
+as controlled inputs; they are not evidence of original-server output.
+This boundary does not add local jump commands, input targeting, collision
+or timing policy, trajectory/pose playback, mounted charge or end-to-end
+visual acceptance. Those remain under #251 and the separate evidence gates.
+
 The ingress task is canceled and observed before its session is released
 on world exit or application shutdown. Bootstrap timeout policies do not
 become a world-idle disconnect timer.
