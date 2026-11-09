@@ -9,6 +9,7 @@ internal sealed class WorldRemoteRoles
     private readonly Dictionary<uint, GamePlayerSpawn10014> _roles = [];
 
     internal int Count => _roles.Count;
+    internal int Revision { get; private set; }
     internal IReadOnlyCollection<GamePlayerSpawn10014> All => _roles.Values;
 
     internal bool Contains(uint entityId) => _roles.ContainsKey(entityId);
@@ -24,9 +25,19 @@ internal sealed class WorldRemoteRoles
         }
 
         _roles[player.EntityId] = player;
+        Revision = unchecked(Revision + 1);
     }
 
-    internal bool Remove(uint entityId) => _roles.Remove(entityId);
+    internal bool Remove(uint entityId)
+    {
+        if (!_roles.Remove(entityId))
+        {
+            return false;
+        }
+
+        Revision = unchecked(Revision + 1);
+        return true;
+    }
 
     internal void Cull(int heroX, int heroY)
     {
@@ -49,7 +60,7 @@ internal sealed class WorldRemoteRoles
         {
             foreach (uint id in outside)
             {
-                _roles.Remove(id);
+                Remove(id);
             }
         }
     }
