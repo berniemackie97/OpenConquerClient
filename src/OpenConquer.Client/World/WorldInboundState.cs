@@ -136,7 +136,7 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
             return false;
         }
 
-        if (walk.Selector == GameWalk10005.MountedSelector)
+        if (walk.IsMounted)
         {
             ReportUnhandled(GameWalk10005.PacketType, 0);
             return false;
