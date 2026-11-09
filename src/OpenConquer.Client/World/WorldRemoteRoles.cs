@@ -6,7 +6,7 @@ internal sealed class WorldRemoteRoles
 {
     internal const int MaximumTrackedRoles = 4096;
     private const int VisibilityRadius = 18;
-    private readonly Dictionary<uint, GamePlayerSpawn10014> _roles = [];
+    private readonly Dictionary<uint, RemoteRole> _roles = [];
 
     internal int Count => _roles.Count;
     internal int Revision
@@ -14,12 +14,24 @@ internal sealed class WorldRemoteRoles
         get;
         private set;
     }
-    internal IReadOnlyCollection<GamePlayerSpawn10014> All => _roles.Values;
+    internal IEnumerable<GamePlayerSpawn10014> All => _roles.Values.Select(static role => role.Player);
 
     internal bool Contains(uint entityId) => _roles.ContainsKey(entityId);
 
-    internal bool TryGet(uint entityId, out GamePlayerSpawn10014? player) =>
-        _roles.TryGetValue(entityId, out player);
+    internal bool TryGet(uint entityId, out GamePlayerSpawn10014? player)
+    {
+        if (_roles.TryGetValue(entityId, out RemoteRole? role))
+        {
+            player = role.Player;
+            return true;
+        }
+
+        player = null;
+        return false;
+    }
+
+    internal WorldRolePlayback? GetPlayback(uint entityId) =>
+        _roles.TryGetValue(entityId, out RemoteRole? role) ? role.Playback : null;
 
     internal void Upsert(GamePlayerSpawn10014 player)
     {
@@ -28,17 +40,18 @@ internal sealed class WorldRemoteRoles
             throw new InvalidDataException("The visible-player registry exceeded its configured capacity.");
         }
 
-        _roles[player.EntityId] = player;
+        _roles[player.EntityId] = new RemoteRole(player);
         Revision = unchecked(Revision + 1);
     }
 
-    internal bool ApplyWalk(GameWalk10005 walk)
+    internal bool ApplyWalk(GameWalk10005 walk, uint nowMilliseconds)
     {
-        if (!_roles.TryGetValue(walk.EntityId, out GamePlayerSpawn10014? player))
+        if (!_roles.TryGetValue(walk.EntityId, out RemoteRole? role))
         {
             return false;
         }
 
+        GamePlayerSpawn10014 player = role.Player;
         (int dx, int dy) = walk.GetDelta();
         int x = player.X + dx;
         int y = player.Y + dy;
@@ -47,12 +60,13 @@ internal sealed class WorldRemoteRoles
             return false;
         }
 
-        _roles[walk.EntityId] = player with
+        role.Player = player with
         {
             X = (ushort)x,
             Y = (ushort)y,
             Direction = (byte)(walk.DirectionIndex % 8)
         };
+        role.Playback.BeginWalk(nowMilliseconds);
         Revision = unchecked(Revision + 1);
         return true;
     }
@@ -76,8 +90,9 @@ internal sealed class WorldRemoteRoles
         }
 
         List<uint>? outside = null;
-        foreach ((uint id, GamePlayerSpawn10014 player) in _roles)
+        foreach ((uint id, RemoteRole role) in _roles)
         {
+            GamePlayerSpawn10014 player = role.Player;
             if (Math.Abs((long)heroX - player.X) > VisibilityRadius ||
                 Math.Abs((long)heroY - player.Y) > VisibilityRadius)
             {
@@ -92,5 +107,11 @@ internal sealed class WorldRemoteRoles
                 Remove(id);
             }
         }
+    }
+
+    private sealed class RemoteRole(GamePlayerSpawn10014 player)
+    {
+        internal GamePlayerSpawn10014 Player = player;
+        internal WorldRolePlayback Playback { get; } = new();
     }
 }
