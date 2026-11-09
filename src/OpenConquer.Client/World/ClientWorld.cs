@@ -261,14 +261,6 @@ internal sealed class ClientWorld : IClientWorld
                 }
             }
 
-            if (_roleSources.HasValue && _remoteRolePresentation is { } remote)
-            {
-                remote.Synchronize(state.RemoteRoles, state.X, state.Y);
-                if (graphicsDevice is { } device)
-                {
-                    remote.Prepare(device);
-                }
-            }
         }
         catch (Exception exception) when (WorldRoleLoad.IsContentFailure(exception))
         {
@@ -382,6 +374,11 @@ internal sealed class ClientWorld : IClientWorld
         {
             scene.SetRemoteRoles(state.RemoteRoles.Revision, state.RemoteRoles.All.Select(static player =>
                 new WorldSceneRole(player.EntityId, player.X, player.Y, player.Direction)));
+            if (_roleSources.HasValue && _remoteRolePresentation is { } remote)
+            {
+                remote.Synchronize(state.RemoteRoles, state.X, state.Y);
+                remote.Prepare(device);
+            }
         }
 
         _mapImageLoader ??= new WorldMapImageLoader(_content);
