@@ -125,7 +125,11 @@ public sealed class GameWorldPacketDispatcherTests
     private sealed class RecordingHandler : IGameWorldPacketHandler
     {
         public List<string> Calls { get; } = [];
-        public GamePlayerSpawn10014? LastPlayer { get; private set; }
+        public GamePlayerSpawn10014? LastPlayer
+        {
+            get;
+            private set;
+        }
 
         public bool HandlePlayerSpawn(GamePlayerSpawn10014 player)
         {
