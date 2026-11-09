@@ -131,7 +131,9 @@ separate acceptance work in
 ## Peer ground-walk playback
 
 Incoming 10005 selector 0 enters the ground-walk action pair 110/111;
-selector 1 selects the separate running pair 120/121. Each accepted relay
+selector 1 selects the separate running pair 120/121. The low selector
+byte controls the unmounted walk/run command; the complete selector
+dword equal to 9 alone selects mounted movement. Each accepted relay
 updates the committed remote tile, then selects that actor's next action
 according to the recorded walk/run pose rules. The two pair members
 alternate as subsequent movements are processed. The body motion key uses
@@ -141,10 +143,12 @@ shared geometry, textures, and attachment tracks.
 These ground actions have a recorded 25-millisecond base frame interval.
 A missing action clip or an exhausted frame sequence falls back to the
 initial idle presentation. Selector 9 retains its 24-direction displacement
-and stops ground gait; it does not synthesize mounted animation. Other
-selector values retain the decoded eight-way tile displacement, but do not
-start an action family whose contract is unverified. Selector comparisons
-use the complete 32-bit value, not the low byte.
+and stops ground gait; it does not synthesize mounted animation. Every other
+selector uses eight-way displacement; its low byte equal to 1 selects running
+and all other low-byte values select walking. A selector such as 0x00000109
+therefore uses walk displacement and animation, while 0x00000101 selects
+run. This follows the documented command-selection arithmetic, not a
+validation or normalization of the selector field.
 
 Role removal, replacement, culling and world close discard playback state with
 the same owned identity. Unsigned tick arithmetic handles millisecond rollover.
@@ -156,9 +160,10 @@ mounted motion or speed modifiers. Actual content-backed two-client gait,
 action transitions, density and original-client comparisons remain acceptance
 requirements under [#250](https://github.com/berniemackie97/OpenConquerClient/issues/250).
 
-The run-action distinction is based on the movement command mapping recorded
-in `20_notes/Server/movement-eligibility-5517.md` and the action pairs and
-frame interval in `20_notes/Rendering/roleview_dll/07_action_playback_transition_state.md`
+The full-width mounted selector and low-byte walk/run command distinction
+are recorded in `Archive/docs/NATIVE_WALK_AND_JUMP_COMMAND_PREPARATION_5517.md`;
+the action pairs and frame interval are recorded in
+`20_notes/Rendering/roleview_dll/07_action_playback_transition_state.md`
 and `13_role_compute_frame_interval.md`. This is frame selection for
 received movement, not local input, position interpolation, a full actor
 command-state machine, or server cadence enforcement. The outstanding
