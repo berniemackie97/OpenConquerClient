@@ -16,6 +16,7 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     private readonly GameSilentInfoReport _silentInfo;
     private readonly HashSet<uint> _unhandled = [];
     private readonly HashSet<uint> _unhandledAttributes = [];
+    private readonly HashSet<uint> _requestedPeers = [];
 
     /// <summary>
     /// Seeds the hero from the admission snapshot, then replays every hydration frame through this handler in arrival
@@ -54,6 +55,8 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         {
             ApplyEntryPosition(world);
         }
+
+        CullRemoteRoles();
     }
 
     internal WorldHeroModel Hero
@@ -65,6 +68,8 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     {
         get;
     }
+    internal WorldRemoteRoles RemoteRoles { get; } = new();
+
     internal WorldHeroEquipment Equipment => Hero.Equipment;
     internal uint EquipmentRevision => Hero.EquipmentRevision;
     internal WorldHeroAttributes HeroAttributes => Hero.Attributes;
@@ -95,9 +100,37 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
     internal bool Apply(ReadOnlyMemory<byte> packet) => GameWorldPacketDispatcher.Dispatch(packet.Span, this);
 
+    internal void CullRemoteRoles() => RemoteRoles.Cull(X, Y);
+
+    bool IGameWorldPacketHandler.HandlePlayerSpawn(GamePlayerSpawn10014 player)
+    {
+        if (player.EntityId == _heroId || player.EntityId < 1_000_000)
+        {
+            return false;
+        }
+
+        _requestedPeers.Remove(player.EntityId);
+        RemoteRoles.Upsert(player);
+        return false;
+    }
+
     bool IGameWorldPacketHandler.HandleWalk(GameWalk10005 walk)
     {
-        if (walk.EntityId != _heroId || walk.Selector == GameWalk10005.MountedSelector)
+        if (walk.EntityId != _heroId)
+        {
+            if (walk.EntityId >= 1_000_000 && !RemoteRoles.Contains(walk.EntityId) &&
+                _onActionReply is not null && _requestedPeers.Count < WorldRemoteRoles.MaximumTrackedRoles &&
+                _requestedPeers.Add(walk.EntityId))
+            {
+                _onActionReply(new GameWorldActionResponse(GameWorldAction10010.QueryPlayer,
+                    _heroId, walk.EntityId));
+            }
+
+            ReportUnhandled(GameWalk10005.PacketType, 0);
+            return false;
+        }
+
+        if (walk.Selector == GameWalk10005.MountedSelector)
         {
             ReportUnhandled(GameWalk10005.PacketType, 0);
             return false;
@@ -112,6 +145,17 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
     bool IGameWorldPacketHandler.HandleAction(GameWorldAction10010 action)
     {
+        if (action.Action == GameWorldAction10010.RemoveEntity)
+        {
+            if (action.EntityId != _heroId)
+            {
+                RemoteRoles.Remove(action.EntityId);
+                _requestedPeers.Remove(action.EntityId);
+            }
+
+            return false;
+        }
+
         if (action.Action != GameWorldAction10010.PositionCorrection)
         {
             if (action.EntityId == _heroId &&
