@@ -55,7 +55,18 @@ public sealed class WorldRolePlaybackTests
     }
 
     [Fact]
-    public void SampleTimeHandlesUnsignedCounterRollover()
+    public void MountedMovementClearsGroundPlayback()
+    {
+        WorldRolePlayback playback = new();
+        playback.BeginWalk(1000);
+        playback.Stop();
+
+        Assert.Equal(0, playback.Action);
+        Assert.False(playback.TryGetFrame(1001, 4, out _));
+    }
+
+    [Fact]
+    public void SampleTimeHandlesUnsignedCounterRollo()
     {
         WorldRolePlayback playback = new();
         playback.BeginWalk(uint.MaxValue - 9);
