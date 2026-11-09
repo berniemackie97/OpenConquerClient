@@ -75,5 +75,3 @@ public sealed partial class WorldInboundStateTests
 
         return frames;
     }
-
-}
