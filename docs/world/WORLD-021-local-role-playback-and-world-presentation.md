@@ -56,9 +56,12 @@ appear; framebuffer tests alone cannot verify the live map appearance.
 The authenticated world ingress now decodes the server's 10014 player-spawn
 message into owned name bytes and appearance/equipment fields, and retains
 one bounded remote role record per entity ID. Repeated spawns replace the
-same identity; 10010/135 removes it. The map's 18-tile visibility radius
-removes peers outside the local hero's square on each world tick. An unknown
-10005 player identity sends one 10010/102 lookup through the existing capped
+same identity; 10010/135 removes it. The 18-tile visibility window
+removes peers outside the local hero's square on each world tick, including
+when either signed hero tile coordinate is zero or negative. Removed peers
+release their associated movement playback; the roster revision changes only
+for identities actually removed. An unknown 10005 player identity sends one
+10010/102 lookup through the existing capped
 outbound lane, resetting the request after a spawn or removal. Other actors
 cannot change the authenticated hero's position.
 
