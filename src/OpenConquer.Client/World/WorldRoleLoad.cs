@@ -1,4 +1,3 @@
-
 namespace OpenConquer.Client.World;
 
 /// <summary>

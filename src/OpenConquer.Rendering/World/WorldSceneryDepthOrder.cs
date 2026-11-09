@@ -7,9 +7,6 @@ internal sealed class WorldSceneryDepthOrder
     internal void Insert(WorldScenerySprite sprite, bool terrain = false) =>
         Insert(new Entry(sprite, terrain));
 
-    internal void InsertRole(int tileX, int tileY) =>
-        InsertRole(new WorldSceneRole(0, tileX, tileY, 0));
-
     internal void InsertRole(WorldSceneRole role) => Insert(new Entry(role));
 
     private void Insert(Entry incoming)
@@ -70,15 +67,6 @@ internal sealed class WorldSceneryDepthOrder
         }
 
         _active.Insert(position, incoming);
-    }
-
-    internal IReadOnlyList<WorldScenerySprite> ToDrawList() => ToDrawList(out _);
-
-    internal IReadOnlyList<WorldScenerySprite> ToDrawList(out int roleIndex)
-    {
-        IReadOnlyList<WorldScenerySprite> sprites = ToDrawListWithRoles(out IReadOnlyList<WorldRoleDrawSlot> slots);
-        roleIndex = slots.Count == 0 ? -1 : slots[^1].SpriteIndex;
-        return sprites;
     }
 
     internal IReadOnlyList<WorldScenerySprite> ToDrawListWithRoles(out IReadOnlyList<WorldRoleDrawSlot> roles)
