@@ -10,19 +10,19 @@ internal sealed class WorldRolePart : IDisposable
 {
     private readonly OpenGLTexture2D _texture;
     private readonly List<WorldRoleMesh> _meshes;
-
-    private WorldRolePart(OpenGLTexture2D texture, List<WorldRoleMesh> meshes,
-        uint frameCount)
-    {
-        _texture = texture;
-        _meshes = meshes;
-        FrameCount = frameCount;
-    }
-
-    internal uint FrameCount
+    internal WorldRoleActionTracks Actions
     {
         get;
     }
+
+    private WorldRolePart(OpenGLTexture2D texture, List<WorldRoleMesh> meshes, WorldRoleActionTracks actions)
+    {
+        _texture = texture;
+        _meshes = meshes;
+        Actions = actions;
+    }
+
+    internal uint FrameCount => Actions.IdleFrameCount;
 
     internal static WorldRolePart Create(OpenGLGraphicsDevice device, WorldRolePartAssets assets)
     {
@@ -30,12 +30,14 @@ internal sealed class WorldRolePart : IDisposable
         OpenGLTexture2D texture = device.CreateTexture2D(assets.Image.Width, assets.Image.Height, assets.Image.Pixels.Span);
         try
         {
-            foreach ((C3PhyMesh mesh, C3Motion motion) in assets.Meshes)
+            for (int i = 0; i < assets.Meshes.Count; i++)
             {
-                meshes.Add(new WorldRoleMesh(device, mesh, motion));
+                (C3PhyMesh mesh, C3Motion motion) = assets.Meshes[i];
+                int maximumBones = assets.Actions.MaximumBoneCount(assets.Actions.DrawableTrackIndices[i], motion);
+                meshes.Add(new WorldRoleMesh(device, mesh, motion, maximumBones));
             }
 
-            return new WorldRolePart(texture, meshes, assets.FrameCount);
+            return new WorldRolePart(texture, meshes, assets.Actions);
         }
         catch (Exception failure)
         {
@@ -46,11 +48,13 @@ internal sealed class WorldRolePart : IDisposable
         }
     }
 
-    internal void Draw(OpenGLRenderer renderer, Matrix4x4 matrix, int frame)
+    internal void Draw(OpenGLRenderer renderer, Matrix4x4 matrix, int frame, ushort action = 0)
     {
-        foreach (WorldRoleMesh mesh in _meshes)
+        for (int i = 0; i < _meshes.Count; i++)
         {
-            mesh.Draw(renderer, _texture, matrix, frame);
+            C3Motion? motion = Actions.TryGetMotion(action, Actions.DrawableTrackIndices[i],
+                out C3Motion? selected) ? selected : null;
+            _meshes[i].Draw(renderer, _texture, matrix, frame, motion);
         }
     }
 

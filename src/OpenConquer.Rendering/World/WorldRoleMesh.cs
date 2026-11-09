@@ -14,19 +14,19 @@ public sealed class WorldRoleMesh : IDisposable
     private readonly Matrix4x4[] _bones;
     private readonly C3PhyOutputVertex[] _vertices;
 
-    public WorldRoleMesh(OpenGLGraphicsDevice device, C3PhyMesh source, C3Motion? motion)
+    public WorldRoleMesh(OpenGLGraphicsDevice device, C3PhyMesh source, C3Motion? motion, int maximumBoneCount = 0)
     {
         _source = source;
         _motion = motion;
-        _bones = new Matrix4x4[motion is null ? 0 : checked((int)motion.BoneCount)];
+        _bones = new Matrix4x4[Math.Max(motion is null ? 0 : checked((int)motion.BoneCount), maximumBoneCount)];
         _vertices = new C3PhyOutputVertex[source.Vertices.Count];
         _gpuMesh = device.CreateIndexedMesh(source.Vertices.Count, [.. source.Indices]);
     }
 
     public void Draw(OpenGLRenderer renderer, OpenConquer.Rendering.OpenGL.Resources.OpenGLTexture2D texture,
-        Matrix4x4 main, int frame)
+        Matrix4x4 main, int frame, C3Motion? actionMotion = null)
     {
-        C3PhySkinner.Calculate(_source, _motion, frame, null, 0, 0, _bones, _vertices);
+        C3PhySkinner.Calculate(_source, actionMotion ?? _motion, frame, null, 0, 0, _bones, _vertices);
         _gpuMesh.Upload(MemoryMarshal.AsBytes(_vertices.AsSpan()));
         renderer.DrawIndexedMesh(_gpuMesh, texture, main, MeshCullMode.Clockwise);
     }

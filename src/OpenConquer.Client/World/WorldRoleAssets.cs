@@ -11,7 +11,10 @@ internal sealed record WorldRoleAssets(
     WorldRolePartAssets[] LeftWeapon, C3Motion? LeftWeaponAttachment)
 {
     internal static ulong InitialBodyMotionKey(uint packedAppearance) =>
-        (packedAppearance % 1000UL) * 1_000_000UL + 100UL;
+        BodyMotionKey(packedAppearance, 100);
+
+    internal static ulong BodyMotionKey(uint packedAppearance, ushort action) =>
+        (packedAppearance % 1000UL) * 1_000_000UL + action;
 
     internal static WorldRoleAssets Load(IClientContentSource source, C3RoleCatalog catalog, uint packedAppearance,
         WorldRoleSources sources, ClientDiagnostics diagnostics, CancellationToken token)
@@ -24,7 +27,18 @@ internal sealed record WorldRoleAssets(
 
         string? motionPath = catalog.TryResolveMotionPath("body", InitialBodyMotionKey(packedAppearance),
             out string resolvedMotion) ? resolvedMotion : null;
-        WorldRolePartAssets body = WorldRolePartAssets.Load(source, catalog, bodies[0], token, motionPath);
+        Dictionary<ushort, string> groundMotions = [];
+        foreach (ushort action in new[] { WorldRolePlayback.GroundWalkFirst, WorldRolePlayback.GroundWalkSecond })
+        {
+            if (catalog.TryResolveMotionPath("body", BodyMotionKey(packedAppearance, action),
+                out string path))
+            {
+                groundMotions.Add(action, path);
+            }
+        }
+
+        WorldRolePartAssets body = WorldRolePartAssets.Load(source, catalog, bodies[0], token,
+            motionPath, groundMotions);
 
         WorldRolePartAssets? armet = null;
         C3Motion? attachment = null;

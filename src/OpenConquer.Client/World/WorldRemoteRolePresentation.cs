@@ -180,13 +180,26 @@ internal sealed class WorldRemoteRolePresentation(
     }
 
     internal void Draw(OpenGLRenderer renderer, uint entityId, Matrix4x4 main, Matrix4x4 shadow,
-        uint milliseconds)
+        uint milliseconds, WorldRemoteRoles roles)
     {
-        if (_roles.TryGetValue(entityId, out WorldRoleAppearance appearance) &&
-            _renderers.TryGetValue(appearance, out WorldRoleRenderer? parts))
+        if (!_roles.TryGetValue(entityId, out WorldRoleAppearance appearance) ||
+            !_renderers.TryGetValue(appearance, out WorldRoleRenderer? parts))
         {
-            parts.Draw(renderer, main, shadow, milliseconds);
+            return;
         }
+
+        WorldRolePlayback? playback = roles.GetPlayback(entityId);
+        if (playback is not null && playback.Action != 0)
+        {
+            ushort action = playback.Action;
+            if (playback.TryGetFrame(milliseconds, parts.GetActionFrameCount(action), out int frame))
+            {
+                parts.Draw(renderer, main, shadow, action, frame);
+                return;
+            }
+        }
+
+        parts.Draw(renderer, main, shadow, milliseconds);
     }
 
     internal void ReleaseGraphics()

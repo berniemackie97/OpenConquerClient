@@ -680,8 +680,14 @@ internal sealed class ClientWorld : IClientWorld
         scene.SetHeroDirection(state.DirectionIndex);
     }
 
-    private void DrawRemoteRole(OpenGLRenderer renderer, uint entityId, Matrix4x4 main, Matrix4x4 shadow) =>
-        _remoteRolePresentation?.Draw(renderer, entityId, main, shadow, _frameMilliseconds);
+    private void DrawRemoteRole(OpenGLRenderer renderer, uint entityId, Matrix4x4 main, Matrix4x4 shadow)
+    {
+        if (_inbound is { } state)
+        {
+            _remoteRolePresentation?.Draw(renderer, entityId, main, shadow,
+                _frameMilliseconds, state.RemoteRoles);
+        }
+    }
 
     private void DrawRole(OpenGLRenderer renderer)
     {
