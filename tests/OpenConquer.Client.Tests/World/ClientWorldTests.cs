@@ -298,6 +298,36 @@ public sealed class ClientWorldTests
     }
 
     [Fact]
+    public async Task HydratedPeerIsPublishedWhenTheMapSceneBecomesAvailable()
+    {
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 60, 108, 100, 1000);
+        GameWorldEntrySnapshot entry = Entry() with
+        {
+            Character = new GameCharacterInfo1006 { EntityId = 1_000_000, Level = 1, CurrentProfession = 10 },
+            X = 60,
+            Y = 108,
+            HydrationPackets = [ManagedPeerFrames.Load()[0]]
+        };
+        await using ClientWorld world = new(entry, new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+            static () => { }, static () => ValueTask.CompletedTask,
+            () => new WorldFrameIngress(WaitForDisconnectAsync),
+            () => new WorldContentLoad<WorldMapScene>(_ => scene));
+
+        await WaitUntilAsync(() =>
+        {
+            world.CompleteLoad();
+            return world.HasScene;
+        });
+        scene.BuildFrame(800, 600, 1000);
+
+        WorldSceneRole peer = Assert.Single(scene.CommittedRoleOrder,
+            static slot => slot.Role.EntityId == 1_000_001).Role;
+        Assert.Equal((60, 108), (peer.TileX, peer.TileY));
+        Assert.True(world.IsActive);
+    }
+
+    [Fact]
     public async Task ActiveWorldRoutesReplayedAcknowledgementsThroughTheOutboundLane()
     {
         using WorldMapFixture fixture = new();
