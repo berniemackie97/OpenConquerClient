@@ -161,9 +161,9 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
             ushort targetY = (ushort)(action.ParameterPair >> 16);
             if (action.EntityId == _heroId)
             {
-                bool changed = X != targetX || Y != targetY;
+                bool jumpChanged = X != targetX || Y != targetY;
                 (X, Y) = (targetX, targetY);
-                return changed;
+                return jumpChanged;
             }
 
             if (!RemoteRoles.ApplyGroundJump(action.EntityId, targetX, targetY))
