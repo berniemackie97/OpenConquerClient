@@ -305,3 +305,36 @@ inputs, including one deliberately shortened stimulus, and are not classified
 as original-client output. The managed client and independent server tests
 verify exact source bytes and wire fields. These checks do not establish
 original-server behavior or real connected-client interoperability.
+
+
+## Conditional world-entry and gameplay capture
+
+The retained [November 8 conditional-world capture](https://github.com/berniemackie97/20_notes/tree/66e999d84c5f3ead82284e6bdf6e012044696dc7/Network/evidence/cp32-conditional-world-2026-11-08)
+identifies executable SHA-256
+`b6ba5ab8573ec073ea271f57b16fa14de1c67bfb44efd5aa7cfbfc0d3b488a62`.
+Fourteen complete logical frames were observed on the client-to-peer path after
+game decryption and trailer validation:
+
+- 10010/408, one 38-byte frame after the controlled map-information packet changed flag bit 38; the flags-zero control does not emit 408.
+- 10010/137, twelve 38-byte ground-jump requests carrying target and origin tiles, map identity, and ground flags.
+- 1056/2, one 12-byte trade-quit request after a controlled actor-status transition.
+
+The test-only corpus stores these as
+`10010-client-state.observed.json`,
+`10010-ground-jump.observed.json`, and
+`1056-trade-quit.observed.json`. Each fixture names the capture and pins
+every frame digest. The client checks its existing 408 writer against the
+captured frame, decodes the twelve 10010 jump requests, and checks the 1056
+wire layout without claiming a local jump or trade sender. Its existing
+created-character admission test covers both the map-bit-38 transition and
+the flags-zero control. The server independently parses 408 and 1056, and
+parses and byte-preservingly re-encodes all twelve 137 requests through
+the jump-acknowledgement writer.
+
+The shared manifest SHA-256 is
+`2200507e70de4cbc3aae720ef21be849627ff4871b336ada3db056353bf0790b`.
+Controlled peer 1110 and 10017 frames are inputs, not client output;
+managed re-encoded jump acknowledgements are not observed original-server
+emissions. These cases do not establish all implemented packet variants,
+original-server output, or the protected-content CI gate. Those remain
+acceptance requirements of [#248](https://github.com/berniemackie97/OpenConquerClient/issues/248).
