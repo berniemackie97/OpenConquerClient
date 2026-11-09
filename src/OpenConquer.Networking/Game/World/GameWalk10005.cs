@@ -23,14 +23,20 @@ internal readonly record struct GameWalk10005(
         message.ReadUInt32(16),
         message.ReadUInt32(20));
 
-    internal (int X, int Y) GetOrdinaryDelta()
+    private static readonly sbyte[] s_twoTileDeltaX =
+        [0, -2, -2, -2, 0, 2, 2, 2, -1, -2, -2, -1, 1, 2, 2, 1, -1, -2, -2, -1, 1, 2, 2, 1];
+    private static readonly sbyte[] s_twoTileDeltaY =
+        [2, 2, 0, -2, -2, -2, 0, 2, 2, 1, -1, -2, -2, -1, 1, 2, 2, 1, -1, -2, -2, -1, 1, 2];
+
+    internal (int X, int Y) GetDelta()
     {
+        byte index = DirectionIndex;
         if (Selector == MountedSelector)
         {
-            throw new InvalidOperationException("Mounted movement uses a separate direction table.");
+            return (s_twoTileDeltaX[index], s_twoTileDeltaY[index]);
         }
 
-        return DirectionIndex switch
+        return index switch
         {
             0 => (0, 1),
             1 => (-1, 1),

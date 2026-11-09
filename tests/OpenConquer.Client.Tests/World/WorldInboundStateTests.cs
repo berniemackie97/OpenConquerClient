@@ -574,6 +574,117 @@ public sealed class WorldInboundStateTests
         Assert.Equal((61, 101), (state.X, state.Y));
     }
 
+    [Theory]
+    [InlineData(0, 62, 102, 0)]
+    [InlineData(1, 61, 102, 1)]
+    [InlineData(2, 61, 101, 2)]
+    [InlineData(3, 61, 100, 3)]
+    [InlineData(4, 62, 100, 4)]
+    [InlineData(5, 63, 100, 5)]
+    [InlineData(6, 63, 101, 6)]
+    [InlineData(7, 63, 102, 7)]
+    public void RelayedOrdinaryWalkMovesOnlyTheKnownPeer(
+        byte direction, ushort x, ushort y, byte facing)
+    {
+        WorldInboundState state = CreateState(heroId: 1_000_000);
+        byte[] spawn = WorldSpawnPacketFixture.Create(1_000_001, 62, 101, name: "Peer");
+        state.Apply(spawn);
+        int revision = state.RemoteRoles.Revision;
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, 1_000_001, direction, movementTick: 42, mapState: 1010);
+
+        Assert.False(state.Apply(walk));
+
+        Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? player));
+        Assert.Equal((x, y, facing), (player!.X, player.Y, player.Direction));
+        Assert.Equal(1_000_001u, player.EntityId);
+        Assert.Equal(1003u, player.PackedAppearance);
+        Assert.Equal("Peer", System.Text.Encoding.ASCII.GetString(player.NameBytes.Span));
+        Assert.Equal(revision + 1, state.RemoteRoles.Revision);
+        Assert.Equal((61, 101, (byte)3), (state.X, state.Y, state.DirectionIndex));
+    }
+
+    [Fact]
+    public void KnownPeerWalksRetainSequenceAndClearOnlyItsOwnIdentity()
+    {
+        WorldInboundState state = CreateState(heroId: 1_000_000);
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_001, 62, 101));
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_002, 63, 101));
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, 1_000_001, 6, movementTick: 100, mapState: 1010);
+        Assert.False(state.Apply(walk));
+        Assert.False(state.Apply(walk));
+        Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? first));
+        Assert.Equal(((ushort)64, (ushort)101, (byte)6), (first!.X, first.Y, first.Direction));
+        Assert.True(state.RemoteRoles.TryGet(1_000_002, out GamePlayerSpawn10014? second));
+        Assert.Equal(((ushort)63, (ushort)101), (second!.X, second.Y));
+
+        byte[] removal = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(removal, GameWorldAction10010.RemoveEntity, 1_000_001);
+        state.Apply(removal);
+        int revision = state.RemoteRoles.Revision;
+        Assert.False(state.Apply(walk));
+        Assert.Equal(revision, state.RemoteRoles.Revision);
+        Assert.False(state.RemoteRoles.Contains(1_000_001));
+    }
+
+    [Fact]
+    public void RemoteSelectorNineKeepsTwentyFourOffsetsAndEightWayFacing()
+    {
+        WorldInboundState state = CreateState(heroId: 1_000_000);
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_001, 62, 101));
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, 1_000_001, 7, movementTick: 100, mapState: 1010);
+        BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(4), 0xDEAD_0017);
+        BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), GameWalk10005.MountedSelector);
+
+        Assert.False(state.Apply(walk));
+
+        Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? moved));
+        Assert.Equal(((ushort)63, (ushort)103, (byte)7), (moved!.X, moved.Y, moved.Direction));
+
+        BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), 0x0000_0109);
+        Assert.False(state.Apply(walk));
+        Assert.True(state.RemoteRoles.TryGet(1_000_001, out moved));
+        Assert.Equal(((ushort)64, (ushort)104, (byte)7), (moved!.X, moved.Y, moved.Direction));
+    }
+
+    [Fact]
+    public void RemoteBoundaryAndUnknownIdentityDoNotCorruptExistingRole()
+    {
+        WorldInboundState state = CreateState(heroId: 1_000_000);
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_001, 0, 0));
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_002, ushort.MaxValue, ushort.MaxValue));
+        int revision = state.RemoteRoles.Revision;
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, 1_000_001, 3, movementTick: 1, mapState: 1010);
+        Assert.False(state.Apply(walk));
+        GameWalk10005.WriteOrdinary(walk, 1_000_002, 7, movementTick: 2, mapState: 1010);
+        Assert.False(state.Apply(walk));
+
+        Assert.Equal(revision, state.RemoteRoles.Revision);
+        Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? low));
+        Assert.Equal(((ushort)0, (ushort)0), (low!.X, low.Y));
+        Assert.True(state.RemoteRoles.TryGet(1_000_002, out GamePlayerSpawn10014? high));
+        Assert.Equal((ushort.MaxValue, ushort.MaxValue), (high!.X, high.Y));
+        Assert.Equal((61, 101), (state.X, state.Y));
+    }
+
+    [Fact]
+    public void LivePeerWalkAndCullUseFinalCommittedPosition()
+    {
+        WorldInboundState state = CreateState(heroId: 1_000_000);
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_001, 79, 101));
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, 1_000_001, 6, movementTick: 10, mapState: 1010);
+        state.Apply(walk);
+        Assert.True(state.RemoteRoles.Contains(1_000_001));
+
+        state.CullRemoteRoles();
+
+        Assert.False(state.RemoteRoles.Contains(1_000_001));
+    }
+
     [Fact]
     public void PeerSpawnReplacementAndExplicitRemovalOwnOneRemoteIdentity()
     {

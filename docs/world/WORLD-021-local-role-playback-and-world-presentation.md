@@ -102,3 +102,28 @@ or two-client interoperability. Those remain acceptance requirements of
 [#249](https://github.com/berniemackie97/OpenConquerClient/issues/249);
 R1 [#248](https://github.com/berniemackie97/OpenConquerClient/issues/248)
 continues to gate release acceptance.
+
+## Remote walk relay application
+
+World packet 10005 is applied in arrival order by the admitted world owner.
+The authenticated hero retains its established echo behavior. A known peer
+uses the same decoded direction and complete selector; selector 9 uses the
+24-entry two-tile displacement table, while other selectors use the eight-way
+table. The lower direction byte selects the displacement and the presented
+facing is reduced to eight directions. The upper packed-direction bits remain
+unmodified by parsing.
+
+The peer registry replaces the moved identity's tile and facing while retaining
+all other spawn fields. It refuses positions outside the unsigned wire tile
+range without altering state. Accepted moves increment the roster revision so
+the unified scene reorders the peer with scenery and recomputes its world
+transform. Unknown identities continue through the single existing player
+lookup path. Departed peers are removed by the existing visibility cull and
+explicit action 135. These updates do not create a separate socket reader,
+rendering pipeline, movement queue or per-peer task.
+
+This is state and committed-tile presentation, not timed walking animation.
+Movement cadence, supported role state gating, local movement input, content-
+backed animation and same-map original-client/two-client comparison remain
+separate acceptance work in
+[#250](https://github.com/berniemackie97/OpenConquerClient/issues/250).

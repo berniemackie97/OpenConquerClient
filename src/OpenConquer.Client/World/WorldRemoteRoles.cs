@@ -32,6 +32,31 @@ internal sealed class WorldRemoteRoles
         Revision = unchecked(Revision + 1);
     }
 
+    internal bool ApplyWalk(GameWalk10005 walk)
+    {
+        if (!_roles.TryGetValue(walk.EntityId, out GamePlayerSpawn10014? player))
+        {
+            return false;
+        }
+
+        (int dx, int dy) = walk.GetDelta();
+        int x = player.X + dx;
+        int y = player.Y + dy;
+        if ((uint)x > ushort.MaxValue || (uint)y > ushort.MaxValue)
+        {
+            return false;
+        }
+
+        _roles[walk.EntityId] = player with
+        {
+            X = (ushort)x,
+            Y = (ushort)y,
+            Direction = (byte)(walk.DirectionIndex % 8)
+        };
+        Revision = unchecked(Revision + 1);
+        return true;
+    }
+
     internal bool Remove(uint entityId)
     {
         if (!_roles.Remove(entityId))

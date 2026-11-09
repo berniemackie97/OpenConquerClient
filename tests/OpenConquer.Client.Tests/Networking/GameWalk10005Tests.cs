@@ -28,7 +28,41 @@ public sealed class GameWalk10005Tests
         Assert.Equal(0x99AABBCCu, parsed.MapState);
         Assert.Equal(0u, parsed.Selector);
         Assert.Equal(direction, parsed.DirectionIndex);
-        Assert.Equal((expectedX, expectedY), parsed.GetOrdinaryDelta());
+        Assert.Equal((expectedX, expectedY), parsed.GetDelta());
+    }
+
+    [Theory]
+    [InlineData(0, 0, 2)]
+    [InlineData(1, -2, 2)]
+    [InlineData(2, -2, 0)]
+    [InlineData(3, -2, -2)]
+    [InlineData(4, 0, -2)]
+    [InlineData(5, 2, -2)]
+    [InlineData(6, 2, 0)]
+    [InlineData(7, 2, 2)]
+    [InlineData(8, -1, 2)]
+    [InlineData(9, -2, 1)]
+    [InlineData(10, -2, -1)]
+    [InlineData(11, -1, -2)]
+    [InlineData(12, 1, -2)]
+    [InlineData(13, 2, -1)]
+    [InlineData(14, 2, 1)]
+    [InlineData(15, 1, 2)]
+    [InlineData(16, -1, 2)]
+    [InlineData(17, -2, 1)]
+    [InlineData(18, -2, -1)]
+    [InlineData(19, -1, -2)]
+    [InlineData(20, 1, -2)]
+    [InlineData(21, 2, -1)]
+    [InlineData(22, 2, 1)]
+    [InlineData(23, 1, 2)]
+    public void SelectorNineUsesVerifiedTwentyFourDirectionOffsets(
+        byte index, int dx, int dy)
+    {
+        GameWalk10005 packet = new(index, 1_000_001, GameWalk10005.MountedSelector, 25, 1010);
+
+        Assert.Equal(index, packet.DirectionIndex);
+        Assert.Equal((dx, dy), packet.GetDelta());
     }
 
     [Fact]
@@ -42,12 +76,12 @@ public sealed class GameWalk10005Tests
         GameWalk10005 mounted = GameWalk10005.Read(GameMessages.Load(packet));
         Assert.Equal(0xAABBCC17u, mounted.PackedDirection);
         Assert.Equal((byte)(0x17 % 24), mounted.DirectionIndex);
-        Assert.Throws<InvalidOperationException>(() => mounted.GetOrdinaryDelta());
+        Assert.Equal((1, 2), mounted.GetDelta());
 
         BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(12), 0x10009);
         GameWalk10005 ordinary = GameWalk10005.Read(GameMessages.Load(packet));
         Assert.Equal((byte)(0x17 % 8), ordinary.DirectionIndex);
-        Assert.Equal((1, 1), ordinary.GetOrdinaryDelta());
+        Assert.Equal((1, 1), ordinary.GetDelta());
     }
 
     [Fact]
