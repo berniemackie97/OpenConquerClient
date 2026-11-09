@@ -85,15 +85,26 @@ internal sealed class WorldRoleRenderer : IDisposable
         }
     }
 
+    internal uint GetActionFrameCount(ushort action) => _body.GetActionFrameCount(action);
+
     internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, uint nowMilliseconds)
     {
         int frame = _clock.GetFrame(nowMilliseconds, _body.FrameCount);
-        _body.Draw(renderer, main, frame);
+        DrawFrame(renderer, main, shadow, 0, frame);
+    }
+
+    internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, ushort action, int frame) =>
+        DrawFrame(renderer, main, shadow, action, frame);
+
+    private void DrawFrame(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, ushort action, int frame)
+    {
+        _body.Draw(renderer, main, frame, action);
         _body.DrawShadow(renderer, shadow);
 
         if (_armet is { } armet)
         {
-            if (!C3MotionSampler.TrySampleBone(_armetAttachment, 0, frame, out Matrix4x4 linked))
+            C3Motion? attachment = ResolveAttachment("v_armet", action, _armetAttachment);
+            if (!C3MotionSampler.TrySampleBone(attachment, 0, frame, out Matrix4x4 linked))
             {
                 throw new InvalidDataException("The headwear attachment motion cannot be sampled.");
             }
@@ -102,9 +113,14 @@ internal sealed class WorldRoleRenderer : IDisposable
             armet.DrawShadow(renderer, linked * shadow);
         }
 
-        DrawWeapon(renderer, main, shadow, frame, _rightWeapon, _rightWeaponAttachment);
-        DrawWeapon(renderer, main, shadow, frame, _leftWeapon, _leftWeaponAttachment);
+        DrawWeapon(renderer, main, shadow, frame, _rightWeapon,
+            ResolveAttachment("v_r_weapon", action, _rightWeaponAttachment));
+        DrawWeapon(renderer, main, shadow, frame, _leftWeapon,
+            ResolveAttachment("v_l_weapon", action, _leftWeaponAttachment));
     }
+
+    private C3Motion? ResolveAttachment(string name, ushort action, C3Motion? fallback) =>
+        _body.TryGetActionAttachment(name, action, out C3Motion? motion) ? motion : fallback;
 
     private static void DrawWeapon(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow,
         int frame, WorldRolePart[] parts, C3Motion? attachment)
