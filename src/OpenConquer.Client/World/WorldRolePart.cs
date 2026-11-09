@@ -10,20 +10,16 @@ internal sealed class WorldRolePart : IDisposable
 {
     private readonly OpenGLTexture2D _texture;
     private readonly List<WorldRoleMesh> _meshes;
-    private readonly WorldRolePartAssets _assets;
+    internal WorldRoleActionTracks Actions { get; }
 
-    private WorldRolePart(OpenGLTexture2D texture, List<WorldRoleMesh> meshes, WorldRolePartAssets assets)
+    private WorldRolePart(OpenGLTexture2D texture, List<WorldRoleMesh> meshes, WorldRoleActionTracks actions)
     {
         _texture = texture;
         _meshes = meshes;
-        _assets = assets;
+        Actions = actions;
     }
 
-    internal uint FrameCount => _assets.FrameCount;
-    internal uint GetActionFrameCount(ushort action) => _assets.GetActionFrameCount(action);
-
-    internal bool TryGetActionAttachment(string name, ushort action, out C3Motion? motion) =>
-        _assets.TryGetActionAttachment(name, action, out motion);
+    internal uint FrameCount => Actions.IdleFrameCount;
 
     internal static WorldRolePart Create(OpenGLGraphicsDevice device, WorldRolePartAssets assets)
     {
@@ -34,11 +30,11 @@ internal sealed class WorldRolePart : IDisposable
             for (int i = 0; i < assets.Meshes.Count; i++)
             {
                 (C3PhyMesh mesh, C3Motion motion) = assets.Meshes[i];
-                int maximumBones = assets.MaximumBoneCount(assets.DrawableTrackIndices[i], motion);
+                int maximumBones = assets.Actions.MaximumBoneCount(assets.Actions.DrawableTrackIndices[i], motion);
                 meshes.Add(new WorldRoleMesh(device, mesh, motion, maximumBones));
             }
 
-            return new WorldRolePart(texture, meshes, assets);
+            return new WorldRolePart(texture, meshes, assets.Actions);
         }
         catch (Exception failure)
         {
@@ -53,7 +49,7 @@ internal sealed class WorldRolePart : IDisposable
     {
         for (int i = 0; i < _meshes.Count; i++)
         {
-            C3Motion? motion = _assets.TryGetActionMotion(action, _assets.DrawableTrackIndices[i],
+            C3Motion? motion = Actions.TryGetMotion(action, Actions.DrawableTrackIndices[i],
                 out C3Motion? selected) ? selected : null;
             _meshes[i].Draw(renderer, _texture, matrix, frame, motion);
         }
