@@ -85,17 +85,24 @@ internal sealed class WorldRolePartAssets(
         Dictionary<ushort, C3Motion[]> alternatives = [];
         if (additionalActions is not null)
         {
+            Dictionary<string, C3Motion[]> decodedPaths = new(StringComparer.OrdinalIgnoreCase);
             foreach ((ushort action, string path) in additionalActions)
             {
                 token.ThrowIfCancellationRequested();
-                List<C3Motion> tracks = [];
-                ReadSections(C3MeshFile.Load(source, path), [], tracks);
-                if (tracks.Count < geometry.Count)
+                if (!decodedPaths.TryGetValue(path, out C3Motion[]? tracks))
                 {
-                    throw new InvalidDataException("The character action has fewer tracks than its geometry.");
+                    List<C3Motion> decoded = [];
+                    ReadSections(C3MeshFile.Load(source, path), [], decoded);
+                    if (decoded.Count < geometry.Count)
+                    {
+                        throw new InvalidDataException("The character action has fewer tracks than its geometry.");
+                    }
+
+                    tracks = [.. decoded];
+                    decodedPaths.Add(path, tracks);
                 }
 
-                alternatives.Add(action, [.. tracks]);
+                alternatives.Add(action, tracks);
             }
         }
 
