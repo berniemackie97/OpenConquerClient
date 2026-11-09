@@ -10,6 +10,8 @@ public sealed class WireGoldenObservedClientFramesTests
 {
     private const string EntryEvidence = "20_notes/Network/evidence/cp32-world-entry-2026-11-08/capture.json";
     private const string CorrectionEvidence = "20_notes/Network/evidence/cp32-correction-2026-11-08/capture.json";
+    private const string ConditionalEvidence = "20_notes/Network/evidence/cp32-conditional-world-2026-11-08/capture.json";
+    private const ushort TradeQuitPacketId = 1056;
 
     [Fact]
     public void WalkSelectorFrames_PreservePackedDirectionAndExactFields()
@@ -217,6 +219,70 @@ public sealed class WireGoldenObservedClientFramesTests
         Assert.Equal(sample.Frame, encoded);
     }
 
+    [Fact]
+    public void ClientStateAppliedReport_MatchesTheCapturedZeroFieldAction()
+    {
+        Sample sample = Assert.Single(Read("10010-client-state.observed.json",
+            GameWorldAction10010.PacketType, ConditionalEvidence));
+        Assert.Equal((1, 23), (sample.Capture, sample.Sequence));
+        Assert.Equal(GameWorldAction10010.ClientStateApplied, sample.Subtype);
+        Assert.True(GameWorldAction10010.TryRead(sample.Frame, out GameWorldAction10010 action));
+        Assert.Equal(0u, action.EntityId);
+        Assert.Equal(0u, action.ParameterPair);
+        Assert.Equal(0u, action.ActionParameter);
+        Assert.Equal(0u, action.Timestamp);
+        Assert.Equal((ushort)0, action.Direction);
+        Assert.Equal((ushort)0, action.X);
+        Assert.Equal((ushort)0, action.Y);
+        Assert.Equal(0u, action.Data1);
+        Assert.Equal(0u, action.Data2);
+        Assert.Equal((byte)0, action.Flag);
+        Assert.Equal((byte)0, sample.Frame[37]);
+
+        byte[] encoded = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.Write(encoded, GameWorldAction10010.ClientStateApplied, 0);
+        Assert.Equal(sample.Frame, encoded);
+    }
+
+    [Fact]
+    public void GroundJumpRequests_UseTheObservedTargetAndOriginFieldLayout()
+    {
+        Sample[] samples = Read("10010-ground-jump.observed.json",
+            GameWorldAction10010.PacketType, ConditionalEvidence);
+        int[] sequences = [46, 47, 48, 51, 52, 53, 54, 55, 56, 57, 58, 59];
+        Assert.Equal(sequences, samples.Select(static sample => sample.Sequence));
+        Assert.All(samples, sample =>
+        {
+            Assert.Equal(1, sample.Capture);
+            Assert.Equal((ushort)137, sample.Subtype);
+            Assert.True(GameWorldAction10010.TryRead(sample.Frame, out GameWorldAction10010 action));
+            Assert.Equal(1_000_000u, action.EntityId);
+            Assert.Equal(0u, action.ActionParameter);
+            Assert.Equal((ushort)0, action.Direction);
+            Assert.Equal(1010u, action.Data1);
+            Assert.Equal(uint.MaxValue, action.Data2);
+            Assert.Equal((byte)0, action.Flag);
+            Assert.Equal((byte)0, sample.Frame[37]);
+            Assert.InRange(unchecked((ushort)action.ParameterPair), (ushort)1, ushort.MaxValue);
+            Assert.InRange(unchecked((ushort)(action.ParameterPair >> 16)), (ushort)1, ushort.MaxValue);
+            Assert.InRange(action.X, (ushort)1, ushort.MaxValue);
+            Assert.InRange(action.Y, (ushort)1, ushort.MaxValue);
+        });
+    }
+
+    [Fact]
+    public void TradeQuitRequest_RetainsTheObservedFrameWithoutInventingClientEmission()
+    {
+        Sample sample = Assert.Single(Read("1056-trade-quit.observed.json",
+            TradeQuitPacketId, ConditionalEvidence));
+        Assert.Equal((1, 68), (sample.Capture, sample.Sequence));
+        Assert.Equal((ushort)2, sample.Subtype);
+        Assert.Equal(12, sample.Frame.Length);
+        Assert.Equal(1_000_000u, BinaryPrimitives.ReadUInt32LittleEndian(sample.Frame.AsSpan(4)));
+        Assert.Equal((ushort)2, BinaryPrimitives.ReadUInt16LittleEndian(sample.Frame.AsSpan(8)));
+        Assert.Equal((ushort)0, BinaryPrimitives.ReadUInt16LittleEndian(sample.Frame.AsSpan(10)));
+    }
+
     private static Sample[] Read(string fileName, ushort packetId, string evidence)
     {
         using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(
@@ -245,6 +311,7 @@ public sealed class WireGoldenObservedClientFramesTests
             {
                 GameWalk10005.PacketType => BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(12)),
                 GameFlowerRankRequest1151.PacketType => frame[4],
+                TradeQuitPacketId => BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(8)),
                 _ => BinaryPrimitives.ReadUInt16LittleEndian(frame.AsSpan(20))
             };
             Assert.Equal((uint)subtype, decodedSubtype);
