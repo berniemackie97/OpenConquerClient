@@ -90,11 +90,6 @@ internal sealed class WorldRemoteRoles
 
     internal void Cull(int heroX, int heroY)
     {
-        if (heroX <= 0 || heroY <= 0)
-        {
-            return;
-        }
-
         List<uint>? outside = null;
         foreach ((uint id, RemoteRole role) in _roles)
         {
