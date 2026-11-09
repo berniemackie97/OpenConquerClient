@@ -17,19 +17,16 @@ internal sealed class WorldRolePlayback
 
     internal void BeginMove(uint selector, uint nowMilliseconds)
     {
-        _action = selector switch
+        if (selector == GameWalk10005.MountedSelector)
         {
-            GameWalk10005.WalkSelector =>
-                _action is GroundWalkFirst or GroundRunFirst ? GroundWalkSecond : GroundWalkFirst,
-            GameWalk10005.RunSelector =>
-                _action == GroundRunFirst ? GroundRunSecond : GroundRunFirst,
-            _ => 0
-        };
-
-        if (_action != 0)
-        {
-            _startedAt = nowMilliseconds;
+            _action = 0;
+            return;
         }
+
+        _action = (byte)selector == GameWalk10005.RunSelector
+            ? (_action == GroundRunFirst ? GroundRunSecond : GroundRunFirst)
+            : (_action is GroundWalkFirst or GroundRunFirst ? GroundWalkSecond : GroundWalkFirst);
+        _startedAt = nowMilliseconds;
     }
 
 
