@@ -124,13 +124,7 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
                 return false;
             }
 
-            if (walk.EntityId >= 1_000_000 && _onActionReply is not null &&
-                _requestedPeers.Count < WorldRemoteRoles.MaximumTrackedRoles &&
-                _requestedPeers.Add(walk.EntityId))
-            {
-                _onActionReply(new GameWorldActionResponse(GameWorldAction10010.QueryPlayer,
-                    _heroId, walk.EntityId));
-            }
+            RequestMissingPeer(walk.EntityId);
 
             ReportUnhandled(GameWalk10005.PacketType, 0);
             return false;
@@ -156,6 +150,25 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
             {
                 RemoteRoles.Remove(action.EntityId);
                 _requestedPeers.Remove(action.EntityId);
+            }
+
+            return false;
+        }
+
+        if (action.Action == GameWorldAction10010.GroundJump && action.Flag == 0)
+        {
+            ushort targetX = (ushort)action.ParameterPair;
+            ushort targetY = (ushort)(action.ParameterPair >> 16);
+            if (action.EntityId == _heroId)
+            {
+                bool changed = X != targetX || Y != targetY;
+                (X, Y) = (targetX, targetY);
+                return changed;
+            }
+
+            if (!RemoteRoles.ApplyGroundJump(action.EntityId, targetX, targetY))
+            {
+                RequestMissingPeer(action.EntityId);
             }
 
             return false;
@@ -250,6 +263,17 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     {
         ReportUnhandled(packetType, 0);
         return false;
+    }
+
+    private void RequestMissingPeer(uint entityId)
+    {
+        if (entityId >= 1_000_000 && _onActionReply is not null &&
+            _requestedPeers.Count < WorldRemoteRoles.MaximumTrackedRoles &&
+            _requestedPeers.Add(entityId))
+        {
+            _onActionReply(new GameWorldActionResponse(GameWorldAction10010.QueryPlayer,
+                _heroId, entityId));
+        }
     }
 
     private void ReportUnhandled(ushort type, ushort action)
