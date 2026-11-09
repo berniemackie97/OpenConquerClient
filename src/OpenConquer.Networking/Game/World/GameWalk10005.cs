@@ -8,6 +8,8 @@ internal readonly record struct GameWalk10005(
 {
     internal const ushort PacketType = 10005;
     internal const int PacketLength = 24;
+    internal const uint WalkSelector = 0;
+    internal const uint RunSelector = 1;
     internal const uint MountedSelector = 9;
 
     internal byte DirectionIndex => (byte)((byte)PackedDirection % (Selector == MountedSelector ? 24 : 8));

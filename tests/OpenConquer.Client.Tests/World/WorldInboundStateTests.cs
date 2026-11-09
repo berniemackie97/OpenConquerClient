@@ -656,6 +656,45 @@ public sealed class WorldInboundStateTests
     }
 
     [Fact]
+    public void RelayedRunningUsesItsOwnActionFamilyWithoutChangingDisplacement()
+    {
+        WorldInboundState state = CreateState(heroId: 1_000_000);
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_001, 62, 101));
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, 1_000_001, 6, movementTick: 100, mapState: 1010);
+        BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), GameWalk10005.RunSelector);
+
+        Assert.False(state.Apply(walk));
+        Assert.Equal(WorldRolePlayback.GroundRunFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
+        Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? first));
+        Assert.Equal(((ushort)63, (ushort)101, (byte)6), (first!.X, first.Y, first.Direction));
+
+        Assert.False(state.Apply(walk));
+        Assert.Equal(WorldRolePlayback.GroundRunSecond, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
+
+        BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), GameWalk10005.WalkSelector);
+        Assert.False(state.Apply(walk));
+        Assert.Equal(WorldRolePlayback.GroundWalkFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
+        Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? last));
+        Assert.Equal(((ushort)65, (ushort)101), (last!.X, last.Y));
+    }
+
+    [Fact]
+    public void RunSelectorWithUpperBitsKeepsEightWayMovementAndRunningAnimation()
+    {
+        WorldInboundState state = CreateState(heroId: 1_000_000);
+        state.Apply(WorldSpawnPacketFixture.Create(1_000_001, 62, 101));
+        byte[] walk = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(walk, 1_000_001, 6, movementTick: 100, mapState: 1010);
+        BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), 0x0000_0101);
+
+        Assert.False(state.Apply(walk));
+        Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? moved));
+        Assert.Equal(((ushort)63, (ushort)101, (byte)6), (moved!.X, moved.Y, moved.Direction));
+        Assert.Equal(WorldRolePlayback.GroundRunFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
+    }
+
+    [Fact]
     public void RemoteBoundaryAndUnknownIdentityDoNotCorruptExistingRole()
     {
         WorldInboundState state = CreateState(heroId: 1_000_000);

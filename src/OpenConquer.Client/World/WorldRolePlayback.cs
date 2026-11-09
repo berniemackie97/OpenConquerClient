@@ -1,9 +1,13 @@
+using OpenConquer.Networking.Game.World;
+
 namespace OpenConquer.Client.World;
 
 internal sealed class WorldRolePlayback
 {
     internal const ushort GroundWalkFirst = 110;
     internal const ushort GroundWalkSecond = 111;
+    internal const ushort GroundRunFirst = 120;
+    internal const ushort GroundRunSecond = 121;
     internal const uint GroundFrameIntervalMilliseconds = 25;
 
     private ushort _action;
@@ -11,13 +15,20 @@ internal sealed class WorldRolePlayback
 
     internal ushort Action => _action;
 
-    internal void BeginWalk(uint nowMilliseconds)
+    internal void BeginMove(uint selector, uint nowMilliseconds)
     {
-        _action = _action == GroundWalkFirst ? GroundWalkSecond : GroundWalkFirst;
+        if (selector == GameWalk10005.MountedSelector)
+        {
+            _action = 0;
+            return;
+        }
+
+        _action = (byte)selector == GameWalk10005.RunSelector
+            ? (_action == GroundRunFirst ? GroundRunSecond : GroundRunFirst)
+            : (_action is GroundWalkFirst or GroundRunFirst ? GroundWalkSecond : GroundWalkFirst);
         _startedAt = nowMilliseconds;
     }
 
-    internal void Stop() => _action = 0;
 
     internal bool TryGetFrame(uint nowMilliseconds, uint frameCount, out int frame)
     {

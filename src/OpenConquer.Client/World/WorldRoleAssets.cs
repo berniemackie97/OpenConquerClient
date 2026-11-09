@@ -10,6 +10,12 @@ internal sealed record WorldRoleAssets(
     WorldRolePartAssets[] RightWeapon, C3Motion? RightWeaponAttachment,
     WorldRolePartAssets[] LeftWeapon, C3Motion? LeftWeaponAttachment)
 {
+    private static readonly ushort[] s_groundActions =
+    [
+        WorldRolePlayback.GroundWalkFirst, WorldRolePlayback.GroundWalkSecond,
+        WorldRolePlayback.GroundRunFirst, WorldRolePlayback.GroundRunSecond
+    ];
+
     internal static ulong InitialBodyMotionKey(uint packedAppearance) =>
         BodyMotionKey(packedAppearance, 100);
 
@@ -28,7 +34,7 @@ internal sealed record WorldRoleAssets(
         string? motionPath = catalog.TryResolveMotionPath("body", InitialBodyMotionKey(packedAppearance),
             out string resolvedMotion) ? resolvedMotion : null;
         Dictionary<ushort, string> groundMotions = [];
-        foreach (ushort action in new[] { WorldRolePlayback.GroundWalkFirst, WorldRolePlayback.GroundWalkSecond })
+        foreach (ushort action in s_groundActions)
         {
             if (catalog.TryResolveMotionPath("body", BodyMotionKey(packedAppearance, action),
                 out string path))

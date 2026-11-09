@@ -28,6 +28,8 @@ public sealed class WorldRoleFrameClockTests
     [InlineData(2u, 2_000_110UL, (ushort)110)]
     [InlineData(1002u, 2_000_111UL, (ushort)111)]
     [InlineData(3u, 3_000_110UL, (ushort)110)]
+    [InlineData(2u, 2_000_120UL, (ushort)120)]
+    [InlineData(1002u, 2_000_121UL, (ushort)121)]
     public void GroundMotionKeyUsesTheBodySourceAndAction(uint appearance, ulong expected, ushort action)
     {
         Assert.Equal(expected, WorldRoleAssets.BodyMotionKey(appearance, action));
