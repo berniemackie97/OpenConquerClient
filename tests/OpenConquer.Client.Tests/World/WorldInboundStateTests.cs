@@ -664,7 +664,10 @@ public sealed class WorldInboundStateTests
             62, 101, 3, 100, 250, 120, 111000, 130000, 420000, 410000, 0, 0);
         for (int index = 0; index < WorldRemoteRoles.MaximumTrackedRoles; index++)
         {
-            roles.Upsert(player with { EntityId = 1_000_000u + (uint)index });
+            roles.Upsert(player with
+            {
+                EntityId = 1_000_000u + (uint)index
+            });
         }
 
         Assert.Equal(WorldRemoteRoles.MaximumTrackedRoles, roles.Count);
@@ -674,7 +677,10 @@ public sealed class WorldInboundStateTests
             EntityId = 1_000_000u + WorldRemoteRoles.MaximumTrackedRoles
         }));
         roles.Remove(1_000_000);
-        roles.Upsert(player with { EntityId = 1_000_000u + WorldRemoteRoles.MaximumTrackedRoles });
+        roles.Upsert(player with
+        {
+            EntityId = 1_000_000u + WorldRemoteRoles.MaximumTrackedRoles
+        });
         Assert.Equal(WorldRemoteRoles.MaximumTrackedRoles, roles.Count);
     }
 
