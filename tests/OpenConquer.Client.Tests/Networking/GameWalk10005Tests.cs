@@ -65,23 +65,38 @@ public sealed class GameWalk10005Tests
         Assert.Equal((dx, dy), packet.GetDelta());
     }
 
-    [Fact]
-    public void PacketParserPreservesUpperBitsAndFullWidthSelector()
+    [Theory]
+    [InlineData(9u)]
+    [InlineData(0x0000_0109u)]
+    [InlineData(0xFFFF_FF09u)]
+    public void PacketParserPreservesMountedAliasesAndSelectsTheTwentyFourDirectionTable(uint selector)
     {
         byte[] packet = new byte[GameWalk10005.PacketLength];
         GameWalk10005.WriteOrdinary(packet, 123, 6, 100, 300);
-        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(4), 0xAABBCC17);
-        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(12), GameWalk10005.MountedSelector);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(4), 0xAABB_CC17);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(12), selector);
 
         GameWalk10005 mounted = GameWalk10005.Read(GameMessages.Load(packet));
-        Assert.Equal(0xAABBCC17u, mounted.PackedDirection);
-        Assert.Equal((byte)(0x17 % 24), mounted.DirectionIndex);
+        Assert.Equal(0xAABB_CC17u, mounted.PackedDirection);
+        Assert.Equal(selector, mounted.Selector);
+        Assert.True(mounted.IsMounted);
+        Assert.Equal((byte)23, mounted.DirectionIndex);
         Assert.Equal((1, 2), mounted.GetDelta());
+    }
 
-        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(12), 0x10009);
-        GameWalk10005 ordinary = GameWalk10005.Read(GameMessages.Load(packet));
-        Assert.Equal((byte)(0x17 % 8), ordinary.DirectionIndex);
-        Assert.Equal((1, 1), ordinary.GetDelta());
+    [Fact]
+    public void OrdinarySelectorUpperBytesPreserveTheEightDirectionTable()
+    {
+        byte[] packet = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(packet, 123, 7, 100, 300);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(4), 0xAABB_CC17);
+        BinaryPrimitives.WriteUInt32LittleEndian(packet.AsSpan(12), 0x0000_0101);
+
+        GameWalk10005 walk = GameWalk10005.Read(GameMessages.Load(packet));
+        Assert.Equal(0x0000_0101u, walk.Selector);
+        Assert.False(walk.IsMounted);
+        Assert.Equal((byte)7, walk.DirectionIndex);
+        Assert.Equal((1, 1), walk.GetDelta());
     }
 
     [Fact]

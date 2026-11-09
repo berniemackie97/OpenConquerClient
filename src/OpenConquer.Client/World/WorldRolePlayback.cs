@@ -17,7 +17,7 @@ internal sealed class WorldRolePlayback
 
     internal void BeginMove(uint selector, uint nowMilliseconds)
     {
-        if (selector == GameWalk10005.MountedSelector)
+        if ((byte)selector == GameWalk10005.MountedSelector)
         {
             _action = 0;
             return;
