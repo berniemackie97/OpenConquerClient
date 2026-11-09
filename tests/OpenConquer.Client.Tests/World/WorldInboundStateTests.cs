@@ -62,7 +62,7 @@ public sealed class WorldInboundStateTests
         List<WorldCorrectionReply> replies = [];
         WorldInboundState state = CreateState(onCorrection: replies.Add);
         byte[] walk = new byte[GameWalk10005.PacketLength];
-        GameWalk10005.WriteOrdinary(walk, HeroId, directionIndex: 6, movementTick: 100, mapState: 0);
+        GameWalk10005.WriteOrdinary(walk, HeroId, packedDirection: 6, movementTick: 100, mapState: 0);
 
         Assert.True(state.Apply(walk));
         Assert.True(state.Apply(Correction(HeroId, 63, 104)));
@@ -784,7 +784,7 @@ public sealed class WorldInboundStateTests
         List<GameWorldActionResponse> requests = [];
         WorldInboundState state = CreateState(heroId: 1_000_000, onActionReply: requests.Add);
         byte[] walk = new byte[GameWalk10005.PacketLength];
-        GameWalk10005.WriteOrdinary(walk, 1_000_001, directionIndex: 6, movementTick: 123, mapState: 1010);
+        GameWalk10005.WriteOrdinary(walk, 1_000_001, packedDirection: 6, movementTick: 123, mapState: 1010);
 
         Assert.False(state.Apply(walk));
         Assert.False(state.Apply(walk));

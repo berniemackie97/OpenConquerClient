@@ -122,7 +122,7 @@ public sealed partial class GameServerHandshakeSessionTests
             game.ReadFrameAsync(TimeSpan.FromSeconds(5), token));
 
         Task<GameSecuredInboundFrame?> echoed = game.ReadWorldFrameAsync(token);
-        await game.SendWorldWalkAsync(character.EntityId, 6, 0x01020304, 0x05060708, token);
+        await game.SendWorldWalkAsync(character.EntityId, 6, 0, 0x01020304, 0x05060708, token);
         using (GameSecuredInboundFrame walk = await echoed.WaitAsync(TimeSpan.FromSeconds(5), token) ??
             throw new EndOfStreamException("GameServer closed before the walk acknowledgement."))
         {

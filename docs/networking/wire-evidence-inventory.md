@@ -251,20 +251,24 @@ sessions: twelve selector-1 frames in capture 1 and eleven selector-0
 frames in capture 2. The complete packet field and SHA-256 for each
 record come from
 `20_notes/Network/evidence/cp32-world-entry-2026-11-08/capture.json`.
-Client tests verify the full packed direction, selector, identity, map
-and movement clock through the existing reader. Server tests independently
-parse and byte-preservingly serialize all 23. Original-client movement
-emission and independently recorded server traffic remain distinct.
+Client tests verify the complete packed direction, selector, identity,
+map and movement clock through the existing reader and reproduce every
+one of the 23 original-client frames with the ordinary walk/run writer.
+Server tests independently parse and byte-preservingly serialize all 23.
+The writer stores the packed direction and selector as a byte each in
+zeroed fields. The secured sender accepts these caller-supplied values;
+it does not generate input commands, source entropy or mounted moves.
+Original-client movement emissions and independently recorded server
+traffic remain distinct.
 
 The action fixtures retain the same ten source-client entry actions in
 `10010-world-entry.observed.json` and three independently captured
 correction replies in `10010-correction.observed.json`. Each has its
 own ordered record references and frame digests.
 
-The client walk writer only accepts a normalized direction, does not
-reproduce the extra packed-direction bits observed in these frames,
-and has no active world input caller. Completing its packet evidence
-does not implement local movement or validate playback on connected
+The client walk writer reproduces the observed packed direction byte
+and selector-0/1 requests, but still has no active world input caller.
+Completing its packet evidence does not implement local movement or validate playback on connected
 clients. The server's byte-preserving output is a managed serializer
 check, not an original-server emission.
 

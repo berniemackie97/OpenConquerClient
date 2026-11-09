@@ -232,11 +232,16 @@ public sealed partial class LoginAttemptCoordinatorTests
         harness.Session.UpdatePresentation(TimeSpan.Zero);
         Assert.Equal(ClientState.World, harness.Session.State);
         Task<GameSecuredInboundFrame?> echoed = game.ReadWorldFrameAsync(harness.Token);
-        await game.SendWorldWalkAsync(character.EntityId, 6, 0x01020304, 0x05060708, harness.Token);
+        await game.SendWorldWalkAsync(character.EntityId, 0x46, 1, 0x01020304, 0x05060708, harness.Token);
         using GameSecuredInboundFrame walk = await echoed.WaitAsync(harness.Token) ?? throw new EndOfStreamException();
         Assert.Equal(GameWalk10005.PacketLength, walk.Packet.Length);
         GameWalk10005 confirmed = GameWalk10005.Read(GameMessages.Load(walk.Packet.ToArray()));
         Assert.Equal(character.EntityId, confirmed.EntityId);
+        Assert.Equal(0x46u, confirmed.PackedDirection);
+        Assert.Equal(GameWalk10005.RunSelector, confirmed.Selector);
+        Assert.Equal((byte)6, confirmed.DirectionIndex);
+        Assert.Equal(0x01020304u, confirmed.MovementTick);
+        Assert.Equal(0x05060708u, confirmed.MapState);
         harness.Session.Dispose();
         await harness.Peers.WaitAsync(harness.Token);
     }

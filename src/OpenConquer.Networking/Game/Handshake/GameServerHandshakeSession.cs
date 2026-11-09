@@ -284,13 +284,11 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     internal Task<GameSecuredInboundFrame?> ReadWorldFrameAsync(CancellationToken cancellationToken = default) =>
         ReadFrameCoreAsync(null, SecuredRead.World, cancellationToken);
 
-    internal Task SendWorldWalkAsync(uint entityId, byte directionIndex,
+    internal Task SendWorldWalkAsync(uint entityId, byte packedDirection, byte selector,
         uint movementTick, uint mapState, CancellationToken cancellationToken = default)
     {
-        ArgumentOutOfRangeException.ThrowIfZero(entityId);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(directionIndex, (byte)7);
         byte[] packet = new byte[GameWalk10005.PacketLength];
-        GameWalk10005.WriteOrdinary(packet, entityId, directionIndex, movementTick, mapState);
+        GameWalk10005.WriteOrdinary(packet, entityId, packedDirection, movementTick, mapState, selector);
         return SendWorldPacketAsync(packet, "GameServer world walk write timed out.", cancellationToken);
     }
 

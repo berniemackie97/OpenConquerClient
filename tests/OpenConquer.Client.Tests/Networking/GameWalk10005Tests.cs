@@ -99,14 +99,34 @@ public sealed class GameWalk10005Tests
         Assert.Equal((1, 1), walk.GetDelta());
     }
 
+    [Theory]
+    [InlineData((byte)8, (byte)0, (byte)0)]
+    [InlineData((byte)0x17, (byte)1, (byte)7)]
+    [InlineData((byte)0xF6, (byte)0, (byte)6)]
+    public void WriteOrdinary_PreservesPackedDirectionAndSelector(
+        byte packedDirection, byte selector, byte expectedIndex)
+    {
+        byte[] packet = new byte[GameWalk10005.PacketLength];
+        GameWalk10005.WriteOrdinary(packet, 123, packedDirection, 100, 1010, selector);
+
+        GameWalk10005 walk = GameWalk10005.Read(GameMessages.Load(packet));
+        Assert.Equal((uint)packedDirection, walk.PackedDirection);
+        Assert.Equal((uint)selector, walk.Selector);
+        Assert.Equal(expectedIndex, walk.DirectionIndex);
+        Assert.Equal(0u, BinaryPrimitives.ReadUInt32LittleEndian(packet.AsSpan(4)) >> 8);
+        Assert.Equal(0u, BinaryPrimitives.ReadUInt32LittleEndian(packet.AsSpan(12)) >> 8);
+    }
+
     [Fact]
-    public void WriteOrdinary_RejectsAZeroEntityOrAnOutOfRangeDirection()
+    public void WriteOrdinary_RejectsZeroEntityUnsupportedSelectorAndWrongLength()
     {
         byte[] packet = new byte[GameWalk10005.PacketLength];
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             GameWalk10005.WriteOrdinary(packet, 0, 2, 1, 0));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            GameWalk10005.WriteOrdinary(packet, 123, 8, 1, 0));
+            GameWalk10005.WriteOrdinary(packet, 123, 6, 1, 0, selector: 9));
+        Assert.Throws<ArgumentException>(() =>
+            GameWalk10005.WriteOrdinary(packet.AsSpan(0, 23), 123, 6, 1, 0));
     }
 
     // CMsgEntityAction__Parse 0x7404BE has no size or entity rule; the buffer is zero past the message.

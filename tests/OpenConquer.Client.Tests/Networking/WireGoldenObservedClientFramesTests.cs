@@ -32,6 +32,13 @@ public sealed class WireGoldenObservedClientFramesTests
             Assert.Equal(BinaryPrimitives.ReadUInt32LittleEndian(sample.Frame.AsSpan(4)), walk.PackedDirection);
             Assert.Equal(BinaryPrimitives.ReadUInt32LittleEndian(sample.Frame.AsSpan(16)), walk.MovementTick);
             Assert.Equal((byte)((byte)walk.PackedDirection % 8), walk.DirectionIndex);
+            Assert.InRange(walk.PackedDirection, 0u, byte.MaxValue);
+            Assert.InRange(walk.Selector, 0u, GameWalk10005.RunSelector);
+
+            byte[] encoded = new byte[GameWalk10005.PacketLength];
+            GameWalk10005.WriteOrdinary(encoded, walk.EntityId, (byte)walk.PackedDirection,
+                walk.MovementTick, walk.MapState, (byte)walk.Selector);
+            Assert.Equal(sample.Frame, encoded);
         }
     }
 
