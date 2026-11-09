@@ -92,24 +92,24 @@ public sealed class WorldFrameEgressTests
                 return Task.CompletedTask;
             });
 
-        for (int i = 0; i < WorldFrameEgress.MaximumQueuedCorrections; i++)
+        for (int i = 0; i < WorldFrameEgress.MaximumQueuedResponses; i++)
         {
             egress.QueuePositionCorrection(new WorldCorrectionReply((ushort)i, 1, 0));
         }
 
-        Assert.Throws<WorldCorrectionQueueFullException>(() =>
+        Assert.Throws<WorldResponseQueueFullException>(() =>
             egress.QueuePositionCorrection(new WorldCorrectionReply(5000, 1, 0)));
 
         WorldHeartbeat heartbeat = new(0, 0, 0);
         egress.Pump(heartbeat, 1);
         egress.QueuePositionCorrection(new WorldCorrectionReply(5000, 1, 0));
-        for (int i = 1; i <= WorldFrameEgress.MaximumQueuedCorrections; i++)
+        for (int i = 1; i <= WorldFrameEgress.MaximumQueuedResponses; i++)
         {
             egress.Pump(heartbeat, (uint)(i + 1));
         }
 
-        Assert.Equal(WorldFrameEgress.MaximumQueuedCorrections + 1, delivered.Count);
-        for (int i = 0; i < WorldFrameEgress.MaximumQueuedCorrections; i++)
+        Assert.Equal(WorldFrameEgress.MaximumQueuedResponses + 1, delivered.Count);
+        for (int i = 0; i < WorldFrameEgress.MaximumQueuedResponses; i++)
         {
             Assert.Equal((ushort)i, delivered[i]);
         }

@@ -33,6 +33,7 @@ internal sealed class ClientWorld : IClientWorld
     private GameWorldEntrySnapshot? _entry;
     private readonly TimeProvider _clock;
     private readonly ClientDiagnostics _diagnostics;
+    private readonly GameSilentInfoReport _silentInfo;
     private uint _frameMilliseconds;
     private readonly uint _clientStartedAt;
     private WorldFrameIngress? _ingress;
@@ -75,8 +76,9 @@ internal sealed class ClientWorld : IClientWorld
                 (now, token) => game.SendWorldLatencyTickAsync(entry.Character.EntityId, now, token),
                 (address, latency, now, token) => game.SendWorldLatencyReportAsync(address, latency, now, token),
                 (correction, now, token) => game.SendWorldCorrectionReplyAsync(entry.Character.EntityId,
-                    correction.X, correction.Y, correction.DirectionIndex, entry.MapId, now, token)),
-            clock, clientStartedAt, diagnostics)
+                    correction.X, correction.Y, correction.DirectionIndex, entry.MapId, now, token),
+                (reply, now, token) => game.SendWorldActionResponseAsync(reply, now, token)),
+            clock, clientStartedAt, diagnostics, game.SilentInfo)
     {
     }
 
@@ -85,7 +87,8 @@ internal sealed class ClientWorld : IClientWorld
     /// </summary>
     internal ClientWorld(GameWorldEntrySnapshot entry, IClientContentSource content, LogicalRenderSize logicalRenderSize,
         Action onClosing, Func<ValueTask> closeSession, Func<WorldFrameIngress> createIngress, Func<WorldContentLoad<WorldMapScene>> createMapLoad,
-        Func<WorldFrameEgress>? createEgress = null, TimeProvider? clock = null, uint clientStartedAt = 0, ClientDiagnostics? diagnostics = null)
+        Func<WorldFrameEgress>? createEgress = null, TimeProvider? clock = null, uint clientStartedAt = 0,
+        ClientDiagnostics? diagnostics = null, GameSilentInfoReport? silentInfo = null)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(content);
@@ -97,6 +100,7 @@ internal sealed class ClientWorld : IClientWorld
         _content = content;
         _clock = clock ?? TimeProvider.System;
         _diagnostics = diagnostics ?? ClientDiagnostics.Silent;
+        _silentInfo = silentInfo ?? GameSilentInfoReport.WithoutFiles;
         _clientStartedAt = clientStartedAt;
         _logicalRenderSize = logicalRenderSize;
         _onClosing = onClosing;
@@ -163,7 +167,9 @@ internal sealed class ClientWorld : IClientWorld
                 if (IsActive && _entry is { } entry)
                 {
                     _inbound = new WorldInboundState(entry, catalogs.Items, () => _frameMilliseconds,
-                        _clientStartedAt, _diagnostics, _egress is { } egress ? egress.QueuePositionCorrection : null);
+                        _clientStartedAt, _diagnostics,
+                        _egress is { } egress ? egress.QueuePositionCorrection : null,
+                        _egress is { } writer ? writer.QueueWorldActionResponse : null, _silentInfo);
                     _levelExperience = catalogs.Experience;
                 }
             }
@@ -198,7 +204,7 @@ internal sealed class ClientWorld : IClientWorld
         {
             // The owner canceled its content jobs during close.
         }
-        catch (WorldCorrectionQueueFullException exception)
+        catch (WorldResponseQueueFullException exception)
         {
             if (IsActive)
             {

@@ -300,7 +300,7 @@ public sealed class ClientWorldTests
     {
         using WorldMapFixture fixture = new();
         WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 61, 101, 100, 1000);
-        byte[][] excessCorrections = Enumerable.Range(0, WorldFrameEgress.MaximumQueuedCorrections + 1)
+        byte[][] excessCorrections = Enumerable.Range(0, WorldFrameEgress.MaximumQueuedResponses + 1)
             .Select(_ => Correction(61, 101)).ToArray();
         GameWorldEntrySnapshot entry = Entry() with
         {
