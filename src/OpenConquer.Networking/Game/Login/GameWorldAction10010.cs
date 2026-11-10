@@ -72,6 +72,17 @@ internal readonly record struct GameWorldAction10010(
         BinaryPrimitives.WriteUInt32LittleEndian(destination[32..], uint.MaxValue);
     }
 
+    internal static void WriteGroundJump(Span<byte> destination, uint heroId,
+        ushort targetX, ushort targetY, ushort originX, ushort originY, uint mapId, uint timestamp)
+    {
+        ArgumentOutOfRangeException.ThrowIfZero(heroId);
+        Write(destination, GroundJump, heroId, ((uint)targetY << 16) | targetX, timestamp);
+        BinaryPrimitives.WriteUInt16LittleEndian(destination[24..], originX);
+        BinaryPrimitives.WriteUInt16LittleEndian(destination[26..], originY);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination[28..], mapId);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination[32..], uint.MaxValue);
+    }
+
     /// <summary>
     /// Reads the fixed base from the native message buffer. Parse 0x6FEB93 has no size rule and does not read the +37
     /// string list; fields past a short message read zero.
