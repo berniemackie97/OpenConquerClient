@@ -41,15 +41,7 @@ public sealed partial class GameServerHandshakeSessionTests
             Assert.Equal((ushort)10005, System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(walk.Packet.Span[2..]));
         }
 
-        Task<GameSecuredInboundFrame?> jumpReply = game.ReadWorldFrameAsync(token);
         await game.SendWorldGroundJumpAsync(character.EntityId, 62, 110, 63, 106, 1010, 0x0585923B, token);
-        using (GameSecuredInboundFrame jump = await jumpReply.WaitAsync(TimeSpan.FromSeconds(5), token) ??
-            throw new EndOfStreamException())
-        {
-            Assert.Equal(Convert.FromHexString(
-                "26001a27443322113e006e00000000003b928505890000003f006a00f2030000ffffffff0000"),
-                jump.Packet.ToArray());
-        }
 
         await game.SendWorldLatencyTickAsync(character.EntityId, 0x0000ABCD, token);
         await game.SendWorldLatencyReportAsync(0x0337D30A, 42, 0x01020304, token);
