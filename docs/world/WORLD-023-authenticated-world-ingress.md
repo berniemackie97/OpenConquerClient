@@ -62,9 +62,9 @@ origin tile, map identity, packet tick and fixed all-ones field, with the
 ground flag zero. All twelve retained source-client ground requests match
 the writer byte-for-byte, including the distinct origin and target pairs.
 An admitted session can send that frame through its existing secured world
-write guard. A controlled loopback exercises the same connection across a
-walk, jump and heartbeat/report and verifies the exact decrypted jump
-layout with a synthetic hero identity.
+write guard. A controlled peer verifies the decrypted jump request with
+a synthetic hero identity and the same connection's subsequent
+heartbeat/report, without inventing an acknowledgement.
 
 This does not provide a world input caller, click/hold semantics, packet
 cadence, independent original-server output, or proof of a live jump
