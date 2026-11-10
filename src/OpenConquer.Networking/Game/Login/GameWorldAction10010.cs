@@ -36,6 +36,7 @@ internal readonly record struct GameWorldAction10010(
     internal const ushort CorrectionReply = 146;
     internal const ushort QueryPlayer = 102;
     internal const ushort RemoveEntity = 135;
+    internal const ushort GroundJump = 137;
     internal const ushort GetStatistics = 0x84;
     internal const ushort ReportSilentInfo = 0xFB;
     internal const ushort ClientStateApplied = 0x198;

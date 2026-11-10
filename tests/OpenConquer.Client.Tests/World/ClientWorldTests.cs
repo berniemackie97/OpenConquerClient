@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using OpenConquer.Client.Diagnostics;
 using OpenConquer.Client.Tests.Diagnostics;
+using OpenConquer.Client.Tests.Networking;
 using OpenConquer.Client.World;
 using OpenConquer.Content;
 using OpenConquer.Content.Items;
@@ -295,6 +296,53 @@ public sealed class ClientWorldTests
         scene.BuildFrame(800, 600, 1200);
         Assert.DoesNotContain(scene.CommittedRoleOrder, static slot => slot.Role.EntityId == 1_000_001);
         Assert.Equal(4, nextRead);
+    }
+
+    [Fact]
+    public async Task AdmittedGroundJumpRelayUpdatesTheSceneWithoutGraphicsPreparation()
+    {
+        byte[] capturedJump = WireGoldenObservedClientFrames.Read(
+            "10010-ground-jump.observed.json", GameWorldAction10010.PacketType,
+            WireGoldenObservedClientFrames.ConditionalEvidence)[0].Frame;
+        TaskCompletionSource<GameSecuredInboundFrame?> delivery =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int reads = 0;
+        Task<GameSecuredInboundFrame?> Receive(CancellationToken stopping) =>
+            reads++ == 0 ? delivery.Task : WaitForDisconnectAsync(stopping);
+
+        using WorldMapFixture fixture = new();
+        WorldMapScene scene = new(fixture.Map, fixture.Puzzles, [], fixture.Scenery, 61, 101, 100, 1000);
+        GameWorldEntrySnapshot entry = Entry() with
+        {
+            Character = new GameCharacterInfo1006 { EntityId = 1_000_001, Level = 1, CurrentProfession = 10 },
+            HydrationPackets = [WorldSpawnPacketFixture.Create(1_000_000, 63, 106, direction: 5)]
+        };
+        await using ClientWorld world = new(entry, new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+            static () => { }, static () => ValueTask.CompletedTask,
+            () => new WorldFrameIngress(Receive),
+            () => new WorldContentLoad<WorldMapScene>(_ => scene));
+
+        await WaitUntilAsync(() =>
+        {
+            world.CompleteLoad();
+            return world.HasScene;
+        });
+        scene.BuildFrame(800, 600, 1000);
+        WorldSceneRole before = Assert.Single(scene.CommittedRoleOrder,
+            static slot => slot.Role.EntityId == 1_000_000).Role;
+        Assert.Equal((63, 106, (byte)5), (before.TileX, before.TileY, before.Direction));
+
+        byte[] rented = ArrayPool<byte>.Shared.Rent(capturedJump.Length);
+        capturedJump.CopyTo(rented, 0);
+        delivery.SetResult(new GameSecuredInboundFrame(rented, capturedJump.Length));
+        world.DrainIngress(1025);
+        scene.BuildFrame(800, 600, 1025);
+
+        WorldSceneRole after = Assert.Single(scene.CommittedRoleOrder,
+            static slot => slot.Role.EntityId == 1_000_000).Role;
+        Assert.Equal((62, 110, (byte)5), (after.TileX, after.TileY, after.Direction));
+        Assert.True(world.IsActive);
+        Assert.Equal(2, reads);
     }
 
     [Fact]
