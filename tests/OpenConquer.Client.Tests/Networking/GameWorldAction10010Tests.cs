@@ -29,6 +29,20 @@ public sealed class GameWorldAction10010Tests
     }
 
     [Fact]
+    public void WriteGroundJump_ValidatesWithoutMutatingDestination()
+    {
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        packet.AsSpan().Fill(0xAF);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            GameWorldAction10010.WriteGroundJump(packet, 0, 62, 110, 63, 106, 1010, 123));
+        Assert.Throws<ArgumentException>(() =>
+            GameWorldAction10010.WriteGroundJump(packet.AsSpan(1), 1_000_000,
+                62, 110, 63, 106, 1010, 123));
+        Assert.All(packet, static b => Assert.Equal((byte)0xAF, b));
+    }
+
+    [Fact]
     public void WriteCorrectionReply_UsesCurrentHeroCoordinatesAndFacing()
     {
         byte[] packet = new byte[GameWorldAction10010.PacketLength];

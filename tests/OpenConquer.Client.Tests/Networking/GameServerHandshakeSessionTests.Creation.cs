@@ -357,7 +357,8 @@ public sealed partial class GameServerHandshakeSessionTests
         CreationPeerAsync(listener, enterWorld ? CreationScript.AcceptAndEnterWorld : CreationScript.NewRoleOnly, token, coordinator: true);
 
     private sealed record WorldEntryOptions(bool NativeShortFrames = false, bool ClientStateAppliedMap = false,
-        uint PackedAppearance = 0, bool Scrambled = false, bool ExpectHeartbeat = false, uint? ClientTimestamp = null, bool ExpectMissionCatalog = false);
+        uint PackedAppearance = 0, bool Scrambled = false, bool ExpectHeartbeat = false,
+        uint? ClientTimestamp = null, bool ExpectMissionCatalog = false, bool ExpectGroundJump = false);
 
     private static async Task CreationPeerAsync(TcpListener listener, CreationScript script, CancellationToken token,
         bool coordinator = false, WorldEntryOptions? world = null, TaskCompletionSource? worldEntryRequested = null)
@@ -430,6 +431,13 @@ public sealed partial class GameServerHandshakeSessionTests
                     Assert.Equal((0x11223344u, (byte)6, 0x01020304u, 0x05060708u),
                         (request.EntityId, request.DirectionIndex, request.MovementTick, request.MapState));
                     await peer.WritePacketsAsync(token, walk);
+
+                    if (world.ExpectGroundJump)
+                    {
+                        byte[] jump = await peer.ReadPacketAsync(GameWorldAction10010.PacketLength, token);
+                        Assert.Equal(Convert.FromHexString(
+                            "26001a27443322113e006e00000000003b928505890000003f006a00f2030000ffffffff0000"), jump);
+                    }
                 }
 
                 if (world.ExpectHeartbeat)

@@ -289,6 +289,28 @@ public sealed class WireGoldenObservedClientFramesTests
     }
 
     [Fact]
+    public void GroundJumpWriterMatchesAllCapturedClientRequests()
+    {
+        Sample[] samples = Read("10010-ground-jump.observed.json",
+            GameWorldAction10010.PacketType, ConditionalEvidence);
+        Assert.Equal(12, samples.Length);
+
+        foreach (Sample sample in samples)
+        {
+            Assert.True(GameWorldAction10010.TryRead(sample.Frame, out GameWorldAction10010 action));
+            Assert.Equal(GameWorldAction10010.GroundJump, action.Action);
+            Assert.Equal(0u, action.ActionParameter);
+            Assert.Equal((byte)0, action.Flag);
+
+            byte[] encoded = new byte[GameWorldAction10010.PacketLength];
+            GameWorldAction10010.WriteGroundJump(encoded, action.EntityId,
+                (ushort)action.ParameterPair, (ushort)(action.ParameterPair >> 16),
+                action.X, action.Y, action.Data1, action.Timestamp);
+            Assert.Equal(sample.Frame, encoded);
+        }
+    }
+
+    [Fact]
     public void TradeQuitRequest_RetainsTheObservedFrameWithoutInventingClientEmission()
     {
         Sample sample = Assert.Single(Read("1056-trade-quit.observed.json",
