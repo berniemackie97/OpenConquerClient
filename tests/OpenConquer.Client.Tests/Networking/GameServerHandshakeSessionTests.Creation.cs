@@ -435,8 +435,8 @@ public sealed partial class GameServerHandshakeSessionTests
                     if (world.ExpectGroundJump)
                     {
                         byte[] jump = await peer.ReadPacketAsync(GameWorldAction10010.PacketLength, token);
-                        Assert.Equal("26001a27443322113e006e00000000003b928505890000003f006a00f2030000ffffffff0000",
-                            Convert.ToHexString(jump));
+                        Assert.Equal(Convert.FromHexString(
+                            "26001a27443322113e006e00000000003b928505890000003f006a00f2030000ffffffff0000"), jump);
                     }
                 }
 
