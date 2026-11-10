@@ -55,6 +55,22 @@ This boundary does not add local jump commands, input targeting, collision
 or timing policy, trajectory/pose playback, mounted charge or end-to-end
 visual acceptance. Those remain under #251 and the separate evidence gates.
 
+## Ground-jump request writer — CP4.3b
+
+The action-specific 10010/137 ground writer sets the packed absolute target,
+origin tile, map identity, packet tick and fixed all-ones field, with the
+ground flag zero. All twelve retained source-client ground requests match
+the writer byte-for-byte, including the distinct origin and target pairs.
+An admitted session can send that frame through its existing secured world
+write guard. A controlled loopback exercises the same connection across a
+walk, jump and heartbeat/report and verifies the exact decrypted jump
+layout with a synthetic hero identity.
+
+This does not provide a world input caller, click/hold semantics, packet
+cadence, independent original-server output, or proof of a live jump
+interaction. The command producer remains gated by #341. There is no
+second send queue, socket, cipher or movement timing policy.
+
 The ingress task is canceled and observed before its session is released
 on world exit or application shutdown. Bootstrap timeout policies do not
 become a world-idle disconnect timer.
