@@ -292,6 +292,16 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         return SendWorldPacketAsync(packet, "GameServer world walk write timed out.", cancellationToken);
     }
 
+    internal Task SendWorldGroundJumpAsync(uint heroId, ushort targetX, ushort targetY,
+        ushort originX, ushort originY, uint mapId, uint timestamp,
+        CancellationToken cancellationToken = default)
+    {
+        byte[] packet = new byte[GameWorldAction10010.PacketLength];
+        GameWorldAction10010.WriteGroundJump(packet, heroId, targetX, targetY,
+            originX, originY, mapId, timestamp);
+        return SendWorldPacketAsync(packet, "GameServer world ground jump write timed out.", cancellationToken);
+    }
+
     internal Task SendWorldActionResponseAsync(GameWorldActionResponse response, uint now,
         CancellationToken cancellationToken = default) =>
         SendWorldPacketAsync(CreateWorldActionPacket(response.Action, response.EntityId,
