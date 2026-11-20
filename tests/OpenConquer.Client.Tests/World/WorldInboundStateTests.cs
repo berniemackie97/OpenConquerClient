@@ -631,6 +631,7 @@ public sealed partial class WorldInboundStateTests
         Assert.Equal(1003u, player.PackedAppearance);
         Assert.Equal("Peer", System.Text.Encoding.ASCII.GetString(player.NameBytes.Span));
         Assert.Equal(revision + 1, state.RemoteRoles.Revision);
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
         Assert.Equal((61, 101, (byte)3), (state.X, state.Y, state.DirectionIndex));
     }
@@ -644,8 +645,10 @@ public sealed partial class WorldInboundStateTests
         byte[] walk = new byte[GameWalk10005.PacketLength];
         GameWalk10005.WriteOrdinary(walk, 1_000_001, 6, movementTick: 100, mapState: 1010);
         Assert.False(state.Apply(walk));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
         Assert.False(state.Apply(walk));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundWalkSecond, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? first));
         Assert.Equal(((ushort)64, (ushort)101, (byte)6), (first!.X, first.Y, first.Direction));
@@ -676,18 +679,21 @@ public sealed partial class WorldInboundStateTests
 
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? moved));
         Assert.Equal(((ushort)63, (ushort)103, (byte)7), (moved!.X, moved.Y, moved.Direction));
+        Tick(state);
         Assert.Equal(0, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
 
         BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), 0x0000_0109);
         Assert.False(state.Apply(walk));
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out moved));
         Assert.Equal(((ushort)64, (ushort)105, (byte)7), (moved!.X, moved.Y, moved.Direction));
+        Tick(state);
         Assert.Equal(0, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
 
         BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), 0x0000_0101);
         Assert.False(state.Apply(walk));
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out moved));
         Assert.Equal(((ushort)65, (ushort)106, (byte)7), (moved!.X, moved.Y, moved.Direction));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundRunFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
     }
 
@@ -701,15 +707,18 @@ public sealed partial class WorldInboundStateTests
         BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), GameWalk10005.RunSelector);
 
         Assert.False(state.Apply(walk));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundRunFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? first));
         Assert.Equal(((ushort)63, (ushort)101, (byte)6), (first!.X, first.Y, first.Direction));
 
         Assert.False(state.Apply(walk));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundRunSecond, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
 
         BinaryPrimitives.WriteUInt32LittleEndian(walk.AsSpan(12), GameWalk10005.WalkSelector);
         Assert.False(state.Apply(walk));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? last));
         Assert.Equal(((ushort)65, (ushort)101), (last!.X, last.Y));
@@ -727,6 +736,7 @@ public sealed partial class WorldInboundStateTests
         Assert.False(state.Apply(walk));
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? moved));
         Assert.Equal(((ushort)63, (ushort)101, (byte)6), (moved!.X, moved.Y, moved.Direction));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundRunFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
     }
 
@@ -748,7 +758,9 @@ public sealed partial class WorldInboundStateTests
         Assert.Equal(((ushort)0, (ushort)0), (low!.X, low.Y));
         Assert.True(state.RemoteRoles.TryGet(1_000_002, out GamePlayerSpawn10014? high));
         Assert.Equal((ushort.MaxValue, ushort.MaxValue), (high!.X, high.Y));
+        Tick(state);
         Assert.Equal(0, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
+        Tick(state);
         Assert.Equal(0, state.RemoteRoles.GetPlayback(1_000_002)!.Action);
         Assert.Equal((61, 101), (state.X, state.Y));
     }
@@ -877,6 +889,10 @@ public sealed partial class WorldInboundStateTests
         });
         Assert.Equal(WorldRemoteRoles.MaximumTrackedRoles, roles.Count);
     }
+
+    /// <summary>One remote-role tick with 20-frame clips and an affine stand-in projection.</summary>
+    private static void Tick(WorldInboundState state, uint now = 0) =>
+        state.RemoteRoles.Advance(now, static (_, _) => 20, static (x, y) => (x * 32, y * 16));
 
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
         ushort transformLookSourceId = 0, int hydrationEnteredAt = 0, ClientDiagnostics? diagnostics = null,

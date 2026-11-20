@@ -15,17 +15,20 @@ public sealed partial class WorldInboundStateTests
         Assert.False(state.Apply(frames[0]));
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? spawned));
         Assert.Equal(((ushort)60, (ushort)108), (spawned!.X, spawned.Y));
+        Tick(state);
         Assert.Equal(0, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
 
         Assert.False(state.Apply(frames[1]));
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? walked));
         Assert.Equal(((ushort)61, (ushort)108, (byte)6),
             (walked!.X, walked.Y, walked.Direction));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
 
         Assert.False(state.Apply(frames[2]));
         Assert.True(state.RemoteRoles.TryGet(1_000_001, out GamePlayerSpawn10014? ran));
         Assert.Equal(((ushort)60, (ushort)108, (byte)2), (ran!.X, ran.Y, ran.Direction));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundRunFirst, state.RemoteRoles.GetPlayback(1_000_001)!.Action);
 
         Assert.False(state.Apply(frames[3]));

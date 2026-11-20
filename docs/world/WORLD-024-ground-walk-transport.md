@@ -22,7 +22,7 @@ this path.
 An accepted local walk echo advances the client's known tile by one delta
 using the same direction table, before map projection. Refused movement
 has no walk echo; position correction action 108 remains authoritative.
-Remote-player walks and mounted movement are identified but not yet applied.
+Remote-player walks and mounted movement are identified but not yet applied here; remote ground steps are presented by [WORLD-029](WORLD-029-remote-ground-step-presentation.md).
 The initial camera uses the committed local tile, without claiming motion
 interpolation or avatar action transitions.
 

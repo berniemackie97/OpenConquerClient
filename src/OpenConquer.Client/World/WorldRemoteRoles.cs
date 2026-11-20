@@ -32,6 +32,21 @@ internal sealed class WorldRemoteRoles
         return false;
     }
 
+    /// <summary>Remote roles placed for the scene: depth tile, live anchor and facing.</summary>
+    internal IEnumerable<(uint EntityId, (int X, int Y) DepthTile, (int X, int Y) Cursor, byte Direction)> Placements
+    {
+        get
+        {
+            foreach ((uint id, RemoteRole role) in _roles)
+            {
+                if (role.Playback.IsProjected)
+                {
+                    yield return (id, role.Playback.DepthTile, role.Playback.Cursor, role.Playback.Direction);
+                }
+            }
+        }
+    }
+
     internal WorldRolePlayback? GetPlayback(uint entityId) =>
         _roles.TryGetValue(entityId, out RemoteRole? role) ? role.Playback : null;
 
@@ -47,7 +62,7 @@ internal sealed class WorldRemoteRoles
         Revision = unchecked(Revision + 1);
     }
 
-    internal bool ApplyWalk(GameWalk10005 walk, uint nowMilliseconds)
+    internal bool ApplyWalk(GameWalk10005 walk)
     {
         if (!_roles.TryGetValue(walk.EntityId, out RemoteRole? role))
         {
@@ -69,7 +84,7 @@ internal sealed class WorldRemoteRoles
             Y = (ushort)y,
             Direction = (byte)(walk.DirectionIndex % 8)
         };
-        role.Playback.BeginMove(walk.Selector, nowMilliseconds);
+        role.Playback.Enqueue(walk);
 
         _snapshot = null;
         Revision = unchecked(Revision + 1);
@@ -83,8 +98,8 @@ internal sealed class WorldRemoteRoles
             return false;
         }
 
-        role.Playback.Stop();
         GamePlayerSpawn10014 player = role.Player;
+        role.Playback.MoveTo(targetX, targetY, (byte)(player.Direction % 8));
         if (player.X != targetX || player.Y != targetY)
         {
             role.Player = player with
@@ -97,6 +112,28 @@ internal sealed class WorldRemoteRoles
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Advances every role's step presentation for this frame. <paramref name="frameCount"/> returns the
+    /// prepared clip length for an entity's action, or 0 when its appearance is not prepared yet.
+    /// </summary>
+    internal void Advance(uint nowMilliseconds, Func<uint, ushort, int> frameCount,
+        Func<int, int, (int X, int Y)> project)
+    {
+        ArgumentNullException.ThrowIfNull(frameCount);
+        ArgumentNullException.ThrowIfNull(project);
+        foreach ((uint id, RemoteRole role) in _roles)
+        {
+            bool projected = role.Playback.IsProjected;
+            (int X, int Y) depth = role.Playback.DepthTile;
+            role.Playback.Advance(nowMilliseconds, action => frameCount(id, action), project);
+            if (!projected || role.Playback.DepthTile != depth)
+            {
+                // Scene depth slots are rebuilt per revision: first placement and step boundaries move them.
+                Revision = unchecked(Revision + 1);
+            }
+        }
     }
 
     internal bool Remove(uint entityId)
@@ -136,6 +173,6 @@ internal sealed class WorldRemoteRoles
     private sealed class RemoteRole(GamePlayerSpawn10014 player)
     {
         internal GamePlayerSpawn10014 Player = player;
-        internal WorldRolePlayback Playback { get; } = new();
+        internal WorldRolePlayback Playback { get; } = new(player.X, player.Y, (byte)(player.Direction % 8));
     }
 }

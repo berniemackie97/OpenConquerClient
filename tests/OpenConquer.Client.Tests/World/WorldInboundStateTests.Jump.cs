@@ -47,6 +47,7 @@ public sealed partial class WorldInboundStateTests
         GameWalk10005.WriteOrdinary(walk, 1_000_000, 6, movementTick: 100, mapState: 1010);
         Assert.False(state.Apply(walk));
         WorldRolePlayback playback = state.RemoteRoles.GetPlayback(1_000_000)!;
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
         int previousRevision = state.RemoteRoles.Revision;
 
@@ -69,7 +70,9 @@ public sealed partial class WorldInboundStateTests
         Assert.False(state.Apply(walk));
         Assert.True(state.RemoteRoles.TryGet(1_000_000, out peer));
         Assert.Equal(((ushort)63, (ushort)110, (byte)6), (peer!.X, peer.Y, peer.Direction));
-        Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
+        Tick(state);
+        // The jump is placed without a staged jump action, so the last physical action is still 110.
+        Assert.Equal(WorldRolePlayback.GroundWalkSecond, playback.Action);
     }
 
     [Fact]

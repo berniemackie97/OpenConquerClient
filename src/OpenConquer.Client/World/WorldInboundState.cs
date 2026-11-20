@@ -120,7 +120,7 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         {
             if (RemoteRoles.Contains(walk.EntityId))
             {
-                RemoteRoles.ApplyWalk(walk, _clock());
+                RemoteRoles.ApplyWalk(walk);
                 return false;
             }
 
