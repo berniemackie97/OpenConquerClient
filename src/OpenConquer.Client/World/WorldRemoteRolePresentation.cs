@@ -186,7 +186,9 @@ internal sealed class WorldRemoteRolePresentation(
     internal int GetActionFrameCount(uint entityId, ushort action) =>
         _roles.TryGetValue(entityId, out WorldRoleAppearance appearance) &&
         _renderers.TryGetValue(appearance, out WorldRoleRenderer? parts)
-            ? (int)Math.Min(parts.GetActionFrameCount(action), int.MaxValue)
+            ? (int)Math.Min(action == WorldRolePlayback.Standby
+                ? parts.IdleFrameCount
+                : parts.GetActionFrameCount(action), int.MaxValue)
             : 0;
 
     internal void Draw(OpenGLRenderer renderer, uint entityId, Matrix4x4 main, Matrix4x4 shadow,
@@ -202,11 +204,18 @@ internal sealed class WorldRemoteRolePresentation(
         if (playback is not null && playback.Action != 0)
         {
             ushort action = playback.Action;
-            if (playback.TryGetFrame(milliseconds, parts.GetActionFrameCount(action), out int frame))
+            if (playback.TryGetFrame(parts.GetActionFrameCount(action), out int frame))
             {
                 parts.Draw(renderer, main, shadow, action, frame);
                 return;
             }
+        }
+
+        if (playback is not null && playback.Action == 0)
+        {
+            // Standby action 100 restarts from frame 0 on each native re-dispatch.
+            parts.Draw(renderer, main, shadow, 0, playback.StandbyFrame);
+            return;
         }
 
         parts.Draw(renderer, main, shadow, milliseconds);

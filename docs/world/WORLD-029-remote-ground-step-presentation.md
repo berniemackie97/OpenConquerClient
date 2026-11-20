@@ -20,7 +20,8 @@ Each visible player owns a `WorldRolePlayback` that reproduces the native remote
 | Timing | Clip frames × 25 ms. The frame index is rounded `(elapsed + 12) / 25`, and the step completes when it reaches the clip length. | 0x64EB0C, 0x64EB70 |
 | Position | Linear: `start + roundHalfStep(delta × elapsed / total)`, where `roundHalfStep(v)` is `t = trunc(v); u = trunc(v + 0.5); u > t ? t + 1 : t` (`Math_RoundDoubleByHalfStepCompare` 0x768AA1). ActionCtrl.ini has no record for actions 110/111/120/121. | 0x64EE59..0x64EED4, 0x768AA1 |
 | Depth | Mid-step, the start tile when the direction index ≤ 3, otherwise the end tile. | 0x672784 |
-| Drain | Standby with both endpoints at the cursor. | 0x7335BA..0x7335D6 |
+| Drain | Standby with both endpoints at the cursor. Action 100 starts at frame 0 (66 ms, rounded frame) and restarts from frame 0 each time it completes. | 0x7335BA..0x7335D6, 0x73351E |
+| Rendered frame | The rounded, capped motion frame (`+0x1A8`); the C3 sampler clamps. No action cross-fade: `ActionTransition.ini` is empty. | 0x64FA33..0x64FA4B |
 
 The scene rebuilds its depth slots only when the registry revision changes (spawn, removal,
 first placement, step boundary). The interpolated anchor is supplied every frame through
@@ -37,9 +38,6 @@ first placement, step boundary). The interpolated anchor is supplied every frame
 
 ## Open
 
-- The rendered animation frame still uses the floor sample `elapsed / 25`. The native frame
-  passed to RoleView is in a `Role_TickAndRender` tail that Binary Ninja splits, and it is not
-  yet verified.
 - Native handling of a 10014 re-spawn for a role that is mid-step is not traced. The client
   replaces the role.
 - `CRole+0x24` frame-interval override writers outside init are not enumerated. Init sets 0,

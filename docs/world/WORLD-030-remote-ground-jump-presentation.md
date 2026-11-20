@@ -36,7 +36,6 @@ delta in map order. The object anchor is the group anchor plus the object offset
 
 - Native returns an unspecified value when the cursor tile has no map entry (`Role_GetTerrainHeightDeltaFromProjectedScreenPosition`). The client uses adjusted elevation 0 off the grid.
 - When the rounded line resolves no tile, native reads uninitialised peak coordinates. The client returns arc 0.
-- The rendered animation frame still uses the floor sample, as in WORLD-029.
 - Zoom other than 100% subtracts the terrain adjustment in world pixels. Native subtracts it from the projection-centre offset.
 
 ## Verification

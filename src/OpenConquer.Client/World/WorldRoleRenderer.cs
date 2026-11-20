@@ -87,6 +87,9 @@ internal sealed class WorldRoleRenderer : IDisposable
 
     internal uint GetActionFrameCount(ushort action) => _body.Actions.GetFrameCount(action);
 
+    /// <summary>Frame count of the body's standby (initial) motion.</summary>
+    internal uint IdleFrameCount => _body.FrameCount;
+
     internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, uint nowMilliseconds)
     {
         int frame = _clock.GetFrame(nowMilliseconds, _body.FrameCount);
