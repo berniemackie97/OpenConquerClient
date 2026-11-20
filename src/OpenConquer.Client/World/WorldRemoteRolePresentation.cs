@@ -179,6 +179,16 @@ internal sealed class WorldRemoteRolePresentation(
         }
     }
 
+    /// <summary>
+    /// Body clip length for an entity's action (native RoleView +0x0C result), or 0 while the
+    /// entity's appearance is not prepared.
+    /// </summary>
+    internal int GetActionFrameCount(uint entityId, ushort action) =>
+        _roles.TryGetValue(entityId, out WorldRoleAppearance appearance) &&
+        _renderers.TryGetValue(appearance, out WorldRoleRenderer? parts)
+            ? (int)Math.Min(parts.GetActionFrameCount(action), int.MaxValue)
+            : 0;
+
     internal void Draw(OpenGLRenderer renderer, uint entityId, Matrix4x4 main, Matrix4x4 shadow,
         uint milliseconds, WorldRemoteRoles roles)
     {

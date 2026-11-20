@@ -22,6 +22,7 @@ public sealed partial class WorldInboundStateTests
         GameWalk10005.WriteOrdinary(walk, 1_000_002, packedDirection: 4,
             movementTick: 100, mapState: 1010);
         Assert.False(state.Apply(walk));
+        Tick(state);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst,
             state.RemoteRoles.GetPlayback(1_000_002)!.Action);
 

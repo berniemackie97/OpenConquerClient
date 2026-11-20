@@ -34,6 +34,7 @@ public sealed class WorldMapScene
     private MapFrame _frame = new([], default, [], 0, 0, 0);
     private WorldSceneRole[] _remoteRoles = [];
     private int _remoteRoleRevision = int.MinValue;
+    private readonly Dictionary<uint, WorldSceneRolePosition> _remoteRolePositions = [];
     private WorldMapTextureRenderer? _presentedTextures;
     private MapFrame? _pendingFrame;
     private ViewKey _pendingView;
@@ -100,11 +101,40 @@ public sealed class WorldMapScene
         _remoteRoleRevision = revision;
     }
 
+    /// <summary>
+    /// Replaces the per-frame anchors of remote roles. Depth slots stay keyed on the
+    /// <see cref="SetRemoteRoles"/> revision; anchors change every frame while a role steps.
+    /// </summary>
+    public void SetRemoteRolePositions(IEnumerable<WorldSceneRolePosition> positions)
+    {
+        ArgumentNullException.ThrowIfNull(positions);
+        _remoteRolePositions.Clear();
+        foreach (WorldSceneRolePosition position in positions)
+        {
+            _remoteRolePositions[position.EntityId] = position;
+        }
+    }
+
+    /// <summary>Projects a tile to world pixels with the native map projection (0x61D85C).</summary>
+    public (int X, int Y) ProjectTile(int tileX, int tileY) => WorldCameraProjection.ProjectTile(_map, tileX, tileY);
+
     internal (Matrix4x4 Main, Matrix4x4 Shadow) RoleMatrices(WorldSceneRole role)
     {
-        (int x, int y) = WorldCameraProjection.ProjectTile(_map, role.TileX, role.TileY);
+        int x;
+        int y;
+        byte direction;
+        if (_remoteRolePositions.TryGetValue(role.EntityId, out WorldSceneRolePosition live))
+        {
+            (x, y, direction) = (live.WorldX, live.WorldY, live.Direction);
+        }
+        else
+        {
+            (x, y) = WorldCameraProjection.ProjectTile(_map, role.TileX, role.TileY);
+            direction = role.Direction;
+        }
+
         return WorldRoleCameraMatrices.Create(_map, _puzzles, _frame.Projection,
-            x, y, (-1 - role.Direction) * 45f, 0.75f);
+            x, y, (-1 - direction) * 45f, 0.75f);
     }
 
     public void SetCameraTile(int tileX, int tileY)

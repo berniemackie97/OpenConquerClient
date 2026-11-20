@@ -261,7 +261,9 @@ public sealed class ClientWorldTests
         });
 
         Assert.Empty(scene.CommittedRoleOrder);
-        (int X, int Y)[] expectedPositions = [(60, 108), (61, 108), (60, 108)];
+        // Depth tiles: spawn; walk dir 6 mid-step uses the end tile; run dir 2 mid-step uses the start
+        // tile (CNpc tick 0x672784), which is the committed end of the walk.
+        (int X, int Y)[] expectedPositions = [(60, 108), (61, 108), (61, 108)];
         for (int index = 0; index < packets.Length; index++)
         {
             byte[] packet = packets[index];

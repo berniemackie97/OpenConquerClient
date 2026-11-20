@@ -154,6 +154,7 @@ internal sealed class ClientWorld : IClientWorld
             state.CullRemoteRoles();
             if (_scene is { } scene)
             {
+                AdvanceRemoteRoles(scene, state);
                 SynchronizeSceneRoles(scene, state);
             }
             _egress?.Pump(state.Heartbeat, _frameMilliseconds);
@@ -192,6 +193,7 @@ internal sealed class ClientWorld : IClientWorld
                 if (IsActive && _inbound is { } inbound)
                 {
                     ApplyCamera(scene, inbound);
+                    AdvanceRemoteRoles(scene, inbound);
                     SynchronizeSceneRoles(scene, inbound);
                     _scene = scene;
                 }
@@ -676,9 +678,21 @@ internal sealed class ClientWorld : IClientWorld
         }
     }
 
-    private static void SynchronizeSceneRoles(WorldMapScene scene, WorldInboundState state) =>
-        scene.SetRemoteRoles(state.RemoteRoles.Revision, state.RemoteRoles.All.Select(static player =>
-            new WorldSceneRole(player.EntityId, player.X, player.Y, player.Direction)));
+    private void AdvanceRemoteRoles(WorldMapScene scene, WorldInboundState state)
+    {
+        WorldRemoteRolePresentation? presentation = _remoteRolePresentation;
+        state.RemoteRoles.Advance(_frameMilliseconds,
+            (entityId, action) => presentation?.GetActionFrameCount(entityId, action) ?? 0,
+            scene.ProjectTile);
+    }
+
+    private static void SynchronizeSceneRoles(WorldMapScene scene, WorldInboundState state)
+    {
+        scene.SetRemoteRoles(state.RemoteRoles.Revision, state.RemoteRoles.Placements.Select(static role =>
+            new WorldSceneRole(role.EntityId, role.DepthTile.X, role.DepthTile.Y, role.Direction)));
+        scene.SetRemoteRolePositions(state.RemoteRoles.Placements.Select(static role =>
+            new WorldSceneRolePosition(role.EntityId, role.Cursor.X, role.Cursor.Y, role.Direction)));
+    }
 
     private static void ApplyCamera(WorldMapScene scene, WorldInboundState state)
     {
