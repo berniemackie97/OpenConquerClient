@@ -204,11 +204,20 @@ internal sealed class WorldRolePlayback
             return;
         }
 
-        // 0x64EE59..0x64EEAE: linear fallback, truncated toward zero.
+        // 0x64EE59..0x64EEAE: linear offsets rounded by Math_RoundDoubleByHalfStepCompare (0x768AA1).
         uint total = Math.Max(unchecked(_frameCount * GroundFrameIntervalMilliseconds), 1);
         uint clamped = Math.Min(elapsed, total);
-        _cursorX = _startX + (int)((double)(_endX - _startX) * clamped / total);
-        _cursorY = _startY + (int)((double)(_endY - _startY) * clamped / total);
+        _cursorX = _startX + RoundHalfStep((double)(_endX - _startX) * clamped / total);
+        _cursorY = _startY + RoundHalfStep((double)(_endY - _startY) * clamped / total);
+    }
+
+    /// <summary>
+    /// Math_RoundDoubleByHalfStepCompare (0x768AA1): t = trunc(v), u = trunc(v + 0.5), u &gt; t ? t + 1 : t.
+    /// </summary>
+    private static int RoundHalfStep(double value)
+    {
+        int truncated = (int)value;
+        return (int)(value + 0.5) > truncated ? truncated + 1 : truncated;
     }
 
     private void CommitActiveStep()

@@ -50,7 +50,7 @@ public sealed class WorldRolePlaybackTests
     [InlineData(1000u, 1664, 2704)]
     [InlineData(1100u, 1670, 2707)]
     [InlineData(1250u, 1680, 2712)]
-    [InlineData(1487u, 1695, 2719)]
+    [InlineData(1487u, 1695, 2720)]
     [InlineData(1488u, 1696, 2720)]
     [InlineData(1600u, 1696, 2720)]
     public void GroundStepInterpolatesLinearlyAndSnapsWhenTheRoundedFrameReachesTheClip(
@@ -193,11 +193,24 @@ public sealed class WorldRolePlaybackTests
         playback.Enqueue(Walk(6));
         playback.Advance(1000, static _ => 0, Project);
 
-        // total = 25 ms; 12 ms rounds to frame 0: 32*12/25 = 15.36, 16*12/25 = 7.68.
+        // total = 25 ms; 12 ms rounds to frame 0: 32*12/25 = 15.36 -> 15, 16*12/25 = 7.68 -> 8 (0x768AA1).
         playback.Advance(1012, static _ => 0, Project);
-        Assert.Equal((1679, 2711), playback.Cursor);
+        Assert.Equal((1679, 2712), playback.Cursor);
         playback.Advance(1013, static _ => 0, Project);
         Assert.Equal((1696, 2720), playback.Cursor);
+    }
+
+    [Fact]
+    public void LinearOffsetsUseTheNativeHalfStepRoundingInBothDirections()
+    {
+        // (60,108) -> (59,108): delta (-32,-16). At 100 ms: -6.4 -> -5 and -3.2 -> -2 (0x768AA1).
+        WorldRolePlayback playback = Placed();
+        playback.Enqueue(Walk(2));
+        playback.Advance(1000, Frames, Project);
+
+        playback.Advance(1100, Frames, Project);
+
+        Assert.Equal((1664 - 5, 2704 - 2), playback.Cursor);
     }
 
     [Fact]

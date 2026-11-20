@@ -18,7 +18,7 @@ Each visible player owns a `WorldRolePlayback` that reproduces the native remote
 | Staging | Start at the current cursor; end at the projection of the cursor tile plus the direction delta. | 0x73631C |
 | Action | Walk: 111 after 110/120, else 110. Run: 121 after 120, else 120. Keyed on the last physical action, which persists across standing. | 0x736329, 0x736AEC |
 | Timing | Clip frames × 25 ms. The frame index is rounded `(elapsed + 12) / 25`, and the step completes when it reaches the clip length. | 0x64EB0C, 0x64EB70 |
-| Position | Linear: `start + trunc(delta × elapsed / total)`. ActionCtrl.ini has no record for actions 110/111/120/121. | 0x64EE59..0x64EED4 |
+| Position | Linear: `start + roundHalfStep(delta × elapsed / total)`, where `roundHalfStep(v)` is `t = trunc(v); u = trunc(v + 0.5); u > t ? t + 1 : t` (`Math_RoundDoubleByHalfStepCompare` 0x768AA1). ActionCtrl.ini has no record for actions 110/111/120/121. | 0x64EE59..0x64EED4, 0x768AA1 |
 | Depth | Mid-step, the start tile when the direction index ≤ 3, otherwise the end tile. | 0x672784 |
 | Drain | Standby with both endpoints at the cursor. | 0x7335BA..0x7335D6 |
 
