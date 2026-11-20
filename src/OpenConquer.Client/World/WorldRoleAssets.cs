@@ -13,7 +13,7 @@ internal sealed record WorldRoleAssets(
     private static readonly ushort[] s_groundActions =
     [
         WorldRolePlayback.GroundWalkFirst, WorldRolePlayback.GroundWalkSecond,
-        WorldRolePlayback.GroundRunFirst, WorldRolePlayback.GroundRunSecond
+        WorldRolePlayback.GroundRunFirst, WorldRolePlayback.GroundRunSecond, WorldRolePlayback.GroundJump
     ];
 
     internal static ulong InitialBodyMotionKey(uint packedAppearance) =>

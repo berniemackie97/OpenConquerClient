@@ -7,7 +7,7 @@ internal static class WorldRoleCameraMatrices
 {
     internal static (Matrix4x4 Main, Matrix4x4 Shadow) Create(
         GameMapContent map, GameMapPuzzleResources puzzle, WorldPuzzleProjection projection,
-        int roleX, int roleY, float rotationDegrees, float scale)
+        int roleX, int roleY, float rotationDegrees, float scale, float elevation = 0f)
     {
         int width = projection.ScreenWidth;
         int height = projection.ScreenHeight;
@@ -20,7 +20,9 @@ internal static class WorldRoleCameraMatrices
         float cameraX = width * 0.5f + (projection.CenterX - originX);
         float cameraY = height * 0.5f + (projection.CenterY - originY);
 
+        // RoleView non-project matrix A: Scale(s) * Translate(0, 0, storedElevation) * RotZ(direction).
         Matrix4x4 baseTransform = Matrix4x4.CreateScale(scale) *
+            Matrix4x4.CreateTranslation(0f, 0f, elevation) *
             Matrix4x4.CreateRotationZ(rotationDegrees * (MathF.PI / 180f));
         // Ordinary supported role elevation starts at zero (0x64F66B/66E); NULL terrain contributes zero at 0x650949.
         // Independent action arcs and role offsets are separate inputs, not a map-edge height fallback.

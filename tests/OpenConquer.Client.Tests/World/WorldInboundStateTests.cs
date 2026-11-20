@@ -892,7 +892,8 @@ public sealed partial class WorldInboundStateTests
 
     /// <summary>One remote-role tick with 20-frame clips and an affine stand-in projection.</summary>
     private static void Tick(WorldInboundState state, uint now = 0) =>
-        state.RemoteRoles.Advance(now, static (_, _) => 20, static (x, y) => (x * 32, y * 16));
+        state.RemoteRoles.Advance(now, static (_, _) => 20, static (x, y) => (x * 32, y * 16),
+            static (x, y) => (x / 32, y / 16));
 
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
         ushort transformLookSourceId = 0, int hydrationEnteredAt = 0, ClientDiagnostics? diagnostics = null,

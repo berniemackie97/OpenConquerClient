@@ -33,7 +33,7 @@ internal sealed class WorldRemoteRoles
     }
 
     /// <summary>Remote roles placed for the scene: depth tile, live anchor and facing.</summary>
-    internal IEnumerable<(uint EntityId, (int X, int Y) DepthTile, (int X, int Y) Cursor, byte Direction)> Placements
+    internal IEnumerable<(uint EntityId, WorldRolePlayback Playback)> Placements
     {
         get
         {
@@ -41,7 +41,7 @@ internal sealed class WorldRemoteRoles
             {
                 if (role.Playback.IsProjected)
                 {
-                    yield return (id, role.Playback.DepthTile, role.Playback.Cursor, role.Playback.Direction);
+                    yield return (id, role.Playback);
                 }
             }
         }
@@ -99,7 +99,7 @@ internal sealed class WorldRemoteRoles
         }
 
         GamePlayerSpawn10014 player = role.Player;
-        role.Playback.MoveTo(targetX, targetY, (byte)(player.Direction % 8));
+        role.Playback.EnqueueJump(targetX, targetY);
         if (player.X != targetX || player.Y != targetY)
         {
             role.Player = player with
@@ -119,15 +119,16 @@ internal sealed class WorldRemoteRoles
     /// prepared clip length for an entity's action, or 0 when its appearance is not prepared yet.
     /// </summary>
     internal void Advance(uint nowMilliseconds, Func<uint, ushort, int> frameCount,
-        Func<int, int, (int X, int Y)> project)
+        Func<int, int, (int X, int Y)> project, Func<int, int, (int X, int Y)> unproject)
     {
         ArgumentNullException.ThrowIfNull(frameCount);
         ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(unproject);
         foreach ((uint id, RemoteRole role) in _roles)
         {
             bool projected = role.Playback.IsProjected;
             (int X, int Y) depth = role.Playback.DepthTile;
-            role.Playback.Advance(nowMilliseconds, action => frameCount(id, action), project);
+            role.Playback.Advance(nowMilliseconds, action => frameCount(id, action), project, unproject);
             if (!projected || role.Playback.DepthTile != depth)
             {
                 // Scene depth slots are rebuilt per revision: first placement and step boundaries move them.
