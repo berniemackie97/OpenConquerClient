@@ -5,7 +5,7 @@
 Native contract: `20_notes/Network/15_msgwalk_10005_direction_index_order.md`, section
 "Remote step presentation" (5517 `Conquer.exe`, verified 2026-11-20). This covers relayed
 10005 ground walk and run steps for visible players. Mounted 10005 steps and jump
-presentation are not reconstructed.
+presentation are not reconstructed here; remote ground jumps are covered by [WORLD-030](WORLD-030-remote-ground-jump-presentation.md).
 
 ## Behaviour
 

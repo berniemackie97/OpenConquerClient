@@ -340,9 +340,20 @@ public sealed class ClientWorldTests
         world.DrainIngress(1025);
         scene.BuildFrame(800, 600, 1025);
 
+        // The jump is staged on this tick (0x73597B): depth is still the start tile; the direction toward the
+        // target (-1,+4) is 0 (Direction_Select8WayFromDelta 0x61E478).
+        WorldSceneRole airborne = Assert.Single(scene.CommittedRoleOrder,
+            static slot => slot.Role.EntityId == 1_000_000).Role;
+        Assert.Equal((63, 106, (byte)0), (airborne.TileX, airborne.TileY, airborne.Direction));
+
+        // No prepared clip: one frame stretched to the 20-frame duration, ceil(33 * 19.5 / 0.5) = 1287 ms.
+        world.DrainIngress(1025 + 700);
+        world.DrainIngress(1025 + 716);
+        scene.BuildFrame(800, 600, 1025 + 716);
+
         WorldSceneRole after = Assert.Single(scene.CommittedRoleOrder,
             static slot => slot.Role.EntityId == 1_000_000).Role;
-        Assert.Equal((62, 110, (byte)5), (after.TileX, after.TileY, after.Direction));
+        Assert.Equal((62, 110, (byte)0), (after.TileX, after.TileY, after.Direction));
         Assert.True(world.IsActive);
         Assert.Equal(2, reads);
     }

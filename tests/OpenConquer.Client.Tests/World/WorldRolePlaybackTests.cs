@@ -1,5 +1,6 @@
 using OpenConquer.Client.World;
 using OpenConquer.Networking.Game.World;
+using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.Tests.World;
 
@@ -18,13 +19,15 @@ public sealed class WorldRolePlaybackTests
 
     private static int Frames(ushort action) => Clip;
 
+    private static (int X, int Y) Unproject(int x, int y) => WorldJumpArc.ScreenToTile(MapWidth, x, y);
+
     private static GameWalk10005 Walk(byte direction, uint selector = GameWalk10005.WalkSelector) =>
         new(direction, 1_000_001, selector, 0, 1010);
 
     private static WorldRolePlayback Placed(uint now = 0)
     {
         WorldRolePlayback playback = new(60, 108, 0);
-        playback.Advance(now, Frames, Project);
+        playback.Advance(now, Frames, Project, Unproject);
         return playback;
     }
 
@@ -38,7 +41,7 @@ public sealed class WorldRolePlaybackTests
         Assert.Equal(0, playback.Action);
         Assert.Equal(1, playback.PendingCount);
 
-        playback.Advance(1000, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
 
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
         Assert.Equal((byte)6, playback.Direction);
@@ -59,9 +62,9 @@ public sealed class WorldRolePlaybackTests
         // 20 frames x 25 ms = 500 ms from (60,108) to (61,108): delta (+32,+16).
         WorldRolePlayback playback = Placed();
         playback.Enqueue(Walk(6));
-        playback.Advance(1000, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
 
-        playback.Advance(now, Frames, Project);
+        playback.Advance(now, Frames, Project, Unproject);
 
         Assert.Equal((x, y), playback.Cursor);
     }
@@ -71,17 +74,17 @@ public sealed class WorldRolePlaybackTests
     {
         WorldRolePlayback playback = Placed();
         playback.Enqueue(Walk(6));
-        playback.Advance(1000, Frames, Project);
-        playback.Advance(1100, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
+        playback.Advance(1100, Frames, Project, Unproject);
         Assert.Equal((1670, 2707), playback.Cursor);
 
         playback.Enqueue(Walk(6));
         Assert.Equal((1696, 2720), playback.Cursor);
 
-        playback.Advance(1110, Frames, Project);
+        playback.Advance(1110, Frames, Project, Unproject);
         Assert.Equal(WorldRolePlayback.GroundWalkSecond, playback.Action);
         Assert.Equal((1696, 2720), playback.Cursor);
-        playback.Advance(1360, Frames, Project);
+        playback.Advance(1360, Frames, Project, Unproject);
         Assert.Equal((1712, 2728), playback.Cursor);
     }
 
@@ -93,17 +96,17 @@ public sealed class WorldRolePlaybackTests
         playback.Enqueue(Walk(6));
         Assert.Equal(2, playback.PendingCount);
 
-        playback.Advance(1000, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
         Assert.Equal(1, playback.PendingCount);
-        playback.Advance(1300, Frames, Project);
+        playback.Advance(1300, Frames, Project, Unproject);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
         Assert.Equal(1, playback.PendingCount);
 
-        playback.Advance(1488, Frames, Project);
+        playback.Advance(1488, Frames, Project, Unproject);
         Assert.Equal((1696, 2720), playback.Cursor);
         Assert.Equal(1, playback.PendingCount);
 
-        playback.Advance(1500, Frames, Project);
+        playback.Advance(1500, Frames, Project, Unproject);
         Assert.Equal(WorldRolePlayback.GroundWalkSecond, playback.Action);
         Assert.Equal(0, playback.PendingCount);
     }
@@ -113,11 +116,11 @@ public sealed class WorldRolePlaybackTests
     {
         WorldRolePlayback playback = Placed();
         playback.Enqueue(Walk(6));
-        playback.Advance(1000, Frames, Project);
-        playback.Advance(1500, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
+        playback.Advance(1500, Frames, Project, Unproject);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
 
-        playback.Advance(1516, Frames, Project);
+        playback.Advance(1516, Frames, Project, Unproject);
 
         Assert.Equal(0, playback.Action);
         Assert.Equal((1696, 2720), playback.Cursor);
@@ -146,12 +149,12 @@ public sealed class WorldRolePlaybackTests
         for (int index = 0; index < selectors.Length; index++)
         {
             playback.Enqueue(Walk(6, selectors[index]));
-            playback.Advance(now, Frames, Project);
+            playback.Advance(now, Frames, Project, Unproject);
             Assert.Equal(expected[index], playback.Action);
 
             // Finish and stand between steps; standing does not reset the selection source.
-            playback.Advance(now + 500, Frames, Project);
-            playback.Advance(now + 516, Frames, Project);
+            playback.Advance(now + 500, Frames, Project, Unproject);
+            playback.Advance(now + 516, Frames, Project, Unproject);
             Assert.Equal(0, playback.Action);
             now += 1000;
         }
@@ -166,7 +169,7 @@ public sealed class WorldRolePlaybackTests
     {
         WorldRolePlayback playback = Placed();
         playback.Enqueue(Walk(6, selector));
-        playback.Advance(1000, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
 
         Assert.Equal(action, playback.Action);
     }
@@ -181,7 +184,7 @@ public sealed class WorldRolePlaybackTests
     {
         WorldRolePlayback playback = Placed();
         playback.Enqueue(Walk(direction));
-        playback.Advance(1000, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
 
         Assert.Equal((x, y), playback.DepthTile);
     }
@@ -191,26 +194,13 @@ public sealed class WorldRolePlaybackTests
     {
         WorldRolePlayback playback = Placed();
         playback.Enqueue(Walk(6));
-        playback.Advance(1000, static _ => 0, Project);
+        playback.Advance(1000, static _ => 0, Project, Unproject);
 
         // total = 25 ms; 12 ms rounds to frame 0: 32*12/25 = 15.36 -> 15, 16*12/25 = 7.68 -> 8 (0x768AA1).
-        playback.Advance(1012, static _ => 0, Project);
+        playback.Advance(1012, static _ => 0, Project, Unproject);
         Assert.Equal((1679, 2712), playback.Cursor);
-        playback.Advance(1013, static _ => 0, Project);
+        playback.Advance(1013, static _ => 0, Project, Unproject);
         Assert.Equal((1696, 2720), playback.Cursor);
-    }
-
-    [Fact]
-    public void LinearOffsetsUseTheNativeHalfStepRoundingInBothDirections()
-    {
-        // (60,108) -> (59,108): delta (-32,-16). At 100 ms: -6.4 -> -5 and -3.2 -> -2 (0x768AA1).
-        WorldRolePlayback playback = Placed();
-        playback.Enqueue(Walk(2));
-        playback.Advance(1000, Frames, Project);
-
-        playback.Advance(1100, Frames, Project);
-
-        Assert.Equal((1664 - 5, 2704 - 2), playback.Cursor);
     }
 
     [Fact]
@@ -218,7 +208,7 @@ public sealed class WorldRolePlaybackTests
     {
         WorldRolePlayback playback = Placed();
         playback.Enqueue(Walk(6));
-        playback.Advance(uint.MaxValue - 9, Frames, Project);
+        playback.Advance(uint.MaxValue - 9, Frames, Project, Unproject);
 
         Assert.True(playback.TryGetFrame(uint.MaxValue - 9, Clip, out int first));
         Assert.Equal(0, first);
@@ -237,7 +227,7 @@ public sealed class WorldRolePlaybackTests
 
         Assert.Equal(0, playback.PendingCount);
         Assert.False(playback.IsProjected);
-        playback.Advance(1000, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
         Assert.Equal(0, playback.Action);
         Assert.Equal((62, 110), playback.DepthTile);
         Assert.Equal(Project(62, 110), playback.Cursor);
@@ -255,7 +245,7 @@ public sealed class WorldRolePlaybackTests
         playback.Enqueue(Walk(0));
 
         Assert.Equal(1, playback.PendingCount);
-        playback.Advance(1000, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
         Assert.Equal((byte)0, playback.Direction);
         Assert.Equal(Project(60 + WorldRolePlayback.MaximumPendingSteps, 108), playback.Cursor);
@@ -266,15 +256,148 @@ public sealed class WorldRolePlaybackTests
     {
         WorldRolePlayback playback = Placed();
         playback.Enqueue(Walk(6));
-        playback.Advance(1000, Frames, Project);
+        playback.Advance(1000, Frames, Project, Unproject);
         playback.Enqueue(Walk(6));
 
         playback.MoveTo(62, 110, 6);
 
         Assert.Equal(0, playback.Action);
         Assert.Equal(0, playback.PendingCount);
-        playback.Advance(1010, Frames, Project);
+        playback.Advance(1010, Frames, Project, Unproject);
         Assert.Equal(Project(62, 110), playback.Cursor);
         Assert.Equal(0, playback.Action);
     }
+
+    [Fact]
+    public void LinearOffsetsUseTheNativeHalfStepRoundingInBothDirections()
+    {
+        // (60,108) -> (59,108): delta (-32,-16). At 100 ms: -6.4 -> -5 and -3.2 -> -2 (0x768AA1).
+        WorldRolePlayback playback = Placed();
+        playback.Enqueue(Walk(2));
+        playback.Advance(1000, Frames, Project, Unproject);
+
+        playback.Advance(1100, Frames, Project, Unproject);
+
+        Assert.Equal((1664 - 5, 2704 - 2), playback.Cursor);
+    }
+
+    [Fact]
+    public void JumpStagesActionDirectionDistanceIntervalAndTarget()
+    {
+        WorldRolePlayback playback = Placed();
+        playback.EnqueueJump(62, 110);
+        Assert.Equal(0, playback.Action);
+
+        playback.Advance(1000, Frames, Project, Unproject);
+
+        // Distance 64 px: trunc(33 * 64 / 300 + 1) = 8, floored to 33; 20 frames need no stretch.
+        Assert.Equal(WorldRolePlayback.GroundJump, playback.Action);
+        Assert.Equal((byte)7, playback.Direction);
+        Assert.Equal(33u, playback.FrameInterval);
+        Assert.Equal(((1664, 2704), (1664, 2768)), playback.Endpoints);
+        Assert.Equal((60, 108), playback.DepthTile);
+    }
+
+    [Theory]
+    [InlineData(1330u, 1664, 2736, 61, 109)]
+    [InlineData(1643u, 1664, 2766, 62, 110)]
+    [InlineData(1644u, 1664, 2768, 62, 110)]
+    public void JumpSlidesLinearlyAndDepthFollowsTheCursorTile(uint now, int x, int y, int tileX, int tileY)
+    {
+        WorldRolePlayback playback = Placed();
+        playback.EnqueueJump(62, 110);
+        playback.Advance(1000, Frames, Project, Unproject);
+
+        playback.Advance(now, Frames, Project, Unproject);
+
+        Assert.Equal((x, y), playback.Cursor);
+        Assert.Equal((tileX, tileY), playback.DepthTile);
+    }
+
+    [Theory]
+    [InlineData(10, 68u)]
+    [InlineData(19, 35u)]
+    [InlineData(20, 33u)]
+    [InlineData(25, 33u)]
+    public void ShortJumpClipsStretchToTheTwentyFrameDuration(int clip, uint interval)
+    {
+        // ceil(33 * 19.5 / (clip - 0.5)) when clip < 20 (0x64E7A1..0x64E7E2).
+        WorldRolePlayback playback = Placed();
+        playback.EnqueueJump(62, 110);
+
+        playback.Advance(1000, _ => clip, Project, Unproject);
+
+        Assert.Equal(interval, playback.FrameInterval);
+    }
+
+    [Fact]
+    public void LongJumpsUseTheDistanceInterval()
+    {
+        // (60,108) -> (60,124): 16 tiles, delta (-512,+256), distance 572.43: trunc(33 * 572.43 / 300 + 1) = 63.
+        WorldRolePlayback playback = Placed();
+        playback.EnqueueJump(60, 124);
+
+        playback.Advance(1000, Frames, Project, Unproject);
+
+        Assert.Equal(63u, playback.FrameInterval);
+        Assert.Equal((byte)0, playback.Direction);
+    }
+
+    [Fact]
+    public void JumpPoseUsesPathFacingAndTheArcAnchoredRoleViewTransform()
+    {
+        WorldRolePlayback playback = Placed();
+        playback.EnqueueJump(62, 110);
+        playback.Advance(1000, Frames, Project, Unproject);
+        playback.Advance(1330, Frames, Project, Unproject);
+
+        (int x, int y, float rotation, float elevation) = playback.GetPose(
+            static (_, _, _) => 50, static (_, _) => 10);
+
+        // terrainDelta = 10 - 50 = -40; y = 2736 + 40 - 50; elevation 2 * -40; facing -270 - trunc(90).
+        Assert.Equal((1664, 2726, -360f, -80f), (x, y, rotation, elevation));
+    }
+
+    [Fact]
+    public void StandingPoseUsesTheLatchedDirectionWithoutElevation()
+    {
+        WorldRolePlayback playback = Placed();
+        playback.EnqueueJump(62, 110);
+        playback.Advance(1000, Frames, Project, Unproject);
+        playback.Advance(1700, Frames, Project, Unproject);
+        playback.Advance(1716, Frames, Project, Unproject);
+
+        (int x, int y, float rotation, float elevation) = playback.GetPose(
+            static (_, _, _) => throw new InvalidOperationException("No arc while standing."), static (_, _) => 99);
+
+        Assert.Equal(0, playback.Action);
+        Assert.Equal((1664, 2768, (-1 - 7) * 45f, 0f), (x, y, rotation, elevation));
+    }
+
+    [Fact]
+    public void WalkAfterAJumpStartsTheFirstStrideBecauseTheJumpIsTheLastPhysicalAction()
+    {
+        WorldRolePlayback playback = Placed();
+        playback.Enqueue(Walk(6));
+        playback.Advance(1000, Frames, Project, Unproject);
+        playback.EnqueueJump(63, 110);
+        playback.Advance(1010, Frames, Project, Unproject);
+        Assert.Equal(WorldRolePlayback.GroundJump, playback.Action);
+
+        playback.Enqueue(Walk(6));
+        playback.Advance(1020, Frames, Project, Unproject);
+
+        Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
+    }
+
+    [Theory]
+    [InlineData(2, 2, 7)]
+    [InlineData(-1, 4, 0)]
+    [InlineData(1, 0, 6)]
+    [InlineData(0, -3, 4)]
+    [InlineData(-2, -1, 3)]
+    [InlineData(-5, 1, 2)]
+    [InlineData(0, 0, 4)]
+    public void JumpDirectionMatchesTheNativeEightWaySelector(int dx, int dy, byte direction) =>
+        Assert.Equal(direction, WorldRolePlayback.SelectDirectionTowardTile(dx, dy));
 }
