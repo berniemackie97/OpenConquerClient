@@ -447,4 +447,62 @@ public sealed class WorldRolePlaybackTests
     [InlineData(0, 0, 4)]
     public void JumpDirectionMatchesTheNativeEightWaySelector(int dx, int dy, byte direction) =>
         Assert.Equal(direction, WorldRolePlayback.SelectDirectionTowardTile(dx, dy));
+
+    [Theory]
+    [InlineData(new[] { 1, 0 }, (ushort)101)]
+    [InlineData(new[] { 1, 1 }, (ushort)102)]
+    [InlineData(new[] { 1, 2 }, (ushort)103)]
+    [InlineData(new[] { 0 }, (ushort)100)]
+    [InlineData(new[] { 9 }, (ushort)100)]
+    public void NeverCommandedRolesMayPickAnIdleVariant(int[] rolls, ushort action)
+    {
+        // Role_CommandType05: command type 5 and rand() % 10 == 1 -> 101 + rand() % 3 (0x73352A..0x733565).
+        Queue<int> sequence = new(rolls);
+        List<int> moduli = [];
+        WorldRolePlayback playback = new(60, 108, 0, modulus =>
+        {
+            moduli.Add(modulus);
+            return sequence.Dequeue();
+        });
+
+        playback.Advance(1000, Frames, Project, Unproject);
+
+        Assert.Equal(action, playback.StandbyAction);
+        Assert.Equal(rolls.Length == 2 ? [10, 3] : [10], moduli);
+    }
+
+    [Fact]
+    public void RolesThatReceivedACommandStandWithoutVariants()
+    {
+        int rolls = 0;
+        WorldRolePlayback playback = new(60, 108, 0, _ =>
+        {
+            rolls++;
+            return 1;
+        });
+        playback.Enqueue(Walk(6));
+        playback.Advance(1000, Frames, Project, Unproject);
+        playback.Advance(1500, Frames, Project, Unproject);
+
+        playback.Advance(1516, Frames, Project, Unproject);
+
+        Assert.Equal(0, playback.Action);
+        Assert.Equal(WorldRolePlayback.Standby, playback.StandbyAction);
+        Assert.Equal(0, rolls);
+    }
+
+    [Fact]
+    public void EachStandbyRedispatchRollsAgainWhileUncommanded()
+    {
+        Queue<int> sequence = new([1, 0, 0]);
+        WorldRolePlayback playback = new(60, 108, 0, _ => sequence.Dequeue());
+        playback.Advance(1000, Frames, Project, Unproject);
+        Assert.Equal((ushort)101, playback.StandbyAction);
+
+        playback.Advance(2287, Frames, Project, Unproject);
+        playback.Advance(2300, Frames, Project, Unproject);
+
+        Assert.Equal(WorldRolePlayback.Standby, playback.StandbyAction);
+        Assert.Empty(sequence);
+    }
 }

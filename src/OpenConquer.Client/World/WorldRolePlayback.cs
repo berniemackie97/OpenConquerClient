@@ -72,8 +72,18 @@ internal sealed class WorldRolePlayback
     private uint _standbyFrameCount;
     private uint _standbyFrame;
 
-    internal WorldRolePlayback(int tileX, int tileY, byte direction)
+    private readonly Func<int, int> _random;
+    private bool _hasCommand;
+
+    /// <param name="tileX">Spawn tile X.</param>
+    /// <param name="tileY">Spawn tile Y.</param>
+    /// <param name="direction">Spawn direction index.</param>
+    /// <param name="random">
+    /// <c>rand() % n</c> source for the idle variants (Conquer_GetRandomModuloWithOptionalTimeReseed 0x769250).
+    /// </param>
+    internal WorldRolePlayback(int tileX, int tileY, byte direction, Func<int, int>? random = null)
     {
+        _random = random ?? Random.Shared.Next;
         _tileX = _startTileX = _endTileX = tileX;
         _tileY = _startTileY = _endTileY = tileY;
         Direction = direction;
@@ -208,13 +218,23 @@ internal sealed class WorldRolePlayback
     /// </summary>
     internal int StandbyFrame => (int)Math.Min(_standbyFrame, Math.Max(_standbyFrameCount, 1) - 1);
 
+    /// <summary>
+    /// Standby action: 100, or an idle variant 101..103 while the role has never received a command
+    /// (Role_CommandType05 0x73350D..0x733565: command type 5 and rand() % 10 == 1, then 101 + rand() % 3).
+    /// </summary>
+    internal ushort StandbyAction
+    {
+        get; private set;
+    } = Standby;
+
     private void AdvanceStandby(uint now, Func<ushort, int> frameCount)
     {
         if (!_standbyActive || _standbyFrame >= _standbyFrameCount)
         {
             _standbyActive = true;
             _standbyStartedAt = now;
-            _standbyFrameCount = (uint)Math.Max(frameCount(Standby), 1);
+            StandbyAction = !_hasCommand && _random(10) == 1 ? (ushort)(Standby + 1 + _random(3)) : Standby;
+            _standbyFrameCount = (uint)Math.Max(frameCount(StandbyAction), 1);
             _standbyFrame = 0;
             return;
         }
@@ -301,6 +321,8 @@ internal sealed class WorldRolePlayback
 
     private void Stage(PendingStep step, uint now, Func<ushort, int> frameCount, Func<int, int, (int X, int Y)> project)
     {
+        // Applying the queued block replaces command type 5 (0x67268D), so idle variants stop.
+        _hasCommand = true;
         (_startTileX, _startTileY) = (_tileX, _tileY);
         (_startX, _startY) = (_cursorX, _cursorY);
         if (step.Kind == StepKind.Jump)

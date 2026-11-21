@@ -213,8 +213,10 @@ internal sealed class WorldRemoteRolePresentation(
 
         if (playback is not null && playback.Action == 0)
         {
-            // Standby action 100 restarts from frame 0 on each native re-dispatch.
-            parts.Draw(renderer, main, shadow, 0, playback.StandbyFrame);
+            // Standby restarts from frame 0 on each native re-dispatch; 100 is the body's idle motion.
+            parts.Draw(renderer, main, shadow,
+                playback.StandbyAction == WorldRolePlayback.Standby ? (ushort)0 : playback.StandbyAction,
+                playback.StandbyFrame);
             return;
         }
 
