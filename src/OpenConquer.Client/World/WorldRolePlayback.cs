@@ -25,6 +25,12 @@ internal sealed class WorldRolePlayback
     internal const ushort GroundRunSecond = 121;
     internal const ushort GroundJump = 130;
 
+    /// <summary>Standby action dispatched by Role_CommandType05 (0x73351E).</summary>
+    internal const ushort Standby = 100;
+
+    /// <summary>Role_ComputeFrameIntervalFromAction fallback interval for actions 100..103.</summary>
+    internal const uint StandbyFrameIntervalMilliseconds = 66;
+
     /// <summary>Role_ComputeFrameIntervalFromAction base interval for actions 110/111/120/121.</summary>
     internal const uint GroundFrameIntervalMilliseconds = 25;
 
@@ -61,9 +67,23 @@ internal sealed class WorldRolePlayback
     private uint _frame;
     private int _cursorTileX;
     private int _cursorTileY;
+    private bool _standbyActive;
+    private uint _standbyStartedAt;
+    private uint _standbyFrameCount;
+    private uint _standbyFrame;
 
-    internal WorldRolePlayback(int tileX, int tileY, byte direction)
+    private readonly Func<int, int> _random;
+    private bool _hasCommand;
+
+    /// <param name="tileX">Spawn tile X.</param>
+    /// <param name="tileY">Spawn tile Y.</param>
+    /// <param name="direction">Spawn direction index.</param>
+    /// <param name="random">
+    /// <c>rand() % n</c> source for the idle variants (Conquer_GetRandomModuloWithOptionalTimeReseed 0x769250).
+    /// </param>
+    internal WorldRolePlayback(int tileX, int tileY, byte direction, Func<int, int>? random = null)
     {
+        _random = random ?? Random.Shared.Next;
         _tileX = _startTileX = _endTileX = tileX;
         _tileY = _startTileY = _endTileY = tileY;
         Direction = direction;
@@ -139,6 +159,7 @@ internal sealed class WorldRolePlayback
     {
         _pending.Clear();
         Action = 0;
+        _standbyActive = false;
         _tileX = _startTileX = _endTileX = tileX;
         _tileY = _startTileY = _endTileY = tileY;
         Direction = direction;
@@ -184,11 +205,48 @@ internal sealed class WorldRolePlayback
             (_endX, _endY) = (_cursorX, _cursorY);
             (_startTileX, _startTileY) = (_tileX, _tileY);
             (_endTileX, _endTileY) = (_tileX, _tileY);
+            _standbyActive = false;
         }
+
+        AdvanceStandby(nowMilliseconds, frameCount);
     }
 
-    /// <summary>Animation frame of the current action at <paramref name="nowMilliseconds"/>.</summary>
-    internal bool TryGetFrame(uint nowMilliseconds, uint clipFrames, out int frame)
+    /// <summary>
+    /// Standby frame while standing. Native re-dispatches action 100 from frame 0 each time the previous
+    /// standby motion completes (vtable+0x58 returns 1, +0x84 selects Role_CommandType05), with the same
+    /// rounded frame index as other motions (0x64EB0C).
+    /// </summary>
+    internal int StandbyFrame => (int)Math.Min(_standbyFrame, Math.Max(_standbyFrameCount, 1) - 1);
+
+    /// <summary>
+    /// Standby action: 100, or an idle variant 101..103 while the role has never received a command
+    /// (Role_CommandType05 0x73350D..0x733565: command type 5 and rand() % 10 == 1, then 101 + rand() % 3).
+    /// </summary>
+    internal ushort StandbyAction
+    {
+        get; private set;
+    } = Standby;
+
+    private void AdvanceStandby(uint now, Func<ushort, int> frameCount)
+    {
+        if (!_standbyActive || _standbyFrame >= _standbyFrameCount)
+        {
+            _standbyActive = true;
+            _standbyStartedAt = now;
+            StandbyAction = !_hasCommand && _random(10) == 1 ? (ushort)(Standby + 1 + _random(3)) : Standby;
+            _standbyFrameCount = (uint)Math.Max(frameCount(StandbyAction), 1);
+            _standbyFrame = 0;
+            return;
+        }
+
+        uint elapsed = unchecked(now - _standbyStartedAt);
+        _standbyFrame = Math.Min(
+            unchecked(elapsed + (StandbyFrameIntervalMilliseconds / 2)) / StandbyFrameIntervalMilliseconds,
+            _standbyFrameCount);
+    }
+
+    /// <summary>Rounded, capped animation frame of the current action (native CRole+0x1A8).</summary>
+    internal bool TryGetFrame(uint clipFrames, out int frame)
     {
         frame = 0;
         if (Action == 0 || clipFrames == 0)
@@ -196,8 +254,8 @@ internal sealed class WorldRolePlayback
             return false;
         }
 
-        uint position = unchecked(nowMilliseconds - _startedAt) / _interval;
-        frame = (int)Math.Min(position, clipFrames - 1);
+        // Role_TickAndRender pushes the rounded, capped +0x1A8 (0x64FA33..0x64FA4B); the C3 sampler clamps.
+        frame = (int)Math.Min(_frame, clipFrames - 1);
         return true;
     }
 
@@ -263,6 +321,8 @@ internal sealed class WorldRolePlayback
 
     private void Stage(PendingStep step, uint now, Func<ushort, int> frameCount, Func<int, int, (int X, int Y)> project)
     {
+        // Applying the queued block replaces command type 5 (0x67268D), so idle variants stop.
+        _hasCommand = true;
         (_startTileX, _startTileY) = (_tileX, _tileY);
         (_startX, _startY) = (_cursorX, _cursorY);
         if (step.Kind == StepKind.Jump)
