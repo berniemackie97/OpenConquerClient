@@ -35,6 +35,7 @@ public sealed class WorldMapScene
     private WorldSceneRole[] _remoteRoles = [];
     private int _remoteRoleRevision = int.MinValue;
     private readonly Dictionary<uint, WorldSceneRolePosition> _remoteRolePositions = [];
+    private readonly GameMapTerrainElevation _elevation;
     private WorldMapTextureRenderer? _presentedTextures;
     private MapFrame? _pendingFrame;
     private ViewKey _pendingView;
@@ -47,6 +48,7 @@ public sealed class WorldMapScene
         _map = map;
         _puzzles = puzzles;
         _terrain = terrain;
+        _elevation = GameMapTerrainElevation.Compose(map.CellGrid, terrain);
         _sceneryIndex = new WorldSceneryIndex(map, animatedScenery);
         (_heroX, _heroY) = WorldCameraProjection.ProjectTile(map, heroTileX, heroTileY);
         (_heroTileX, _heroTileY) = (heroTileX, heroTileY);
@@ -118,23 +120,31 @@ public sealed class WorldMapScene
     /// <summary>Projects a tile to world pixels with the native map projection (0x61D85C).</summary>
     public (int X, int Y) ProjectTile(int tileX, int tileY) => WorldCameraProjection.ProjectTile(_map, tileX, tileY);
 
+    /// <summary>Inverse map projection without clamping (0x61D707).</summary>
+    public (int X, int Y) ScreenToTile(int worldX, int worldY) => WorldJumpArc.ScreenToTile(_map.CellGrid.Width, worldX, worldY);
+
+    /// <summary>Jump arc height at <paramref name="current"/> (0x6505B3).</summary>
+    public int JumpArcHeight((int X, int Y) start, (int X, int Y) end, (int X, int Y) current) =>
+        WorldJumpArc.Height(_elevation, start, end, current);
+
+    /// <summary>Tail minus base elevation of the tile under a world point, or false off the grid.</summary>
+    public bool TryGetAdjustedElevation(int worldX, int worldY, out int adjusted)
+    {
+        (int tileX, int tileY) = WorldJumpArc.ScreenToTile(_map.CellGrid.Width, worldX, worldY);
+        return _elevation.TryGetAdjusted(tileX, tileY, out adjusted);
+    }
+
     internal (Matrix4x4 Main, Matrix4x4 Shadow) RoleMatrices(WorldSceneRole role)
     {
-        int x;
-        int y;
-        byte direction;
         if (_remoteRolePositions.TryGetValue(role.EntityId, out WorldSceneRolePosition live))
         {
-            (x, y, direction) = (live.WorldX, live.WorldY, live.Direction);
-        }
-        else
-        {
-            (x, y) = WorldCameraProjection.ProjectTile(_map, role.TileX, role.TileY);
-            direction = role.Direction;
+            return WorldRoleCameraMatrices.Create(_map, _puzzles, _frame.Projection,
+                live.WorldX, live.WorldY, live.RotationDegrees, 0.75f, live.Elevation);
         }
 
+        (int x, int y) = WorldCameraProjection.ProjectTile(_map, role.TileX, role.TileY);
         return WorldRoleCameraMatrices.Create(_map, _puzzles, _frame.Projection,
-            x, y, (-1 - direction) * 45f, 0.75f);
+            x, y, (-1 - role.Direction) * 45f, 0.75f);
     }
 
     public void SetCameraTile(int tileX, int tileY)

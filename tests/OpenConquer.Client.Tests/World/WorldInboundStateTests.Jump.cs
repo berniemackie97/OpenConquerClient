@@ -36,7 +36,7 @@ public sealed partial class WorldInboundStateTests
     }
 
     [Fact]
-    public void ObservedClientJumpRequestReplayedForKnownPeerCancelsGait()
+    public void ObservedClientJumpRequestReplayedForKnownPeerQueuesAJumpAfterTheGait()
     {
         Sample sample = Read("10010-ground-jump.observed.json",
             GameWorldAction10010.PacketType, ConditionalEvidence)[0];
@@ -51,6 +51,7 @@ public sealed partial class WorldInboundStateTests
         Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
         int previousRevision = state.RemoteRoles.Revision;
 
+        // MsgAction 137 (0x700352): command 0x14 is queued behind the committed walk (0x672276).
         Assert.False(state.Apply(sample.Frame));
 
         Assert.True(state.RemoteRoles.TryGet(1_000_000, out GamePlayerSpawn10014? peer));
@@ -59,20 +60,28 @@ public sealed partial class WorldInboundStateTests
         Assert.Equal(1003u, peer.PackedAppearance);
         Assert.Equal((byte)6, peer.Direction);
         Assert.Same(playback, state.RemoteRoles.GetPlayback(1_000_000));
-        Assert.Equal(0, playback.Action);
+        Assert.Equal(1, playback.PendingCount);
         Assert.Equal(previousRevision + 1, state.RemoteRoles.Revision);
         Assert.Equal((61, 101, (byte)3), (state.X, state.Y, state.DirectionIndex));
 
         Assert.False(state.Apply(sample.Frame));
         Assert.Equal(previousRevision + 1, state.RemoteRoles.Revision);
 
+        Tick(state);
+        Assert.Equal(WorldRolePlayback.GroundJump, playback.Action);
+
         GameWalk10005.WriteOrdinary(walk, 1_000_000, 6, movementTick: 101, mapState: 1010);
         Assert.False(state.Apply(walk));
         Assert.True(state.RemoteRoles.TryGet(1_000_000, out peer));
         Assert.Equal(((ushort)63, (ushort)110, (byte)6), (peer!.X, peer.Y, peer.Direction));
-        Tick(state);
-        // The jump is placed without a staged jump action, so the last physical action is still 110.
-        Assert.Equal(WorldRolePlayback.GroundWalkSecond, playback.Action);
+
+        // The replayed duplicate queued a second, zero-distance jump: it plays (20 x 33 ms) before the walk.
+        Tick(state, 1000);
+        Assert.Equal(WorldRolePlayback.GroundJump, playback.Action);
+        Tick(state, 2000);
+        Tick(state, 2001);
+        // The jump (action 130) is the last physical action, so the next walk starts with stride 110.
+        Assert.Equal(WorldRolePlayback.GroundWalkFirst, playback.Action);
     }
 
     [Fact]

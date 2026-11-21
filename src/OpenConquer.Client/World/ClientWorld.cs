@@ -683,15 +683,20 @@ internal sealed class ClientWorld : IClientWorld
         WorldRemoteRolePresentation? presentation = _remoteRolePresentation;
         state.RemoteRoles.Advance(_frameMilliseconds,
             (entityId, action) => presentation?.GetActionFrameCount(entityId, action) ?? 0,
-            scene.ProjectTile);
+            scene.ProjectTile, scene.ScreenToTile);
     }
 
     private static void SynchronizeSceneRoles(WorldMapScene scene, WorldInboundState state)
     {
         scene.SetRemoteRoles(state.RemoteRoles.Revision, state.RemoteRoles.Placements.Select(static role =>
-            new WorldSceneRole(role.EntityId, role.DepthTile.X, role.DepthTile.Y, role.Direction)));
-        scene.SetRemoteRolePositions(state.RemoteRoles.Placements.Select(static role =>
-            new WorldSceneRolePosition(role.EntityId, role.Cursor.X, role.Cursor.Y, role.Direction)));
+            new WorldSceneRole(role.EntityId, role.Playback.DepthTile.X, role.Playback.DepthTile.Y,
+                role.Playback.Direction)));
+        scene.SetRemoteRolePositions(state.RemoteRoles.Placements.Select(role =>
+        {
+            (int x, int y, float rotation, float elevation) = role.Playback.GetPose(scene.JumpArcHeight,
+                (worldX, worldY) => scene.TryGetAdjustedElevation(worldX, worldY, out int adjusted) ? adjusted : 0);
+            return new WorldSceneRolePosition(role.EntityId, x, y, rotation, elevation);
+        }));
     }
 
     private static void ApplyCamera(WorldMapScene scene, WorldInboundState state)
