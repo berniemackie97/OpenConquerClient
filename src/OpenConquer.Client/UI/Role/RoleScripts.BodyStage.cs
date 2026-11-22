@@ -176,12 +176,13 @@ internal sealed partial class RoleScripts
         });
     }
 
-    private string BodyInfo() =>
-        SelectJob is >= 1 and <= 12 ? TurnToNewline(_ini.Get("info", $"infoII{(SelectJob - 1) / 2}") ?? string.Empty) : string.Empty;
+    private string BodyInfo()
+    {
+        return SelectJob is >= 1 and <= 12
+            ? TurnToNewline(_ini.Get("info", $"infoII{(SelectJob - 1) / 2}") ?? string.Empty)
+            : string.Empty;
+    }
 
-    /// <summary>
-    /// <c>userNameTxt.onChanged</c>: plays one of three key sounds, never repeating the previous sound.
-    /// </summary>
     private void NameChanged(FlashTextInstance name)
     {
         int sound;
@@ -206,7 +207,6 @@ internal sealed partial class RoleScripts
         return length;
     }
 
-    /// <summary><c>initBtn()</c> on the class frame of sb: wires that frame's size buttons and silhouettes.</summary>
     private void InitBodyButtons(FlashClip body)
     {
         FlashClip big = body.ChildClip("bodySizeBtn_0");
@@ -260,7 +260,6 @@ internal sealed partial class RoleScripts
         smallFigure.OnPress = _ => SelectSize(body, 2);
     }
 
-    /// <summary><c>selectSize(n)</c>: 1 big, 2 small.</summary>
     private void SelectSize(FlashClip body, int size)
     {
         FlashClip bigFigure = body.ChildClip("sb");
@@ -338,7 +337,6 @@ internal sealed partial class RoleScripts
         panel.Stop();
         panel.ChildText("userNameTxt").Text = UserName;
 
-        // SWF 6 ActionScript is case-insensitive, so the panel's headMC.gotoAndstop(job) does run.
         panel.ChildClip("headMC").GotoAndStop(SelectJob);
         bool female = SelectJob % 2 == 0;
         if (SelectJob is >= 1 and <= 12)
@@ -384,7 +382,6 @@ internal sealed partial class RoleScripts
         _pressEscError = () => cancel.OnRelease?.Invoke(cancel);
     }
 
-    /// <summary>createCharacterMC <c>submit()</c>: role's <c>submit()</c>, the loading clip, and the panel closes.</summary>
     private void SubmitCreation(FlashClip panel)
     {
         panel.Set("nType", 1);
@@ -396,7 +393,6 @@ internal sealed partial class RoleScripts
         panel.Play();
     }
 
-    /// <summary>mcSafe <c>show()</c>: Enter and Escape now answer the warning.</summary>
     private void ShowWarning(FlashClip warning)
     {
         _sounds.Play("snd_db", "show");
@@ -407,7 +403,6 @@ internal sealed partial class RoleScripts
         _pressEscError = () => cancel.OnRelease?.Invoke(cancel);
     }
 
-    /// <summary>mcSafe <c>hide()</c>: Enter and Escape answer the confirm panel again.</summary>
     private void HideWarning(FlashClip warning)
     {
         _sounds.Play("snd_db", "hide");
@@ -455,13 +450,11 @@ internal sealed partial class RoleScripts
         scripts.Frame(Movie, sprite, 7, _ => _sounds.Play("snd_db", "hide"));
         scripts.Frame(Movie, sprite, 10, window =>
         {
-            // Frame 10 also hides start.dat's enterGameMC masks, which role.dat does not have.
             IsErrorPanelShown = false;
             window.GotoAndStop(1);
         });
     }
 
-    /// <summary><c>getExit()</c>: the loading quit window while loading, otherwise the stage quit window.</summary>
     private void ShowQuitWindow()
     {
         FlashClip window = Root.ChildClip(Root.ChildClip("inGameMC").Get<bool>("isLoading") ? "quitWindow2" : "quitWindow");
@@ -473,13 +466,17 @@ internal sealed partial class RoleScripts
 
     private void SetButton(string name, int frame, bool enabled)
     {
-        if (Root.Child(name) is FlashClip button)
+        if (Root.Child(name) is not FlashClip button)
         {
-            button.GotoAndStop(frame);
-            button.Enabled = enabled;
+            return;
         }
+
+        button.GotoAndStop(frame);
+        button.Enabled = enabled;
     }
 
-    private static FlashButtonInstance Button(FlashClip clip, string name) =>
-        clip.Child(name) as FlashButtonInstance ?? throw new InvalidOperationException($"Clip '{clip.Name}' has no button '{name}'.");
+    private static FlashButtonInstance Button(FlashClip clip, string name)
+    {
+        return clip.Child(name) as FlashButtonInstance ?? throw new InvalidOperationException($"Clip '{clip.Name}' has no button '{name}'.");
+    }
 }

@@ -7,7 +7,6 @@ using OpenConquer.Platform.Windowing.Desktop;
 
 namespace OpenConquer.Client.UI.Role;
 
-/// <summary>The role stage and exchange hosted by the role-creation lifetime owner.</summary>
 internal interface IRoleCreationScreen : IAsyncDisposable
 {
     event Action? ReturnRequested;

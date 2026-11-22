@@ -4,23 +4,13 @@ using OpenConquer.Client.UI.Flash;
 
 namespace OpenConquer.Client.UI.Role;
 
-/// <summary>The role.dat root functions characterInAndOut calls through <c>_parent</c>.</summary>
 internal interface ICharacterSelectionHost
 {
-    /// <summary><c>onRollOverItem(id)</c>.</summary>
     void RollOverItem(int id);
-
-    /// <summary><c>onPressItem(id)</c>.</summary>
     void PressItem(int id);
-
-    /// <summary><c>onRollOutItem(id)</c>.</summary>
     void RollOutItem(int id);
 }
 
-/// <summary>
-/// The ActionScript of <c>characterInAndOut.swf</c>, translated statement for statement (decoded scripts in
-/// <c>create-role-research/decode/characterInAndOut</c>; contract in 20_notes Architecture/12).
-/// </summary>
 internal sealed class CharacterInAndOutScripts
 {
     public const string Movie = "characterInAndOut";
@@ -28,7 +18,6 @@ internal sealed class CharacterInAndOutScripts
     private const float StageHeight = 768f;
     private const int HighestDepth = 100;
 
-    // Sons by sprite: id (frame 1 script) and z (mcRole init()).
     private static readonly Dictionary<int, int> s_sonIds = new()
     {
         [91] = 6,
@@ -99,7 +88,6 @@ internal sealed class CharacterInAndOutScripts
         scripts.Frame(Movie, "223", 1, clip => clip.Stop());
     }
 
-    /// <summary><c>inPlay()</c>: role advances to the class stage and the portraits play in from frame 1.</summary>
     public static void InPlay(FlashClip characterInAndOut)
     {
         ArgumentNullException.ThrowIfNull(characterInAndOut);
@@ -108,7 +96,6 @@ internal sealed class CharacterInAndOutScripts
         characterInAndOut.GotoAndPlay(1);
     }
 
-    /// <summary><c>outPlay()</c>: the portraits play out from <c>OUT</c>.</summary>
     public static void OutPlay(FlashClip characterInAndOut)
     {
         ArgumentNullException.ThrowIfNull(characterInAndOut);
@@ -151,21 +138,25 @@ internal sealed class CharacterInAndOutScripts
         {
             SetOthersLowAlpha(state, clip);
             clip.SwapDepths(HighestDepth);
-            if (!clip.Get<bool>("selected"))
+            if (clip.Get<bool>("selected"))
             {
-                clip.GotoAndPlay(2);
-                _host.RollOverItem(clip.Get<int>("id"));
+                return;
             }
+
+            clip.GotoAndPlay(2);
+            _host.RollOverItem(clip.Get<int>("id"));
         };
         son.OnRollOut = son.OnReleaseOutside = clip =>
         {
             SetAllFullAlpha(state);
             clip.SwapDepths(clip.Get<int>("orgDepth"));
-            if (!clip.Get<bool>("selected"))
+            if (clip.Get<bool>("selected"))
             {
-                clip.GotoAndPlay(20 - clip.CurrentFrame);
-                _host.RollOutItem(clip.Get<int>("id"));
+                return;
             }
+
+            clip.GotoAndPlay(20 - clip.CurrentFrame);
+            _host.RollOutItem(clip.Get<int>("id"));
         };
         son.OnPress = clip =>
         {
@@ -195,7 +186,6 @@ internal sealed class CharacterInAndOutScripts
 
     private static void SetEffects(FlashClip son, bool shown)
     {
-        // selectedEffect.show() plays the foot glow from frame 2; hide() stops on its empty frame 1.
         if (son.Child("selectedEffect") is FlashClip glow)
         {
             if (shown)
@@ -250,11 +240,13 @@ internal sealed class CharacterInAndOutScripts
 
     private static void SnapAlpha(RootState state)
     {
-        if (MathF.Abs(state.Alpha - state.TargetAlpha) < 3f)
+        if (!(MathF.Abs(state.Alpha - state.TargetAlpha) < 3f))
         {
-            state.Alpha = state.TargetAlpha;
-            state.SetAlpha = null;
+            return;
         }
+
+        state.Alpha = state.TargetAlpha;
+        state.SetAlpha = null;
     }
 
     private static void DisableRole(FlashClip root)
@@ -283,7 +275,6 @@ internal sealed class CharacterInAndOutScripts
         CarouselState state = new(mcRole.ChildClip("bgPic").X);
         mcRole.Set("bActived", true);
 
-        // init()
         FlashClip[] sons = new FlashClip[12];
         for (int index = 0; index < 12; index++)
         {
@@ -308,7 +299,7 @@ internal sealed class CharacterInAndOutScripts
 
             const float MaxSpeed = 50f;
             Vector2 mouse = clip.Stage.LocalPointer(clip);
-            if (mouse.Y > 100f && mouse.Y < StageHeight - 100f && (mouse.X < -400f || mouse.X > 400f))
+            if (mouse.Y is > 100f and < StageHeight - 100f && mouse.X is < -400f or > 400f)
             {
                 state.CamTargetX = mouse.X * CarouselState.WidthLimitArea;
                 if (state.Acceleration < CarouselState.MaxAcceleration)
@@ -353,8 +344,10 @@ internal sealed class CharacterInAndOutScripts
         mcRole.ChildClip("bgPic").X = state.BackgroundOriginX - camX * 0.3f;
     }
 
-    /// <summary>AS2 <c>Math.round</c>: halves round up.</summary>
-    private static float Round(float value) => MathF.Floor(value + 0.5f);
+    private static float Round(float value)
+    {
+        return MathF.Floor(value + 0.5f);
+    }
 
     private sealed class RootState(FlashClip root)
     {

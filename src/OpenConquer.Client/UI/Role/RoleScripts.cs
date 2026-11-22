@@ -5,24 +5,16 @@ using OpenConquer.Content.Role;
 
 namespace OpenConquer.Client.UI.Role;
 
-/// <summary>role.dat's <c>fscommand</c> calls to the host (CMD_NICK, CMD_ENTERGAME, CMD_DRIVERBACK, …).</summary>
 internal interface IRoleCommands
 {
     void Command(string command, string argument);
 }
 
-/// <summary>role.dat's <c>playSound(set, handle)</c>: a sound named by ini sections classSelection,
-/// bodySelection or dialogBox (<c>snd_cs</c>, <c>snd_bs</c>, <c>snd_db</c>).</summary>
 internal interface IRoleSounds
 {
     void Play(string set, string handle);
 }
 
-/// <summary>
-/// The ActionScript of role.dat, translated statement for statement (decoded scripts in
-/// <c>create-role-research/decode/role</c>; contract in 20_notes Architecture/12 "role.dat runtime contract").
-/// This part covers the stage frames, host messages, the class stage, the error panel and the loading clip.
-/// </summary>
 internal sealed partial class RoleScripts : ICharacterSelectionHost
 {
     public const string Movie = "role";
@@ -53,7 +45,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         _sounds = sounds;
     }
 
-    /// <summary>Root variables of role.dat (<c>_root.nSelectJob</c>, …).</summary>
     public int SelectJob
     {
         get; private set;
@@ -97,7 +88,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         scripts.Frame(Movie, "root", 4, RootFrame4);
         RegisterBodyStage(scripts);
 
-        // Buttons and lists that only stop on every frame (tabEnabled has no effect on the pointer).
         Stops(scripts, "48", 12);
         Stops(scripts, "122", 4);
         Stops(scripts, "130", 5);
@@ -105,7 +95,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         scripts.Frame(Movie, "140", 60, clip => clip.GotoAndPlay(2));
         scripts.Frame(Movie, "170", 1, clip => clip.Stop());
 
-        // Press blockers under modal panels: an empty onPress makes the clip catch the pointer.
         foreach (string blocker in new[] { "2", "51", "73", "89" })
         {
             scripts.Frame(Movie, blocker, 1, clip => clip.OnPress = static _ => { });
@@ -116,9 +105,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         RegisterLoading(scripts);
     }
 
-    /// <summary>
-    /// The host sets <c>VCTOFLASH</c> to "NAME|value"; role.dat's watcher <c>getMsg</c> dispatches it.
-    /// </summary>
     public void Receive(string message)
     {
         ArgumentNullException.ThrowIfNull(message);
@@ -210,7 +196,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         };
     }
 
-    /// <summary><c>getPath</c> → <c>CIni</c> → <c>iniLoaded</c>: start the stage and load logo.swf and characterInAndOut.</summary>
     private void LoadIni()
     {
         FlashClip root = Root;
@@ -233,11 +218,13 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         root.OnEnterFrame = clip =>
         {
             FlashClip characterInAndOut = clip.ChildClip("characterInAndOut");
-            if (CharacterInAndOutScripts.IsLoaded(characterInAndOut))
+            if (!CharacterInAndOutScripts.IsLoaded(characterInAndOut))
             {
-                CharacterInAndOutScripts.InPlay(characterInAndOut);
-                clip.OnEnterFrame = null;
+                return;
             }
+
+            CharacterInAndOutScripts.InPlay(characterInAndOut);
+            clip.OnEnterFrame = null;
         };
     }
 
@@ -282,7 +269,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
             }
             else
             {
-                // Root frame 4 removes flash1 while nextBtn stays; Flash ignores the undefined reference.
                 root.ClipOrNull("flash1")?.GotoAndStop(1);
             }
         };
@@ -296,7 +282,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         };
         next.OnRelease = clip =>
         {
-            // Unqualified _currentframe and gotoAndStop resolve against the root timeline that defined the handler.
             if (SelectJob != 0 && root.CurrentFrame == 3)
             {
                 root.GotoAndStop(4);
@@ -328,13 +313,14 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
     private void ReleaseBack(FlashClip back)
     {
         FlashClip root = back.Parent ?? Root;
-        if (root.CurrentFrame == 5)
+        switch (root.CurrentFrame)
         {
-            root.GotoAndStop(2);
-        }
-        else if (root.CurrentFrame == 3)
-        {
-            _commands.Command("CMD_DRIVERBACK", string.Empty);
+            case 5:
+                root.GotoAndStop(2);
+                break;
+            case 3:
+                _commands.Command("CMD_DRIVERBACK", string.Empty);
+                break;
         }
 
         back.GotoAndStop(2);
@@ -364,7 +350,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
             return;
         }
 
-        // role.dat flips the panel flag on every Enter, whichever handler ran.
         if (!IsErrorPanelShown)
         {
             _pressEnterNormal();
@@ -413,7 +398,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         scripts.Frame(Movie, "116", 12, clip => clip.GotoAndPlay(2));
     }
 
-    /// <summary><c>jobInfo.showInfo(id)</c>; jobInfo exists on root frame 3 only, and portrait events can arrive after it.</summary>
     private static void ShowInfo(FlashClip? jobInfo, int id)
     {
         if (jobInfo is null)
@@ -422,14 +406,7 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         }
 
         jobInfo.Set("infoID", id);
-        if (jobInfo.CurrentFrame == 7)
-        {
-            jobInfo.GotoAndPlay(8);
-        }
-        else
-        {
-            jobInfo.GotoAndPlay(2);
-        }
+        jobInfo.GotoAndPlay(jobInfo.CurrentFrame == 7 ? 8 : 2);
     }
 
     private void RegisterErrorPanel(FlashScriptTable scripts)
@@ -470,16 +447,17 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         });
     }
 
-    /// <summary>Moves returnBtn, createBtn and nextBtn (whichever this stage has) to a frame and sets <c>enabled</c>.</summary>
     private void SetStageButtons(int frame, bool enabled)
     {
         foreach (string name in new[] { "returnBtn", "createBtn", "nextBtn" })
         {
-            if (Root.Child(name) is FlashClip button)
+            if (Root.Child(name) is not FlashClip button)
             {
-                button.GotoAndStop(frame);
-                button.Enabled = enabled;
+                continue;
             }
+
+            button.GotoAndStop(frame);
+            button.Enabled = enabled;
         }
     }
 
@@ -516,7 +494,6 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         });
     }
 
-    /// <summary><c>inGameMC.getLoadingTace(text)</c>.</summary>
     private void ShowLoadingTrace(string text)
     {
         FlashClip loading = Root.ChildClip("inGameMC");
@@ -532,10 +509,15 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         }
     }
 
-    /// <summary>role.dat <c>turnToNewline</c>: a literal <c>\n</c> becomes a line break and <c>~</c> a space.</summary>
-    internal static string TurnToNewline(string text) => text.Replace("\\n", "\n", StringComparison.Ordinal).Replace('~', ' ');
+    internal static string TurnToNewline(string text)
+    {
+        return text.Replace("\\n", "\n", StringComparison.Ordinal).Replace('~', ' ');
+    }
 
-    /// <summary>AS2 <c>Number(value)</c>, or null where Flash would get NaN (and so ignore the assignment).</summary>
-    private static float? Number(string? value) =>
-        float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float number) && float.IsFinite(number) ? number : null;
+    private static float? Number(string? value)
+    {
+        return float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float number) && float.IsFinite(number)
+            ? number
+            : null;
+    }
 }

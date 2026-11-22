@@ -3,7 +3,6 @@ using OpenConquer.Content.Role;
 
 namespace OpenConquer.Client.UI.Role.Audio;
 
-/// <summary>Resolves role.dat sound events using the original selectCharacter.ini.</summary>
 internal sealed class RoleAudioFeedback : IRoleSounds
 {
     private static readonly Dictionary<string, LoginAudioCue> s_audioByFile = new(StringComparer.OrdinalIgnoreCase)

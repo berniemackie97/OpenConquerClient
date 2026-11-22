@@ -13,10 +13,6 @@ using OpenConquer.Platform.Windowing.Desktop;
 
 namespace OpenConquer.Client.UI.Role;
 
-/// <summary>
-/// The retail create-role screen: hosts role.dat's stage, answers its host commands as the native
-/// <c>CRoleCreateFlashDlg</c> does, and drives the GameServer exchange behind it.
-/// </summary>
 internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
 {
     private const double FrameSeconds = 1d / 30d;
@@ -65,7 +61,6 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
 
     public FlashStage Stage => _stage;
 
-    /// <summary>True when the screen closed because the GameServer connection failed, not because the player went back.</summary>
     public bool ConnectionLost
     {
         get; private set;
@@ -223,16 +218,21 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
         _ => throw new ArgumentOutOfRangeException(nameof(vocation)),
     };
 
-    /// <summary>Native body look: even vocations are male (1003 big, 1004 small), odd ones female (2001, 2002).</summary>
-    internal static ushort BodyFromSelection(int vocation, int bodySize) => (vocation & 1) == 0
-        ? (ushort)(bodySize == 0 ? 1003 : 1004)
-        : (ushort)(bodySize == 0 ? 2001 : 2002);
+    internal static ushort BodyFromSelection(int vocation, int bodySize)
+    {
+        return (vocation & 1) == 0
+            ? (ushort)(bodySize == 0
+                ? 1003
+                : 1004)
+            : (ushort)(bodySize == 0
+                ? 2001
+                : 2002);
+    }
 
     private void Apply(RoleCreationOutcome outcome)
     {
         if (_stoppingRequested || outcome.Kind is RoleCreationOutcomeKind.Cancelled or RoleCreationOutcomeKind.Failed)
         {
-            // A cancel the player asked for is not a lost connection, even when it interrupted a request.
             ConnectionLost = outcome.Failure is not (null or OperationCanceledException) || !_stoppingRequested;
             _stoppingRequested = true;
             ReturnRequested?.Invoke();
@@ -252,18 +252,18 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
 
     private void ResumeLoadingIfReady()
     {
-        if (!_loadingResumed && _gameStartRequested && WorldEntry is not null)
+        if (_loadingResumed || !_gameStartRequested || WorldEntry is null)
         {
-            _loadingResumed = true;
-            _scripts.Receive("PROGRESS|80");
-            _scripts.Receive("LOADING_TRACE|" + _text.Starting);
+            return;
         }
+
+        _loadingResumed = true;
+        _scripts.Receive("PROGRESS|80");
+        _scripts.Receive("LOADING_TRACE|" + _text.Starting);
     }
 
-    /// <summary><c>CRoleCreateFlashDlg_SubmitCreatePlayerRequest</c> (<c>0x51C5C3</c>): the native name gate, then the 1001.</summary>
     private void Submit()
     {
-        // role.dat sends CMD_BODYSIZE and CMD_VOCATION before every CMD_ENTERGAME, so out-of-range values never reach here.
         if (_exchange.IsBusy || _stoppingRequested || WorldEntry is not null || _body is < 0 or > 1 || _vocation is < 0 or > 11)
         {
             return;
