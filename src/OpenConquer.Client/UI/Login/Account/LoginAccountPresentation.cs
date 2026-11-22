@@ -10,10 +10,8 @@ using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Login.Account;
 
-/// <summary>Draws the saved-account list and the confirmation dialogs for one OpenGL context.</summary>
 internal sealed class LoginAccountPresentation : IDisposable
 {
-    // itemBtn edit text 4 and clearMC edit text 284: device Arial 14.
     private const int FontHeight = 14;
     private static readonly NativeTextRenderOptions s_rowText = Style(new SpriteColor(0xAF, 0x3A, 0x3A, 255));
     private static readonly NativeTextRenderOptions s_messageText = Style(new SpriteColor(0xFF, 0x46, 0x42, 255));
@@ -86,7 +84,6 @@ internal sealed class LoginAccountPresentation : IDisposable
         IReadOnlyList<string> accounts = controls.History.Accounts;
         UpdateRowLabels(accounts);
 
-        // listMC is masked to the area above its anchor while it slides.
         LoginRect clip = _layout.ListClip(controls.VisibleRowCount);
         using OpenGLRenderer.ClipScope scope = renderer.Clip(clip.X, clip.Y, clip.Width, clip.Height);
         for (int row = 0; row < controls.VisibleRowCount; row++)
@@ -95,7 +92,6 @@ internal sealed class LoginAccountPresentation : IDisposable
             renderer.DrawSprite(_rows[row == controls.HoveredRow ? 1 : 0], bounds.X, bounds.Y, bounds.Width, bounds.Height);
             if (_rowLabels[row] is { } label)
             {
-                // nameTxt sits at (6, 3) inside its row.
                 _font.Draw(renderer, label, s_rowText, bounds.X + _layout.Scale(6), bounds.Y + _layout.Scale(3));
             }
         }
@@ -125,30 +121,33 @@ internal sealed class LoginAccountPresentation : IDisposable
         DrawDialogButton(renderer, controls, LoginDialogButton.Ok, _layout.Ok);
         DrawDialogButton(renderer, controls, LoginDialogButton.Cancel, _layout.Cancel);
 
-        if (dialog == LoginAccountDialog.Clear && controls.DialogAccount is { } account)
+        if (dialog != LoginAccountDialog.Clear || controls.DialogAccount is not { } account)
         {
-            // clearMC builds sDelID_0 + ' "' + name + '" ' + sDelID_1; neither sDelID string exists in 5517.
-            if (!string.Equals(_messageAccount, account, StringComparison.Ordinal))
-            {
-                _messageAccount = account;
-                _message = _font.LayoutUnicode($" \"{account}\" ");
-            }
+            return;
+        }
 
-            if (_message is { HasMissingGlyphs: false } message)
-            {
-                _font.Draw(renderer, message, s_messageText, _layout.ClearMessage.X, _layout.ClearMessage.Y);
-            }
+        if (!string.Equals(_messageAccount, account, StringComparison.Ordinal))
+        {
+            _messageAccount = account;
+            _message = _font.LayoutUnicode($" \"{account}\" ");
+        }
+
+        if (_message is { HasMissingGlyphs: false } message)
+        {
+            _font.Draw(renderer, message, s_messageText, _layout.ClearMessage.X, _layout.ClearMessage.Y);
         }
     }
 
     private void DrawDialogButton(OpenGLRenderer renderer, LoginAccountControls controls, LoginDialogButton button, LoginRect bounds)
     {
         LoginButtonState state = controls.DialogButtonState(button);
-        if (state != LoginButtonState.Up)
+        if (state == LoginButtonState.Up)
         {
-            OpenGLTexture2D texture = _dialogButtons[(int)button, state == LoginButtonState.Down ? 1 : 0];
-            renderer.DrawSprite(texture, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            return;
         }
+
+        OpenGLTexture2D texture = _dialogButtons[(int)button, state == LoginButtonState.Down ? 1 : 0];
+        renderer.DrawSprite(texture, bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
     private void UpdateRowLabels(IReadOnlyList<string> accounts)
@@ -156,11 +155,13 @@ internal sealed class LoginAccountPresentation : IDisposable
         for (int row = 0; row < _rowLabels.Length; row++)
         {
             string? name = row < accounts.Count ? accounts[row] : null;
-            if (!string.Equals(_rowNames[row], name, StringComparison.Ordinal))
+            if (string.Equals(_rowNames[row], name, StringComparison.Ordinal))
             {
-                _rowNames[row] = name;
-                _rowLabels[row] = name is null ? null : _font.LayoutUnicode(name);
+                continue;
             }
+
+            _rowNames[row] = name;
+            _rowLabels[row] = name is null ? null : _font.LayoutUnicode(name);
         }
     }
 

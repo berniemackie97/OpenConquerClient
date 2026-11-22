@@ -5,7 +5,6 @@ using OpenConquer.Client.UI.Login.Credentials;
 
 namespace OpenConquer.Client.UI.Login.Account;
 
-/// <summary>Remembers up to ten account names. Passwords and realm endpoints are never stored here.</summary>
 internal sealed class LoginAccountHistory
 {
     internal const int Capacity = 10;
@@ -34,12 +33,9 @@ internal sealed class LoginAccountHistory
         try
         {
             string root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            if (string.IsNullOrWhiteSpace(root))
-            {
-                throw new InvalidOperationException("A user-local application data directory is required.");
-            }
-
-            return new LoginAccountHistory(Path.Combine(root, "OpenConquer", "Client"), diagnostics);
+            return string.IsNullOrWhiteSpace(root)
+                ? throw new InvalidOperationException("A user-local application data directory is required.")
+                : new LoginAccountHistory(Path.Combine(root, "OpenConquer", "Client"), diagnostics);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
         {
@@ -67,7 +63,6 @@ internal sealed class LoginAccountHistory
             return false;
         }
 
-        // The original itemBtn/addItem Flash list appends only names not already present.
         if (_names.Contains(name, StringComparer.Ordinal))
         {
             return true;
@@ -113,7 +108,6 @@ internal sealed class LoginAccountHistory
         return true;
     }
 
-    /// <summary>The characters an account name may contain; passwords are limited to the same set.</summary>
     internal static bool IsAccountCharacter(char value)
     {
         return value is >= '0' and <= '9' or >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' or '-' or '@' or '>' or '_';
@@ -130,7 +124,6 @@ internal sealed class LoginAccountHistory
 
             if (!File.Exists(_path))
             {
-                // Broken symbolic links are not treated as missing documents.
                 if (Path.Exists(_path) || new FileInfo(_path).LinkTarget is not null)
                 {
                     _writable = false;

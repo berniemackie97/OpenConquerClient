@@ -3,10 +3,6 @@ using OpenConquer.Content.Login;
 
 namespace OpenConquer.Client.UI.Login.Controls;
 
-/// <summary>
-/// Push-button behaviour for a group of buttons sharing one pointer: Over while hovered, Down while pressed and
-/// still over the button, and a click only when the press is released over the button it started on.
-/// </summary>
 internal sealed class LoginButtonSet<TButton> where TButton : struct, Enum
 {
     private readonly (TButton Button, LoginRect Bounds)[] _buttons;
@@ -43,7 +39,6 @@ internal sealed class LoginButtonSet<TButton> where TButton : struct, Enum
         return hovered ? LoginButtonState.Over : LoginButtonState.Up;
     }
 
-    /// <summary>Tracks the pointer and returns the button it just moved onto, if any.</summary>
     public TButton? PointerMoved(bool mapped, int x, int y)
     {
         TButton? previous = _hovered;
@@ -51,7 +46,6 @@ internal sealed class LoginButtonSet<TButton> where TButton : struct, Enum
         return _hovered is not null && !Is(previous, _hovered.Value) ? _hovered : null;
     }
 
-    /// <summary>Starts a press and returns the button that captured it, if any.</summary>
     public TButton? PointerPressed(bool mapped, int x, int y)
     {
         _hovered = mapped ? Hit(x, y) : null;
@@ -59,7 +53,6 @@ internal sealed class LoginButtonSet<TButton> where TButton : struct, Enum
         return _pressed;
     }
 
-    /// <summary>Ends a press and returns the button that was clicked, if any.</summary>
     public TButton? PointerReleased(bool mapped, int x, int y)
     {
         TButton? pressed = _pressed;

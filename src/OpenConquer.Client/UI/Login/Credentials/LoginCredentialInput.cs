@@ -11,14 +11,10 @@ internal enum LoginCredentialFocus
     Password,
 }
 
-/// <summary>
-/// Account and password editor for ASCII input, with length limits. Rendering and clipboard code never see
-/// password characters.
-/// </summary>
 internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
 {
     internal const int MaximumAccountLength = 32;
-    internal const int MaximumPasswordLength = 15; // start.dat text field 364 maxLength
+    internal const int MaximumPasswordLength = 15;
 
     private readonly LoginServerSelection _selection;
     private readonly LoginCredentialLayout _layout;
@@ -38,7 +34,7 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
     public int Revision => _revision;
     public int EditRevision => _editRevision;
     public int ContentRevision => _contentRevision;
-    public bool Enabled => !_disposed; // Editing never depends on authenticated realm selection.
+    public bool Enabled => !_disposed;
     public bool IsSelecting => _dragging && Focus != LoginCredentialFocus.None;
     public int AccountLength => _account.Length;
     public int PasswordLength => _password.Length;
@@ -56,7 +52,6 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
         _layout = layout;
     }
 
-    /// <summary>Authority changes revoke any cached password; realm navigation never disables account editing.</summary>
     public void Synchronize()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -108,7 +103,6 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
         _dragging = false;
     }
 
-    /// <summary>Consumes focused command keys; Enter never authorizes a connection.</summary>
     public bool KeyPressed(DesktopKeyEvent key)
     {
         Synchronize();
@@ -134,13 +128,9 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
                 FocusLost();
                 break;
             case DesktopKey.Tab:
-                // Retail VAR_FOCUS=1 advances to password; VAR_FOCUS=2 asks for 3 (ignored).
-                // Shift is not consulted by the retail host's Tab bridge.
                 if (!key.IsRepeat && Focus == LoginCredentialFocus.Account)
                 {
                     SetFocus(LoginCredentialFocus.Password);
-                    // Retail selects the existing password when Tab moves focus from account.
-                    // A further Tab (including Shift+Tab) in password is ignored.
                     if (_password.SelectAll())
                     {
                         _revision++;
@@ -148,8 +138,6 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
                 }
                 break;
             case DesktopKey.Enter:
-                // Retail sends a synthetic Enter-button press here; focus stays where it is.
-                // Sending credentials to the account server is left out on purpose.
                 break;
             default:
                 Apply(field.EditKey(key.Key, (key.Modifiers & DesktopKeyModifiers.Shift) != 0));
@@ -167,7 +155,6 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
         }
     }
 
-    /// <summary>All-or-nothing paste; unsupported controls, Unicode and oversized data are rejected.</summary>
     public bool Paste(string? text)
     {
         Synchronize();
@@ -180,7 +167,6 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
         return true;
     }
 
-    /// <summary>Applies a retail history choice, clearing secrets only when the account actually changes.</summary>
     public bool ReplaceAccount(string account)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -203,11 +189,6 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
         return true;
     }
 
-    /// <summary>
-    /// Takes independent, short-lived credential buffers for one login attempt.
-    /// The caller must zero both buffers. Taking the password immediately erases
-    /// the editor copy so no concurrent render/input path can retain a secret.
-    /// </summary>
     internal bool TryTakeLoginCredentials(out byte[] accountName, out char[] password)
     {
         Synchronize();
@@ -229,7 +210,6 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
         return true;
     }
 
-    /// <summary>Returns account selection only. Password content is never materialized as a string.</summary>
     public string? SelectedAccountText()
     {
         Synchronize();
@@ -353,7 +333,6 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
 
     private void ChangedText()
     {
-        // Retail account-name mutations invalidate the accompanying password.
         if (Focus == LoginCredentialFocus.Account)
         {
             ClearPassword();

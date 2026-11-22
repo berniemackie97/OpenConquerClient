@@ -3,7 +3,6 @@ using OpenConquer.Content.Login;
 
 namespace OpenConquer.Client.UI.Login.Controls;
 
-/// <summary>Stage placement of the buttons inside <c>enterMC</c> (root depth 221 at (512.5, 720.4)).</summary>
 internal static class LoginControlLayout
 {
     private static readonly (LoginButton Button, int X, int Y, int Width, int Height)[] s_placements =
@@ -21,8 +20,7 @@ internal static class LoginControlLayout
     public static LoginButtonSet<LoginButton> CreateButtons(LoginStageLayout layout)
     {
         ArgumentNullException.ThrowIfNull(layout);
-        return new LoginButtonSet<LoginButton>(s_placements.Select(placement =>
-            (placement.Button, layout.Place(placement.X, placement.Y, placement.Width, placement.Height))));
+        return new LoginButtonSet<LoginButton>(s_placements.Select(placement => (placement.Button, layout.Place(placement.X, placement.Y, placement.Width, placement.Height))));
     }
 
     public static IEnumerable<LoginButton> Buttons => s_placements.Select(static placement => placement.Button);

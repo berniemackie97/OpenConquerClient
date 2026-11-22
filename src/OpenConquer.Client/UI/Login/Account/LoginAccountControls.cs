@@ -14,11 +14,8 @@ internal enum LoginAccountList
 
 internal enum LoginAccountPressKind
 {
-    /// <summary>The press is not for the account controls.</summary>
     None,
-    /// <summary>The press was taken by the list or a dialog without further effect.</summary>
     Absorbed,
-    /// <summary>A saved account was chosen from the list.</summary>
     AccountChosen,
     OkPressed,
     CancelPressed,
@@ -35,43 +32,28 @@ internal readonly record struct LoginAccountPress(LoginAccountPressKind Kind, st
 internal enum LoginAccountRelease
 {
     None,
-    /// <summary>Ok was clicked: the account was saved or cleared and the dialog started closing.</summary>
     Confirmed,
-    /// <summary>Cancel was clicked and the dialog started closing.</summary>
     Cancelled,
 }
 
-/// <summary>
-/// The saved-account list (start.dat sprite 360) and the save/clear confirmation dialogs (sprites 283 and 285).
-/// Only an explicit Save then Ok records an account; only Clear then Ok removes one.
-/// </summary>
-internal sealed class LoginAccountControls
+internal sealed class LoginAccountControls(LoginAccountLayout layout, LoginAccountHistory history)
 {
-    // listMC pop()/reset(): a setInterval of 20 ms moves the list 10 + 2 * rows pixels per step.
     private static readonly TimeSpan s_listStep = TimeSpan.FromMilliseconds(20);
 
-    private readonly LoginAccountLayout _layout;
-    private readonly LoginButtonSet<LoginDialogButton> _dialogButtons;
+    private readonly LoginAccountLayout _layout = layout ?? throw new ArgumentNullException(nameof(layout));
+    private readonly LoginButtonSet<LoginDialogButton> _dialogButtons = new([(LoginDialogButton.Ok, layout.Ok), (LoginDialogButton.Cancel, layout.Cancel)]);
     private TimeSpan _listElapsed;
-
-    public LoginAccountControls(LoginAccountLayout layout, LoginAccountHistory history)
-    {
-        _layout = layout ?? throw new ArgumentNullException(nameof(layout));
-        History = history ?? throw new ArgumentNullException(nameof(history));
-        _dialogButtons = new LoginButtonSet<LoginDialogButton>([(LoginDialogButton.Ok, layout.Ok), (LoginDialogButton.Cancel, layout.Cancel)]);
-    }
 
     public LoginAccountHistory History
     {
         get;
-    }
+    } = history ?? throw new ArgumentNullException(nameof(history));
 
     public LoginAccountList List
     {
         get; private set;
     }
 
-    /// <summary>How far the list has slid up from its anchor, in reference pixels (zero or negative).</summary>
     public int ListOffset
     {
         get; private set;
@@ -79,7 +61,6 @@ internal sealed class LoginAccountControls
 
     public int HoveredRow { get; private set; } = -1;
 
-    /// <summary>An empty history still shows one empty row.</summary>
     public int VisibleRowCount => Math.Max(1, History.Accounts.Count);
 
     public LoginAccountDialog? Dialog
@@ -87,7 +68,6 @@ internal sealed class LoginAccountControls
         get; private set;
     }
 
-    /// <summary>One-based frame of the dialog timeline; frame 1 shows nothing.</summary>
     public int DialogFrame { get; private set; } = 1;
 
     public string? DialogAccount
@@ -109,25 +89,26 @@ internal sealed class LoginAccountControls
         return _layout.Row(row, ListOffset);
     }
 
-    /// <summary>The Accounts button: listMC pop() while closed, reset() once fully open.</summary>
     public void ToggleList()
     {
-        if (List == LoginAccountList.Closed)
+        switch (List)
         {
-            List = LoginAccountList.Opening;
-            ListOffset = 0;
-            _listElapsed = TimeSpan.Zero;
-        }
-        else if (List == LoginAccountList.Open)
-        {
-            CloseList();
+            case LoginAccountList.Closed:
+                List = LoginAccountList.Opening;
+                ListOffset = 0;
+                _listElapsed = TimeSpan.Zero;
+                break;
+            case LoginAccountList.Open:
+                CloseList();
+                break;
+            case LoginAccountList.Opening:
+            case LoginAccountList.Closing:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
         }
     }
 
-    /// <summary>
-    /// saveBtn opens its dialog for any non-empty account; clearBtn only for an account already saved.
-    /// Returns whether the dialog opened.
-    /// </summary>
     public bool TryOpenDialog(LoginAccountDialog dialog, string account)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -145,7 +126,6 @@ internal sealed class LoginAccountControls
         return true;
     }
 
-    /// <summary>Tracks the pointer and returns the dialog button it just moved onto, if any.</summary>
     public LoginDialogButton? PointerMoved(bool mapped, int x, int y)
     {
         HoveredRow = List == LoginAccountList.Open && mapped ? HitRow(x, y) : -1;
@@ -166,12 +146,13 @@ internal sealed class LoginAccountControls
             case LoginAccountList.Closed:
                 return new LoginAccountPress(LoginAccountPressKind.None);
             case LoginAccountList.Open:
-                // Any press closes the open list; one on a row also chooses that account.
                 int row = mapped ? HitRow(x, y) : -1;
                 CloseList();
                 return row >= 0
                     ? new LoginAccountPress(LoginAccountPressKind.AccountChosen, History.Accounts[row])
                     : new LoginAccountPress(LoginAccountPressKind.Absorbed);
+            case LoginAccountList.Opening:
+            case LoginAccountList.Closing:
             default:
                 return new LoginAccountPress(LoginAccountPressKind.Absorbed);
         }
@@ -186,7 +167,6 @@ internal sealed class LoginAccountControls
 
         if (button == LoginDialogButton.Ok && DialogAccount is { } account)
         {
-            // CMD_RECORDACCOUNT / CMD_CLEARACCOUNT.
             _ = Dialog == LoginAccountDialog.Save ? History.TryRecord(account) : History.TryRemove(account);
         }
 
@@ -194,14 +174,12 @@ internal sealed class LoginAccountControls
         return button == LoginDialogButton.Ok ? LoginAccountRelease.Confirmed : LoginAccountRelease.Cancelled;
     }
 
-    /// <summary>Advances the dialog by stage frames and the list by its own 20 ms steps.</summary>
     public void Advance(TimeSpan step, int frames)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(frames);
 
         if (IsModal && !IsHolding)
         {
-            // Showing stops on the held frame; hiding runs to frame 10, which clears the dialog.
             int target = DialogFrame + frames;
             if (DialogFrame < LoginAccountArtwork.DialogHeldFrame && target > LoginAccountArtwork.DialogHeldFrame)
             {
@@ -250,20 +228,24 @@ internal sealed class LoginAccountControls
             if (List == LoginAccountList.Opening)
             {
                 ListOffset = Math.Max(end, ListOffset - distance);
-                if (ListOffset == end)
+                if (ListOffset != end)
                 {
-                    List = LoginAccountList.Open;
-                    return;
+                    continue;
                 }
+
+                List = LoginAccountList.Open;
+                return;
             }
             else
             {
                 ListOffset = Math.Min(0, ListOffset + distance);
-                if (ListOffset == 0)
+                if (ListOffset != 0)
                 {
-                    List = LoginAccountList.Closed;
-                    return;
+                    continue;
                 }
+
+                List = LoginAccountList.Closed;
+                return;
             }
         }
     }

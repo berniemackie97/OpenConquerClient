@@ -3,10 +3,8 @@ using OpenConquer.Content.Login;
 
 namespace OpenConquer.Client.UI.Login.Account;
 
-/// <summary>Stage placement of the saved-account list and the confirmation dialogs.</summary>
 internal sealed class LoginAccountLayout
 {
-    // enterMC sprite 360 listMC at (451.5, 631.4): rows are itemBtn sprite 6, 166x25, stacked upward from here.
     private const int ListX = 452;
     private const int ListBottom = 631;
     public const int RowWidth = 166;
@@ -18,10 +16,8 @@ internal sealed class LoginAccountLayout
     {
         _stage = stage ?? throw new ArgumentNullException(nameof(stage));
 
-        // saveMC/clearMC sit at (-1, 0); okBtn and cancelBtn at (430, 428) and (590, 428), 96x26 centred.
         Ok = stage.Place(381, 415, 96, 26);
         Cancel = stage.Place(541, 415, 96, 26);
-        // clearMC frame 6 edit text 284: the account name, Arial 14, #FF4642.
         ClearMessage = stage.Place(365, 293, 293, 110);
 
         (int maskY, int maskHeight) = LoginAccountArtwork.MaskRows;
@@ -53,13 +49,11 @@ internal sealed class LoginAccountLayout
         return _stage.Scale(referenceValue);
     }
 
-    /// <summary>The list's visible area while <paramref name="rowCount"/> rows are shown above its anchor.</summary>
     public LoginRect ListClip(int rowCount)
     {
         return _stage.Place(ListX, ListBottom - RowHeight * rowCount, RowWidth, RowHeight * rowCount);
     }
 
-    /// <summary>A row while the list is <paramref name="offset"/> pixels into its slide.</summary>
     public LoginRect Row(int row, int offset)
     {
         return _stage.Place(ListX, ListBottom + offset + RowHeight * row, RowWidth, RowHeight);

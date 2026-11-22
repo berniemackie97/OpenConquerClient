@@ -6,13 +6,8 @@ using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Login.Credentials;
 
-/// <summary>How one edit field is drawn this frame.</summary>
 internal readonly record struct LoginTextFieldState(bool Focused, int Caret, int SelectionStart, int SelectionEnd, bool CaretVisible);
 
-/// <summary>
-/// The visible run of one edit field: the whole glyphs that fit inside its gutter, scrolled to keep the caret in
-/// view, with the selection and caret drawn over them. Glyph advances are measured once per content change.
-/// </summary>
 internal sealed class LoginTextFieldView
 {
     private readonly int _padding;
@@ -27,10 +22,6 @@ internal sealed class LoginTextFieldView
         _padding = padding;
     }
 
-    /// <summary>
-    /// Re-measures when <paramref name="changedValue"/> is given, then scrolls so <paramref name="caret"/> stays
-    /// visible; a negative caret keeps the end of the text in view.
-    /// </summary>
     internal void Update(OpenGLTextContext font, LoginRect field, string? changedValue, int caret)
     {
         ArgumentNullException.ThrowIfNull(font);
@@ -44,16 +35,14 @@ internal sealed class LoginTextFieldView
         _line = Build(font, field, caret, _line);
     }
 
-    internal void Draw(OpenGLRenderer renderer, OpenGLTextContext font, NativeTextRenderOptions style, SpriteColor caretColor,
-        SpriteColor selectionColor, LoginTextFieldState state)
+    internal void Draw(OpenGLRenderer renderer, OpenGLTextContext font, NativeTextRenderOptions style, SpriteColor caretColor, SpriteColor selectionColor, LoginTextFieldState state)
     {
         if (_line is not { } line)
         {
             return;
         }
 
-        using OpenGLRenderer.ClipScope clip = renderer.Clip(line.Field.X + 1, line.Field.Y + 1,
-            line.Field.Width - 2, line.Field.Height - 2);
+        using OpenGLRenderer.ClipScope clip = renderer.Clip(line.Field.X + 1, line.Field.Y + 1, line.Field.Width - 2, line.Field.Height - 2);
         if (state.Focused && state.SelectionEnd > state.SelectionStart)
         {
             int left = line.X + Boundary(line, state.SelectionStart);
@@ -69,15 +58,15 @@ internal sealed class LoginTextFieldView
             font.Draw(renderer, line.Text, style, line.X, line.Y);
         }
 
-        if (state.Focused && state.CaretVisible)
+        if (!state.Focused || !state.CaretVisible)
         {
-            int x = line.X + Boundary(line, state.Caret);
-            renderer.DrawSolidRectangle(Math.Clamp(x, line.Field.X + 1, line.Field.X + line.Field.Width - 2),
-                line.Field.Y + 2, 1, Math.Max(1, line.Field.Height - 4), caretColor);
+            return;
         }
+
+        int x = line.X + Boundary(line, state.Caret);
+        renderer.DrawSolidRectangle(Math.Clamp(x, line.Field.X + 1, line.Field.X + line.Field.Width - 2), line.Field.Y + 2, 1, Math.Max(1, line.Field.Height - 4), caretColor);
     }
 
-    /// <summary>The measured caret boundary nearest <paramref name="x"/>.</summary>
     internal int Locate(int x)
     {
         if (_line is not { } line)
@@ -103,7 +92,6 @@ internal sealed class LoginTextFieldView
         return line.End;
     }
 
-    /// <summary>Drag-selection is captured by the field even beyond its visible left and right edges.</summary>
     internal int LocateWhileDragging(int x, int length)
     {
         if (_line is not { } line)
@@ -116,12 +104,7 @@ internal sealed class LoginTextFieldView
             return Math.Max(0, line.Start - 1);
         }
 
-        if (x >= line.Field.X + line.Field.Width)
-        {
-            return Math.Min(length, line.End + 1);
-        }
-
-        return Locate(x);
+        return x >= line.Field.X + line.Field.Width ? Math.Min(length, line.End + 1) : Locate(x);
     }
 
     internal void Reset()
@@ -178,7 +161,6 @@ internal sealed class LoginTextFieldView
         string visible = _value[start..end];
         OpenGLTextLayout? text = visible.Length == 0 ? null : font.LayoutUnicode(visible);
         int[] boundaries = new int[visible.Length + 1];
-        // NativeTextLayoutEngine advances each glyph without kerning; prefix deltas are exact.
         for (int index = 1; index < boundaries.Length; index++)
         {
             boundaries[index] = _advances[start + index] - _advances[start];

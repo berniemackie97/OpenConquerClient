@@ -5,20 +5,13 @@ using OpenConquer.Platform.Windowing.Desktop;
 
 namespace OpenConquer.Client.UI.Login.Credentials;
 
-/// <summary>What an edit did to a <see cref="LoginTextField"/>.</summary>
 internal enum LoginTextChange
 {
     None,
-    /// <summary>Only the caret or the selection moved.</summary>
     Caret,
-    /// <summary>The characters changed.</summary>
     Text,
 }
 
-/// <summary>
-/// One single-line editor over a fixed buffer: caret, selection and insertion of the native keypad alphabet.
-/// Clearing zeroes the buffer, and a masked field never turns its characters into a string.
-/// </summary>
 internal sealed class LoginTextField
 {
     private readonly char[] _buffer;
@@ -44,10 +37,8 @@ internal sealed class LoginTextField
     internal int SelectionEnd => Math.Max(_anchor, _caret);
     internal bool HasSelection => _anchor != _caret;
 
-    /// <summary>The text as drawn: the characters, or one <c>*</c> per character when masked.</summary>
     internal string Display => IsMasked ? new string('*', _length) : new string(_buffer, 0, _length);
 
-    /// <summary>The live characters. Callers copy what they need and never keep the span.</summary>
     internal ReadOnlySpan<char> Characters => _buffer.AsSpan(0, _length);
 
     internal static bool Accepts(char value)
@@ -55,13 +46,11 @@ internal sealed class LoginTextField
         return LoginAccountHistory.IsAccountCharacter(value);
     }
 
-    /// <summary>Replaces the selection with one accepted character.</summary>
     internal bool TextEntered(char character)
     {
         return Accepts(character) && Insert([character]);
     }
 
-    /// <summary>All-or-nothing paste; unsupported characters and text longer than the field are rejected.</summary>
     internal bool Paste(string? text)
     {
         if (string.IsNullOrEmpty(text) || text.Length > _buffer.Length)
@@ -80,7 +69,6 @@ internal sealed class LoginTextField
         return Insert(text.AsSpan());
     }
 
-    /// <summary>Applies a navigation or deletion key; other keys do nothing.</summary>
     internal LoginTextChange EditKey(DesktopKey key, bool shift)
     {
         switch (key)
@@ -124,7 +112,6 @@ internal sealed class LoginTextField
         }
     }
 
-    /// <summary>Moves the caret, extending the selection or setting its anchor. Returns whether either moved.</summary>
     internal bool MoveTo(int position, bool extend, int? anchor = null)
     {
         int target = Math.Clamp(position, 0, _length);
@@ -155,13 +142,11 @@ internal sealed class LoginTextField
         return true;
     }
 
-    /// <summary>The selected characters of an unmasked field; null when masked or nothing is selected.</summary>
     internal string? SelectedText()
     {
         return IsMasked || !HasSelection ? null : new string(_buffer, SelectionStart, SelectionEnd - SelectionStart);
     }
 
-    /// <summary>Replaces every character, leaving the caret at the end. The text must fit and be accepted.</summary>
     internal void Replace(ReadOnlySpan<char> text)
     {
         if (text.Length > _buffer.Length)
@@ -183,7 +168,6 @@ internal sealed class LoginTextField
         _caret = _anchor = _length;
     }
 
-    /// <summary>Zeroes the buffer and returns the caret home. Returns whether the field held any text.</summary>
     internal bool Clear()
     {
         bool hadText = _length != 0;

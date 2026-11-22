@@ -6,10 +6,6 @@ using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Login.Credentials;
 
-/// <summary>
-/// Measures visible, whole ASCII glyphs for editing, selection and hit testing in the retail fields:
-/// device Arial 14, color #908B37, text area inside each field's 2-pixel gutter.
-/// </summary>
 internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposable
 {
     internal static readonly SpriteColor TextColor = new(0x90, 0x8B, 0x37, 255);
@@ -41,7 +37,6 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
         _password = new LoginTextFieldView(padding);
     }
 
-    /// <summary>The caret blinks 530 ms on, 470 ms off, restarting whenever the caret or text changes.</summary>
     internal static bool CaretVisible(TimeSpan elapsed)
     {
         return elapsed.TotalMilliseconds % 1000 < 530;
@@ -64,7 +59,6 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
         _password.Draw(renderer, font, TextStyle, TextColor, SelectionColor, State(input, LoginCredentialFocus.Password, caretVisible));
     }
 
-    /// <summary>Returns the nearest measured caret boundary for a press within either input field.</summary>
     public bool TryLocate(LoginCredentialInput input, int x, int y, out int caret)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -86,7 +80,6 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
         return true;
     }
 
-    /// <summary>Drag-selection is captured to the originally focused field even beyond its visible left/right edges.</summary>
     public int LocateWhileDragging(LoginCredentialInput input, int x)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -118,8 +111,7 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
 
     private OpenGLTextContext GetFont()
     {
-        return _font ??= new OpenGLTextContext(_graphics, fontToken: "Arial",
-            nominalPixelHeight: _fontHeight, effectiveCodePage: 0, antialiasEnabled: true);
+        return _font ??= new OpenGLTextContext(_graphics, fontToken: "Arial", nominalPixelHeight: _fontHeight, effectiveCodePage: 0, antialiasEnabled: true);
     }
 
     private void EnsureLayout(LoginCredentialInput input)
