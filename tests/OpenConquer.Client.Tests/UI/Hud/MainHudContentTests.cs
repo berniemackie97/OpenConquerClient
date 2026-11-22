@@ -60,7 +60,9 @@ public sealed class MainHudContentTests
             return true;
         }
 
-        public Stream OpenRequiredRead(string path, ContentLookupMode mode) =>
-            TryOpenRead(path, mode, out Stream? stream) ? stream : throw new FileNotFoundException(path);
+        public Stream OpenRequiredRead(string path, ContentLookupMode mode)
+        {
+            return TryOpenRead(path, mode, out Stream? stream) ? stream : throw new FileNotFoundException(path);
+        }
     }
 }

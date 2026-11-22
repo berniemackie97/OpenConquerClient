@@ -187,7 +187,10 @@ internal sealed class LoginTextFieldView
         return new Line(field, start, end, field.X + _padding, field.Y + _padding, text, boundaries);
     }
 
-    private static int Boundary(Line line, int index) => line.Boundaries[Math.Clamp(index - line.Start, 0, line.Boundaries.Length - 1)];
+    private static int Boundary(Line line, int index)
+    {
+        return line.Boundaries[Math.Clamp(index - line.Start, 0, line.Boundaries.Length - 1)];
+    }
 
     private sealed record Line(LoginRect Field, int Start, int End, int X, int Y, OpenGLTextLayout? Text, int[] Boundaries);
 }

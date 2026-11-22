@@ -228,8 +228,10 @@ public sealed class LoginRegistrationCoordinatorTests
     [InlineData("abcdefghijklmnopq", false)]
     [InlineData("ab cd", false)]
     [InlineData("abcé", false)]
-    public void AccountPolicyChecksLengthAndAlphabet(string name, bool valid) =>
+    public void AccountPolicyChecksLengthAndAlphabet(string name, bool valid)
+    {
         Assert.Equal(valid, LoginRegistrationPolicy.IsValidAccount(name));
+    }
 
     [Theory]
     [InlineData("secret", true)]
@@ -237,8 +239,10 @@ public sealed class LoginRegistrationCoordinatorTests
     [InlineData("12345", false)]
     [InlineData("123456789012345", false)]
     [InlineData("secret 1", false)]
-    public void PasswordPolicyChecksLengthAndAlphabet(string password, bool valid) =>
+    public void PasswordPolicyChecksLengthAndAlphabet(string password, bool valid)
+    {
         Assert.Equal(valid, LoginRegistrationPolicy.IsValidPassword(password));
+    }
 
     private static LoginRegistrationNotice Notice(LoginRegistrationCoordinator registration)
     {
@@ -284,7 +288,10 @@ public sealed class LoginRegistrationCoordinatorTests
         return listener;
     }
 
-    private static int Port(TcpListener listener) => ((IPEndPoint)listener.LocalEndpoint).Port;
+    private static int Port(TcpListener listener)
+    {
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
 
     private static async Task<byte[]> RegisterPeerAsync(TcpListener listener, uint code, CancellationToken token)
     {
@@ -340,6 +347,9 @@ public sealed class LoginRegistrationCoordinatorTests
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => now;
+        public override DateTimeOffset GetUtcNow()
+        {
+            return now;
+        }
     }
 }

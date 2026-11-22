@@ -30,9 +30,15 @@ internal sealed class LoginLoadingSequence
         _worldReady = false;
     }
 
-    internal void AccountReady() => _accountReady = true;
+    internal void AccountReady()
+    {
+        _accountReady = true;
+    }
 
-    internal void WorldReady() => _worldReady = true;
+    internal void WorldReady()
+    {
+        _worldReady = true;
+    }
 
     internal void Reset()
     {

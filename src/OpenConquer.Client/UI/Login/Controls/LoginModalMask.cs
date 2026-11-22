@@ -9,7 +9,10 @@ namespace OpenConquer.Client.UI.Login.Controls;
 internal static class LoginModalMask
 {
     /// <summary>The band's colour on a one-based dialog frame.</summary>
-    internal static SpriteColor At(int frame) => new(0, 0, 0, (byte)(LoginAccountArtwork.MaskAlpha(frame) * 255 / 256));
+    internal static SpriteColor At(int frame)
+    {
+        return new SpriteColor(0, 0, 0, (byte)(LoginAccountArtwork.MaskAlpha(frame) * 255 / 256));
+    }
 
     /// <summary>
     /// Fills the band except <paramref name="picture"/>: a held dialog picture already carries the mask beneath

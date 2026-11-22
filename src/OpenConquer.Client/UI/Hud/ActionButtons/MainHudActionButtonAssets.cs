@@ -13,7 +13,10 @@ internal sealed class MainHudActionButtonAssets
 
     private readonly Dictionary<string, AniFrameSet?> _frameSets;
 
-    private MainHudActionButtonAssets(Dictionary<string, AniFrameSet?> frameSets) => _frameSets = frameSets;
+    private MainHudActionButtonAssets(Dictionary<string, AniFrameSet?> frameSets)
+    {
+        _frameSets = frameSets;
+    }
 
     public bool IsAvailable(MainHudActionButtonId id)
     {
@@ -28,7 +31,10 @@ internal sealed class MainHudActionButtonAssets
         return _frameSets.GetValueOrDefault(definition.AniSectionName)?.GetFrame((uint)frameIndex);
     }
 
-    public bool IsPkSkinAvailable(MainHudPkButtonSkin skin) => _frameSets.GetValueOrDefault(MainHudPkButtonSkins.GetAniSectionName(skin)) is not null;
+    public bool IsPkSkinAvailable(MainHudPkButtonSkin skin)
+    {
+        return _frameSets.GetValueOrDefault(MainHudPkButtonSkins.GetAniSectionName(skin)) is not null;
+    }
 
     public RgbaImage? GetPkFrame(MainHudPkButtonSkin skin, int frameIndex)
     {

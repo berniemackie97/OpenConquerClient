@@ -51,5 +51,8 @@ public sealed class LoginRegionArtworkTests
         Assert.Throws<ArgumentOutOfRangeException>(() => sheet.FrameY(-1));
     }
 
-    private static byte Alpha(RgbaImage image, int x, int y) => image.Pixels.Span[(y * image.Width + x) * 4 + 3];
+    private static byte Alpha(RgbaImage image, int x, int y)
+    {
+        return image.Pixels.Span[(y * image.Width + x) * 4 + 3];
+    }
 }

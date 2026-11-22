@@ -254,7 +254,10 @@ internal sealed class ClientSession : IDisposable
         State = ClientState.ReturningToLogin;
     }
 
-    public void ResizeFramebuffer(PixelSize size) => _world?.ResizeFramebuffer(size);
+    public void ResizeFramebuffer(PixelSize size)
+    {
+        _world?.ResizeFramebuffer(size);
+    }
 
     public void PointerMoved(PixelPoint point, OpenGLRenderer renderer)
     {

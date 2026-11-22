@@ -43,9 +43,15 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
         return true;
     }
 
-    private void OnOpened(object? sender, EventArgs args) => StartLoad();
+    private void OnOpened(object? sender, EventArgs args)
+    {
+        StartLoad();
+    }
 
-    private void OnReload(object? sender, RoutedEventArgs args) => StartLoad();
+    private void OnReload(object? sender, RoutedEventArgs args)
+    {
+        StartLoad();
+    }
 
     private void StartLoad()
     {
@@ -138,7 +144,10 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
         RefreshControls();
     }
 
-    private void OnSave(object? sender, RoutedEventArgs args) => LauncherUiEvent.Run(BeginSave, _onFailure);
+    private void OnSave(object? sender, RoutedEventArgs args)
+    {
+        LauncherUiEvent.Run(BeginSave, _onFailure);
+    }
 
     private Task BeginSave()
     {
@@ -241,8 +250,15 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
         return true;
     }
 
-    private void OnEdited(object? sender, TextChangedEventArgs args) => Edited();
-    private void OnSelectionEdited(object? sender, SelectionChangedEventArgs args) => Edited();
+    private void OnEdited(object? sender, TextChangedEventArgs args)
+    {
+        Edited();
+    }
+
+    private void OnSelectionEdited(object? sender, SelectionChangedEventArgs args)
+    {
+        Edited();
+    }
 
     private void Edited()
     {
@@ -252,7 +268,11 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
             Status.Text = "Changes are saved only when you choose Save.";
         }
     }
-    private void OnCancel(object? sender, RoutedEventArgs args) => Close();
+    private void OnCancel(object? sender, RoutedEventArgs args)
+    {
+        Close();
+    }
+
     private bool CanReset => _loaded is SettingsReadResult.Loaded or SettingsReadResult.Rejected { Issue: SettingsIssue.Invalid, Revision: not null };
     private bool CanEdit => _loaded is SettingsReadResult.Loaded || (_resetInvalid && CanReset);
 
@@ -269,9 +289,15 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
         ReloadButton.IsEnabled = !_busy && !_closing;
     }
 
-    public Task StopAsync() => _stop ??= StopCoreAsync();
+    public Task StopAsync()
+    {
+        return _stop ??= StopCoreAsync();
+    }
 
-    public ValueTask DisposeAsync() => new(StopAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(StopAsync());
+    }
 
     private async Task StopCoreAsync()
     {
@@ -300,12 +326,17 @@ internal sealed partial class DisplaySettingsWindow : Window, IAsyncDisposable
         LauncherUiEvent.Run(StopAsync, _onFailure);
     }
 
-    private static string Describe(SettingsIssue issue) => issue switch
+    private static string Describe(SettingsIssue issue)
     {
-        SettingsIssue.Invalid => "Saved display settings are damaged. Restore defaults, then choose Save to replace them.",
-        SettingsIssue.NewerVersion => "These settings require a newer launcher. They have been left unchanged.",
-        SettingsIssue.Changed => "Settings changed outside this window. Choose Reload before saving again.",
-        SettingsIssue.Unavailable => "Display settings could not be read. Check access or move the unsupported settings file aside, then Reload. The file has been left unchanged.",
-        _ => throw new ArgumentOutOfRangeException(nameof(issue))
-    };
+        return issue switch
+        {
+            SettingsIssue.Invalid =>
+                "Saved display settings are damaged. Restore defaults, then choose Save to replace them.",
+            SettingsIssue.NewerVersion => "These settings require a newer launcher. They have been left unchanged.",
+            SettingsIssue.Changed => "Settings changed outside this window. Choose Reload before saving again.",
+            SettingsIssue.Unavailable =>
+                "Display settings could not be read. Check access or move the unsupported settings file aside, then Reload. The file has been left unchanged.",
+            _ => throw new ArgumentOutOfRangeException(nameof(issue))
+        };
+    }
 }

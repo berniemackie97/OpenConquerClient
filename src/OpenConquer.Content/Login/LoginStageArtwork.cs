@@ -26,7 +26,13 @@ public static class LoginStageArtwork
         new("Login/Stage/RegionPanel.rgba.br", 340, 434, "DF314FC0B3E49BA4255E05750F72BF0F765C79DD0B71883E149AD1343342986B"),
     ];
 
-    public static RgbaImage Load(Layer layer) => EmbeddedMedia.Load(s_layers[(int)Validate(layer)]);
+    public static RgbaImage Load(Layer layer)
+    {
+        return EmbeddedMedia.Load(s_layers[(int)Validate(layer)]);
+    }
 
-    private static Layer Validate(Layer layer) => Enum.IsDefined(layer) ? layer : throw new ArgumentOutOfRangeException(nameof(layer));
+    private static Layer Validate(Layer layer)
+    {
+        return Enum.IsDefined(layer) ? layer : throw new ArgumentOutOfRangeException(nameof(layer));
+    }
 }

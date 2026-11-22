@@ -124,10 +124,12 @@ public sealed class WorldSceneryDrawListTests
 
     private static IReadOnlyList<WorldScenerySprite> Build(GameMapContent map,
         IReadOnlyList<GameMapTerrainScenePlacement> placements,
-        WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds) =>
-        WorldSceneryDrawList.Build(map, placements, new WorldSceneryIndex(map, []),
+        WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds)
+    {
+        return WorldSceneryDrawList.Build(map, placements, new WorldSceneryIndex(map, []),
             new Dictionary<GameMapSceneryRecord, (int Width, int Height)>(),
             projection, nowMilliseconds, sceneStartMilliseconds);
+    }
 
     private static GameMapTerrainScenePlacement Placement(AniIndexSection animation, int x, int y,
         int offsetX, int offsetY, int frameInterval, int width = 1,

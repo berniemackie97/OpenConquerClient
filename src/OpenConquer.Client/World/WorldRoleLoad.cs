@@ -56,7 +56,10 @@ internal sealed class WorldRoleLoad(Func<WorldRoleSources, CancellationToken, Wo
         }
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {

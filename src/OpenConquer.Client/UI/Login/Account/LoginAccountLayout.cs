@@ -48,13 +48,22 @@ internal sealed class LoginAccountLayout
         get;
     }
 
-    public int Scale(int referenceValue) => _stage.Scale(referenceValue);
+    public int Scale(int referenceValue)
+    {
+        return _stage.Scale(referenceValue);
+    }
 
     /// <summary>The list's visible area while <paramref name="rowCount"/> rows are shown above its anchor.</summary>
-    public LoginRect ListClip(int rowCount) => _stage.Place(ListX, ListBottom - RowHeight * rowCount, RowWidth, RowHeight * rowCount);
+    public LoginRect ListClip(int rowCount)
+    {
+        return _stage.Place(ListX, ListBottom - RowHeight * rowCount, RowWidth, RowHeight * rowCount);
+    }
 
     /// <summary>A row while the list is <paramref name="offset"/> pixels into its slide.</summary>
-    public LoginRect Row(int row, int offset) => _stage.Place(ListX, ListBottom + offset + RowHeight * row, RowWidth, RowHeight);
+    public LoginRect Row(int row, int offset)
+    {
+        return _stage.Place(ListX, ListBottom + offset + RowHeight * row, RowWidth, RowHeight);
+    }
 
     public LoginRect Dialog(LoginAccountDialog dialog, int width, int height)
     {

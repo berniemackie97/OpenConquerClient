@@ -415,7 +415,10 @@ internal sealed class ClientWorld : IClientWorld
         hud.HandlePrimaryPointerReleased(mapped, x, y);
     }
 
-    public void ResizeFramebuffer(PixelSize size) => _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
+    public void ResizeFramebuffer(PixelSize size)
+    {
+        _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
+    }
 
     public void ReleaseGraphics()
     {

@@ -51,8 +51,10 @@ public sealed class PlayArtworkTests
     [InlineData((int)PlayButton.Low, (int)PlayButtonState.Up, true, "Play/Buttons/LowUpFaded.rgba.br")]
     [InlineData((int)PlayButton.Continue, (int)PlayButtonState.Up, false, "Play/Buttons/ContinueUp.rgba.br")]
     [InlineData((int)PlayButton.Register, (int)PlayButtonState.Down, false, "Play/Buttons/RegisterDown.rgba.br")]
-    public void Button_SelectsTheStateArtwork(int button, int state, bool faded, string path) =>
+    public void Button_SelectsTheStateArtwork(int button, int state, bool faded, string path)
+    {
         Assert.Equal(path, PlayArtwork.Button((PlayButton)button, (PlayButtonState)state, faded).Path);
+    }
 
     [Fact]
     public void FadedArtwork_ExistsOnlyForTheStartButtons()

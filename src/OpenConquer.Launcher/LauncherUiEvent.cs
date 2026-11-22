@@ -7,8 +7,10 @@ namespace OpenConquer.Launcher;
 internal static class LauncherUiEvent
 {
     // If the window is already closed, the desktop host still retains its failure.
-    public static void RethrowOnDispatcher(Exception failure) =>
+    public static void RethrowOnDispatcher(Exception failure)
+    {
         Dispatcher.UIThread.Post(ExceptionDispatchInfo.Capture(failure).Throw);
+    }
 
     public static async void Run(Func<Task> operation, Action<Exception> onFailure)
     {

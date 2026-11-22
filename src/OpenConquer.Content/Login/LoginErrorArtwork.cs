@@ -18,7 +18,10 @@ public static class LoginErrorArtwork
         new("Login/Error/QuitCancelDown.rgba.br", 296, 192, "E393A31EE8705C99CDC221FDD7681D42B67301C851711E6728200CC68ADAC433"),
     ];
 
-    public static RgbaImage Load(bool quit) => EmbeddedMedia.Load(s_pictures[quit ? 1 : 0]);
+    public static RgbaImage Load(bool quit)
+    {
+        return EmbeddedMedia.Load(s_pictures[quit ? 1 : 0]);
+    }
 
     public static RgbaImage Load(bool quit, LoginDialogButton button, LoginButtonState state)
     {

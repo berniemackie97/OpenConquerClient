@@ -38,7 +38,10 @@ internal sealed class MainHudMagicHintTextBuilder
         _subprofessions = subprofessions;
     }
 
-    public IReadOnlyList<MainHudMagicHintTextGroup> Build(MagicTypeRecord record, MainHudLearnedMagic learned, MainHudMagicHintRuntimeSnapshot runtime) => BuildCore(record, learned, runtime, true);
+    public IReadOnlyList<MainHudMagicHintTextGroup> Build(MagicTypeRecord record, MainHudLearnedMagic learned, MainHudMagicHintRuntimeSnapshot runtime)
+    {
+        return BuildCore(record, learned, runtime, true);
+    }
 
     public IReadOnlyList<MainHudMagicHintTextGroup> BuildCatalogPreview(MagicTypeRecord record, MainHudMagicHintRuntimeSnapshot runtime)
     {

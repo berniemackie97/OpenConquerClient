@@ -371,7 +371,11 @@ public sealed partial class LoginAttemptCoordinatorTests
     private sealed class SessionHarness : IAsyncDisposable
     {
         private readonly CancellationTokenSource _budget = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        public SessionHarness() => _budget.CancelAfter(TimeSpan.FromSeconds(15));
+        public SessionHarness()
+        {
+            _budget.CancelAfter(TimeSpan.FromSeconds(15));
+        }
+
         public CancellationToken Token => _budget.Token;
         private ClientSession? _session;
         private ClientLogin? _login;
@@ -477,13 +481,41 @@ internal sealed class TestClientWorld(Action closing, Func<ValueTask> close, Lis
     public void RefreshAppearance(OpenGLGraphicsDevice? device)
     {
     }
-    public void PrepareFirstTextures(DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback) => throw new NotSupportedException();
-    public OpenGLRenderer GetRenderer(DesktopWindow window, OpenGLGraphicsDevice? device, OpenGLRenderer fallback) => throw new NotSupportedException();
-    public void PrepareFrame(OpenGLGraphicsDevice device, OpenGLRenderer renderer) => throw new NotSupportedException();
-    public void DrawFrame(OpenGLRenderer renderer, DesktopWindow window) => throw new NotSupportedException();
-    public void HandlePointerMoved(PixelPoint point) => throw new NotSupportedException();
-    public void HandlePointerPressed(PixelPoint point) => throw new NotSupportedException();
-    public void HandlePointerReleased(PixelPoint point) => throw new NotSupportedException();
+    public void PrepareFirstTextures(DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback)
+    {
+        throw new NotSupportedException();
+    }
+
+    public OpenGLRenderer GetRenderer(DesktopWindow window, OpenGLGraphicsDevice? device, OpenGLRenderer fallback)
+    {
+        throw new NotSupportedException();
+    }
+
+    public void PrepareFrame(OpenGLGraphicsDevice device, OpenGLRenderer renderer)
+    {
+        throw new NotSupportedException();
+    }
+
+    public void DrawFrame(OpenGLRenderer renderer, DesktopWindow window)
+    {
+        throw new NotSupportedException();
+    }
+
+    public void HandlePointerMoved(PixelPoint point)
+    {
+        throw new NotSupportedException();
+    }
+
+    public void HandlePointerPressed(PixelPoint point)
+    {
+        throw new NotSupportedException();
+    }
+
+    public void HandlePointerReleased(PixelPoint point)
+    {
+        throw new NotSupportedException();
+    }
+
     public void ResizeFramebuffer(PixelSize size)
     {
     }

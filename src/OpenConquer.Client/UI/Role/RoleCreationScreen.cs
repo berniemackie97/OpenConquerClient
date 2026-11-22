@@ -207,16 +207,19 @@ internal sealed class RoleCreationScreen : IRoleCommands, IRoleCreationScreen
         await _exchange.DisposeAsync().ConfigureAwait(false);
     }
 
-    internal static ushort ProfessionFromVocation(int vocation) => vocation switch
+    internal static ushort ProfessionFromVocation(int vocation)
     {
-        0 or 1 => 100,
-        2 or 3 => 10,
-        4 or 5 => 40,
-        6 or 7 => 20,
-        8 or 9 => 50,
-        10 or 11 => 60,
-        _ => throw new ArgumentOutOfRangeException(nameof(vocation)),
-    };
+        return vocation switch
+        {
+            0 or 1 => 100,
+            2 or 3 => 10,
+            4 or 5 => 40,
+            6 or 7 => 20,
+            8 or 9 => 50,
+            10 or 11 => 60,
+            _ => throw new ArgumentOutOfRangeException(nameof(vocation)),
+        };
+    }
 
     internal static ushort BodyFromSelection(int vocation, int bodySize)
     {

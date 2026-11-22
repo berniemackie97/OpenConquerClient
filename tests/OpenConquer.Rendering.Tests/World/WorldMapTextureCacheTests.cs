@@ -127,6 +127,9 @@ public sealed class WorldMapTextureCacheTests
             private set;
         }
 
-        public void Dispose() => Disposals++;
+        public void Dispose()
+        {
+            Disposals++;
+        }
     }
 }

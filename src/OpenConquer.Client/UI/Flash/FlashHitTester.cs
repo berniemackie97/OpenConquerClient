@@ -33,7 +33,10 @@ internal static class FlashTransforms
 {
     private const float UnscaledTolerance = 0.001f;
 
-    public static Matrix3x2 ToMatrix(FlashMatrix matrix) => new(matrix.A, matrix.B, matrix.C, matrix.D, matrix.Tx, matrix.Ty);
+    public static Matrix3x2 ToMatrix(FlashMatrix matrix)
+    {
+        return new Matrix3x2(matrix.A, matrix.B, matrix.C, matrix.D, matrix.Tx, matrix.Ty);
+    }
 
     /// <summary>Character space of <paramref name="displayObject"/> to stage pixels.</summary>
     public static Matrix3x2 World(FlashDisplayObject displayObject)
@@ -68,14 +71,27 @@ internal static class FlashTransforms
     }
 
     /// <summary>The raster pieces a shape instance shows now, in drawing order.</summary>
-    public static IReadOnlyList<FlashRasterPiece> PiecesOf(FlashCharacter character, int? ratio) => character switch
+    public static IReadOnlyList<FlashRasterPiece> PiecesOf(FlashCharacter character, int? ratio)
     {
-        FlashRasterCharacter shape => shape.Pieces,
-        FlashMorphCharacter morph => [new FlashRasterPiece(morph.RasterByRatio[ratio ?? 0], morph.OriginX, morph.OriginY, FlashPixelSnap.PixelCenter)],
-        FlashVideoCharacter video => [new FlashRasterPiece(video.RasterAt(ratio ?? 0) ??
-            throw new InvalidOperationException($"Video {video.Id} has no frame at or before ratio {ratio ?? 0}."), 0f, 0f, FlashPixelSnap.PixelCorner)],
-        _ => throw new ArgumentException($"Character {character.Id} is not drawn from a raster.", nameof(character)),
-    };
+        return character switch
+        {
+            FlashRasterCharacter shape => shape.Pieces,
+            FlashMorphCharacter morph =>
+            [
+                new FlashRasterPiece(morph.RasterByRatio[ratio ?? 0], morph.OriginX, morph.OriginY,
+                    FlashPixelSnap.PixelCenter)
+            ],
+            FlashVideoCharacter video =>
+            [
+                new FlashRasterPiece(video.RasterAt(ratio ?? 0) ??
+                                     throw new InvalidOperationException(
+                                         $"Video {video.Id} has no frame at or before ratio {ratio ?? 0}."), 0f, 0f,
+                    FlashPixelSnap.PixelCorner)
+            ],
+            _ => throw new ArgumentException($"Character {character.Id} is not drawn from a raster.",
+                nameof(character)),
+        };
+    }
 }
 
 /// <summary>
@@ -306,6 +322,8 @@ internal sealed class FlashHitTester(IFlashRasterSource rasters)
         return pixels[(y * info.Width + x) * 4 + 3] != 0;
     }
 
-    private static Vector2? Local(Matrix3x2 world, Vector2 point) =>
-        Matrix3x2.Invert(world, out Matrix3x2 inverse) ? Vector2.Transform(point, inverse) : null;
+    private static Vector2? Local(Matrix3x2 world, Vector2 point)
+    {
+        return Matrix3x2.Invert(world, out Matrix3x2 inverse) ? Vector2.Transform(point, inverse) : null;
+    }
 }

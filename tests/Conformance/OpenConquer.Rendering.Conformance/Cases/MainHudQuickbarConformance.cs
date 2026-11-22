@@ -236,7 +236,10 @@ internal static class MainHudQuickbarConformance
         return bytes;
     }
 
-    private static FrameFixture F(string path, string sha256, int width, int height, ContentLookupMode lookupMode) => new(path, sha256, width, height, lookupMode);
+    private static FrameFixture F(string path, string sha256, int width, int height, ContentLookupMode lookupMode)
+    {
+        return new FrameFixture(path, sha256, width, height, lookupMode);
+    }
 
     private enum RenderCaseKind
     {

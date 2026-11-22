@@ -268,6 +268,13 @@ internal sealed class ManagedReleaseTransaction
             : null;
     }
 
-    private static ManagedReleaseTransactionResult.Rejected Rejected(ManagedReleaseChangeIssue issue, ManagedInstallationIssue? detail = null) => new(issue, detail);
-    private static ManagedReleaseTransactionResult.Rejected RejectUnavailable(ManagedInstallationIssue issue) => Rejected(ManagedReleaseChangeIssue.InstallationUnavailable, issue);
+    private static ManagedReleaseTransactionResult.Rejected Rejected(ManagedReleaseChangeIssue issue, ManagedInstallationIssue? detail = null)
+    {
+        return new ManagedReleaseTransactionResult.Rejected(issue, detail);
+    }
+
+    private static ManagedReleaseTransactionResult.Rejected RejectUnavailable(ManagedInstallationIssue issue)
+    {
+        return Rejected(ManagedReleaseChangeIssue.InstallationUnavailable, issue);
+    }
 }

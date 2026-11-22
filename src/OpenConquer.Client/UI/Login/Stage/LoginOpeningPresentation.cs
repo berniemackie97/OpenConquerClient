@@ -5,10 +5,6 @@ using OpenConquer.Rendering.OpenGL.Resources;
 
 namespace OpenConquer.Client.UI.Login.Stage;
 
-/// <summary>
-/// The one-shot loginFlash.swf opening, drawn over the whole stage. Its textures are released as soon as the
-/// last frame has been shown.
-/// </summary>
 internal sealed class LoginOpeningPresentation : IDisposable
 {
     private readonly ResourceOwnership _ownership = new();
@@ -36,8 +32,6 @@ internal sealed class LoginOpeningPresentation : IDisposable
         }
     }
 
-    /// <param name="renderer">The active renderer.</param>
-    /// <param name="frame">Stage frame since the opening started.</param>
     public void Draw(OpenGLRenderer renderer, long frame)
     {
         ArgumentNullException.ThrowIfNull(renderer);
@@ -57,5 +51,8 @@ internal sealed class LoginOpeningPresentation : IDisposable
         renderer.DrawSprite(_frames[frame], 0, 0, _layout.Width, _layout.Height);
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 }

@@ -14,15 +14,25 @@ public sealed class WorldRolePlaybackTests
     private const int Clip = 20;
 
     // Map_ProjectTileToScreenCoordinates (0x61D85C) for a 100-cell-wide map.
-    private static (int X, int Y) Project(int tileX, int tileY) =>
-        (((tileX - tileY) << 6) / 2 + MapWidth * 32, ((tileX + tileY) << 5) / 2 + 16);
+    private static (int X, int Y) Project(int tileX, int tileY)
+    {
+        return (((tileX - tileY) << 6) / 2 + MapWidth * 32, ((tileX + tileY) << 5) / 2 + 16);
+    }
 
-    private static int Frames(ushort action) => Clip;
+    private static int Frames(ushort action)
+    {
+        return Clip;
+    }
 
-    private static (int X, int Y) Unproject(int x, int y) => WorldJumpArc.ScreenToTile(MapWidth, x, y);
+    private static (int X, int Y) Unproject(int x, int y)
+    {
+        return WorldJumpArc.ScreenToTile(MapWidth, x, y);
+    }
 
-    private static GameWalk10005 Walk(byte direction, uint selector = GameWalk10005.WalkSelector) =>
-        new(direction, 1_000_001, selector, 0, 1010);
+    private static GameWalk10005 Walk(byte direction, uint selector = GameWalk10005.WalkSelector)
+    {
+        return new GameWalk10005(direction, 1_000_001, selector, 0, 1010);
+    }
 
     private static WorldRolePlayback Placed(uint now = 0)
     {
@@ -445,8 +455,10 @@ public sealed class WorldRolePlaybackTests
     [InlineData(-2, -1, 3)]
     [InlineData(-5, 1, 2)]
     [InlineData(0, 0, 4)]
-    public void JumpDirectionMatchesTheNativeEightWaySelector(int dx, int dy, byte direction) =>
+    public void JumpDirectionMatchesTheNativeEightWaySelector(int dx, int dy, byte direction)
+    {
         Assert.Equal(direction, WorldRolePlayback.SelectDirectionTowardTile(dx, dy));
+    }
 
     [Theory]
     [InlineData(new[] { 1, 0 }, (ushort)101)]

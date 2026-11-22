@@ -57,7 +57,10 @@ public sealed class DesktopCursorAnimation
         get;
     }
     public int FrameCount => _frames.Length;
-    internal Memory<byte> Frame(int index) => _frames[index];
+    internal Memory<byte> Frame(int index)
+    {
+        return _frames[index];
+    }
 
     public int FrameAt(TimeSpan elapsed)
     {

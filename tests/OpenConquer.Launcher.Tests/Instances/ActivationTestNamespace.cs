@@ -24,9 +24,15 @@ internal sealed class ActivationTestNamespace : IDisposable
         }
     }
 
-    public string NewPipeName() => OperatingSystem.IsWindows()
-        ? "oc-test-" + Guid.NewGuid().ToString("N")
-        : UnixActivationNamespace.Create(Root);
+    public string NewPipeName()
+    {
+        return OperatingSystem.IsWindows()
+            ? "oc-test-" + Guid.NewGuid().ToString("N")
+            : UnixActivationNamespace.Create(Root);
+    }
 
-    public void Dispose() => _directory?.Delete(recursive: true);
+    public void Dispose()
+    {
+        _directory?.Delete(recursive: true);
+    }
 }

@@ -767,7 +767,10 @@ public sealed class ReleaseAcquisitionTests
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => now;
+        public override DateTimeOffset GetUtcNow()
+        {
+            return now;
+        }
     }
 
     private static void MakePrivate(string path)
@@ -801,7 +804,10 @@ public sealed class ReleaseAcquisitionTests
             });
         }
 
-        public int RequestCount(Uri uri) => _counts.GetValueOrDefault(uri);
+        public int RequestCount(Uri uri)
+        {
+            return _counts.GetValueOrDefault(uri);
+        }
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,

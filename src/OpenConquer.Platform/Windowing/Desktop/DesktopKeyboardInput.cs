@@ -132,29 +132,35 @@ internal sealed class DesktopKeyboardInput : IDisposable
         firstFailure?.Throw();
     }
 
-    internal static DesktopKey TranslateKey(Key key) => key switch
+    internal static DesktopKey TranslateKey(Key key)
     {
-        Key.Tab => DesktopKey.Tab,
-        Key.Enter or Key.KeypadEnter => DesktopKey.Enter,
-        Key.Escape => DesktopKey.Escape,
-        Key.Backspace => DesktopKey.Backspace,
-        Key.Delete => DesktopKey.Delete,
-        Key.Left => DesktopKey.Left,
-        Key.Right => DesktopKey.Right,
-        Key.Up => DesktopKey.Up,
-        Key.Down => DesktopKey.Down,
-        Key.Home => DesktopKey.Home,
-        Key.End => DesktopKey.End,
-        Key.PageUp => DesktopKey.PageUp,
-        Key.PageDown => DesktopKey.PageDown,
-        Key.A => DesktopKey.A,
-        Key.C => DesktopKey.C,
-        Key.V => DesktopKey.V,
-        Key.X => DesktopKey.X,
-        _ => DesktopKey.Unknown,
-    };
+        return key switch
+        {
+            Key.Tab => DesktopKey.Tab,
+            Key.Enter or Key.KeypadEnter => DesktopKey.Enter,
+            Key.Escape => DesktopKey.Escape,
+            Key.Backspace => DesktopKey.Backspace,
+            Key.Delete => DesktopKey.Delete,
+            Key.Left => DesktopKey.Left,
+            Key.Right => DesktopKey.Right,
+            Key.Up => DesktopKey.Up,
+            Key.Down => DesktopKey.Down,
+            Key.Home => DesktopKey.Home,
+            Key.End => DesktopKey.End,
+            Key.PageUp => DesktopKey.PageUp,
+            Key.PageDown => DesktopKey.PageDown,
+            Key.A => DesktopKey.A,
+            Key.C => DesktopKey.C,
+            Key.V => DesktopKey.V,
+            Key.X => DesktopKey.X,
+            _ => DesktopKey.Unknown,
+        };
+    }
 
-    internal static bool IsTextCharacter(char character) => !char.IsControl(character) && !char.IsSurrogate(character);
+    internal static bool IsTextCharacter(char character)
+    {
+        return !char.IsControl(character) && !char.IsSurrogate(character);
+    }
 
     private void OnKeyDown(IKeyboard keyboard, Key key, int scanCode)
     {

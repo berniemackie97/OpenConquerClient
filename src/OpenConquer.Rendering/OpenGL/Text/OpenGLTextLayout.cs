@@ -28,8 +28,10 @@ public sealed class OpenGLTextLayout
     }
 
     /// <summary>Gets the exact axis-aligned glyph bitmap bounds relative to the layout origin.</summary>
-    public bool TryGetInkBounds(out int left, out int top, out int right, out int bottom) =>
-        NativeLayout.TryGetInkBounds(out left, out top, out right, out bottom);
+    public bool TryGetInkBounds(out int left, out int top, out int right, out int bottom)
+    {
+        return NativeLayout.TryGetInkBounds(out left, out top, out right, out bottom);
+    }
 
     internal void ValidateOwner(OpenGLTextContext owner, string parameterName)
     {

@@ -34,8 +34,13 @@ public sealed class C3Motion
 
     public int KeyframeCount => _frameIndices.Length;
 
-    public uint GetKeyframeIndex(int keyframe) => _frameIndices[keyframe];
+    public uint GetKeyframeIndex(int keyframe)
+    {
+        return _frameIndices[keyframe];
+    }
 
-    public Matrix4x4 GetBoneMatrix(int keyframe, int bone) =>
-        _boneMatrices[checked(keyframe * (int)BoneCount + bone)];
+    public Matrix4x4 GetBoneMatrix(int keyframe, int bone)
+    {
+        return _boneMatrices[checked(keyframe * (int)BoneCount + bone)];
+    }
 }

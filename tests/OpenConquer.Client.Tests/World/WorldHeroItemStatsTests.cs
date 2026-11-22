@@ -101,9 +101,15 @@ public sealed class WorldHeroItemStatsTests
         Assert.Throws<InvalidDataException>(() => WorldHeroItemStats.Resolve(equipment, Catalog()));
     }
 
-    internal static ItemStatCatalog Catalog() => ItemStatCatalog.Parse(ItemTypeBytes(), ItemAddBytes());
+    internal static ItemStatCatalog Catalog()
+    {
+        return ItemStatCatalog.Parse(ItemTypeBytes(), ItemAddBytes());
+    }
 
-    internal static byte[] ItemAddBytes() => Encoding.ASCII.GetBytes("120020 9 239 0 0 23 0 0 0 0\r\n");
+    internal static byte[] ItemAddBytes()
+    {
+        return Encoding.ASCII.GetBytes("120020 9 239 0 0 23 0 0 0 0\r\n");
+    }
 
     internal static byte[] ItemTypeBytes()
     {

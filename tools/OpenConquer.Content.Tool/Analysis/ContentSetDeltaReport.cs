@@ -4,8 +4,10 @@ namespace OpenConquer.Content.Tool.Analysis;
 
 internal readonly record struct ContentSetDeltaGroup(int FileCount, long Bytes)
 {
-    public ContentSetDeltaGroup Add(long length) =>
-        new(checked(FileCount + 1), checked(Bytes + length));
+    public ContentSetDeltaGroup Add(long length)
+    {
+        return new ContentSetDeltaGroup(checked(FileCount + 1), checked(Bytes + length));
+    }
 }
 
 internal sealed record ContentSetDeltaReport(

@@ -15,7 +15,10 @@ internal enum RoleCreationOutcomeKind
 
 internal sealed record RoleCreationOutcome(RoleCreationOutcomeKind Kind, string? Refusal = null, GameWorldEntrySnapshot? World = null, Exception? Failure = null)
 {
-    public override string ToString() => $"{nameof(RoleCreationOutcome)} {{ Kind = {Kind} }}";
+    public override string ToString()
+    {
+        return $"{nameof(RoleCreationOutcome)} {{ Kind = {Kind} }}";
+    }
 }
 
 internal sealed class RoleCreationExchange(GameServerHandshakeSession game, RoleCreationText text, TimeProvider clock) : IAsyncDisposable
@@ -96,7 +99,10 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         return _game;
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {

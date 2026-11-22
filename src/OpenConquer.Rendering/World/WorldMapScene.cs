@@ -118,14 +118,22 @@ public sealed class WorldMapScene
     }
 
     /// <summary>Projects a tile to world pixels with the native map projection (0x61D85C).</summary>
-    public (int X, int Y) ProjectTile(int tileX, int tileY) => WorldCameraProjection.ProjectTile(_map, tileX, tileY);
+    public (int X, int Y) ProjectTile(int tileX, int tileY)
+    {
+        return WorldCameraProjection.ProjectTile(_map, tileX, tileY);
+    }
 
     /// <summary>Inverse map projection without clamping (0x61D707).</summary>
-    public (int X, int Y) ScreenToTile(int worldX, int worldY) => WorldJumpArc.ScreenToTile(_map.CellGrid.Width, worldX, worldY);
+    public (int X, int Y) ScreenToTile(int worldX, int worldY)
+    {
+        return WorldJumpArc.ScreenToTile(_map.CellGrid.Width, worldX, worldY);
+    }
 
     /// <summary>Jump arc height at <paramref name="current"/> (0x6505B3).</summary>
-    public int JumpArcHeight((int X, int Y) start, (int X, int Y) end, (int X, int Y) current) =>
-        WorldJumpArc.Height(_elevation, start, end, current);
+    public int JumpArcHeight((int X, int Y) start, (int X, int Y) end, (int X, int Y) current)
+    {
+        return WorldJumpArc.Height(_elevation, start, end, current);
+    }
 
     /// <summary>Tail minus base elevation of the tile under a world point, or false off the grid.</summary>
     public bool TryGetAdjustedElevation(int worldX, int worldY, out int adjusted)

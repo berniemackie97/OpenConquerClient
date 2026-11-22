@@ -137,5 +137,8 @@ public sealed class UnicodeTextLayoutTests
         return new NativeTextLayoutEngine(font, font, effectiveCodePage: 936);
     }
 
-    private static RasterizedGlyph Glyph(int advance) => new(1, 1, 0, 0, advance, [255]);
+    private static RasterizedGlyph Glyph(int advance)
+    {
+        return new RasterizedGlyph(1, 1, 0, 0, advance, [255]);
+    }
 }

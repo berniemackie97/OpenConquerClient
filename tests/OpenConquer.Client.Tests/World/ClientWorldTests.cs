@@ -598,9 +598,12 @@ public sealed class ClientWorldTests
         }
     }
 
-    private static GameWorldEntrySnapshot Entry() => new(
-        new GameCharacterInfo1006 { EntityId = 0x11223344, Level = 1, CurrentProfession = 10 },
-        1002, 1010, 0, 1, 61, 101, [], 3);
+    private static GameWorldEntrySnapshot Entry()
+    {
+        return new GameWorldEntrySnapshot(
+            new GameCharacterInfo1006 { EntityId = 0x11223344, Level = 1, CurrentProfession = 10 },
+            1002, 1010, 0, 1, 61, 101, [], 3);
+    }
 
     private static byte[] Correction(ushort x, ushort y)
     {
@@ -650,13 +653,15 @@ public sealed class ClientWorldTests
             get; private set;
         }
 
-        public ClientWorld Create(IClientContentSource? content = null, ClientDiagnostics? diagnostics = null, Action? onClosing = null) =>
-            new(Entry(), content ?? new CatalogContentSource(), new LogicalRenderSize(1024, 768),
+        public ClientWorld Create(IClientContentSource? content = null, ClientDiagnostics? diagnostics = null, Action? onClosing = null)
+        {
+            return new ClientWorld(Entry(), content ?? new CatalogContentSource(), new LogicalRenderSize(1024, 768),
                 () =>
                 {
                     ClosingCalls++;
                     onClosing?.Invoke();
                 }, CloseSessionAsync, CreateIngress, CreateLoad, diagnostics: diagnostics);
+        }
 
         private ValueTask CloseSessionAsync()
         {
@@ -725,9 +730,11 @@ public sealed class ClientWorldTests
             return stream is not null;
         }
 
-        public Stream OpenRequiredRead(string contentPath, ContentLookupMode mode) =>
-            TryOpenRead(contentPath, mode, out Stream? stream)
+        public Stream OpenRequiredRead(string contentPath, ContentLookupMode mode)
+        {
+            return TryOpenRead(contentPath, mode, out Stream? stream)
                 ? stream
                 : throw new FileNotFoundException($"Content '{contentPath}' is unavailable.");
+        }
     }
 }

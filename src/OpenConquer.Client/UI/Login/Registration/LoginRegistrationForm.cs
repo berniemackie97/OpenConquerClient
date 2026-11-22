@@ -14,7 +14,6 @@ internal enum LoginRegistrationField
     Confirm,
 }
 
-/// <summary>What the player asked the Sign Up dialog to do.</summary>
 internal enum LoginRegistrationCommand
 {
     None,
@@ -22,11 +21,6 @@ internal enum LoginRegistrationCommand
     Cancel,
 }
 
-/// <summary>
-/// The OpenConquer Sign Up dialog: account, password and confirmation fields, Ok and Cancel, and a message.
-/// It runs the ten-frame timeline of the native account dialogs and takes input only while held on frame 6.
-/// Tab and Shift+Tab move between fields, Enter submits and Escape cancels.
-/// </summary>
 internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
 {
     private readonly LoginTextField[] _fields =
@@ -54,7 +48,6 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         get;
     }
 
-    /// <summary>One-based frame of the dialog timeline; frame 1 shows nothing.</summary>
     internal int Frame { get; private set; } = 1;
     internal bool IsOpen => Frame != 1;
     internal bool IsHolding => Frame == LoginAccountArtwork.DialogHeldFrame;
@@ -74,22 +67,22 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
     }
     internal bool IsSelecting => _dragging && Focus is not null;
 
-    /// <summary>Changes whenever anything drawn in a field changes.</summary>
     internal int Revision => _revision;
-    /// <summary>Changes whenever the characters of a field change.</summary>
     internal int ContentRevision => _contentRevision;
-    /// <summary>Changes on every accepted edit, which plays a typing sound.</summary>
     internal int EditRevision => _editRevision;
 
     internal string AccountName => _fields[(int)LoginRegistrationField.Account].Display;
 
-    internal LoginTextField Field(LoginRegistrationField field) =>
-        Enum.IsDefined(field) ? _fields[(int)field] : throw new ArgumentOutOfRangeException(nameof(field));
+    internal LoginTextField Field(LoginRegistrationField field)
+    {
+        return Enum.IsDefined(field) ? _fields[(int)field] : throw new ArgumentOutOfRangeException(nameof(field));
+    }
 
-    /// <summary>Ok and Cancel show no rollover while the request is in flight.</summary>
-    internal LoginButtonState ButtonState(LoginDialogButton button) => IsSubmitting ? LoginButtonState.Up : _buttons.StateOf(button);
+    internal LoginButtonState ButtonState(LoginDialogButton button)
+    {
+        return IsSubmitting ? LoginButtonState.Up : _buttons.StateOf(button);
+    }
 
-    /// <summary>Starts showing an empty dialog with the account field focused.</summary>
     internal void Open(string guidance)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -105,10 +98,6 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         _revision++;
     }
 
-    /// <summary>
-    /// Starts hiding the dialog. The passwords are wiped at once; the account name stays until the dialog has
-    /// gone, so a created account can still be read.
-    /// </summary>
     internal void Close()
     {
         if (!IsOpen)
@@ -123,8 +112,7 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         _dragging = false;
         _revision++;
 
-        // A dialog still fading in fades out from the same mask strength.
-        int held = LoginAccountArtwork.DialogHeldFrame;
+        const int held = LoginAccountArtwork.DialogHeldFrame;
         int next = Frame < held ? 2 * held - Frame : Math.Max(Frame, held + 1);
         if (next >= LoginAccountArtwork.DialogFrameCount)
         {
@@ -136,7 +124,6 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         }
     }
 
-    /// <summary>Showing stops on the held frame; hiding runs to frame 10, which clears the dialog.</summary>
     internal void Advance(int frames)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(frames);
@@ -145,7 +132,7 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
             return;
         }
 
-        int held = LoginAccountArtwork.DialogHeldFrame;
+        const int held = LoginAccountArtwork.DialogHeldFrame;
         int target = Frame + frames;
         if (Frame < held && target > held)
         {
@@ -171,10 +158,6 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         SetFocus(Focus ?? LoginRegistrationField.Account);
     }
 
-    /// <summary>
-    /// Shows an error and focuses the field to correct. A password problem clears both password fields, because
-    /// masked text cannot be corrected in place; an account problem selects the name so typing replaces it.
-    /// </summary>
     internal void ShowProblem(string text, LoginRegistrationField field)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -196,7 +179,6 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         }
     }
 
-    /// <summary>Locks the dialog while the request is in flight.</summary>
     internal void BeginSubmitting(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -208,19 +190,13 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         _dragging = false;
     }
 
-    /// <summary>Compares the two password entries in constant time.</summary>
     internal bool PasswordsMatch()
     {
         ReadOnlySpan<char> password = _fields[(int)LoginRegistrationField.Password].Characters;
         ReadOnlySpan<char> confirmation = _fields[(int)LoginRegistrationField.Confirm].Characters;
-        return password.Length == confirmation.Length &&
-            CryptographicOperations.FixedTimeEquals(MemoryMarshal.AsBytes(password), MemoryMarshal.AsBytes(confirmation));
+        return password.Length == confirmation.Length && CryptographicOperations.FixedTimeEquals(MemoryMarshal.AsBytes(password), MemoryMarshal.AsBytes(confirmation));
     }
 
-    /// <summary>
-    /// Copies the account name and password into new buffers and wipes both password fields. The caller owns and
-    /// must zero both buffers.
-    /// </summary>
     internal bool TryTakeCredentials(out byte[] accountName, out char[] password)
     {
         accountName = [];
@@ -243,14 +219,11 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         return true;
     }
 
-    /// <summary>Tracks the pointer and returns the button it just moved onto, if any.</summary>
-    internal LoginDialogButton? PointerMoved(bool mapped, int x, int y) =>
-        AcceptsInput ? _buttons.PointerMoved(mapped, x, y) : null;
+    internal LoginDialogButton? PointerMoved(bool mapped, int x, int y)
+    {
+        return AcceptsInput ? _buttons.PointerMoved(mapped, x, y) : null;
+    }
 
-    /// <summary>
-    /// A press on Ok or Cancel starts that button; one in a field focuses it and places the caret, measured by
-    /// <paramref name="locator"/> when one is available. Returns the button pressed, if any.
-    /// </summary>
     internal LoginDialogButton? PointerPressed(bool mapped, int x, int y, ILoginRegistrationCaretLocator? locator, bool extendSelection)
     {
         if (!AcceptsInput)
@@ -264,14 +237,16 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
             return button;
         }
 
-        if (mapped && HitField(x, y) is { } field)
+        if (!mapped || HitField(x, y) is not { } field)
         {
-            int caret = locator is not null && locator.TryLocate(this, field, x, out int located) ? located : Field(field).Length;
-            bool sameField = Focus == field;
-            SetFocus(field);
-            MoveCaret(Field(field), caret, extendSelection && sameField);
-            _dragging = true;
+            return null;
         }
+
+        int caret = locator is not null && locator.TryLocate(this, field, x, out int located) ? located : Field(field).Length;
+        bool sameField = Focus == field;
+        SetFocus(field);
+        MoveCaret(Field(field), caret, extendSelection && sameField);
+        _dragging = true;
 
         return null;
     }
@@ -304,14 +279,12 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
 
         bool shortcut = (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) != 0;
         bool alt = (key.Modifiers & DesktopKeyModifiers.Alt) != 0;
-        if (!key.IsRepeat && key.Key == DesktopKey.Escape)
+        switch (key.IsRepeat)
         {
-            return LoginRegistrationCommand.Cancel;
-        }
-
-        if (!key.IsRepeat && key.Key == DesktopKey.Enter && !shortcut && !alt)
-        {
-            return LoginRegistrationCommand.Submit;
+            case false when key.Key == DesktopKey.Escape:
+                return LoginRegistrationCommand.Cancel;
+            case false when key.Key == DesktopKey.Enter && !shortcut && !alt:
+                return LoginRegistrationCommand.Submit;
         }
 
         if (shortcut || alt)
@@ -326,15 +299,17 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
 
         if (key.Key == DesktopKey.Tab)
         {
-            if (!key.IsRepeat)
+            if (key.IsRepeat)
             {
-                int step = (key.Modifiers & DesktopKeyModifiers.Shift) != 0 ? _fields.Length - 1 : 1;
-                LoginRegistrationField next = (LoginRegistrationField)(((int)(Focus ?? LoginRegistrationField.Account) + step) % _fields.Length);
-                SetFocus(next);
-                if (Field(next).SelectAll())
-                {
-                    _revision++;
-                }
+                return LoginRegistrationCommand.None;
+            }
+
+            int step = (key.Modifiers & DesktopKeyModifiers.Shift) != 0 ? _fields.Length - 1 : 1;
+            LoginRegistrationField next = (LoginRegistrationField)(((int)(Focus ?? LoginRegistrationField.Account) + step) % _fields.Length);
+            SetFocus(next);
+            if (Field(next).SelectAll())
+            {
+                _revision++;
             }
 
             return LoginRegistrationCommand.None;
@@ -369,7 +344,10 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         return true;
     }
 
-    string? ILoginTextEditor.SelectedText() => AcceptsInput ? Active?.SelectedText() : null;
+    string? ILoginTextEditor.SelectedText()
+    {
+        return AcceptsInput ? Active?.SelectedText() : null;
+    }
 
     bool ILoginTextEditor.CutSelection()
     {
@@ -382,7 +360,6 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
         return true;
     }
 
-    /// <summary>Window focus loss releases the buttons and any drag; the entries stay.</summary>
     internal void FocusLost()
     {
         _buttons.Reset();
@@ -444,13 +421,18 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
 
     private void Apply(LoginTextChange change)
     {
-        if (change == LoginTextChange.Text)
+        switch (change)
         {
-            ChangedText();
-        }
-        else if (change == LoginTextChange.Caret)
-        {
-            _revision++;
+            case LoginTextChange.Text:
+                ChangedText();
+                break;
+            case LoginTextChange.Caret:
+                _revision++;
+                break;
+            case LoginTextChange.None:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(change), change, null);
         }
     }
 
@@ -465,11 +447,13 @@ internal sealed class LoginRegistrationForm : ILoginTextEditor, IDisposable
     {
         bool password = _fields[(int)LoginRegistrationField.Password].Clear();
         bool confirmation = _fields[(int)LoginRegistrationField.Confirm].Clear();
-        if (password || confirmation)
+        if (!password && !confirmation)
         {
-            _contentRevision++;
-            _revision++;
+            return;
         }
+
+        _contentRevision++;
+        _revision++;
     }
 
     private void ClearFields()

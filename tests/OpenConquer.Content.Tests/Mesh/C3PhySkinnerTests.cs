@@ -129,15 +129,21 @@ public sealed class C3PhySkinnerTests
             C3PhySkinner.Calculate(mesh, empty, 0, null, 0, 0, new Matrix4x4[1], output));
     }
 
-    private static C3PhyMesh Mesh(C3PhyVertex[] vertices) =>
-        new("Mesh", 0, vertices, [], Matrix4x4.Identity, Vector3.Zero,
+    private static C3PhyMesh Mesh(C3PhyVertex[] vertices)
+    {
+        return new C3PhyMesh("Mesh", 0, vertices, [], Matrix4x4.Identity, Vector3.Zero,
             Vector3.Zero, 1, ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty,
             ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty);
+    }
 
     private static C3PhyVertex Vertex(Vector3 position, Vector3 normal, Vector2 uv,
-        uint index2, float weight2, uint index1 = 0, float weight1 = 0) =>
-        new(position, normal, uv, 0, index2, index1, weight2, weight1);
+        uint index2, float weight2, uint index1 = 0, float weight1 = 0)
+    {
+        return new C3PhyVertex(position, normal, uv, 0, index2, index1, weight2, weight1);
+    }
 
-    private static void AssertClose(float expected, float actual) =>
+    private static void AssertClose(float expected, float actual)
+    {
         Assert.InRange(actual, expected - 0.0001f, expected + 0.0001f);
+    }
 }

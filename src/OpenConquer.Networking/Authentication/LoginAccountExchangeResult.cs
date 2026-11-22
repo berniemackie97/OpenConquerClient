@@ -159,5 +159,8 @@ internal sealed class LoginAccountExchangeResult : IAsyncDisposable
         return _session?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
 
-    public override string ToString() => $"LoginAccountExchangeResult {{ IsSuccess = {IsSuccess} }}";
+    public override string ToString()
+    {
+        return $"LoginAccountExchangeResult {{ IsSuccess = {IsSuccess} }}";
+    }
 }

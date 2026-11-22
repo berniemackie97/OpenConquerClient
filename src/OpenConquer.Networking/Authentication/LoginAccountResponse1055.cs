@@ -18,7 +18,10 @@ internal readonly record struct LoginAccountResponse1055(
     internal bool IsSuccess => SessionToken != 0;
 
     // Deliberately exclude session identifiers, authentication keys, and untrusted endpoints.
-    public override string ToString() => $"{nameof(LoginAccountResponse1055)} {{ IsSuccess = {IsSuccess} }}";
+    public override string ToString()
+    {
+        return $"{nameof(LoginAccountResponse1055)} {{ IsSuccess = {IsSuccess} }}";
+    }
 
     internal static bool TryRead(ReadOnlySpan<byte> frame, out LoginAccountResponse1055 response)
     {

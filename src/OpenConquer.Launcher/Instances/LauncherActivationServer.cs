@@ -76,7 +76,10 @@ internal sealed class LauncherActivationServer : IAsyncDisposable
         }
     }
 
-    public ValueTask DisposeAsync() => new(StopAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(StopAsync());
+    }
 
     private async Task DrainAsync(Task cancellation, Task listener)
     {

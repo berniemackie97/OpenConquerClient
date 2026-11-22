@@ -15,7 +15,10 @@ internal static class LauncherActivationProtocol
     public const byte Accepted = 1;
     public const byte Unavailable = 2;
 
-    public static bool IsActivationRequest(ReadOnlySpan<byte> request) => request.SequenceEqual(s_request);
+    public static bool IsActivationRequest(ReadOnlySpan<byte> request)
+    {
+        return request.SequenceEqual(s_request);
+    }
 
     public static async Task<bool> TryActivateAsync(string pipeName, CancellationToken cancellationToken)
     {

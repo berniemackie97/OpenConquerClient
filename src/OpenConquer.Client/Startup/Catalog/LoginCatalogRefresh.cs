@@ -122,7 +122,10 @@ internal sealed class LoginCatalogRefresh : IDisposable
         }
     }
 
-    public Task StopAsync() => _stopTask ??= StopCoreAsync();
+    public Task StopAsync()
+    {
+        return _stopTask ??= StopCoreAsync();
+    }
 
     private async Task StopCoreAsync()
     {
@@ -145,10 +148,16 @@ internal sealed class LoginCatalogRefresh : IDisposable
         }).ConfigureAwait(false);
     }
 
-    private static bool IsAcquisitionFailure(Exception failure) =>
-        failure is HttpRequestException or IOException or InvalidDataException or TimeoutException or OperationCanceledException;
+    private static bool IsAcquisitionFailure(Exception failure)
+    {
+        return failure is HttpRequestException or IOException or InvalidDataException or TimeoutException
+            or OperationCanceledException;
+    }
 
-    public void Dispose() => StopAsync().GetAwaiter().GetResult();
+    public void Dispose()
+    {
+        StopAsync().GetAwaiter().GetResult();
+    }
 
     private static DateTimeOffset NextRefresh(DateTimeOffset now, DateTimeOffset expiresAt)
     {

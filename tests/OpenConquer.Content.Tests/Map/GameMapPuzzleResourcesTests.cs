@@ -139,6 +139,8 @@ public sealed class GameMapPuzzleResourcesTests
         return destination.ToArray();
     }
 
-    private static byte[] ReadPuzzle(string fileName) =>
-        File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "puzzle", fileName));
+    private static byte[] ReadPuzzle(string fileName)
+    {
+        return File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "puzzle", fileName));
+    }
 }

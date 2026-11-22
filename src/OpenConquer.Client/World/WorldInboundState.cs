@@ -91,9 +91,15 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         private set;
     }
 
-    internal bool Apply(ReadOnlyMemory<byte> packet) => GameWorldPacketDispatcher.Dispatch(packet.Span, this);
+    internal bool Apply(ReadOnlyMemory<byte> packet)
+    {
+        return GameWorldPacketDispatcher.Dispatch(packet.Span, this);
+    }
 
-    internal void CullRemoteRoles() => RemoteRoles.Cull(X, Y);
+    internal void CullRemoteRoles()
+    {
+        RemoteRoles.Cull(X, Y);
+    }
 
     bool IGameWorldPacketHandler.HandlePlayerSpawn(GamePlayerSpawn10014 player)
     {

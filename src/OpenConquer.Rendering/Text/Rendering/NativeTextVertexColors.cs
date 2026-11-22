@@ -7,5 +7,8 @@ namespace OpenConquer.Rendering.Text.Rendering;
 /// </summary>
 public readonly record struct NativeTextVertexColors(SpriteColor TopLeft, SpriteColor BottomLeft, SpriteColor TopRight, SpriteColor BottomRight)
 {
-    public static NativeTextVertexColors Solid(SpriteColor color) => new(color, color, color, color);
+    public static NativeTextVertexColors Solid(SpriteColor color)
+    {
+        return new NativeTextVertexColors(color, color, color, color);
+    }
 }

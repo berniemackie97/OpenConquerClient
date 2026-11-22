@@ -64,19 +64,22 @@ public sealed class RoleAudioFeedbackTests
         Assert.Throws<InvalidDataException>(() => new RoleAudioFeedback(ini, _ => { }));
     }
 
-    private static LoginAudioCue ExpectedCue(string filename) => filename.ToLowerInvariant() switch
+    private static LoginAudioCue ExpectedCue(string filename)
     {
-        "page.mp3" => LoginAudioCue.Page,
-        "error.mp3" => LoginAudioCue.Error,
-        "button_1.mp3" => LoginAudioCue.ButtonClick,
-        "button_2.mp3" => LoginAudioCue.ButtonHover,
-        "button_3.mp3" => LoginAudioCue.CharacterHover,
-        "click_1.mp3" => LoginAudioCue.CharacterSelect,
-        "confirm.mp3" => LoginAudioCue.Confirm,
-        "glide.mp3" => LoginAudioCue.Glide,
-        "key_1.mp3" => LoginAudioCue.KeyOne,
-        "key_2.mp3" => LoginAudioCue.KeyTwo,
-        "key_3.mp3" => LoginAudioCue.KeyThree,
-        _ => throw new InvalidDataException($"Unexpected retail role sound file '{filename}'."),
-    };
+        return filename.ToLowerInvariant() switch
+        {
+            "page.mp3" => LoginAudioCue.Page,
+            "error.mp3" => LoginAudioCue.Error,
+            "button_1.mp3" => LoginAudioCue.ButtonClick,
+            "button_2.mp3" => LoginAudioCue.ButtonHover,
+            "button_3.mp3" => LoginAudioCue.CharacterHover,
+            "click_1.mp3" => LoginAudioCue.CharacterSelect,
+            "confirm.mp3" => LoginAudioCue.Confirm,
+            "glide.mp3" => LoginAudioCue.Glide,
+            "key_1.mp3" => LoginAudioCue.KeyOne,
+            "key_2.mp3" => LoginAudioCue.KeyTwo,
+            "key_3.mp3" => LoginAudioCue.KeyThree,
+            _ => throw new InvalidDataException($"Unexpected retail role sound file '{filename}'."),
+        };
+    }
 }

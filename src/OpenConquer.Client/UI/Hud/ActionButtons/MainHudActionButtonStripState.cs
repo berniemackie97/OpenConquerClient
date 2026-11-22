@@ -49,7 +49,10 @@ internal sealed class MainHudActionButtonStripState
         }
     }
 
-    public void ArmOrganiseBlink() => _organiseBlinkActive = true;
+    public void ArmOrganiseBlink()
+    {
+        _organiseBlinkActive = true;
+    }
 
     public void ResetOrganiseBlink()
     {

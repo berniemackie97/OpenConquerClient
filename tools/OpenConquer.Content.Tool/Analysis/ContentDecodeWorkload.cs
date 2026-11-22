@@ -76,8 +76,10 @@ internal static class ContentDecodeWorkload
 
     private static (WorldMapPuzzleValidationResult Puzzle, WorldMapSceneryAniValidationResult Scenery,
         WorldMapTerrainSceneValidationResult Terrain) DecodeResources(IClientContentSource source,
-        GameMapContent map) =>
-        (WorldMapPuzzleValidator.Validate(source, map),
+        GameMapContent map)
+    {
+        return (WorldMapPuzzleValidator.Validate(source, map),
             WorldMapSceneryAniValidator.Validate(source, map),
             WorldMapTerrainSceneValidator.Validate(source, map));
+    }
 }

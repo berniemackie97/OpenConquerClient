@@ -56,7 +56,10 @@ internal sealed class WorldFrameIngress : IAsyncDisposable
         return completed.GetAwaiter().GetResult() ?? throw new EndOfStreamException("GameServer closed the admitted world session.");
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {

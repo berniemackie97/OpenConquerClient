@@ -12,7 +12,10 @@ internal static class GameMissionCatalog1134
     private const int HeaderLength = 8;
     private const int RecordLength = 12;
 
-    internal static int GetPacketLength(int missionCount) => GetPacketLength(missionCount, nameof(missionCount));
+    internal static int GetPacketLength(int missionCount)
+    {
+        return GetPacketLength(missionCount, nameof(missionCount));
+    }
 
     private static int GetPacketLength(int missionCount, string parameterName)
     {

@@ -14,7 +14,10 @@ public sealed class SelectCharacterIni
 
     private readonly Dictionary<string, Dictionary<string, string>> _sections;
 
-    private SelectCharacterIni(Dictionary<string, Dictionary<string, string>> sections) => _sections = sections;
+    private SelectCharacterIni(Dictionary<string, Dictionary<string, string>> sections)
+    {
+        _sections = sections;
+    }
 
     /// <summary>Reads the original role configuration from the client content source.</summary>
     public static SelectCharacterIni Load(IClientContentSource contentSource)
@@ -135,5 +138,8 @@ public sealed class SelectCharacterIni
         return Encoding.Latin1.GetString([.. bytes]);
     }
 
-    private static bool IsHex(byte value) => char.IsAsciiHexDigit((char)value);
+    private static bool IsHex(byte value)
+    {
+        return char.IsAsciiHexDigit((char)value);
+    }
 }

@@ -68,20 +68,30 @@ public sealed class SignedCatalogRealmIconTests
         Assert.Throws<InvalidDataException>(() => SignedLoginCatalog.Read(payload, SignedLoginCatalogTests.Sign(signer, VersionTwoPayload()), authority, s_now));
     }
 
-    private static byte[] VersionTwoPayload() => JsonSerializer.SerializeToUtf8Bytes(new
+    private static byte[] VersionTwoPayload()
     {
-        schemaVersion = 2,
-        productId = "OpenConquer",
-        sequence = 7,
-        issuedAt = "2026-10-11T19:00:00Z",
-        expiresAt = "2026-10-11T21:00:00Z",
-        regions = new[]
+        return JsonSerializer.SerializeToUtf8Bytes(new
         {
-            new
+            schemaVersion = 2,
+            productId = "OpenConquer",
+            sequence = 7,
+            issuedAt = "2026-10-11T19:00:00Z",
+            expiresAt = "2026-10-11T21:00:00Z",
+            regions = new[]
             {
-                id = "north", name = "North",
-                servers = new[] { new { id = "realm-1", name = "Realm One", protocolServerName = "RealmProtocol", accountHost = "login.example.org", accountPort = 9958, iconId = "g01s01" } },
+                new
+                {
+                    id = "north", name = "North",
+                    servers = new[]
+                    {
+                        new
+                        {
+                            id = "realm-1", name = "Realm One", protocolServerName = "RealmProtocol",
+                            accountHost = "login.example.org", accountPort = 9958, iconId = "g01s01"
+                        }
+                    },
+                },
             },
-        },
-    });
+        });
+    }
 }

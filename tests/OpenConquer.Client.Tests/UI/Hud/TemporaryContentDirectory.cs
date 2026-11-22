@@ -15,7 +15,10 @@ internal sealed class TemporaryContentDirectory : IDisposable
         get;
     }
 
-    public void WriteText(string relativePath, string contents) => WriteBytes(relativePath, Encoding.Latin1.GetBytes(contents));
+    public void WriteText(string relativePath, string contents)
+    {
+        WriteBytes(relativePath, Encoding.Latin1.GetBytes(contents));
+    }
 
     public void WriteBytes(string relativePath, ReadOnlySpan<byte> contents)
     {

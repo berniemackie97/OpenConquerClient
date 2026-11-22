@@ -472,11 +472,20 @@ public sealed class DesktopWindow : IDisposable
         PrimaryPointerReleased?.Invoke(framebufferPoint);
     }
 
-    private void OnKeyPressed(DesktopKeyEvent key) => KeyPressed?.Invoke(key);
+    private void OnKeyPressed(DesktopKeyEvent key)
+    {
+        KeyPressed?.Invoke(key);
+    }
 
-    private void OnKeyReleased(DesktopKeyEvent key) => KeyReleased?.Invoke(key);
+    private void OnKeyReleased(DesktopKeyEvent key)
+    {
+        KeyReleased?.Invoke(key);
+    }
 
-    private void OnTextEntered(char character) => TextEntered?.Invoke(character);
+    private void OnTextEntered(char character)
+    {
+        TextEntered?.Invoke(character);
+    }
 
     private void OnFocusChanged(bool hasFocus)
     {

@@ -31,8 +31,13 @@ public sealed class WorldRoleMesh : IDisposable
         renderer.DrawIndexedMesh(_gpuMesh, texture, main, MeshCullMode.Clockwise);
     }
 
-    public void DrawShadow(OpenGLRenderer renderer, Matrix4x4 shadow) =>
+    public void DrawShadow(OpenGLRenderer renderer, Matrix4x4 shadow)
+    {
         renderer.DrawIndexedMeshShadow(_gpuMesh, shadow, MeshCullMode.Clockwise);
+    }
 
-    public void Dispose() => _gpuMesh.Dispose();
+    public void Dispose()
+    {
+        _gpuMesh.Dispose();
+    }
 }

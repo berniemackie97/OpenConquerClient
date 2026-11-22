@@ -108,9 +108,15 @@ internal sealed class WorldHeroEquipment
         }
     }
 
-    private static bool IsTrackablePosition(uint position) => position is (>= 1 and <= 18) or (>= 21 and <= 29);
+    private static bool IsTrackablePosition(uint position)
+    {
+        return position is (>= 1 and <= 18) or (>= 21 and <= 29);
+    }
 
-    private static bool IsArrow(uint typeId) => typeId % 10_000_000 / 100_000 == 10 && typeId % 100_000 / 10_000 == 5;
+    private static bool IsArrow(uint typeId)
+    {
+        return typeId % 10_000_000 / 100_000 == 10 && typeId % 100_000 / 10_000 == 5;
+    }
 
     internal bool Apply(GameItem1009 packet)
     {

@@ -103,10 +103,17 @@ public sealed class ClientSessionTests : IDisposable
         Assert.Equal([first, second], combined.InnerExceptions);
     }
 
-    private ClientLogin CreateLogin(Func<bool> canLogin, LoginCatalogBinding? catalog = null) => new(
-        new ClientRoleCreationTests.MissingContentSource(),
-        new LoginScreen(LoginStageLayout.Create(new LogicalRenderSize(1024, 768)), new LoginAccountHistory(_folder), "5517", _ => { }),
-        new LoginAttemptCoordinator(_folder), new LoginRegistrationCoordinator(), LoginErrorTests.Messages(), null, canLogin, catalog: catalog);
+    private ClientLogin CreateLogin(Func<bool> canLogin, LoginCatalogBinding? catalog = null)
+    {
+        return new ClientLogin(
+            new ClientRoleCreationTests.MissingContentSource(),
+            new LoginScreen(LoginStageLayout.Create(new LogicalRenderSize(1024, 768)), new LoginAccountHistory(_folder),
+                "5517", _ =>
+                {
+                }),
+            new LoginAttemptCoordinator(_folder), new LoginRegistrationCoordinator(), LoginErrorTests.Messages(), null,
+            canLogin, catalog: catalog);
+    }
 
     private static async Task<SignedLoginCatalog?> WaitForCancellationAsync(CancellationToken token)
     {
@@ -114,5 +121,8 @@ public sealed class ClientSessionTests : IDisposable
         return null;
     }
 
-    public void Dispose() => Directory.Delete(_folder, recursive: true);
+    public void Dispose()
+    {
+        Directory.Delete(_folder, recursive: true);
+    }
 }

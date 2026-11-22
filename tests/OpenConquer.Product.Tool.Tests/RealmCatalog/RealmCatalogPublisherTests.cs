@@ -196,8 +196,12 @@ public sealed class RealmCatalogPublisherTests
             File.WriteAllText(DefinitionPath, Definition, Encoding.UTF8);
         }
 
-        public RealmCatalogPublishOptions Options() => new(DefinitionPath, PrivateKeyPath, 9, s_now.AddMinutes(-1), s_now.AddHours(4),
-            new Uri("https://catalog.example.org/realms.json"), new Uri("https://catalog.example.org/realms.sig"), OutputPath);
+        public RealmCatalogPublishOptions Options()
+        {
+            return new RealmCatalogPublishOptions(DefinitionPath, PrivateKeyPath, 9, s_now.AddMinutes(-1), s_now.AddHours(4),
+                new Uri("https://catalog.example.org/realms.json"), new Uri("https://catalog.example.org/realms.sig"),
+                OutputPath);
+        }
 
         public void Dispose()
         {

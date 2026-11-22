@@ -87,18 +87,21 @@ internal readonly record struct GameWorldAction10010(
     /// Reads the fixed base from the native message buffer. Parse 0x6FEB93 has no size rule and does not read the +37
     /// string list; fields past a short message read zero.
     /// </summary>
-    internal static GameWorldAction10010 Read(GameMessageBuffer message) => new(
-        message.ReadUInt32(4),
-        message.ReadUInt32(8),
-        message.ReadUInt32(12),
-        message.ReadUInt32(16),
-        message.ReadUInt16(20),
-        message.ReadUInt16(22),
-        message.ReadUInt16(24),
-        message.ReadUInt16(26),
-        message.ReadUInt32(28),
-        message.ReadUInt32(32),
-        message.ReadByte(36));
+    internal static GameWorldAction10010 Read(GameMessageBuffer message)
+    {
+        return new GameWorldAction10010(
+            message.ReadUInt32(4),
+            message.ReadUInt32(8),
+            message.ReadUInt32(12),
+            message.ReadUInt32(16),
+            message.ReadUInt16(20),
+            message.ReadUInt16(22),
+            message.ReadUInt16(24),
+            message.ReadUInt16(26),
+            message.ReadUInt32(28),
+            message.ReadUInt32(32),
+            message.ReadByte(36));
+    }
 
     /// <summary>
     /// Reads through native header/type validation and the zeroed message buffer (0x6FEB93); there is no fixed-size

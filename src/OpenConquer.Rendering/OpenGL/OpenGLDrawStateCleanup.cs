@@ -140,13 +140,44 @@ internal sealed class OpenGLDrawStateCleanup
 
     private sealed class OpenGLDrawStateOperations(GL gl) : IOpenGLDrawStateOperations
     {
-        public void ActivateTextureZero() => gl.ActiveTexture(TextureUnit.Texture0);
-        public void UnbindSamplerZero() => gl.BindSampler(0, 0);
-        public void UnbindTexture2D() => gl.BindTexture(TextureTarget.Texture2D, texture: 0);
-        public void UnbindVertexArray() => gl.BindVertexArray(0);
-        public void UnbindArrayBuffer() => gl.BindBuffer(BufferTargetARB.ArrayBuffer, buffer: 0);
-        public void UnbindProgram() => gl.UseProgram(0);
-        public void DisableBlending() => gl.Disable(EnableCap.Blend);
-        public void EnableDepthWrites() => gl.DepthMask(true);
+        public void ActivateTextureZero()
+        {
+            gl.ActiveTexture(TextureUnit.Texture0);
+        }
+
+        public void UnbindSamplerZero()
+        {
+            gl.BindSampler(0, 0);
+        }
+
+        public void UnbindTexture2D()
+        {
+            gl.BindTexture(TextureTarget.Texture2D, texture: 0);
+        }
+
+        public void UnbindVertexArray()
+        {
+            gl.BindVertexArray(0);
+        }
+
+        public void UnbindArrayBuffer()
+        {
+            gl.BindBuffer(BufferTargetARB.ArrayBuffer, buffer: 0);
+        }
+
+        public void UnbindProgram()
+        {
+            gl.UseProgram(0);
+        }
+
+        public void DisableBlending()
+        {
+            gl.Disable(EnableCap.Blend);
+        }
+
+        public void EnableDepthWrites()
+        {
+            gl.DepthMask(true);
+        }
     }
 }

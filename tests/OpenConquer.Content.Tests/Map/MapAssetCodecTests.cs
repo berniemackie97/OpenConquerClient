@@ -194,14 +194,25 @@ public sealed class MapAssetCodecTests
         digest.CopyTo(bytes.AsSpan(descriptor + 20, 32));
     }
 
-    private static int SectionOffset(byte[] bytes, int descriptor) =>
-        checked((int)BinaryPrimitives.ReadInt64LittleEndian(bytes.AsSpan(descriptor + 4)));
+    private static int SectionOffset(byte[] bytes, int descriptor)
+    {
+        return checked((int)BinaryPrimitives.ReadInt64LittleEndian(bytes.AsSpan(descriptor + 4)));
+    }
 
-    private static MapAsset CreateMap() => new(
-        1010, "world/ground", 2, 1,
-        [new GameMapCell(1, 2, 3), new GameMapCell(4, 5, 6)],
-        [new MapTerrainObject("world/trees", 10, 20),
-            new MapAnimatedObject("world/animations/trees", "Sway", 30, 40)],
-        [new MapLayer(0, 18, 35, [new MapPuzzleLayerEntry("world/sky"),
-            new MapAnimationLayerEntry("world/animations/sky", "Cloud", 1, 2, 3, 4, 50, 6)])]);
+    private static MapAsset CreateMap()
+    {
+        return new MapAsset(
+            1010, "world/ground", 2, 1,
+            [new GameMapCell(1, 2, 3), new GameMapCell(4, 5, 6)],
+            [
+                new MapTerrainObject("world/trees", 10, 20),
+                new MapAnimatedObject("world/animations/trees", "Sway", 30, 40)
+            ],
+            [
+                new MapLayer(0, 18, 35, [
+                    new MapPuzzleLayerEntry("world/sky"),
+                    new MapAnimationLayerEntry("world/animations/sky", "Cloud", 1, 2, 3, 4, 50, 6)
+                ])
+            ]);
+    }
 }

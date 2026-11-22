@@ -239,7 +239,10 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         Publish(LoginAttemptStatus.Unavailable, LoginFailure.Resource(100116));
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {
@@ -449,8 +452,10 @@ internal sealed class LoginAttemptCoordinator : IAsyncDisposable
         }
     }
 
-    private void Publish(LoginAttemptStatus value, LoginFailure? failure = null) =>
+    private void Publish(LoginAttemptStatus value, LoginFailure? failure = null)
+    {
         Volatile.Write(ref _feedback, new LoginAttemptFeedback(value, failure));
+    }
 
     private sealed record AttemptResult(LoginAttemptStatus Status, GameServerHandshakeSession? Game,
         LoginFailure? Failure = null, GameWorldEntrySnapshot? World = null);

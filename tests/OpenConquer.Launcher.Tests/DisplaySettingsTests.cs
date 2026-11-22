@@ -7,7 +7,10 @@ public sealed class DisplaySettingsTests : IDisposable
 {
     private readonly string _root = Directory.CreateTempSubdirectory("oc-settings-").FullName;
     private string FilePath => Path.Combine(_root, "display.json");
-    public void Dispose() => Directory.Delete(_root, recursive: true);
+    public void Dispose()
+    {
+        Directory.Delete(_root, recursive: true);
+    }
 
     [Fact]
     public async Task MissingSettings_UseDefaultsWithoutCreatingFiles()
@@ -44,8 +47,11 @@ public sealed class DisplaySettingsTests : IDisposable
     [InlineData(16385, 1)]
     [InlineData(7680, 4321)]
     [InlineData(int.MaxValue, int.MaxValue)]
-    public void Dimensions_RejectUnsupportedSizesWithoutOverflow(int width, int height) =>
-        Assert.Throws<ArgumentOutOfRangeException>(() => new DisplayPreferences(width, height, GameWindowMode.Resizable, GamePresentation.Fit));
+    public void Dimensions_RejectUnsupportedSizesWithoutOverflow(int width, int height)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new DisplayPreferences(width, height, GameWindowMode.Resizable, GamePresentation.Fit));
+    }
 
     [Fact]
     public void Preferences_RejectUndefinedEnumsAndAcceptMaximumArea()

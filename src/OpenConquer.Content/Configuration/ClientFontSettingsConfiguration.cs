@@ -318,5 +318,8 @@ public sealed class ClientFontSettingsConfiguration
         };
     }
 
-    private static bool IsAsciiWhiteSpace(char character) => character is ' ' or '\t' or '\n' or '\v' or '\f' or '\r';
+    private static bool IsAsciiWhiteSpace(char character)
+    {
+        return character is ' ' or '\t' or '\n' or '\v' or '\f' or '\r';
+    }
 }

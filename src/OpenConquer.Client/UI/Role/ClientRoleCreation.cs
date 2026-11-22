@@ -297,5 +297,8 @@ internal sealed class ClientRoleCreation : IAsyncDisposable
         return new RoleCreationScreen(game, accountName, _ini, _text, _rasters, _glyphInk.HasMoreThanFivePixels, _playSound, _clock);
     }
 
-    private void OnReturnRequested() => _returnRequested = true;
+    private void OnReturnRequested()
+    {
+        _returnRequested = true;
+    }
 }

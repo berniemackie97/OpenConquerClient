@@ -60,16 +60,20 @@ internal sealed record ContentLayoutReport(
         }
     }
 
-    private static long Percentile(long[] orderedLengths, int percentile) =>
-        orderedLengths[(int)(((long)orderedLengths.Length * percentile + 99) / 100 - 1)];
+    private static long Percentile(long[] orderedLengths, int percentile)
+    {
+        return orderedLengths[(int)(((long)orderedLengths.Length * percentile + 99) / 100 - 1)];
+    }
 
     private static ContentLayoutGroup[] Group(
-        IReadOnlyList<ContentManifestEntry> entries, Func<ContentManifestEntry, string> key) =>
-        entries.GroupBy(key, StringComparer.Ordinal)
+        IReadOnlyList<ContentManifestEntry> entries, Func<ContentManifestEntry, string> key)
+    {
+        return entries.GroupBy(key, StringComparer.Ordinal)
             .Select(group => new ContentLayoutGroup(group.Key, group.Count(), group.Sum(entry => entry.Length)))
             .OrderByDescending(group => group.Length)
             .ThenBy(group => group.Name, StringComparer.Ordinal)
             .ToArray();
+    }
 
     private static string Family(string path)
     {

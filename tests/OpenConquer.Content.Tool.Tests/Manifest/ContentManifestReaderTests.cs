@@ -46,9 +46,11 @@ public sealed class ContentManifestReaderTests
         Assert.IsAssignableFrom<JsonException>(exception.InnerException);
     }
 
-    private static ContentManifest CreateManifest() =>
-        new("5517", new string('0', 64),
+    private static ContentManifest CreateManifest()
+    {
+        return new ContentManifest("5517", new string('0', 64),
         [
             new ContentManifestEntry("data/a.bin", "data/a.bin", 4, new string('a', 64), "unknown"),
         ]);
+    }
 }

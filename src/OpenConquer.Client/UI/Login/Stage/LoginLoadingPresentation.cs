@@ -12,8 +12,7 @@ namespace OpenConquer.Client.UI.Login.Stage;
 internal sealed class LoginLoadingPresentation : IDisposable
 {
     private static readonly SpriteColor s_traceColor = new(178, 122, 45, 255);
-    private static readonly NativeTextRenderOptions s_traceStyle = new(NativeTextRenderStyle.Normal,
-        s_traceColor, s_traceColor, 0, 0, NativeTextVertexColors.Solid(s_traceColor));
+    private static readonly NativeTextRenderOptions s_traceStyle = new(NativeTextRenderStyle.Normal, s_traceColor, s_traceColor, 0, 0, NativeTextVertexColors.Solid(s_traceColor));
 
     private static readonly string[] s_pictures =
     [
@@ -31,8 +30,7 @@ internal sealed class LoginLoadingPresentation : IDisposable
     private OpenGLTextLayout? _traceLayout;
     private string? _lastTrace;
 
-    internal LoginLoadingPresentation(OpenGLGraphicsDevice device, LoginStageLayout layout,
-        IClientContentSource source, LoginLoadingTimeline timeline)
+    internal LoginLoadingPresentation(OpenGLGraphicsDevice device, LoginStageLayout layout, IClientContentSource source, LoginLoadingTimeline timeline)
     {
         ArgumentNullException.ThrowIfNull(device);
         _layout = layout ?? throw new ArgumentNullException(nameof(layout));
@@ -43,14 +41,11 @@ internal sealed class LoginLoadingPresentation : IDisposable
         {
             foreach (string name in s_pictures)
             {
-                RgbaImage image = TargaImageLoader.Load(source,
-                    $"ui/loading/artwork/{name}.tga", ContentLookupMode.LooseOnly);
-                _pictures.Add(name, _ownership.Track(device.CreateTexture2D(
-                    image.Width, image.Height, image.Pixels.Span)));
+                RgbaImage image = TargaImageLoader.Load(source, $"ui/loading/artwork/{name}.tga", ContentLookupMode.LooseOnly);
+                _pictures.Add(name, _ownership.Track(device.CreateTexture2D(image.Width, image.Height, image.Pixels.Span)));
             }
 
-            _traceFont = _ownership.Track(new OpenGLTextContext(device, "Arial",
-                Math.Max(1, layout.Scale(14)), 0, true));
+            _traceFont = _ownership.Track(new OpenGLTextContext(device, "Arial", Math.Max(1, layout.Scale(14)), 0, true));
         }
         catch
         {
@@ -91,7 +86,10 @@ internal sealed class LoginLoadingPresentation : IDisposable
         }
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 
     private void Draw(OpenGLRenderer renderer, string name, double x, double y, double width, double height)
     {
@@ -109,7 +107,6 @@ internal sealed class LoginLoadingPresentation : IDisposable
 
         LoginRect field = _layout.PlaceExact(86, 290, 856.1, 20.1);
         using OpenGLRenderer.ClipScope clip = renderer.Clip(field.X, field.Y, field.Width, field.Height);
-        _traceFont.Draw(renderer, _traceLayout!, s_traceStyle,
-            field.X + (field.Width - _traceLayout!.WidthPixels) / 2, field.Y + _layout.Scale(3));
+        _traceFont.Draw(renderer, _traceLayout!, s_traceStyle, field.X + (field.Width - _traceLayout!.WidthPixels) / 2, field.Y + _layout.Scale(3));
     }
 }

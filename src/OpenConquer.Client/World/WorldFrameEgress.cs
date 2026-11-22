@@ -89,7 +89,10 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
             : _sendActionReply!(reply.ActionResponse, now, _stopping.Token);
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {

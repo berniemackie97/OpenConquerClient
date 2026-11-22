@@ -5,7 +5,6 @@ using OpenConquer.Rendering.OpenGL.Resources;
 
 namespace OpenConquer.Client.UI.Login.Stage;
 
-/// <summary>Root depth 274: logo.swf, looping from the stage frame it is loaded on.</summary>
 internal sealed class LoginLogoPresentation : IDisposable
 {
     private readonly ResourceOwnership _ownership = new();
@@ -32,8 +31,6 @@ internal sealed class LoginLogoPresentation : IDisposable
         }
     }
 
-    /// <param name="renderer">The active renderer.</param>
-    /// <param name="frame">Stage frames since the logo was loaded.</param>
     public void Draw(OpenGLRenderer renderer, long frame)
     {
         ArgumentNullException.ThrowIfNull(renderer);
@@ -44,5 +41,8 @@ internal sealed class LoginLogoPresentation : IDisposable
         renderer.DrawSprite(picture, bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 }

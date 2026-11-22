@@ -21,13 +21,22 @@ public sealed class LauncherHeadlessFixture : IAsyncDisposable
         return AppBuilder.Configure<Application>().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = true });
     }
 
-    internal Task Dispatch(Action test, CancellationToken token) => _session.Dispatch(test, token);
-
-    internal Task Dispatch(Func<Task> test, CancellationToken token) => _session.Dispatch(async () =>
+    internal Task Dispatch(Action test, CancellationToken token)
     {
-        await test();
-        return true;
-    }, token);
+        return _session.Dispatch(test, token);
+    }
 
-    public ValueTask DisposeAsync() => _session.DisposeAsync();
+    internal Task Dispatch(Func<Task> test, CancellationToken token)
+    {
+        return _session.Dispatch(async () =>
+        {
+            await test();
+            return true;
+        }, token);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        return _session.DisposeAsync();
+    }
 }

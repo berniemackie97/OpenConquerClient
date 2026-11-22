@@ -377,5 +377,8 @@ internal static class ReleasePackageExtractor
     }
 
     private static ReleasePackageExtractionResult.Rejected Rejected(
-        ReleasePackageIssue issue) => new(issue);
+        ReleasePackageIssue issue)
+    {
+        return new ReleasePackageExtractionResult.Rejected(issue);
+    }
 }

@@ -30,13 +30,19 @@ internal readonly record struct GameModeUsage(int HighTimes, int StandardTimes, 
     /// <summary>Low Definition asks for confirmation only until it has been used once.</summary>
     public bool LowNeedsConfirmation => LowTimes == 0;
 
-    public GameModeUsage Record(GameMode mode) => mode switch
+    public GameModeUsage Record(GameMode mode)
     {
-        GameMode.High => this with { HighTimes = Increment(HighTimes) },
-        GameMode.Standard => this with { StandardTimes = Increment(StandardTimes) },
-        GameMode.Low => this with { LowTimes = Increment(LowTimes) },
-        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown start mode."),
-    };
+        return mode switch
+        {
+            GameMode.High => this with { HighTimes = Increment(HighTimes) },
+            GameMode.Standard => this with { StandardTimes = Increment(StandardTimes) },
+            GameMode.Low => this with { LowTimes = Increment(LowTimes) },
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown start mode."),
+        };
+    }
 
-    private static int Increment(int times) => times == int.MaxValue ? times : times + 1;
+    private static int Increment(int times)
+    {
+        return times == int.MaxValue ? times : times + 1;
+    }
 }

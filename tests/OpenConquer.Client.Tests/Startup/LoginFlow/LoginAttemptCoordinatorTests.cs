@@ -433,8 +433,14 @@ public sealed partial class LoginAttemptCoordinatorTests : IDisposable
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => now;
+        public override DateTimeOffset GetUtcNow()
+        {
+            return now;
+        }
     }
 
-    public void Dispose() => Directory.Delete(_folder, recursive: true);
+    public void Dispose()
+    {
+        Directory.Delete(_folder, recursive: true);
+    }
 }

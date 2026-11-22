@@ -96,7 +96,10 @@ public sealed class LoginAccountSessionTests
         return listener;
     }
 
-    private static int Port(TcpListener listener) => ((IPEndPoint)listener.LocalEndpoint).Port;
+    private static int Port(TcpListener listener)
+    {
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
 
     private static async Task<int> SendThenObserveCloseAsync(TcpListener listener, byte[] bytes, int chunk)
     {

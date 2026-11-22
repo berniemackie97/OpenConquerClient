@@ -152,7 +152,10 @@ internal sealed partial class RoleScripts : ICharacterSelectionHost
         SetNextButtonState();
     }
 
-    void ICharacterSelectionHost.RollOutItem(int id) => ShowInfo(Root.ClipOrNull("jobInfo"), SelectJob);
+    void ICharacterSelectionHost.RollOutItem(int id)
+    {
+        ShowInfo(Root.ClipOrNull("jobInfo"), SelectJob);
+    }
 
     private void RootFrame1(FlashClip root)
     {

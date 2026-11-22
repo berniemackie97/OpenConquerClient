@@ -97,7 +97,10 @@ public sealed class C3RoleCatalog
 
     public IReadOnlyList<string> VirtualMeshNames => [.. _configuration.VirtualMeshNames.Order(StringComparer.Ordinal)];
 
-    public bool IsAttachmentMesh(string name) => _configuration.VirtualMeshNames.Contains(name);
+    public bool IsAttachmentMesh(string name)
+    {
+        return _configuration.VirtualMeshNames.Contains(name);
+    }
 
     private static ReadOnlyMemory<byte> ReadCoreDatabase(IClientContentSource source,
         C3DatabaseArchive archive, string path)

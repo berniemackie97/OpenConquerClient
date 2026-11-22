@@ -94,6 +94,9 @@ public sealed class WorldContentLoadTests
             get; private set;
         }
 
-        public void Dispose() => DisposeCalls++;
+        public void Dispose()
+        {
+            DisposeCalls++;
+        }
     }
 }

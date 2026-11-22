@@ -40,7 +40,10 @@ internal sealed class WorldRemoteRolePresentation(Func<WorldRoleAppearance, Canc
     internal int SelectedRoleCount => _roles.Count;
     internal int LoadedAppearanceCount => _renderers.Count;
 
-    internal bool Includes(uint entityId) => _roles.ContainsKey(entityId);
+    internal bool Includes(uint entityId)
+    {
+        return _roles.ContainsKey(entityId);
+    }
 
     internal void Synchronize(WorldRemoteRoles roles, int heroX, int heroY)
     {
@@ -235,7 +238,10 @@ internal sealed class WorldRemoteRolePresentation(Func<WorldRoleAppearance, Canc
         }
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {

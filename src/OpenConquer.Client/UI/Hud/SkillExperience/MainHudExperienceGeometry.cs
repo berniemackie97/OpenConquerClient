@@ -34,8 +34,15 @@ internal readonly record struct MainHudExperienceBandSequence
         get;
     }
 
-    public static MainHudExperienceBandSequence Single(MainHudExperienceBandDraw draw) => new(1, draw, default, default);
-    public static MainHudExperienceBandSequence Triple(MainHudExperienceBandDraw first, MainHudExperienceBandDraw second, MainHudExperienceBandDraw third) => new(3, first, second, third);
+    public static MainHudExperienceBandSequence Single(MainHudExperienceBandDraw draw)
+    {
+        return new MainHudExperienceBandSequence(1, draw, default, default);
+    }
+
+    public static MainHudExperienceBandSequence Triple(MainHudExperienceBandDraw first, MainHudExperienceBandDraw second, MainHudExperienceBandDraw third)
+    {
+        return new MainHudExperienceBandSequence(3, first, second, third);
+    }
 }
 
 internal static class MainHudExperienceGeometry

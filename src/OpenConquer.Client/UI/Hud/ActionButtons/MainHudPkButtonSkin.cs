@@ -10,12 +10,15 @@ internal enum MainHudPkButtonSkin
 
 internal static class MainHudPkButtonSkins
 {
-    public static string GetAniSectionName(MainHudPkButtonSkin skin) => skin switch
+    public static string GetAniSectionName(MainHudPkButtonSkin skin)
     {
-        MainHudPkButtonSkin.Button47 => "Button47",
-        MainHudPkButtonSkin.Button49 => "Button49",
-        MainHudPkButtonSkin.Button48 => "Button48",
-        MainHudPkButtonSkin.Button412 => "Button412",
-        _ => throw new ArgumentOutOfRangeException(nameof(skin), skin, "Unknown native PK-button skin."),
-    };
+        return skin switch
+        {
+            MainHudPkButtonSkin.Button47 => "Button47",
+            MainHudPkButtonSkin.Button49 => "Button49",
+            MainHudPkButtonSkin.Button48 => "Button48",
+            MainHudPkButtonSkin.Button412 => "Button412",
+            _ => throw new ArgumentOutOfRangeException(nameof(skin), skin, "Unknown native PK-button skin."),
+        };
+    }
 }

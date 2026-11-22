@@ -53,8 +53,10 @@ public sealed class MissionCatalogTests
     [InlineData("[TotalMission]\nTotalMission=1\n[1]\nMissionId=garbage\n")]
     [InlineData("[TotalMission]\nTotalMission=1\n[1]\nMissionId=0x\n")]
     [InlineData("[TotalMission]\nTotalMission=2\n[1]\nMissionId=600\n")]
-    public void Load_FailsOnMissingOrInvalidCatalogValues(string text) =>
+    public void Load_FailsOnMissingOrInvalidCatalogValues(string text)
+    {
         Assert.Throws<InvalidDataException>(() => Load(text));
+    }
 
     [Fact]
     public void Load_RejectsTooManyDistinctIdsButAllowsDuplicateRows()

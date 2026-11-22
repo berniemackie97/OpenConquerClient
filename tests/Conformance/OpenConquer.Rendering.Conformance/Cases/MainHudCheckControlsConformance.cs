@@ -258,9 +258,15 @@ internal static class MainHudCheckControlsConformance
         }
     }
 
-    private static CheckFixture C(MainHudCheckControlId id, string sectionName, int x, int y800, int y1024, params FrameFixture[] frames) => new(id, sectionName, x, y800, y1024, frames);
+    private static CheckFixture C(MainHudCheckControlId id, string sectionName, int x, int y800, int y1024, params FrameFixture[] frames)
+    {
+        return new CheckFixture(id, sectionName, x, y800, y1024, frames);
+    }
 
-    private static FrameFixture F(string path, string sha256) => new(path, sha256);
+    private static FrameFixture F(string path, string sha256)
+    {
+        return new FrameFixture(path, sha256);
+    }
 
     private readonly record struct CheckFixture(MainHudCheckControlId Id, string SectionName, int X, int Y800, int Y1024, FrameFixture[] Frames);
 

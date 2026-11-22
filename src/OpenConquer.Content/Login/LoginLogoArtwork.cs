@@ -40,9 +40,17 @@ public static class LoginLogoArtwork
 
     public static int PictureCount => s_pictures.Length;
 
-    public static int PictureAt(int frame) =>
-        (uint)frame < FrameCount ? s_pictureByFrame[frame] : throw new ArgumentOutOfRangeException(nameof(frame));
+    public static int PictureAt(int frame)
+    {
+        return (uint)frame < FrameCount
+            ? s_pictureByFrame[frame]
+            : throw new ArgumentOutOfRangeException(nameof(frame));
+    }
 
-    public static RgbaImage LoadPicture(int picture) =>
-        (uint)picture < (uint)s_pictures.Length ? EmbeddedMedia.Load(s_pictures[picture]) : throw new ArgumentOutOfRangeException(nameof(picture));
+    public static RgbaImage LoadPicture(int picture)
+    {
+        return (uint)picture < (uint)s_pictures.Length
+            ? EmbeddedMedia.Load(s_pictures[picture])
+            : throw new ArgumentOutOfRangeException(nameof(picture));
+    }
 }

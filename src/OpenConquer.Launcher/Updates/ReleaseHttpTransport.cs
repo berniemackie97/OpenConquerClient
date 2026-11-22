@@ -88,7 +88,10 @@ internal sealed class ReleaseHttpTransport : IDisposable
             $"OpenConquer.Launcher/{ManagedReleaseManifest.CurrentLauncherVersion}");
     }
 
-    public void Dispose() => _httpClient.Dispose();
+    public void Dispose()
+    {
+        _httpClient.Dispose();
+    }
 
     public async Task<ReleaseTransferResult<byte[]>> DownloadBytesAsync(
         Uri uri,
@@ -332,17 +335,20 @@ internal sealed class ReleaseHttpTransport : IDisposable
         return await source.ReadAsync(buffer, timeout.Token).ConfigureAwait(false);
     }
 
-    private static SocketsHttpHandler CreateHandler() => new()
+    private static SocketsHttpHandler CreateHandler()
     {
-        AllowAutoRedirect = false,
-        AutomaticDecompression = DecompressionMethods.None,
-        ConnectTimeout = TimeSpan.FromSeconds(15),
-        Credentials = null,
-        DefaultProxyCredentials = null,
-        MaxConnectionsPerServer = 2,
-        PooledConnectionLifetime = TimeSpan.FromMinutes(15),
-        UseCookies = false,
-    };
+        return new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            AutomaticDecompression = DecompressionMethods.None,
+            ConnectTimeout = TimeSpan.FromSeconds(15),
+            Credentials = null,
+            DefaultProxyCredentials = null,
+            MaxConnectionsPerServer = 2,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+            UseCookies = false,
+        };
+    }
 
     private static ReleaseTransferIssue? ValidateResponse(
         HttpResponseMessage response,

@@ -493,8 +493,10 @@ public sealed class FlashStageTests
         return FlashMovieReader.Read(Encoding.UTF8.GetBytes(json), "Test");
     }
 
-    private static string Raster(int index, string digest) =>
-        "{\"path\":\"r" + index + ".rgba.br\",\"width\":10,\"height\":10,\"sha256\":\"" + digest + "\"}";
+    private static string Raster(int index, string digest)
+    {
+        return "{\"path\":\"r" + index + ".rgba.br\",\"width\":10,\"height\":10,\"sha256\":\"" + digest + "\"}";
+    }
 
     private sealed class SparseRasters : IFlashRasterSource
     {
@@ -508,7 +510,10 @@ public sealed class FlashStageTests
 
     private sealed class TransparentRasters : IFlashRasterSource
     {
-        public ReadOnlyMemory<byte> Pixels(FlashMovie movie, int index) => new byte[10 * 10 * 4];
+        public ReadOnlyMemory<byte> Pixels(FlashMovie movie, int index)
+        {
+            return new byte[10 * 10 * 4];
+        }
     }
 
     private sealed class SquareRasters : IFlashRasterSource

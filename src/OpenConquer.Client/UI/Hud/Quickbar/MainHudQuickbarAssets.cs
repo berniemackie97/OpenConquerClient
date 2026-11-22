@@ -45,9 +45,20 @@ internal sealed class MainHudQuickbarAssets
         return frames.GetFrame(0);
     }
 
-    public RgbaImage? GetControlFrame0(string sectionName) => GetFrame0(ControlAniPath, sectionName);
-    public RgbaImage? GetMagicFrame0(string sectionName) => GetFrame0(MagicAniPath, sectionName);
-    public AniFrameSet? GetEffectFrames(string sectionName) => GetFrames(EffectAniPath, sectionName);
+    public RgbaImage? GetControlFrame0(string sectionName)
+    {
+        return GetFrame0(ControlAniPath, sectionName);
+    }
+
+    public RgbaImage? GetMagicFrame0(string sectionName)
+    {
+        return GetFrame0(MagicAniPath, sectionName);
+    }
+
+    public AniFrameSet? GetEffectFrames(string sectionName)
+    {
+        return GetFrames(EffectAniPath, sectionName);
+    }
 
     public RgbaImage? GetItemFrame(uint iconKey)
     {
@@ -59,7 +70,10 @@ internal sealed class MainHudQuickbarAssets
         return GetFrame0(ItemMinIconAniPath, $"Item{iconKey}") ?? GetFrame0(ItemMinIconAniPath, "ItemDefault");
     }
 
-    private RgbaImage? GetFrame0(string aniPath, string sectionName) => GetFrames(aniPath, sectionName)?.GetFrame(0);
+    private RgbaImage? GetFrame0(string aniPath, string sectionName)
+    {
+        return GetFrames(aniPath, sectionName)?.GetFrame(0);
+    }
 
     private AniFrameSet? GetFrames(string aniPath, string sectionName)
     {
@@ -80,15 +94,21 @@ internal sealed class MainHudQuickbarAssets
         }
     }
 
-    private AniIndexFile? GetIndex(string aniPath) =>
-        aniPath switch
+    private AniIndexFile? GetIndex(string aniPath)
+    {
+        return aniPath switch
         {
-            ControlAniPath => GetOrLoadIndex(ref _controlIndexLoaded, ref _controlIndex, ControlAniPath, ContentLookupMode.LooseOnly),
-            MagicAniPath => GetOrLoadIndex(ref _magicIndexLoaded, ref _magicIndex, MagicAniPath, ContentLookupMode.LooseThenPackage),
-            ItemMinIconAniPath => GetOrLoadIndex(ref _itemMinIconIndexLoaded, ref _itemMinIconIndex, ItemMinIconAniPath, ContentLookupMode.LooseThenPackage),
-            EffectAniPath => GetOrLoadIndex(ref _effectIndexLoaded, ref _effectIndex, EffectAniPath, ContentLookupMode.LooseThenPackage),
+            ControlAniPath => GetOrLoadIndex(ref _controlIndexLoaded, ref _controlIndex, ControlAniPath,
+                ContentLookupMode.LooseOnly),
+            MagicAniPath => GetOrLoadIndex(ref _magicIndexLoaded, ref _magicIndex, MagicAniPath,
+                ContentLookupMode.LooseThenPackage),
+            ItemMinIconAniPath => GetOrLoadIndex(ref _itemMinIconIndexLoaded, ref _itemMinIconIndex, ItemMinIconAniPath,
+                ContentLookupMode.LooseThenPackage),
+            EffectAniPath => GetOrLoadIndex(ref _effectIndexLoaded, ref _effectIndex, EffectAniPath,
+                ContentLookupMode.LooseThenPackage),
             _ => throw new ArgumentOutOfRangeException(nameof(aniPath), aniPath, "Unknown quickbar ANI index."),
         };
+    }
 
     private AniIndexFile? GetOrLoadIndex(ref bool loaded, ref AniIndexFile? index, string aniPath, ContentLookupMode lookupMode)
     {

@@ -103,7 +103,10 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
         }
     }
 
-    public void PointerReleased() => _dragging = false;
+    public void PointerReleased()
+    {
+        _dragging = false;
+    }
 
     /// <summary>Consumes focused command keys; Enter never authorizes a connection.</summary>
     public bool KeyPressed(DesktopKeyEvent key)
@@ -275,9 +278,15 @@ internal sealed class LoginCredentialInput : ILoginTextEditor, IDisposable
 
     bool ILoginTextEditor.HasFocus => Focus != LoginCredentialFocus.None;
 
-    string? ILoginTextEditor.SelectedText() => SelectedAccountText();
+    string? ILoginTextEditor.SelectedText()
+    {
+        return SelectedAccountText();
+    }
 
-    bool ILoginTextEditor.CutSelection() => CutSelectedAccount();
+    bool ILoginTextEditor.CutSelection()
+    {
+        return CutSelectedAccount();
+    }
 
     private LoginTextField? Active => Focus switch
     {

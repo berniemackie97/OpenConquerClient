@@ -24,9 +24,15 @@ internal sealed class GameHandshakeBootstrapCipher : IDisposable
         _cipher = new GameCast5Cfb64Cipher(BootstrapKey, initializationVector, encrypt);
     }
 
-    internal static GameHandshakeBootstrapCipher CreateDecryptor() => new(encrypt: false);
+    internal static GameHandshakeBootstrapCipher CreateDecryptor()
+    {
+        return new GameHandshakeBootstrapCipher(encrypt: false);
+    }
 
-    internal static GameHandshakeBootstrapCipher CreateEncryptor() => new(encrypt: true);
+    internal static GameHandshakeBootstrapCipher CreateEncryptor()
+    {
+        return new GameHandshakeBootstrapCipher(encrypt: true);
+    }
 
     /// <summary>
     /// Preserves CFB feedback between fragments. Identical source/destination

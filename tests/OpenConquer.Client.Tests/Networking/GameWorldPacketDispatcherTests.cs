@@ -137,20 +137,40 @@ public sealed class GameWorldPacketDispatcherTests
             return Record($"spawn {player.EntityId}");
         }
 
-        public bool HandleWalk(GameWalk10005 walk) => Record($"walk {walk.EntityId:x}");
+        public bool HandleWalk(GameWalk10005 walk)
+        {
+            return Record($"walk {walk.EntityId:x}");
+        }
 
-        public bool HandleAction(GameWorldAction10010 action) => Record($"action {action.Action} 0x{action.EntityId:x8}");
+        public bool HandleAction(GameWorldAction10010 action)
+        {
+            return Record($"action {action.Action} 0x{action.EntityId:x8}");
+        }
 
-        public bool HandleItemRecord(GameItemRecord1008 record) => Record($"record {record.ItemId} {record.Position}");
+        public bool HandleItemRecord(GameItemRecord1008 record)
+        {
+            return Record($"record {record.ItemId} {record.Position}");
+        }
 
-        public bool HandleItem(GameItem1009 item) => Record($"item {item.Subtype} {item.Length}");
+        public bool HandleItem(GameItem1009 item)
+        {
+            return Record($"item {item.Subtype} {item.Length}");
+        }
 
-        public bool HandleAttributes(GameUserAttrib10017 attributes) =>
-            Record($"attributes 0x{attributes.TargetId:x8} {attributes.Count}");
+        public bool HandleAttributes(GameUserAttrib10017 attributes)
+        {
+            return Record($"attributes 0x{attributes.TargetId:x8} {attributes.Count}");
+        }
 
-        public bool HandleWeather(GameWeather1016 weather) => Record($"weather {weather.Kind} 0x{weather.Parameter:x8}");
+        public bool HandleWeather(GameWeather1016 weather)
+        {
+            return Record($"weather {weather.Kind} 0x{weather.Parameter:x8}");
+        }
 
-        public bool HandleUnknown(ushort packetType) => Record($"unknown {packetType}");
+        public bool HandleUnknown(ushort packetType)
+        {
+            return Record($"unknown {packetType}");
+        }
 
         private bool Record(string call)
         {

@@ -50,10 +50,16 @@ internal sealed class LoginTextField
     /// <summary>The live characters. Callers copy what they need and never keep the span.</summary>
     internal ReadOnlySpan<char> Characters => _buffer.AsSpan(0, _length);
 
-    internal static bool Accepts(char value) => LoginAccountHistory.IsAccountCharacter(value);
+    internal static bool Accepts(char value)
+    {
+        return LoginAccountHistory.IsAccountCharacter(value);
+    }
 
     /// <summary>Replaces the selection with one accepted character.</summary>
-    internal bool TextEntered(char character) => Accepts(character) && Insert([character]);
+    internal bool TextEntered(char character)
+    {
+        return Accepts(character) && Insert([character]);
+    }
 
     /// <summary>All-or-nothing paste; unsupported characters and text longer than the field are rejected.</summary>
     internal bool Paste(string? text)
@@ -133,7 +139,10 @@ internal sealed class LoginTextField
         return true;
     }
 
-    internal bool SelectAll() => MoveTo(_length, extend: false, anchor: 0);
+    internal bool SelectAll()
+    {
+        return MoveTo(_length, extend: false, anchor: 0);
+    }
 
     internal bool DeleteSelection()
     {
@@ -147,8 +156,10 @@ internal sealed class LoginTextField
     }
 
     /// <summary>The selected characters of an unmasked field; null when masked or nothing is selected.</summary>
-    internal string? SelectedText() =>
-        IsMasked || !HasSelection ? null : new string(_buffer, SelectionStart, SelectionEnd - SelectionStart);
+    internal string? SelectedText()
+    {
+        return IsMasked || !HasSelection ? null : new string(_buffer, SelectionStart, SelectionEnd - SelectionStart);
+    }
 
     /// <summary>Replaces every character, leaving the caret at the end. The text must fit and be accepted.</summary>
     internal void Replace(ReadOnlySpan<char> text)
@@ -208,5 +219,8 @@ internal sealed class LoginTextField
         _caret = _anchor = start;
     }
 
-    private void Wipe() => CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(_buffer.AsSpan()));
+    private void Wipe()
+    {
+        CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(_buffer.AsSpan()));
+    }
 }

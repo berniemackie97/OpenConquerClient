@@ -46,6 +46,9 @@ public sealed class MainHudSelectedSkillLayoutTests
     [InlineData(640, 480)]
     [InlineData(1280, 720)]
     [InlineData(1920, 1080)]
-    public void Create_RejectsUnverifiedLogicalRenderSize(int width, int height) =>
-        Assert.Throws<ArgumentOutOfRangeException>(() => MainHudSelectedSkillLayout.Create(new LogicalRenderSize(width, height)));
+    public void Create_RejectsUnverifiedLogicalRenderSize(int width, int height)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            MainHudSelectedSkillLayout.Create(new LogicalRenderSize(width, height)));
+    }
 }

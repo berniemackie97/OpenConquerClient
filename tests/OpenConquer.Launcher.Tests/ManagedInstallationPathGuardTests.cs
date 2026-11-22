@@ -92,12 +92,14 @@ public sealed class ManagedInstallationPathGuardTests
         }
     }
 
-    private static string CreateTestRoot() =>
-        Path.Combine(
+    private static string CreateTestRoot()
+    {
+        return Path.Combine(
             Path.GetTempPath(),
             "OpenConquer.Launcher.Tests",
             Guid.NewGuid().ToString("N")
         );
+    }
 
     private static void TryDeleteLink(string path)
     {

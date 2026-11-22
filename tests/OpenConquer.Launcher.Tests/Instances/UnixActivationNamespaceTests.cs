@@ -7,7 +7,10 @@ namespace OpenConquer.Launcher.Tests.Instances;
 public sealed class UnixActivationNamespaceTests : IDisposable
 {
     private readonly ActivationTestNamespace _namespace = new();
-    public void Dispose() => _namespace.Dispose();
+    public void Dispose()
+    {
+        _namespace.Dispose();
+    }
 
     [Fact]
     public void HomeFallback_CreatesPrivateDirectoryUnderProtectedUserOwnedParent()

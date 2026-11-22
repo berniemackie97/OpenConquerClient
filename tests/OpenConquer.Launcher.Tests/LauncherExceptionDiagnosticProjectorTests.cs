@@ -236,7 +236,10 @@ public sealed class LauncherExceptionDiagnosticProjectorTests
     {
         public override string Message => throw new InvalidOperationException("Message must not be read.");
         public override string? StackTrace => throw new InvalidOperationException("StackTrace must not be read.");
-        public override string ToString() => throw new InvalidOperationException("ToString must not be called.");
+        public override string ToString()
+        {
+            throw new InvalidOperationException("ToString must not be called.");
+        }
     }
 
     private static void ThrowDiagnosticException()

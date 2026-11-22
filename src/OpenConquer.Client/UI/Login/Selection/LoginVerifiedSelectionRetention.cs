@@ -2,10 +2,6 @@ using OpenConquer.Client.Startup.Catalog;
 
 namespace OpenConquer.Client.UI.Login.Selection;
 
-/// <summary>
-/// Keeps the player's realm choice across a catalog refresh, but only when both catalogs are current and
-/// verified and the realm is still there.
-/// </summary>
 internal static class LoginVerifiedSelectionRetention
 {
     public static void Apply(SignedLoginCatalog? previous, SignedLoginCatalog? current, DateTimeOffset now, LoginSelectionInput input, LoginServerSelection selection)
@@ -47,18 +43,16 @@ internal static class LoginVerifiedSelectionRetention
 
         LoginRegion newRegion = selection.SelectedRegion!;
         int serverIndex = IndexOfServer(newRegion, selectedServer);
-        if (serverIndex < 0 ||
-            !previous!.TryGetAccountEndpoint(selectedRegion, selectedServer, out LoginAccountEndpoint? oldEndpoint) ||
-            !current.TryGetAccountEndpoint(newRegion, newRegion.Servers[serverIndex], out LoginAccountEndpoint? newEndpoint) ||
-            oldEndpoint is null || newEndpoint is null ||
-            !string.Equals(oldEndpoint.Host, newEndpoint.Host, StringComparison.Ordinal) || oldEndpoint.Port != newEndpoint.Port)
+        if (serverIndex < 0 || !previous!.TryGetAccountEndpoint(selectedRegion, selectedServer, out LoginAccountEndpoint? oldEndpoint)
+            || !current.TryGetAccountEndpoint(newRegion, newRegion.Servers[serverIndex], out LoginAccountEndpoint? newEndpoint)
+            || oldEndpoint is null || newEndpoint is null || !string.Equals(oldEndpoint.Host, newEndpoint.Host, StringComparison.Ordinal)
+            || oldEndpoint.Port != newEndpoint.Port)
         {
             return;
         }
 
         if (!selection.SelectServerSlot(serverIndex))
         {
-            // Sprite 180 shows twelve holders; a realm beyond them cannot stay selected.
             return;
         }
     }

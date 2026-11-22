@@ -53,5 +53,8 @@ public sealed class LoginStageArtworkTests
         Assert.Throws<ArgumentOutOfRangeException>(() => LoginStageArtwork.Load((LoginStageArtwork.Layer)99));
     }
 
-    private static byte Alpha(RgbaImage image, int x, int y) => image.Pixels.Span[(y * image.Width + x) * 4 + 3];
+    private static byte Alpha(RgbaImage image, int x, int y)
+    {
+        return image.Pixels.Span[(y * image.Width + x) * 4 + 3];
+    }
 }

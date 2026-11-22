@@ -11,7 +11,10 @@ public static class MapAssetCodec
         return destination.ToArray();
     }
 
-    public static void Write(MapAsset map, Stream destination) => MapAssetWriter.Write(map, destination);
+    public static void Write(MapAsset map, Stream destination)
+    {
+        MapAssetWriter.Write(map, destination);
+    }
 
     public static MapAsset Load(IClientContentSource content, uint mapDataId)
     {
@@ -34,7 +37,10 @@ public static class MapAssetCodec
         return Decode(input);
     }
 
-    public static MapAsset Decode(ReadOnlySpan<byte> source) => Decode(source.ToArray());
+    public static MapAsset Decode(ReadOnlySpan<byte> source)
+    {
+        return Decode(source.ToArray());
+    }
 
     public static MapAsset Decode(Stream source)
     {

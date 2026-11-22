@@ -14,8 +14,10 @@ public sealed class GameModeTests
     [InlineData(1, 2, 3, (int)GameMode.Low)]
     [InlineData(5, 2, 4, (int)GameMode.High)]
     [InlineData(1, 4, 4, (int)GameMode.Standard)]
-    public void MostUsed_FollowsCPlayDlgOnInitDialog(int high, int standard, int low, int expected) =>
+    public void MostUsed_FollowsCPlayDlgOnInitDialog(int high, int standard, int low, int expected)
+    {
         Assert.Equal((GameMode)expected, new GameModeUsage(high, standard, low).MostUsed);
+    }
 
     [Fact]
     public void Record_CountsEachModeAndSaturates()

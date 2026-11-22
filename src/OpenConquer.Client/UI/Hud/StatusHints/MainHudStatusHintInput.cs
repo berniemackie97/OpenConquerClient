@@ -69,5 +69,8 @@ internal sealed class MainHudStatusHintInput
         }
     }
 
-    public void Clear() => _state.Clear();
+    public void Clear()
+    {
+        _state.Clear();
+    }
 }

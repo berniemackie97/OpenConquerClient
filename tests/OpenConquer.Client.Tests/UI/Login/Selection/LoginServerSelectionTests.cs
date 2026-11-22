@@ -162,10 +162,16 @@ public sealed class LoginServerSelectionTests
         Assert.Equal(0, selection.RegionPage);
     }
 
-    private static LoginSelectionInput CreateInput(LoginServerSelection selection) =>
-        new(LoginStageLayout.Create(new LogicalRenderSize(1024, 768)), selection);
+    private static LoginSelectionInput CreateInput(LoginServerSelection selection)
+    {
+        return new LoginSelectionInput(LoginStageLayout.Create(new LogicalRenderSize(1024, 768)), selection);
+    }
 
-    private static LoginServerCatalog CreateCatalog(int regionCount, int serversPerRegion) => new(
-        Enumerable.Range(0, regionCount).Select(region => new LoginRegion($"region-{region}", $"Region {region}",
-            Enumerable.Range(0, serversPerRegion).Select(server => new LoginServer($"realm-{region}-{server}", $"Realm {server}", $"Protocol{region}_{server}")))));
+    private static LoginServerCatalog CreateCatalog(int regionCount, int serversPerRegion)
+    {
+        return new LoginServerCatalog(
+            Enumerable.Range(0, regionCount).Select(region => new LoginRegion($"region-{region}", $"Region {region}",
+                Enumerable.Range(0, serversPerRegion).Select(server =>
+                    new LoginServer($"realm-{region}-{server}", $"Realm {server}", $"Protocol{region}_{server}")))));
+    }
 }

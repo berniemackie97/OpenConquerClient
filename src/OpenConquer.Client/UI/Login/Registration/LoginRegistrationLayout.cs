@@ -3,29 +3,21 @@ using OpenConquer.Content.Login;
 
 namespace OpenConquer.Client.UI.Login.Registration;
 
-/// <summary>
-/// Stage placement of the Sign Up dialog. Positions inside it are offsets into the dialog picture, which keeps
-/// clearMC's header (rows 0-26), body and footer (from row 185) and its Ok and Cancel buttons.
-/// </summary>
 internal sealed class LoginRegistrationLayout
 {
-    // Field boxes start 118 columns and 40 rows into the picture, one every 34 rows; labels end 6 columns left of them.
     private const int BoxLeft = 118;
     private const int BoxTop = 40;
     private const int BoxPitch = 34;
     private const int LabelGap = 6;
 
-    // enterMC text field 364 lies (4.15, 3.45) inside the account panel's password box and is 140.7 x 22.1.
     private const double FieldInsetX = 4.15;
     private const double FieldInsetY = 3.45;
     private const double FieldWidth = 140.7;
     private const double FieldHeight = 22.1;
 
-    // clearMC's header band and its Ok and Cancel buttons, 96x26, at (20, 156) and (180, 156) before the extension.
     private const int HeaderHeight = 27;
     private const int ButtonTop = 156 + LoginRegistrationArtwork.BodyExtension;
 
-    // The message sits between the last box and the footer divider.
     private const int MessageLeft = 12;
     private const int MessageTop = BoxTop + 2 * BoxPitch + LoginRegistrationArtwork.FieldHeight;
     private const int MessageBottom = LoginRegistrationArtwork.FooterTopRow;
@@ -62,7 +54,6 @@ internal sealed class LoginRegistrationLayout
         get;
     }
 
-    /// <summary>clearMC's header band, above its first divider.</summary>
     public LoginRect Title
     {
         get;
@@ -88,17 +79,28 @@ internal sealed class LoginRegistrationLayout
         get;
     }
 
-    /// <summary>The field's box artwork, which also takes its presses.</summary>
-    public LoginRect Box(LoginRegistrationField field) => _boxes[Index(field)];
+    public LoginRect Box(LoginRegistrationField field)
+    {
+        return _boxes[Index(field)];
+    }
 
-    /// <summary>The field's text area, gutter included, placed as the account panel places field 364.</summary>
-    public LoginRect Field(LoginRegistrationField field) => _fields[Index(field)];
+    public LoginRect Field(LoginRegistrationField field)
+    {
+        return _fields[Index(field)];
+    }
 
-    /// <summary>The area the field's label is right-aligned in, level with the field's text area.</summary>
-    public LoginRect Label(LoginRegistrationField field) => _labels[Index(field)];
+    public LoginRect Label(LoginRegistrationField field)
+    {
+        return _labels[Index(field)];
+    }
 
-    public int Scale(int referenceValue) => _stage.Scale(referenceValue);
+    public int Scale(int referenceValue)
+    {
+        return _stage.Scale(referenceValue);
+    }
 
-    private static int Index(LoginRegistrationField field) =>
-        Enum.IsDefined(field) ? (int)field : throw new ArgumentOutOfRangeException(nameof(field));
+    private static int Index(LoginRegistrationField field)
+    {
+        return Enum.IsDefined(field) ? (int)field : throw new ArgumentOutOfRangeException(nameof(field));
+    }
 }

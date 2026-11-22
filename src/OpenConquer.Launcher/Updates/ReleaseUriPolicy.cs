@@ -34,6 +34,8 @@ internal static class ReleaseUriPolicy
         return !uri.OriginalString.Any(character => character == '\\' || char.IsControl(character));
     }
 
-    public static bool EqualsExact(Uri expected, Uri actual) =>
-        string.Equals(expected.AbsoluteUri, actual.AbsoluteUri, StringComparison.Ordinal);
+    public static bool EqualsExact(Uri expected, Uri actual)
+    {
+        return string.Equals(expected.AbsoluteUri, actual.AbsoluteUri, StringComparison.Ordinal);
+    }
 }

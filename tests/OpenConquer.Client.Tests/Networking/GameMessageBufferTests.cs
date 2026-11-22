@@ -44,7 +44,9 @@ public sealed class GameMessageBufferTests
     }
 
     [Fact]
-    public void TryLoad_RequiresExactlyOneNativeBufferOfStorage() =>
+    public void TryLoad_RequiresExactlyOneNativeBufferOfStorage()
+    {
         Assert.Throws<ArgumentException>(() =>
             GameMessageBuffer.TryLoad(GameMessages.Header(8, 1009), new byte[GameMessageBuffer.Capacity - 1], out _));
+    }
 }

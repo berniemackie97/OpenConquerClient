@@ -55,7 +55,10 @@ internal sealed class LoginAccountHistory
         _writable = false;
     }
 
-    public bool Contains(string name) => _names.Contains(name, StringComparer.Ordinal);
+    public bool Contains(string name)
+    {
+        return _names.Contains(name, StringComparer.Ordinal);
+    }
 
     public bool TryRecord(string name)
     {
@@ -111,8 +114,10 @@ internal sealed class LoginAccountHistory
     }
 
     /// <summary>The characters an account name may contain; passwords are limited to the same set.</summary>
-    internal static bool IsAccountCharacter(char value) =>
-        value is >= '0' and <= '9' or >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' or '-' or '@' or '>' or '_';
+    internal static bool IsAccountCharacter(char value)
+    {
+        return value is >= '0' and <= '9' or >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '.' or '-' or '@' or '>' or '_';
+    }
 
     private void Load()
     {

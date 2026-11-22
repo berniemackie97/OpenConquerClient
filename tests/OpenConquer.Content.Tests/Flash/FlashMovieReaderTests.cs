@@ -66,9 +66,14 @@ public sealed class FlashMovieReaderTests
         Assert.Throws<InvalidDataException>(() => Read(characters, """{"root":{"frames":[[]],"labels":{}}}"""));
     }
 
-    private static FlashMovie Read(string characters, string timelines) =>
-        FlashMovieReader.Read(Encoding.UTF8.GetBytes(Movie(Raster, characters, timelines)), "Role/test");
+    private static FlashMovie Read(string characters, string timelines)
+    {
+        return FlashMovieReader.Read(Encoding.UTF8.GetBytes(Movie(Raster, characters, timelines)), "Role/test");
+    }
 
-    private static string Movie(string raster, string characters, string timelines) =>
-        $$"""{"format":1,"movie":"test","source":{"path":"x","sha256":"y"},"frameRate":30,"width":1024,"height":768,"rasters":[{{raster}}],"characters":{{characters}},"timelines":{{timelines}}}""";
+    private static string Movie(string raster, string characters, string timelines)
+    {
+        return
+            $$"""{"format":1,"movie":"test","source":{"path":"x","sha256":"y"},"frameRate":30,"width":1024,"height":768,"rasters":[{{raster}}],"characters":{{characters}},"timelines":{{timelines}}}""";
+    }
 }

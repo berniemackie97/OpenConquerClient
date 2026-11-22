@@ -47,12 +47,16 @@ internal sealed unsafe class OpenGLMeshRenderer : IDisposable
     }
 
     internal void Draw(OpenGLIndexedMesh mesh, OpenGLTexture2D texture,
-        Matrix4x4 clipMatrix, MeshCullMode cullMode) =>
+        Matrix4x4 clipMatrix, MeshCullMode cullMode)
+    {
         DrawCore(mesh, texture, clipMatrix, cullMode, shadowAlpha: null);
+    }
 
     internal void DrawShadow(OpenGLIndexedMesh mesh, Matrix4x4 clipMatrix,
-        MeshCullMode cullMode, float alpha) =>
+        MeshCullMode cullMode, float alpha)
+    {
         DrawCore(mesh, null, clipMatrix, cullMode, alpha);
+    }
 
     private void DrawCore(OpenGLIndexedMesh mesh, OpenGLTexture2D? texture,
         Matrix4x4 clipMatrix, MeshCullMode cullMode, float? shadowAlpha)

@@ -264,8 +264,10 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     /// is terminal. The caller must dispose the returned frame.
     /// </summary>
     internal Task<GameSecuredInboundFrame?> ReadFrameAsync(
-        TimeSpan timeout, CancellationToken cancellationToken = default) =>
-        ReadFrameCoreAsync(timeout, SecuredRead.Raw, cancellationToken);
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        return ReadFrameCoreAsync(timeout, SecuredRead.Raw, cancellationToken);
+    }
 
     internal void ActivateWorld()
     {
@@ -281,8 +283,10 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
         }
     }
 
-    internal Task<GameSecuredInboundFrame?> ReadWorldFrameAsync(CancellationToken cancellationToken = default) =>
-        ReadFrameCoreAsync(null, SecuredRead.World, cancellationToken);
+    internal Task<GameSecuredInboundFrame?> ReadWorldFrameAsync(CancellationToken cancellationToken = default)
+    {
+        return ReadFrameCoreAsync(null, SecuredRead.World, cancellationToken);
+    }
 
     internal Task SendWorldWalkAsync(uint entityId, byte packedDirection, byte selector,
         uint movementTick, uint mapState, CancellationToken cancellationToken = default)
@@ -303,10 +307,12 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
     }
 
     internal Task SendWorldActionResponseAsync(GameWorldActionResponse response, uint now,
-        CancellationToken cancellationToken = default) =>
-        SendWorldPacketAsync(CreateWorldActionPacket(response.Action, response.EntityId,
-            response.ParameterPair, response.TimestampOverride ?? now),
+        CancellationToken cancellationToken = default)
+    {
+        return SendWorldPacketAsync(CreateWorldActionPacket(response.Action, response.EntityId,
+                response.ParameterPair, response.TimestampOverride ?? now),
             "GameServer admitted world action write timed out.", cancellationToken);
+    }
 
     private static byte[] CreateWorldActionPacket(ushort action, uint entityId, uint parameterPair, uint timestamp)
     {
@@ -861,8 +867,10 @@ internal sealed class GameServerHandshakeSession : IAsyncDisposable
 
     /// <summary>Sends one fixed world-entry 10010 action after typed character information is accepted.</summary>
     internal Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair,
-        TimeSpan timeout, CancellationToken cancellationToken = default) =>
-        SendWorldActionAsync(action, entityId, parameterPair, 0, timeout, cancellationToken);
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        return SendWorldActionAsync(action, entityId, parameterPair, 0, timeout, cancellationToken);
+    }
 
     /// <summary>Sends one world-entry 10010 action carrying a client timestamp at +16.</summary>
     internal Task SendWorldActionAsync(ushort action, uint entityId, uint parameterPair, uint timestamp,

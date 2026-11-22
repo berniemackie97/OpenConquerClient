@@ -43,6 +43,10 @@ public static class LoginOpeningArtwork
         new("Login/Opening/Frame27.rgba.br", 1024, 768, "A3B8081F84126FB1A1B11D37BCCB126E9BC96CADBEF9F25AAF7C38CD12F6BE03"),
     ];
 
-    public static RgbaImage LoadFrame(int frame) =>
-        (uint)frame < FrameCount ? EmbeddedMedia.Load(s_frames[frame]) : throw new ArgumentOutOfRangeException(nameof(frame));
+    public static RgbaImage LoadFrame(int frame)
+    {
+        return (uint)frame < FrameCount
+            ? EmbeddedMedia.Load(s_frames[frame])
+            : throw new ArgumentOutOfRangeException(nameof(frame));
+    }
 }

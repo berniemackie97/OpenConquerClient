@@ -49,7 +49,10 @@ internal sealed class MainHudSelectedSkillImageLoader(Func<string, RgbaImage?> l
         return (selected, cover);
     }
 
-    internal void Cancel() => _pending?.Cancel();
+    internal void Cancel()
+    {
+        _pending?.Cancel();
+    }
 
     public async ValueTask DisposeAsync()
     {

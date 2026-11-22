@@ -42,7 +42,10 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
     }
 
     /// <summary>The caret blinks 530 ms on, 470 ms off, restarting whenever the caret or text changes.</summary>
-    internal static bool CaretVisible(TimeSpan elapsed) => elapsed.TotalMilliseconds % 1000 < 530;
+    internal static bool CaretVisible(TimeSpan elapsed)
+    {
+        return elapsed.TotalMilliseconds % 1000 < 530;
+    }
 
     public void Draw(OpenGLRenderer renderer, LoginCredentialInput input)
     {
@@ -108,11 +111,16 @@ internal sealed class LoginCredentialPresentation : ILoginCaretLocator, IDisposa
         ReleaseFont();
     }
 
-    private static LoginTextFieldState State(LoginCredentialInput input, LoginCredentialFocus field, bool caretVisible) =>
-        new(input.Focus == field, input.CaretIndex, input.SelectionStart, input.SelectionEnd, caretVisible);
+    private static LoginTextFieldState State(LoginCredentialInput input, LoginCredentialFocus field, bool caretVisible)
+    {
+        return new LoginTextFieldState(input.Focus == field, input.CaretIndex, input.SelectionStart, input.SelectionEnd, caretVisible);
+    }
 
-    private OpenGLTextContext GetFont() => _font ??= new OpenGLTextContext(_graphics, fontToken: "Arial",
-        nominalPixelHeight: _fontHeight, effectiveCodePage: 0, antialiasEnabled: true);
+    private OpenGLTextContext GetFont()
+    {
+        return _font ??= new OpenGLTextContext(_graphics, fontToken: "Arial",
+            nominalPixelHeight: _fontHeight, effectiveCodePage: 0, antialiasEnabled: true);
+    }
 
     private void EnsureLayout(LoginCredentialInput input)
     {

@@ -90,10 +90,19 @@ public sealed class CharacterInAndOutScriptsTests
     {
         public List<string> Log { get; } = [];
 
-        public void RollOverItem(int id) => Log.Add($"over {id}");
+        public void RollOverItem(int id)
+        {
+            Log.Add($"over {id}");
+        }
 
-        public void PressItem(int id) => Log.Add($"press {id}");
+        public void PressItem(int id)
+        {
+            Log.Add($"press {id}");
+        }
 
-        public void RollOutItem(int id) => Log.Add($"out {id}");
+        public void RollOutItem(int id)
+        {
+            Log.Add($"out {id}");
+        }
     }
 }

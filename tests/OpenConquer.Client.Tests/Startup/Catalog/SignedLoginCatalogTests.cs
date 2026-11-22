@@ -122,29 +122,43 @@ public sealed class SignedLoginCatalogTests
         Assert.Throws<ArgumentException>(() => new LoginCatalogAuthority(new Uri("https://catalog.example.org/realms.json"), new Uri("https://catalog.example.org/realms.sig"), p384.ExportSubjectPublicKeyInfo()));
     }
 
-    internal static LoginCatalogAuthority Authority(ECDsa signer) => new(
-        new Uri("https://catalog.example.org/realms.json"), new Uri("https://catalog.example.org/realms.sig"), signer.ExportSubjectPublicKeyInfo());
-
-    internal static byte[] Sign(ECDsa signer, byte[] payload) => signer.SignData(payload, HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
-
-    internal static byte[] ValidPayload() => JsonSerializer.SerializeToUtf8Bytes(new
+    internal static LoginCatalogAuthority Authority(ECDsa signer)
     {
-        schemaVersion = 1,
-        productId = "OpenConquer",
-        sequence = 7,
-        issuedAt = "2026-10-11T19:00:00Z",
-        expiresAt = "2026-10-11T21:00:00Z",
-        regions = new[]
+        return new LoginCatalogAuthority(
+            new Uri("https://catalog.example.org/realms.json"), new Uri("https://catalog.example.org/realms.sig"),
+            signer.ExportSubjectPublicKeyInfo());
+    }
+
+    internal static byte[] Sign(ECDsa signer, byte[] payload)
+    {
+        return signer.SignData(payload, HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
+    }
+
+    internal static byte[] ValidPayload()
+    {
+        return JsonSerializer.SerializeToUtf8Bytes(new
         {
-            new
+            schemaVersion = 1,
+            productId = "OpenConquer",
+            sequence = 7,
+            issuedAt = "2026-10-11T19:00:00Z",
+            expiresAt = "2026-10-11T21:00:00Z",
+            regions = new[]
             {
-                id = "north",
-                name = "North",
-                servers = new[]
+                new
                 {
-                    new { id = "realm-1", name = "Realm One", protocolServerName = "NativeRealm1", accountHost = "login.example.org", accountPort = 9958 },
+                    id = "north",
+                    name = "North",
+                    servers = new[]
+                    {
+                        new
+                        {
+                            id = "realm-1", name = "Realm One", protocolServerName = "NativeRealm1",
+                            accountHost = "login.example.org", accountPort = 9958
+                        },
+                    },
                 },
             },
-        },
-    });
+        });
+    }
 }

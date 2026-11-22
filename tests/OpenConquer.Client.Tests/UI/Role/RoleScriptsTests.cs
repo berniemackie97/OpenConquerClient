@@ -249,13 +249,19 @@ public sealed class RoleScriptsTests
             return flow;
         }
 
-        public void Command(string command, string argument) => Commands.Add($"{command} {argument}");
+        public void Command(string command, string argument)
+        {
+            Commands.Add($"{command} {argument}");
+        }
 
         public void Play(string set, string handle)
         {
         }
 
-        public void Tick() => _stage.Tick();
+        public void Tick()
+        {
+            _stage.Tick();
+        }
 
         public void TickUntil(Func<bool> condition)
         {
@@ -275,7 +281,10 @@ public sealed class RoleScriptsTests
             }
         }
 
-        public void EnterText(string text) => _stage.TextEntered(text);
+        public void EnterText(string text)
+        {
+            _stage.TextEntered(text);
+        }
 
         public void ClickAt(float x, float y)
         {

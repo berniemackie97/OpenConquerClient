@@ -35,8 +35,12 @@ public static class LoginAccountArtwork
     public static (int Y, int Height) MaskRows => (90, 570);
 
     /// <summary>The maskMC alpha multiplier (of 256) on a one-based dialog frame.</summary>
-    public static int MaskAlpha(int frame) =>
-        frame is >= 1 and <= DialogFrameCount ? s_maskAlphaByFrame[frame - 1] : throw new ArgumentOutOfRangeException(nameof(frame));
+    public static int MaskAlpha(int frame)
+    {
+        return frame is >= 1 and <= DialogFrameCount
+            ? s_maskAlphaByFrame[frame - 1]
+            : throw new ArgumentOutOfRangeException(nameof(frame));
+    }
 
     /// <summary>
     /// Each dialog as it holds at frame 6, cropped to where it differs from its <c>maskMC</c> backdrop and including
@@ -63,7 +67,10 @@ public static class LoginAccountArtwork
         new("Login/Account/CancelDown.rgba.br", 96, 26, "84A597C866A4699F4892AE8E1031D9C4B5B3D1C53CEB5FBA4C0F758EBDDBEDD3"),
     ];
 
-    public static RgbaImage LoadDialog(LoginAccountDialog dialog) => EmbeddedMedia.Load(s_dialogs[(int)Validate(dialog)].Image);
+    public static RgbaImage LoadDialog(LoginAccountDialog dialog)
+    {
+        return EmbeddedMedia.Load(s_dialogs[(int)Validate(dialog)].Image);
+    }
 
     /// <summary>Top-left corner of the cropped dialog on the 1024x768 stage.</summary>
     public static (int X, int Y) DialogPosition(LoginAccountDialog dialog)
@@ -72,7 +79,10 @@ public static class LoginAccountArtwork
         return (x, y);
     }
 
-    public static RgbaImage LoadRow(bool highlighted) => EmbeddedMedia.Load(s_rows[highlighted ? 1 : 0]);
+    public static RgbaImage LoadRow(bool highlighted)
+    {
+        return EmbeddedMedia.Load(s_rows[highlighted ? 1 : 0]);
+    }
 
     public static RgbaImage LoadDialogButton(LoginDialogButton button, LoginButtonState state)
     {
@@ -89,6 +99,8 @@ public static class LoginAccountArtwork
         return EmbeddedMedia.Load(s_dialogButtons[(int)button * 2 + (state == LoginButtonState.Down ? 1 : 0)]);
     }
 
-    private static LoginAccountDialog Validate(LoginAccountDialog dialog) =>
-        Enum.IsDefined(dialog) ? dialog : throw new ArgumentOutOfRangeException(nameof(dialog));
+    private static LoginAccountDialog Validate(LoginAccountDialog dialog)
+    {
+        return Enum.IsDefined(dialog) ? dialog : throw new ArgumentOutOfRangeException(nameof(dialog));
+    }
 }

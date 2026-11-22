@@ -104,7 +104,10 @@ internal sealed class CharacterInAndOutScripts
         characterInAndOut.Play();
     }
 
-    public static bool IsLoaded(FlashClip characterInAndOut) => characterInAndOut.Get<bool>("isLoaded");
+    public static bool IsLoaded(FlashClip characterInAndOut)
+    {
+        return characterInAndOut.Get<bool>("isLoaded");
+    }
 
     private void RootFrame132(FlashClip root)
     {

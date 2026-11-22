@@ -15,8 +15,11 @@ public sealed class GameClientDhExchangeTests
     private const string ResponseCiphertextHex =
         "24611276A02F2CADD12908209DFF3458840EFBC31B1EEF3D0ADC104255979ABD4CC06689D78F35";
 
-    private static GameServerChallenge Challenge() => GameServerChallenge.FromValidatedParameters(
-        [1, 2, 3, 4, 5, 6, 7, 8], [21, 22, 23, 24, 25, 26, 27, 28], "19"u8);
+    private static GameServerChallenge Challenge()
+    {
+        return GameServerChallenge.FromValidatedParameters(
+            [1, 2, 3, 4, 5, 6, 7, 8], [21, 22, 23, 24, 25, 26, 27, 28], "19"u8);
+    }
 
     [Fact]
     public void DeterministicDhMatchesNativeResponseAndOpenSslSecretLayout()

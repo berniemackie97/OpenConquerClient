@@ -231,8 +231,15 @@ internal sealed class ClientApplication : IDisposable
         }
     }
 
-    private void OnTextEntered(char character) => _session?.TextEntered(character);
-    private void OnFocusChanged(bool focused) => _session?.SetFocused(focused);
+    private void OnTextEntered(char character)
+    {
+        _session?.TextEntered(character);
+    }
+
+    private void OnFocusChanged(bool focused)
+    {
+        _session?.SetFocused(focused);
+    }
 
     private void ReportPackageRegistrationWarnings(PackagedClientContentSource contentSource)
     {

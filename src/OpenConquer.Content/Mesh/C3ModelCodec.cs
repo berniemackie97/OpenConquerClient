@@ -104,5 +104,8 @@ public static class C3ModelCodec
         return new C3ModelData(definition, files);
     }
 
-    internal static string Hash(ReadOnlySpan<byte> bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
+    internal static string Hash(ReadOnlySpan<byte> bytes)
+    {
+        return Convert.ToHexStringLower(SHA256.HashData(bytes));
+    }
 }

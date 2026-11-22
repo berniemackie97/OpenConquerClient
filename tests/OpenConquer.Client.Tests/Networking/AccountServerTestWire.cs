@@ -13,16 +13,19 @@ internal static class AccountServerTestWire
     internal const string TestAccountCredential = "B059847E5023FEDCD3BCE92F93A9A71008C9ED3654CD597508C9ED3654CD5975";
 
     /// <summary>0xF002 frames for result codes 0-5 at stream position 8; code 5 is undefined.</summary>
-    internal static byte[] RegistrationResultWire(uint code) => Convert.FromHexString(code switch
+    internal static byte[] RegistrationResultWire(uint code)
     {
-        0 => "7DF0135541BC57F6",
-        1 => "7DF0135551BC57F6",
-        2 => "7DF0135561BC57F6",
-        3 => "7DF0135571BC57F6",
-        4 => "7DF0135501BC57F6",
-        5 => "7DF0135511BC57F6",
-        _ => throw new ArgumentOutOfRangeException(nameof(code)),
-    });
+        return Convert.FromHexString(code switch
+        {
+            0 => "7DF0135541BC57F6",
+            1 => "7DF0135551BC57F6",
+            2 => "7DF0135561BC57F6",
+            3 => "7DF0135571BC57F6",
+            4 => "7DF0135501BC57F6",
+            5 => "7DF0135511BC57F6",
+            _ => throw new ArgumentOutOfRangeException(nameof(code)),
+        });
+    }
 
     /// <summary>A 1055 frame header (length 36, type 1055) at stream position 8.</summary>
     internal const string AuthenticationHeaderWire = "BFF0C21A";

@@ -19,10 +19,15 @@ internal static partial class UnixRuntimeNative
             ? 0x00004000 | 0x00008000 | 0x00080000
             : 0x00010000 | 0x00020000 | 0x00080000;
 
-    internal static SafeFileHandle OpenRoot() => OwnDirectory(Open("/", DirectoryFlags));
+    internal static SafeFileHandle OpenRoot()
+    {
+        return OwnDirectory(Open("/", DirectoryFlags));
+    }
 
-    internal static SafeFileHandle OpenDirectory(SafeFileHandle parent, string name) =>
-        OwnDirectory(OpenAt(parent, name, DirectoryFlags));
+    internal static SafeFileHandle OpenDirectory(SafeFileHandle parent, string name)
+    {
+        return OwnDirectory(OpenAt(parent, name, DirectoryFlags));
+    }
 
     private static SafeFileHandle OwnDirectory(int descriptor)
     {

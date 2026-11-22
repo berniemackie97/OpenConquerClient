@@ -29,14 +29,21 @@ internal sealed class MainHudSelectedSkillAssets
         return GetFrame(GetMagicIndex(), sectionName, frameIndex, ContentLookupMode.LooseThenPackage);
     }
 
-    public RgbaImage? GetCoverFrame() =>
-        GetFrame(GetControlIndex(), MainHudSelectedSkillDefinition.CoverSectionName, frameIndex: 0, ContentLookupMode.LooseThenPackage);
+    public RgbaImage? GetCoverFrame()
+    {
+        return GetFrame(GetControlIndex(), MainHudSelectedSkillDefinition.CoverSectionName, frameIndex: 0,
+            ContentLookupMode.LooseThenPackage);
+    }
 
-    private AniIndexFile? GetControlIndex() =>
-        GetOrLoadIndex(ref _controlIndexLoaded, ref _controlIndex, ControlAniPath, ContentLookupMode.LooseOnly);
+    private AniIndexFile? GetControlIndex()
+    {
+        return GetOrLoadIndex(ref _controlIndexLoaded, ref _controlIndex, ControlAniPath, ContentLookupMode.LooseOnly);
+    }
 
-    private AniIndexFile? GetMagicIndex() =>
-        GetOrLoadIndex(ref _magicIndexLoaded, ref _magicIndex, MagicAniPath, ContentLookupMode.LooseThenPackage);
+    private AniIndexFile? GetMagicIndex()
+    {
+        return GetOrLoadIndex(ref _magicIndexLoaded, ref _magicIndex, MagicAniPath, ContentLookupMode.LooseThenPackage);
+    }
 
     private RgbaImage? GetFrame(AniIndexFile? index, string sectionName, uint frameIndex, ContentLookupMode lookupMode)
     {

@@ -7,7 +7,11 @@ public sealed class LauncherInstanceProcessTests : IDisposable
 {
     private readonly ActivationTestNamespace _namespace = new();
 
-    public void Dispose() => _namespace.Dispose();
+    public void Dispose()
+    {
+        _namespace.Dispose();
+    }
+
     [Fact]
     public async Task SecondProcess_ActivatesOwnerAndExitsWithoutTakingOwnership()
     {
@@ -132,7 +136,10 @@ public sealed class LauncherInstanceProcessTests : IDisposable
         Assert.True(lease.TryAcquire());
     }
 
-    private static string NewLeaseName() => "OpenConquer.Test." + Guid.NewGuid().ToString("N");
+    private static string NewLeaseName()
+    {
+        return "OpenConquer.Test." + Guid.NewGuid().ToString("N");
+    }
 
     private sealed class Probe : IDisposable
     {
@@ -172,7 +179,10 @@ public sealed class LauncherInstanceProcessTests : IDisposable
             return new Probe(Process.Start(start) ?? throw new InvalidOperationException("Probe did not start."));
         }
 
-        public async Task<string?> ReadLineAsync() => await _process.StandardOutput.ReadLineAsync(_deadline.Token);
+        public async Task<string?> ReadLineAsync()
+        {
+            return await _process.StandardOutput.ReadLineAsync(_deadline.Token);
+        }
 
         public async Task ReleaseAsync()
         {
@@ -186,7 +196,10 @@ public sealed class LauncherInstanceProcessTests : IDisposable
             return _process.ExitCode;
         }
 
-        public void Kill() => _process.Kill(entireProcessTree: true);
+        public void Kill()
+        {
+            _process.Kill(entireProcessTree: true);
+        }
 
         public void Dispose()
         {

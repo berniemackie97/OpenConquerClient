@@ -40,8 +40,10 @@ internal static class GameCharacterCreation1001
     }
 
     /// <summary>The native cancel sends an empty name, zero body and profession, and the session token.</summary>
-    internal static void WriteCancel(Span<byte> destination, uint sessionToken) =>
+    internal static void WriteCancel(Span<byte> destination, uint sessionToken)
+    {
         Write(destination, cancel: true, ReadOnlySpan<byte>.Empty, 0, 0, sessionToken);
+    }
 
     private static void Write(Span<byte> destination, bool cancel, ReadOnlySpan<byte> name, ushort body,
         ushort profession, uint sessionToken)

@@ -76,6 +76,8 @@ public sealed class GameMapContentTests
         root.WriteFile("ini/GameMap.dat", index);
     }
 
-    private static byte[] ReadRetailNewbieArchive() =>
-        File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "newbie.7z"));
+    private static byte[] ReadRetailNewbieArchive()
+    {
+        return File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "newbie.7z"));
+    }
 }

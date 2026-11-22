@@ -1,10 +1,5 @@
 namespace OpenConquer.Client.UI.Login.Selection;
 
-/// <summary>
-/// Region and server selection over the retail grids: sixteen region slots per page, and the twelve server slots
-/// of the selected region (sprite 180 has no server paging). Nothing is selected until the player picks, and a
-/// new catalog clears the selection.
-/// </summary>
 internal sealed class LoginServerSelection
 {
     public const int RegionsPerPage = 16;
@@ -67,12 +62,14 @@ internal sealed class LoginServerSelection
 
         int index = RegionPage * RegionsPerPage + slot;
 
-        if (SelectedRegionIndex != index)
+        if (SelectedRegionIndex == index)
         {
-            SelectedRegionIndex = index;
-            SelectedServerIndex = -1;
-            Revision++;
+            return true;
         }
+
+        SelectedRegionIndex = index;
+        SelectedServerIndex = -1;
+        Revision++;
 
         return true;
     }
@@ -84,11 +81,13 @@ internal sealed class LoginServerSelection
             return false;
         }
 
-        if (SelectedServerIndex != slot)
+        if (SelectedServerIndex == slot)
         {
-            SelectedServerIndex = slot;
-            Revision++;
+            return true;
         }
+
+        SelectedServerIndex = slot;
+        Revision++;
 
         return true;
     }
@@ -103,7 +102,6 @@ internal sealed class LoginServerSelection
             return false;
         }
 
-        // `sr.flush(page)` reloads the holder movies only; the selected region and its servers stay.
         RegionPage = target;
         return true;
     }
@@ -111,7 +109,10 @@ internal sealed class LoginServerSelection
     public int SelectedRegionSlot => SelectedRegionIndex >= 0 && SelectedRegionIndex / RegionsPerPage == RegionPage ? SelectedRegionIndex % RegionsPerPage : -1;
     public int SelectedServerSlot => SelectedServerIndex;
 
-    private static int PageCount(int count, int perPage) => (count + perPage - 1) / perPage;
+    private static int PageCount(int count, int perPage)
+    {
+        return (count + perPage - 1) / perPage;
+    }
 
     private static void ValidatePageDirection(int direction)
     {

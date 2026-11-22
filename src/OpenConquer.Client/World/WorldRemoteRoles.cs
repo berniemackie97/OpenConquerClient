@@ -17,7 +17,10 @@ internal sealed class WorldRemoteRoles
     }
     internal IReadOnlyCollection<GamePlayerSpawn10014> All => _snapshot ??= [.. _roles.Values.Select(static role => role.Player)];
 
-    internal bool Contains(uint entityId) => _roles.ContainsKey(entityId);
+    internal bool Contains(uint entityId)
+    {
+        return _roles.ContainsKey(entityId);
+    }
 
     internal bool TryGet(uint entityId, out GamePlayerSpawn10014? player)
     {

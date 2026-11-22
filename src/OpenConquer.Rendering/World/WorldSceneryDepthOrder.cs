@@ -4,10 +4,15 @@ internal sealed class WorldSceneryDepthOrder
 {
     private readonly List<Entry> _active = [];
 
-    internal void Insert(WorldScenerySprite sprite, bool terrain = false) =>
+    internal void Insert(WorldScenerySprite sprite, bool terrain = false)
+    {
         Insert(new Entry(sprite, terrain));
+    }
 
-    internal void InsertRole(WorldSceneRole role) => Insert(new Entry(role));
+    internal void InsertRole(WorldSceneRole role)
+    {
+        Insert(new Entry(role));
+    }
 
     private void Insert(Entry incoming)
     {
@@ -158,16 +163,23 @@ internal sealed class WorldSceneryDepthOrder
         children.Add(incoming);
     }
 
-    private static bool Contains(Entry parent, Entry entry) =>
-        unchecked(parent.TileX - parent.Width) < entry.TileX && entry.TileX <= parent.TileX &&
-        unchecked(parent.TileY - parent.Height) < entry.TileY && entry.TileY <= parent.TileY;
+    private static bool Contains(Entry parent, Entry entry)
+    {
+        return unchecked(parent.TileX - parent.Width) < entry.TileX && entry.TileX <= parent.TileX &&
+               unchecked(parent.TileY - parent.Height) < entry.TileY && entry.TileY <= parent.TileY;
+    }
 
     // Native 0x635C5E..0x635C79 uses wrapped subtractions, INC and signed TEST/JG.
-    private static bool Overlaps(int a, int aWidth, int b, int bWidth) =>
-        unchecked(a - aWidth - b + 1) <= 0 && unchecked(b - bWidth - a + 1) <= 0;
+    private static bool Overlaps(int a, int aWidth, int b, int bWidth)
+    {
+        return unchecked(a - aWidth - b + 1) <= 0 && unchecked(b - bWidth - a + 1) <= 0;
+    }
 
     // Signed wrapping ADD/CMP: 0x635E62..0x635E6B. Footprint subtraction above: 0x644E1A/0x644E1D.
-    private static int Sum(Entry entry) => unchecked(entry.TileX + entry.TileY);
+    private static int Sum(Entry entry)
+    {
+        return unchecked(entry.TileX + entry.TileY);
+    }
 
     private struct Entry
     {

@@ -277,7 +277,10 @@ internal static class MainHudContextHintConformance
     }
 
     private static IReadOnlyList<byte[]> WrapReference(OpenGLTextContext text, ReadOnlySpan<byte> encoded, int fontWidth)
-        => MagicHintTextWrapper.Wrap(encoded, MagicWrapPixelLimit, fontWidth, span => text.Layout(span).WidthPixels);
+    {
+        return MagicHintTextWrapper.Wrap(encoded, MagicWrapPixelLimit, fontWidth,
+            span => text.Layout(span).WidthPixels);
+    }
 
     private static void DrawReferenceLine(OpenGLRenderer renderer, OpenGLTextContext text, ReadOnlySpan<byte> encoded,
         NativeTextRenderOptions options, int x, int y)
@@ -455,8 +458,15 @@ internal static class MainHudContextHintConformance
 
     private readonly record struct ExpectedGroup(byte[] Encoded, SpriteColor Color)
     {
-        public static ExpectedGroup White(string text) => new(Encoding.Latin1.GetBytes(text), SpriteColor.White);
-        public static ExpectedGroup Red(string text) => new(Encoding.Latin1.GetBytes(text), s_red);
+        public static ExpectedGroup White(string text)
+        {
+            return new ExpectedGroup(Encoding.Latin1.GetBytes(text), SpriteColor.White);
+        }
+
+        public static ExpectedGroup Red(string text)
+        {
+            return new ExpectedGroup(Encoding.Latin1.GetBytes(text), s_red);
+        }
     }
 
     private readonly record struct DanceCase(string Name, uint Type, int AnchorX, int AnchorY, uint? LearnedLevel,

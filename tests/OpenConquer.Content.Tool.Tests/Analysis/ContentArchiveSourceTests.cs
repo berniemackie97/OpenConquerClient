@@ -100,9 +100,13 @@ public sealed class ContentArchiveSourceTests
         }
     }
 
-    private static ContentManifest Manifest(params ContentManifestEntry[] entries) =>
-        new("5517", new string('0', 64), entries);
+    private static ContentManifest Manifest(params ContentManifestEntry[] entries)
+    {
+        return new ContentManifest("5517", new string('0', 64), entries);
+    }
 
-    private static ContentManifestEntry Entry(string path, byte[] bytes) =>
-        new(path, path, bytes.Length, Convert.ToHexStringLower(SHA256.HashData(bytes)), "unknown");
+    private static ContentManifestEntry Entry(string path, byte[] bytes)
+    {
+        return new ContentManifestEntry(path, path, bytes.Length, Convert.ToHexStringLower(SHA256.HashData(bytes)), "unknown");
+    }
 }

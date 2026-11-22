@@ -172,9 +172,15 @@ internal sealed class WorldHudRuntime : IDisposable
         }
     }
 
-    private bool IsActionAvailable(MainHudActionButtonId id) => id == MainHudActionButtonId.Button47
-        ? _actionAssets.IsPkSkinAvailable(_actionState.PkSkin)
-        : _actionAssets.IsAvailable(id);
+    private bool IsActionAvailable(MainHudActionButtonId id)
+    {
+        return id == MainHudActionButtonId.Button47
+            ? _actionAssets.IsPkSkinAvailable(_actionState.PkSkin)
+            : _actionAssets.IsAvailable(id);
+    }
 
-    private bool IsCheckAvailable(MainHudCheckControlId id) => _checkAssets.IsAvailable(id);
+    private bool IsCheckAvailable(MainHudCheckControlId id)
+    {
+        return _checkAssets.IsAvailable(id);
+    }
 }

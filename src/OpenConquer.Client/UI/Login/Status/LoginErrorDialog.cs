@@ -4,7 +4,6 @@ using OpenConquer.Content.Login;
 
 namespace OpenConquer.Client.UI.Login.Status;
 
-/// <summary>start.dat's ten-frame modal timeline. No keyboard shortcut activates its buttons.</summary>
 internal sealed class LoginErrorDialog
 {
     private readonly LoginButtonSet<LoginDialogButton> _buttons;
@@ -32,8 +31,15 @@ internal sealed class LoginErrorDialog
     internal int Frame { get; private set; } = 1;
     internal bool IsOpen => Frame != 1;
     internal string Text { get; private set; } = string.Empty;
-    internal LoginRect Bounds(LoginDialogButton button) => _buttons.BoundsOf(button);
-    internal LoginButtonState State(LoginDialogButton button) => _buttons.StateOf(button);
+    internal LoginRect Bounds(LoginDialogButton button)
+    {
+        return _buttons.BoundsOf(button);
+    }
+
+    internal LoginButtonState State(LoginDialogButton button)
+    {
+        return _buttons.StateOf(button);
+    }
 
     internal void Show(string text)
     {
@@ -44,11 +50,15 @@ internal sealed class LoginErrorDialog
         _buttons.Reset();
     }
 
-    internal LoginDialogButton? PointerMoved(bool mapped, int x, int y) =>
-        Frame == 6 ? _buttons.PointerMoved(mapped, x, y) : null;
+    internal LoginDialogButton? PointerMoved(bool mapped, int x, int y)
+    {
+        return Frame == 6 ? _buttons.PointerMoved(mapped, x, y) : null;
+    }
 
-    internal LoginDialogButton? PointerPressed(bool mapped, int x, int y) =>
-        Frame == 6 ? _buttons.PointerPressed(mapped, x, y) : null;
+    internal LoginDialogButton? PointerPressed(bool mapped, int x, int y)
+    {
+        return Frame == 6 ? _buttons.PointerPressed(mapped, x, y) : null;
+    }
 
     internal bool PointerReleased(bool mapped, int x, int y)
     {
@@ -63,7 +73,6 @@ internal sealed class LoginErrorDialog
         return true;
     }
 
-    /// <returns>Whether quit was confirmed and reached its frame10 action.</returns>
     internal bool Advance(int frames)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(frames);
@@ -83,5 +92,8 @@ internal sealed class LoginErrorDialog
         return _confirmed;
     }
 
-    internal void FocusLost() => _buttons.Reset();
+    internal void FocusLost()
+    {
+        _buttons.Reset();
+    }
 }

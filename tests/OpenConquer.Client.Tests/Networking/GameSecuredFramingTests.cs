@@ -27,11 +27,20 @@ public sealed class GameSecuredFramingTests
         return bytes;
     }
 
-    private static byte[] InboundIv() => [1, 2, 3, 4, 5, 6, 7, 8];
+    private static byte[] InboundIv()
+    {
+        return [1, 2, 3, 4, 5, 6, 7, 8];
+    }
 
-    private static byte[] OutboundIv() => [21, 22, 23, 24, 25, 26, 27, 28];
+    private static byte[] OutboundIv()
+    {
+        return [21, 22, 23, 24, 25, 26, 27, 28];
+    }
 
-    private static GameSessionCipher ClientSession() => new(SessionKey(), InboundIv(), OutboundIv());
+    private static GameSessionCipher ClientSession()
+    {
+        return new GameSessionCipher(SessionKey(), InboundIv(), OutboundIv());
+    }
 
     [Fact]
     public void ClientProofMatchesIndependentEncryptedWireVector()

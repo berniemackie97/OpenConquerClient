@@ -241,7 +241,10 @@ internal static class MainHudSelectedSkillConformance
             return true;
         }
 
-        public void Dispose() => _disposed = true;
+        public void Dispose()
+        {
+            _disposed = true;
+        }
     }
 
     private sealed class ReferenceTextures : IDisposable

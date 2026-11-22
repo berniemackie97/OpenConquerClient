@@ -2,7 +2,6 @@ using System.Text;
 
 namespace OpenConquer.Client.UI.Login.Status;
 
-/// <summary>Plain, clipped multiline text for the read-only Flash error field.</summary>
 internal static class LoginErrorTextLayout
 {
     internal static IReadOnlyList<string> Wrap(string text, int width, Func<string, int> measure)
@@ -10,6 +9,7 @@ internal static class LoginErrorTextLayout
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(measure);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+
         List<string> lines = [];
         foreach (string paragraph in text.Replace('\r', '\n').Split('\n'))
         {

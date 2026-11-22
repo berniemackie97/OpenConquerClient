@@ -9,7 +9,9 @@ internal readonly record struct WorldScenerySprite(
     int TileX, int TileY, int FootprintWidth, int FootprintHeight,
     GameMapSceneryRecord? Source = null)
 {
-    internal bool IntersectsViewport(int width, int height, int screenWidth, int screenHeight) =>
-        width > 0 && height > 0 && (long)X + width > 0 && (long)Y + height > 0 &&
-        X < screenWidth && Y < screenHeight;
+    internal bool IntersectsViewport(int width, int height, int screenWidth, int screenHeight)
+    {
+        return width > 0 && height > 0 && (long)X + width > 0 && (long)Y + height > 0 &&
+               X < screenWidth && Y < screenHeight;
+    }
 }

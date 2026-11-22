@@ -26,7 +26,10 @@ internal enum LoginAccountPressKind
 
 internal readonly record struct LoginAccountPress(LoginAccountPressKind Kind, string? Account = null)
 {
-    public override string ToString() => $"{nameof(LoginAccountPress)} {{ Kind = {Kind} }}";
+    public override string ToString()
+    {
+        return $"{nameof(LoginAccountPress)} {{ Kind = {Kind} }}";
+    }
 }
 
 internal enum LoginAccountRelease
@@ -96,9 +99,15 @@ internal sealed class LoginAccountControls
 
     public bool CapturesPointer => IsModal || List != LoginAccountList.Closed;
 
-    public LoginButtonState DialogButtonState(LoginDialogButton button) => _dialogButtons.StateOf(button);
+    public LoginButtonState DialogButtonState(LoginDialogButton button)
+    {
+        return _dialogButtons.StateOf(button);
+    }
 
-    public LoginRect RowBounds(int row) => _layout.Row(row, ListOffset);
+    public LoginRect RowBounds(int row)
+    {
+        return _layout.Row(row, ListOffset);
+    }
 
     /// <summary>The Accounts button: listMC pop() while closed, reset() once fully open.</summary>
     public void ToggleList()

@@ -79,8 +79,14 @@ public sealed class WorldOffMapNativeGoldenTests
         }
     }
 
-    private static int Int(JsonElement row, string name) => row.GetProperty(name).GetInt32();
+    private static int Int(JsonElement row, string name)
+    {
+        return row.GetProperty(name).GetInt32();
+    }
 
-    private static JsonDocument Fixture() => JsonDocument.Parse(File.ReadAllBytes(
-        Path.Combine(AppContext.BaseDirectory, "Fixtures", "World", "off-map-5517.json")));
+    private static JsonDocument Fixture()
+    {
+        return JsonDocument.Parse(File.ReadAllBytes(
+            Path.Combine(AppContext.BaseDirectory, "Fixtures", "World", "off-map-5517.json")));
+    }
 }

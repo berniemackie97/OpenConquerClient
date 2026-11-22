@@ -21,10 +21,15 @@ public sealed class ItemStatCatalog
         _additions = additions;
     }
 
-    public bool TryGetItem(uint typeId, out ItemBaseStats stats) => _items.TryGetValue(typeId, out stats);
+    public bool TryGetItem(uint typeId, out ItemBaseStats stats)
+    {
+        return _items.TryGetValue(typeId, out stats);
+    }
 
-    public ushort GetAdditionLife(uint typeId, byte level) =>
-        _additions.GetValueOrDefault((typeId, level));
+    public ushort GetAdditionLife(uint typeId, byte level)
+    {
+        return _additions.GetValueOrDefault((typeId, level));
+    }
 
     public static ItemStatCatalog Load(IClientContentSource source)
     {

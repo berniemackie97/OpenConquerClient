@@ -166,7 +166,10 @@ public sealed class LoginSignedAccountExchangeTests
         return listener;
     }
 
-    private static int Port(TcpListener listener) => ((IPEndPoint)listener.LocalEndpoint).Port;
+    private static int Port(TcpListener listener)
+    {
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
 
     private static async Task<int> SendSeedReadRequestReplyAsync(TcpListener listener,
         byte[] response, CancellationToken token)
@@ -209,8 +212,14 @@ public sealed class LoginSignedAccountExchangeTests
     {
         private DateTimeOffset _current = initial;
 
-        public override DateTimeOffset GetUtcNow() => _current;
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _current;
+        }
 
-        internal void Set(DateTimeOffset value) => _current = value;
+        internal void Set(DateTimeOffset value)
+        {
+            _current = value;
+        }
     }
 }

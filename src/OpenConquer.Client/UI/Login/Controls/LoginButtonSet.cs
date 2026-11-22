@@ -87,6 +87,8 @@ internal sealed class LoginButtonSet<TButton> where TButton : struct, Enum
         return null;
     }
 
-    private static bool Is(TButton? candidate, TButton button) =>
-        candidate is { } value && EqualityComparer<TButton>.Default.Equals(value, button);
+    private static bool Is(TButton? candidate, TButton button)
+    {
+        return candidate is { } value && EqualityComparer<TButton>.Default.Equals(value, button);
+    }
 }

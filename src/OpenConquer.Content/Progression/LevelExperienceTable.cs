@@ -12,12 +12,17 @@ public sealed class LevelExperienceTable
     private const int MaximumLevel = 150;
     private readonly ulong[] _nextLevelExperience;
 
-    private LevelExperienceTable(ulong[] nextLevelExperience) =>
+    private LevelExperienceTable(ulong[] nextLevelExperience)
+    {
         _nextLevelExperience = nextLevelExperience;
+    }
 
-    public ulong GetNextLevelExperience(uint level) =>
-        level is >= 1 and <= MaximumLevel && level <= _nextLevelExperience.Length
-            ? _nextLevelExperience[level - 1] : 0;
+    public ulong GetNextLevelExperience(uint level)
+    {
+        return level is >= 1 and <= MaximumLevel && level <= _nextLevelExperience.Length
+            ? _nextLevelExperience[level - 1]
+            : 0;
+    }
 
     public static LevelExperienceTable Load(IClientContentSource source)
     {

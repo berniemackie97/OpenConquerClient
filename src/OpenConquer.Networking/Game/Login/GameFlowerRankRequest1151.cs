@@ -33,5 +33,8 @@ internal static class GameFlowerRankRequest1151
     }
 
     /// <summary>True when native sends <see cref="EnterMapSubtype"/> after EnterMap for this packed appearance.</summary>
-    internal static bool IsSentAfterEnterMap(uint packedAppearance) => packedAppearance / 1000 % 10 == 2;
+    internal static bool IsSentAfterEnterMap(uint packedAppearance)
+    {
+        return packedAppearance / 1000 % 10 == 2;
+    }
 }

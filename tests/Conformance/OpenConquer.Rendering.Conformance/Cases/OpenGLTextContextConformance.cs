@@ -76,6 +76,9 @@ internal static class OpenGLTextContextConformance
             return true;
         }
 
-        public void Dispose() => _disposed = true;
+        public void Dispose()
+        {
+            _disposed = true;
+        }
     }
 }

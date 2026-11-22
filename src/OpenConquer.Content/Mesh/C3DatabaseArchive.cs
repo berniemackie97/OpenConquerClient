@@ -71,13 +71,17 @@ internal sealed class C3DatabaseArchive
         return new C3DatabaseArchive(data, entries);
     }
 
-    internal ReadOnlyMemory<byte> ReadRequired(string path) =>
-        _entries.TryGetValue(path, out ReadOnlyMemory<byte> bytes)
+    internal ReadOnlyMemory<byte> ReadRequired(string path)
+    {
+        return _entries.TryGetValue(path, out ReadOnlyMemory<byte> bytes)
             ? bytes
             : throw new FileNotFoundException($"C3 database entry '{path}' was not found.");
+    }
 
-    internal bool TryRead(string path, out ReadOnlyMemory<byte> bytes) =>
-        _entries.TryGetValue(path, out bytes);
+    internal bool TryRead(string path, out ReadOnlyMemory<byte> bytes)
+    {
+        return _entries.TryGetValue(path, out bytes);
+    }
 
     private static void DecryptDescriptor(ReadOnlySpan<byte> input, Span<byte> output, uint[] table)
     {

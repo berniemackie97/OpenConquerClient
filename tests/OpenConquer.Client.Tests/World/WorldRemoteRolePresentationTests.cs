@@ -127,7 +127,9 @@ public sealed class WorldRemoteRolePresentationTests
         }));
     }
 
-    private static GamePlayerSpawn10014 Player(uint id, uint appearance) =>
-        new(id, new byte[] { (byte)'P' }, appearance, 335, 61, 101, 0, 100, 250, 120,
+    private static GamePlayerSpawn10014 Player(uint id, uint appearance)
+    {
+        return new GamePlayerSpawn10014(id, new byte[] { (byte)'P' }, appearance, 335, 61, 101, 0, 100, 250, 120,
             0, 0, 0, 0, 0, 0);
+    }
 }

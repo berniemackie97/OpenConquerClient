@@ -39,8 +39,15 @@ internal sealed class ManagedReleaseStore
 
     public string DescriptorPath => Path.Combine(ProductRoot, ManagedInstallationManifest.FileName);
 
-    public Task<StoredReleaseReadResult> ReadCandidateAsync(string candidateRoot, CancellationToken cancellationToken) => ReadReleaseAsync(candidateRoot, verifyClient: true, cancellationToken);
-    public Task<StoredReleaseReadResult> ReadActiveMetadataAsync(ActiveReleaseLocation location, CancellationToken cancellationToken) => ReadReleaseAsync(location.RootPath, verifyClient: false, cancellationToken);
+    public Task<StoredReleaseReadResult> ReadCandidateAsync(string candidateRoot, CancellationToken cancellationToken)
+    {
+        return ReadReleaseAsync(candidateRoot, verifyClient: true, cancellationToken);
+    }
+
+    public Task<StoredReleaseReadResult> ReadActiveMetadataAsync(ActiveReleaseLocation location, CancellationToken cancellationToken)
+    {
+        return ReadReleaseAsync(location.RootPath, verifyClient: false, cancellationToken);
+    }
 
     public async Task<StoredReleaseReadResult> ReadGenerationAsync(string releaseId, CancellationToken cancellationToken)
     {
@@ -153,7 +160,10 @@ internal sealed class ManagedReleaseStore
         return new ActiveReleaseLocation(GetGenerationRoot(releaseId), releaseId);
     }
 
-    public string GetGenerationRoot(string releaseId) => Path.Combine(ProductRoot, ManagedInstallationManifest.ReleasesRoot, releaseId);
+    public string GetGenerationRoot(string releaseId)
+    {
+        return Path.Combine(ProductRoot, ManagedInstallationManifest.ReleasesRoot, releaseId);
+    }
 
     public string EnsureReleasesRoot()
     {

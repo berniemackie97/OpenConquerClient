@@ -12,17 +12,12 @@ using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Login.Registration;
 
-/// <summary>
-/// Draws the Sign Up dialog for one OpenGL context. Labels, title, guidance and field text use the account
-/// panel's device Arial 14 and field colour (#908B37); errors use the native dialogs' #FF4642.
-/// </summary>
 internal sealed class LoginRegistrationPresentation : ILoginRegistrationCaretLocator, IDisposable
 {
     private const int FontHeight = 14;
     private const int MaximumMessageLines = 2;
     private static readonly SpriteColor s_error = new(0xFF, 0x46, 0x42, 255);
-    private static readonly NativeTextRenderOptions s_errorStyle = new(NativeTextRenderStyle.Normal, s_error, s_error, 0, 0,
-        NativeTextVertexColors.Solid(s_error));
+    private static readonly NativeTextRenderOptions s_errorStyle = new(NativeTextRenderStyle.Normal, s_error, s_error, 0, 0, NativeTextVertexColors.Solid(s_error));
 
     private readonly ResourceOwnership _ownership = new();
     private readonly LoginRegistrationLayout _layout;
@@ -108,18 +103,15 @@ internal sealed class LoginRegistrationPresentation : ILoginRegistrationCaretLoc
             LoginRect box = _layout.Box(field);
             renderer.DrawSprite(_box, box.X, box.Y, box.Width, box.Height);
 
-            // Labels sit on the field's text line, inside the same 2-pixel gutter.
             LoginRect label = _layout.Label(field);
             OpenGLTextLayout text = _labels[(int)field];
             if (!text.HasMissingGlyphs)
             {
-                _font.Draw(renderer, text, LoginCredentialPresentation.TextStyle, label.X + label.Width - text.WidthPixels,
-                    label.Y + _layout.Scale(2));
+                _font.Draw(renderer, text, LoginCredentialPresentation.TextStyle, label.X + label.Width - text.WidthPixels, label.Y + _layout.Scale(2));
             }
 
             LoginTextField entry = form.Field(field);
-            _views[(int)field].Draw(renderer, _font, LoginCredentialPresentation.TextStyle, LoginCredentialPresentation.TextColor,
-                LoginCredentialPresentation.SelectionColor,
+            _views[(int)field].Draw(renderer, _font, LoginCredentialPresentation.TextStyle, LoginCredentialPresentation.TextColor, LoginCredentialPresentation.SelectionColor,
                 new LoginTextFieldState(form.Focus == field, entry.CaretIndex, entry.SelectionStart, entry.SelectionEnd, caretVisible));
         }
 
@@ -143,7 +135,10 @@ internal sealed class LoginRegistrationPresentation : ILoginRegistrationCaretLoc
         return form.Focus is { } field ? _views[(int)field].LocateWhileDragging(x, form.Field(field).Length) : 0;
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 
     private void EnsureLayout(LoginRegistrationForm form)
     {
@@ -156,8 +151,7 @@ internal sealed class LoginRegistrationPresentation : ILoginRegistrationCaretLoc
         foreach (LoginRegistrationField field in Enum.GetValues<LoginRegistrationField>())
         {
             LoginTextField entry = form.Field(field);
-            _views[(int)field].Update(_font, _layout.Field(field), contentChanged ? entry.Display : null,
-                form.Focus == field ? entry.CaretIndex : -1);
+            _views[(int)field].Update(_font, _layout.Field(field), contentChanged ? entry.Display : null, form.Focus == field ? entry.CaretIndex : -1);
         }
 
         _lastContentRevision = form.ContentRevision;
@@ -171,11 +165,8 @@ internal sealed class LoginRegistrationPresentation : ILoginRegistrationCaretLoc
         if (!string.Equals(_message, form.Message, StringComparison.Ordinal))
         {
             _message = form.Message;
-            IReadOnlyList<string> lines = LoginErrorTextLayout.Wrap(form.Message, area.Width,
-                line => _font.LayoutUnicode(line).WidthPixels);
-            // Wrapped lines keep the space they broke at, which would pull centred text off centre.
-            _messageLines = [.. lines.Select(static line => line.TrimEnd()).Where(static line => line.Length > 0)
-                .Take(MaximumMessageLines).Select(line => _font.LayoutUnicode(line))];
+            IReadOnlyList<string> lines = LoginErrorTextLayout.Wrap(form.Message, area.Width, line => _font.LayoutUnicode(line).WidthPixels);
+            _messageLines = [.. lines.Select(static line => line.TrimEnd()).Where(static line => line.Length > 0).Take(MaximumMessageLines).Select(line => _font.LayoutUnicode(line))];
         }
 
         if (_messageLines.Length == 0)
@@ -202,15 +193,18 @@ internal sealed class LoginRegistrationPresentation : ILoginRegistrationCaretLoc
 
     private void DrawButton(OpenGLRenderer renderer, LoginRegistrationForm form, LoginDialogButton button, LoginRect bounds)
     {
-        // The Up states are part of the dialog picture.
         LoginButtonState state = form.ButtonState(button);
-        if (state != LoginButtonState.Up)
+        if (state == LoginButtonState.Up)
         {
-            OpenGLTexture2D texture = _buttons[(int)button, state == LoginButtonState.Down ? 1 : 0];
-            renderer.DrawSprite(texture, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            return;
         }
+
+        OpenGLTexture2D texture = _buttons[(int)button, state == LoginButtonState.Down ? 1 : 0];
+        renderer.DrawSprite(texture, bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
-    private OpenGLTexture2D Create(OpenGLGraphicsDevice graphicsDevice, RgbaImage image) =>
-        _ownership.Track(graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span));
+    private OpenGLTexture2D Create(OpenGLGraphicsDevice graphicsDevice, RgbaImage image)
+    {
+        return _ownership.Track(graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span));
+    }
 }

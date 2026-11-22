@@ -22,7 +22,10 @@ internal sealed class WorldHeroGaugeFollowers
         Mana = AdvanceValue(Mana, unchecked((int)hero.CurrentMana), maxima.Mana);
     }
 
-    internal void ResetLifeForEquipmentClamp(int maximumLife) => Life = maximumLife;
+    internal void ResetLifeForEquipmentClamp(int maximumLife)
+    {
+        Life = maximumLife;
+    }
 
     private static int AdvanceValue(int follower, int current, int maximum)
     {

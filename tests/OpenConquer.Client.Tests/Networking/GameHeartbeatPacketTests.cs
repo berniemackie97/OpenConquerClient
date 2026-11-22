@@ -42,8 +42,10 @@ public sealed class GameHeartbeatPacketTests
     [Theory]
     [InlineData("", 0x00000000u)]
     [InlineData("4F70656E436F6E71756572", 0xB29F7EC2u)]
-    public void Checksum_MatchesTheNativeTableDrivenLoop(string hex, uint expected) =>
+    public void Checksum_MatchesTheNativeTableDrivenLoop(string hex, uint expected)
+    {
         Assert.Equal(expected, GameSilentInfoReport.ComputeChecksum(Convert.FromHexString(hex)));
+    }
 
     [Fact]
     public void Checksum_CoversEveryTableIndex()
@@ -63,10 +65,15 @@ public sealed class GameHeartbeatPacketTests
     [InlineData("abc", 0u)]
     [InlineData("+7x", 7u)]
     [InlineData("4294967297", 1u)]
-    public void Version_ParsesLikeTheNativeAtoi(string text, uint expected) =>
+    public void Version_ParsesLikeTheNativeAtoi(string text, uint expected)
+    {
         Assert.Equal(expected, GameSilentInfoReport.ParseVersion(System.Text.Encoding.ASCII.GetBytes(text)));
+    }
 
     [Fact]
-    public void Version_ReadsOnlyTheFirst128Bytes() =>
-        Assert.Equal(0xFFFFFFFFu, GameSilentInfoReport.ParseVersion(System.Text.Encoding.ASCII.GetBytes(new string('9', 200))));
+    public void Version_ReadsOnlyTheFirst128Bytes()
+    {
+        Assert.Equal(0xFFFFFFFFu,
+            GameSilentInfoReport.ParseVersion(System.Text.Encoding.ASCII.GetBytes(new string('9', 200))));
+    }
 }

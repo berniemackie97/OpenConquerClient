@@ -451,16 +451,22 @@ public sealed partial class GameServerHandshakeSessionTests
     }
 
     [Fact]
-    public Task WrongCharacterInfoTypeIsTerminal() =>
-        VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedWrongCharacterInfo);
+    public Task WrongCharacterInfoTypeIsTerminal()
+    {
+        return VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedWrongCharacterInfo);
+    }
 
     [Fact]
-    public Task MissingCharacterInfoEofIsTerminal() =>
-        VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedNoCharacterInfo);
+    public Task MissingCharacterInfoEofIsTerminal()
+    {
+        return VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedNoCharacterInfo);
+    }
 
     [Fact]
-    public Task SilentCharacterInfoTimeoutIsTerminal() =>
-        VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedSilentCharacterInfo);
+    public Task SilentCharacterInfoTimeoutIsTerminal()
+    {
+        return VerifyFailedCharacterInfoAsync(PeerResponse.AcceptedSilentCharacterInfo);
+    }
 
     private static async Task VerifyFailedCharacterInfoAsync(PeerResponse response)
     {
@@ -616,13 +622,17 @@ public sealed partial class GameServerHandshakeSessionTests
     }
 
     [Fact]
-    public Task FirstLoginControlRoutesCharacterCreation() =>
-        VerifyFirstLoginControlAsync(PeerResponse.NewRole, GameLoginControlKind.CharacterCreation, null);
+    public Task FirstLoginControlRoutesCharacterCreation()
+    {
+        return VerifyFirstLoginControlAsync(PeerResponse.NewRole, GameLoginControlKind.CharacterCreation, null);
+    }
 
     [Fact]
-    public Task FirstLoginControlTerminatesRefusal() =>
-        VerifyFirstLoginControlAsync(PeerResponse.LoginRefused, GameLoginControlKind.Refused,
+    public Task FirstLoginControlTerminatesRefusal()
+    {
+        return VerifyFirstLoginControlAsync(PeerResponse.LoginRefused, GameLoginControlKind.Refused,
             "The server is full. Please try again later.");
+    }
 
     private static async Task VerifyFirstLoginControlAsync(
         PeerResponse reply, GameLoginControlKind expected, string? refusal)
@@ -660,12 +670,16 @@ public sealed partial class GameServerHandshakeSessionTests
     }
 
     [Fact]
-    public Task WrongLoginChannelIsTerminal() =>
-        VerifyUnexpectedInitialLoginControlAsync(PeerResponse.WrongLoginChannel);
+    public Task WrongLoginChannelIsTerminal()
+    {
+        return VerifyUnexpectedInitialLoginControlAsync(PeerResponse.WrongLoginChannel);
+    }
 
     [Fact]
-    public Task WrongFirstPacketIsTerminal() =>
-        VerifyUnexpectedInitialLoginControlAsync(PeerResponse.WrongFirstPacket);
+    public Task WrongFirstPacketIsTerminal()
+    {
+        return VerifyUnexpectedInitialLoginControlAsync(PeerResponse.WrongFirstPacket);
+    }
 
     private static async Task VerifyUnexpectedInitialLoginControlAsync(PeerResponse reply)
     {
@@ -722,12 +736,16 @@ public sealed partial class GameServerHandshakeSessionTests
     }
 
     [Fact]
-    public Task LoginControlEofCannotEstablishSuccess() =>
-        VerifyMissingInitialLoginControlAsync(PeerResponse.NoLoginResponse);
+    public Task LoginControlEofCannotEstablishSuccess()
+    {
+        return VerifyMissingInitialLoginControlAsync(PeerResponse.NoLoginResponse);
+    }
 
     [Fact]
-    public Task LoginControlTimeoutCannotEstablishSuccess() =>
-        VerifyMissingInitialLoginControlAsync(PeerResponse.SilentAfterProof);
+    public Task LoginControlTimeoutCannotEstablishSuccess()
+    {
+        return VerifyMissingInitialLoginControlAsync(PeerResponse.SilentAfterProof);
+    }
 
     private static async Task VerifyMissingInitialLoginControlAsync(PeerResponse reply)
     {
@@ -781,9 +799,11 @@ public sealed partial class GameServerHandshakeSessionTests
         NoLoginResponse,
     }
 
-    internal static Task RefuseCoordinatorLoginAsync(TcpListener listener, CancellationToken token) =>
-        SecuredGamePeerAsync(listener, PeerResponse.LoginRefused, token,
+    internal static Task RefuseCoordinatorLoginAsync(TcpListener listener, CancellationToken token)
+    {
+        return SecuredGamePeerAsync(listener, PeerResponse.LoginRefused, token,
             "1C001C0444332211EFCDAB897C00456E0000000000000000000000005451436C69656E74");
+    }
 
     private static async Task SecuredGamePeerAsync(TcpListener listener, PeerResponse response,
         CancellationToken token, string? expectedProof = null)
@@ -1230,6 +1250,8 @@ public sealed partial class GameServerHandshakeSessionTests
         return listener;
     }
 
-    private static int Port(TcpListener listener) =>
-        ((IPEndPoint)listener.LocalEndpoint).Port;
+    private static int Port(TcpListener listener)
+    {
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
 }

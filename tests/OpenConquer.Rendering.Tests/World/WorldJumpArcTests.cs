@@ -25,16 +25,20 @@ public sealed class WorldJumpArcTests
     [InlineData(-0.7, 0)]
     [InlineData(-6.4, -5)]
     [InlineData(-1.5, -1)]
-    public void RoundHalfStepMatchesTheNativeCompare(double value, int expected) =>
+    public void RoundHalfStepMatchesTheNativeCompare(double value, int expected)
+    {
         Assert.Equal(expected, WorldJumpArc.RoundHalfStep(value));
+    }
 
     [Theory]
     [InlineData(1664, 2704, 60, 108)]
     [InlineData(1696, 2720, 61, 108)]
     [InlineData(1680, 2712, 61, 108)]
     [InlineData(-40, -40, -51, 49)]
-    public void ScreenToTileInvertsTheProjectionWithoutClamping(int x, int y, int tileX, int tileY) =>
+    public void ScreenToTileInvertsTheProjectionWithoutClamping(int x, int y, int tileX, int tileY)
+    {
         Assert.Equal((tileX, tileY), WorldJumpArc.ScreenToTile(MapWidth, x, y));
+    }
 
     [Fact]
     public void RoundedLineExcludesTheSourceAndBreaksTiesOnTheYAxis()

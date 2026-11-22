@@ -145,9 +145,20 @@ public sealed class DesktopKeyboardInputTests
 
         public int SubscriberCount => (_keyDown?.GetInvocationList().Length ?? 0) + (_keyUp?.GetInvocationList().Length ?? 0) + (_keyChar?.GetInvocationList().Length ?? 0);
 
-        public void RaiseKeyDown(IKeyboard keyboard, Key key) => _keyDown?.Invoke(keyboard, key, 0);
-        public void RaiseKeyUp(IKeyboard keyboard, Key key) => _keyUp?.Invoke(keyboard, key, 0);
-        public void RaiseKeyChar(IKeyboard keyboard, char character) => _keyChar?.Invoke(keyboard, character);
+        public void RaiseKeyDown(IKeyboard keyboard, Key key)
+        {
+            _keyDown?.Invoke(keyboard, key, 0);
+        }
+
+        public void RaiseKeyUp(IKeyboard keyboard, Key key)
+        {
+            _keyUp?.Invoke(keyboard, key, 0);
+        }
+
+        public void RaiseKeyChar(IKeyboard keyboard, char character)
+        {
+            _keyChar?.Invoke(keyboard, character);
+        }
 
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {

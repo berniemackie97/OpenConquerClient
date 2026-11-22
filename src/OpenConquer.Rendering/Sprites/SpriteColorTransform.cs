@@ -17,17 +17,21 @@ public readonly record struct SpriteColorTransform(
     /// Converts SWF CXFORMWITHALPHA terms: 8.8 fixed-point multipliers (256 = 1) and add terms in 0..255 units.
     /// </summary>
     public static SpriteColorTransform FromSwf(int redMultiplier, int greenMultiplier, int blueMultiplier, int alphaMultiplier,
-        int redAdd, int greenAdd, int blueAdd, int alphaAdd) =>
-        new(redMultiplier / 256f, greenMultiplier / 256f, blueMultiplier / 256f, alphaMultiplier / 256f,
+        int redAdd, int greenAdd, int blueAdd, int alphaAdd)
+    {
+        return new SpriteColorTransform(redMultiplier / 256f, greenMultiplier / 256f, blueMultiplier / 256f, alphaMultiplier / 256f,
             redAdd / 255f, greenAdd / 255f, blueAdd / 255f, alphaAdd / 255f);
+    }
 
     /// <summary>
     /// Returns the transform that applies <paramref name="inner"/> first and then this one, as a parent's transform
     /// applies to everything its child draws.
     /// </summary>
-    public SpriteColorTransform Concatenate(SpriteColorTransform inner) =>
-        new(RedMultiplier * inner.RedMultiplier, GreenMultiplier * inner.GreenMultiplier,
+    public SpriteColorTransform Concatenate(SpriteColorTransform inner)
+    {
+        return new SpriteColorTransform(RedMultiplier * inner.RedMultiplier, GreenMultiplier * inner.GreenMultiplier,
             BlueMultiplier * inner.BlueMultiplier, AlphaMultiplier * inner.AlphaMultiplier,
             RedMultiplier * inner.RedOffset + RedOffset, GreenMultiplier * inner.GreenOffset + GreenOffset,
             BlueMultiplier * inner.BlueOffset + BlueOffset, AlphaMultiplier * inner.AlphaOffset + AlphaOffset);
+    }
 }

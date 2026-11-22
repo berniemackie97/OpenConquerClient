@@ -44,5 +44,8 @@ internal sealed class LoginButtonPresentation : IDisposable
         renderer.DrawSprite(_textures[(int)button, (int)state], bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 }

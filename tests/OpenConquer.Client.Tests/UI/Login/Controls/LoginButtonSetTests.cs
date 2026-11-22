@@ -68,5 +68,8 @@ public sealed class LoginButtonSetTests
         Assert.Throws<ArgumentOutOfRangeException>(() => buttons.BoundsOf(LoginDialogButton.Cancel));
     }
 
-    private static LoginButtonSet<LoginDialogButton> Create() => new([(LoginDialogButton.Ok, s_left), (LoginDialogButton.Cancel, s_right)]);
+    private static LoginButtonSet<LoginDialogButton> Create()
+    {
+        return new LoginButtonSet<LoginDialogButton>([(LoginDialogButton.Ok, s_left), (LoginDialogButton.Cancel, s_right)]);
+    }
 }

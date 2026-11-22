@@ -15,12 +15,15 @@ internal readonly record struct GameWalk10005(
     internal bool IsMounted => (byte)Selector == MountedSelector;
     internal byte DirectionIndex => (byte)((byte)PackedDirection % (IsMounted ? 24 : 8));
 
-    internal static GameWalk10005 Read(GameMessageBuffer message) => new(
-        message.ReadUInt32(4),
-        message.ReadUInt32(8),
-        message.ReadUInt32(12),
-        message.ReadUInt32(16),
-        message.ReadUInt32(20));
+    internal static GameWalk10005 Read(GameMessageBuffer message)
+    {
+        return new GameWalk10005(
+            message.ReadUInt32(4),
+            message.ReadUInt32(8),
+            message.ReadUInt32(12),
+            message.ReadUInt32(16),
+            message.ReadUInt32(20));
+    }
 
     private static readonly sbyte[] s_twoTileDeltaX =
         [0, -2, -2, -2, 0, 2, 2, 2, -1, -2, -2, -1, 1, 2, 2, 1, -1, -2, -2, -1, 1, 2, 2, 1];

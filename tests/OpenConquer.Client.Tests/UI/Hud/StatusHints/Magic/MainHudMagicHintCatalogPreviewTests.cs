@@ -48,7 +48,10 @@ public sealed class MainHudMagicHintCatalogPreviewTests
         return new MainHudMagicHintTextBuilder(effects, numeric, keyed, subprofessions);
     }
 
-    private static MainHudMagicHintRuntimeSnapshot CreateRuntime(IEnumerable<MainHudLearnedMagic> learned, int activeClass) => new(learned, 130, activeClass, 0, 0, null, default);
+    private static MainHudMagicHintRuntimeSnapshot CreateRuntime(IEnumerable<MainHudLearnedMagic> learned, int activeClass)
+    {
+        return new MainHudMagicHintRuntimeSnapshot(learned, 130, activeClass, 0, 0, null, default);
+    }
 
     private static MagicTypeRecord CreateRecord(uint type)
     {
@@ -79,5 +82,8 @@ public sealed class MainHudMagicHintCatalogPreviewTests
         return record;
     }
 
-    private static string[] Decode(IReadOnlyList<MainHudMagicHintTextGroup> groups) => groups.Select(static group => Encoding.Latin1.GetString(group.EncodedText.Span)).ToArray();
+    private static string[] Decode(IReadOnlyList<MainHudMagicHintTextGroup> groups)
+    {
+        return groups.Select(static group => Encoding.Latin1.GetString(group.EncodedText.Span)).ToArray();
+    }
 }

@@ -30,8 +30,10 @@ internal sealed class DisplaySettingsSession : IAsyncDisposable
         return Start(token => _store.SaveAsync(preferences, revision, resetInvalid, token));
     }
 
-    internal bool IsStoppingCancellation(OperationCanceledException failure) =>
-        _token.IsCancellationRequested && failure.CancellationToken == _token;
+    internal bool IsStoppingCancellation(OperationCanceledException failure)
+    {
+        return _token.IsCancellationRequested && failure.CancellationToken == _token;
+    }
 
     private Task<T> Start<T>(Func<CancellationToken, Task<T>> start)
     {

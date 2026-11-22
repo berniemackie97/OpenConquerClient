@@ -73,8 +73,9 @@ public sealed class MapDependencyReportTests
             Startup(), new Dictionary<uint, IReadOnlyList<ClientContentRequirement>>()));
     }
 
-    private static ContentManifest CreateManifest() =>
-        new("5517", new string('0', 64),
+    private static ContentManifest CreateManifest()
+    {
+        return new ContentManifest("5517", new string('0', 64),
         [
             Entry("data/a.bin", 10),
             Entry("data/b.bin", 20),
@@ -82,21 +83,33 @@ public sealed class MapDependencyReportTests
             Entry("data/d.bin", 40),
             Entry("data/e.bin", 50),
         ]);
+    }
 
-    private static ContentManifestEntry Entry(string path, long length) =>
-        new(path, path, length, new string('a', 64), "unknown");
+    private static ContentManifestEntry Entry(string path, long length)
+    {
+        return new ContentManifestEntry(path, path, length, new string('a', 64), "unknown");
+    }
 
-    private static ClientContentRequirement Require(string path) =>
-        new(path, ContentLookupMode.LooseOnly);
+    private static ClientContentRequirement Require(string path)
+    {
+        return new ClientContentRequirement(path, ContentLookupMode.LooseOnly);
+    }
 
-    private static ClientContentRequirement[] Startup() =>
-        [Require("data/a.bin"), Require("data/b.bin")];
+    private static ClientContentRequirement[] Startup()
+    {
+        return [Require("data/a.bin"), Require("data/b.bin")];
+    }
 
-    private static Dictionary<uint, IReadOnlyList<ClientContentRequirement>> Maps() =>
-        new()
+    private static Dictionary<uint, IReadOnlyList<ClientContentRequirement>> Maps()
+    {
+        return new Dictionary<uint, IReadOnlyList<ClientContentRequirement>>
         {
             [1929] = [Require("data/d.bin"), Require("data/e.bin")],
-            [1010] = [Require("data/b.bin"), Require("data/c.bin"),
-                Require("data/d.bin"), Require("data/d.bin")],
+            [1010] =
+            [
+                Require("data/b.bin"), Require("data/c.bin"),
+                Require("data/d.bin"), Require("data/d.bin")
+            ],
         };
+    }
 }

@@ -33,7 +33,10 @@ internal sealed class WorldHeartbeat
         private set;
     }
 
-    internal void ObserveLatencyTick(uint now, uint serverReference) => Latency = unchecked(now - serverReference);
+    internal void ObserveLatencyTick(uint now, uint serverReference)
+    {
+        Latency = unchecked(now - serverReference);
+    }
 
     internal WorldHeartbeatSend Tick(uint now)
     {

@@ -25,5 +25,8 @@ internal sealed class MainHudPreparation(MainHudContent content, PreparedTextFon
         return new MainHudPreparation(content, fonts);
     }
 
-    public void Dispose() => Fonts.Dispose();
+    public void Dispose()
+    {
+        Fonts.Dispose();
+    }
 }

@@ -143,8 +143,11 @@ internal abstract class FlashDisplayObject
         Ratio = placement.Ratio;
     }
 
-    internal bool IsSameInstance(FlashPlacement placement) =>
-        placement.CharacterId == PlacedCharacterId && placement.PlacedFrame == PlacedFrame && placement.Depth == Depth;
+    internal bool IsSameInstance(FlashPlacement placement)
+    {
+        return placement.CharacterId == PlacedCharacterId && placement.PlacedFrame == PlacedFrame &&
+               placement.Depth == Depth;
+    }
 
     private void SetMatrix(FlashMatrix matrix)
     {

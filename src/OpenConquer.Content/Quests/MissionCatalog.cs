@@ -12,7 +12,10 @@ public sealed class MissionCatalog
     private const int MaximumDeclaredRows = 4096;
     private readonly int[] _ids;
 
-    private MissionCatalog(int[] ids) => _ids = ids;
+    private MissionCatalog(int[] ids)
+    {
+        _ids = ids;
+    }
 
     public ReadOnlyMemory<int> MissionIds => _ids;
 

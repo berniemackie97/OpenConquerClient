@@ -76,7 +76,10 @@ internal sealed class LoginAccountPresentation : IDisposable
         }
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 
     private void DrawList(OpenGLRenderer renderer, LoginAccountControls controls)
     {
@@ -161,9 +164,13 @@ internal sealed class LoginAccountPresentation : IDisposable
         }
     }
 
-    private OpenGLTexture2D Create(OpenGLGraphicsDevice graphicsDevice, RgbaImage image) =>
-        _ownership.Track(graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span));
+    private OpenGLTexture2D Create(OpenGLGraphicsDevice graphicsDevice, RgbaImage image)
+    {
+        return _ownership.Track(graphicsDevice.CreateTexture2D(image.Width, image.Height, image.Pixels.Span));
+    }
 
-    private static NativeTextRenderOptions Style(SpriteColor color) =>
-        new(NativeTextRenderStyle.Normal, color, color, 0, 0, NativeTextVertexColors.Solid(color));
+    private static NativeTextRenderOptions Style(SpriteColor color)
+    {
+        return new NativeTextRenderOptions(NativeTextRenderStyle.Normal, color, color, 0, 0, NativeTextVertexColors.Solid(color));
+    }
 }

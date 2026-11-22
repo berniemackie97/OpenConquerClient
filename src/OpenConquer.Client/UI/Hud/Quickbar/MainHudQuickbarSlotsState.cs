@@ -121,8 +121,10 @@ internal sealed class MainHudQuickbarSlotsState
         _glowStartTimes[slotIndex] = startTime;
     }
 
-    private static int GetNativeStorageIndex(int columnOneBased, int rowOneBased) =>
-        unchecked(MainHudQuickbarDefinition.ColumnCount * (rowOneBased - 1) + columnOneBased - 1);
+    private static int GetNativeStorageIndex(int columnOneBased, int rowOneBased)
+    {
+        return unchecked(MainHudQuickbarDefinition.ColumnCount * (rowOneBased - 1) + columnOneBased - 1);
+    }
 
     private static void ValidateVisibleCoordinates(int columnOneBased, int rowOneBased)
     {

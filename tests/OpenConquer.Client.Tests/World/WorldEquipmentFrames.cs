@@ -18,11 +18,15 @@ internal static class WorldEquipmentFrames
         return equipment;
     }
 
-    internal static bool Apply(this WorldHeroEquipment equipment, byte[] packet) =>
-        GameWorldPacketDispatcher.Dispatch(packet, new EquipmentOnly(equipment, null));
+    internal static bool Apply(this WorldHeroEquipment equipment, byte[] packet)
+    {
+        return GameWorldPacketDispatcher.Dispatch(packet, new EquipmentOnly(equipment, null));
+    }
 
-    internal static void Apply(this WorldHeroModel hero, byte[] packet) =>
+    internal static void Apply(this WorldHeroModel hero, byte[] packet)
+    {
         GameWorldPacketDispatcher.Dispatch(packet, new EquipmentOnly(null, hero));
+    }
 
     private sealed class EquipmentOnly(WorldHeroEquipment? equipment, WorldHeroModel? hero) : IGameWorldPacketHandler
     {
@@ -38,16 +42,34 @@ internal static class WorldEquipmentFrames
             return equipment?.Apply(item) ?? false;
         }
 
-        public bool HandleWalk(GameWalk10005 walk) => false;
+        public bool HandleWalk(GameWalk10005 walk)
+        {
+            return false;
+        }
 
-        public bool HandlePlayerSpawn(GamePlayerSpawn10014 player) => false;
+        public bool HandlePlayerSpawn(GamePlayerSpawn10014 player)
+        {
+            return false;
+        }
 
-        public bool HandleAction(GameWorldAction10010 action) => false;
+        public bool HandleAction(GameWorldAction10010 action)
+        {
+            return false;
+        }
 
-        public bool HandleAttributes(GameUserAttrib10017 attributes) => false;
+        public bool HandleAttributes(GameUserAttrib10017 attributes)
+        {
+            return false;
+        }
 
-        public bool HandleWeather(GameWeather1016 weather) => false;
+        public bool HandleWeather(GameWeather1016 weather)
+        {
+            return false;
+        }
 
-        public bool HandleUnknown(ushort packetType) => false;
+        public bool HandleUnknown(ushort packetType)
+        {
+            return false;
+        }
     }
 }

@@ -261,8 +261,12 @@ public static partial class FlashMovieReader
         return new FlashTimeline(frames, labels);
     }
 
-    private static FlashCharacter Resolve(Dictionary<int, FlashCharacter> characters, int id, string owner) =>
-        characters.TryGetValue(id, out FlashCharacter? character) ? character : throw Invalid($"{owner}: character {id} is missing");
+    private static FlashCharacter Resolve(Dictionary<int, FlashCharacter> characters, int id, string owner)
+    {
+        return characters.TryGetValue(id, out FlashCharacter? character)
+            ? character
+            : throw Invalid($"{owner}: character {id} is missing");
+    }
 
     private static void Validate(Dictionary<int, FlashCharacter> characters, FlashTimeline timeline, string owner)
     {
@@ -340,38 +344,68 @@ public static partial class FlashMovieReader
         return depth is >= 1 and <= MaximumDepth ? depth : throw Invalid($"depth {depth}");
     }
 
-    private static int ParseId(string text) =>
-        int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out int id) && id is > 0 and <= ushort.MaxValue
+    private static int ParseId(string text)
+    {
+        return int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out int id) &&
+               id is > 0 and <= ushort.MaxValue
             ? id
             : throw Invalid($"character id '{text}'");
+    }
 
-    private static JsonElement Object(JsonElement element, string name) =>
-        element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Object ? value : throw Invalid($"'{name}'");
+    private static JsonElement Object(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Object
+            ? value
+            : throw Invalid($"'{name}'");
+    }
 
-    private static JsonElement.ArrayEnumerator Array(JsonElement element, string name) => ArrayElement(element, name).EnumerateArray();
+    private static JsonElement.ArrayEnumerator Array(JsonElement element, string name)
+    {
+        return ArrayElement(element, name).EnumerateArray();
+    }
 
-    private static JsonElement ArrayElement(JsonElement element, string name) =>
-        element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Array ? value : throw Invalid($"'{name}'");
+    private static JsonElement ArrayElement(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Array
+            ? value
+            : throw Invalid($"'{name}'");
+    }
 
-    private static string String(JsonElement element, string name) =>
-        element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString()! : throw Invalid($"'{name}'");
+    private static string String(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()!
+            : throw Invalid($"'{name}'");
+    }
 
-    private static int Int(JsonElement element, string name) =>
-        element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out int number)
+    private static int Int(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number &&
+               value.TryGetInt32(out int number)
             ? number
             : throw Invalid($"'{name}'");
+    }
 
-    private static float Float(JsonElement element, string name) =>
-        element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number && float.IsFinite(value.GetSingle())
+    private static float Float(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number &&
+               float.IsFinite(value.GetSingle())
             ? value.GetSingle()
             : throw Invalid($"'{name}'");
+    }
 
-    private static bool Bool(JsonElement element, string name) =>
-        element.TryGetProperty(name, out JsonElement value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False
+    private static bool Bool(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out JsonElement value) &&
+               value.ValueKind is JsonValueKind.True or JsonValueKind.False
             ? value.GetBoolean()
             : throw Invalid($"'{name}'");
+    }
 
-    private static InvalidDataException Invalid(string what) => new($"Baked Flash movie is invalid: {what}.");
+    private static InvalidDataException Invalid(string what)
+    {
+        return new InvalidDataException($"Baked Flash movie is invalid: {what}.");
+    }
 
     [GeneratedRegex("^r[0-9]{1,5}\\.rgba\\.br$", RegexOptions.CultureInvariant)]
     private static partial Regex RasterPath();
