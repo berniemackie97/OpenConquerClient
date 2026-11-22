@@ -16,7 +16,6 @@ using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client;
 
-/// <summary>Composes login, role creation and one admitted world. The window hosts this state machine.</summary>
 internal sealed class ClientSession : IDisposable
 {
     private readonly ClientLogin _login;
@@ -28,38 +27,39 @@ internal sealed class ClientSession : IDisposable
     private Task? _failedHandoff;
     private uint _frameMilliseconds;
 
-    public ClientSession(string contentRoot, IClientContentSource content, LogicalRenderSize size,
-        Action requestExit, Action closeWindow, TimeProvider clock, ClientDiagnostics diagnostics)
-        : this(content, size, requestExit, closeWindow,
-            canLogin => ClientLogin.Create(contentRoot, content, size, canLogin, requestExit, clock, diagnostics), clock: clock, diagnostics: diagnostics)
+    public ClientSession(string contentRoot, IClientContentSource content, LogicalRenderSize size, Action requestExit, Action closeWindow, TimeProvider clock, ClientDiagnostics diagnostics)
+        : this(content, size, requestExit, closeWindow, canLogin => ClientLogin.Create(contentRoot, content, size, canLogin, requestExit, clock, diagnostics), clock: clock, diagnostics: diagnostics)
     {
     }
 
-    internal ClientSession(IClientContentSource content, LogicalRenderSize size, Action requestExit, Action closeWindow,
-        Func<Func<bool>, ClientLogin> createLogin,
-        Func<GameServerHandshakeSession, string, IRoleCreationScreen>? createRoleScreen = null,
-        Func<GameServerHandshakeSession, GameWorldEntrySnapshot, Action, IClientWorld>? createWorld = null, TimeProvider? clock = null, ClientDiagnostics? diagnostics = null)
+    internal ClientSession(IClientContentSource content, LogicalRenderSize size, Action requestExit, Action closeWindow, Func<Func<bool>,
+        ClientLogin> createLogin, Func<GameServerHandshakeSession, string, IRoleCreationScreen>? createRoleScreen = null,
+        Func<GameServerHandshakeSession, GameWorldEntrySnapshot, Action, IClientWorld>? createWorld = null,
+        TimeProvider? clock = null, ClientDiagnostics? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(requestExit);
         ArgumentNullException.ThrowIfNull(closeWindow);
         ArgumentNullException.ThrowIfNull(createLogin);
+
         _closeWindow = closeWindow;
         TimeProvider time = clock ?? TimeProvider.System;
         _frameClock = new ClientFrameClock(time);
         _login = createLogin(() => State == ClientState.Login);
-        _roles = new ClientRoleCreation(content, _login.PlaySound, requestExit,
-            () => _world is null, () => _world is { HasScene: true }, AcceptRoleWorld, ReturnFromRole, createRoleScreen, time, diagnostics);
-        // Native hero construction stamps hero+0x2F74 at client start (0x655BAD); the 1037 report window starts there.
+        _roles = new ClientRoleCreation(content, _login.PlaySound, requestExit, () => _world is null,
+            () => _world is { HasScene: true }, AcceptRoleWorld, ReturnFromRole, createRoleScreen, time, diagnostics);
         uint clientStartedAt = GameClientClock.Milliseconds(time);
-        _createWorld = createWorld ?? ((game, entry, closing) =>
-            new ClientWorld(game, entry, content, size, closing, clientStartedAt, _frameMilliseconds, time, diagnostics));
+        _createWorld = createWorld ?? ((game, entry, closing)
+            => new ClientWorld(game, entry, content, size, closing, clientStartedAt, _frameMilliseconds, time, diagnostics));
     }
 
     private IClientWorld ActiveWorld => _world ?? throw new InvalidOperationException("World state has no admitted owner.");
 
     public ClientState State { get; private set; } = ClientState.Login;
-    public void StartServices() => _login.StartServices();
+    public void StartServices()
+    {
+        _login.StartServices();
+    }
 
     public void CreateGraphics(OpenGLGraphicsDevice device, ResourceOwnership graphics)
     {
@@ -90,8 +90,7 @@ internal sealed class ClientSession : IDisposable
         ObjectDisposedException.ThrowIf(State is ClientState.Closing or ClientState.Closed, this);
         _frameMilliseconds = frameMilliseconds;
         _login.Update();
-        if (State == ClientState.Login && _login.Attempts.TryTakeAdmittedWorld(
-                out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? entry))
+        if (State == ClientState.Login && _login.Attempts.TryTakeAdmittedWorld(out GameServerHandshakeSession? game, out GameWorldEntrySnapshot? entry))
         {
             AcceptWorld(game, entry);
         }
@@ -107,9 +106,8 @@ internal sealed class ClientSession : IDisposable
                 _login.Attempts.FailWorldContent();
             }
         }
-        if (State == ClientState.Login && _roles.CanOpen &&
-            _login.Attempts.Status == LoginAttemptStatus.CharacterCreation &&
-            _login.Attempts.TryTakeAcceptedGame(out GameServerHandshakeSession? accepted, out string account))
+        if (State == ClientState.Login && _roles.CanOpen && _login.Attempts.Status == LoginAttemptStatus.CharacterCreation
+            && _login.Attempts.TryTakeAcceptedGame(out GameServerHandshakeSession? accepted, out string account))
         {
             State = ClientState.RoleCreation;
             if (!_roles.TryOpen(accepted, account))
@@ -118,9 +116,11 @@ internal sealed class ClientSession : IDisposable
                 State = ClientState.ReturningToLogin;
             }
         }
+
         _roles.Update(elapsed);
         _world?.DrainIngress(frameMilliseconds);
         _world?.CompleteLoad();
+
         if (_world is { IsClosed: true })
         {
             _world = null;
@@ -129,6 +129,7 @@ internal sealed class ClientSession : IDisposable
         {
             State = ClientState.Login;
         }
+
         _world?.RefreshAppearance(device);
         _login.ApplyFeedback();
     }
@@ -136,10 +137,12 @@ internal sealed class ClientSession : IDisposable
     internal void UpdatePresentation(TimeSpan elapsed)
     {
         _login.UpdateLoading(_world is { IsActive: true }, _world is { IsPresentable: true }, elapsed);
+
         if (State == ClientState.WorldLoading && _world is { IsPresentable: true } && _login.CanPresentWorld)
         {
             State = ClientState.World;
         }
+
         _login.SetWorldActive(State == ClientState.World);
     }
 
@@ -148,6 +151,7 @@ internal sealed class ClientSession : IDisposable
         (TimeSpan elapsed, uint frameMilliseconds) = _frameClock.Next();
         Update(elapsed, device, frameMilliseconds);
         bool alreadyPresentingWorld = State == ClientState.World;
+
         if (!alreadyPresentingWorld)
         {
             _world?.PrepareFirstTextures(window, device, fallback);
@@ -158,14 +162,15 @@ internal sealed class ClientSession : IDisposable
         {
             _login.Advance(elapsed, fallback);
         }
+
         IClientWorld? visible = State == ClientState.World ? _world : null;
         OpenGLRenderer renderer = visible?.GetRenderer(window, device, fallback) ?? fallback;
+
         if (alreadyPresentingWorld && visible is not null)
         {
             visible.PrepareFrame(device, renderer);
             if (!visible.IsActive)
             {
-                // A content failure can close the world and release its render target during preparation.
                 visible = null;
                 renderer = fallback;
             }
@@ -190,7 +195,6 @@ internal sealed class ClientSession : IDisposable
         }
         catch (Exception failure)
         {
-            // End the frame before propagating the first drawing failure.
             firstFailure = ExceptionDispatchInfo.Capture(failure);
         }
         try
@@ -218,15 +222,16 @@ internal sealed class ClientSession : IDisposable
         }
         catch
         {
-            // A failed factory did not accept ownership; retain its cleanup until shutdown observes it.
             _failedHandoff = CloseFailedHandoffAsync(game);
             OnWorldClosing();
             throw;
         }
     }
 
-    private static async Task CloseFailedHandoffAsync(GameServerHandshakeSession game) =>
+    private static async Task CloseFailedHandoffAsync(GameServerHandshakeSession game)
+    {
         await game.DisposeAsync().ConfigureAwait(false);
+    }
 
     private void AcceptRoleWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot entry)
     {
@@ -258,8 +263,10 @@ internal sealed class ClientSession : IDisposable
             ActiveWorld.HandlePointerMoved(point);
             return;
         }
+
         _login.TrackPointer(point);
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+
         if (State == ClientState.RoleCreation)
         {
             _roles.PointerMoved(mapped, x, y);
@@ -278,8 +285,10 @@ internal sealed class ClientSession : IDisposable
             ActiveWorld.HandlePointerPressed(point);
             return;
         }
+
         _login.TrackPointer(point);
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+
         if (State == ClientState.RoleCreation)
         {
             _roles.PointerPressed(mapped, x, y, extend);
@@ -297,6 +306,7 @@ internal sealed class ClientSession : IDisposable
             ActiveWorld.HandlePointerReleased(point);
             return;
         }
+
         bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
         if (State == ClientState.RoleCreation)
         {
@@ -310,33 +320,41 @@ internal sealed class ClientSession : IDisposable
 
     public void KeyPressed(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard)
     {
-        if (State == ClientState.World)
+        switch (State)
         {
-            return;
-        }
-        if (State == ClientState.RoleCreation)
-        {
-            _roles.KeyPressed(key, readClipboard, writeClipboard);
-        }
-        else
-        {
-            _login.Screen.KeyPressed(key, readClipboard, writeClipboard);
+            case ClientState.World:
+                return;
+            case ClientState.RoleCreation:
+                _roles.KeyPressed(key, readClipboard, writeClipboard);
+                break;
+            case ClientState.Login:
+            case ClientState.WorldLoading:
+            case ClientState.ReturningToLogin:
+            case ClientState.Closing:
+            case ClientState.Closed:
+            default:
+                _login.Screen.KeyPressed(key, readClipboard, writeClipboard);
+                break;
         }
     }
 
     public void TextEntered(char character)
     {
-        if (State == ClientState.World)
+        switch (State)
         {
-            return;
-        }
-        if (State == ClientState.RoleCreation)
-        {
-            _roles.TextEntered(character);
-        }
-        else
-        {
-            _login.Screen.TextEntered(character);
+            case ClientState.World:
+                return;
+            case ClientState.RoleCreation:
+                _roles.TextEntered(character);
+                break;
+            case ClientState.Login:
+            case ClientState.WorldLoading:
+            case ClientState.ReturningToLogin:
+            case ClientState.Closing:
+            case ClientState.Closed:
+            default:
+                _login.Screen.TextEntered(character);
+                break;
         }
     }
 
@@ -347,6 +365,7 @@ internal sealed class ClientSession : IDisposable
             _login.Screen.FocusLost();
             _roles.FocusLost();
         }
+
         _login.SetFocused(focused);
     }
 
@@ -356,6 +375,7 @@ internal sealed class ClientSession : IDisposable
         {
             return;
         }
+
         State = ClientState.Closing;
         ClientShutdown cleanup = new();
         cleanup.Run(_login.CancelCatalog);

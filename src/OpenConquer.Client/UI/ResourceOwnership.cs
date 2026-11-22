@@ -1,9 +1,5 @@
 namespace OpenConquer.Client.UI;
 
-/// <summary>
-/// Holds disposable resources created one after another and disposes them in reverse order. If creating one
-/// fails, the ones already created are disposed and the original exception still propagates.
-/// </summary>
 internal sealed class ResourceOwnership : IDisposable
 {
     private readonly List<IDisposable> _resources = [];

@@ -1,8 +1,5 @@
 namespace OpenConquer.Client.World;
 
-/// <summary>
-/// One cancellable world entry job. Completion transfers the result. Disposal releases an unclaimed disposable result.
-/// </summary>
 internal sealed class WorldContentLoad<T> : IAsyncDisposable
 {
     private readonly CancellationTokenSource _cancellation = new();
@@ -44,7 +41,10 @@ internal sealed class WorldContentLoad<T> : IAsyncDisposable
         }
     }
 
-    public ValueTask DisposeAsync() => _claimed ? ValueTask.CompletedTask : new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return _claimed ? ValueTask.CompletedTask : new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {

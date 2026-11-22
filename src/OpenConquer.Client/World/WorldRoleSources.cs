@@ -1,19 +1,18 @@
 namespace OpenConquer.Client.World;
 
-internal readonly record struct WorldRoleSources(
-    uint BodyModelId, uint ArmetModelId, uint RightWeaponModelId, uint LeftWeaponModelId)
+internal readonly record struct WorldRoleSources(uint BodyModelId, uint ArmetModelId, uint RightWeaponModelId, uint LeftWeaponModelId)
 {
     private const uint ModelFamilyScale = 1_000_000;
     private const uint LinkedHairFamily = 0x1D0D8;
 
-    internal static WorldRoleSources Resolve(uint packedAppearance, ushort hairComposite,
-        WorldHeroEquipment equipment) =>
-        Resolve(packedAppearance, hairComposite, equipment.GetActiveItem(1)?.TypeId ?? 0,
+    internal static WorldRoleSources Resolve(uint packedAppearance, ushort hairComposite, WorldHeroEquipment equipment)
+    {
+        return Resolve(packedAppearance, hairComposite, equipment.GetActiveItem(1)?.TypeId ?? 0,
             equipment.GetActiveItem(3)?.TypeId ?? 0, equipment.GetActiveItem(4)?.TypeId ?? 0,
             equipment.GetActiveItem(5)?.TypeId ?? 0);
+    }
 
-    internal static WorldRoleSources Resolve(uint packedAppearance, ushort hairComposite,
-        uint headwearType, uint armorType, uint rightHandType, uint leftHandType)
+    internal static WorldRoleSources Resolve(uint packedAppearance, ushort hairComposite, uint headwearType, uint armorType, uint rightHandType, uint leftHandType)
     {
         uint bodyModel = packedAppearance % 1000 * ModelFamilyScale;
         uint hairStyle = (uint)hairComposite % 1000;
@@ -64,6 +63,8 @@ internal readonly record struct WorldRoleSources(
         return (right, left);
     }
 
-    private static uint NormalizeItemSource(uint itemTypeId) =>
-        (itemTypeId % ModelFamilyScale / 10) * 10;
+    private static uint NormalizeItemSource(uint itemTypeId)
+    {
+        return (itemTypeId % ModelFamilyScale / 10) * 10;
+    }
 }

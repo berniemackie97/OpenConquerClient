@@ -22,13 +22,14 @@ internal static class Program
         ClientDiagnostics diagnostics = new(factory.CreateLogger("OpenConquer.Client"));
         try
         {
-            if (!ClientStartupOptions.TryParse(args, out ClientStartupOptions? options, out ClientStartupArgumentCode errorCode))
+            if (ClientStartupOptions.TryParse(args, out ClientStartupOptions? options, out ClientStartupArgumentCode errorCode))
             {
-                diagnostics.StartupArgumentsRejected((int)errorCode);
-                return InvalidStartupArgumentsExitCode;
+                return RunClient(options, diagnostics);
             }
 
-            return RunClient(options, diagnostics);
+            diagnostics.StartupArgumentsRejected((int)errorCode);
+            return InvalidStartupArgumentsExitCode;
+
         }
         catch (Exception failure)
         {
@@ -39,8 +40,7 @@ internal static class Program
 
     private static int RunClient(ClientStartupOptions options, ClientDiagnostics diagnostics)
     {
-        ClientApplication application = new(options.ContentRootPath, options.PresentationPolicy,
-            options.WindowMode, options.WindowSize, diagnostics: diagnostics);
+        ClientApplication application = new(options.ContentRootPath, options.PresentationPolicy, options.WindowMode, options.WindowSize, diagnostics: diagnostics);
         int exitCode;
         try
         {

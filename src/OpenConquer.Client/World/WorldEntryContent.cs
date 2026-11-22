@@ -9,7 +9,6 @@ namespace OpenConquer.Client.World;
 
 internal sealed record WorldEntryCatalogs(ItemStatCatalog Items, LevelExperienceTable Experience);
 
-/// <summary>Reads and decodes the CPU content required by an admitted world.</summary>
 internal static class WorldEntryContent
 {
     internal static WorldEntryCatalogs LoadCatalogs(IClientContentSource source, CancellationToken cancellationToken)
@@ -26,8 +25,7 @@ internal static class WorldEntryContent
         cancellationToken.ThrowIfCancellationRequested();
         GameMapCatalog catalog = GameMapCatalog.Load(source);
         cancellationToken.ThrowIfCancellationRequested();
-        WorldMapScene scene = WorldMapScene.Load(source, catalog, entry.MapDataId, entry.X, entry.Y,
-            startMilliseconds, cancellationToken);
+        WorldMapScene scene = WorldMapScene.Load(source, catalog, entry.MapDataId, entry.X, entry.Y, startMilliseconds, cancellationToken);
         scene.SetHeroDirection(entry.DirectionIndex);
         return scene;
     }

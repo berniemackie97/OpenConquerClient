@@ -3,12 +3,10 @@ using OpenConquer.Client.UI.Flash;
 
 namespace OpenConquer.Client.UI.Role;
 
-/// <summary>role.dat's body and name stage (root frames 5–6, <c>sb</c>), confirm panel and quit windows.</summary>
 internal sealed partial class RoleScripts
 {
     private const int MaximumNameBytes = 15;
 
-    // Per-class sprites of sb (frames 37–48) and createBtn, which only stop on each of their frames.
     private static readonly string[] s_threeFrameButtons =
     [
         "199", "206", "234", "242", "246", "247", "248", "249", "253", "255", "259", "260", "264", "265", "269", "270", "274", "275",

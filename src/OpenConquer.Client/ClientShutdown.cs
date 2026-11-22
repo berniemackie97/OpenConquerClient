@@ -2,7 +2,6 @@ using System.Runtime.ExceptionServices;
 
 namespace OpenConquer.Client;
 
-/// <summary>Runs ordered cleanup stages without allowing one failure to skip later owners.</summary>
 internal sealed class ClientShutdown(Exception? initialFailure = null)
 {
     private readonly List<Exception> _failures = initialFailure is null ? [] : [initialFailure];
@@ -15,20 +14,19 @@ internal sealed class ClientShutdown(Exception? initialFailure = null)
         }
         catch (Exception failure)
         {
-            // Retain this failure and continue releasing the remaining owners.
             _failures.Add(failure);
         }
     }
 
     public void ThrowIfFailed()
     {
-        if (_failures.Count == 1)
+        switch (_failures.Count)
         {
-            ExceptionDispatchInfo.Capture(_failures[0]).Throw();
-        }
-        if (_failures.Count > 1)
-        {
-            throw new AggregateException("Client cleanup failed.", _failures).Flatten();
+            case 1:
+                ExceptionDispatchInfo.Capture(_failures[0]).Throw();
+                break;
+            case > 1:
+                throw new AggregateException("Client cleanup failed.", _failures).Flatten();
         }
     }
 
@@ -46,7 +44,7 @@ internal sealed class ClientShutdown(Exception? initialFailure = null)
                 }
                 catch (OperationCanceledException) when (stopping.IsCancellationRequested)
                 {
-                    // The owner requested cancellation before draining the operation.
+                    // cancellation requested
                 }
             }).ConfigureAwait(false);
         }
@@ -66,7 +64,6 @@ internal sealed class ClientShutdown(Exception? initialFailure = null)
         }
         catch (Exception failure)
         {
-            // Retain this failure and continue releasing the remaining owners.
             _failures.Add(failure);
         }
     }

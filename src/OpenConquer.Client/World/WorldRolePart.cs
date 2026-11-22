@@ -52,8 +52,10 @@ internal sealed class WorldRolePart : IDisposable
     {
         for (int i = 0; i < _meshes.Count; i++)
         {
-            C3Motion? motion = Actions.TryGetMotion(action, Actions.DrawableTrackIndices[i],
-                out C3Motion? selected) ? selected : null;
+            C3Motion? motion = Actions.TryGetMotion(action, Actions.DrawableTrackIndices[i], out C3Motion? selected)
+                ? selected
+                : null;
+
             _meshes[i].Draw(renderer, _texture, matrix, frame, motion);
         }
     }

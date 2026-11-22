@@ -16,7 +16,6 @@ using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client;
 
-/// <summary>Hosts startup, the desktop window, graphics context and frame loop for one client session.</summary>
 internal sealed class ClientApplication : IDisposable
 {
     private static readonly TimeSpan s_frameInterval = TimeSpan.FromMilliseconds(25);
@@ -42,7 +41,8 @@ internal sealed class ClientApplication : IDisposable
         Disposed,
     }
 
-    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable, PixelSize? windowSize = null, TimeProvider? clock = null, ClientDiagnostics? diagnostics = null)
+    public ClientApplication(string contentRootPath, PresentationPolicy presentationPolicy = PresentationPolicy.Fit, DesktopWindowMode windowMode = DesktopWindowMode.Resizable,
+        PixelSize? windowSize = null, TimeProvider? clock = null, ClientDiagnostics? diagnostics = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
 
@@ -112,8 +112,10 @@ internal sealed class ClientApplication : IDisposable
         {
             return;
         }
+
         _lifetime = HostLifetime.Disposed;
         ClientShutdown cleanup = new();
+
         if (_session is { } session)
         {
             cleanup.Run(session.Dispose);
@@ -122,6 +124,7 @@ internal sealed class ClientApplication : IDisposable
         {
             cleanup.Run(() => _window?.Dispose());
         }
+
         _session = null;
         _window = null;
         _cursor = null;
@@ -134,8 +137,7 @@ internal sealed class ClientApplication : IDisposable
         _logicalRenderSize = new LogicalRenderSize(gameSetup.LogicalWidthPixels, gameSetup.LogicalHeightPixels);
         _session = new ClientSession(_contentRootPath, contentSource, _logicalRenderSize, () => _window?.RequestClose(), () => _window?.Dispose(), _clock, _diagnostics);
         IReadOnlyList<RgbaImage> cursorFrames = LoginCursorArtwork.Load();
-        _cursor = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width,
-            cursorFrames[0].Height, LoginCursorArtwork.HotspotX, LoginCursorArtwork.HotspotY, LoginCursorArtwork.FrameDuration);
+        _cursor = new DesktopCursorAnimation(cursorFrames.Select(static image => image.Pixels), cursorFrames[0].Width, cursorFrames[0].Height, LoginCursorArtwork.HotspotX, LoginCursorArtwork.HotspotY, LoginCursorArtwork.FrameDuration);
     }
 
     private void OnOpenGLContextReady(IOpenGLContext context)
@@ -144,24 +146,22 @@ internal sealed class ClientApplication : IDisposable
         {
             throw new InvalidOperationException("OpenGL rendering has already been initialized.");
         }
+
         DesktopWindow window = _window ?? throw new InvalidOperationException("The desktop window has not been created.");
         ClientSession session = _session ?? throw new InvalidOperationException("The client session has not been initialized.");
         ResourceOwnership graphics = new();
+
         try
         {
             OpenGLGraphicsDevice device = graphics.Track(new OpenGLGraphicsDevice(context.GetProcAddress));
             PixelSize framebuffer = window.FramebufferSize;
-            // The login and create-role screens are 8-bit-per-channel art; a 16-bit target would band it (retail drew them
-            // as 32-bit Flash windows, only the Direct3D world used RGB565).
-            _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy,
-                RenderColorFormat.Rgba8));
+            _renderer = graphics.Track(device.CreateRenderer(_logicalRenderSize, framebuffer.Width, framebuffer.Height, _presentationPolicy, RenderColorFormat.Rgba8));
             session.CreateGraphics(device, graphics);
             _graphicsDevice = device;
             _graphics = graphics;
         }
         catch
         {
-            // Preserve construction failure after releasing partial context resources.
             _renderer = null;
             _graphicsDevice = null;
             ClientShutdown cleanup = new();
@@ -185,8 +185,7 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnRendering(double _)
     {
-        (_session ?? throw new InvalidOperationException("The client session is not initialized.")).RenderFrame(
-            _window ?? throw new InvalidOperationException("The desktop window is unavailable."),
+        (_session ?? throw new InvalidOperationException("The client session is not initialized.")).RenderFrame(_window ?? throw new InvalidOperationException("The desktop window is unavailable."),
             _graphicsDevice ?? throw new InvalidOperationException("The graphics device is unavailable."),
             _renderer ?? throw new InvalidOperationException("The renderer is not initialized."));
     }
@@ -207,11 +206,13 @@ internal sealed class ClientApplication : IDisposable
 
     private void OnPointerPressed(PixelPoint point)
     {
-        if (_renderer is { } renderer)
+        if (_renderer is not { } renderer)
         {
-            bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
-            _session?.PointerPressed(point, renderer, extend);
+            return;
         }
+
+        bool extend = ((_window?.KeyboardModifiers ?? DesktopKeyModifiers.None) & DesktopKeyModifiers.Shift) != 0;
+        _session?.PointerPressed(point, renderer, extend);
     }
 
     private void OnPointerReleased(PixelPoint point)

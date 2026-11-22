@@ -22,17 +22,16 @@ internal sealed class WorldFrameIngress : IAsyncDisposable
         _pending = receive(_stopping.Token);
     }
 
-    /// <summary>Observe EOF or a failed receive while the world is preparing. Retain any prefetched frame.</summary>
     internal void ObserveConnectionFailure()
     {
         ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
-        if (_pending is { IsCompleted: true } completed &&
-            (!completed.IsCompletedSuccessfully || completed.GetAwaiter().GetResult() is null))
+        if (_pending is not { IsCompleted: true } completed || (completed.IsCompletedSuccessfully && completed.GetAwaiter().GetResult() is not null))
         {
-            // Clear the pending receive before propagating its failure to the owner.
-            _pending = null;
-            _ = RequireFrame(completed);
+            return;
         }
+
+        _pending = null;
+        _ = RequireFrame(completed);
     }
 
     internal int Drain(Action<ReadOnlyMemory<byte>> apply)
@@ -52,9 +51,10 @@ internal sealed class WorldFrameIngress : IAsyncDisposable
         return processed;
     }
 
-    private static GameSecuredInboundFrame RequireFrame(Task<GameSecuredInboundFrame?> completed) =>
-        completed.GetAwaiter().GetResult() ??
-        throw new EndOfStreamException("GameServer closed the admitted world session.");
+    private static GameSecuredInboundFrame RequireFrame(Task<GameSecuredInboundFrame?> completed)
+    {
+        return completed.GetAwaiter().GetResult() ?? throw new EndOfStreamException("GameServer closed the admitted world session.");
+    }
 
     public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
 

@@ -15,9 +15,8 @@ internal sealed class WorldRoleRenderer : IDisposable
     private readonly C3Motion? _leftWeaponAttachment;
     private readonly WorldRoleFrameClock _clock = new();
 
-    private WorldRoleRenderer(WorldRolePart body, WorldRolePart? armet, C3Motion? armetAttachment,
-        WorldRolePart[] rightWeapon, C3Motion? rightWeaponAttachment,
-        WorldRolePart[] leftWeapon, C3Motion? leftWeaponAttachment)
+    private WorldRoleRenderer(WorldRolePart body, WorldRolePart? armet, C3Motion? armetAttachment, WorldRolePart[] rightWeapon,
+        C3Motion? rightWeaponAttachment, WorldRolePart[] leftWeapon, C3Motion? leftWeaponAttachment)
     {
         _body = body;
         _armet = armet;
@@ -34,6 +33,7 @@ internal sealed class WorldRoleRenderer : IDisposable
         WorldRolePart? armet = null;
         WorldRolePart[] rightWeapon = [];
         WorldRolePart[] leftWeapon = [];
+
         try
         {
             body = WorldRolePart.Create(device, assets.Body);
@@ -44,8 +44,7 @@ internal sealed class WorldRoleRenderer : IDisposable
 
             rightWeapon = CreateParts(device, assets.RightWeapon);
             leftWeapon = CreateParts(device, assets.LeftWeapon);
-            return new WorldRoleRenderer(body, armet, assets.ArmetAttachment,
-                rightWeapon, assets.RightWeaponAttachment, leftWeapon, assets.LeftWeaponAttachment);
+            return new WorldRoleRenderer(body, armet, assets.ArmetAttachment, rightWeapon, assets.RightWeaponAttachment, leftWeapon, assets.LeftWeaponAttachment);
         }
         catch (Exception failure)
         {
@@ -59,6 +58,7 @@ internal sealed class WorldRoleRenderer : IDisposable
     private static WorldRolePart[] CreateParts(OpenGLGraphicsDevice device, WorldRolePartAssets[] assets)
     {
         List<WorldRolePart> parts = new(assets.Length);
+
         try
         {
             foreach (WorldRolePartAssets part in assets)
@@ -85,9 +85,11 @@ internal sealed class WorldRoleRenderer : IDisposable
         }
     }
 
-    internal uint GetActionFrameCount(ushort action) => _body.Actions.GetFrameCount(action);
+    internal uint GetActionFrameCount(ushort action)
+    {
+        return _body.Actions.GetFrameCount(action);
+    }
 
-    /// <summary>Frame count of the body's standby (initial) motion.</summary>
     internal uint IdleFrameCount => _body.FrameCount;
 
     internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, uint nowMilliseconds)
@@ -96,8 +98,10 @@ internal sealed class WorldRoleRenderer : IDisposable
         DrawFrame(renderer, main, shadow, 0, frame);
     }
 
-    internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, ushort action, int frame) =>
+    internal void Draw(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, ushort action, int frame)
+    {
         DrawFrame(renderer, main, shadow, action, frame);
+    }
 
     private void DrawFrame(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, ushort action, int frame)
     {
@@ -116,17 +120,16 @@ internal sealed class WorldRoleRenderer : IDisposable
             armet.DrawShadow(renderer, linked * shadow);
         }
 
-        DrawWeapon(renderer, main, shadow, frame, _rightWeapon,
-            ResolveAttachment("v_r_weapon", action, _rightWeaponAttachment));
-        DrawWeapon(renderer, main, shadow, frame, _leftWeapon,
-            ResolveAttachment("v_l_weapon", action, _leftWeaponAttachment));
+        DrawWeapon(renderer, main, shadow, frame, _rightWeapon, ResolveAttachment("v_r_weapon", action, _rightWeaponAttachment));
+        DrawWeapon(renderer, main, shadow, frame, _leftWeapon, ResolveAttachment("v_l_weapon", action, _leftWeaponAttachment));
     }
 
-    private C3Motion? ResolveAttachment(string name, ushort action, C3Motion? fallback) =>
-        _body.Actions.TryGetAttachment(name, action, out C3Motion? motion) ? motion : fallback;
+    private C3Motion? ResolveAttachment(string name, ushort action, C3Motion? fallback)
+    {
+        return _body.Actions.TryGetAttachment(name, action, out C3Motion? motion) ? motion : fallback;
+    }
 
-    private static void DrawWeapon(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow,
-        int frame, WorldRolePart[] parts, C3Motion? attachment)
+    private static void DrawWeapon(OpenGLRenderer renderer, Matrix4x4 main, Matrix4x4 shadow, int frame, WorldRolePart[] parts, C3Motion? attachment)
     {
         if (parts.Length == 0)
         {
@@ -152,8 +155,7 @@ internal sealed class WorldRoleRenderer : IDisposable
         cleanup.ThrowIfFailed();
     }
 
-    private static void ReleaseParts(WorldRolePart[] left, WorldRolePart[] right, WorldRolePart? armet,
-        WorldRolePart? body, ClientShutdown cleanup)
+    private static void ReleaseParts(WorldRolePart[] left, WorldRolePart[] right, WorldRolePart? armet, WorldRolePart? body, ClientShutdown cleanup)
     {
         DisposeParts(left, cleanup);
         DisposeParts(right, cleanup);

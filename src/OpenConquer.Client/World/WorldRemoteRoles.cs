@@ -15,8 +15,7 @@ internal sealed class WorldRemoteRoles
         get;
         private set;
     }
-    internal IReadOnlyCollection<GamePlayerSpawn10014> All =>
-        _snapshot ??= [.. _roles.Values.Select(static role => role.Player)];
+    internal IReadOnlyCollection<GamePlayerSpawn10014> All => _snapshot ??= [.. _roles.Values.Select(static role => role.Player)];
 
     internal bool Contains(uint entityId) => _roles.ContainsKey(entityId);
 
@@ -32,7 +31,6 @@ internal sealed class WorldRemoteRoles
         return false;
     }
 
-    /// <summary>Remote roles placed for the scene: depth tile, live anchor and facing.</summary>
     internal IEnumerable<(uint EntityId, WorldRolePlayback Playback)> Placements
     {
         get
@@ -47,8 +45,10 @@ internal sealed class WorldRemoteRoles
         }
     }
 
-    internal WorldRolePlayback? GetPlayback(uint entityId) =>
-        _roles.TryGetValue(entityId, out RemoteRole? role) ? role.Playback : null;
+    internal WorldRolePlayback? GetPlayback(uint entityId)
+    {
+        return _roles.TryGetValue(entityId, out RemoteRole? role) ? role.Playback : null;
+    }
 
     internal void Upsert(GamePlayerSpawn10014 player)
     {
@@ -73,6 +73,7 @@ internal sealed class WorldRemoteRoles
         (int dx, int dy) = walk.GetDelta();
         int x = player.X + dx;
         int y = player.Y + dy;
+
         if ((uint)x > ushort.MaxValue || (uint)y > ushort.MaxValue)
         {
             return false;
@@ -84,6 +85,7 @@ internal sealed class WorldRemoteRoles
             Y = (ushort)y,
             Direction = (byte)(walk.DirectionIndex % 8)
         };
+
         role.Playback.Enqueue(walk);
 
         _snapshot = null;
@@ -100,30 +102,30 @@ internal sealed class WorldRemoteRoles
 
         GamePlayerSpawn10014 player = role.Player;
         role.Playback.EnqueueJump(targetX, targetY);
-        if (player.X != targetX || player.Y != targetY)
+
+        if (player.X == targetX && player.Y == targetY)
         {
-            role.Player = player with
-            {
-                X = targetX,
-                Y = targetY
-            };
-            _snapshot = null;
-            Revision = unchecked(Revision + 1);
+            return true;
         }
+
+        role.Player = player with
+        {
+            X = targetX,
+            Y = targetY
+        };
+
+        _snapshot = null;
+        Revision = unchecked(Revision + 1);
 
         return true;
     }
 
-    /// <summary>
-    /// Advances every role's step presentation for this frame. <paramref name="frameCount"/> returns the
-    /// prepared clip length for an entity's action, or 0 when its appearance is not prepared yet.
-    /// </summary>
-    internal void Advance(uint nowMilliseconds, Func<uint, ushort, int> frameCount,
-        Func<int, int, (int X, int Y)> project, Func<int, int, (int X, int Y)> unproject)
+    internal void Advance(uint nowMilliseconds, Func<uint, ushort, int> frameCount, Func<int, int, (int X, int Y)> project, Func<int, int, (int X, int Y)> unproject)
     {
         ArgumentNullException.ThrowIfNull(frameCount);
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(unproject);
+
         foreach ((uint id, RemoteRole role) in _roles)
         {
             bool projected = role.Playback.IsProjected;
@@ -131,7 +133,6 @@ internal sealed class WorldRemoteRoles
             role.Playback.Advance(nowMilliseconds, action => frameCount(id, action), project, unproject);
             if (!projected || role.Playback.DepthTile != depth)
             {
-                // Scene depth slots are rebuilt per revision: first placement and step boundaries move them.
                 Revision = unchecked(Revision + 1);
             }
         }
@@ -155,14 +156,17 @@ internal sealed class WorldRemoteRoles
         foreach ((uint id, RemoteRole role) in _roles)
         {
             GamePlayerSpawn10014 player = role.Player;
-            if (Math.Abs((long)heroX - player.X) > VisibilityRadius ||
-                Math.Abs((long)heroY - player.Y) > VisibilityRadius)
+            if (Math.Abs((long)heroX - player.X) > VisibilityRadius || Math.Abs((long)heroY - player.Y) > VisibilityRadius)
             {
                 (outside ??= []).Add(id);
             }
         }
 
-        if (outside is not null)
+        if (outside is null)
+        {
+            return;
+        }
+
         {
             foreach (uint id in outside)
             {

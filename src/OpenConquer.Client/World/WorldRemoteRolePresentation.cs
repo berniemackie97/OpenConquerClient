@@ -7,16 +7,15 @@ namespace OpenConquer.Client.World;
 
 internal readonly record struct WorldRoleAppearance(uint BodyFamily, WorldRoleSources Sources)
 {
-    internal static WorldRoleAppearance From(GamePlayerSpawn10014 player) =>
-        new(player.PackedAppearance % 1000,
-            WorldRoleSources.Resolve(player.PackedAppearance, player.HairComposite,
-                player.HeadwearItemType, player.ArmorItemType, player.RightHandItemType,
-                player.LeftHandItemType));
+    internal static WorldRoleAppearance From(GamePlayerSpawn10014 player)
+    {
+        return new WorldRoleAppearance(player.PackedAppearance % 1000, WorldRoleSources.Resolve(player.PackedAppearance, player.HairComposite,
+            player.HeadwearItemType, player.ArmorItemType, player.RightHandItemType, player.LeftHandItemType));
+    }
 }
 
-internal sealed class WorldRemoteRolePresentation(
-    Func<WorldRoleAppearance, CancellationToken, WorldRoleAssets?> prepare,
-    ClientDiagnostics diagnostics) : IAsyncDisposable
+internal sealed class WorldRemoteRolePresentation(Func<WorldRoleAppearance, CancellationToken, WorldRoleAssets?> prepare, ClientDiagnostics diagnostics)
+    : IAsyncDisposable
 {
     internal const int MaximumPreparedAppearances = 64;
 
@@ -34,8 +33,7 @@ internal sealed class WorldRemoteRolePresentation(
     private int _heroY = int.MinValue;
 
     internal WorldRemoteRolePresentation(WorldRoleAssetReader reader, ClientDiagnostics diagnostics)
-        : this((appearance, token) => reader.Load(appearance.BodyFamily, appearance.Sources, token),
-            diagnostics)
+        : this((appearance, token) => reader.Load(appearance.BodyFamily, appearance.Sources, token), diagnostics)
     {
     }
 
@@ -91,6 +89,7 @@ internal sealed class WorldRemoteRolePresentation(
         _roles = identities;
         _priority = priority;
         _failures.RemoveWhere(key => !chosen.Contains(key));
+
         if (_pending is not null && !chosen.Contains(_pendingKey))
         {
             _pendingStop?.Cancel();
@@ -179,23 +178,18 @@ internal sealed class WorldRemoteRolePresentation(
         }
     }
 
-    /// <summary>
-    /// Body clip length for an entity's action (native RoleView +0x0C result), or 0 while the
-    /// entity's appearance is not prepared.
-    /// </summary>
-    internal int GetActionFrameCount(uint entityId, ushort action) =>
-        _roles.TryGetValue(entityId, out WorldRoleAppearance appearance) &&
-        _renderers.TryGetValue(appearance, out WorldRoleRenderer? parts)
+    internal int GetActionFrameCount(uint entityId, ushort action)
+    {
+        return _roles.TryGetValue(entityId, out WorldRoleAppearance appearance) && _renderers.TryGetValue(appearance, out WorldRoleRenderer? parts)
             ? (int)Math.Min(action == WorldRolePlayback.Standby
                 ? parts.IdleFrameCount
                 : parts.GetActionFrameCount(action), int.MaxValue)
             : 0;
+    }
 
-    internal void Draw(OpenGLRenderer renderer, uint entityId, Matrix4x4 main, Matrix4x4 shadow,
-        uint milliseconds, WorldRemoteRoles roles)
+    internal void Draw(OpenGLRenderer renderer, uint entityId, Matrix4x4 main, Matrix4x4 shadow, uint milliseconds, WorldRemoteRoles roles)
     {
-        if (!_roles.TryGetValue(entityId, out WorldRoleAppearance appearance) ||
-            !_renderers.TryGetValue(appearance, out WorldRoleRenderer? parts))
+        if (!_roles.TryGetValue(entityId, out WorldRoleAppearance appearance) || !_renderers.TryGetValue(appearance, out WorldRoleRenderer? parts))
         {
             return;
         }
@@ -213,10 +207,7 @@ internal sealed class WorldRemoteRolePresentation(
 
         if (playback is not null && playback.Action == 0)
         {
-            // Standby restarts from frame 0 on each native re-dispatch; 100 is the body's idle motion.
-            parts.Draw(renderer, main, shadow,
-                playback.StandbyAction == WorldRolePlayback.Standby ? (ushort)0 : playback.StandbyAction,
-                playback.StandbyFrame);
+            parts.Draw(renderer, main, shadow, playback.StandbyAction == WorldRolePlayback.Standby ? (ushort)0 : playback.StandbyAction, playback.StandbyFrame);
             return;
         }
 

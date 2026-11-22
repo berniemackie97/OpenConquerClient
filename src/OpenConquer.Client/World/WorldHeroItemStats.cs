@@ -4,9 +4,6 @@ namespace OpenConquer.Client.World;
 
 internal static class WorldHeroItemStats
 {
-    // Native equipment terms: life 0x65D12B..0x65D1C3, mana 0x65D2EC..0x65D309.
-    // Signed base life/mana, unsigned addition life, broken-life exclusion and slot12 enchant exclusion:
-    // 20_notes/Rendering/14_hero_effective_max_life_mana.md, equipment-loop audit.
     internal static (int Life, int Mana) Resolve(WorldHeroEquipment equipment, ItemStatCatalog catalog)
     {
         int life = 0;
@@ -49,24 +46,26 @@ internal static class WorldHeroItemStats
         uint subtype = Subtype(type);
         uint normalized = type;
 
-        if (!((category == 4 && subtype == 21000) || (category == 5 && subtype == 0)))
+        if ((category == 4 && subtype == 21000) || (category == 5 && subtype == 0))
         {
-            uint family = type % 1_000_000 / 1000;
-            if (category == 4 && family is not 601 and not 610)
-            {
-                normalized = type / 100_000 * 100_000 + type % 1000 + 44_000;
-            }
-            else if (category == 5)
-            {
-                normalized = type / 100_000 * 100_000 + type % 1000 + 55_000;
-            }
+            return normalized / 10 * 10;
         }
+
+        uint family = type % 1_000_000 / 1000;
+        normalized = category switch
+        {
+            4 when family is not 601 and not 610 => type / 100_000 * 100_000 + type % 1000 + 44_000,
+            5 => type / 100_000 * 100_000 + type % 1000 + 55_000,
+            _ => normalized
+        };
 
         return normalized / 10 * 10;
     }
 
-    private static bool IsEquipmentCategory(uint type) =>
-        Category(type) is >= 1 and <= 8 or 12 or 14 or 15 or 16 or 20 or 21;
+    private static bool IsEquipmentCategory(uint type)
+    {
+        return Category(type) is >= 1 and <= 8 or 12 or 14 or 15 or 16 or 20 or 21;
+    }
 
     private static uint Subtype(uint type)
     {
@@ -113,37 +112,32 @@ internal static class WorldHeroItemStats
         }
 
         uint bucket = type % 10_000_000 / 100_000;
-        if (bucket <= 7)
+        return bucket switch
         {
-            if (bucket == 1)
+            > 7 => bucket switch
             {
-                return (int)(normalized / 10_000) switch
-                {
-                    11 or 14 or 17 => 1,
-                    12 => 2,
-                    13 => 3,
-                    15 => 7,
-                    16 => 8,
-                    18 or 19 => 11,
-                    _ => -1,
-                };
-            }
-
-            return bucket switch
+                9 => 6,
+                10 => 0,
+                >= 20 and <= 29 => 10,
+                _ => -1,
+            },
+            1 => (int)(normalized / 10_000) switch
+            {
+                11 or 14 or 17 => 1,
+                12 => 2,
+                13 => 3,
+                15 => 7,
+                16 => 8,
+                18 or 19 => 11,
+                _ => -1,
+            },
+            _ => bucket switch
             {
                 4 or 6 => 4,
                 5 => 5,
                 7 => 9,
                 _ => -1,
-            };
-        }
-
-        return bucket switch
-        {
-            9 => 6,
-            10 => 0,
-            >= 20 and <= 29 => 10,
-            _ => -1,
+            }
         };
     }
 }
