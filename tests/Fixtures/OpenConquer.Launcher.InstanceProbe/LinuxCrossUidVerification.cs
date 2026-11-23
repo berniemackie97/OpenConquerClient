@@ -127,8 +127,10 @@ internal static class LinuxCrossUidVerification
         Require(!owner.HasExited, "Activation displaced the owner.");
     }
 
-    private static Child StartProbe(uint userId, string runtimeRoot, string mode, string lease) =>
-        StartActor(userId, runtimeRoot, "probe", mode, lease, "@current-user");
+    private static Child StartProbe(uint userId, string runtimeRoot, string mode, string lease)
+    {
+        return StartActor(userId, runtimeRoot, "probe", mode, lease, "@current-user");
+    }
 
     private static Child StartActor(uint userId, string runtimeRoot, params string[] arguments)
     {
@@ -155,7 +157,10 @@ internal static class LinuxCrossUidVerification
         private readonly Process _process;
         private readonly CancellationTokenSource _deadline = new(TimeSpan.FromSeconds(60));
 
-        private Child(Process process) => _process = process;
+        private Child(Process process)
+        {
+            _process = process;
+        }
 
         internal bool HasExited => _process.HasExited;
 
@@ -185,9 +190,11 @@ internal static class LinuxCrossUidVerification
             return new Child(Process.Start(start) ?? throw new InvalidOperationException("Verification process did not start."));
         }
 
-        internal async Task<string> ReadLineAsync() =>
-            await _process.StandardOutput.ReadLineAsync(_deadline.Token)
-            ?? throw new InvalidOperationException("Verification process exited before reporting its state.");
+        internal async Task<string> ReadLineAsync()
+        {
+            return await _process.StandardOutput.ReadLineAsync(_deadline.Token)
+                   ?? throw new InvalidOperationException("Verification process exited before reporting its state.");
+        }
 
         internal async Task ExpectLineAsync(string expected)
         {

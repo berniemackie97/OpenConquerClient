@@ -35,10 +35,12 @@ public static class GameMapSceneryAniBindings
         return Array.AsReadOnly(bindings.ToArray());
     }
 
-    public static bool IsEmptyAnimationRecord(GameMapSceneryRecord record) =>
-        record.ResourcePath == "AniTitle=" &&
-        record.TileX == 0 &&
-        record.TileY == 0 &&
-        (record.EncodedPayload.Length is 0x1A0 or 0x1A4) &&
-        record.EncodedPayload.Span[0x18C..].IndexOfAnyExcept((byte)0) < 0;
+    public static bool IsEmptyAnimationRecord(GameMapSceneryRecord record)
+    {
+        return record.ResourcePath == "AniTitle=" &&
+               record.TileX == 0 &&
+               record.TileY == 0 &&
+               (record.EncodedPayload.Length is 0x1A0 or 0x1A4) &&
+               record.EncodedPayload.Span[0x18C..].IndexOfAnyExcept((byte)0) < 0;
+    }
 }

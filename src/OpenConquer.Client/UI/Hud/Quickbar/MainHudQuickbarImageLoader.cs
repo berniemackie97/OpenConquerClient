@@ -113,7 +113,10 @@ internal sealed class MainHudQuickbarImageLoader(Func<QuickbarImageRequest, Quic
         }
     }
 
-    internal void Cancel() => _pending?.Cancel();
+    internal void Cancel()
+    {
+        _pending?.Cancel();
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -133,8 +136,9 @@ internal sealed class MainHudQuickbarImageLoader(Func<QuickbarImageRequest, Quic
         }
     }
 
-    internal static QuickbarArtwork ReadAssets(MainHudQuickbarAssets assets, QuickbarImageRequest request) =>
-        request.Kind switch
+    internal static QuickbarArtwork ReadAssets(MainHudQuickbarAssets assets, QuickbarImageRequest request)
+    {
+        return request.Kind switch
         {
             QuickbarImageKind.Item => new QuickbarArtwork(assets.GetItemFrame(request.IconKey)),
             QuickbarImageKind.Control => new QuickbarArtwork(assets.GetControlFrame0(request.Section)),
@@ -143,6 +147,7 @@ internal sealed class MainHudQuickbarImageLoader(Func<QuickbarImageRequest, Quic
             QuickbarImageKind.Glow => new QuickbarArtwork(Glow: assets.GetEffectFrames(request.Section)),
             _ => throw new ArgumentOutOfRangeException(nameof(request), request.Kind, "Unknown quickbar image kind."),
         };
+    }
 
     private Dictionary<QuickbarImageRequest, ImageResult> ReadBatch(QuickbarImageRequest[] requests, CancellationToken token)
     {

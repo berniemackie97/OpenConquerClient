@@ -44,5 +44,8 @@ internal sealed class MainHudSelectedSkillState
         ContentId = 0;
     }
 
-    public void SetCoverFlag(byte coverFlag) => CoverFlag = coverFlag;
+    public void SetCoverFlag(byte coverFlag)
+    {
+        CoverFlag = coverFlag;
+    }
 }

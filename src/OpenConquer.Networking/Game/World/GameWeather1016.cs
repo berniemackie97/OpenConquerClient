@@ -18,11 +18,14 @@ internal readonly record struct GameWeather1016(uint Kind, uint Intensity, uint 
     internal bool HasSupportedValues => Kind is >= 1 and <= 11 and not 6 && Intensity <= 1022 && DirectionDegrees <= 359;
 
     /// <summary>Reads the fields from the native message buffer. Parse has no size rule; fields past a short message read zero.</summary>
-    internal static GameWeather1016 Read(GameMessageBuffer message) => new(
-        message.ReadUInt32(4),
-        message.ReadUInt32(8),
-        message.ReadUInt32(12),
-        message.ReadUInt32(16));
+    internal static GameWeather1016 Read(GameMessageBuffer message)
+    {
+        return new GameWeather1016(
+            message.ReadUInt32(4),
+            message.ReadUInt32(8),
+            message.ReadUInt32(12),
+            message.ReadUInt32(16));
+    }
 
     /// <summary>Uses the same native header/type validation in bootstrap as in world ingress (0x7607DE).</summary>
     internal static bool TryRead(ReadOnlySpan<byte> packet, out GameWeather1016 weather)

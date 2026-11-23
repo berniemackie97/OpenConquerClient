@@ -165,7 +165,10 @@ public sealed class C3MotionReaderTests
         Assert.Throws<InvalidDataException>(() => C3MotionReader.Read(badIndex.ToArray()));
     }
 
-    private static C3MeshSection Section(byte[] payload) => new(0x49544F4D, 24, payload);
+    private static C3MeshSection Section(byte[] payload)
+    {
+        return new C3MeshSection(0x49544F4D, 24, payload);
+    }
 
     private static MemoryStream Header(uint bones, uint frames, string encoding)
     {
@@ -190,7 +193,10 @@ public sealed class C3MotionReaderTests
         }
     }
 
-    private static void WriteUInt32(Stream output, int value) => WriteUInt32(output, unchecked((uint)value));
+    private static void WriteUInt32(Stream output, int value)
+    {
+        WriteUInt32(output, unchecked((uint)value));
+    }
 
     private static void WriteUInt32(Stream output, uint value)
     {

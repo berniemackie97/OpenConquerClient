@@ -56,6 +56,9 @@ public sealed class LoginControlLayoutTests
         Assert.Equal(width, layout.Logo.X + layout.Logo.Width);
     }
 
-    private static bool Overlaps(LoginRect left, LoginRect right) =>
-        left.X < right.X + right.Width && right.X < left.X + left.Width && left.Y < right.Y + right.Height && right.Y < left.Y + left.Height;
+    private static bool Overlaps(LoginRect left, LoginRect right)
+    {
+        return left.X < right.X + right.Width && right.X < left.X + left.Width && left.Y < right.Y + right.Height &&
+               right.Y < left.Y + left.Height;
+    }
 }

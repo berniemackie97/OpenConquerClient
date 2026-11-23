@@ -188,9 +188,11 @@ internal static class GameWorldEntryBootstrap
     }
 
     private static async Task<GameSecuredInboundFrame> ReadRequiredAsync(GameServerHandshakeSession session,
-        CancellationToken cancellationToken) =>
-        await session.ReadFrameAsync(s_timeout, cancellationToken).ConfigureAwait(false)
-        ?? throw new EndOfStreamException("GameServer closed during world entry.");
+        CancellationToken cancellationToken)
+    {
+        return await session.ReadFrameAsync(s_timeout, cancellationToken).ConfigureAwait(false)
+               ?? throw new EndOfStreamException("GameServer closed during world entry.");
+    }
 }
 
 /// <summary>
@@ -202,5 +204,8 @@ internal sealed record GameWorldEntrySnapshot(GameCharacterInfo1006 Character, u
     ulong MapFlags, uint WeatherKind, ushort X, ushort Y, IReadOnlyList<byte[]> HydrationPackets,
     byte DirectionIndex, int HydrationEnteredAt = 0, uint HeartbeatStartedAt = 0, uint LocalAddress = 0)
 {
-    public override string ToString() => nameof(GameWorldEntrySnapshot);
+    public override string ToString()
+    {
+        return nameof(GameWorldEntrySnapshot);
+    }
 }

@@ -60,10 +60,12 @@ public sealed class FlashMovie
         get;
     }
 
-    public FlashCharacter Character(int id) =>
-        _characters.TryGetValue(id, out FlashCharacter? character)
+    public FlashCharacter Character(int id)
+    {
+        return _characters.TryGetValue(id, out FlashCharacter? character)
             ? character
             : throw new KeyNotFoundException($"Movie '{Name}' has no character {id}.");
+    }
 
     /// <summary>Decodes raster <paramref name="index"/> and verifies its length and SHA-256.</summary>
     public RgbaImage LoadRaster(int index)

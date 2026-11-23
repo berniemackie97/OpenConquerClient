@@ -2,11 +2,10 @@ using System.Text;
 
 namespace OpenConquer.Client.UI.Login.Status;
 
-/// <summary>Arial14 device-text advances measured in the retail Flash7 control on Windows.</summary>
 internal static class LoginErrorFontMetrics
 {
     internal const int LineAdvance = 18;
-    internal const int BaselineCorrection = -1; // GDI ascent13 versus the existing font renderer's baseline14.
+    internal const int BaselineCorrection = -1;
     private static readonly byte[] s_advances =
     [
         4, 5, 5, 8, 8, 12, 9, 3, 5, 5, 5, 8, 4, 5, 4, 4,

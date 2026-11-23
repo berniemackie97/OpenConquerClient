@@ -28,13 +28,25 @@ internal readonly ref struct GameMessageBuffer
 
     internal ushort Type => ReadUInt16(2);
 
-    internal byte ReadByte(int offset) => _bytes[offset];
+    internal byte ReadByte(int offset)
+    {
+        return _bytes[offset];
+    }
 
-    internal ushort ReadUInt16(int offset) => BinaryPrimitives.ReadUInt16LittleEndian(_bytes[offset..]);
+    internal ushort ReadUInt16(int offset)
+    {
+        return BinaryPrimitives.ReadUInt16LittleEndian(_bytes[offset..]);
+    }
 
-    internal uint ReadUInt32(int offset) => BinaryPrimitives.ReadUInt32LittleEndian(_bytes[offset..]);
+    internal uint ReadUInt32(int offset)
+    {
+        return BinaryPrimitives.ReadUInt32LittleEndian(_bytes[offset..]);
+    }
 
-    internal ulong ReadUInt64(int offset) => BinaryPrimitives.ReadUInt64LittleEndian(_bytes[offset..]);
+    internal ulong ReadUInt64(int offset)
+    {
+        return BinaryPrimitives.ReadUInt64LittleEndian(_bytes[offset..]);
+    }
 
     /// <summary>
     /// Copies <paramref name="packet"/> into <paramref name="storage"/> after zeroing it. Returns false where native dispatch

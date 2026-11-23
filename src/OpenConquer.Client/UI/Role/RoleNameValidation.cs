@@ -38,7 +38,6 @@ internal static class RoleNameValidation
         for (int index = 0; index < name.Length; index++)
         {
             char character = name[index];
-            // Native 5517 accepts a period only when it is neither the first nor the last encoded character.
             if (character == '.' && index > 0 && index < name.Length - 1)
             {
                 continue;

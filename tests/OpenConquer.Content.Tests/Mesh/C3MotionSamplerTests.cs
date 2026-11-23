@@ -70,5 +70,8 @@ public sealed class C3MotionSamplerTests
         Assert.False(C3MotionSampler.TrySampleBone(motion, 0, 0, out _));
     }
 
-    private static C3Motion Single(Matrix4x4 matrix) => new(1, 1, 0, [0], [matrix]);
+    private static C3Motion Single(Matrix4x4 matrix)
+    {
+        return new C3Motion(1, 1, 0, [0], [matrix]);
+    }
 }

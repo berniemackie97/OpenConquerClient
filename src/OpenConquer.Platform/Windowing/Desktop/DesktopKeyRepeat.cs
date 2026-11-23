@@ -54,6 +54,10 @@ internal sealed class DesktopKeyRepeat
         _nextTick = 0;
     }
 
-    private static bool IsRepeatable(DesktopKey key) => key is DesktopKey.Backspace or DesktopKey.Delete or
-        DesktopKey.Left or DesktopKey.Right or DesktopKey.Up or DesktopKey.Down or DesktopKey.Home or DesktopKey.End or DesktopKey.PageUp or DesktopKey.PageDown;
+    private static bool IsRepeatable(DesktopKey key)
+    {
+        return key is DesktopKey.Backspace or DesktopKey.Delete or
+            DesktopKey.Left or DesktopKey.Right or DesktopKey.Up or DesktopKey.Down or DesktopKey.Home or DesktopKey.End
+            or DesktopKey.PageUp or DesktopKey.PageDown;
+    }
 }

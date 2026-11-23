@@ -52,6 +52,9 @@ public sealed class ClientFrameClockTests
             return Timestamp;
         }
 
-        public override DateTimeOffset GetUtcNow() => throw new InvalidOperationException("Frame time must be monotonic.");
+        public override DateTimeOffset GetUtcNow()
+        {
+            throw new InvalidOperationException("Frame time must be monotonic.");
+        }
     }
 }

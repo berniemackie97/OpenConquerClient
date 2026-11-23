@@ -245,8 +245,13 @@ public sealed class LoginCredentialInputTests
         return (selection, LoginCredentialLayout.Create(LoginStageLayout.Create(new LogicalRenderSize(width, height))));
     }
 
-    private static LoginServerCatalog Catalog() => new([new LoginRegion("region", "Region", [
-        new LoginServer("realm1", "Realm One", "NativeRealm1"),
-        new LoginServer("realm2", "Realm Two", "NativeRealm2"),
-    ])]);
+    private static LoginServerCatalog Catalog()
+    {
+        return new LoginServerCatalog([
+            new LoginRegion("region", "Region", [
+                new LoginServer("realm1", "Realm One", "NativeRealm1"),
+                new LoginServer("realm2", "Realm Two", "NativeRealm2"),
+            ])
+        ]);
+    }
 }

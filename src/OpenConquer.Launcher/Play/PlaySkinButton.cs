@@ -72,7 +72,10 @@ internal sealed class PlaySkinButton : Control, ICustomHitTest, IDisposable
         }
     }
 
-    public bool HitTest(Point point) => _states[(int)PlayButtonState.Up].IsOpaqueAt(point);
+    public bool HitTest(Point point)
+    {
+        return _states[(int)PlayButtonState.Up].IsOpaqueAt(point);
+    }
 
     public override void Render(DrawingContext context)
     {
@@ -172,7 +175,10 @@ internal sealed class PlaySkinButton : Control, ICustomHitTest, IDisposable
         InvalidateVisual();
     }
 
-    public void Dispose() => ReleaseBitmaps();
+    public void Dispose()
+    {
+        ReleaseBitmaps();
+    }
 
     private void SetHovered(bool hovered)
     {

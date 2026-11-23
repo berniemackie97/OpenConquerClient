@@ -215,5 +215,8 @@ internal static class RealmCatalogDefinition
         return group >= 1 && group <= s_iconsPerGroup.Length && server >= 1 && server <= s_iconsPerGroup[group - 1];
     }
 
-    private static string Timestamp(DateTimeOffset value) => value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+    private static string Timestamp(DateTimeOffset value)
+    {
+        return value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+    }
 }

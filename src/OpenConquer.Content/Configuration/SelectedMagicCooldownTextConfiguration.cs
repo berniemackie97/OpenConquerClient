@@ -170,6 +170,8 @@ public sealed class SelectedMagicCooldownTextConfiguration
         return -1;
     }
 
-    private static bool IsAsciiWhiteSpace(char character) =>
-        character is ' ' or '\t' or '\n' or '\v' or '\f' or '\r';
+    private static bool IsAsciiWhiteSpace(char character)
+    {
+        return character is ' ' or '\t' or '\n' or '\v' or '\f' or '\r';
+    }
 }

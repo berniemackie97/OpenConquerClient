@@ -5,7 +5,6 @@ using OpenConquer.Client.UI.Login.Stage;
 
 namespace OpenConquer.Client.UI.Login.Selection;
 
-/// <summary>Provides grapheme-safe truncation and pixel-exact placement inside verified login cells.</summary>
 internal static class LoginLabelFitter
 {
     public static IEnumerable<string> Candidates(string name)

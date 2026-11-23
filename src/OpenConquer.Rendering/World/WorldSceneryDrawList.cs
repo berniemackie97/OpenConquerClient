@@ -8,9 +8,11 @@ internal static class WorldSceneryDrawList
         IReadOnlyList<GameMapTerrainScenePlacement> terrain,
         WorldSceneryIndex scenery,
         IReadOnlyDictionary<GameMapSceneryRecord, (int Width, int Height)> frameExtents,
-        WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds) =>
-        BuildCore(map, terrain, scenery, frameExtents, projection, nowMilliseconds,
+        WorldPuzzleProjection projection, uint nowMilliseconds, uint sceneStartMilliseconds)
+    {
+        return BuildCore(map, terrain, scenery, frameExtents, projection, nowMilliseconds,
             sceneStartMilliseconds, [], out _);
+    }
 
     internal static IReadOnlyList<WorldScenerySprite> BuildWithRoles(GameMapContent map,
         IReadOnlyList<GameMapTerrainScenePlacement> terrain,

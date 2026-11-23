@@ -128,22 +128,31 @@ public static class C3PhyMeshReader
         }
     }
 
-    private static Matrix4x4 ReadMatrix(ReadOnlySpan<byte> bytes) => new(
-        ReadFloat(bytes, 0), ReadFloat(bytes, 4), ReadFloat(bytes, 8), ReadFloat(bytes, 12),
-        ReadFloat(bytes, 16), ReadFloat(bytes, 20), ReadFloat(bytes, 24), ReadFloat(bytes, 28),
-        ReadFloat(bytes, 32), ReadFloat(bytes, 36), ReadFloat(bytes, 40), ReadFloat(bytes, 44),
-        ReadFloat(bytes, 48), ReadFloat(bytes, 52), ReadFloat(bytes, 56), ReadFloat(bytes, 60));
+    private static Matrix4x4 ReadMatrix(ReadOnlySpan<byte> bytes)
+    {
+        return new Matrix4x4(
+            ReadFloat(bytes, 0), ReadFloat(bytes, 4), ReadFloat(bytes, 8), ReadFloat(bytes, 12),
+            ReadFloat(bytes, 16), ReadFloat(bytes, 20), ReadFloat(bytes, 24), ReadFloat(bytes, 28),
+            ReadFloat(bytes, 32), ReadFloat(bytes, 36), ReadFloat(bytes, 40), ReadFloat(bytes, 44),
+            ReadFloat(bytes, 48), ReadFloat(bytes, 52), ReadFloat(bytes, 56), ReadFloat(bytes, 60));
+    }
 
-    private static int SumCounts(int first, int second) =>
-        (long)first + second <= int.MaxValue
+    private static int SumCounts(int first, int second)
+    {
+        return (long)first + second <= int.MaxValue
             ? first + second
             : throw new InvalidDataException("PHY element count exceeds supported bounds.");
+    }
 
-    private static Vector3 ReadVector3(ReadOnlySpan<byte> input) =>
-        new(ReadFloat(input, 0), ReadFloat(input, 4), ReadFloat(input, 8));
+    private static Vector3 ReadVector3(ReadOnlySpan<byte> input)
+    {
+        return new Vector3(ReadFloat(input, 0), ReadFloat(input, 4), ReadFloat(input, 8));
+    }
 
-    private static float ReadFloat(ReadOnlySpan<byte> input, int offset) =>
-        BinaryPrimitives.ReadSingleLittleEndian(input[offset..]);
+    private static float ReadFloat(ReadOnlySpan<byte> input, int offset)
+    {
+        return BinaryPrimitives.ReadSingleLittleEndian(input[offset..]);
+    }
 
     private struct PayloadReader(ReadOnlyMemory<byte> data)
     {
@@ -163,7 +172,10 @@ public static class C3PhyMeshReader
             return result;
         }
 
-        internal uint ReadUInt32() => BinaryPrimitives.ReadUInt32LittleEndian(Read(4).Span);
+        internal uint ReadUInt32()
+        {
+            return BinaryPrimitives.ReadUInt32LittleEndian(Read(4).Span);
+        }
 
         internal int ReadCount()
         {

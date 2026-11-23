@@ -76,8 +76,10 @@ internal static class MainHudQuickbarContentRequirements
         }
     }
 
-    private static void AddRequiredControlSection(List<ClientContentRequirement> requirements, AniIndexFile controlAni, string sectionName) =>
+    private static void AddRequiredControlSection(List<ClientContentRequirement> requirements, AniIndexFile controlAni, string sectionName)
+    {
         AddFrameRequirements(requirements, controlAni.GetRequiredSection(sectionName));
+    }
 
     private static void AddFrameRequirements(List<ClientContentRequirement> requirements, AniIndexSection section)
     {

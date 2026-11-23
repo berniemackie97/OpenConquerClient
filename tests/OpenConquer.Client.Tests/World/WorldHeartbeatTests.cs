@@ -20,8 +20,10 @@ public sealed class WorldHeartbeatTests
     }
 
     [Fact]
-    public void Tick_IsInactiveWhileTheStartIsZero() =>
+    public void Tick_IsInactiveWhileTheStartIsZero()
+    {
         Assert.Equal(WorldHeartbeatSend.None, new WorldHeartbeat(0, 0, 0).Tick(uint.MaxValue));
+    }
 
     [Fact]
     public void Tick_ComparesAgainstTheWrappedDeadlineAsNativeDoes()

@@ -2,10 +2,6 @@ using OpenConquer.Networking.Game.World;
 
 namespace OpenConquer.Client.World;
 
-/// <summary>
-/// One local item instance. Native Add allocates a fresh CItem (0x762D84/0x762D9C), while Update mutates the located
-/// instance (0x763570..0x7638A4). Active equipment refers to that instance, not merely its UID (0x6DB0C0).
-/// </summary>
 internal sealed class WorldHeroItem(GameItemRecord1008 record)
 {
     internal uint Id { get; } = record.ItemId;

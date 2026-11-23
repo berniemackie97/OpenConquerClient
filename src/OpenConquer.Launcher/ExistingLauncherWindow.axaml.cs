@@ -14,5 +14,8 @@ internal sealed partial class ExistingLauncherWindow : Window
         CloseButton.Content = LauncherText.Close;
     }
 
-    private void OnCloseRequested(object? sender, RoutedEventArgs eventArgs) => Close();
+    private void OnCloseRequested(object? sender, RoutedEventArgs eventArgs)
+    {
+        Close();
+    }
 }

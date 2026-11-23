@@ -14,7 +14,6 @@ internal enum LoginDirectoryAvailability
     ChooseServer,
 }
 
-/// <summary>Derives presentation-only availability from authenticated selection state.</summary>
 internal static class LoginDirectoryStatus
 {
     public static LoginDirectoryAvailability Resolve(bool hasAuthority, bool hasVerifiedCatalog, bool acquisitionFailed, LoginServerSelection selection)
@@ -49,13 +48,19 @@ internal static class LoginDirectoryStatus
         return selection.SelectedServer is null ? LoginDirectoryAvailability.ChooseServer : LoginDirectoryAvailability.None;
     }
 
-    public static bool IsVisible(LoginDirectoryAvailability availability) => availability == LoginDirectoryAvailability.NotConfigured;
+    public static bool IsVisible(LoginDirectoryAvailability availability)
+    {
+        return availability == LoginDirectoryAvailability.NotConfigured;
+    }
 
-    public static string Text(LoginDirectoryAvailability availability) => availability == LoginDirectoryAvailability.NotConfigured
-        ? "REALM DIRECTORY NOT CONFIGURED"
-        : throw new ArgumentOutOfRangeException(nameof(availability), availability, "Only a missing authority has a visible banner.");
+    public static string Text(LoginDirectoryAvailability availability)
+    {
+        return availability == LoginDirectoryAvailability.NotConfigured
+            ? "REALM DIRECTORY NOT CONFIGURED"
+            : throw new ArgumentOutOfRangeException(nameof(availability), availability,
+                "Only a missing authority has a visible banner.");
+    }
 
-    /// <summary>Spans the server grid's holder columns just below its last row; a modern notice with no retail counterpart.</summary>
     public static LoginRect Bounds(LoginStageLayout layout)
     {
         ArgumentNullException.ThrowIfNull(layout);
@@ -65,8 +70,7 @@ internal static class LoginDirectoryStatus
         int y = checked(last.Y + last.Height + layout.Scale(8));
         LoginRect bounds = new(first.X, y, checked(last.X + last.Width - first.X), layout.Scale(26));
 
-        if (bounds.X < 0 || bounds.Y < 0 || bounds.Width <= 0 || bounds.Height <= 0 ||
-            (long)bounds.X + bounds.Width > layout.Width || (long)bounds.Y + bounds.Height > layout.AccountPanel.Y)
+        if (bounds.X < 0 || bounds.Y < 0 || bounds.Width <= 0 || bounds.Height <= 0 || (long)bounds.X + bounds.Width > layout.Width || (long)bounds.Y + bounds.Height > layout.AccountPanel.Y)
         {
             throw new InvalidOperationException("Directory status does not fit between the server grid and account panel.");
         }

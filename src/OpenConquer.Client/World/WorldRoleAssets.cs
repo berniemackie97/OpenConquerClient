@@ -4,11 +4,8 @@ using OpenConquer.Content.Mesh;
 
 namespace OpenConquer.Client.World;
 
-/// <summary>The role's decoded parts and attachment tracks, prepared without graphics resources.</summary>
-internal sealed record WorldRoleAssets(
-    WorldRolePartAssets Body, WorldRolePartAssets? Armet, C3Motion? ArmetAttachment,
-    WorldRolePartAssets[] RightWeapon, C3Motion? RightWeaponAttachment,
-    WorldRolePartAssets[] LeftWeapon, C3Motion? LeftWeaponAttachment)
+internal sealed record WorldRoleAssets(WorldRolePartAssets Body, WorldRolePartAssets? Armet, C3Motion? ArmetAttachment, WorldRolePartAssets[] RightWeapon,
+    C3Motion? RightWeaponAttachment, WorldRolePartAssets[] LeftWeapon, C3Motion? LeftWeaponAttachment)
 {
     private static readonly ushort[] s_groundActions =
     [
@@ -17,38 +14,44 @@ internal sealed record WorldRoleAssets(
         WorldRolePlayback.Standby + 1, WorldRolePlayback.Standby + 2, WorldRolePlayback.Standby + 3
     ];
 
-    internal static ulong InitialBodyMotionKey(uint packedAppearance) =>
-        BodyMotionKey(packedAppearance, 100);
+    internal static ulong InitialBodyMotionKey(uint packedAppearance)
+    {
+        return BodyMotionKey(packedAppearance, 100);
+    }
 
-    internal static ulong BodyMotionKey(uint packedAppearance, ushort action) =>
-        (packedAppearance % 1000UL) * 1_000_000UL + action;
+    internal static ulong BodyMotionKey(uint packedAppearance, ushort action)
+    {
+        return (packedAppearance % 1000UL) * 1_000_000UL + action;
+    }
 
-    internal static WorldRoleAssets Load(IClientContentSource source, C3RoleCatalog catalog, uint packedAppearance,
-        WorldRoleSources sources, ClientDiagnostics diagnostics, CancellationToken token)
+    internal static WorldRoleAssets Load(IClientContentSource source, C3RoleCatalog catalog, uint packedAppearance, WorldRoleSources sources,
+        ClientDiagnostics diagnostics, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
+
         if (!catalog.TryResolve("body", sources.BodyModelId, out IReadOnlyList<C3ResolvedPart> bodies) || bodies.Count != 1)
         {
             throw new InvalidDataException($"The character body model {sources.BodyModelId} is unavailable in the 3D resource catalog.");
         }
 
-        string? motionPath = catalog.TryResolveMotionPath("body", InitialBodyMotionKey(packedAppearance),
-            out string resolvedMotion) ? resolvedMotion : null;
+        string? motionPath = catalog.TryResolveMotionPath("body", InitialBodyMotionKey(packedAppearance), out string resolvedMotion)
+            ? resolvedMotion
+            : null;
+
         Dictionary<ushort, string> groundMotions = [];
         foreach (ushort action in s_groundActions)
         {
-            if (catalog.TryResolveMotionPath("body", BodyMotionKey(packedAppearance, action),
-                out string path))
+            if (catalog.TryResolveMotionPath("body", BodyMotionKey(packedAppearance, action), out string path))
             {
                 groundMotions.Add(action, path);
             }
         }
 
-        WorldRolePartAssets body = WorldRolePartAssets.Load(source, catalog, bodies[0], token,
-            motionPath, groundMotions);
+        WorldRolePartAssets body = WorldRolePartAssets.Load(source, catalog, bodies[0], token, motionPath, groundMotions);
 
         WorldRolePartAssets? armet = null;
         C3Motion? attachment = null;
+
         if (sources.ArmetModelId != 0)
         {
             if (catalog.TryResolve("armet", sources.ArmetModelId, out IReadOnlyList<C3ResolvedPart> parts))
@@ -66,16 +69,13 @@ internal sealed record WorldRoleAssets(
             }
         }
 
-        (WorldRolePartAssets[] right, C3Motion? rightAttachment) = LoadWeapon(
-            source, catalog, body, "r_weapon", "v_r_weapon", sources.RightWeaponModelId, 4, diagnostics, token);
-        (WorldRolePartAssets[] left, C3Motion? leftAttachment) = LoadWeapon(
-            source, catalog, body, "l_weapon", "v_l_weapon", sources.LeftWeaponModelId, 5, diagnostics, token);
+        (WorldRolePartAssets[] right, C3Motion? rightAttachment) = LoadWeapon(source, catalog, body, "r_weapon", "v_r_weapon", sources.RightWeaponModelId, 4, diagnostics, token);
+        (WorldRolePartAssets[] left, C3Motion? leftAttachment) = LoadWeapon(source, catalog, body, "l_weapon", "v_l_weapon", sources.LeftWeaponModelId, 5, diagnostics, token);
         return new WorldRoleAssets(body, armet, attachment, right, rightAttachment, left, leftAttachment);
     }
 
-    private static (WorldRolePartAssets[] Parts, C3Motion? Attachment) LoadWeapon(
-        IClientContentSource source, C3RoleCatalog catalog, WorldRolePartAssets body, string name, string track,
-        uint modelId, int equipmentSlot, ClientDiagnostics diagnostics, CancellationToken token)
+    private static (WorldRolePartAssets[] Parts, C3Motion? Attachment) LoadWeapon(IClientContentSource source, C3RoleCatalog catalog,
+        WorldRolePartAssets body, string name, string track, uint modelId, int equipmentSlot, ClientDiagnostics diagnostics, CancellationToken token)
     {
         if (modelId == 0)
         {
@@ -83,6 +83,7 @@ internal sealed record WorldRoleAssets(
         }
 
         token.ThrowIfCancellationRequested();
+
         if (!catalog.TryResolve(name, modelId, out IReadOnlyList<C3ResolvedPart> sources))
         {
             diagnostics.WorldRoleModelMissing(modelId, equipmentSlot);

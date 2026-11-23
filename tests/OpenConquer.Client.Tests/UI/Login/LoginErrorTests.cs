@@ -14,10 +14,15 @@ public sealed class LoginErrorTests : IDisposable
     private readonly string _folder = Directory.CreateTempSubdirectory("oc-error-ui-").FullName;
     private static LoginStageLayout Layout => LoginStageLayout.Create(new LogicalRenderSize(1024, 768));
 
-    internal static LoginErrorMessages Messages() => new(
-        ClientStringResources.Parse("49995=Please login later!\n11400=Your password must be 10-14 characters. Please retrieve your password on the website.\n"u8),
-        ClientKeyedStringResources.Parse("STR_LOGIN_FAIL=Failed to login: %s(%d)\nSTR_CONNECT_ERROR_MSG_TYPE_001=Invalid Account ID or Password\nSTR_CONNECT_ERROR_MSG_TYPE_020=Server is busy.\nSTR_CONNECT_ERROR_MSG_TYPE_024=This account has been banned.\nSTR_CONNECT_ERROR_MSG_TYPE_UNKNOWN=Unknown Error\n"u8),
-        LoginErrorEncoding.ForCodePage(1252));
+    internal static LoginErrorMessages Messages()
+    {
+        return new LoginErrorMessages(
+            ClientStringResources.Parse(
+                "49995=Please login later!\n11400=Your password must be 10-14 characters. Please retrieve your password on the website.\n"u8),
+            ClientKeyedStringResources.Parse(
+                "STR_LOGIN_FAIL=Failed to login: %s(%d)\nSTR_CONNECT_ERROR_MSG_TYPE_001=Invalid Account ID or Password\nSTR_CONNECT_ERROR_MSG_TYPE_020=Server is busy.\nSTR_CONNECT_ERROR_MSG_TYPE_024=This account has been banned.\nSTR_CONNECT_ERROR_MSG_TYPE_UNKNOWN=Unknown Error\n"u8),
+            LoginErrorEncoding.ForCodePage(1252));
+    }
 
     [Theory]
     [InlineData(1u, "Failed to login: Invalid Account ID or Password(1)")]
@@ -307,5 +312,8 @@ public sealed class LoginErrorTests : IDisposable
         return screen;
     }
 
-    public void Dispose() => Directory.Delete(_folder, recursive: true);
+    public void Dispose()
+    {
+        Directory.Delete(_folder, recursive: true);
+    }
 }

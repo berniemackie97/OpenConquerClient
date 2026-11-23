@@ -92,5 +92,8 @@ public sealed class SelectCharacterIniTests
         }
     }
 
-    private static SelectCharacterIni Parse(string file) => SelectCharacterIni.Parse(Encoding.ASCII.GetBytes(file));
+    private static SelectCharacterIni Parse(string file)
+    {
+        return SelectCharacterIni.Parse(Encoding.ASCII.GetBytes(file));
+    }
 }

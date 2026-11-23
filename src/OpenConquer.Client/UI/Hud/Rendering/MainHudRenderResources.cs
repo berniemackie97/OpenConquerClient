@@ -115,5 +115,8 @@ internal sealed class MainHudRenderResources : IDisposable
         }
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 }

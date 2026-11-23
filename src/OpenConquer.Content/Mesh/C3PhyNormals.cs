@@ -122,8 +122,10 @@ internal static class C3PhyNormals
         return normal * (1f / MathF.Sqrt(lengthSquared));
     }
 
-    private static (long X, long Y, long Z) Cell(Vector3 position) =>
-        ((long)Math.Floor(position.X / SharedPositionTolerance),
-         (long)Math.Floor(position.Y / SharedPositionTolerance),
-         (long)Math.Floor(position.Z / SharedPositionTolerance));
+    private static (long X, long Y, long Z) Cell(Vector3 position)
+    {
+        return ((long)Math.Floor(position.X / SharedPositionTolerance),
+            (long)Math.Floor(position.Y / SharedPositionTolerance),
+            (long)Math.Floor(position.Z / SharedPositionTolerance));
+    }
 }

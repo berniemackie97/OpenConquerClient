@@ -148,10 +148,12 @@ public sealed partial class ManagedReleaseTransactionTests
         );
     }
 
-    private static ManagedReleaseStore CreateStore(TestProduct product) =>
-        new(
+    private static ManagedReleaseStore CreateStore(TestProduct product)
+    {
+        return new ManagedReleaseStore(
             product.ProductRoot,
             new ManagedReleaseVerifier(product.TrustedKeys),
             ManagedReleaseTransaction.LockFileName
         );
+    }
 }

@@ -120,14 +120,24 @@ public static class LoginServerIconArtwork
 
     public static int IconCount => s_icons.Length;
 
-    public static bool IsKnownId(string? iconId) => TryGetIndex(iconId, out _);
+    public static bool IsKnownId(string? iconId)
+    {
+        return TryGetIndex(iconId, out _);
+    }
 
-    public static string ValidateId(string iconId) =>
-        IsKnownId(iconId) ? iconId : throw new ArgumentException("Unsupported bundled server icon identifier.", nameof(iconId));
-
-    public static RgbaImage Load(string iconId) =>
-        TryGetIndex(iconId, out int index) ? EmbeddedMedia.Load(s_icons[index])
+    public static string ValidateId(string iconId)
+    {
+        return IsKnownId(iconId)
+            ? iconId
             : throw new ArgumentException("Unsupported bundled server icon identifier.", nameof(iconId));
+    }
+
+    public static RgbaImage Load(string iconId)
+    {
+        return TryGetIndex(iconId, out int index)
+            ? EmbeddedMedia.Load(s_icons[index])
+            : throw new ArgumentException("Unsupported bundled server icon identifier.", nameof(iconId));
+    }
 
     /// <summary>Identifiers are exactly <c>gNNsMM</c>: a 1-based group and a server within that group.</summary>
     private static bool TryGetIndex(string? iconId, out int index)

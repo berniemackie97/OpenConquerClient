@@ -109,5 +109,8 @@ internal sealed class DisplaySettingsStore : IDisplaySettingsStore
         catch (IOException) { return SettingsIssue.Unavailable; }
     }
 
-    internal static DisplaySettingsStore ForCurrentUser() => new(LauncherConfigurationDirectory.ForCurrentUser());
+    internal static DisplaySettingsStore ForCurrentUser()
+    {
+        return new DisplaySettingsStore(LauncherConfigurationDirectory.ForCurrentUser());
+    }
 }

@@ -22,10 +22,12 @@ internal readonly record struct MainHudQuickbarBounds
         get;
     }
 
-    public bool Contains(int x, int y) =>
-        x >= X && y >= Y &&
-        x < (long)X + MainHudQuickbarDefinition.Width &&
-        y < (long)Y + MainHudQuickbarDefinition.Height;
+    public bool Contains(int x, int y)
+    {
+        return x >= X && y >= Y &&
+               x < (long)X + MainHudQuickbarDefinition.Width &&
+               y < (long)Y + MainHudQuickbarDefinition.Height;
+    }
 }
 
 internal readonly record struct MainHudQuickbarSlotBounds
@@ -48,10 +50,12 @@ internal readonly record struct MainHudQuickbarSlotBounds
         get;
     }
 
-    public bool ContainsInputPoint(int x, int y) =>
-        x >= X && y >= Y &&
-        x < (long)X + MainHudQuickbarDefinition.HorizontalStride &&
-        y < (long)Y + MainHudQuickbarDefinition.CellHeight;
+    public bool ContainsInputPoint(int x, int y)
+    {
+        return x >= X && y >= Y &&
+               x < (long)X + MainHudQuickbarDefinition.HorizontalStride &&
+               y < (long)Y + MainHudQuickbarDefinition.CellHeight;
+    }
 }
 
 internal readonly record struct MainHudQuickbarLayout
@@ -59,7 +63,10 @@ internal readonly record struct MainHudQuickbarLayout
     private const int DialogHeight = 141;
     private readonly int _dialogOriginY;
 
-    private MainHudQuickbarLayout(int dialogOriginY) => _dialogOriginY = dialogOriginY;
+    private MainHudQuickbarLayout(int dialogOriginY)
+    {
+        _dialogOriginY = dialogOriginY;
+    }
 
     public static MainHudQuickbarLayout Create(LogicalRenderSize logicalRenderSize)
     {
@@ -73,7 +80,10 @@ internal readonly record struct MainHudQuickbarLayout
         return new MainHudQuickbarLayout(logicalRenderSize.Height - DialogHeight);
     }
 
-    public MainHudQuickbarBounds GetBounds() => new(MainHudQuickbarDefinition.LocalX, _dialogOriginY + MainHudQuickbarDefinition.LocalY);
+    public MainHudQuickbarBounds GetBounds()
+    {
+        return new MainHudQuickbarBounds(MainHudQuickbarDefinition.LocalX, _dialogOriginY + MainHudQuickbarDefinition.LocalY);
+    }
 
     public MainHudQuickbarSlotBounds GetSlotBounds(int slotIndex)
     {

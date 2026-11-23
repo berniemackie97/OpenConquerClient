@@ -79,6 +79,8 @@ public sealed class C3MeshFile
         return new C3MeshFile([.. sections], phyCount);
     }
 
-    private static bool IsPhyVariant(byte variant) =>
-        variant is 0x20 or 0x32 or 0x33 or 0x34;
+    private static bool IsPhyVariant(byte variant)
+    {
+        return variant is 0x20 or 0x32 or 0x33 or 0x34;
+    }
 }

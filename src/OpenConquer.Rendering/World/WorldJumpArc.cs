@@ -110,5 +110,8 @@ public static class WorldJumpArc
         return (int)(rise + anchorAdjusted);
     }
 
-    private static int Square(int value) => unchecked(value * value);
+    private static int Square(int value)
+    {
+        return unchecked(value * value);
+    }
 }

@@ -4,7 +4,6 @@ using OpenConquer.Rendering.OpenGL;
 
 namespace OpenConquer.Client.World;
 
-/// <summary>An admitted world owned by the client session, with context-scoped graphics released separately.</summary>
 internal interface IClientWorld : IAsyncDisposable
 {
     bool IsActive

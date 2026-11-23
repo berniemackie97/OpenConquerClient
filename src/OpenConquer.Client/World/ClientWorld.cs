@@ -16,11 +16,6 @@ using OpenConquer.Rendering.World;
 
 namespace OpenConquer.Client.World;
 
-/// <summary>
-/// One admitted world, from the GameServer handoff until its close has been observed: the authenticated session, its
-/// inbound frames and state, the map load and scene, the hero renderer and the HUD. Graphics resources are created
-/// lazily on the window's context and released by <see cref="ReleaseGraphics"/>, separately from the network session.
-/// </summary>
 internal sealed class ClientWorld : IClientWorld
 {
     private const int MapTextureUploadsPerFrame = 4;
@@ -65,31 +60,17 @@ internal sealed class ClientWorld : IClientWorld
     private WorldCloseReason _closeReason;
     private bool _closeObserved;
 
-    /// <summary>
-    /// Starts content preparation for an admitted world. <c>onClosing</c> runs once, synchronously, when the world starts
-    /// closing. <c>clientStartedAt</c> is the client millisecond counter at client start (native hero construction).
-    /// </summary>
-    public ClientWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot entry, IClientContentSource content,
-        LogicalRenderSize logicalRenderSize, Action onClosing, uint clientStartedAt, uint mapStartedAt, TimeProvider clock, ClientDiagnostics? diagnostics = null)
-        : this(entry, content, logicalRenderSize, onClosing,
-            (game ?? throw new ArgumentNullException(nameof(game))).DisposeAsync,
-            () => new WorldFrameIngress(game), () => new WorldContentLoad<WorldMapScene>(
-                token => WorldEntryContent.LoadMap(content, entry, mapStartedAt, token)),
-            () => new WorldFrameEgress(
-                (now, token) => game.SendWorldLatencyTickAsync(entry.Character.EntityId, now, token),
-                (address, latency, now, token) => game.SendWorldLatencyReportAsync(address, latency, now, token),
-                (correction, now, token) => game.SendWorldCorrectionReplyAsync(entry.Character.EntityId,
-                    correction.X, correction.Y, correction.DirectionIndex, entry.MapId, now, token),
-                (reply, now, token) => game.SendWorldActionResponseAsync(reply, now, token)),
+    public ClientWorld(GameServerHandshakeSession game, GameWorldEntrySnapshot entry, IClientContentSource content, LogicalRenderSize logicalRenderSize, Action onClosing, uint clientStartedAt, uint mapStartedAt, TimeProvider clock, ClientDiagnostics? diagnostics = null)
+        : this(entry, content, logicalRenderSize, onClosing, (game ?? throw new ArgumentNullException(nameof(game))).DisposeAsync,
+            () => new WorldFrameIngress(game), () => new WorldContentLoad<WorldMapScene>(token => WorldEntryContent.LoadMap(content, entry, mapStartedAt, token)),
+            () => new WorldFrameEgress((now, token) => game.SendWorldLatencyTickAsync(entry.Character.EntityId, now, token), game.SendWorldLatencyReportAsync,
+                (correction, now, token) => game.SendWorldCorrectionReplyAsync(entry.Character.EntityId, correction.X, correction.Y, correction.DirectionIndex, entry.MapId, now, token), game.SendWorldActionResponseAsync),
             clock, clientStartedAt, diagnostics, game.SilentInfo)
     {
     }
 
-    /// <summary>
-    /// Builds a world from its parts. Ingress can prefetch while content loads. Hydration applies before live frames.
-    /// </summary>
-    internal ClientWorld(GameWorldEntrySnapshot entry, IClientContentSource content, LogicalRenderSize logicalRenderSize,
-        Action onClosing, Func<ValueTask> closeSession, Func<WorldFrameIngress> createIngress, Func<WorldContentLoad<WorldMapScene>> createMapLoad,
+    internal ClientWorld(GameWorldEntrySnapshot entry, IClientContentSource content, LogicalRenderSize logicalRenderSize, Action onClosing,
+        Func<ValueTask> closeSession, Func<WorldFrameIngress> createIngress, Func<WorldContentLoad<WorldMapScene>> createMapLoad,
         Func<WorldFrameEgress>? createEgress = null, TimeProvider? clock = null, uint clientStartedAt = 0,
         ClientDiagnostics? diagnostics = null, GameSilentInfoReport? silentInfo = null)
     {
@@ -122,16 +103,9 @@ internal sealed class ClientWorld : IClientWorld
         _remoteRolePresentation = new WorldRemoteRolePresentation(reader, _diagnostics);
     }
 
-    /// <summary>True until the world starts closing.</summary>
     public bool IsActive => _closing is null && _disposeTask is null;
-
-    /// <summary>The map scene is loaded.</summary>
     public bool HasScene => _scene is not null;
-
-    /// <summary>The first map view, role appearance and HUD are ready to draw.</summary>
     public bool IsPresentable => IsActive && _scene is not null && _texturesReady && _roleSources.HasValue && _hud is not null;
-
-    /// <summary>The session and workers have closed and their results have been observed.</summary>
     public bool IsClosed => _closeObserved && _mapLoad is null && _catalogLoad is null && _hudLoad is null;
 
     public void DrainIngress(uint frameMilliseconds)
@@ -159,15 +133,13 @@ internal sealed class ClientWorld : IClientWorld
             }
             _egress?.Pump(state.Heartbeat, _frameMilliseconds);
         }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or
-            System.Net.Sockets.SocketException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or TimeoutException or System.Net.Sockets.SocketException or UnauthorizedAccessException)
         {
             _diagnostics.WorldConnectionClosed(ClientFailure.Classify(exception));
             BeginClose(WorldCloseReason.ConnectionLost);
         }
     }
 
-    /// <summary>Applies completed content work or observes a canceled job after the world has started closing.</summary>
     public void CompleteLoad()
     {
         try
@@ -178,8 +150,7 @@ internal sealed class ClientWorld : IClientWorld
                 WorldEntryCatalogs catalogs = catalogLoad.Complete();
                 if (IsActive && _entry is { } entry)
                 {
-                    _inbound = new WorldInboundState(entry, catalogs.Items, () => _frameMilliseconds,
-                        _clientStartedAt, _diagnostics,
+                    _inbound = new WorldInboundState(entry, catalogs.Items, () => _frameMilliseconds, _clientStartedAt, _diagnostics,
                         _egress is { } egress ? egress.QueuePositionCorrection : null,
                         _egress is { } writer ? writer.QueueWorldActionResponse : null, _silentInfo);
                     _levelExperience = catalogs.Experience;
@@ -199,24 +170,25 @@ internal sealed class ClientWorld : IClientWorld
                 }
             }
 
-            if (_hudLoad is { IsCompleted: true } hudLoad)
+            if (_hudLoad is not { IsCompleted: true } hudLoad)
             {
-                _hudLoad = null;
-                MainHudPreparation preparation = hudLoad.Complete();
-                if (IsActive)
-                {
-                    _hudContent = preparation.Content;
-                    _hudPreparation = preparation;
-                }
-                else
-                {
-                    preparation.Dispose();
-                }
+                return;
+            }
+
+            _hudLoad = null;
+            MainHudPreparation preparation = hudLoad.Complete();
+            if (IsActive)
+            {
+                _hudContent = preparation.Content;
+                _hudPreparation = preparation;
+            }
+            else
+            {
+                preparation.Dispose();
             }
         }
         catch (OperationCanceledException) when (!IsActive)
         {
-            // The owner canceled its content jobs during close.
         }
         catch (WorldResponseQueueFullException exception)
         {
@@ -236,7 +208,6 @@ internal sealed class ClientWorld : IClientWorld
         }
         catch
         {
-            // Release world ownership before propagating an unexpected preparation failure.
             BeginClose(WorldCloseReason.ContentUnavailable);
             throw;
         }
@@ -249,35 +220,34 @@ internal sealed class ClientWorld : IClientWorld
             return;
         }
 
-        WorldRoleSources sources = WorldRoleSources.Resolve(
-            entry.Character.PackedAppearance, entry.Character.HairComposite, state.Equipment);
+        WorldRoleSources sources = WorldRoleSources.Resolve(entry.Character.PackedAppearance, entry.Character.HairComposite, state.Equipment);
         try
         {
-            if (load.TryPrepare(sources, _roleSources, out WorldRoleAssets? assets))
+            if (!load.TryPrepare(sources, _roleSources, out WorldRoleAssets? assets))
             {
-                OpenGLGraphicsDevice device = graphicsDevice ??
-                    throw new InvalidOperationException("World graphics device is unavailable.");
-                WorldRoleRenderer? next = assets is null ? null : WorldRoleRenderer.Create(device, assets);
-                WorldRoleRenderer? previous = _role;
-                _role = next;
-                _roleSources = sources;
-                previous?.Dispose();
-                if (next is null && previous is null)
-                {
-                    _diagnostics.WorldRoleMissing();
-                }
+                return;
+            }
+
+            OpenGLGraphicsDevice device = graphicsDevice ?? throw new InvalidOperationException("World graphics device is unavailable.");
+            WorldRoleRenderer? next = assets is null ? null : WorldRoleRenderer.Create(device, assets);
+            WorldRoleRenderer? previous = _role;
+            _role = next;
+            _roleSources = sources;
+            previous?.Dispose();
+
+            if (next is null && previous is null)
+            {
+                _diagnostics.WorldRoleMissing();
             }
 
         }
         catch (Exception exception) when (WorldRoleLoad.IsContentFailure(exception))
         {
-            // A failure preparing the current appearance means required world content is unavailable.
             _diagnostics.WorldRoleUnavailable(ClientFailure.Classify(exception));
             BeginClose(WorldCloseReason.ContentUnavailable);
         }
     }
 
-    /// <summary>Prepares the first complete map view while the login overlay is still visible.</summary>
     public void PrepareFirstTextures(DesktopWindow window, OpenGLGraphicsDevice device, OpenGLRenderer fallback)
     {
         if (_scene is null || (_texturesReady && _hud is not null))
@@ -313,15 +283,14 @@ internal sealed class ClientWorld : IClientWorld
 
         OpenGLGraphicsDevice device = graphicsDevice ?? throw new InvalidOperationException("The graphics device is unavailable.");
         WorldMapScene scene = _scene ?? throw new InvalidOperationException("The world scene is unavailable.");
-        LogicalRenderSize size = WorldViewportSize.FromFramebuffer(_logicalRenderSize, framebuffer,
-            scene.BackdropExtent, device.MaximumRenderTargetDimension);
+        LogicalRenderSize size = WorldViewportSize.FromFramebuffer(_logicalRenderSize, framebuffer, scene.BackdropExtent, device.MaximumRenderTargetDimension);
+
         if (_renderer is { } existing && _rendererSize == size)
         {
             return existing;
         }
 
-        OpenGLRenderer next = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height,
-            PresentationPolicy.Stretch, RenderColorFormat.Rgba8);
+        OpenGLRenderer next = device.CreateRenderer(size, framebuffer.Width, framebuffer.Height, PresentationPolicy.Stretch, RenderColorFormat.Rgba8);
         OpenGLRenderer? previous = _renderer;
         _renderer = next;
         _rendererSize = size;
@@ -357,16 +326,14 @@ internal sealed class ClientWorld : IClientWorld
             {
                 _selectedSkillImages ??= new MainHudSelectedSkillImageLoader(preparation.Content.SelectedSkillAssets);
                 _quickbarImages ??= new MainHudQuickbarImageLoader(preparation.Content.QuickbarAssets);
-                _hud = new WorldHudRuntime(preparation, _selectedSkillImages, _quickbarImages, device,
-                    _logicalRenderSize, _clock, magicHintSource: null);
+                _hud = new WorldHudRuntime(preparation, _selectedSkillImages, _quickbarImages, device, _logicalRenderSize, _clock, magicHintSource: null);
             }
         }
         else
         {
             IClientContentSource source = _content;
             MainHudContent? retainedContent = _hudContent;
-            _hudLoad ??= new WorldContentLoad<MainHudPreparation>(
-                token => MainHudPreparation.Load(source, retainedContent, token));
+            _hudLoad ??= new WorldContentLoad<MainHudPreparation>(token => MainHudPreparation.Load(source, retainedContent, token));
         }
     }
 
@@ -388,8 +355,7 @@ internal sealed class ClientWorld : IClientWorld
 
         _mapImageLoader ??= new WorldMapImageLoader(_content);
         _mapTextures ??= WorldMapTextureRenderer.CreateStreaming(_mapImageLoader, device);
-        return scene.Prepare(_mapTextures, renderer.Viewport.LogicalWidth, renderer.Viewport.LogicalHeight,
-            _frameMilliseconds, textureBudget: MapTextureUploadsPerFrame);
+        return scene.Prepare(_mapTextures, renderer.Viewport.LogicalWidth, renderer.Viewport.LogicalHeight, _frameMilliseconds, textureBudget: MapTextureUploadsPerFrame);
     }
 
     private void CloseForPresentationContentFailure(Exception exception)
@@ -406,14 +372,11 @@ internal sealed class ClientWorld : IClientWorld
         }
 
         scene.Draw(textures, renderer, _role is null ? null : _drawRole, _drawRemoteRole);
-        if (_hud is { } hud && _inbound is { } state && _levelExperience is { } experienceTable &&
-            _entry is { Character.TransformLookSourceId: 0 })
+        if (_hud is { } hud && _inbound is { } state && _levelExperience is { } experienceTable && _entry is { Character.TransformLookSourceId: 0 })
         {
             WorldHeroVitals vitals = state.Hero.AdvanceVitals(experienceTable);
-            hud.SetWorldValues(new MainHudVitalsSnapshot(vitals.CurrentLife, vitals.LifeFollower, vitals.MaximumLife,
-                vitals.CurrentMana, vitals.ManaFollower, vitals.MaximumMana,
-                vitals.Stamina, vitals.MaximumStamina, vitals.HasExtendedStamina),
-                vitals.SkillGaugePercent, vitals.Experience, vitals.NextLevelExperience);
+            hud.SetWorldValues(new MainHudVitalsSnapshot(vitals.CurrentLife, vitals.LifeFollower, vitals.MaximumLife, vitals.CurrentMana, vitals.ManaFollower, vitals.MaximumMana,
+                vitals.Stamina, vitals.MaximumStamina, vitals.HasExtendedStamina), vitals.SkillGaugePercent, vitals.Experience, vitals.NextLevelExperience);
         }
 
         _hud?.Draw(renderer, window, _frameMilliseconds);
@@ -421,34 +384,42 @@ internal sealed class ClientWorld : IClientWorld
 
     public void HandlePointerMoved(PixelPoint point)
     {
-        if (_hud is { } hud && _renderer is { } renderer)
+        if (_hud is not { } hud || _renderer is not { } renderer)
         {
-            bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
-            hud.HandlePointerMoved(mapped, x, y);
+            return;
         }
+
+        bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+        hud.HandlePointerMoved(mapped, x, y);
     }
 
     public void HandlePointerPressed(PixelPoint point)
     {
-        if (_hud is { } hud && _renderer is { } renderer)
+        if (_hud is not { } hud || _renderer is not { } renderer)
         {
-            bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
-            hud.HandlePrimaryPointerPressed(mapped, x, y);
+            return;
         }
+
+        bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+        hud.HandlePrimaryPointerPressed(mapped, x, y);
     }
 
     public void HandlePointerReleased(PixelPoint point)
     {
-        if (_hud is { } hud && _renderer is { } renderer)
+        if (_hud is not { } hud || _renderer is not { } renderer)
         {
-            bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
-            hud.HandlePrimaryPointerReleased(mapped, x, y);
+            return;
         }
+
+        bool mapped = renderer.Viewport.TryMapPointerToLogical(point.X, point.Y, out int x, out int y);
+        hud.HandlePrimaryPointerReleased(mapped, x, y);
     }
 
-    public void ResizeFramebuffer(PixelSize size) => _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
+    public void ResizeFramebuffer(PixelSize size)
+    {
+        _renderer?.ResizeHostFramebuffer(size.Width, size.Height);
+    }
 
-    /// <summary>Releases the world's OpenGL resources when the window's context goes away.</summary>
     public void ReleaseGraphics()
     {
         WorldHudRuntime? hud = _hud;
@@ -470,9 +441,6 @@ internal sealed class ClientWorld : IClientWorld
         cleanup.ThrowIfFailed();
     }
 
-    /// <summary>
-    /// Starts closing: drops the scene and its graphics, cancels preparation and closes the session in the background.
-    /// </summary>
     public void BeginClose(WorldCloseReason reason)
     {
         if (_closing is not null || _disposeTask is not null)
@@ -506,9 +474,7 @@ internal sealed class ClientWorld : IClientWorld
         _scene = null;
         ClientShutdown cleanup = new();
         TaskCompletionSource graphicsReleased = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        // Publish the close task before invoking callbacks. The network owners wait for context cleanup.
-        _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, remoteRolePresentation,
-            mapImageLoader, selectedSkillImages, quickbarImages, cleanup, graphicsReleased.Task);
+        _closing = CloseWorldAsync(closeSession, ingress, egress, roleLoad, remoteRolePresentation, mapImageLoader, selectedSkillImages, quickbarImages, cleanup, graphicsReleased.Task);
         try
         {
             cleanup.Run(_onClosing);
@@ -529,9 +495,6 @@ internal sealed class ClientWorld : IClientWorld
         }
     }
 
-    /// <summary>
-    /// Returns true once, when the background close has finished; rethrows a close failure.
-    /// </summary>
     public bool TryObserveClose(out WorldCloseReason reason)
     {
         reason = _closeReason;
@@ -545,8 +508,10 @@ internal sealed class ClientWorld : IClientWorld
         return true;
     }
 
-    /// <summary>Closes the network session and reaps background preparation. Graphics are released separately.</summary>
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {
@@ -590,8 +555,7 @@ internal sealed class ClientWorld : IClientWorld
         Func<ValueTask>? closeSession = _closeSession;
         _closeSession = null;
         await cleanup.RunAsync(() => new ValueTask(CloseWorldAsync(closeSession, ingress, egress, roleLoad, remoteRolePresentation,
-            mapImageLoader, selectedSkillImages, quickbarImages)))
-            .ConfigureAwait(false);
+            mapImageLoader, selectedSkillImages, quickbarImages))).ConfigureAwait(false);
 
         if (catalogLoad is not null)
         {
@@ -614,8 +578,7 @@ internal sealed class ClientWorld : IClientWorld
         cleanup.ThrowIfFailed();
     }
 
-    private static async Task CloseWorldAsync(Func<ValueTask>? closeSession, WorldFrameIngress? ingress,
-        WorldFrameEgress? egress, WorldRoleLoad? roleLoad,
+    private static async Task CloseWorldAsync(Func<ValueTask>? closeSession, WorldFrameIngress? ingress, WorldFrameEgress? egress, WorldRoleLoad? roleLoad,
         WorldRemoteRolePresentation? remoteRolePresentation, WorldMapImageLoader? mapImageLoader,
         MainHudSelectedSkillImageLoader? selectedSkillImages, MainHudQuickbarImageLoader? quickbarImages,
         ClientShutdown? cleanup = null, Task? graphicsReleased = null)
@@ -681,27 +644,23 @@ internal sealed class ClientWorld : IClientWorld
     private void AdvanceRemoteRoles(WorldMapScene scene, WorldInboundState state)
     {
         WorldRemoteRolePresentation? presentation = _remoteRolePresentation;
-        state.RemoteRoles.Advance(_frameMilliseconds,
-            (entityId, action) => presentation?.GetActionFrameCount(entityId, action) ?? 0,
+        state.RemoteRoles.Advance(_frameMilliseconds, (entityId, action) => presentation?.GetActionFrameCount(entityId, action) ?? 0,
             scene.ProjectTile, scene.ScreenToTile);
     }
 
     private static void SynchronizeSceneRoles(WorldMapScene scene, WorldInboundState state)
     {
         scene.SetRemoteRoles(state.RemoteRoles.Revision, state.RemoteRoles.Placements.Select(static role =>
-            new WorldSceneRole(role.EntityId, role.Playback.DepthTile.X, role.Playback.DepthTile.Y,
-                role.Playback.Direction)));
+            new WorldSceneRole(role.EntityId, role.Playback.DepthTile.X, role.Playback.DepthTile.Y, role.Playback.Direction)));
         scene.SetRemoteRolePositions(state.RemoteRoles.Placements.Select(role =>
         {
-            (int x, int y, float rotation, float elevation) = role.Playback.GetPose(scene.JumpArcHeight,
-                (worldX, worldY) => scene.TryGetAdjustedElevation(worldX, worldY, out int adjusted) ? adjusted : 0);
+            (int x, int y, float rotation, float elevation) = role.Playback.GetPose(scene.JumpArcHeight, (worldX, worldY) => scene.TryGetAdjustedElevation(worldX, worldY, out int adjusted) ? adjusted : 0);
             return new WorldSceneRolePosition(role.EntityId, x, y, rotation, elevation);
         }));
     }
 
     private static void ApplyCamera(WorldMapScene scene, WorldInboundState state)
     {
-        // Native retains off-grid tiles; projection clamps the camera, not the hero's model coordinates (CP2.4c).
         scene.SetCameraTile(state.X, state.Y);
         scene.SetHeroDirection(state.DirectionIndex);
     }
@@ -710,8 +669,7 @@ internal sealed class ClientWorld : IClientWorld
     {
         if (_inbound is { } state)
         {
-            _remoteRolePresentation?.Draw(renderer, entityId, main, shadow,
-                _frameMilliseconds, state.RemoteRoles);
+            _remoteRolePresentation?.Draw(renderer, entityId, main, shadow, _frameMilliseconds, state.RemoteRoles);
         }
     }
 
@@ -719,12 +677,11 @@ internal sealed class ClientWorld : IClientWorld
     {
         WorldRoleRenderer role = _role ?? throw new InvalidOperationException("World character renderer is unavailable.");
         WorldMapScene scene = _scene ?? throw new InvalidOperationException("World scene is unavailable.");
-        (System.Numerics.Matrix4x4 main, System.Numerics.Matrix4x4 shadow) = scene.HeroMatrices;
+        (Matrix4x4 main, Matrix4x4 shadow) = scene.HeroMatrices;
         role.Draw(renderer, main, shadow, _frameMilliseconds);
     }
 }
 
-/// <summary>Why an admitted world closed; the login flow reports the two cases differently.</summary>
 internal enum WorldCloseReason
 {
     ContentUnavailable,

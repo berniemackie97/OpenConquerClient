@@ -36,7 +36,10 @@ public static class LoginRegionArtwork
             new(740, 250, 148, 50, Columns: 5, FlameFrameCount), 2, 0),
     ];
 
-    public static LoginArtworkSheet Describe(Layer layer) => s_layers[(int)Validate(layer)].Sheet;
+    public static LoginArtworkSheet Describe(Layer layer)
+    {
+        return s_layers[(int)Validate(layer)].Sheet;
+    }
 
     /// <summary>The layer's top-left corner relative to the tile origin, in 1024x768 stage pixels.</summary>
     public static (int X, int Y) Offset(Layer layer)
@@ -45,7 +48,13 @@ public static class LoginRegionArtwork
         return (x, y);
     }
 
-    public static RgbaImage Load(Layer layer) => EmbeddedMedia.Load(s_layers[(int)Validate(layer)].Image);
+    public static RgbaImage Load(Layer layer)
+    {
+        return EmbeddedMedia.Load(s_layers[(int)Validate(layer)].Image);
+    }
 
-    private static Layer Validate(Layer layer) => Enum.IsDefined(layer) ? layer : throw new ArgumentOutOfRangeException(nameof(layer));
+    private static Layer Validate(Layer layer)
+    {
+        return Enum.IsDefined(layer) ? layer : throw new ArgumentOutOfRangeException(nameof(layer));
+    }
 }

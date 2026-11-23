@@ -146,5 +146,8 @@ public sealed class ClientLoginRetryTests : IDisposable
             "Account", "Game", "Initializing", "Map");
     }
 
-    public void Dispose() => Directory.Delete(_folder, recursive: true);
+    public void Dispose()
+    {
+        Directory.Delete(_folder, recursive: true);
+    }
 }

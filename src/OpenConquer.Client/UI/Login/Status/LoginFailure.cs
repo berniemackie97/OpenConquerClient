@@ -11,7 +11,6 @@ internal enum LoginFailureKind
     WorldContent,
 }
 
-/// <summary>Owned, bounded presentation evidence; never contains credentials or exception messages.</summary>
 internal sealed class LoginFailure
 {
     private LoginFailure(LoginFailureKind kind, uint code, byte[] bytes)
@@ -37,23 +36,49 @@ internal sealed class LoginFailure
     }
     internal bool OpensErrorMovie => Kind != LoginFailureKind.AccountRefusal || Code != 24;
 
-    internal static LoginFailure EmptyAccount() => new(LoginFailureKind.EmptyAccount, 0, []);
-    internal static LoginFailure EmptyPassword() => new(LoginFailureKind.EmptyPassword, 0, []);
-    internal static LoginFailure Resource(uint id) => new(LoginFailureKind.Resource, id, []);
-    internal static LoginFailure WorldContent() => new(LoginFailureKind.WorldContent, 0, []);
-    internal static LoginFailure Account(uint code) => new(LoginFailureKind.AccountRefusal, code, []);
-    internal static LoginFailure Registration(LoginRegistrationNotice notice) =>
-        Enum.IsDefined(notice) ? new(LoginFailureKind.RegistrationNotice, (uint)notice, [])
+    internal static LoginFailure EmptyAccount()
+    {
+        return new LoginFailure(LoginFailureKind.EmptyAccount, 0, []);
+    }
+
+    internal static LoginFailure EmptyPassword()
+    {
+        return new LoginFailure(LoginFailureKind.EmptyPassword, 0, []);
+    }
+
+    internal static LoginFailure Resource(uint id)
+    {
+        return new LoginFailure(LoginFailureKind.Resource, id, []);
+    }
+
+    internal static LoginFailure WorldContent()
+    {
+        return new LoginFailure(LoginFailureKind.WorldContent, 0, []);
+    }
+
+    internal static LoginFailure Account(uint code)
+    {
+        return new LoginFailure(LoginFailureKind.AccountRefusal, code, []);
+    }
+
+    internal static LoginFailure Registration(LoginRegistrationNotice notice)
+    {
+        return Enum.IsDefined(notice)
+            ? new LoginFailure(LoginFailureKind.RegistrationNotice, (uint)notice, [])
             : throw new ArgumentOutOfRangeException(nameof(notice), notice, null);
+    }
+
     internal static LoginFailure Game(ReadOnlySpan<byte> text)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(text.Length, 255);
         int nul = text.IndexOf((byte)0);
-        return new(LoginFailureKind.GameRefusal, 0, (nul < 0 ? text : text[..nul]).ToArray());
+        return new LoginFailure(LoginFailureKind.GameRefusal, 0, (nul < 0 ? text : text[..nul]).ToArray());
     }
 
-    public override string ToString() => $"LoginFailure {{ Kind = {Kind}, Code = {Code} }}";
+    public override string ToString()
+    {
+        return $"LoginFailure {{ Kind = {Kind}, Code = {Code} }}";
+    }
 }
 
-/// <summary>An atomic UI snapshot. A new failure instance is one notification, even if its text repeats.</summary>
 internal sealed record LoginAttemptFeedback(LoginAttemptStatus Status, LoginFailure? Failure = null);

@@ -5,7 +5,6 @@ using OpenConquer.Rendering.OpenGL.Resources;
 
 namespace OpenConquer.Client.UI.Login.Stage;
 
-/// <summary>The fixed stage layers: backdrop, border ornament and account panel, for one OpenGL context.</summary>
 internal sealed class LoginStagePresentation : IDisposable
 {
     private readonly ResourceOwnership _ownership = new();
@@ -32,16 +31,25 @@ internal sealed class LoginStagePresentation : IDisposable
         }
     }
 
-    /// <summary>Root depth 1: shape 11.</summary>
-    public void DrawBackdrop(OpenGLRenderer renderer) => Draw(renderer, _backdrop, _layout.Backdrop);
+    public void DrawBackdrop(OpenGLRenderer renderer)
+    {
+        Draw(renderer, _backdrop, _layout.Backdrop);
+    }
 
-    /// <summary>Root depth 216: shape 400, above both selection panels and below <c>enterMC</c>.</summary>
-    public void DrawBorder(OpenGLRenderer renderer) => Draw(renderer, _border, _layout.StageBorder);
+    public void DrawBorder(OpenGLRenderer renderer)
+    {
+        Draw(renderer, _border, _layout.StageBorder);
+    }
 
-    /// <summary>Root depth 221 <c>enterMC</c>: shape 328.</summary>
-    public void DrawAccountPanel(OpenGLRenderer renderer) => Draw(renderer, _accountPanel, _layout.AccountPanel);
+    public void DrawAccountPanel(OpenGLRenderer renderer)
+    {
+        Draw(renderer, _accountPanel, _layout.AccountPanel);
+    }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 
     private static void Draw(OpenGLRenderer renderer, OpenGLTexture2D texture, LoginRect bounds)
     {

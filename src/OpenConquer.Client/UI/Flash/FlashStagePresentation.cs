@@ -294,7 +294,10 @@ internal sealed class FlashStagePresentation : IDisposable
     }
 
     /// <summary>Flash rounds a device-text position half up: sprite 304's userNameTxt at x 790.5 draws from 791.</summary>
-    private static int DevicePixel(float value) => (int)MathF.Floor(value + 0.5f);
+    private static int DevicePixel(float value)
+    {
+        return (int)MathF.Floor(value + 0.5f);
+    }
 
     private IEnumerable<string> Lines(OpenGLTextContext font, string value, float width, bool multiline)
     {
@@ -387,12 +390,17 @@ internal sealed class FlashStagePresentation : IDisposable
         return layout;
     }
 
-    private static SpriteColorTransform Color(FlashColorTransform transform) =>
-        SpriteColorTransform.FromSwf(transform.RedMultiplier, transform.GreenMultiplier, transform.BlueMultiplier, transform.AlphaMultiplier,
+    private static SpriteColorTransform Color(FlashColorTransform transform)
+    {
+        return SpriteColorTransform.FromSwf(transform.RedMultiplier, transform.GreenMultiplier,
+            transform.BlueMultiplier, transform.AlphaMultiplier,
             transform.RedAdd, transform.GreenAdd, transform.BlueAdd, transform.AlphaAdd);
+    }
 
-    private static byte Channel(byte value, float multiplier, float offset) =>
-        (byte)Math.Clamp((int)MathF.Round((value / 255f * multiplier + offset) * 255f), 0, 255);
+    private static byte Channel(byte value, float multiplier, float offset)
+    {
+        return (byte)Math.Clamp((int)MathF.Round((value / 255f * multiplier + offset) * 255f), 0, 255);
+    }
 
 
     private readonly record struct DeviceRectangle(int Left, int Top, int Right, int Bottom)

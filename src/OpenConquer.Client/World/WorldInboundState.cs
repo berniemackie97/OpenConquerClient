@@ -18,15 +18,8 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
     private readonly HashSet<uint> _unhandledAttributes = [];
     private readonly HashSet<uint> _requestedPeers = [];
 
-    /// <summary>
-    /// Seeds the hero from the admission snapshot, then replays every hydration frame through this handler in arrival
-    /// order, as native processes each message when it arrives. Frames that arrived before the EnterMap reply apply
-    /// before its position does. A subtype-46 snapshot therefore clamps against the hero life that preceded it.
-    /// </summary>
-    internal WorldInboundState(GameWorldEntrySnapshot world, ItemStatCatalog itemStats, Func<uint>? clock = null,
-        uint clientStartedAt = 0, ClientDiagnostics? diagnostics = null,
-        Action<WorldCorrectionReply>? onCorrection = null,
-        Action<GameWorldActionResponse>? onActionReply = null,
+    internal WorldInboundState(GameWorldEntrySnapshot world, ItemStatCatalog itemStats, Func<uint>? clock = null, uint clientStartedAt = 0,
+        ClientDiagnostics? diagnostics = null, Action<WorldCorrectionReply>? onCorrection = null, Action<GameWorldActionResponse>? onActionReply = null,
         GameSilentInfoReport? silentInfo = null)
     {
         ArgumentNullException.ThrowIfNull(world);
@@ -37,9 +30,9 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         _onActionReply = onActionReply;
         _silentInfo = silentInfo ?? GameSilentInfoReport.WithoutFiles;
         Heartbeat = new WorldHeartbeat(world.HeartbeatStartedAt, clientStartedAt, world.LocalAddress);
-        Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character), itemStats, world.MapFlags,
-            world.Character.TransformLookSourceId != 0);
+        Hero = new WorldHeroModel(WorldHeroAttributes.FromCharacter(world.Character), itemStats, world.MapFlags, world.Character.TransformLookSourceId != 0);
         Weather = (world.WeatherKind, 0, 0, 0);
+
         int enteredAt = Math.Clamp(world.HydrationEnteredAt, 0, world.HydrationPackets.Count);
         for (int index = 0; index < world.HydrationPackets.Count; index++)
         {
@@ -98,9 +91,15 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         private set;
     }
 
-    internal bool Apply(ReadOnlyMemory<byte> packet) => GameWorldPacketDispatcher.Dispatch(packet.Span, this);
+    internal bool Apply(ReadOnlyMemory<byte> packet)
+    {
+        return GameWorldPacketDispatcher.Dispatch(packet.Span, this);
+    }
 
-    internal void CullRemoteRoles() => RemoteRoles.Cull(X, Y);
+    internal void CullRemoteRoles()
+    {
+        RemoteRoles.Cull(X, Y);
+    }
 
     bool IGameWorldPacketHandler.HandlePlayerSpawn(GamePlayerSpawn10014 player)
     {
@@ -144,40 +143,43 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
     bool IGameWorldPacketHandler.HandleAction(GameWorldAction10010 action)
     {
-        if (action.Action == GameWorldAction10010.RemoveEntity)
+        switch (action.Action)
         {
-            if (action.EntityId != _heroId)
-            {
-                RemoteRoles.Remove(action.EntityId);
-                _requestedPeers.Remove(action.EntityId);
-            }
+            case GameWorldAction10010.RemoveEntity:
+                {
+                    if (action.EntityId == _heroId)
+                    {
+                        return false;
+                    }
 
-            return false;
-        }
+                    RemoteRoles.Remove(action.EntityId);
+                    _requestedPeers.Remove(action.EntityId);
 
-        if (action.Action == GameWorldAction10010.GroundJump && action.Flag == 0)
-        {
-            ushort targetX = (ushort)action.ParameterPair;
-            ushort targetY = (ushort)(action.ParameterPair >> 16);
-            if (action.EntityId == _heroId)
-            {
-                bool jumpChanged = X != targetX || Y != targetY;
-                (X, Y) = (targetX, targetY);
-                return jumpChanged;
-            }
+                    return false;
+                }
+            case GameWorldAction10010.GroundJump when action.Flag == 0:
+                {
+                    ushort targetX = (ushort)action.ParameterPair;
+                    ushort targetY = (ushort)(action.ParameterPair >> 16);
+                    if (action.EntityId == _heroId)
+                    {
+                        bool jumpChanged = X != targetX || Y != targetY;
+                        (X, Y) = (targetX, targetY);
+                        return jumpChanged;
+                    }
 
-            if (!RemoteRoles.ApplyGroundJump(action.EntityId, targetX, targetY))
-            {
-                RequestMissingPeer(action.EntityId);
-            }
+                    if (!RemoteRoles.ApplyGroundJump(action.EntityId, targetX, targetY))
+                    {
+                        RequestMissingPeer(action.EntityId);
+                    }
 
-            return false;
+                    return false;
+                }
         }
 
         if (action.Action != GameWorldAction10010.PositionCorrection)
         {
-            if (action.EntityId == _heroId &&
-                GameWorldActionResponses.TryForAcknowledgement(action.Action, _heroId, _silentInfo,
+            if (action.EntityId == _heroId && GameWorldActionResponses.TryForAcknowledgement(action.Action, _heroId, _silentInfo,
                     out GameWorldActionResponse first, out GameWorldActionResponse second))
             {
                 _onActionReply?.Invoke(first);
@@ -193,7 +195,6 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
             return false;
         }
 
-        // Native 108 (0x6FFCBF..0x6FFCF3): a role that is not the hero is a silent no-op, and only +24/+26 are read.
         if (action.EntityId != _heroId)
         {
             return false;
@@ -202,6 +203,7 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
         bool changed = X != action.X || Y != action.Y;
         (X, Y) = (action.X, action.Y);
         _onCorrection?.Invoke(new WorldCorrectionReply(action.X, action.Y, DirectionIndex));
+
         return changed;
     }
 
@@ -213,7 +215,6 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
     bool IGameWorldPacketHandler.HandleItem(GameItem1009 item)
     {
-        // CMsgItem__Process subtype 27: hero+0x2CF4 = timeGetTime - +16.
         if (item.Subtype == GameItem1009.LatencyTick)
         {
             Heartbeat.ObserveLatencyTick(_clock(), item.ParameterC);
@@ -234,13 +235,15 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
         foreach (GameUserAttribEntry entry in attributes)
         {
-            if (!Hero.TryApplyAttribute(entry.AttributeId, entry.Low, entry.High))
+            if (Hero.TryApplyAttribute(entry.AttributeId, entry.Low, entry.High))
             {
-                uint diagnosticKey = entry.AttributeId is <= 54 or 128 ? entry.AttributeId : uint.MaxValue;
-                if (_unhandledAttributes.Add(diagnosticKey))
-                {
-                    _diagnostics.UnhandledWorldAttribute(diagnosticKey);
-                }
+                continue;
+            }
+
+            uint diagnosticKey = entry.AttributeId is <= 54 or 128 ? entry.AttributeId : uint.MaxValue;
+            if (_unhandledAttributes.Add(diagnosticKey))
+            {
+                _diagnostics.UnhandledWorldAttribute(diagnosticKey);
             }
         }
 
@@ -249,7 +252,6 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
     bool IGameWorldPacketHandler.HandleWeather(GameWeather1016 weather)
     {
-        // CMsgWeatherUpdate__ValidateAndNormalize 0x7606CD rejects these and Process then does nothing.
         if (!weather.HasSupportedValues)
         {
             return false;
@@ -267,12 +269,10 @@ internal sealed class WorldInboundState : IGameWorldPacketHandler
 
     private void RequestMissingPeer(uint entityId)
     {
-        if (entityId >= 1_000_000 && _onActionReply is not null &&
-            _requestedPeers.Count < WorldRemoteRoles.MaximumTrackedRoles &&
-            _requestedPeers.Add(entityId))
+        if (entityId >= 1_000_000 && _onActionReply is not null && _requestedPeers.Count < WorldRemoteRoles.MaximumTrackedRoles
+            && _requestedPeers.Add(entityId))
         {
-            _onActionReply(new GameWorldActionResponse(GameWorldAction10010.QueryPlayer,
-                _heroId, entityId));
+            _onActionReply(new GameWorldActionResponse(GameWorldAction10010.QueryPlayer, _heroId, entityId));
         }
     }
 

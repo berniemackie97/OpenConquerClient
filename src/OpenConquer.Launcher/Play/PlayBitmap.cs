@@ -71,5 +71,8 @@ internal sealed class PlayBitmap : IDisposable
         return (uint)x < (uint)Width && (uint)y < (uint)Height && _opaque[y * Width + x];
     }
 
-    public void Dispose() => Bitmap.Dispose();
+    public void Dispose()
+    {
+        Bitmap.Dispose();
+    }
 }

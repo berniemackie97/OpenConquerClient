@@ -66,34 +66,38 @@ public sealed class MapAssetReader : IDisposable
         }
     }
 
-    private string[] ReadReferences() => Parse(MapSection.References, (reader, end) =>
+    private string[] ReadReferences()
     {
-        int count = MapAssetFormat.ReadCount(reader, end,
-            MapAssetFormat.MaxReferences, 2, "reference");
-        string[] ids = new string[count];
-        for (int i = 0; i < ids.Length; i++)
+        return Parse(MapSection.References, (reader, end) =>
         {
-            ids[i] = MapAssetFormat.ReadString(reader, end);
-            try
+            int count = MapAssetFormat.ReadCount(reader, end,
+                MapAssetFormat.MaxReferences, 2, "reference");
+            string[] ids = new string[count];
+            for (int i = 0; i < ids.Length; i++)
             {
-                MapAssetId.Validate(ids[i]);
-            }
-            catch (ArgumentException exception)
-            {
-                throw new InvalidDataException("Map asset contains a noncanonical reference.", exception);
+                ids[i] = MapAssetFormat.ReadString(reader, end);
+                try
+                {
+                    MapAssetId.Validate(ids[i]);
+                }
+                catch (ArgumentException exception)
+                {
+                    throw new InvalidDataException("Map asset contains a noncanonical reference.", exception);
+                }
+
+                if (i > 0 && string.CompareOrdinal(ids[i - 1], ids[i]) >= 0)
+                {
+                    throw new InvalidDataException("Map asset reference directory is not strictly sorted.");
+                }
             }
 
-            if (i > 0 && string.CompareOrdinal(ids[i - 1], ids[i]) >= 0)
-            {
-                throw new InvalidDataException("Map asset reference directory is not strictly sorted.");
-            }
-        }
+            return ids;
+        });
+    }
 
-        return ids;
-    });
-
-    private (string Puzzle, int Width, int Height, GameMapCell[] Cells) ReadCells(string[] references) =>
-        Parse(MapSection.Cells, (reader, end) =>
+    private (string Puzzle, int Width, int Height, GameMapCell[] Cells) ReadCells(string[] references)
+    {
+        return Parse(MapSection.Cells, (reader, end) =>
         {
             MapAssetFormat.Require(reader, end, 12);
             int ground = reader.ReadInt32();
@@ -108,6 +112,7 @@ public sealed class MapAssetReader : IDisposable
 
             return (puzzle, width, height, cells);
         });
+    }
 
     private static (int Width, int Height) ReadCellHeader(BinaryReader reader, long end, int referenceCount)
     {
@@ -134,8 +139,9 @@ public sealed class MapAssetReader : IDisposable
         return (width, height);
     }
 
-    private MapObject[] ReadObjects(string[] references) =>
-        Parse(MapSection.Objects, (reader, end) =>
+    private MapObject[] ReadObjects(string[] references)
+    {
+        return Parse(MapSection.Objects, (reader, end) =>
         {
             int count = MapAssetFormat.ReadCount(reader, end, MapAssetFormat.MaxObjects, 1, "object");
             MapObject[] objects = new MapObject[count];
@@ -154,9 +160,11 @@ public sealed class MapAssetReader : IDisposable
 
             return objects;
         });
+    }
 
-    private MapLayer[] ReadLayers(string[] references) =>
-        Parse(MapSection.Layers, (reader, end) =>
+    private MapLayer[] ReadLayers(string[] references)
+    {
+        return Parse(MapSection.Layers, (reader, end) =>
         {
             int count = MapAssetFormat.ReadCount(reader, end, MapAssetFormat.MaxLayers, 16, "layer");
             MapLayer[] layers = new MapLayer[count];
@@ -186,6 +194,7 @@ public sealed class MapAssetReader : IDisposable
 
             return layers;
         });
+    }
 
     private static MapTerrainObject ReadTerrain(BinaryReader reader, long end, string id)
     {

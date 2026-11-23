@@ -273,6 +273,8 @@ public sealed class LoginRegistrationFormTests
         return form.PointerReleased(true, button.X + 2, button.Y + 2);
     }
 
-    private static DesktopKeyEvent Key(DesktopKey key, DesktopKeyModifiers modifiers = default, bool repeat = false) =>
-        new(key, modifiers, repeat);
+    private static DesktopKeyEvent Key(DesktopKey key, DesktopKeyModifiers modifiers = default, bool repeat = false)
+    {
+        return new DesktopKeyEvent(key, modifiers, repeat);
+    }
 }

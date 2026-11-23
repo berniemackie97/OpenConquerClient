@@ -24,10 +24,15 @@ public static class LoginBirdArtwork
         public bool IsVisible => Width > 0 && Height > 0;
     }
 
-    public static BirdFrame FrameAt(int frame) =>
-        (uint)frame < FrameCount ? s_frames[frame] : throw new ArgumentOutOfRangeException(nameof(frame));
+    public static BirdFrame FrameAt(int frame)
+    {
+        return (uint)frame < FrameCount ? s_frames[frame] : throw new ArgumentOutOfRangeException(nameof(frame));
+    }
 
-    public static RgbaImage LoadAtlas() => EmbeddedMedia.Load(s_atlas);
+    public static RgbaImage LoadAtlas()
+    {
+        return EmbeddedMedia.Load(s_atlas);
+    }
 
     private static BirdFrame[] LoadFrames()
     {

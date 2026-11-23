@@ -29,7 +29,10 @@ internal sealed class MainHudActionButtonState
         }
     }
 
-    public void SetHoverFrameEnabled(bool enabled) => _hoverFrameEnabled = enabled;
+    public void SetHoverFrameEnabled(bool enabled)
+    {
+        _hoverFrameEnabled = enabled;
+    }
 
     public void SetCurrentFrame(int frameIndex)
     {

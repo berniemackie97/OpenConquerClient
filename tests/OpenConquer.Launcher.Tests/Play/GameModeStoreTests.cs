@@ -9,7 +9,10 @@ public sealed class GameModeStoreTests : IDisposable
 
     private string FilePath => Path.Combine(_root, "play.json");
 
-    public void Dispose() => Directory.Delete(_root, recursive: true);
+    public void Dispose()
+    {
+        Directory.Delete(_root, recursive: true);
+    }
 
     [Fact]
     public async Task MissingFile_ReadsAsUnusedWithoutCreatingFiles()

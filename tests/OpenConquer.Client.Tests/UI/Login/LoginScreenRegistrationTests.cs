@@ -175,8 +175,10 @@ public sealed class LoginScreenRegistrationTests : IDisposable
         Assert.Throws<ArgumentOutOfRangeException>(() => LoginFailure.Registration((LoginRegistrationNotice)99));
     }
 
-    private static void Apply(LoginScreen screen, LoginRegistrationFeedback feedback) =>
+    private static void Apply(LoginScreen screen, LoginRegistrationFeedback feedback)
+    {
         screen.ApplyRegistrationFeedback(feedback, LoginErrorTests.Messages());
+    }
 
     private LoginScreen CreateReady()
     {
@@ -201,7 +203,10 @@ public sealed class LoginScreenRegistrationTests : IDisposable
     }
 
     /// <summary>Runs the dialog timeline to its next resting frame.</summary>
-    private static void Settle(LoginScreen screen) => screen.Advance(TimeSpan.FromSeconds(1));
+    private static void Settle(LoginScreen screen)
+    {
+        screen.Advance(TimeSpan.FromSeconds(1));
+    }
 
     private static void Click(LoginScreen screen, int x, int y)
     {
@@ -210,8 +215,12 @@ public sealed class LoginScreenRegistrationTests : IDisposable
         screen.PointerReleased(true, x, y);
     }
 
-    private static void Press(LoginScreen screen, DesktopKey key) =>
-        screen.KeyPressed(new DesktopKeyEvent(key, default, false), static () => null, static _ => { });
+    private static void Press(LoginScreen screen, DesktopKey key)
+    {
+        screen.KeyPressed(new DesktopKeyEvent(key, default, false), static () => null, static _ =>
+        {
+        });
+    }
 
     private static void TypeText(LoginScreen screen, string text)
     {
@@ -221,5 +230,8 @@ public sealed class LoginScreenRegistrationTests : IDisposable
         }
     }
 
-    public void Dispose() => Directory.Delete(_folder, recursive: true);
+    public void Dispose()
+    {
+        Directory.Delete(_folder, recursive: true);
+    }
 }

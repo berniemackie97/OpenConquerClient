@@ -149,7 +149,10 @@ public sealed class MainHudVitalsAssetsTests
         Assert.Throws<ArgumentOutOfRangeException>(() => assets.GetExtendedStaminaFrame(2));
     }
 
-    private static string AllSections() => LifeSection() + ManaSection() + StaminaSection() + ExtendedStaminaSection();
+    private static string AllSections()
+    {
+        return LifeSection() + ManaSection() + StaminaSection() + ExtendedStaminaSection();
+    }
 
     private static string LifeSection()
     {

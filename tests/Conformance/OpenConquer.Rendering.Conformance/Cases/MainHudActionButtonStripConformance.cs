@@ -259,13 +259,17 @@ internal static class MainHudActionButtonStripConformance
         return cases.ToArray();
     }
 
-    private static int GetPkMode(MainHudPkButtonSkin skin) => skin switch
+    private static int GetPkMode(MainHudPkButtonSkin skin)
     {
-        MainHudPkButtonSkin.Button49 => 1,
-        MainHudPkButtonSkin.Button48 => 2,
-        MainHudPkButtonSkin.Button412 => 3,
-        _ => throw new ArgumentOutOfRangeException(nameof(skin), skin, "Only alternate PK skins require an applied PK mode."),
-    };
+        return skin switch
+        {
+            MainHudPkButtonSkin.Button49 => 1,
+            MainHudPkButtonSkin.Button48 => 2,
+            MainHudPkButtonSkin.Button412 => 3,
+            _ => throw new ArgumentOutOfRangeException(nameof(skin), skin,
+                "Only alternate PK skins require an applied PK mode."),
+        };
+    }
 
     private static byte[] ReadVerifiedAsset(PackagedClientContentSource contentSource, string contentPath, string expectedSha256, ContentLookupMode lookupMode)
     {
@@ -316,9 +320,15 @@ internal static class MainHudActionButtonStripConformance
         }
     }
 
-    private static ButtonFixture B(MainHudActionButtonId id, string sectionName, int x, int y800, int y1024, params FrameFixture[] frames) => new(id, sectionName, x, y800, y1024, frames);
+    private static ButtonFixture B(MainHudActionButtonId id, string sectionName, int x, int y800, int y1024, params FrameFixture[] frames)
+    {
+        return new ButtonFixture(id, sectionName, x, y800, y1024, frames);
+    }
 
-    private static FrameFixture F(string path, string sha256, ContentLookupMode lookupMode) => new(path, sha256, lookupMode);
+    private static FrameFixture F(string path, string sha256, ContentLookupMode lookupMode)
+    {
+        return new FrameFixture(path, sha256, lookupMode);
+    }
 
     private readonly record struct ButtonFixture(MainHudActionButtonId Id, string SectionName, int X, int Y800, int Y1024, FrameFixture[] Frames);
 

@@ -171,36 +171,61 @@ public sealed class WorldHeroModelTests
         Assert.Equal(4u, model.EquipmentRevision);
     }
 
-    private static WorldHeroModel Model(WorldHeroAttributes hero, ItemStatCatalog catalog) =>
-        new(hero, catalog, mapFlags: 0, hasTransformLookSource: false);
+    private static WorldHeroModel Model(WorldHeroAttributes hero, ItemStatCatalog catalog)
+    {
+        return new WorldHeroModel(hero, catalog, mapFlags: 0, hasTransformLookSource: false);
+    }
 
     // An empty 1009 subtype-46 snapshot: no active items, so only the life clamp is observable.
-    private static byte[] Snapshot() => WorldHeroItemStatsTests.Equipment();
-
-    private static WorldHeroAttributes Hero() => WorldHeroAttributes.FromCharacter(new GameCharacterInfo1006
+    private static byte[] Snapshot()
     {
-        EntityId = 1001,
-        Strength = 5,
-        Agility = 6,
-        Vitality = 7,
-        Spirit = 8,
-        CurrentProfession = 11,
-        CurrentLife = 300,
-        CurrentMana = 60,
-        Level = 1,
-        Experience = 1234,
-    });
+        return WorldHeroItemStatsTests.Equipment();
+    }
 
-    private static JsonDocument Fixture() => JsonDocument.Parse(File.ReadAllBytes(
-        Path.Combine(AppContext.BaseDirectory, "Fixtures", "Hero", "native-stats-5517.json")));
+    private static WorldHeroAttributes Hero()
+    {
+        return WorldHeroAttributes.FromCharacter(new GameCharacterInfo1006
+        {
+            EntityId = 1001,
+            Strength = 5,
+            Agility = 6,
+            Vitality = 7,
+            Spirit = 8,
+            CurrentProfession = 11,
+            CurrentLife = 300,
+            CurrentMana = 60,
+            Level = 1,
+            Experience = 1234,
+        });
+    }
 
-    private static ItemStatCatalog NeutralCatalog(JsonDocument fixture) => ItemStatCatalog.Parse(
-        Convert.FromBase64String(fixture.RootElement.GetProperty("neutralOriginalItemTypeRowBase64").GetString()!),
-        "120020 9 239 0 0 23 0 0 0 0\r\n"u8);
+    private static JsonDocument Fixture()
+    {
+        return JsonDocument.Parse(File.ReadAllBytes(
+            Path.Combine(AppContext.BaseDirectory, "Fixtures", "Hero", "native-stats-5517.json")));
+    }
 
-    private static int Int(JsonElement row, string name) => row.TryGetProperty(name, out JsonElement value) ? value.GetInt32() : 0;
-    private static uint UInt(JsonElement row, string name, uint fallback = 0) => row.TryGetProperty(name, out JsonElement value) ? value.GetUInt32() : fallback;
-    private static ulong ULong(JsonElement row, string name) => row.TryGetProperty(name, out JsonElement value) ? value.GetUInt64() : 0;
+    private static ItemStatCatalog NeutralCatalog(JsonDocument fixture)
+    {
+        return ItemStatCatalog.Parse(
+            Convert.FromBase64String(fixture.RootElement.GetProperty("neutralOriginalItemTypeRowBase64").GetString()!),
+            "120020 9 239 0 0 23 0 0 0 0\r\n"u8);
+    }
+
+    private static int Int(JsonElement row, string name)
+    {
+        return row.TryGetProperty(name, out JsonElement value) ? value.GetInt32() : 0;
+    }
+
+    private static uint UInt(JsonElement row, string name, uint fallback = 0)
+    {
+        return row.TryGetProperty(name, out JsonElement value) ? value.GetUInt32() : fallback;
+    }
+
+    private static ulong ULong(JsonElement row, string name)
+    {
+        return row.TryGetProperty(name, out JsonElement value) ? value.GetUInt64() : 0;
+    }
 
     private static LevelExperienceTable Experience()
     {

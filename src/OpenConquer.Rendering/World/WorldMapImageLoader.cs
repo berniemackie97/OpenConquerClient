@@ -28,7 +28,10 @@ public sealed class WorldMapImageLoader : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(source);
     }
 
-    internal WorldMapImageLoader(Func<AniIndexSection, int, RgbaImage> decode) => _decode = decode;
+    internal WorldMapImageLoader(Func<AniIndexSection, int, RgbaImage> decode)
+    {
+        _decode = decode;
+    }
 
     internal void BeginPreparation()
     {

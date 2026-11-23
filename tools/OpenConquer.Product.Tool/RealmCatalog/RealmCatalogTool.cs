@@ -11,7 +11,10 @@ internal static class RealmCatalogTool
     private const string TimestampFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'";
     private static readonly string[] s_options = ["--definition", "--private-key", "--sequence", "--issued-utc", "--expires-utc", "--catalog-uri", "--signature-uri", "--output"];
 
-    public static bool IsCommand(string command) => command == Command;
+    public static bool IsCommand(string command)
+    {
+        return command == Command;
+    }
 
     public static int Run(IReadOnlyList<string> args)
     {
@@ -81,8 +84,10 @@ internal static class RealmCatalogTool
         }
     }
 
-    private static string FullPath(string workingDirectory, string value) =>
-        ProductStagingPathGuard.NormalizePath(Path.GetFullPath(value, workingDirectory), nameof(value));
+    private static string FullPath(string workingDirectory, string value)
+    {
+        return ProductStagingPathGuard.NormalizePath(Path.GetFullPath(value, workingDirectory), nameof(value));
+    }
 }
 
 internal sealed record RealmCatalogPublishOptions(string DefinitionPath, string PrivateKeyPath, long Sequence, DateTimeOffset IssuedAt,

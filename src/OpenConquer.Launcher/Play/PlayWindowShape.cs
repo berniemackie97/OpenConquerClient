@@ -82,7 +82,10 @@ internal static partial class PlayWindowShape
         return combined;
     }
 
-    private static int Scale(int value, double scale) => (int)Math.Round(value * scale, MidpointRounding.AwayFromZero);
+    private static int Scale(int value, double scale)
+    {
+        return (int)Math.Round(value * scale, MidpointRounding.AwayFromZero);
+    }
 
     [LibraryImport("gdi32.dll")]
     private static partial IntPtr CreateRectRgn(int left, int top, int right, int bottom);

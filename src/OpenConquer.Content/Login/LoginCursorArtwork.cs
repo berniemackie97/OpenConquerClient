@@ -21,5 +21,8 @@ public static class LoginCursorArtwork
 
     public static int HotspotY => 0;
 
-    public static IReadOnlyList<RgbaImage> Load() => Array.AsReadOnly(Array.ConvertAll(s_frames, EmbeddedMedia.Load));
+    public static IReadOnlyList<RgbaImage> Load()
+    {
+        return Array.AsReadOnly(Array.ConvertAll(s_frames, EmbeddedMedia.Load));
+    }
 }

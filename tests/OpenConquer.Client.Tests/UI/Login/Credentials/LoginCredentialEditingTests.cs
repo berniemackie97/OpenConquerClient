@@ -196,8 +196,10 @@ public sealed class LoginCredentialEditingTests
         return new LoginCredentialInput(selection, layout);
     }
 
-    private static void Focus(LoginCredentialInput input, LoginRect field) =>
+    private static void Focus(LoginCredentialInput input, LoginRect field)
+    {
         Assert.True(input.PointerPressed(true, field.X + 2, field.Y + 2));
+    }
 
     private static void Enter(LoginCredentialInput input, string value)
     {
@@ -207,6 +209,8 @@ public sealed class LoginCredentialEditingTests
         }
     }
 
-    private static void Press(LoginCredentialInput input, DesktopKey key, DesktopKeyModifiers modifiers = DesktopKeyModifiers.None) =>
+    private static void Press(LoginCredentialInput input, DesktopKey key, DesktopKeyModifiers modifiers = DesktopKeyModifiers.None)
+    {
         Assert.True(input.KeyPressed(new DesktopKeyEvent(key, modifiers, false)));
+    }
 }

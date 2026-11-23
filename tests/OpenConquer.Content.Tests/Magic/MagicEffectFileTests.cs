@@ -147,7 +147,10 @@ public sealed class MagicEffectFileTests
         Assert.Throws<InvalidDataException>(() => MagicEffectFile.Parse(new byte[1024 * 1024 + 1]));
     }
 
-    private static MagicEffectFile Parse(string text) => MagicEffectFile.Parse(Encoding.Latin1.GetBytes(text));
+    private static MagicEffectFile Parse(string text)
+    {
+        return MagicEffectFile.Parse(Encoding.Latin1.GetBytes(text));
+    }
 
     private static string GetText(MagicEffectFile file, uint type, uint level, MagicEffectTextKind kind)
     {

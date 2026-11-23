@@ -144,8 +144,9 @@ public sealed class GameMapSceneSections
         return new GameMapSceneSections(exits, scenery, overlays);
     }
 
-    private static GameMapAnimatedOverlayEntry ParseAnimatedOverlay(ReadOnlySpan<byte> payload) =>
-        new(
+    private static GameMapAnimatedOverlayEntry ParseAnimatedOverlay(ReadOnlySpan<byte> payload)
+    {
+        return new GameMapAnimatedOverlayEntry(
             ReadPath(payload[..0x104]),
             ReadText(payload.Slice(0x104, 0x80)),
             BinaryPrimitives.ReadInt32LittleEndian(payload[0x184..]),
@@ -154,6 +155,7 @@ public sealed class GameMapSceneSections
             BinaryPrimitives.ReadInt32LittleEndian(payload[0x190..]),
             BinaryPrimitives.ReadInt32LittleEndian(payload[0x194..]),
             BinaryPrimitives.ReadInt32LittleEndian(payload[0x198..]));
+    }
 
     private static string ReadPath(ReadOnlySpan<byte> field)
     {
@@ -208,7 +210,10 @@ public sealed class GameMapSceneSections
             return count;
         }
 
-        public int ReadInt32() => BinaryPrimitives.ReadInt32LittleEndian(ReadBytes(sizeof(int)));
+        public int ReadInt32()
+        {
+            return BinaryPrimitives.ReadInt32LittleEndian(ReadBytes(sizeof(int)));
+        }
 
         public ReadOnlySpan<byte> ReadBytes(int length)
         {

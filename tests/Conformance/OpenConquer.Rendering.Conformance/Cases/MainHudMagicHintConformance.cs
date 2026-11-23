@@ -475,8 +475,15 @@ internal static class MainHudMagicHintConformance
 
     private readonly record struct ExpectedGroup(byte[] Encoded, SpriteColor Color)
     {
-        public static ExpectedGroup White(string text) => new(Encoding.Latin1.GetBytes(text), SpriteColor.White);
-        public static ExpectedGroup Red(string text) => new(Encoding.Latin1.GetBytes(text), s_red);
+        public static ExpectedGroup White(string text)
+        {
+            return new ExpectedGroup(Encoding.Latin1.GetBytes(text), SpriteColor.White);
+        }
+
+        public static ExpectedGroup Red(string text)
+        {
+            return new ExpectedGroup(Encoding.Latin1.GetBytes(text), s_red);
+        }
     }
 
     private readonly record struct LearnedCase(string Name, uint Type, uint Experience, int SlotIndex, int ActiveClass, int ActivePhase, long PackedPhases, ExpectedGroup[] Groups);

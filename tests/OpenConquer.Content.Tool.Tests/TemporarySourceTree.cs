@@ -266,7 +266,10 @@ internal sealed class TemporarySourceTree : IDisposable
         WriteLooseDds("data/main/ImageDisable.dds", "ImageDisable");
     }
 
-    private void WriteLooseDds(string path, string marker) => WriteBytes(path, CreateSyntheticDds(marker));
+    private void WriteLooseDds(string path, string marker)
+    {
+        WriteBytes(path, CreateSyntheticDds(marker));
+    }
 
     private static void AppendSection(StringBuilder builder, string sectionName, params string[] framePaths)
     {
@@ -278,10 +281,15 @@ internal sealed class TemporarySourceTree : IDisposable
         }
     }
 
-    private static byte[] CreateSyntheticDds(string marker) => Encoding.ASCII.GetBytes($"DDS {marker}");
+    private static byte[] CreateSyntheticDds(string marker)
+    {
+        return Encoding.ASCII.GetBytes($"DDS {marker}");
+    }
 
-    private static byte[] CreateSyntheticLevelExperience() =>
-        EncodeDelimitedTable(Encoding.ASCII.GetBytes("0 1 120 2 3\r\n0 2 180 2 3\r\n"), 0x4D2);
+    private static byte[] CreateSyntheticLevelExperience()
+    {
+        return EncodeDelimitedTable(Encoding.ASCII.GetBytes("0 1 120 2 3\r\n0 2 180 2 3\r\n"), 0x4D2);
+    }
 
     private static byte[] CreateSyntheticItemType()
     {

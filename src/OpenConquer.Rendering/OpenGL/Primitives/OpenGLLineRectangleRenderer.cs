@@ -200,18 +200,25 @@ internal sealed unsafe class OpenGLLineRectangleRenderer : IDisposable
         firstFailure?.Throw();
     }
 
-    private static float ToNormalizedX(int x, int width) => (float)(2.0 * x / width - 1.0);
-    private static float ToNormalizedY(int y, int height) => (float)(1.0 - 2.0 * y / height);
+    private static float ToNormalizedX(int x, int width)
+    {
+        return (float)(2.0 * x / width - 1.0);
+    }
+
+    private static float ToNormalizedY(int y, int height)
+    {
+        return (float)(1.0 - 2.0 * y / height);
+    }
 
     private const string VertexShaderSource = """
-        #version 330 core
-        layout (location = 0) in vec2 aPosition;
+                                              #version 330 core
+                                              layout (location = 0) in vec2 aPosition;
 
-        void main()
-        {
-            gl_Position = vec4(aPosition, 0.0, 1.0);
-        }
-        """;
+                                              void main()
+                                              {
+                                                  gl_Position = vec4(aPosition, 0.0, 1.0);
+                                              }
+                                              """;
 
     private const string FragmentShaderSource = """
         #version 330 core

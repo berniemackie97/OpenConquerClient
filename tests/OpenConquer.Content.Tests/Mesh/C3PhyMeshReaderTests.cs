@@ -128,11 +128,15 @@ public sealed class C3PhyMeshReaderTests
         Assert.Throws<InvalidDataException>(() => C3PhyMeshReader.Read(Section("PHY ", payload)));
     }
 
-    private static C3PhyVertex Vertex(float x, float y, float z) =>
-        new(new Vector3(x, y, z), Vector3.Zero, Vector2.Zero, 0, 0, 0, 0, 0);
+    private static C3PhyVertex Vertex(float x, float y, float z)
+    {
+        return new C3PhyVertex(new Vector3(x, y, z), Vector3.Zero, Vector2.Zero, 0, 0, 0, 0, 0);
+    }
 
-    private static C3MeshSection Section(string tag, ReadOnlyMemory<byte> payload) =>
-        new(BinaryPrimitives.ReadUInt32LittleEndian(System.Text.Encoding.ASCII.GetBytes(tag)), 24, payload);
+    private static C3MeshSection Section(string tag, ReadOnlyMemory<byte> payload)
+    {
+        return new C3MeshSection(BinaryPrimitives.ReadUInt32LittleEndian(System.Text.Encoding.ASCII.GetBytes(tag)), 24, payload);
+    }
 
     internal static byte[] Payload(string tag, ushort lastIndex = 2, bool fixtureTransform = false, float weight1 = 0f)
     {

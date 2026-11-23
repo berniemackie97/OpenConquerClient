@@ -175,7 +175,10 @@ internal static class ManagedInstallationPathGuard
             : comparisonPath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
     }
 
-    private static string EnsureTrailingDirectorySeparator(string path) => Path.EndsInDirectorySeparator(path) ? path : path + Path.DirectorySeparatorChar;
+    private static string EnsureTrailingDirectorySeparator(string path)
+    {
+        return Path.EndsInDirectorySeparator(path) ? path : path + Path.DirectorySeparatorChar;
+    }
 
     private readonly record struct PathEntry(PathEntryKind Kind, FileSystemInfo? FileSystemInfo);
     private readonly record struct ResolvedLinkTarget(string Identity, bool IsDirectory);

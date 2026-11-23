@@ -158,6 +158,8 @@ public sealed class WorldMapImageLoaderTests
         return AniIndexFile.Load(stream, "map.ani").GetRequiredSection("Map");
     }
 
-    private static RgbaImage DecodePixel() =>
-        TargaImageReader.DecodeRle32Bit(Convert.FromHexString("00000a00000000000000000001000100200880112233ff"));
+    private static RgbaImage DecodePixel()
+    {
+        return TargaImageReader.DecodeRle32Bit(Convert.FromHexString("00000a00000000000000000001000100200880112233ff"));
+    }
 }

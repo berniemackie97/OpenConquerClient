@@ -21,19 +21,22 @@ internal enum ClientFailureCode
 
 internal static class ClientFailure
 {
-    internal static int Classify(Exception exception) => (int)(exception switch
+    internal static int Classify(Exception exception)
     {
-        FileNotFoundException or DirectoryNotFoundException => ClientFailureCode.FileMissing,
-        InvalidDataException or JsonException => ClientFailureCode.InvalidData,
-        UnauthorizedAccessException => ClientFailureCode.AccessDenied,
-        IOException => ClientFailureCode.Io,
-        SocketException => ClientFailureCode.Socket,
-        TimeoutException => ClientFailureCode.Timeout,
-        DllNotFoundException or EntryPointNotFoundException or BadImageFormatException => ClientFailureCode.NativeLibrary,
-        NotSupportedException => ClientFailureCode.Unsupported,
-        OperationCanceledException => ClientFailureCode.Canceled,
-        InvalidOperationException => ClientFailureCode.InvalidState,
-        ArgumentException => ClientFailureCode.InvalidArgument,
-        _ => ClientFailureCode.Unknown,
-    });
+        return (int)(exception switch
+        {
+            FileNotFoundException or DirectoryNotFoundException => ClientFailureCode.FileMissing,
+            InvalidDataException or JsonException => ClientFailureCode.InvalidData,
+            UnauthorizedAccessException => ClientFailureCode.AccessDenied,
+            IOException => ClientFailureCode.Io,
+            SocketException => ClientFailureCode.Socket,
+            TimeoutException => ClientFailureCode.Timeout,
+            DllNotFoundException or EntryPointNotFoundException or BadImageFormatException => ClientFailureCode.NativeLibrary,
+            NotSupportedException => ClientFailureCode.Unsupported,
+            OperationCanceledException => ClientFailureCode.Canceled,
+            InvalidOperationException => ClientFailureCode.InvalidState,
+            ArgumentException => ClientFailureCode.InvalidArgument,
+            _ => ClientFailureCode.Unknown,
+        });
+    }
 }

@@ -12,9 +12,13 @@ internal static class GameClientClock
         return Milliseconds(clock, clock.GetTimestamp());
     }
 
-    internal static uint Milliseconds(TimeProvider clock, long timestamp) =>
-        unchecked((uint)TimestampMilliseconds(clock, timestamp));
+    internal static uint Milliseconds(TimeProvider clock, long timestamp)
+    {
+        return unchecked((uint)TimestampMilliseconds(clock, timestamp));
+    }
 
-    internal static long TimestampMilliseconds(TimeProvider clock, long timestamp) =>
-        clock.GetElapsedTime(0, timestamp).Ticks / TimeSpan.TicksPerMillisecond;
+    internal static long TimestampMilliseconds(TimeProvider clock, long timestamp)
+    {
+        return clock.GetElapsedTime(0, timestamp).Ticks / TimeSpan.TicksPerMillisecond;
+    }
 }

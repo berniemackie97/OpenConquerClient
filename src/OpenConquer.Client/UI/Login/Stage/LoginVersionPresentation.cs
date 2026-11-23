@@ -5,7 +5,6 @@ using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Login.Stage;
 
-/// <summary>Root depth 276 <c>verTxt</c>: edit text 8, device Arial Bold 14, #888888, left aligned; shown from root frame 3.</summary>
 internal sealed class LoginVersionPresentation : IDisposable
 {
     private static readonly SpriteColor s_color = new(0x88, 0x88, 0x88, 255);

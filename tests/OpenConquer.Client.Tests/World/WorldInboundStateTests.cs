@@ -891,33 +891,37 @@ public sealed partial class WorldInboundStateTests
     }
 
     /// <summary>One remote-role tick with 20-frame clips and an affine stand-in projection.</summary>
-    private static void Tick(WorldInboundState state, uint now = 0) =>
+    private static void Tick(WorldInboundState state, uint now = 0)
+    {
         state.RemoteRoles.Advance(now, static (_, _) => 20, static (x, y) => (x * 32, y * 16),
             static (x, y) => (x / 32, y / 16));
+    }
 
     private static WorldInboundState CreateState(uint currentLife = 70, byte[][]? hydration = null,
         ushort transformLookSourceId = 0, int hydrationEnteredAt = 0, ClientDiagnostics? diagnostics = null,
         Action<WorldCorrectionReply>? onCorrection = null,
         Action<GameWorldActionResponse>? onActionReply = null,
-        GameSilentInfoReport? silentInfo = null, uint heroId = HeroId) =>
-        new(new GameWorldEntrySnapshot(
-            new GameCharacterInfo1006
-            {
-                EntityId = heroId,
-                Strength = 5,
-                Agility = 6,
-                Vitality = 7,
-                Spirit = 8,
-                CurrentLife = (ushort)currentLife,
-                CurrentMana = 20,
-                Level = 42,
-                CurrentProfession = 10,
-                Experience = 12345,
-                TransformLookSourceId = transformLookSourceId,
-            },
-            1002, 1010, 0, 1, 61, 101, hydration ?? [], 3, hydrationEnteredAt), WorldHeroItemStatsTests.Catalog(),
+        GameSilentInfoReport? silentInfo = null, uint heroId = HeroId)
+    {
+        return new WorldInboundState(new GameWorldEntrySnapshot(
+                new GameCharacterInfo1006
+                {
+                    EntityId = heroId,
+                    Strength = 5,
+                    Agility = 6,
+                    Vitality = 7,
+                    Spirit = 8,
+                    CurrentLife = (ushort)currentLife,
+                    CurrentMana = 20,
+                    Level = 42,
+                    CurrentProfession = 10,
+                    Experience = 12345,
+                    TransformLookSourceId = transformLookSourceId,
+                },
+                1002, 1010, 0, 1, 61, 101, hydration ?? [], 3, hydrationEnteredAt), WorldHeroItemStatsTests.Catalog(),
             diagnostics: diagnostics, onCorrection: onCorrection, onActionReply: onActionReply,
             silentInfo: silentInfo);
+    }
 
     private static byte[] Attributes(uint entityId, params (uint Id, ulong Low, ulong High)[] entries)
     {

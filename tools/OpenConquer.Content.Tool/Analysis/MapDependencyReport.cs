@@ -112,8 +112,9 @@ internal sealed class MapDependencyReport
     }
 
     private static MapDependencyMap[] SummarizeMaps(ContentManifest manifest,
-        Dictionary<uint, int[]> mapIndices, bool[] startupUsage, int[] mapUsage) =>
-        mapIndices.OrderBy(entry => entry.Key)
+        Dictionary<uint, int[]> mapIndices, bool[] startupUsage, int[] mapUsage)
+    {
+        return mapIndices.OrderBy(entry => entry.Key)
             .Select(entry =>
             {
                 long bytes = 0;
@@ -135,6 +136,7 @@ internal sealed class MapDependencyReport
                     exclusiveCount, exclusiveBytes);
             })
             .ToArray();
+    }
 
     public IEnumerable<string> ToReportLines()
     {

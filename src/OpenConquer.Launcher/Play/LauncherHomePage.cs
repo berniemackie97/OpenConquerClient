@@ -67,7 +67,9 @@ internal sealed class LauncherHomePage
         return IsHttps(target);
     }
 
-    private static bool IsHttps(Uri address) =>
-        address.IsAbsoluteUri && address.Scheme == Uri.UriSchemeHttps && !string.IsNullOrEmpty(address.IdnHost)
-        && string.IsNullOrEmpty(address.UserInfo);
+    private static bool IsHttps(Uri address)
+    {
+        return address.IsAbsoluteUri && address.Scheme == Uri.UriSchemeHttps && !string.IsNullOrEmpty(address.IdnHost)
+               && string.IsNullOrEmpty(address.UserInfo);
+    }
 }

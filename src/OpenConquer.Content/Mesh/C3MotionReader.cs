@@ -145,20 +145,28 @@ public static class C3MotionReader
             Float(bytes, 16), Float(bytes, 20), Float(bytes, 24), 1f);
     }
 
-    private static Matrix4x4 ReadAffineMatrix(ReadOnlySpan<byte> bytes) => new(
-        Float(bytes, 0), Float(bytes, 4), Float(bytes, 8), 0f,
-        Float(bytes, 12), Float(bytes, 16), Float(bytes, 20), 0f,
-        Float(bytes, 24), Float(bytes, 28), Float(bytes, 32), 0f,
-        Float(bytes, 36), Float(bytes, 40), Float(bytes, 44), 1f);
+    private static Matrix4x4 ReadAffineMatrix(ReadOnlySpan<byte> bytes)
+    {
+        return new Matrix4x4(
+            Float(bytes, 0), Float(bytes, 4), Float(bytes, 8), 0f,
+            Float(bytes, 12), Float(bytes, 16), Float(bytes, 20), 0f,
+            Float(bytes, 24), Float(bytes, 28), Float(bytes, 32), 0f,
+            Float(bytes, 36), Float(bytes, 40), Float(bytes, 44), 1f);
+    }
 
-    private static Matrix4x4 ReadMatrix(ReadOnlySpan<byte> bytes) => new(
-        Float(bytes, 0), Float(bytes, 4), Float(bytes, 8), Float(bytes, 12),
-        Float(bytes, 16), Float(bytes, 20), Float(bytes, 24), Float(bytes, 28),
-        Float(bytes, 32), Float(bytes, 36), Float(bytes, 40), Float(bytes, 44),
-        Float(bytes, 48), Float(bytes, 52), Float(bytes, 56), Float(bytes, 60));
+    private static Matrix4x4 ReadMatrix(ReadOnlySpan<byte> bytes)
+    {
+        return new Matrix4x4(
+            Float(bytes, 0), Float(bytes, 4), Float(bytes, 8), Float(bytes, 12),
+            Float(bytes, 16), Float(bytes, 20), Float(bytes, 24), Float(bytes, 28),
+            Float(bytes, 32), Float(bytes, 36), Float(bytes, 40), Float(bytes, 44),
+            Float(bytes, 48), Float(bytes, 52), Float(bytes, 56), Float(bytes, 60));
+    }
 
-    private static float Float(ReadOnlySpan<byte> bytes, int offset) =>
-        BinaryPrimitives.ReadSingleLittleEndian(bytes[offset..]);
+    private static float Float(ReadOnlySpan<byte> bytes, int offset)
+    {
+        return BinaryPrimitives.ReadSingleLittleEndian(bytes[offset..]);
+    }
 
     private ref struct PayloadReader
     {
@@ -185,11 +193,20 @@ public static class C3MotionReader
             return slice;
         }
 
-        internal uint ReadUInt32() => BinaryPrimitives.ReadUInt32LittleEndian(Read(4));
+        internal uint ReadUInt32()
+        {
+            return BinaryPrimitives.ReadUInt32LittleEndian(Read(4));
+        }
 
-        internal ushort ReadUInt16() => BinaryPrimitives.ReadUInt16LittleEndian(Read(2));
+        internal ushort ReadUInt16()
+        {
+            return BinaryPrimitives.ReadUInt16LittleEndian(Read(2));
+        }
 
-        internal int ReadInt32() => BinaryPrimitives.ReadInt32LittleEndian(Read(4));
+        internal int ReadInt32()
+        {
+            return BinaryPrimitives.ReadInt32LittleEndian(Read(4));
+        }
 
         internal void Seek(int delta)
         {

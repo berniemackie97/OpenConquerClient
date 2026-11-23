@@ -89,7 +89,10 @@ internal sealed partial class MainWindow : Window, IDisposable
         cleanup.ThrowIfFailed();
     }
 
-    internal Task RequestShutdownAsync() => _shutdown ??= StopAsync();
+    internal Task RequestShutdownAsync()
+    {
+        return _shutdown ??= StopAsync();
+    }
 
     private async Task StopAsync()
     {
@@ -139,8 +142,10 @@ internal sealed partial class MainWindow : Window, IDisposable
         }
     }
 
-    private void OnOpened(object? sender, EventArgs eventArgs) =>
+    private void OnOpened(object? sender, EventArgs eventArgs)
+    {
         LauncherUiEvent.Run(() => _opening ??= OpenAsync(), OnOperationFailed);
+    }
 
     private async Task OpenAsync()
     {
@@ -226,8 +231,10 @@ internal sealed partial class MainWindow : Window, IDisposable
         }
     }
 
-    private void OnPlayButtonClicked(object? sender, PlayButton button) =>
+    private void OnPlayButtonClicked(object? sender, PlayButton button)
+    {
         LauncherUiEvent.Run(() => HandlePlayButtonAsync(button), OnOperationFailed);
+    }
 
     private async Task HandlePlayButtonAsync(PlayButton button)
     {

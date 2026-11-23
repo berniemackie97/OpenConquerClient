@@ -4,7 +4,6 @@ using Silk.NET.OpenAL;
 
 namespace OpenConquer.Client.UI.Login.Audio;
 
-/// <summary>One-device, event-thread-owned startup sound bank. No decoding, allocations, or I/O during playback.</summary>
 internal sealed unsafe class LoginAudioPlayer : IDisposable
 {
     private const int MaximumEffectVoices = 6;
@@ -61,11 +60,11 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
             _music = _al.GenSource();
             _al.SetSourceProperty(_music, SourceInteger.Buffer, _buffers[(int)LoginAudioCue.Music]);
             _al.SetSourceProperty(_music, SourceBoolean.Looping, true);
-            _al.SetSourceProperty(_music, SourceFloat.Gain, 0.4f); // flashLogin.ini [bgMusic] volume=40
+            _al.SetSourceProperty(_music, SourceFloat.Gain, 0.4f);
             foreach (ref uint voice in _effects.AsSpan())
             {
                 voice = _al.GenSource();
-                _al.SetSourceProperty(voice, SourceFloat.Gain, 1f); // flashLogin.ini [sound] volume=100
+                _al.SetSourceProperty(voice, SourceFloat.Gain, 1f);
             }
             _al.SourcePlay(_music);
             if (_al.GetError() != AudioError.NoError)
@@ -93,8 +92,7 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
         {
             return new LoginAudioPlayer();
         }
-        catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException or
-            BadImageFormatException or InvalidOperationException or TypeInitializationException)
+        catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException or InvalidOperationException or TypeInitializationException)
         {
             diagnostics.AudioUnavailable(ClientFailure.Classify(exception));
             return null;
@@ -160,7 +158,7 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
             return;
         }
         _disposed = true;
-        if (_context != null && _alc is not null && _al is not null)
+        if (_context != null)
         {
             _alc.MakeContextCurrent(_context);
             foreach (uint source in _effects)
@@ -186,7 +184,7 @@ internal sealed unsafe class LoginAudioPlayer : IDisposable
             _alc.MakeContextCurrent(null);
             _alc.DestroyContext(_context);
         }
-        if (_device != null && _alc is not null)
+        if (_device != null)
         {
             _alc.CloseDevice(_device);
         }

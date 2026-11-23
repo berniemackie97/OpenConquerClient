@@ -15,8 +15,7 @@ namespace OpenConquer.Client.UI.Login.Status;
 internal sealed class LoginErrorPresentation : IDisposable
 {
     private static readonly SpriteColor s_red = new(255, 70, 66, 255);
-    private static readonly NativeTextRenderOptions s_style = new(NativeTextRenderStyle.Normal,
-        s_red, s_red, 0, 0, NativeTextVertexColors.Solid(s_red));
+    private static readonly NativeTextRenderOptions s_style = new(NativeTextRenderStyle.Normal, s_red, s_red, 0, 0, NativeTextVertexColors.Solid(s_red));
     private readonly ResourceOwnership _ownership = new();
     private readonly LoginStageLayout _layout;
     private readonly OpenGLTexture2D[] _pictures = new OpenGLTexture2D[2];
@@ -60,18 +59,22 @@ internal sealed class LoginErrorPresentation : IDisposable
     {
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(dialog);
+
         if (!dialog.IsOpen)
         {
-            if (!dialog.IsQuit)
+            if (dialog.IsQuit)
             {
-                _lastText = null;
-                _glyphs = [];
+                return;
             }
+
+            _lastText = null;
+            _glyphs = [];
             return;
         }
 
         SpriteColor mask = LoginModalMask.At(dialog.Frame);
         LoginRect band = _layout.Place(dialog.IsLoadingQuit ? 0 : -1, 90, 1024, 570);
+
         if (dialog.Frame != 6)
         {
             renderer.DrawSolidRectangle(band.X, band.Y, band.Width, band.Height, mask);
@@ -87,22 +90,24 @@ internal sealed class LoginErrorPresentation : IDisposable
                 continue;
             }
             LoginButtonState state = dialog.State(button);
-            if (state != LoginButtonState.Up)
+            if (state == LoginButtonState.Up)
             {
-                picture = _buttonPictures[kind, (int)button, state == LoginButtonState.Over ? 0 : 1];
-                break;
+                continue;
             }
+
+            picture = _buttonPictures[kind, (int)button, state == LoginButtonState.Over ? 0 : 1];
+            break;
         }
         (int x, int y) = LoginErrorArtwork.Position;
         LoginRect area = _layout.Place(x + (dialog.IsLoadingQuit ? 1 : 0), y, picture.Width, picture.Height);
         LoginModalMask.DrawAround(renderer, band, area, mask);
         renderer.DrawSprite(picture, area.X, area.Y, area.Width, area.Height);
+
         if (dialog.IsQuit)
         {
             return;
         }
 
-        // Field273 includes a two-pixel gutter on each side; origin already includes that gutter.
         LoginRect text = _layout.PlaceExact(371.45, 290, 273.15, 109);
         if (!string.Equals(_lastText, dialog.Text, StringComparison.Ordinal))
         {
@@ -111,14 +116,17 @@ internal sealed class LoginErrorPresentation : IDisposable
             Dictionary<Rune, OpenGLTextLayout> layouts = [];
             OpenGLTextLayout Glyph(Rune rune)
             {
-                if (!layouts.TryGetValue(rune, out OpenGLTextLayout? glyph))
+                if (layouts.TryGetValue(rune, out OpenGLTextLayout? glyph))
                 {
-                    glyph = _font.LayoutUnicode(rune.ToString());
-                    layouts.Add(rune, glyph);
+                    return glyph;
                 }
+
+                glyph = _font.LayoutUnicode(rune.ToString());
+                layouts.Add(rune, glyph);
                 return glyph;
             }
-            int Advance(Rune rune) => LoginErrorFontMetrics.TryGetAdvance(rune, out int advance) ? advance
+            int Advance(Rune rune) => LoginErrorFontMetrics.TryGetAdvance(rune, out int advance)
+                ? advance
                 : (int)Math.Round(Glyph(rune).WidthPixels * 1024.0 / _layout.Width);
             int Measure(string value) => value.EnumerateRunes().Sum(Advance);
             IReadOnlyList<string> lines = LoginErrorTextLayout.Wrap(dialog.Text, 273, Measure);
@@ -150,8 +158,13 @@ internal sealed class LoginErrorPresentation : IDisposable
         }
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 
-    private OpenGLTexture2D Create(OpenGLGraphicsDevice device, RgbaImage image) =>
-        _ownership.Track(device.CreateTexture2D(image.Width, image.Height, image.Pixels.Span));
+    private OpenGLTexture2D Create(OpenGLGraphicsDevice device, RgbaImage image)
+    {
+        return _ownership.Track(device.CreateTexture2D(image.Width, image.Height, image.Pixels.Span));
+    }
 }

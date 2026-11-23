@@ -37,7 +37,10 @@ internal sealed class SignedLoginCatalog
         ExpiresAt = expiresAt;
     }
 
-    public bool IsCurrent(DateTimeOffset now) => now < ExpiresAt;
+    public bool IsCurrent(DateTimeOffset now)
+    {
+        return now < ExpiresAt;
+    }
 
     public bool TryGetAccountEndpoint(LoginRegion region, LoginServer server, out LoginAccountEndpoint? endpoint)
     {

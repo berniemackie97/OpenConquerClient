@@ -84,8 +84,10 @@ internal static class IndexedMeshConformance
         renderer.DrawIndexedMesh(mesh, texture, Matrix4x4.Identity, cullMode);
     }
 
-    private static C3PhyOutputVertex Vertex(float x, float y, float depth, uint diffuse) =>
-        new(new Vector3(x, y, depth), Vector3.UnitZ, diffuse, new Vector2(0.5f));
+    private static C3PhyOutputVertex Vertex(float x, float y, float depth, uint diffuse)
+    {
+        return new C3PhyOutputVertex(new Vector3(x, y, depth), Vector3.UnitZ, diffuse, new Vector2(0.5f));
+    }
 
     private static void SetVertexState(C3PhyOutputVertex[] vertices, float depth, uint color)
     {

@@ -213,7 +213,10 @@ internal sealed class MainHudMagicHintRenderer : IDisposable
         return MagicHintTextWrapper.Wrap(encoded, WrapPixelLimit, _fontWidth, MeasureWidth);
     }
 
-    private int MeasureWidth(ReadOnlySpan<byte> encoded) => _magicText.Layout(encoded).WidthPixels;
+    private int MeasureWidth(ReadOnlySpan<byte> encoded)
+    {
+        return _magicText.Layout(encoded).WidthPixels;
+    }
 
     private void DrawZeroMagic(OpenGLRenderer renderer, MainHudStatusHintState state, MainHudZeroMagicState context)
     {

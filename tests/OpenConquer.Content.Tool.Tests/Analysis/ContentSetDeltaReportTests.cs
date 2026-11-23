@@ -72,9 +72,13 @@ public sealed class ContentSetDeltaReportTests
         Assert.Equal(expected.ToReportLines(), reversed.ToReportLines());
     }
 
-    private static ContentManifest Manifest(params ContentManifestEntry[] entries) =>
-        new("5517", new string('0', 64), entries);
+    private static ContentManifest Manifest(params ContentManifestEntry[] entries)
+    {
+        return new ContentManifest("5517", new string('0', 64), entries);
+    }
 
-    private static ContentManifestEntry Entry(string path, long length, char digest) =>
-        new(path, path, length, new string(digest, 64), "dds");
+    private static ContentManifestEntry Entry(string path, long length, char digest)
+    {
+        return new ContentManifestEntry(path, path, length, new string(digest, 64), "dds");
+    }
 }

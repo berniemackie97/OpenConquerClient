@@ -13,8 +13,7 @@ internal sealed class LoginLoadingScreen
     private readonly string _initializingText;
     private readonly string _mapText;
 
-    internal LoginLoadingScreen(LoginLoadingTimeline timeline, string accountText, string gameText,
-        string initializingText, string mapText)
+    internal LoginLoadingScreen(LoginLoadingTimeline timeline, string accountText, string gameText, string initializingText, string mapText)
     {
         Timeline = timeline;
         _accountText = accountText;
@@ -74,18 +73,16 @@ internal sealed class LoginLoadingScreen
             return;
         }
 
-        if (status is LoginAttemptStatus.CharacterCreation or LoginAttemptStatus.AccountRefused or
-            LoginAttemptStatus.GameRefused or LoginAttemptStatus.Timeout or LoginAttemptStatus.Unavailable or
-            LoginAttemptStatus.Cancelled)
+        switch (status)
         {
-            Reset();
-            return;
-        }
-
-        if (status is LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter or
-            LoginAttemptStatus.InitializingWorld or LoginAttemptStatus.CharacterReceived)
-        {
-            _sequence.AccountReady();
+            case LoginAttemptStatus.CharacterCreation or LoginAttemptStatus.AccountRefused or LoginAttemptStatus.GameRefused or LoginAttemptStatus.Timeout
+                or LoginAttemptStatus.Unavailable or LoginAttemptStatus.Cancelled:
+                Reset();
+                return;
+            case LoginAttemptStatus.ConnectingGame or LoginAttemptStatus.ReadingCharacter or LoginAttemptStatus.InitializingWorld
+                or LoginAttemptStatus.CharacterReceived:
+                _sequence.AccountReady();
+                break;
         }
 
         if (worldReady)

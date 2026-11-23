@@ -6,7 +6,11 @@ internal sealed class ManualDeadlineClock(long timestamp = 0) : TimeProvider, ID
     private ManualTimer? _timer;
 
     public override long TimestampFrequency => 1_000;
-    public override long GetTimestamp() => timestamp;
+    public override long GetTimestamp()
+    {
+        return timestamp;
+    }
+
     internal TimeSpan DueTime
     {
         get;
@@ -22,19 +26,34 @@ internal sealed class ManualDeadlineClock(long timestamp = 0) : TimeProvider, ID
         return _timer;
     }
 
-    internal void Fire() => (_timer ?? throw new InvalidOperationException("No deadline was armed.")).Fire();
+    internal void Fire()
+    {
+        (_timer ?? throw new InvalidOperationException("No deadline was armed.")).Fire();
+    }
 
-    public void Dispose() => _timer?.Dispose();
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
 
     private sealed class ManualTimer(TimerCallback callback, object? state) : ITimer
     {
         private TimerCallback? _callback = callback;
 
-        internal void Fire() => Interlocked.Exchange(ref _callback, null)?.Invoke(state);
+        internal void Fire()
+        {
+            Interlocked.Exchange(ref _callback, null)?.Invoke(state);
+        }
 
-        public bool Change(TimeSpan dueTime, TimeSpan period) => throw new NotSupportedException();
+        public bool Change(TimeSpan dueTime, TimeSpan period)
+        {
+            throw new NotSupportedException();
+        }
 
-        public void Dispose() => Interlocked.Exchange(ref _callback, null);
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref _callback, null);
+        }
 
         public ValueTask DisposeAsync()
         {

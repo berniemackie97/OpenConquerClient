@@ -42,16 +42,19 @@ internal static class PlayLayout
     public static readonly Point Continue = new(220, 350);
     public static readonly Point Return = new(380, 350);
 
-    public static Point Of(PlayButton button) => button switch
+    public static Point Of(PlayButton button)
     {
-        PlayButton.High => High,
-        PlayButton.Standard => Standard,
-        PlayButton.Low => Low,
-        PlayButton.Continue => Continue,
-        PlayButton.Return => Return,
-        PlayButton.Exit => Exit,
-        PlayButton.Site => Site,
-        PlayButton.Register => Register,
-        _ => throw new ArgumentOutOfRangeException(nameof(button), button, "Unknown play button."),
-    };
+        return button switch
+        {
+            PlayButton.High => High,
+            PlayButton.Standard => Standard,
+            PlayButton.Low => Low,
+            PlayButton.Continue => Continue,
+            PlayButton.Return => Return,
+            PlayButton.Exit => Exit,
+            PlayButton.Site => Site,
+            PlayButton.Register => Register,
+            _ => throw new ArgumentOutOfRangeException(nameof(button), button, "Unknown play button."),
+        };
+    }
 }

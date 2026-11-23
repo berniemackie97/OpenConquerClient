@@ -21,8 +21,15 @@ public sealed class GameSessionCipherTests
         return material;
     }
 
-    private static byte[] ClientInboundIv() => [1, 2, 3, 4, 5, 6, 7, 8];
-    private static byte[] ClientOutboundIv() => [21, 22, 23, 24, 25, 26, 27, 28];
+    private static byte[] ClientInboundIv()
+    {
+        return [1, 2, 3, 4, 5, 6, 7, 8];
+    }
+
+    private static byte[] ClientOutboundIv()
+    {
+        return [21, 22, 23, 24, 25, 26, 27, 28];
+    }
 
     [Fact]
     public void BothDirectionsMatchIndependentSessionVectors()

@@ -80,6 +80,8 @@ public sealed class GameMapPuzzleBitmapTests
         Assert.Equal((-12, 34), (puzzle.ScrollVelocityX, puzzle.ScrollVelocityY));
     }
 
-    private static byte[] Retail(string name) =>
-        File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "puzzle", name));
+    private static byte[] Retail(string name)
+    {
+        return File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "puzzle", name));
+    }
 }

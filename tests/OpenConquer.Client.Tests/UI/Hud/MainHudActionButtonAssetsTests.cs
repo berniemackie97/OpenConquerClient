@@ -207,5 +207,8 @@ public sealed class MainHudActionButtonAssetsTests
         content.WriteText("ani/Control.ani", ani.ToString());
     }
 
-    private static string FramePath(string sectionName, int frameIndex) => $"data/test/{sectionName}_{frameIndex}.dds";
+    private static string FramePath(string sectionName, int frameIndex)
+    {
+        return $"data/test/{sectionName}_{frameIndex}.dds";
+    }
 }

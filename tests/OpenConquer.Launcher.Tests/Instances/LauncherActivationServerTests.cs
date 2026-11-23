@@ -8,7 +8,11 @@ public sealed class LauncherActivationServerTests : IDisposable
 {
     private readonly ActivationTestNamespace _namespace = new();
 
-    public void Dispose() => _namespace.Dispose();
+    public void Dispose()
+    {
+        _namespace.Dispose();
+    }
+
     [Fact]
     public async Task Activation_AcknowledgesExactlyOneCallbackAndHandlesRepeatedConnections()
     {
@@ -174,8 +178,11 @@ public sealed class LauncherActivationServerTests : IDisposable
         Assert.False(LauncherActivationProtocol.IsActivationRequest(new byte[9]));
     }
 
-    private static NamedPipeClientStream NewClient(string name) => new(".", name, PipeDirection.InOut,
-        PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly, TokenImpersonationLevel.Anonymous);
+    private static NamedPipeClientStream NewClient(string name)
+    {
+        return new NamedPipeClientStream(".", name, PipeDirection.InOut,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly, TokenImpersonationLevel.Anonymous);
+    }
 
     private static CancellationTokenSource NewDeadline()
     {
@@ -184,5 +191,8 @@ public sealed class LauncherActivationServerTests : IDisposable
         return deadline;
     }
 
-    private string NewPipeName() => _namespace.NewPipeName();
+    private string NewPipeName()
+    {
+        return _namespace.NewPipeName();
+    }
 }

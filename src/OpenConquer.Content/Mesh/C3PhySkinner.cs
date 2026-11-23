@@ -91,8 +91,10 @@ public static class C3PhySkinner
     }
 
     private static Matrix4x4 GetMatrix(uint index, int paletteSize,
-        C3Motion? primary, ReadOnlySpan<Matrix4x4> boneMatrices) =>
-        primary is not null && index < paletteSize
+        C3Motion? primary, ReadOnlySpan<Matrix4x4> boneMatrices)
+    {
+        return primary is not null && index < paletteSize
             ? boneMatrices[(int)index]
             : Matrix4x4.Identity;
+    }
 }

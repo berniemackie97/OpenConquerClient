@@ -304,8 +304,15 @@ public sealed class OpenGLRenderer : IDisposable
     public readonly struct ClipScope : IDisposable
     {
         private readonly OpenGLRenderer? _owner;
-        internal ClipScope(OpenGLRenderer owner) => _owner = owner;
-        public void Dispose() => _owner?.EndClip();
+        internal ClipScope(OpenGLRenderer owner)
+        {
+            _owner = owner;
+        }
+
+        public void Dispose()
+        {
+            _owner?.EndClip();
+        }
     }
 
     /// <summary>

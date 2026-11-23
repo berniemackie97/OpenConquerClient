@@ -13,12 +13,6 @@ using OpenConquer.Platform.Windowing.Desktop;
 
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>
-/// The login screen's state and input handling, independent of any OpenGL context. Pointer coordinates are on
-/// the logical stage. Input reaches the screen in the retail order: an open dialog first, then the saved-account
-/// list, the buttons, the credential fields and finally the region and server tiles. The OpenConquer Sign Up
-/// dialog is modal beneath errorMC and the quit dialogs.
-/// </summary>
 internal sealed class LoginScreen : IDisposable
 {
     private readonly ClientDiagnostics _diagnostics;
@@ -50,7 +44,6 @@ internal sealed class LoginScreen : IDisposable
         _sounds = new LoginAudioFeedback(layout);
     }
 
-    /// <summary>Raised when Exit is clicked.</summary>
     public event Action? ExitRequested;
 
     internal LoginAttemptStatus AttemptStatus
@@ -83,13 +76,11 @@ internal sealed class LoginScreen : IDisposable
 
     internal event Action? PendingLoginCancelled;
 
-    /// <summary>The OpenConquer Sign Up dialog; retail opened a website instead.</summary>
     internal LoginRegistrationForm Registration
     {
         get;
     }
 
-    /// <summary>A login or registration exchange is in flight; the stage takes no input but Escape.</summary>
     private bool IsExchangePending => IsLoginPending || Registration.IsSubmitting;
 
     internal void ApplyFeedback(LoginAttemptFeedback feedback, LoginErrorMessages messages)
@@ -113,22 +104,16 @@ internal sealed class LoginScreen : IDisposable
         }
     }
 
-    /// <summary>The native Enter activation requests login; the host owns all network work.</summary>
     internal event Action? LoginRequested;
-
-    /// <summary>Sign Up was clicked; the host decides whether the dialog opens.</summary>
     internal event Action? RegistrationRequested;
-
-    /// <summary>Ok or Enter in the Sign Up dialog.</summary>
     internal event Action? RegistrationSubmitRequested;
-
-    /// <summary>Cancel or Escape in the Sign Up dialog.</summary>
     internal event Action? RegistrationCancelRequested;
 
     internal void ApplyRegistrationFeedback(LoginRegistrationFeedback feedback, LoginErrorMessages messages)
     {
         ArgumentNullException.ThrowIfNull(feedback);
         ArgumentNullException.ThrowIfNull(messages);
+
         if (ReferenceEquals(_registrationFeedback, feedback))
         {
             return;
@@ -224,34 +209,27 @@ internal sealed class LoginScreen : IDisposable
         get;
     }
 
-    /// <summary>The buttons inside <c>enterMC</c>.</summary>
     public LoginButtonSet<LoginButton> Buttons
     {
         get;
     }
 
-    /// <summary>Measures caret positions; set while an OpenGL context renders the credential fields.</summary>
     public ILoginCaretLocator? CaretLocator
     {
         get; set;
     }
 
-    /// <summary>Measures caret positions in the Sign Up fields; set while an OpenGL context renders them.</summary>
     internal ILoginRegistrationCaretLocator? RegistrationCaretLocator
     {
         get; set;
     }
 
-    /// <summary>The opening covers the stage and takes no input until its last frame has played.</summary>
     public bool IsOpeningPlaying => Clock.Frame < LoginOpeningArtwork.FrameCount;
 
-    /// <summary>logo.swf loads on root frame 3, after the opening; the logo timeline counts from there.</summary>
     public long LogoFrame => Math.Max(0, Clock.Frame - LoginOpeningArtwork.FrameCount);
 
-    private bool PointerIsFree => !IsOpeningPlaying && ActiveDialog is null && !Registration.IsOpen && !IsExchangePending &&
-        !Account.CapturesPointer;
+    private bool PointerIsFree => !IsOpeningPlaying && ActiveDialog is null && !Registration.IsOpen && !IsExchangePending && !Account.CapturesPointer;
 
-    /// <summary>Advances every login timeline by one rendered frame.</summary>
     public void Advance(TimeSpan elapsed)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -263,6 +241,7 @@ internal sealed class LoginScreen : IDisposable
         Error.Advance(frames);
         bool quit = Quit.Advance(frames);
         bool loadingQuit = LoadingQuit.Advance(frames);
+
         if (quit || loadingQuit)
         {
             ExitRequested?.Invoke();
@@ -270,10 +249,6 @@ internal sealed class LoginScreen : IDisposable
         SelectionAnimation.Advance(frames, Selection, interactive: PointerIsFree);
     }
 
-    /// <summary>
-    /// Installs a newly authenticated catalog (or its absence), keeping an equivalent choice across renewals and
-    /// applying the retail (0, 0) startup choice the first time a current catalog arrives.
-    /// </summary>
     public void ApplyCatalog(SignedLoginCatalog? previous, SignedLoginCatalog? current, DateTimeOffset now, bool firstCurrentCatalog)
     {
         LoginVerifiedSelectionRetention.Apply(previous, current, now, SelectionInput, Selection);
@@ -318,10 +293,10 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
-        // Every button's rollover sound is Button_2.mp3.
         LoginButton? control = Buttons.PointerMoved(mapped, x, y);
         LoginButton? page = SelectionInput.PointerMoved(mapped, x, y);
         LoginAudioCue? area = _sounds.PointerMoved(mapped, x, y, Selection);
+
         Play(control is not null || page is not null ? LoginAudioCue.ButtonHover : area);
     }
 
@@ -345,7 +320,6 @@ internal sealed class LoginScreen : IDisposable
 
         if (Registration.IsOpen)
         {
-            // flashLogin.ini [dialogBox]: click_ok is Button_1.mp3, click_cancel Button_2.mp3.
             Play(Registration.PointerPressed(mapped, x, y, RegistrationCaretLocator, extendSelection) switch
             {
                 LoginDialogButton.Ok => LoginAudioCue.ButtonClick,
@@ -369,7 +343,6 @@ internal sealed class LoginScreen : IDisposable
 
         if (Buttons.PointerPressed(mapped, x, y) is { } button)
         {
-            // flashLogin.ini: click_enterBtn is Confirm.mp3, every other button's click is Button_1.mp3.
             Play(button == LoginButton.Enter ? LoginAudioCue.Confirm : LoginAudioCue.ButtonClick);
             if (button == LoginButton.Exit)
             {
@@ -444,7 +417,6 @@ internal sealed class LoginScreen : IDisposable
         SelectionInput.PointerReleased(mapped, x, y);
     }
 
-    /// <summary>Continues a held credential selection; <paramref name="x"/> is clamped to the stage.</summary>
     public void PointerDragged(int x)
     {
         if (ActiveDialog is null && Registration.IsSelecting && RegistrationCaretLocator is { } registration)
@@ -457,7 +429,6 @@ internal sealed class LoginScreen : IDisposable
         }
     }
 
-    /// <summary>A text selection is being dragged in the credential or Sign Up fields.</summary>
     internal bool IsSelectingText => Credentials.IsSelecting || Registration.IsSelecting;
 
     public void KeyPressed(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard)
@@ -467,8 +438,7 @@ internal sealed class LoginScreen : IDisposable
 
         if (!IsOpeningPlaying && key.Key == DesktopKey.Escape && !key.IsRepeat && !Quit.IsOpen && !LoadingQuit.IsOpen)
         {
-            // Sign Up is a project extension; Escape cancels it before it can quit the client.
-            if (Registration.IsOpen && !Registration.IsSubmitting)
+            if (Registration is { IsOpen: true, IsSubmitting: false })
             {
                 if (ActiveDialog is null)
                 {
@@ -507,10 +477,9 @@ internal sealed class LoginScreen : IDisposable
             return;
         }
 
-        if (key.Key == DesktopKey.Enter && !key.IsRepeat &&
-            (key.Modifiers & (DesktopKeyModifiers.Alt | DesktopKeyModifiers.Control |
-                DesktopKeyModifiers.Super)) == 0 &&
-            Credentials.Focus != LoginCredentialFocus.None)
+        if (key is { Key: DesktopKey.Enter, IsRepeat: false }
+            && (key.Modifiers & (DesktopKeyModifiers.Alt | DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) == 0
+            && Credentials.Focus != LoginCredentialFocus.None)
         {
             LoginRequested?.Invoke();
             return;
@@ -599,7 +568,6 @@ internal sealed class LoginScreen : IDisposable
         Registration.Dispose();
     }
 
-    /// <summary>Returns whether the account list or a dialog took the press.</summary>
     private bool PressAccountControls(bool mapped, int x, int y)
     {
         LoginAccountPress press = Account.PointerPressed(mapped, x, y);
@@ -608,7 +576,6 @@ internal sealed class LoginScreen : IDisposable
             case LoginAccountPressKind.None:
                 return false;
             case LoginAccountPressKind.AccountChosen:
-                // CMD_SELECTACCOUNT; flashLogin.ini popAccount.
                 Credentials.ReplaceAccount(press.Account!);
                 Play(LoginAudioCue.ButtonClick);
                 break;
@@ -616,7 +583,6 @@ internal sealed class LoginScreen : IDisposable
                 Play(LoginAudioCue.ButtonClick);
                 break;
             case LoginAccountPressKind.CancelPressed:
-                // flashLogin.ini [dialogBox] click_cancel is Button_2.mp3.
                 Play(LoginAudioCue.ButtonHover);
                 break;
         }
@@ -645,7 +611,6 @@ internal sealed class LoginScreen : IDisposable
                 LoginRequested?.Invoke();
                 break;
             case LoginButton.Register:
-                // Retail opened a signup website; OpenConquer opens its Sign Up dialog instead.
                 RegistrationRequested?.Invoke();
                 break;
             default:
@@ -662,7 +627,6 @@ internal sealed class LoginScreen : IDisposable
                 RegistrationSubmitRequested?.Invoke();
                 break;
             case LoginRegistrationCommand.Cancel:
-                // flashLogin.ini [dialogBox] hide.
                 Play(LoginAudioCue.Error);
                 RegistrationCancelRequested?.Invoke();
                 break;
@@ -678,21 +642,19 @@ internal sealed class LoginScreen : IDisposable
 
     private void OpenDialog(LoginAccountDialog dialog)
     {
-        if (Account.TryOpenDialog(dialog, Credentials.AccountDisplay))
+        if (!Account.TryOpenDialog(dialog, Credentials.AccountDisplay))
         {
-            // flashLogin.ini [dialogBox] show.
-            Play(LoginAudioCue.Error);
-            Credentials.FocusLost();
+            return;
         }
+
+        Play(LoginAudioCue.Error);
+        Credentials.FocusLost();
     }
 
-    private bool TryHandleClipboard(ILoginTextEditor editor, DesktopKeyEvent key, Func<string?> readClipboard,
-        Action<string> writeClipboard)
+    private bool TryHandleClipboard(ILoginTextEditor editor, DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard)
     {
-        bool shortcut = (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) != 0 &&
-            (key.Modifiers & DesktopKeyModifiers.Alt) == 0;
-        if (!shortcut || key.IsRepeat || !editor.HasFocus ||
-            key.Key is not (DesktopKey.C or DesktopKey.X or DesktopKey.V))
+        bool shortcut = (key.Modifiers & (DesktopKeyModifiers.Control | DesktopKeyModifiers.Super)) != 0 && (key.Modifiers & DesktopKeyModifiers.Alt) == 0;
+        if (!shortcut || key.IsRepeat || !editor.HasFocus || key.Key is not (DesktopKey.C or DesktopKey.X or DesktopKey.V))
         {
             return false;
         }

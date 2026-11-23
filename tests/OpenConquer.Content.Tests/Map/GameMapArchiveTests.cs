@@ -59,6 +59,8 @@ public sealed class GameMapArchiveTests
         Assert.Throws<InvalidDataException>(() => GameMapArchive.Decode(oversized, "map/map/newbie.7z"));
     }
 
-    private static byte[] ReadFixture() =>
-        File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "newbie.7z"));
+    private static byte[] ReadFixture()
+    {
+        return File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "map", "newbie.7z"));
+    }
 }

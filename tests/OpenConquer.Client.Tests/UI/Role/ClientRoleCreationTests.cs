@@ -252,11 +252,19 @@ public sealed class ClientRoleCreationTests
             get; set;
         }
 
-        public Harness() => Screen = new TestRoleCreationScreen(Calls);
+        public Harness()
+        {
+            Screen = new TestRoleCreationScreen(Calls);
+        }
 
-        public ClientRoleCreation Create() => new(new MissingContentSource(), _ => { }, () => Calls.Add("exit"),
-            () => CanAdmitWorld, () => HasWorldScene, (_, _) => throw new InvalidOperationException(),
-            lost => Calls.Add($"return:{lost}"));
+        public ClientRoleCreation Create()
+        {
+            return new ClientRoleCreation(new MissingContentSource(), _ =>
+                {
+                }, () => Calls.Add("exit"),
+                () => CanAdmitWorld, () => HasWorldScene, (_, _) => throw new InvalidOperationException(),
+                lost => Calls.Add($"return:{lost}"));
+        }
     }
 
     internal sealed class MissingContentSource : IClientContentSource
@@ -267,7 +275,10 @@ public sealed class ClientRoleCreationTests
             return false;
         }
 
-        public Stream OpenRequiredRead(string contentPath, ContentLookupMode mode) => throw new FileNotFoundException();
+        public Stream OpenRequiredRead(string contentPath, ContentLookupMode mode)
+        {
+            throw new FileNotFoundException();
+        }
     }
 }
 
@@ -330,14 +341,45 @@ internal sealed class TestRoleCreationScreen(List<string>? calls = null) : IRole
         return true;
     }
 
-    public void Tick(TimeSpan elapsed) => calls?.Add("tick");
-    public void PointerMoved(Vector2 position) => Pointers.Add(position);
-    public void PointerPressed(bool extendSelection) => Presses.Add(extendSelection);
-    public void PointerReleased() => calls?.Add("release");
-    public void TextEntered(char character) => calls?.Add($"text:{character}");
-    public void KeyPressed(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard) => throw new NotSupportedException();
-    public void RequestReturn() => ReturnRequested?.Invoke();
-    public void RequestExit() => _exitRequested?.Invoke();
+    public void Tick(TimeSpan elapsed)
+    {
+        calls?.Add("tick");
+    }
+
+    public void PointerMoved(Vector2 position)
+    {
+        Pointers.Add(position);
+    }
+
+    public void PointerPressed(bool extendSelection)
+    {
+        Presses.Add(extendSelection);
+    }
+
+    public void PointerReleased()
+    {
+        calls?.Add("release");
+    }
+
+    public void TextEntered(char character)
+    {
+        calls?.Add($"text:{character}");
+    }
+
+    public void KeyPressed(DesktopKeyEvent key, Func<string?> readClipboard, Action<string> writeClipboard)
+    {
+        throw new NotSupportedException();
+    }
+
+    public void RequestReturn()
+    {
+        ReturnRequested?.Invoke();
+    }
+
+    public void RequestExit()
+    {
+        _exitRequested?.Invoke();
+    }
 
     public ValueTask DisposeAsync()
     {

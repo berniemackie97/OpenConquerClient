@@ -21,7 +21,10 @@ internal readonly ref struct GameUserAttrib10017
 
     private readonly GameMessageBuffer _message;
 
-    private GameUserAttrib10017(GameMessageBuffer message) => _message = message;
+    private GameUserAttrib10017(GameMessageBuffer message)
+    {
+        _message = message;
+    }
 
     internal uint TargetId => _message.ReadUInt32(4);
 
@@ -35,10 +38,16 @@ internal readonly ref struct GameUserAttrib10017
     internal int Count => Math.Clamp(DeclaredCount, 0, MaximumEntries);
 
     /// <summary>Parse has no size or count rule; every field is read from the native message buffer.</summary>
-    internal static GameUserAttrib10017 Read(GameMessageBuffer message) => new(message);
+    internal static GameUserAttrib10017 Read(GameMessageBuffer message)
+    {
+        return new GameUserAttrib10017(message);
+    }
 
     // Public only because foreach binds to a public GetEnumerator; the declaring type stays internal.
-    public Enumerator GetEnumerator() => new(_message, Count);
+    public Enumerator GetEnumerator()
+    {
+        return new Enumerator(_message, Count);
+    }
 
     public ref struct Enumerator
     {
@@ -65,7 +74,10 @@ internal readonly ref struct GameUserAttrib10017
             }
         }
 
-        public bool MoveNext() => ++_index < _count;
+        public bool MoveNext()
+        {
+            return ++_index < _count;
+        }
     }
 }
 

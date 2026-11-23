@@ -6,7 +6,6 @@ using OpenConquer.Rendering.OpenGL.Resources;
 
 namespace OpenConquer.Client.UI.Login.Controls;
 
-/// <summary>The Up, Over and Down textures of every login button, owned by one OpenGL context.</summary>
 internal sealed class LoginButtonPresentation : IDisposable
 {
     private readonly ResourceOwnership _ownership = new();
@@ -44,5 +43,8 @@ internal sealed class LoginButtonPresentation : IDisposable
         renderer.DrawSprite(_textures[(int)button, (int)state], bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 }

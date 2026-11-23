@@ -21,9 +21,15 @@ internal sealed class WorldMapTextureCache<TTexture>(int maximumTextures, long m
         private set;
     }
 
-    internal bool Fits(int additionalBytes) => Count < maximumTextures && additionalBytes <= maximumPixelBytes - PixelBytes;
+    internal bool Fits(int additionalBytes)
+    {
+        return Count < maximumTextures && additionalBytes <= maximumPixelBytes - PixelBytes;
+    }
 
-    internal void BeginPreparation() => _candidate.Clear();
+    internal void BeginPreparation()
+    {
+        _candidate.Clear();
+    }
 
     internal bool Keep(string path)
     {
@@ -54,8 +60,10 @@ internal sealed class WorldMapTextureCache<TTexture>(int maximumTextures, long m
         PixelBytes += pixelBytes;
     }
 
-    internal TTexture? Find(string path) =>
-        _textures.TryGetValue(path, out LinkedListNode<Entry>? node) ? node.Value.Texture : null;
+    internal TTexture? Find(string path)
+    {
+        return _textures.TryGetValue(path, out LinkedListNode<Entry>? node) ? node.Value.Texture : null;
+    }
 
     internal void EndPreparation(bool complete)
     {

@@ -167,7 +167,10 @@ internal sealed class FlashStage
         }
     }
 
-    public string SelectedText() => FocusedText?.SelectedText ?? string.Empty;
+    public string SelectedText()
+    {
+        return FocusedText?.SelectedText ?? string.Empty;
+    }
 
     public bool CutSelection()
     {
@@ -212,7 +215,10 @@ internal sealed class FlashStage
     }
 
     /// <summary>AS2 <c>Key.isDown</c> by virtual key code (13 Enter, 27 Escape).</summary>
-    public bool IsKeyDown(int keyCode) => _keysDown.Contains(keyCode);
+    public bool IsKeyDown(int keyCode)
+    {
+        return _keysDown.Contains(keyCode);
+    }
 
     public void SetKey(int keyCode, bool down)
     {
@@ -302,14 +308,16 @@ internal sealed class FlashStage
         RunPendingScripts();
     }
 
-    internal static FlashDisplayObject Create(FlashMovie movie, FlashPlacement placement, FlashClip parent) =>
-        movie.Character(placement.CharacterId) switch
+    internal static FlashDisplayObject Create(FlashMovie movie, FlashPlacement placement, FlashClip parent)
+    {
+        return movie.Character(placement.CharacterId) switch
         {
             FlashSpriteCharacter sprite => CreateClip(movie, sprite, placement, parent),
             FlashEditTextCharacter text => new FlashTextInstance(movie, text, placement, parent),
             FlashButtonCharacter button => new FlashButtonInstance(movie, button, placement, parent),
             FlashCharacter shape => new FlashShapeInstance(movie, shape, placement, parent),
         };
+    }
 
     internal void Detach(FlashDisplayObject removed)
     {
@@ -343,7 +351,10 @@ internal sealed class FlashStage
         }
     }
 
-    internal void QueueFrameScript(FlashClip clip, int frame) => _pendingScripts.Enqueue((clip, frame));
+    internal void QueueFrameScript(FlashClip clip, int frame)
+    {
+        _pendingScripts.Enqueue((clip, frame));
+    }
 
     internal void QueueInitialScripts(FlashClip clip)
     {

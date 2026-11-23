@@ -110,7 +110,10 @@ internal sealed class PlayScreen : Canvas, IDisposable
         _buttons[PlayButton.Low].Faded = recommended != GameMode.Low;
     }
 
-    public void ShowVersion(string? version) => _version.Text = version;
+    public void ShowVersion(string? version)
+    {
+        _version.Text = version;
+    }
 
     public void SetStartEnabled(bool enabled)
     {
@@ -183,34 +186,40 @@ internal sealed class PlayScreen : Canvas, IDisposable
     /// play.exe has no comctl32 v6 manifest, so its tooltips are the classic system ones: info-background yellow,
     /// black border and text, <c>TTM_SETMAXTIPWIDTH</c> 2000 (<c>Play.dat [Tip] MaxWidth</c>).
     /// </summary>
-    private static Style CreateTooltipStyle() => new(selector => selector.OfType<ToolTip>())
+    private static Style CreateTooltipStyle()
     {
-        Setters =
+        return new Style(selector => selector.OfType<ToolTip>())
         {
-            new Setter(TemplatedControl.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xE1))),
-            new Setter(TemplatedControl.ForegroundProperty, Brushes.Black),
-            new Setter(TemplatedControl.BorderBrushProperty, Brushes.Black),
-            new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
-            new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(0)),
-            new Setter(TemplatedControl.PaddingProperty, new Thickness(2, 1)),
-            new Setter(TemplatedControl.FontFamilyProperty, new FontFamily("Tahoma, Segoe UI, sans-serif")),
-            new Setter(TemplatedControl.FontSizeProperty, 11d),
-            new Setter(MaxWidthProperty, 2000d),
-        },
-    };
+            Setters =
+            {
+                new Setter(TemplatedControl.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xE1))),
+                new Setter(TemplatedControl.ForegroundProperty, Brushes.Black),
+                new Setter(TemplatedControl.BorderBrushProperty, Brushes.Black),
+                new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
+                new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(2, 1)),
+                new Setter(TemplatedControl.FontFamilyProperty, new FontFamily("Tahoma, Segoe UI, sans-serif")),
+                new Setter(TemplatedControl.FontSizeProperty, 11d),
+                new Setter(MaxWidthProperty, 2000d),
+            },
+        };
+    }
 
-    private static TextBlock CreateHintLine(string text, double width) => new()
+    private static TextBlock CreateHintLine(string text, double width)
     {
-        Text = text,
-        Width = width,
-        TextWrapping = double.IsNaN(width) ? TextWrapping.NoWrap : TextWrapping.Wrap,
-        FontFamily = s_dialogFont,
-        FontSize = 20,
-        LineHeight = 20,
-        Foreground = s_hintTextBrush,
-        // TextOut drew each line unclipped; only the hint control's own edge cut long lines.
-        ClipToBounds = false,
-    };
+        return new TextBlock
+        {
+            Text = text,
+            Width = width,
+            TextWrapping = double.IsNaN(width) ? TextWrapping.NoWrap : TextWrapping.Wrap,
+            FontFamily = s_dialogFont,
+            FontSize = 20,
+            LineHeight = 20,
+            Foreground = s_hintTextBrush,
+            // TextOut drew each line unclipped; only the hint control's own edge cut long lines.
+            ClipToBounds = false,
+        };
+    }
 
     private Image AddImage(PlayImage artwork, Point position)
     {
@@ -239,18 +248,21 @@ internal sealed class PlayScreen : Canvas, IDisposable
     }
 
     // The text painted on each button's art.
-    private static string AccessibleName(PlayButton button) => button switch
+    private static string AccessibleName(PlayButton button)
     {
-        PlayButton.High => "High Definition - Start",
-        PlayButton.Standard => "Standard Definition - Start",
-        PlayButton.Low => "Low Definition - Start",
-        PlayButton.Continue => "Continue",
-        PlayButton.Return => "Cancel",
-        PlayButton.Exit => "Exit",
-        PlayButton.Site => "Site",
-        PlayButton.Register => "Register",
-        _ => throw new ArgumentOutOfRangeException(nameof(button), button, "Unknown play button."),
-    };
+        return button switch
+        {
+            PlayButton.High => "High Definition - Start",
+            PlayButton.Standard => "Standard Definition - Start",
+            PlayButton.Low => "Low Definition - Start",
+            PlayButton.Continue => "Continue",
+            PlayButton.Return => "Cancel",
+            PlayButton.Exit => "Exit",
+            PlayButton.Site => "Site",
+            PlayButton.Register => "Register",
+            _ => throw new ArgumentOutOfRangeException(nameof(button), button, "Unknown play button."),
+        };
+    }
 
     private void Place(Control control, Point position)
     {

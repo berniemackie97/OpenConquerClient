@@ -25,10 +25,12 @@ internal readonly record struct MainHudSelectedSkillBounds
     public static int Width => MainHudSelectedSkillDefinition.Width;
     public static int Height => MainHudSelectedSkillDefinition.Height;
 
-    public bool Contains(int x, int y) =>
-        x >= X && y >= Y &&
-        x < (long)X + Width &&
-        y < (long)Y + Height;
+    public bool Contains(int x, int y)
+    {
+        return x >= X && y >= Y &&
+               x < (long)X + Width &&
+               y < (long)Y + Height;
+    }
 }
 
 internal readonly record struct MainHudSelectedSkillLayout
@@ -37,7 +39,10 @@ internal readonly record struct MainHudSelectedSkillLayout
 
     private readonly int _dialogOriginY;
 
-    private MainHudSelectedSkillLayout(int dialogOriginY) => _dialogOriginY = dialogOriginY;
+    private MainHudSelectedSkillLayout(int dialogOriginY)
+    {
+        _dialogOriginY = dialogOriginY;
+    }
 
     public static MainHudSelectedSkillLayout Create(LogicalRenderSize logicalRenderSize)
     {
@@ -51,6 +56,8 @@ internal readonly record struct MainHudSelectedSkillLayout
         return new MainHudSelectedSkillLayout(logicalRenderSize.Height - DialogHeight);
     }
 
-    public MainHudSelectedSkillBounds GetBounds() =>
-        new(MainHudSelectedSkillDefinition.LocalX, _dialogOriginY + MainHudSelectedSkillDefinition.LocalY);
+    public MainHudSelectedSkillBounds GetBounds()
+    {
+        return new MainHudSelectedSkillBounds(MainHudSelectedSkillDefinition.LocalX, _dialogOriginY + MainHudSelectedSkillDefinition.LocalY);
+    }
 }

@@ -5,20 +5,17 @@ namespace OpenConquer.Client.World;
 internal sealed class WorldHeroEquipment
 {
     private const int InventoryCapacity = 40;
-    // 1009 subtype 46 offset->slot map, ascending (CP2.3b audit 0x6EC20A..0x6EC458; native call order is 5-then-4, 16-then-15).
     private static ReadOnlySpan<byte> SnapshotSlots => [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 18];
 
     private readonly Dictionary<uint, WorldHeroItem> _inventory = [];
     private readonly WorldHeroItem?[] _tracked = new WorldHeroItem?[30];
     private readonly WorldHeroItem?[] _active = new WorldHeroItem?[19];
 
-    internal WorldHeroItem? GetActiveItem(int slot) => slot is >= 1 and <= 18
-        ? _active[slot] : throw new ArgumentOutOfRangeException(nameof(slot));
+    internal WorldHeroItem? GetActiveItem(int slot)
+    {
+        return slot is >= 1 and <= 18 ? _active[slot] : throw new ArgumentOutOfRangeException(nameof(slot));
+    }
 
-    /// <summary>
-    /// Applies a 1008 record. Only add (1) and update (3) are consumed. A record native skips is skipped: UID or type 0
-    /// fails <c>CItem_InitIdentityFromItemType</c> 0x67AD6B. The item-table lookup belongs to <see cref="WorldHeroModel"/>.
-    /// </summary>
     internal bool Apply(GameItemRecord1008 record)
     {
         if (record.ItemId == 0 || record.ItemTypeId == 0)
@@ -34,27 +31,24 @@ internal sealed class WorldHeroEquipment
         };
     }
 
-    // Native kind 1: positions 1..18 and 21..29 are tracked (CHeroItem__TrackItemAtPosition 0x6DB042/0x6DB050); other
-    // nonzero positions keep the item nowhere. Position 0 goes through CHeroItem__TryAddInventoryItem, which refuses a
-    // UID already in the inventory (0x6D9399) and a 41st item that is not an arrow (0x6D936B). Native can also leave a
-    // second reference at an old position; this store keeps one location per UID.
     private bool Add(GameItemRecord1008 record)
     {
         uint id = record.ItemId;
         byte position = record.Position;
+
         if (position != 0 && !IsTrackablePosition(position))
         {
             return false;
         }
 
-        if (position == 0 && (_inventory.ContainsKey(id) ||
-            (_inventory.Count >= InventoryCapacity && !IsArrow(record.ItemTypeId))))
+        if (position == 0 && (_inventory.ContainsKey(id) || (_inventory.Count >= InventoryCapacity && !IsArrow(record.ItemTypeId))))
         {
             return false;
         }
 
         WorldHeroItem item = new(record);
         int previous = FindTrackedPosition(id);
+
         if (previous != 0 && previous != position)
         {
             _tracked[previous] = null;
@@ -73,9 +67,6 @@ internal sealed class WorldHeroEquipment
         return true;
     }
 
-    // Native kind 3 (0x763570..0x7638A4): finds the UID in the inventory, then the tracked items; unknown UIDs are
-    // skipped. Fields are rewritten in place. An inventory item ignores +0x12. A tracked item is re-tracked at +0x12
-    // (0x763867), which is a no-op for a position TrackItemAtPosition does not accept, including 0.
     private bool Update(GameItemRecord1008 record)
     {
         uint id = record.ItemId;
@@ -93,16 +84,17 @@ internal sealed class WorldHeroEquipment
 
         byte position = record.Position;
         item.UpdateStats(record);
-        if (IsTrackablePosition(position))
+        if (!IsTrackablePosition(position))
         {
-            if (position != previous)
-            {
-                _tracked[previous] = null;
-            }
-
-            // Native always re-tracks, even the same position (0x763867), and retains matching active pointers.
-            Track(position, item);
+            return true;
         }
+
+        if (position != previous)
+        {
+            _tracked[previous] = null;
+        }
+
+        Track(position, item);
 
         return true;
     }
@@ -116,18 +108,20 @@ internal sealed class WorldHeroEquipment
         }
     }
 
-    private static bool IsTrackablePosition(uint position) => position is (>= 1 and <= 18) or (>= 21 and <= 29);
+    private static bool IsTrackablePosition(uint position)
+    {
+        return position is (>= 1 and <= 18) or (>= 21 and <= 29);
+    }
 
-    // CItem_IsArrow 0x5681F9: equipment category 0 (id % 10^7 / 10^5 == 10, 0x67AF1A) and subtype 50000
-    // (id % 10^5 / 10^4 * 10^4, 0x67B0B3).
-    private static bool IsArrow(uint typeId) => typeId % 10_000_000 / 100_000 == 10 && typeId % 100_000 / 10_000 == 5;
+    private static bool IsArrow(uint typeId)
+    {
+        return typeId % 10_000_000 / 100_000 == 10 && typeId % 100_000 / 10_000 == 5;
+    }
 
-    /// <summary>Applies a 1009 item mutation. Only subtypes 3, 5, 6, 17 and 46 are consumed.</summary>
     internal bool Apply(GameItem1009 packet)
     {
         ushort subtype = packet.Subtype;
-        if (subtype is not (GameItem1009.RemoveItem or GameItem1009.EquipItem or GameItem1009.UnequipItem or
-            GameItem1009.UpdateDurability or GameItem1009.EquipmentSnapshot))
+        if (subtype is not (GameItem1009.RemoveItem or GameItem1009.EquipItem or GameItem1009.UnequipItem or GameItem1009.UpdateDurability or GameItem1009.EquipmentSnapshot))
         {
             return false;
         }
@@ -160,20 +154,21 @@ internal sealed class WorldHeroEquipment
     {
         bool removed = _inventory.Remove(id);
         int position = FindTrackedPosition(id);
-        if (position != 0)
+        if (position == 0)
         {
-            _tracked[position] = null;
-            ClearActive(id);
-            removed = true;
+            return removed;
         }
+
+        _tracked[position] = null;
+        ClearActive(id);
+        removed = true;
 
         return removed;
     }
 
     private bool EquipItem(GameItem1009 packet, uint itemId, uint position)
     {
-        if (position is < 1 or >= 30 or 19 or 20 ||
-            !_inventory.TryGetValue(itemId, out WorldHeroItem? item))
+        if (position is < 1 or >= 30 or 19 or 20 || !_inventory.TryGetValue(itemId, out WorldHeroItem? item))
         {
             return false;
         }
@@ -183,12 +178,14 @@ internal sealed class WorldHeroEquipment
         {
             uint displacedId = packet.GetListedId(index);
             int displacedPosition = FindTrackedPosition(displacedId);
-            if (displacedPosition != 0 && _tracked[displacedPosition] is { } displaced)
+            if (displacedPosition == 0 || _tracked[displacedPosition] is not { } displaced)
             {
-                _tracked[displacedPosition] = null;
-                _inventory[displacedId] = displaced;
-                ClearActive(displacedId);
+                continue;
             }
+
+            _tracked[displacedPosition] = null;
+            _inventory[displacedId] = displaced;
+            ClearActive(displacedId);
         }
 
         _inventory.Remove(itemId);
@@ -203,8 +200,7 @@ internal sealed class WorldHeroEquipment
 
     private bool UnequipItem(uint position)
     {
-        if (position is < 1 or >= 30 or 19 or 20 ||
-            _tracked[position] is not { } item)
+        if (position is < 1 or >= 30 or 19 or 20 || _tracked[position] is not { } item)
         {
             return false;
         }
@@ -213,25 +209,27 @@ internal sealed class WorldHeroEquipment
         _inventory[item.Id] = item;
         ClearActive(item.Id);
 
-        if (position is 4 or 24 && item.TypeId % 10_000_000 / 100_000 == 5 &&
-            item.TypeId % 100_000 / 1000 == 0)
+        if (position is not (4 or 24) || item.TypeId % 10_000_000 / 100_000 != 5 || item.TypeId % 100_000 / 1000 != 0)
         {
-            int pairedPosition = (int)position + 1;
-            if (_tracked[pairedPosition] is { } paired)
-            {
-                _tracked[pairedPosition] = null;
-                _inventory[paired.Id] = paired;
-                ClearActive(paired.Id);
-            }
+            return true;
         }
+
+        int pairedPosition = (int)position + 1;
+        if (_tracked[pairedPosition] is not { } paired)
+        {
+            return true;
+        }
+
+        _tracked[pairedPosition] = null;
+        _inventory[paired.Id] = paired;
+        ClearActive(paired.Id);
 
         return true;
     }
 
     private bool UpdateDurability(uint durability, uint position)
     {
-        if (position is < 1 or >= 30 or 19 or 20 ||
-            _tracked[position] is not { } item)
+        if (position is < 1 or >= 30 or 19 or 20 || _tracked[position] is not { } item)
         {
             return false;
         }

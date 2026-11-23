@@ -6,14 +6,11 @@ using OpenConquer.Rendering.Text.Rendering;
 
 namespace OpenConquer.Client.UI.Login.Selection;
 
-/// <summary>Glyph resources and the visible catalog labels for one OpenGL context.</summary>
 internal sealed class LoginSelectionLabels : IDisposable
 {
-    // Edit text 35 (sprite 179 nameTxt) and 184 (sprite 259 pageTxt) use device Arial 14 / Arial Bold 20.
     private const string FieldFontFamily = "Arial";
     private const int ServerFontHeight = 14;
     private const int PageFontHeight = 20;
-    // Region captions are a modern substitute for the text baked into each region movie.
     private const int RegionFontHeight = 13;
     private const int RegionHorizontalPadding = 8;
     private static readonly SpriteColor s_regionColor = new(73, 42, 26, 255);
@@ -84,27 +81,25 @@ internal sealed class LoginSelectionLabels : IDisposable
         ReadOnlySpan<LoginRect> fields = _layout.ServerLabels;
         for (int slot = 0; slot < _serverLabels.Length; slot++)
         {
-            if (_serverLabels[slot] is { } visible)
+            if (_serverLabels[slot] is not { } visible)
             {
-                // Edit text 35 neither autosizes nor wraps: a longer name is cut at the field box, gutter included.
-                LoginRect field = fields[slot];
-                int gutter = _layout.Scale(2);
-                using OpenGLRenderer.ClipScope clip = renderer.Clip(field.X - gutter, field.Y - gutter, field.Width + 2 * gutter,
-                    field.Height + 2 * gutter);
-                text.Draw(renderer, visible.Layout, s_serverStyle, visible.X, visible.Y);
+                continue;
             }
+
+            LoginRect field = fields[slot];
+            int gutter = _layout.Scale(2);
+            using OpenGLRenderer.ClipScope clip = renderer.Clip(field.X - gutter, field.Y - gutter, field.Width + 2 * gutter, field.Height + 2 * gutter);
+            text.Draw(renderer, visible.Layout, s_serverStyle, visible.X, visible.Y);
         }
     }
 
-    /// <summary>Sprite 259 <c>showPage()</c>: "page/count", centered in pageTxt.</summary>
     public void DrawRegionPage(OpenGLRenderer renderer, LoginServerSelection selection)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(selection);
 
-        OpenGLTextContext text = _pageText ??= new OpenGLTextContext(_graphicsDevice, FieldFontFamily, Math.Max(1, _layout.Scale(PageFontHeight)),
-            effectiveCodePage: 0, antialiasEnabled: true, bold: true);
+        OpenGLTextContext text = _pageText ??= new OpenGLTextContext(_graphicsDevice, FieldFontFamily, Math.Max(1, _layout.Scale(PageFontHeight)), effectiveCodePage: 0, antialiasEnabled: true, bold: true);
 
         if (_pageLabel is null || _pageLabelPage != selection.RegionPage || _pageLabelCount != selection.RegionPageCount)
         {
@@ -150,10 +145,8 @@ internal sealed class LoginSelectionLabels : IDisposable
             ResetContexts();
         }
 
-        _regionText ??= new OpenGLTextContext(_graphicsDevice, fontToken: null, nominalPixelHeight: Math.Max(1, _layout.Scale(RegionFontHeight)),
-            effectiveCodePage: 0, antialiasEnabled: true);
-        _serverText ??= new OpenGLTextContext(_graphicsDevice, FieldFontFamily, Math.Max(1, _layout.Scale(ServerFontHeight)),
-            effectiveCodePage: 0, antialiasEnabled: true);
+        _regionText ??= new OpenGLTextContext(_graphicsDevice, fontToken: null, nominalPixelHeight: Math.Max(1, _layout.Scale(RegionFontHeight)), effectiveCodePage: 0, antialiasEnabled: true);
+        _serverText ??= new OpenGLTextContext(_graphicsDevice, FieldFontFamily, Math.Max(1, _layout.Scale(ServerFontHeight)), effectiveCodePage: 0, antialiasEnabled: true);
 
         if (!ReferenceEquals(_catalog, selection.Catalog) || _regionPage != selection.RegionPage || !ReferenceEquals(_region, selection.SelectedRegion))
         {
@@ -171,11 +164,13 @@ internal sealed class LoginSelectionLabels : IDisposable
 
         for (int slot = 0; slot < regions.Length; slot++)
         {
-            if (selection.RegionAtSlot(slot) is { } region)
+            if (selection.RegionAtSlot(slot) is not { } region)
             {
-                LoginRect tile = _layout.RegionTiles[slot];
-                regions[slot] = Fit(_regionText!, region.DisplayName, layout => CenterInk(layout, tile, padding));
+                continue;
             }
+
+            LoginRect tile = _layout.RegionTiles[slot];
+            regions[slot] = Fit(_regionText!, region.DisplayName, layout => CenterInk(layout, tile, padding));
         }
 
         for (int slot = 0; slot < servers.Length; slot++)
@@ -229,10 +224,6 @@ internal sealed class LoginSelectionLabels : IDisposable
         return layout.HasMissingGlyphs ? text.LayoutUnicode("?") : layout;
     }
 
-    /// <summary>
-    /// Flash center alignment: the line's advance width centered in the field's text area with its first line
-    /// at the top; a line wider than the field starts at its left edge.
-    /// </summary>
     private static Label? PlaceInField(OpenGLTextLayout layout, LoginRect field)
     {
         if (layout.HasMissingGlyphs)
@@ -254,7 +245,10 @@ internal sealed class LoginSelectionLabels : IDisposable
         return new Label(layout, x, y);
     }
 
-    private static NativeTextRenderOptions Style(SpriteColor color) => new(NativeTextRenderStyle.Normal, color, color, 0, 0, NativeTextVertexColors.Solid(color));
+    private static NativeTextRenderOptions Style(SpriteColor color)
+    {
+        return new NativeTextRenderOptions(NativeTextRenderStyle.Normal, color, color, 0, 0, NativeTextVertexColors.Solid(color));
+    }
 
     private void ResetContexts()
     {

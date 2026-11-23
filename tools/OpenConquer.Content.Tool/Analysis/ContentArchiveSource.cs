@@ -77,7 +77,10 @@ internal sealed class ContentArchiveSource : IClientContentSource, IDisposable
         return total;
     }
 
-    public void Dispose() => _archive.Dispose();
+    public void Dispose()
+    {
+        _archive.Dispose();
+    }
 
     private static Dictionary<string, ZipArchiveEntry> ValidateEntries(ZipArchive archive, ContentManifest manifest)
     {

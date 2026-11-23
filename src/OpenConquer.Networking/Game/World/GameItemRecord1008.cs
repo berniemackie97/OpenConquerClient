@@ -22,12 +22,15 @@ internal readonly record struct GameItemRecord1008(
     internal const byte UpdateAction = 3;
 
     /// <summary>Reads the fields from the native message buffer. Parse has no size rule; fields past a short record read zero.</summary>
-    internal static GameItemRecord1008 Read(GameMessageBuffer message) => new(
-        message.ReadUInt32(4),
-        message.ReadUInt32(8),
-        message.ReadUInt16(12),
-        message.ReadByte(16),
-        message.ReadByte(18),
-        message.ReadByte(33),
-        message.ReadByte(36));
+    internal static GameItemRecord1008 Read(GameMessageBuffer message)
+    {
+        return new GameItemRecord1008(
+            message.ReadUInt32(4),
+            message.ReadUInt32(8),
+            message.ReadUInt16(12),
+            message.ReadByte(16),
+            message.ReadByte(18),
+            message.ReadByte(33),
+            message.ReadByte(36));
+    }
 }

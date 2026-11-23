@@ -35,10 +35,21 @@ internal sealed class GameModeStore : IGameModeStore
         _directory = directory;
     }
 
-    public static GameModeStore ForCurrentUser() => new(LauncherConfigurationDirectory.ForCurrentUser());
+    public static GameModeStore ForCurrentUser()
+    {
+        return new GameModeStore(LauncherConfigurationDirectory.ForCurrentUser());
+    }
 
-    public Task<GameModeRecord> LoadAsync(CancellationToken cancellationToken) =>
-        Task.Run(() => { lock (_gate) { return Read(cancellationToken).Record; } }, cancellationToken);
+    public Task<GameModeRecord> LoadAsync(CancellationToken cancellationToken)
+    {
+        return Task.Run(() =>
+        {
+            lock (_gate)
+            {
+                return Read(cancellationToken).Record;
+            }
+        }, cancellationToken);
+    }
 
     /// <summary>Counts one start in <paramref name="mode"/>; returns false when the file could not be written.</summary>
     public Task<bool> RecordStartAsync(GameMode mode, CancellationToken cancellationToken)
@@ -165,13 +176,16 @@ internal sealed class GameModeStore : IGameModeStore
         catch (IOException) { return (unused, false, true); }
     }
 
-    private static string Name(GameMode mode) => mode switch
+    private static string Name(GameMode mode)
     {
-        GameMode.Standard => "standard",
-        GameMode.High => "high",
-        GameMode.Low => "low",
-        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown start mode."),
-    };
+        return mode switch
+        {
+            GameMode.Standard => "standard",
+            GameMode.High => "high",
+            GameMode.Low => "low",
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown start mode."),
+        };
+    }
 
     private static bool TryReadCount(JsonElement root, string name, out int value)
     {

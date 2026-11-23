@@ -41,9 +41,18 @@ public static class LoginServerArtwork
             new(72, 18, 18, 18, Columns: 4, StatusStateCount)),
     ];
 
-    public static LoginArtworkSheet Describe(Layer layer) => s_layers[(int)Validate(layer)].Sheet;
+    public static LoginArtworkSheet Describe(Layer layer)
+    {
+        return s_layers[(int)Validate(layer)].Sheet;
+    }
 
-    public static RgbaImage Load(Layer layer) => EmbeddedMedia.Load(s_layers[(int)Validate(layer)].Image);
+    public static RgbaImage Load(Layer layer)
+    {
+        return EmbeddedMedia.Load(s_layers[(int)Validate(layer)].Image);
+    }
 
-    private static Layer Validate(Layer layer) => Enum.IsDefined(layer) ? layer : throw new ArgumentOutOfRangeException(nameof(layer));
+    private static Layer Validate(Layer layer)
+    {
+        return Enum.IsDefined(layer) ? layer : throw new ArgumentOutOfRangeException(nameof(layer));
+    }
 }

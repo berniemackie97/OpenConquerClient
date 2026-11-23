@@ -38,9 +38,15 @@ internal readonly record struct MainHudStatusHintLayout
     public int LogicalWidth => _logicalWidth;
     public int DialogOriginY => _dialogOriginY;
 
-    public (int X, int Y) ToDialogLocal(int logicalX, int logicalY) => (logicalX, logicalY - _dialogOriginY);
+    public (int X, int Y) ToDialogLocal(int logicalX, int logicalY)
+    {
+        return (logicalX, logicalY - _dialogOriginY);
+    }
 
-    public int GetRegionX(int localX, bool alternateLayout) => alternateLayout ? _logicalWidth - localX : localX;
+    public int GetRegionX(int localX, bool alternateLayout)
+    {
+        return alternateLayout ? _logicalWidth - localX : localX;
+    }
 
     public static MainHudStatusHintRectangle GetRectangle(int hotspot)
     {

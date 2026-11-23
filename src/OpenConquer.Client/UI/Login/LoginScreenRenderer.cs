@@ -11,10 +11,6 @@ using OpenConquer.Rendering.OpenGL;
 
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>
-/// Every OpenGL resource of the login screen for one context. Draws the screen in the same order as the retail
-/// <c>start.dat</c> root display list.
-/// </summary>
 internal sealed class LoginScreenRenderer : IDisposable
 {
     private readonly ResourceOwnership _ownership = new();
@@ -35,8 +31,7 @@ internal sealed class LoginScreenRenderer : IDisposable
     private readonly LoginLoadingPresentation? _loadingPresentation;
     private readonly LoginLoadingScreen? _loading;
 
-    public LoginScreenRenderer(OpenGLGraphicsDevice graphicsDevice, LoginScreen screen, TimeProvider clock,
-        IClientContentSource? contentSource = null, LoginLoadingScreen? loading = null)
+    public LoginScreenRenderer(OpenGLGraphicsDevice graphicsDevice, LoginScreen screen, TimeProvider clock, IClientContentSource? contentSource = null, LoginLoadingScreen? loading = null)
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
         ArgumentNullException.ThrowIfNull(screen);
@@ -61,8 +56,8 @@ internal sealed class LoginScreenRenderer : IDisposable
             _opening = _ownership.Track(new LoginOpeningPresentation(graphicsDevice, layout));
             if (loading is not null)
             {
-                _loadingPresentation = _ownership.Track(new LoginLoadingPresentation(graphicsDevice, layout,
-                    contentSource ?? throw new ArgumentNullException(nameof(contentSource)), loading.Timeline));
+                _loadingPresentation = _ownership.Track(new LoginLoadingPresentation(graphicsDevice, layout, contentSource
+                    ?? throw new ArgumentNullException(nameof(contentSource)), loading.Timeline));
             }
         }
         catch
@@ -72,10 +67,8 @@ internal sealed class LoginScreenRenderer : IDisposable
         }
     }
 
-    /// <summary>Glyph measurements of the credential fields, for caret placement.</summary>
     public ILoginCaretLocator CaretLocator => _credentials;
 
-    /// <summary>Glyph measurements of the Sign Up fields, for caret placement.</summary>
     public ILoginRegistrationCaretLocator RegistrationCaretLocator => _registration;
 
     public void Draw(OpenGLRenderer renderer, LoginScreen screen, LoginDirectoryAvailability directoryAvailability)
@@ -139,5 +132,8 @@ internal sealed class LoginScreenRenderer : IDisposable
         _opening.Draw(renderer, screen.Clock.Frame);
     }
 
-    public void Dispose() => _ownership.Dispose();
+    public void Dispose()
+    {
+        _ownership.Dispose();
+    }
 }

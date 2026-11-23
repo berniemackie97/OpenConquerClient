@@ -43,7 +43,10 @@ internal sealed class MainHudStatusHintState
     public bool CanRenderDance => CanShow(DanceCategory);
     public bool CanRenderEquipmentSwitch => CanShow(EquipmentSwitchCategory);
 
-    public void SetSkillDragActive(bool active) => SkillDragActive = active;
+    public void SetSkillDragActive(bool active)
+    {
+        SkillDragActive = active;
+    }
 
     public void Select(int hotspot)
     {
@@ -70,8 +73,15 @@ internal sealed class MainHudStatusHintState
         SelectContext(MagicCategory, fullType);
     }
 
-    public void SelectDance(uint type) => SelectContext(DanceCategory, type);
-    public void SelectEquipmentSwitch(uint context) => SelectContext(EquipmentSwitchCategory, context);
+    public void SelectDance(uint type)
+    {
+        SelectContext(DanceCategory, type);
+    }
+
+    public void SelectEquipmentSwitch(uint context)
+    {
+        SelectContext(EquipmentSwitchCategory, context);
+    }
 
     public void Clear()
     {
@@ -80,7 +90,10 @@ internal sealed class MainHudStatusHintState
         IsVisible = false;
     }
 
-    private bool CanShow(int category) => IsVisible && !SkillDragActive && Category == category;
+    private bool CanShow(int category)
+    {
+        return IsVisible && !SkillDragActive && Category == category;
+    }
 
     private void SelectContext(int category, uint parameter)
     {

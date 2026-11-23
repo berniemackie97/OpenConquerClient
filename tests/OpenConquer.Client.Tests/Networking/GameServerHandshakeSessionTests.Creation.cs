@@ -353,8 +353,11 @@ public sealed partial class GameServerHandshakeSessionTests
         }
     }
 
-    internal static Task CoordinatorCreationPeerAsync(TcpListener listener, bool enterWorld, CancellationToken token) =>
-        CreationPeerAsync(listener, enterWorld ? CreationScript.AcceptAndEnterWorld : CreationScript.NewRoleOnly, token, coordinator: true);
+    internal static Task CoordinatorCreationPeerAsync(TcpListener listener, bool enterWorld, CancellationToken token)
+    {
+        return CreationPeerAsync(listener, enterWorld ? CreationScript.AcceptAndEnterWorld : CreationScript.NewRoleOnly,
+            token, coordinator: true);
+    }
 
     private sealed record WorldEntryOptions(bool NativeShortFrames = false, bool ClientStateAppliedMap = false,
         uint PackedAppearance = 0, bool Scrambled = false, bool ExpectHeartbeat = false,
@@ -480,9 +483,11 @@ public sealed partial class GameServerHandshakeSessionTests
         Assert.Equal(0, await ObserveCloseAsync(peer.Stream, token));
     }
 
-    private static async Task RequireMissionCatalogAsync(SecuredTestPeer peer, CancellationToken token) =>
+    private static async Task RequireMissionCatalogAsync(SecuredTestPeer peer, CancellationToken token)
+    {
         Assert.Equal(Convert.FromHexString("20006E0403000200580200000000000000000000590200000000000000000000"),
             await peer.ReadPacketAsync(32, token));
+    }
 
     private static async Task WorldEntryPeerAsync(SecuredTestPeer peer, WorldEntryOptions options, CancellationToken token)
     {
@@ -609,7 +614,10 @@ public sealed partial class GameServerHandshakeSessionTests
         return packet;
     }
 
-    private static string Zeros(int byteCount) => new('0', byteCount * 2);
+    private static string Zeros(int byteCount)
+    {
+        return new string('0', byteCount * 2);
+    }
 
     /// <summary>A 1004 talk with three empty entries before the message, as the GameServer composes it.</summary>
     private static byte[] Talk(ushort channel, string message)

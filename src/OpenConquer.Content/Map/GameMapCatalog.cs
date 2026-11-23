@@ -13,13 +13,18 @@ public sealed class GameMapCatalog
     private const int MaximumPathBytes = 63;
     private readonly Dictionary<uint, Terrain> _terrains;
 
-    private GameMapCatalog(Dictionary<uint, Terrain> terrains) => _terrains = terrains;
+    private GameMapCatalog(Dictionary<uint, Terrain> terrains)
+    {
+        _terrains = terrains;
+    }
 
     public int Count => _terrains.Count;
     public IReadOnlyCollection<uint> MapDataIds => _terrains.Keys;
 
-    public bool TryGetTerrain(uint mapDataId, [NotNullWhen(true)] out Terrain? terrain) =>
-        _terrains.TryGetValue(mapDataId, out terrain);
+    public bool TryGetTerrain(uint mapDataId, [NotNullWhen(true)] out Terrain? terrain)
+    {
+        return _terrains.TryGetValue(mapDataId, out terrain);
+    }
 
     public static GameMapCatalog Load(IClientContentSource contentSource)
     {

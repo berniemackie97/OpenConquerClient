@@ -7,5 +7,8 @@ internal sealed class MainHudSelectedSkillCooldownState
         get; private set;
     }
 
-    public void SetRemainingMilliseconds(uint remainingMilliseconds) => RemainingMilliseconds = remainingMilliseconds;
+    public void SetRemainingMilliseconds(uint remainingMilliseconds)
+    {
+        RemainingMilliseconds = remainingMilliseconds;
+    }
 }

@@ -55,6 +55,8 @@ public sealed class GameWeather1016Tests
     [InlineData(12u, 0u, 0u, false)]
     [InlineData(1u, 1023u, 0u, false)]
     [InlineData(1u, 0u, 360u, false)]
-    public void HasSupportedValues_AppliesTheClientIngressRanges(uint kind, uint intensity, uint direction, bool supported) =>
+    public void HasSupportedValues_AppliesTheClientIngressRanges(uint kind, uint intensity, uint direction, bool supported)
+    {
         Assert.Equal(supported, new GameWeather1016(kind, intensity, direction, 0).HasSupportedValues);
+    }
 }

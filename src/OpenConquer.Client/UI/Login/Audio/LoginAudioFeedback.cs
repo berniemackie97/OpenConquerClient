@@ -5,12 +5,7 @@ using OpenConquer.Content.Login;
 
 namespace OpenConquer.Client.UI.Login.Audio;
 
-/// <summary>
-/// Rollover and typing sounds for the parts of the stage that are not buttons: region and server tiles and the
-/// two credential fields (flashLogin.ini <c>rollOver_region</c>, <c>rollOver_server</c>, <c>rollOver_account</c>,
-/// <c>rollOver_password</c> and <c>keyboardDown_0..2</c>).
-/// </summary>
-internal sealed class LoginAudioFeedback
+internal sealed class LoginAudioFeedback(LoginStageLayout layout)
 {
     private enum Area
     {
@@ -23,19 +18,12 @@ internal sealed class LoginAudioFeedback
 
     private static readonly LoginAudioCue[] s_keySounds = [LoginAudioCue.KeyOne, LoginAudioCue.KeyTwo, LoginAudioCue.KeyThree];
 
-    private readonly LoginStageLayout _layout;
-    private readonly LoginCredentialLayout _fields;
+    private readonly LoginStageLayout _layout = layout ?? throw new ArgumentNullException(nameof(layout));
+    private readonly LoginCredentialLayout _fields = LoginCredentialLayout.Create(layout);
     private Area _area;
     private int _slot = -1;
     private int _keySound;
 
-    public LoginAudioFeedback(LoginStageLayout layout)
-    {
-        _layout = layout ?? throw new ArgumentNullException(nameof(layout));
-        _fields = LoginCredentialLayout.Create(layout);
-    }
-
-    /// <summary>Returns the rollover sound for the area the pointer just entered, if it has one.</summary>
     public LoginAudioCue? PointerMoved(bool mapped, int x, int y, LoginServerSelection selection)
     {
         ArgumentNullException.ThrowIfNull(selection);
@@ -56,7 +44,6 @@ internal sealed class LoginAudioFeedback
         };
     }
 
-    /// <summary>The three typing sounds play in turn.</summary>
     public LoginAudioCue NextKeySound()
     {
         LoginAudioCue cue = s_keySounds[_keySound];
@@ -82,7 +69,6 @@ internal sealed class LoginAudioFeedback
             return (Area.Password, 0);
         }
 
-        // The selected region does not roll over; every enabled server tile does.
         int region = LoginStageLayout.HitSlot(_layout.RegionHitAreas, x, y);
         if (region >= 0 && region != selection.SelectedRegionSlot && selection.RegionAtSlot(region) is not null)
         {

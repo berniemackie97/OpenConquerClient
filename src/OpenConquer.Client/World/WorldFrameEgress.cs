@@ -2,11 +2,6 @@ using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Client.World;
 
-/// <summary>
-/// Sends the client's own world frames on the session's single outbound lane, one write at a time. Native sends the
-/// heartbeat synchronously from the frame tick; here a due timer waits while a previous write is still in flight, so
-/// the native timer rule decides only once the lane is idle. A failed write is rethrown on the next pump.
-/// </summary>
 internal sealed class WorldFrameEgress : IAsyncDisposable
 {
     internal const int MaximumQueuedResponses = 4096;
@@ -21,10 +16,8 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
     private Task? _disposeTask;
     private bool _checkHeartbeatBeforeNextReply;
 
-    internal WorldFrameEgress(Func<uint, CancellationToken, Task> sendLatencyTick,
-        Func<uint, uint, uint, CancellationToken, Task> sendLatencyReport,
-        Func<WorldCorrectionReply, uint, CancellationToken, Task> sendCorrection,
-        Func<GameWorldActionResponse, uint, CancellationToken, Task>? sendActionReply = null)
+    internal WorldFrameEgress(Func<uint, CancellationToken, Task> sendLatencyTick, Func<uint, uint, uint, CancellationToken, Task> sendLatencyReport,
+        Func<WorldCorrectionReply, uint, CancellationToken, Task> sendCorrection, Func<GameWorldActionResponse, uint, CancellationToken, Task>? sendActionReply = null)
     {
         _sendLatencyTick = sendLatencyTick ?? throw new ArgumentNullException(nameof(sendLatencyTick));
         _sendLatencyReport = sendLatencyReport ?? throw new ArgumentNullException(nameof(sendLatencyReport));
@@ -32,8 +25,10 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
         _sendActionReply = sendActionReply;
     }
 
-    internal void QueuePositionCorrection(WorldCorrectionReply correction) =>
+    internal void QueuePositionCorrection(WorldCorrectionReply correction)
+    {
         Enqueue(new WorldOutboundReply(correction, default));
+    }
 
     internal void QueueWorldActionResponse(GameWorldActionResponse response)
     {
@@ -60,6 +55,7 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(heartbeat);
         ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
+
         if (_pending is { IsCompleted: true } completed)
         {
             _pending = null;
@@ -82,16 +78,21 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
             }
         }
 
-        if (_responses.TryDequeue(out WorldOutboundReply reply))
+        if (!_responses.TryDequeue(out WorldOutboundReply reply))
         {
-            _checkHeartbeatBeforeNextReply = true;
-            _pending = reply.Correction is { } correction
-                ? _sendCorrection(correction, now, _stopping.Token)
-                : _sendActionReply!(reply.ActionResponse, now, _stopping.Token);
+            return;
         }
+
+        _checkHeartbeatBeforeNextReply = true;
+        _pending = reply.Correction is { } correction
+            ? _sendCorrection(correction, now, _stopping.Token)
+            : _sendActionReply!(reply.ActionResponse, now, _stopping.Token);
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {
@@ -107,8 +108,7 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
         }).ConfigureAwait(false);
     }
 
-    private async Task SendAsync(WorldHeartbeatSend send, uint localAddress, uint latency, uint now,
-        CancellationToken cancellationToken)
+    private async Task SendAsync(WorldHeartbeatSend send, uint localAddress, uint latency, uint now, CancellationToken cancellationToken)
     {
         await _sendLatencyTick(now, cancellationToken).ConfigureAwait(false);
         if (send == WorldHeartbeatSend.LatencyTickAndReport)
@@ -120,8 +120,7 @@ internal sealed class WorldFrameEgress : IAsyncDisposable
 
 internal readonly record struct WorldCorrectionReply(ushort X, ushort Y, byte DirectionIndex);
 
-internal readonly record struct WorldOutboundReply(WorldCorrectionReply? Correction,
-    GameWorldActionResponse ActionResponse);
+internal readonly record struct WorldOutboundReply(WorldCorrectionReply? Correction, GameWorldActionResponse ActionResponse);
 
 internal sealed class WorldResponseQueueFullException : IOException
 {

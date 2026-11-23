@@ -137,7 +137,10 @@ internal sealed class LoginRegistrationCoordinator : IAsyncDisposable
         _feedback = result;
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {
@@ -160,13 +163,15 @@ internal sealed class LoginRegistrationCoordinator : IAsyncDisposable
     }
 
     /// <summary>The same realm checks a login makes before it connects.</summary>
-    private bool IsUsable(LoginServerSelection selection, [NotNullWhen(true)] SignedLoginCatalog? catalog) =>
-        catalog is not null && catalog.IsCurrent(_clock.GetUtcNow()) &&
-        ReferenceEquals(selection.Catalog, catalog.View) &&
-        selection.SelectedRegion is { } region &&
-        selection.SelectedServer is { } server &&
-        catalog.TryGetAccountEndpoint(region, server, out LoginAccountEndpoint? endpoint) &&
-        endpoint is not null && endpoint.Host == "127.0.0.1";
+    private bool IsUsable(LoginServerSelection selection, [NotNullWhen(true)] SignedLoginCatalog? catalog)
+    {
+        return catalog is not null && catalog.IsCurrent(_clock.GetUtcNow()) &&
+               ReferenceEquals(selection.Catalog, catalog.View) &&
+               selection.SelectedRegion is { } region &&
+               selection.SelectedServer is { } server &&
+               catalog.TryGetAccountEndpoint(region, server, out LoginAccountEndpoint? endpoint) &&
+               endpoint is not null && endpoint.Host == "127.0.0.1";
+    }
 
     private bool Refuse(LoginRegistrationNotice notice, LoginRegistrationField field)
     {
@@ -212,9 +217,13 @@ internal sealed class LoginRegistrationCoordinator : IAsyncDisposable
         }
     }
 
-    private static LoginRegistrationFeedback Editing(LoginRegistrationNotice notice, LoginRegistrationField field) =>
-        Editing(LoginFailure.Registration(notice), field);
+    private static LoginRegistrationFeedback Editing(LoginRegistrationNotice notice, LoginRegistrationField field)
+    {
+        return Editing(LoginFailure.Registration(notice), field);
+    }
 
-    private static LoginRegistrationFeedback Editing(LoginFailure notice, LoginRegistrationField field) =>
-        new(LoginRegistrationStatus.Editing, notice, field);
+    private static LoginRegistrationFeedback Editing(LoginFailure notice, LoginRegistrationField field)
+    {
+        return new LoginRegistrationFeedback(LoginRegistrationStatus.Editing, notice, field);
+    }
 }

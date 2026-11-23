@@ -12,7 +12,6 @@ using OpenConquer.Rendering.Presentation;
 
 namespace OpenConquer.Client.UI.Login;
 
-/// <summary>Owns login UI, discovery, attempts, registration, loading presentation and startup audio.</summary>
 internal sealed class ClientLogin : IDisposable
 {
     private readonly IClientContentSource _content;
@@ -92,7 +91,6 @@ internal sealed class ClientLogin : IDisposable
         }
         catch
         {
-            // Release partially constructed owners while preserving the initialization failure.
             ClientShutdown cleanup = new();
             cleanup.Run(() => attempts?.DisposeAsync().AsTask().GetAwaiter().GetResult());
             cleanup.Run(() => registration?.DisposeAsync().AsTask().GetAwaiter().GetResult());
@@ -143,12 +141,35 @@ internal sealed class ClientLogin : IDisposable
         Loading?.Update(status, worldPresentable, elapsed);
     }
 
-    public void StartLoading() => Loading?.Start();
-    public void ResetLoading() => Loading?.Reset();
-    public void PlaySound(LoginAudioCue cue) => _audio?.Play(cue);
-    public void SetWorldActive(bool active) => _audio?.SetWorldActive(active);
-    public void SetFocused(bool focused) => _audio?.SetFocused(focused);
-    public void CancelCatalog() => _catalog?.Cancel();
+    public void StartLoading()
+    {
+        Loading?.Start();
+    }
+
+    public void ResetLoading()
+    {
+        Loading?.Reset();
+    }
+
+    public void PlaySound(LoginAudioCue cue)
+    {
+        _audio?.Play(cue);
+    }
+
+    public void SetWorldActive(bool active)
+    {
+        _audio?.SetWorldActive(active);
+    }
+
+    public void SetFocused(bool focused)
+    {
+        _audio?.SetFocused(focused);
+    }
+
+    public void CancelCatalog()
+    {
+        _catalog?.Cancel();
+    }
 
     public void CreateGraphics(OpenGLGraphicsDevice device, ResourceOwnership graphics)
     {
@@ -157,11 +178,13 @@ internal sealed class ClientLogin : IDisposable
 
     public void BindCaret()
     {
-        if (_renderer is { } renderer)
+        if (_renderer is not { } renderer)
         {
-            Screen.CaretLocator = renderer.CaretLocator;
-            Screen.RegistrationCaretLocator = renderer.RegistrationCaretLocator;
+            return;
         }
+
+        Screen.CaretLocator = renderer.CaretLocator;
+        Screen.RegistrationCaretLocator = renderer.RegistrationCaretLocator;
     }
 
     public void ReleaseGraphicsBinding()
@@ -171,11 +194,15 @@ internal sealed class ClientLogin : IDisposable
         _renderer = null;
     }
 
-    public void Draw(OpenGLRenderer renderer) =>
-        (_renderer ?? throw new InvalidOperationException("The login renderer is not initialized."))
-            .Draw(renderer, Screen, _catalog?.Availability(Screen.Selection) ?? default);
+    public void Draw(OpenGLRenderer renderer)
+    {
+        (_renderer ?? throw new InvalidOperationException("The login renderer is not initialized.")).Draw(renderer, Screen, _catalog?.Availability(Screen.Selection) ?? default);
+    }
 
-    public void TrackPointer(PixelPoint point) => _lastPointer = point;
+    public void TrackPointer(PixelPoint point)
+    {
+        _lastPointer = point;
+    }
 
     public void Advance(TimeSpan elapsed, OpenGLRenderer renderer)
     {
@@ -183,7 +210,6 @@ internal sealed class ClientLogin : IDisposable
         ContinueCredentialDrag(renderer);
     }
 
-    /// <summary>A held credential selection keeps tracking the pointer, clamped to the stage, beyond the field.</summary>
     public void ContinueCredentialDrag(OpenGLRenderer renderer)
     {
         if (Screen.IsSelectingText && !renderer.Viewport.IsEmpty)
@@ -192,7 +218,6 @@ internal sealed class ClientLogin : IDisposable
         }
     }
 
-    /// <summary>Services outlive network close and the window, but are released before role fonts and login UI.</summary>
     public void ReleaseServices()
     {
         LoginCatalogBinding? catalog = _catalog;
@@ -227,8 +252,7 @@ internal sealed class ClientLogin : IDisposable
         {
             return;
         }
-        if (Loading is { Visible: false } loading &&
-            Screen.Credentials.AccountLength != 0 && Screen.Credentials.PasswordLength != 0)
+        if (Loading is { Visible: false } loading && Screen.Credentials.AccountLength != 0 && Screen.Credentials.PasswordLength != 0)
         {
             Screen.BeginLoading();
             loading.Start();

@@ -75,6 +75,8 @@ public sealed class ContentReadProfilerTests
             ContentReadProfiler.Measure(new ClientContentRoot(source.RootPath), manifest));
     }
 
-    private static ContentManifest CreateManifest(ContentManifestEntry[] entries) =>
-        new("5517", new string('0', 64), entries);
+    private static ContentManifest CreateManifest(ContentManifestEntry[] entries)
+    {
+        return new ContentManifest("5517", new string('0', 64), entries);
+    }
 }

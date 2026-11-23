@@ -115,12 +115,16 @@ internal sealed unsafe class FreeTypeGlyphRasterizer : IGlyphRasterizer
         return new RasterizedGlyph(widthPixels, heightPixels, glyphSlot->BitmapLeft, checked(_baselinePixels - glyphSlot->BitmapTop), Convert26Dot6ToPixels(glyphSlot->Advance.X), coverage);
     }
 
-    private static int GdiAscentPixels(FreeTypeFace face, int nominalPixelHeight) => face.UseHandle(nativeFace =>
+    private static int GdiAscentPixels(FreeTypeFace face, int nominalPixelHeight)
     {
-        FreeTypeFaceRecord* record = (FreeTypeFaceRecord*)nativeFace;
-        return record->UnitsPerEm == 0 ? nominalPixelHeight
-            : (int)Math.Ceiling(record->Ascender * (double)Math.Abs(nominalPixelHeight) / record->UnitsPerEm);
-    });
+        return face.UseHandle(nativeFace =>
+        {
+            FreeTypeFaceRecord* record = (FreeTypeFaceRecord*)nativeFace;
+            return record->UnitsPerEm == 0
+                ? nominalPixelHeight
+                : (int)Math.Ceiling(record->Ascender * (double)Math.Abs(nominalPixelHeight) / record->UnitsPerEm);
+        });
+    }
 
     private static int Convert26Dot6ToPixels(CLong value)
     {

@@ -111,7 +111,10 @@ internal sealed class MainHudMagicHintStateStore : IMainHudMagicHintSource
 {
     private MainHudMagicHintRuntimeSnapshot? _snapshot;
 
-    public MainHudMagicHintRuntimeSnapshot? Capture() => Volatile.Read(ref _snapshot);
+    public MainHudMagicHintRuntimeSnapshot? Capture()
+    {
+        return Volatile.Read(ref _snapshot);
+    }
 
     public void Publish(MainHudMagicHintRuntimeSnapshot snapshot)
     {
@@ -119,5 +122,8 @@ internal sealed class MainHudMagicHintStateStore : IMainHudMagicHintSource
         Volatile.Write(ref _snapshot, snapshot);
     }
 
-    public void Clear() => Volatile.Write(ref _snapshot, null);
+    public void Clear()
+    {
+        Volatile.Write(ref _snapshot, null);
+    }
 }

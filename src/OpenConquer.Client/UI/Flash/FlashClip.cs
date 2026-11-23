@@ -121,12 +121,21 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
     private FlashClip? _hitArea;
 
     /// <summary>AS2 dynamic properties of this clip (variables its scripts define), case-insensitive as in SWF 6.</summary>
-    public T? Get<T>(string name) => _variables.TryGetValue(name, out object? value) && value is T typed ? typed : default;
+    public T? Get<T>(string name)
+    {
+        return _variables.TryGetValue(name, out object? value) && value is T typed ? typed : default;
+    }
 
-    public void Set(string name, object? value) => _variables[name] = value;
+    public void Set(string name, object? value)
+    {
+        _variables[name] = value;
+    }
 
     /// <summary>True when this clip defines the variable, even with an undefined value.</summary>
-    public bool TryGet(string name, out object? value) => _variables.TryGetValue(name, out value);
+    public bool TryGet(string name, out object? value)
+    {
+        return _variables.TryGetValue(name, out value);
+    }
 
     public FlashDisplayObject? Child(string name)
     {
@@ -145,17 +154,32 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
     /// AS2 <c>clip.name</c> where the reference may be undefined, as in a handler that outlives the frame holding the
     /// child; calls on an undefined clip do nothing in Flash, so callers use <c>?.</c>.
     /// </summary>
-    public FlashClip? ClipOrNull(string name) => Child(name) as FlashClip;
+    public FlashClip? ClipOrNull(string name)
+    {
+        return Child(name) as FlashClip;
+    }
 
-    public FlashClip ChildClip(string name) =>
-        Child(name) as FlashClip ?? throw new InvalidOperationException($"Clip '{Name ?? TimelineKey}' has no child clip '{name}'.");
+    public FlashClip ChildClip(string name)
+    {
+        return Child(name) as FlashClip ??
+               throw new InvalidOperationException($"Clip '{Name ?? TimelineKey}' has no child clip '{name}'.");
+    }
 
-    public FlashTextInstance ChildText(string name) =>
-        Child(name) as FlashTextInstance ?? throw new InvalidOperationException($"Clip '{Name ?? TimelineKey}' has no text field '{name}'.");
+    public FlashTextInstance ChildText(string name)
+    {
+        return Child(name) as FlashTextInstance ??
+               throw new InvalidOperationException($"Clip '{Name ?? TimelineKey}' has no text field '{name}'.");
+    }
 
-    public void Play() => IsPlaying = true;
+    public void Play()
+    {
+        IsPlaying = true;
+    }
 
-    public void Stop() => IsPlaying = false;
+    public void Stop()
+    {
+        IsPlaying = false;
+    }
 
     public void GotoAndPlay(int frame)
     {
@@ -163,7 +187,10 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
         Seek(frame);
     }
 
-    public void GotoAndPlay(string label) => GotoAndPlay(FrameOf(label));
+    public void GotoAndPlay(string label)
+    {
+        GotoAndPlay(FrameOf(label));
+    }
 
     public void GotoAndStop(int frame)
     {
@@ -171,7 +198,10 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
         Seek(frame);
     }
 
-    public void GotoAndStop(string label) => GotoAndStop(FrameOf(label));
+    public void GotoAndStop(string label)
+    {
+        GotoAndStop(FrameOf(label));
+    }
 
     /// <summary>AS2 <c>nextFrame()</c>: stops on the next frame (or stays on the last).</summary>
     public void NextFrame()
@@ -245,19 +275,40 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
         Seek(1);
     }
 
-    void IFlashPointerTarget.RollOver() => Invoke(OnRollOver);
+    void IFlashPointerTarget.RollOver()
+    {
+        Invoke(OnRollOver);
+    }
 
-    void IFlashPointerTarget.RollOut() => Invoke(OnRollOut);
+    void IFlashPointerTarget.RollOut()
+    {
+        Invoke(OnRollOut);
+    }
 
-    void IFlashPointerTarget.Press() => Invoke(OnPress);
+    void IFlashPointerTarget.Press()
+    {
+        Invoke(OnPress);
+    }
 
-    void IFlashPointerTarget.Release() => Invoke(OnRelease);
+    void IFlashPointerTarget.Release()
+    {
+        Invoke(OnRelease);
+    }
 
-    void IFlashPointerTarget.ReleaseOutside() => Invoke(OnReleaseOutside);
+    void IFlashPointerTarget.ReleaseOutside()
+    {
+        Invoke(OnReleaseOutside);
+    }
 
-    void IFlashPointerTarget.DragOut() => Invoke(OnDragOut);
+    void IFlashPointerTarget.DragOut()
+    {
+        Invoke(OnDragOut);
+    }
 
-    void IFlashPointerTarget.DragOver() => Invoke(OnDragOver);
+    void IFlashPointerTarget.DragOver()
+    {
+        Invoke(OnDragOver);
+    }
 
     private void Invoke(Action<FlashClip>? handler)
     {
@@ -285,10 +336,12 @@ internal sealed class FlashClip : FlashDisplayObject, IFlashPointerTarget
         return Rebuild(1);
     }
 
-    private int FrameOf(string label) =>
-        Timeline.Labels.TryGetValue(label, out int frame)
+    private int FrameOf(string label)
+    {
+        return Timeline.Labels.TryGetValue(label, out int frame)
             ? frame
             : throw new InvalidOperationException($"Clip '{Name ?? TimelineKey}' has no frame label '{label}'.");
+    }
 
     private void Seek(int frame)
     {

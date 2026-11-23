@@ -254,16 +254,50 @@ public sealed class OpenGLDrawStateCleanupTests
 
         public List<string> Calls { get; } = [];
 
-        public void Fail(string operation, Exception exception) => _failures.Add(operation, exception);
+        public void Fail(string operation, Exception exception)
+        {
+            _failures.Add(operation, exception);
+        }
 
-        public void ActivateTextureZero() => Record(nameof(ActivateTextureZero));
-        public void UnbindSamplerZero() => Record(nameof(UnbindSamplerZero));
-        public void UnbindTexture2D() => Record(nameof(UnbindTexture2D));
-        public void UnbindVertexArray() => Record(nameof(UnbindVertexArray));
-        public void UnbindArrayBuffer() => Record(nameof(UnbindArrayBuffer));
-        public void UnbindProgram() => Record(nameof(UnbindProgram));
-        public void DisableBlending() => Record(nameof(DisableBlending));
-        public void EnableDepthWrites() => Record(nameof(EnableDepthWrites));
+        public void ActivateTextureZero()
+        {
+            Record(nameof(ActivateTextureZero));
+        }
+
+        public void UnbindSamplerZero()
+        {
+            Record(nameof(UnbindSamplerZero));
+        }
+
+        public void UnbindTexture2D()
+        {
+            Record(nameof(UnbindTexture2D));
+        }
+
+        public void UnbindVertexArray()
+        {
+            Record(nameof(UnbindVertexArray));
+        }
+
+        public void UnbindArrayBuffer()
+        {
+            Record(nameof(UnbindArrayBuffer));
+        }
+
+        public void UnbindProgram()
+        {
+            Record(nameof(UnbindProgram));
+        }
+
+        public void DisableBlending()
+        {
+            Record(nameof(DisableBlending));
+        }
+
+        public void EnableDepthWrites()
+        {
+            Record(nameof(EnableDepthWrites));
+        }
 
         private void Record(string operation)
         {

@@ -56,5 +56,9 @@ internal sealed class MainHudEquipmentHintRenderer
         _shared.NormalTextContext.Draw(renderer, text, _shared.NormalTextOptions, geometry.TextX, geometry.TextY);
     }
 
-    private OpenGLTextLayout CreateLayout(ReadOnlyMemory<byte> encoded) => _shared.NormalTextContext.Layout(encoded.Span, recognizeDataIcons: true, dataIconWidthPixels: TextIconWidth);
+    private OpenGLTextLayout CreateLayout(ReadOnlyMemory<byte> encoded)
+    {
+        return _shared.NormalTextContext.Layout(encoded.Span, recognizeDataIcons: true,
+            dataIconWidthPixels: TextIconWidth);
+    }
 }

@@ -32,7 +32,10 @@ internal readonly ref struct GameItem1009
 
     private readonly GameMessageBuffer _message;
 
-    private GameItem1009(GameMessageBuffer message) => _message = message;
+    private GameItem1009(GameMessageBuffer message)
+    {
+        _message = message;
+    }
 
     /// <summary>The header size word.</summary>
     internal int Length => _message.Length;
@@ -55,14 +58,23 @@ internal readonly ref struct GameItem1009
     internal int ListCount => DeclaredListCount > ListCapacity ? ListCapacity : (int)DeclaredListCount;
 
     /// <summary>Reads list entry <paramref name="index"/> at +84 + 4*index.</summary>
-    internal uint GetListedId(int index) => (uint)index < ListCapacity
-        ? _message.ReadUInt32(ListOffset + index * 4)
-        : throw new ArgumentOutOfRangeException(nameof(index));
+    internal uint GetListedId(int index)
+    {
+        return (uint)index < ListCapacity
+            ? _message.ReadUInt32(ListOffset + index * 4)
+            : throw new ArgumentOutOfRangeException(nameof(index));
+    }
 
     /// <summary>Reads snapshot UID <paramref name="index"/> (0..12) at +0x20 + 4*index.</summary>
-    internal uint GetSnapshotItemId(int index) => (uint)index < SnapshotItemCount
-        ? _message.ReadUInt32(SnapshotOffset + index * 4)
-        : throw new ArgumentOutOfRangeException(nameof(index));
+    internal uint GetSnapshotItemId(int index)
+    {
+        return (uint)index < SnapshotItemCount
+            ? _message.ReadUInt32(SnapshotOffset + index * 4)
+            : throw new ArgumentOutOfRangeException(nameof(index));
+    }
 
-    internal static GameItem1009 Read(GameMessageBuffer message) => new(message);
+    internal static GameItem1009 Read(GameMessageBuffer message)
+    {
+        return new GameItem1009(message);
+    }
 }

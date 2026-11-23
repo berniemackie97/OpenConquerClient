@@ -195,8 +195,11 @@ public sealed class GameMapSceneryAniBindingsTests
         return GameMapSceneSections.Parse(combined, 0, 1004);
     }
 
-    private static byte[] ReadSourceSections() =>
-        File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "ani", "mapscene-newbie-sections.ani"));
+    private static byte[] ReadSourceSections()
+    {
+        return File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "RetailFixture", "ani",
+            "mapscene-newbie-sections.ani"));
+    }
 
     private static GameMapSceneSections ReadScene()
     {

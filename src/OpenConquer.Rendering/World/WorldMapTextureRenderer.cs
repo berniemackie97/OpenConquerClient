@@ -28,8 +28,10 @@ public sealed class WorldMapTextureRenderer : IDisposable
     }
 
     /// <summary>Creates a context-owned texture cache fed by a separately owned map image loader.</summary>
-    public static WorldMapTextureRenderer CreateStreaming(WorldMapImageLoader images, OpenGLGraphicsDevice device) =>
-        new(images, device, StreamingTextureTarget, StreamingPixelByteTarget);
+    public static WorldMapTextureRenderer CreateStreaming(WorldMapImageLoader images, OpenGLGraphicsDevice device)
+    {
+        return new WorldMapTextureRenderer(images, device, StreamingTextureTarget, StreamingPixelByteTarget);
+    }
 
     internal WorldMapTextureRenderer(WorldMapImageLoader stream, OpenGLGraphicsDevice device,
         int maximumTextures, long maximumPixelBytes)
@@ -105,8 +107,10 @@ public sealed class WorldMapTextureRenderer : IDisposable
     }
 
     internal void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldScenerySprite> sprites,
-        WorldPuzzleProjection projection, SpriteColor worldColor) =>
+        WorldPuzzleProjection projection, SpriteColor worldColor)
+    {
         Draw(renderer, sprites, projection, worldColor, 0, sprites.Count);
+    }
 
     internal void Draw(OpenGLRenderer renderer, IReadOnlyList<WorldScenerySprite> sprites,
         WorldPuzzleProjection projection, SpriteColor worldColor, int start, int count)
@@ -195,8 +199,11 @@ public sealed class WorldMapTextureRenderer : IDisposable
         return false;
     }
 
-    private OpenGLTexture2D GetPrepared(string path) =>
-        _textures.Find(path) ?? throw new InvalidOperationException($"World frame '{path}' has not been prepared.");
+    private OpenGLTexture2D GetPrepared(string path)
+    {
+        return _textures.Find(path) ??
+               throw new InvalidOperationException($"World frame '{path}' has not been prepared.");
+    }
 
     public void Dispose()
     {

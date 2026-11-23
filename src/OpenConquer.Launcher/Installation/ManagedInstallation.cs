@@ -67,7 +67,12 @@ internal sealed class ManagedInstallation
         get;
     }
 
-    public static ManagedInstallation Create(string rootPath, string clientRootPath, string manifestPath, string releaseManifestPath, string releaseSignaturePath, string clientExecutablePath, ManagedReleaseIdentity release) => Create(rootPath, rootPath, clientRootPath, manifestPath, releaseManifestPath, releaseSignaturePath, clientExecutablePath, release);
+    public static ManagedInstallation Create(string rootPath, string clientRootPath, string manifestPath, string releaseManifestPath, string releaseSignaturePath, string clientExecutablePath, ManagedReleaseIdentity release)
+    {
+        return Create(rootPath, rootPath, clientRootPath, manifestPath, releaseManifestPath, releaseSignaturePath,
+            clientExecutablePath, release);
+    }
+
     public static ManagedInstallation Create(string rootPath, string releaseRootPath, string clientRootPath, string manifestPath, string releaseManifestPath, string releaseSignaturePath, string clientExecutablePath, ManagedReleaseIdentity release, string? activeReleaseId = null, string? fallbackReleaseId = null)
     {
         ArgumentNullException.ThrowIfNull(release);

@@ -64,8 +64,9 @@ public sealed class WorldHeroMaxStatsTests
                 hasTransformLook: false, lifeTierDigit: 0));
     }
 
-    private static WorldHeroAttributes Hero(uint profession) =>
-        WorldHeroAttributes.FromCharacter(new GameCharacterInfo1006
+    private static WorldHeroAttributes Hero(uint profession)
+    {
+        return WorldHeroAttributes.FromCharacter(new GameCharacterInfo1006
         {
             EntityId = 1001,
             Strength = 5,
@@ -74,4 +75,5 @@ public sealed class WorldHeroMaxStatsTests
             Spirit = 8,
             CurrentProfession = (byte)profession,
         });
+    }
 }

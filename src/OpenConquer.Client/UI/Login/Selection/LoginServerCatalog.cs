@@ -7,7 +7,6 @@ using OpenConquer.Networking.Authentication;
 
 namespace OpenConquer.Client.UI.Login.Selection;
 
-/// <summary>Display identity only. AccountServer routing and catalog authority are separate concerns.</summary>
 internal sealed class LoginServer
 {
     public string Id
@@ -82,10 +81,6 @@ internal sealed class LoginRegion
     }
 }
 
-/// <summary>
-/// Read-only, size-limited catalog data for the login screen. Only a trusted catalog source may create one.
-/// An empty catalog doesn't allow selection, networking or account login.
-/// </summary>
 internal sealed class LoginServerCatalog
 {
     internal const int MaximumRegions = 64;
@@ -158,7 +153,10 @@ internal static class LoginCatalogText
         return value;
     }
 
-    public static string ValidateDisplayName(string value, string parameterName) => ValidateName(value, parameterName, maxLength: 48);
+    public static string ValidateDisplayName(string value, string parameterName)
+    {
+        return ValidateName(value, parameterName, maxLength: 48);
+    }
 
     public static string ValidateName(string value, string parameterName, int maxLength)
     {

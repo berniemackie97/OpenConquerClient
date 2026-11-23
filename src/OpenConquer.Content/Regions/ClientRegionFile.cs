@@ -4,7 +4,10 @@ namespace OpenConquer.Content.Regions;
 
 public readonly record struct ClientRegionRectangle(int Left, int Top, int Right, int Bottom)
 {
-    public bool Contains(int x, int y) => x >= Left && x < Right && y >= Top && y < Bottom;
+    public bool Contains(int x, int y)
+    {
+        return x >= Left && x < Right && y >= Top && y < Bottom;
+    }
 }
 
 /// <summary>

@@ -28,8 +28,12 @@ public sealed class C3ModelData
     }
     public int PayloadBytes => _files.Values.Sum(f => f.Length);
 
-    public ReadOnlyMemory<byte> Source(string path) => _files.TryGetValue(NormalizePath(path), out ReadOnlyMemory<byte> bytes)
-        ? bytes : throw new InvalidDataException($"Model dependency '{path}' is missing.");
+    public ReadOnlyMemory<byte> Source(string path)
+    {
+        return _files.TryGetValue(NormalizePath(path), out ReadOnlyMemory<byte> bytes)
+            ? bytes
+            : throw new InvalidDataException($"Model dependency '{path}' is missing.");
+    }
 
     public static C3ModelData Create(Guid id, IEnumerable<C3ResolvedPart> parts, IEnumerable<C3ModelClip> clips,
         IEnumerable<string> virtualMeshNames, IReadOnlyDictionary<string, byte[]> files)
@@ -183,6 +187,8 @@ public sealed class C3ModelData
         }
     }
 
-    internal static string NormalizePath(string path) =>
-        ClientContentPath.NormalizeVirtualPath(path, nameof(path), 512).ToLowerInvariant();
+    internal static string NormalizePath(string path)
+    {
+        return ClientContentPath.NormalizeVirtualPath(path, nameof(path), 512).ToLowerInvariant();
+    }
 }

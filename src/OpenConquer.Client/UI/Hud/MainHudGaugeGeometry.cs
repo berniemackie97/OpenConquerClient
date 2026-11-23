@@ -79,8 +79,15 @@ internal readonly record struct MainHudGaugeDrawSequence
         get;
     }
 
-    public static MainHudGaugeDrawSequence Single(MainHudGaugeDraw draw) => new(1, draw, default);
-    public static MainHudGaugeDrawSequence Pair(MainHudGaugeDraw first, MainHudGaugeDraw second) => new(2, first, second);
+    public static MainHudGaugeDrawSequence Single(MainHudGaugeDraw draw)
+    {
+        return new MainHudGaugeDrawSequence(1, draw, default);
+    }
+
+    public static MainHudGaugeDrawSequence Pair(MainHudGaugeDraw first, MainHudGaugeDraw second)
+    {
+        return new MainHudGaugeDrawSequence(2, first, second);
+    }
 }
 
 internal static class MainHudGaugeGeometry

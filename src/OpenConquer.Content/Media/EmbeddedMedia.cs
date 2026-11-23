@@ -13,8 +13,11 @@ internal readonly record struct EmbeddedImage(string Path, int Width, int Height
 /// </summary>
 internal static class EmbeddedMedia
 {
-    public static RgbaImage Load(EmbeddedImage image) =>
-        new(image.Width, image.Height, Read(image.Path, checked(image.Width * image.Height * 4), image.Sha256, compressed: true));
+    public static RgbaImage Load(EmbeddedImage image)
+    {
+        return new RgbaImage(image.Width, image.Height,
+            Read(image.Path, checked(image.Width * image.Height * 4), image.Sha256, compressed: true));
+    }
 
     public static byte[] Read(string path, int length, string sha256, bool compressed)
     {

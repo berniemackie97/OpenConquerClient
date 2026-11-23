@@ -254,7 +254,10 @@ public sealed class LoginScreenTests : IDisposable
         Assert.False(screen.LoadingQuit.IsOpen);
     }
 
-    public void Dispose() => Directory.Delete(_folder, recursive: true);
+    public void Dispose()
+    {
+        Directory.Delete(_folder, recursive: true);
+    }
 
     private LoginScreen Create(out LoginAccountHistory history)
     {
@@ -273,7 +276,10 @@ public sealed class LoginScreenTests : IDisposable
         _sounds.Clear();
     }
 
-    private static void HoldDialog(LoginScreen screen) => Advance(screen, frames: LoginAccountArtwork.DialogHeldFrame);
+    private static void HoldDialog(LoginScreen screen)
+    {
+        Advance(screen, frames: LoginAccountArtwork.DialogHeldFrame);
+    }
 
     private static void Advance(LoginScreen screen, int frames)
     {

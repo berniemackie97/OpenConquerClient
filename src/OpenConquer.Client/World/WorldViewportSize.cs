@@ -5,8 +5,7 @@ namespace OpenConquer.Client.World;
 
 internal static class WorldViewportSize
 {
-    internal static LogicalRenderSize FromFramebuffer(LogicalRenderSize stage, PixelSize framebuffer,
-        LogicalRenderSize backdropExtent, int maximumRenderTargetDimension)
+    internal static LogicalRenderSize FromFramebuffer(LogicalRenderSize stage, PixelSize framebuffer, LogicalRenderSize backdropExtent, int maximumRenderTargetDimension)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(framebuffer.Width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(framebuffer.Height);
@@ -18,11 +17,13 @@ internal static class WorldViewportSize
         int widthLimit = Math.Min(backdropExtent.Width, maximumRenderTargetDimension);
         long width = (long)Math.Round((double)height * framebuffer.Width / framebuffer.Height);
 
-        if (width > widthLimit)
+        if (width <= widthLimit)
         {
-            width = widthLimit;
-            height = Math.Max(1, (int)Math.Round((double)width * framebuffer.Height / framebuffer.Width));
+            return new LogicalRenderSize(Math.Max(1, (int)width), height);
         }
+
+        width = widthLimit;
+        height = Math.Max(1, (int)Math.Round((double)width * framebuffer.Height / framebuffer.Width));
 
         return new LogicalRenderSize(Math.Max(1, (int)width), height);
     }

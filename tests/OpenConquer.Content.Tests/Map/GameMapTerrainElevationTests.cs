@@ -81,9 +81,11 @@ public sealed class GameMapTerrainElevationTests
     }
 
     private static GameMapTerrainObject Terrain(int width, int height, int anchorOffsetX, int anchorOffsetY,
-        short[] deltas) =>
-        new("ani/MapScene.ani", "Test", 0, 0, 100, width, height, 0, anchorOffsetX, anchorOffsetY, 0,
+        short[] deltas)
+    {
+        return new GameMapTerrainObject("ani/MapScene.ani", "Test", 0, 0, 100, width, height, 0, anchorOffsetX, anchorOffsetY, 0,
             [.. deltas.Select(static delta => new GameMapTerrainCell(0, 0, delta))]);
+    }
 
     private static GameMapTerrainScenePlacement Placement(int x, int y, GameMapTerrainObject terrain)
     {

@@ -32,6 +32,8 @@ internal sealed class FlashScriptTable
         }
     }
 
-    internal Action<FlashClip>? Find(string movie, string timeline, int frame) =>
-        _scripts.TryGetValue((movie, timeline, frame), out Action<FlashClip>? script) ? script : null;
+    internal Action<FlashClip>? Find(string movie, string timeline, int frame)
+    {
+        return _scripts.TryGetValue((movie, timeline, frame), out Action<FlashClip>? script) ? script : null;
+    }
 }

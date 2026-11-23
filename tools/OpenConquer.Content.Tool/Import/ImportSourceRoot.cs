@@ -40,7 +40,10 @@ internal sealed class ImportSourceRoot
     }
     public IClientContentSource ContentSource => _packagedContentSource;
 
-    public bool ContainsLooseFile(string path) => _contentRoot.TryResolveFile(path, out _);
+    public bool ContainsLooseFile(string path)
+    {
+        return _contentRoot.TryResolveFile(path, out _);
+    }
 
     /// <summary>
     /// Validates <paramref name="rootPath"/> and reads its identity marker.
@@ -98,6 +101,8 @@ internal sealed class ImportSourceRoot
         return _packagedContentSource.OpenRequiredRead(requirement.ContentPath, ContentLookupMode.PackageOnly);
     }
 
-    private string GetSourceRelativePath(FileInfo file) =>
-        Path.GetRelativePath(RootPath, file.FullName).Replace('\\', '/');
+    private string GetSourceRelativePath(FileInfo file)
+    {
+        return Path.GetRelativePath(RootPath, file.FullName).Replace('\\', '/');
+    }
 }

@@ -31,8 +31,15 @@ internal sealed class MainHudQuickbarState
         get; private set;
     }
 
-    public void SetInteractionEnabled(bool enabled) => InteractionEnabled = enabled;
-    public void SetPickupEnabled(bool enabled) => PickupEnabled = enabled;
+    public void SetInteractionEnabled(bool enabled)
+    {
+        InteractionEnabled = enabled;
+    }
+
+    public void SetPickupEnabled(bool enabled)
+    {
+        PickupEnabled = enabled;
+    }
 
     public void SetHover(int columnOneBased, int rowOneBased, uint payload, uint contentId)
     {

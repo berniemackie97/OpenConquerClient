@@ -5,33 +5,22 @@ using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Client.UI.Role;
 
-/// <summary>How a create-role request ended.</summary>
 internal enum RoleCreationOutcomeKind
 {
-    /// <summary>The GameServer refused the name; the stage stays open for another request.</summary>
     Refused,
-
-    /// <summary>The created character passed the existing-character bootstrap and its world entry is ready.</summary>
     Admitted,
-
-    /// <summary>The cancel (<c>CMD_DRIVERBACK</c>) was sent; the socket is closed.</summary>
     Cancelled,
-
-    /// <summary>The transport failed, timed out or broke the protocol; the socket is closed.</summary>
     Failed,
 }
 
-internal sealed record RoleCreationOutcome(RoleCreationOutcomeKind Kind, string? Refusal = null,
-    GameWorldEntrySnapshot? World = null, Exception? Failure = null)
+internal sealed record RoleCreationOutcome(RoleCreationOutcomeKind Kind, string? Refusal = null, GameWorldEntrySnapshot? World = null, Exception? Failure = null)
 {
-    public override string ToString() => $"{nameof(RoleCreationOutcome)} {{ Kind = {Kind} }}";
+    public override string ToString()
+    {
+        return $"{nameof(RoleCreationOutcome)} {{ Kind = {Kind} }}";
+    }
 }
 
-/// <summary>
-/// Owns the authenticated GameServer session behind the create-role screen and runs one exchange at a time on it:
-/// the 1001 request and its result, the repeated 1052 proof and the existing-character bootstrap, or the cancel.
-/// The UI thread starts exchanges and collects their outcomes; loading texts arrive through <see cref="TryDequeueLoadingMessage"/>.
-/// </summary>
 internal sealed class RoleCreationExchange(GameServerHandshakeSession game, RoleCreationText text, TimeProvider clock) : IAsyncDisposable
 {
     private static readonly TimeSpan s_networkTimeout = TimeSpan.FromSeconds(10);
@@ -52,7 +41,6 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         Start(() => CreateAsync(name, body, profession, _stopping.Token));
     }
 
-    /// <summary>Sends the cancel, or aborts the request in flight; either way the session ends.</summary>
     public void Cancel()
     {
         ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
@@ -87,7 +75,8 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         }
 
         _pending = null;
-        outcome = completed.IsCompletedSuccessfully ? completed.Result
+        outcome = completed.IsCompletedSuccessfully
+            ? completed.Result
             : new RoleCreationOutcome(RoleCreationOutcomeKind.Failed, Failure: completed.Exception?.GetBaseException() ??
                 new OperationCanceledException("The create-role exchange was cancelled."));
         if (outcome.Kind is RoleCreationOutcomeKind.Failed)
@@ -98,7 +87,6 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         return true;
     }
 
-    /// <summary>Hands the session to the world after an admitted outcome; this exchange no longer disposes it.</summary>
     public GameServerHandshakeSession TransferGame()
     {
         ObjectDisposedException.ThrowIf(_disposeTask is not null, this);
@@ -111,7 +99,10 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         return _game;
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+    }
 
     private async Task DisposeCoreAsync()
     {
@@ -150,8 +141,7 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         await _game.SendCharacterCreationAsync(name, body, profession, s_networkTimeout, cancellationToken).ConfigureAwait(false);
         _loadingMessages.Enqueue("PROGRESS|1");
 
-        GameCharacterCreationOutcome response = await _game.ReadCharacterCreationResultAsync(s_networkTimeout, cancellationToken)
-            .ConfigureAwait(false);
+        GameCharacterCreationOutcome response = await _game.ReadCharacterCreationResultAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         if (response.Kind == GameCharacterCreationKind.Refused)
         {
             return new RoleCreationOutcome(RoleCreationOutcomeKind.Refused, Refusal: _text.Refusal(response.RefusalBytes.Span));
@@ -171,8 +161,7 @@ internal sealed class RoleCreationExchange(GameServerHandshakeSession game, Role
         _ = await _game.ReadExistingCharacterPreludeAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         GameCharacterInfo1006 character = await _game.ReadCharacterInfoAsync(s_networkTimeout, cancellationToken).ConfigureAwait(false);
         GameWorldEntrySnapshot world = await GameWorldEntryBootstrap.RunAsync(_game, character,
-                () => _loadingMessages.Enqueue("LOADING_TRACE|" + _text.CreatingMaps), clock: clock, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+                () => _loadingMessages.Enqueue("LOADING_TRACE|" + _text.CreatingMaps), clock: clock, cancellationToken: cancellationToken).ConfigureAwait(false);
         return new RoleCreationOutcome(RoleCreationOutcomeKind.Admitted, World: world);
     }
 

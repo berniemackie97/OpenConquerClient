@@ -2,18 +2,17 @@ using OpenConquer.Networking.Game.Login;
 
 namespace OpenConquer.Client.World;
 
-internal readonly record struct WorldHeroAttributes(
-    uint Strength, uint Agility, uint Vitality, uint Spirit,
-    uint Level, uint Profession, uint RebirthCount, uint UnspentAttributePoints,
-    uint CurrentLife, uint CurrentMana, uint CurrentStamina,
-    uint MaximumLifeOverride, uint MaximumManaOverride, uint OverlayLifeBonus,
-    ulong Experience, uint SkillGaugePercent, ulong StatusLow, ulong StatusHigh)
+internal readonly record struct WorldHeroAttributes(uint Strength, uint Agility, uint Vitality, uint Spirit, uint Level, uint Profession,
+    uint RebirthCount, uint UnspentAttributePoints, uint CurrentLife, uint CurrentMana, uint CurrentStamina, uint MaximumLifeOverride,
+    uint MaximumManaOverride, uint OverlayLifeBonus, ulong Experience, uint SkillGaugePercent, ulong StatusLow, ulong StatusHigh)
 {
-    internal static WorldHeroAttributes FromCharacter(GameCharacterInfo1006 character) => new(
-        character.Strength, character.Agility, character.Vitality, character.Spirit,
-        character.Level, character.CurrentProfession, character.RebirthCount,
-        character.UnspentAttributePoints, character.CurrentLife, character.CurrentMana,
-        0, 0, 0, 0, character.Experience, 0, 0, 0);
+    internal static WorldHeroAttributes FromCharacter(GameCharacterInfo1006 character)
+    {
+        return new WorldHeroAttributes(character.Strength, character.Agility, character.Vitality, character.Spirit, character.Level,
+            character.CurrentProfession, character.RebirthCount, character.UnspentAttributePoints, character.CurrentLife,
+            character.CurrentMana, 0, 0, 0, 0, character.Experience,
+            0, 0, 0);
+    }
 
     internal bool TryApply(uint attributeId, ulong low, ulong high, out WorldHeroAttributes next)
     {

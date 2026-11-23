@@ -35,10 +35,25 @@ internal sealed class MainHudVitalsAssets
     public bool HasStamina => _staminaFrames is not null;
     public bool HasExtendedStamina => _extendedStaminaFrames is not null;
 
-    public RgbaImage? GetLifeFrame(int frameIndex) => GetFrame(_lifeFrames, frameIndex, LifeFrameCount);
-    public RgbaImage? GetManaFrame(int frameIndex) => GetFrame(_manaFrames, frameIndex, ManaFrameCount);
-    public RgbaImage? GetStaminaFrame(int frameIndex) => GetFrame(_staminaFrames, frameIndex, StaminaFrameCount);
-    public RgbaImage? GetExtendedStaminaFrame(int frameIndex) => GetFrame(_extendedStaminaFrames, frameIndex, ExtendedStaminaFrameCount);
+    public RgbaImage? GetLifeFrame(int frameIndex)
+    {
+        return GetFrame(_lifeFrames, frameIndex, LifeFrameCount);
+    }
+
+    public RgbaImage? GetManaFrame(int frameIndex)
+    {
+        return GetFrame(_manaFrames, frameIndex, ManaFrameCount);
+    }
+
+    public RgbaImage? GetStaminaFrame(int frameIndex)
+    {
+        return GetFrame(_staminaFrames, frameIndex, StaminaFrameCount);
+    }
+
+    public RgbaImage? GetExtendedStaminaFrame(int frameIndex)
+    {
+        return GetFrame(_extendedStaminaFrames, frameIndex, ExtendedStaminaFrameCount);
+    }
 
     public static MainHudVitalsAssets Load(IClientContentSource contentSource)
     {
